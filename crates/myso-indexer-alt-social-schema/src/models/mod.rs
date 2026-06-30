@@ -1,6 +1,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+mod ai_credit;
 mod blocked;
 mod governance;
 mod insurance;
@@ -24,6 +25,11 @@ mod vesting;
 mod wallet_messaging_policy;
 mod wallet_social_graph;
 
+pub use ai_credit::{
+    AiCreditAgentBudgetRow, AiCreditBalanceRow, AiCreditConfigRow, AiCreditUsageLineRow,
+    NewAiCreditAgentBudget, NewAiCreditBalance, NewAiCreditConfig, NewAiCreditEvent,
+    NewAiCreditUsageLine,
+};
 pub use blocked::{
     BlockedEvent, BlockedProfile, EVENT_TYPE_BLOCK, EVENT_TYPE_UNBLOCK, NewBlockedEvent,
     NewBlockedProfile, UpdateBlockedProfile,

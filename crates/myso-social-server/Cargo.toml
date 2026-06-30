@@ -30,6 +30,9 @@ bigdecimal = "0.4"
 thiserror = "1.0"
 tracing.workspace = true
 
+[dev-dependencies]
+myso-pg-db = { workspace = true }
+
 [[bin]]
 name = "myso-social-server"
 path = "src/main.rs"

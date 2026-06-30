@@ -1286,6 +1286,7 @@ async fn start(
         let social_server_service = myso_social_server::server::start_server(
             social_server_addr.port(),
             social_database_url,
+            None,
             local_myso_start_db_args(),
             social_server_metrics_addr,
             &prometheus_registry,

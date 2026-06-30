@@ -29,6 +29,7 @@ module social_contracts::profile {
     
     use social_contracts::upgrade;
     use social_contracts::memory as memory;
+    use social_contracts::ai_credit::{Self, AiCreditBalance, AiCreditConfig};
 
     /// Error codes
     const EProfileAlreadyExists: u64 = 0;
@@ -174,6 +175,8 @@ module social_contracts::profile {
         selected_ecosystem_badge_id: Option<String>,
         /// Shared [`memory::MemoryAccount`] object id when linked (`None` until [`profile::ensure_memory_account`] or legacy profiles).
         memory_account_id: Option<ID>,
+        /// Shared [`ai_credit::AiCreditBalance`] object id — always set at profile creation (greenfield).
+        ai_credit_balance_id: Option<ID>,
         /// Version for upgrades
         version: u64,
     }
@@ -698,6 +701,7 @@ module social_contracts::profile {
     public entry fun create_profile(
         registry: &mut UsernameRegistry,
         memory_registry: &mut memory::MemoryRegistry,
+        ai_credit_config: &mut AiCreditConfig,
         display_name: String,
         username: String,
         bio: String,
@@ -764,12 +768,22 @@ module social_contracts::profile {
             selected_badge_id: option::none(),
             selected_ecosystem_badge_id: option::none(),
             memory_account_id: option::none(),
+            ai_credit_balance_id: option::none(),
             version: upgrade::current_version(),
         };
         
         let profile_id = object::uid_to_address(&profile.id);
         let memory_id = memory::create_account_for_profile(memory_registry, profile_id, clock, ctx);
         profile.memory_account_id = option::some(memory_id);
+        let balance_id = ai_credit::create_and_share_balance(
+            ai_credit_config,
+            memory_id,
+            owner,
+            profile_id,
+            clock,
+            ctx,
+        );
+        profile.ai_credit_balance_id = option::some(balance_id);
         
         claim_username_internal(registry, username, profile_id);
         table::add(&mut registry.address_profiles, owner, profile_id);
@@ -801,6 +815,7 @@ module social_contracts::profile {
     public(package) fun create_profile_from_beneficiary_claim(
         registry: &mut UsernameRegistry,
         memory_registry: &mut memory::MemoryRegistry,
+        ai_credit_config: &mut AiCreditConfig,
         display_name: vector<u8>,
         username: String,
         bio: vector<u8>,
@@ -853,12 +868,22 @@ module social_contracts::profile {
             selected_badge_id: option::none(),
             selected_ecosystem_badge_id: option::none(),
             memory_account_id: option::none(),
+            ai_credit_balance_id: option::none(),
             version: upgrade::current_version(),
         };
 
         let profile_id = object::uid_to_address(&profile.id);
         let memory_id = memory::create_account_for_profile(memory_registry, profile_id, clock, ctx);
         profile.memory_account_id = option::some(memory_id);
+        let balance_id = ai_credit::create_and_share_balance(
+            ai_credit_config,
+            memory_id,
+            owner,
+            profile_id,
+            clock,
+            ctx,
+        );
+        profile.ai_credit_balance_id = option::some(balance_id);
 
         claim_username(registry, username, profile_id);
         if (table::contains(&registry.beneficiary_usernames, username)) {
@@ -952,6 +977,7 @@ module social_contracts::profile {
         registry: &mut UsernameRegistry,
         memory_registry: &mut memory::MemoryRegistry,
         linked_account: &mut memory::MemoryAccount,
+        linked_balance: &mut AiCreditBalance,
         mut profile: Profile,
         new_owner: address,
         revoked_count: u64,
@@ -962,6 +988,11 @@ module social_contracts::profile {
         assert!(option::is_some(&profile.memory_account_id), ERequiresMemoryLinkedProfile);
         assert!(
             *option::borrow(&profile.memory_account_id) == object::id(linked_account),
+            EMemoryAccountMismatch,
+        );
+        assert!(option::is_some(&profile.ai_credit_balance_id), ERequiresMemoryLinkedProfile);
+        assert!(
+            *option::borrow(&profile.ai_credit_balance_id) == object::id(linked_balance),
             EMemoryAccountMismatch,
         );
 
@@ -986,6 +1017,8 @@ module social_contracts::profile {
             sender,
             new_owner,
         );
+
+        ai_credit::transfer_balance_owner(linked_balance, new_owner);
 
         table::remove(&mut registry.address_profiles, sender);
         if (table::contains(&registry.address_profiles, new_owner)) {
@@ -1696,6 +1729,11 @@ module social_contracts::profile {
     public fun init_for_testing(clock: &Clock, ctx: &mut TxContext) {
         bootstrap_init(clock, ctx);
         memory::bootstrap_init(clock, ctx);
+        ai_credit::bootstrap_init(
+            tx_context::sender(ctx),
+            x"cc62332e34bb2d5cd69f60efbb2a36cb916c7eb458301ea36636c4dbb012bd88",
+            ctx,
+        );
     }
 
     #[test_only]
@@ -1727,6 +1765,7 @@ module social_contracts::profile {
             selected_badge_id: option::none(),
             selected_ecosystem_badge_id: option::none(),
             memory_account_id: option::none(),
+            ai_credit_balance_id: option::none(),
             version: upgrade::current_version(),
         };
         
@@ -1743,6 +1782,11 @@ module social_contracts::profile {
     /// Linked [`social_contracts::memory::MemoryAccount`] object id (`None` for legacy/shared test profiles).
     public fun linked_memory_account_id(profile: &Profile): &Option<ID> {
         &profile.memory_account_id
+    }
+
+    /// Linked [`social_contracts::ai_credit::AiCreditBalance`] object id (always set for greenfield profiles).
+    public fun linked_ai_credit_balance_id(profile: &Profile): &Option<ID> {
+        &profile.ai_credit_balance_id
     }
 
     /// Get the minimum offer amount for a profile

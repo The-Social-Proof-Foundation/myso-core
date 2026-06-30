@@ -13,7 +13,7 @@ use myso_indexer_alt_social_schema::MIGRATIONS;
 use myso_pg_db::{reset_database, Db, DbArgs};
 use prometheus::Registry;
 use social_indexer::{
-    BlockingHandler, GovernanceHandler, InsuranceHandler, MemoryHandler, MyDataHandler,
+    BlockingHandler, AiCreditHandler, GovernanceHandler, InsuranceHandler, MemoryHandler, MyDataHandler,
     PlatformHandler, PostsHandler, ProfilesHandler, SocialEnv, SocialGraphHandler, SpotHandler,
     SptHandler, SubAgentRegistryHandler, SubscriptionHandler, UpgradeHandler,
 };
@@ -203,6 +203,9 @@ async fn run_indexer(args: Args) -> Result<(), anyhow::Error> {
         .await?;
     indexer
         .concurrent_pipeline(MemoryHandler, Default::default())
+        .await?;
+    indexer
+        .concurrent_pipeline(AiCreditHandler, Default::default())
         .await?;
     indexer
         .concurrent_pipeline(ProfilesHandler, Default::default())

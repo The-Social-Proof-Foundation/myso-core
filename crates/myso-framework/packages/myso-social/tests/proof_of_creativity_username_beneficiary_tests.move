@@ -6,9 +6,11 @@
 module social_contracts::proof_of_creativity_username_beneficiary_tests {
     use std::string;
     use std::option;
+    use std::vector;
 
     use social_contracts::proof_of_creativity as poc;
     use social_contracts::profile::{Self, EcosystemTreasury, UsernameRegistry};
+    use social_contracts::ai_credit::AiCreditConfig;
     use social_contracts::poc_username_beneficiary::{
         Self as ub,
         PoCBeneficiaryAdminCap,
@@ -85,10 +87,12 @@ module social_contracts::proof_of_creativity_username_beneficiary_tests {
             let clock = test_scenario::take_shared<Clock>(&scen);
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scen);
             let mut memory_registry = test_scenario::take_shared<memory::MemoryRegistry>(&scen);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scen);
 
             profile::create_profile(
                 &mut registry,
                 &mut memory_registry,
+                &mut ai_credit_config,
                 string::utf8(b"Blocked"),
                 string::utf8(USERNAME),
                 string::utf8(b""),
@@ -101,6 +105,7 @@ module social_contracts::proof_of_creativity_username_beneficiary_tests {
             test_scenario::return_shared(clock);
             test_scenario::return_shared(registry);
             test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(ai_credit_config);
         };
 
         test_scenario::end(scen);
@@ -121,6 +126,7 @@ module social_contracts::proof_of_creativity_username_beneficiary_tests {
             let mut shard = test_scenario::take_shared_by_id<PoCUsernameBeneficiaryShard>(&scen, shard_id);
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scen);
             let mut memory_registry = test_scenario::take_shared<memory::MemoryRegistry>(&scen);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scen);
             let mut beneficiary = test_scenario::take_shared<PoCUsernameBeneficiary>(&scen);
 
             poc::claim_username_beneficiary(
@@ -129,6 +135,7 @@ module social_contracts::proof_of_creativity_username_beneficiary_tests {
                 &mut shard,
                 &mut registry,
                 &mut memory_registry,
+                &mut ai_credit_config,
                 &mut beneficiary,
                 vector::empty(),
                 X_HANDLE,
@@ -149,6 +156,7 @@ module social_contracts::proof_of_creativity_username_beneficiary_tests {
             test_scenario::return_shared(shard);
             test_scenario::return_shared(registry);
             test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(beneficiary);
         };
 

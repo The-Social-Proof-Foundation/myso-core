@@ -97,6 +97,7 @@ computed off-chain (indexer/server).
 -  [Function `cap_agent_register`](#social_contracts_memory_cap_agent_register)
 -  [Function `cap_agent_revoke`](#social_contracts_memory_cap_agent_revoke)
 -  [Function `cap_agent_update`](#social_contracts_memory_cap_agent_update)
+-  [Function `cap_ai_spend`](#social_contracts_memory_cap_ai_spend)
 -  [Function `register_child`](#social_contracts_memory_register_child)
 -  [Function `register_peer`](#social_contracts_memory_register_peer)
 -  [Function `derive_sub_agent_address`](#social_contracts_memory_derive_sub_agent_address)
@@ -1796,6 +1797,15 @@ Human root plus on-chain agent auth index (shared [<code><a href="../social_cont
 
 
 
+<a name="social_contracts_memory_CAP_AI_SPEND"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_CAP_AI_SPEND">CAP_AI_SPEND</a>: u64 = 16384;
+</code></pre>
+
+
+
 <a name="social_contracts_memory_ROLE_EDITOR"></a>
 
 
@@ -3142,6 +3152,28 @@ Human root plus on-chain agent auth index (shared [<code><a href="../social_cont
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_cap_agent_update">cap_agent_update</a>(): u64 { <a href="../social_contracts/memory.md#social_contracts_memory_CAP_AGENT_UPDATE">CAP_AGENT_UPDATE</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_cap_ai_spend"></a>
+
+## Function `cap_ai_spend`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_cap_ai_spend">cap_ai_spend</a>(): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_cap_ai_spend">cap_ai_spend</a>(): u64 { <a href="../social_contracts/memory.md#social_contracts_memory_CAP_AI_SPEND">CAP_AI_SPEND</a> }
 </code></pre>
 
 
@@ -6273,7 +6305,7 @@ Per-transaction MYSO (MIST) spend ceiling for sub-agents. Principal owner is exe
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_has_cap">has_cap</a>(capabilities: u64, required_cap: u64): bool
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_has_cap">has_cap</a>(capabilities: u64, required_cap: u64): bool
 </code></pre>
 
 
@@ -6282,7 +6314,7 @@ Per-transaction MYSO (MIST) spend ceiling for sub-agents. Principal owner is exe
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_has_cap">has_cap</a>(capabilities: u64, required_cap: u64): bool {
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_has_cap">has_cap</a>(capabilities: u64, required_cap: u64): bool {
     (capabilities & required_cap) == required_cap
 }
 </code></pre>

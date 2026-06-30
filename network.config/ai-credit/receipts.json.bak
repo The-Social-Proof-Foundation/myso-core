@@ -1,0 +1,104 @@
+{
+  "lines": [
+    {
+      "receipt_id": 165516716406419993019032160590743677176,
+      "balance_id": "0x0cd68a22109d2144737b09fb6e64cf2adf8b4a276d93e77dd4d82092e917d2ca",
+      "memory_account_id": "0x375d5cc8a5943a3a8f9d701895635eb7f51dea1b8e7aab4daeb4c5d0ca6b6978",
+      "agent_object_id": "0xa6e83768db36ccd2d0dfac72337ac7195aead5743798bcaf3263418a56905942",
+      "amount_mist": 1000000,
+      "usage_kind": 1,
+      "model_id": "openai/gpt-4o-mini",
+      "tool_id": null,
+      "metadata": {
+        "catalog_version": "2026-06-19",
+        "tokens_in": 2000,
+        "tokens_out": 500,
+        "base_mist": 600000,
+        "margin_mist": 400000,
+        "ecosystem_margin_pct": 0.125
+      },
+      "signature_hex": "b3cd61df73c127c0807f7343561b5d36d801b58ebe2712d6b3de6e9ef0dd2a4ffbd1d833dda15edd10f309de82023a6de3794baa14f5a5752cfabd3790af3c0e",
+      "settlement_nonce": 1,
+      "timestamp_ms": 1782851525748,
+      "settled": true,
+      "created_at_ms": 1782851525748
+    },
+    {
+      "receipt_id": 132625655239685005677817396617643760670,
+      "balance_id": "0x2f41b4f43f505d427e8777c511461de8e50eac26558a996627dded27dce50918",
+      "memory_account_id": "0x91ef22c7ec99110e4a48f46096429eac2d12f2b9a7e98748f31d7f9d4bd619b3",
+      "agent_object_id": "0x124043762fbf1db8d8ba247c69a66e71702bebfc4f22ac5663a9b089bde73620",
+      "amount_mist": 222222223,
+      "usage_kind": 1,
+      "model_id": "openai/gpt-4o-mini",
+      "tool_id": null,
+      "metadata": {
+        "catalog_version": "2026-06-19",
+        "tokens_in": 2000,
+        "tokens_out": 500,
+        "base_mist": 133333334,
+        "margin_mist": 88888889,
+        "ecosystem_margin_pct": 0.125,
+        "myso_usd": 0.0045
+      },
+      "signature_hex": "64ea0d5097cbd55918fde13d3de252e12d2a1f91187c262aa9e3221e7dcc6c8e1ba0374615ec97228f25174ba03f665f48039359f8a379f9518eb594413f8c0b",
+      "settlement_nonce": 1,
+      "timestamp_ms": 1782860036574,
+      "settled": true,
+      "created_at_ms": 1782860036574
+    },
+    {
+      "receipt_id": 126555799418900604551142674086776968372,
+      "balance_id": "0x2f41b4f43f505d427e8777c511461de8e50eac26558a996627dded27dce50918",
+      "memory_account_id": "0x91ef22c7ec99110e4a48f46096429eac2d12f2b9a7e98748f31d7f9d4bd619b3",
+      "agent_object_id": "0x124043762fbf1db8d8ba247c69a66e71702bebfc4f22ac5663a9b089bde73620",
+      "amount_mist": 222222223,
+      "usage_kind": 1,
+      "model_id": "openai/gpt-4o-mini",
+      "tool_id": null,
+      "metadata": {
+        "catalog_version": "2026-06-19",
+        "tokens_in": 2000,
+        "tokens_out": 500,
+        "base_mist": 133333334,
+        "margin_mist": 88888889,
+        "ecosystem_margin_pct": 0.125,
+        "myso_usd": 0.0045
+      },
+      "signature_hex": "88c01d86f1e68a9f6457a7508449760ff30431f0348412856980cb8ba604ec8966da521b2b445044d795f78524071bdf026709fa9a3cf7eedc26fba38118ba0e",
+      "settlement_nonce": 2,
+      "timestamp_ms": 1782860721604,
+      "settled": true,
+      "created_at_ms": 1782860721604
+    },
+    {
+      "receipt_id": 70318709548070364327446078153307241952,
+      "balance_id": "0x2f41b4f43f505d427e8777c511461de8e50eac26558a996627dded27dce50918",
+      "memory_account_id": "0x91ef22c7ec99110e4a48f46096429eac2d12f2b9a7e98748f31d7f9d4bd619b3",
+      "agent_object_id": "0x124043762fbf1db8d8ba247c69a66e71702bebfc4f22ac5663a9b089bde73620",
+      "amount_mist": 222222223,
+      "usage_kind": 1,
+      "model_id": "openai/gpt-4o-mini",
+      "tool_id": null,
+      "metadata": {
+        "catalog_version": "2026-06-19",
+        "tokens_in": 2000,
+        "tokens_out": 500,
+        "base_mist": 133333334,
+        "margin_mist": 88888889,
+        "ecosystem_margin_pct": 0.125,
+        "myso_usd": 0.0045
+      },
+      "signature_hex": "65652c94c09419a83109db07caed5536534fff2dd821302242375fa5df1ec66350d706db2959d9ba127a9e18547b7cf70e4d6178883ed3f169f8b787f41f0708",
+      "settlement_nonce": 3,
+      "timestamp_ms": 1782860725896,
+      "settled": false,
+      "created_at_ms": 1782860725896
+    }
+  ],
+  "settled_ids": [
+    165516716406419993019032160590743677176,
+    132625655239685005677817396617643760670,
+    126555799418900604551142674086776968372
+  ]
+}

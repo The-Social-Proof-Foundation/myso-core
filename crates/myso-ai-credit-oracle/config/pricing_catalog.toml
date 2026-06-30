@@ -1,0 +1,109 @@
+[catalog]
+version = "2026-06-19"
+source = "openrouter+manual"
+effective_date = "2026-06-19"
+
+# MIST per 1 million tokens at a $1/MYSO USD peg.
+# Live charges = rate / myso_usd (fetched from AI_CREDIT_MYSO_PRICE_ORACLE_URL).
+
+[[models]]
+aliases = ["openai/gpt-4o-mini", "gpt-4o-mini"]
+display_name = "GPT-4o mini"
+input_mist_per_1m = 150_000_000
+output_mist_per_1m = 600_000_000
+
+[[models]]
+aliases = ["openai/gpt-4o", "gpt-4o"]
+display_name = "GPT-4o"
+input_mist_per_1m = 2_500_000_000
+output_mist_per_1m = 10_000_000_000
+
+[[models]]
+aliases = ["openai/gpt-4.1-mini", "gpt-4.1-mini"]
+display_name = "GPT-4.1 mini"
+input_mist_per_1m = 400_000_000
+output_mist_per_1m = 1_600_000_000
+
+[[models]]
+aliases = ["openai/o3-mini", "o3-mini"]
+display_name = "o3-mini"
+input_mist_per_1m = 1_100_000_000
+output_mist_per_1m = 4_400_000_000
+
+[[models]]
+aliases = ["anthropic/claude-3.5-sonnet", "claude-3-5-sonnet-20241022", "anthropic/claude-sonnet-4"]
+display_name = "Claude Sonnet"
+input_mist_per_1m = 3_000_000_000
+output_mist_per_1m = 15_000_000_000
+
+[[models]]
+aliases = ["anthropic/claude-3.5-haiku", "anthropic/claude-3-5-haiku-20241022", "anthropic/claude-haiku-4"]
+display_name = "Claude Haiku"
+input_mist_per_1m = 800_000_000
+output_mist_per_1m = 4_000_000_000
+
+[[models]]
+aliases = ["google/gemini-2.0-flash-001", "gemini-2.0-flash"]
+display_name = "Gemini 2.0 Flash"
+input_mist_per_1m = 300_000_000
+output_mist_per_1m = 2_500_000_000
+
+[[models]]
+aliases = ["google/gemini-2.5-flash", "gemini-2.5-flash"]
+display_name = "Gemini 2.5 Flash"
+input_mist_per_1m = 300_000_000
+output_mist_per_1m = 2_500_000_000
+
+[[models]]
+aliases = ["google/gemini-2.5-pro", "gemini-2.5-pro"]
+display_name = "Gemini 2.5 Pro"
+input_mist_per_1m = 1_250_000_000
+output_mist_per_1m = 10_000_000_000
+
+[[models]]
+aliases = ["deepseek/deepseek-chat", "deepseek-chat"]
+display_name = "DeepSeek V3"
+input_mist_per_1m = 270_000_000
+output_mist_per_1m = 1_100_000_000
+
+[[models]]
+aliases = ["meta-llama/llama-3.3-70b-instruct", "llama-3.3-70b-instruct"]
+display_name = "Llama 3.3 70B"
+input_mist_per_1m = 400_000_000
+output_mist_per_1m = 400_000_000
+
+[[models]]
+aliases = ["mistralai/mistral-large-2411", "mistral-large"]
+display_name = "Mistral Large"
+input_mist_per_1m = 2_000_000_000
+output_mist_per_1m = 6_000_000_000
+
+[[models]]
+aliases = ["mistralai/mistral-small", "mistral-small"]
+display_name = "Mistral Small"
+input_mist_per_1m = 200_000_000
+output_mist_per_1m = 600_000_000
+
+[[models]]
+aliases = ["qwen/qwen-2.5-72b-instruct", "qwen-2.5-72b-instruct"]
+display_name = "Qwen 2.5 72B"
+input_mist_per_1m = 350_000_000
+output_mist_per_1m = 400_000_000
+
+[[embeddings]]
+aliases = ["text-embedding-3-small", "openai/text-embedding-3-small"]
+display_name = "text-embedding-3-small"
+mist_per_1m = 20_000_000
+
+[[tools]]
+id = "web_search"
+flat_mist = 50_000_000
+
+[[tools]]
+id = "storage_read"
+flat_mist = 5_000_000
+
+[defaults]
+unknown_model_input_mist_per_1m = 2_500_000_000
+unknown_model_output_mist_per_1m = 10_000_000_000
+min_charge_mist = 1_000_000

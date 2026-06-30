@@ -47,6 +47,7 @@ title: Module `social_contracts::poc_username_beneficiary`
 <b>use</b> <a href="../myso/derived_object.md#myso_derived_object">myso::derived_object</a>;
 <b>use</b> <a href="../myso/dynamic_field.md#myso_dynamic_field">myso::dynamic_field</a>;
 <b>use</b> <a href="../myso/dynamic_object_field.md#myso_dynamic_object_field">myso::dynamic_object_field</a>;
+<b>use</b> <a href="../myso/ed25519.md#myso_ed25519">myso::ed25519</a>;
 <b>use</b> <a href="../myso/event.md#myso_event">myso::event</a>;
 <b>use</b> <a href="../myso/funds_accumulator.md#myso_funds_accumulator">myso::funds_accumulator</a>;
 <b>use</b> <a href="../myso/hash.md#myso_hash">myso::hash</a>;
@@ -63,6 +64,7 @@ title: Module `social_contracts::poc_username_beneficiary`
 <b>use</b> <a href="../myso/url.md#myso_url">myso::url</a>;
 <b>use</b> <a href="../myso/vec_map.md#myso_vec_map">myso::vec_map</a>;
 <b>use</b> <a href="../myso/vec_set.md#myso_vec_set">myso::vec_set</a>;
+<b>use</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit">social_contracts::ai_credit</a>;
 <b>use</b> <a href="../social_contracts/memory.md#social_contracts_memory">social_contracts::memory</a>;
 <b>use</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault">social_contracts::poc_vault</a>;
 <b>use</b> <a href="../social_contracts/profile.md#social_contracts_profile">social_contracts::profile</a>;
@@ -1188,7 +1190,7 @@ Admin capability for username beneficiary provisioning lifecycle.
 
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_claim_username_beneficiary">claim_username_beneficiary</a>(directory: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiaryDirectory">social_contracts::poc_username_beneficiary::PoCUsernameBeneficiaryDirectory</a>, shard: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiaryShard">social_contracts::poc_username_beneficiary::PoCUsernameBeneficiaryShard</a>, username_registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, memory_registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">social_contracts::memory::MemoryRegistry</a>, beneficiary: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiary">social_contracts::poc_username_beneficiary::PoCUsernameBeneficiary</a>, evidence_hash: vector&lt;u8&gt;, attested_x_handle: vector&lt;u8&gt;, display_name: vector&lt;u8&gt;, bio: vector&lt;u8&gt;, profile_picture_url: vector&lt;u8&gt;, cover_photo_url: vector&lt;u8&gt;, wallet: <b>address</b>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_claim_username_beneficiary">claim_username_beneficiary</a>(directory: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiaryDirectory">social_contracts::poc_username_beneficiary::PoCUsernameBeneficiaryDirectory</a>, shard: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiaryShard">social_contracts::poc_username_beneficiary::PoCUsernameBeneficiaryShard</a>, username_registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, memory_registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">social_contracts::memory::MemoryRegistry</a>, ai_credit_config: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">social_contracts::ai_credit::AiCreditConfig</a>, beneficiary: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiary">social_contracts::poc_username_beneficiary::PoCUsernameBeneficiary</a>, evidence_hash: vector&lt;u8&gt;, attested_x_handle: vector&lt;u8&gt;, display_name: vector&lt;u8&gt;, bio: vector&lt;u8&gt;, profile_picture_url: vector&lt;u8&gt;, cover_photo_url: vector&lt;u8&gt;, wallet: <b>address</b>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1202,6 +1204,7 @@ Admin capability for username beneficiary provisioning lifecycle.
     shard: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiaryShard">PoCUsernameBeneficiaryShard</a>,
     username_registry: &<b>mut</b> UsernameRegistry,
     memory_registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">memory::MemoryRegistry</a>,
+    ai_credit_config: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">ai_credit::AiCreditConfig</a>,
     beneficiary: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiary">PoCUsernameBeneficiary</a>,
     evidence_hash: vector&lt;u8&gt;,
     attested_x_handle: vector&lt;u8&gt;,
@@ -1227,6 +1230,7 @@ Admin capability for username beneficiary provisioning lifecycle.
     <b>let</b> profile_id = <a href="../social_contracts/profile.md#social_contracts_profile_create_profile_from_beneficiary_claim">profile::create_profile_from_beneficiary_claim</a>(
         username_registry,
         memory_registry,
+        ai_credit_config,
         display_name,
         beneficiary.username,
         bio,

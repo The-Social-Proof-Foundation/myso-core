@@ -1,6 +1,8 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+#![recursion_limit = "256"]
+
 use diesel_migrations::EmbeddedMigrations;
 use diesel_migrations::embed_migrations;
 

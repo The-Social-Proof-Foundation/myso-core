@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Profiles pipeline: indexes profile module events (including EcosystemTreasury from profile).
+//! For greenfield `create_profile`, also indexes memory and ai_credit bootstrap events in
+//! transaction order so profile rows can be inserted with linked account and balance ids.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::Result;
@@ -20,20 +23,25 @@ use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
-    NewEcosystemTreasury, NewProfile, NewProfileBadge, NewProfileEvent, NewProfileOffer,
-    NewProfileSaleFee, NewUsernameRegistry, NewVestingEvent, NewVestingWallet, ProfileUpdateSet,
+    NewAiCreditBalance, NewEcosystemTreasury, NewMemoryAccount, NewProfile, NewProfileBadge,
+    NewProfileEvent, NewProfileOffer, NewProfileSaleFee, NewUsernameRegistry, NewVestingEvent,
+    NewVestingWallet, ProfileUpdateSet,
 };
 use myso_indexer_alt_social_schema::schema::{
-    ecosystem_treasury, memory_accounts, profile_badges, profile_events, profile_offers,
-    profile_sale_fees, profiles, username_registry, vesting_events, vesting_wallets,
+    ai_credit_balances, ecosystem_treasury, memory_accounts, profile_badges, profile_events,
+    profile_offers, profile_sale_fees, profiles, username_registry, vesting_events,
+    vesting_wallets,
 };
 
+use super::ai_credit;
 use super::common;
 use super::events;
+use super::memory;
 use super::profile;
 use super::ProfileUpdate;
 
 const PROFILE_MODULES: &[&str] = &["profile"];
+const PROFILE_BOOTSTRAP_MODULES: &[&str] = &["memory", "ai_credit", "profile"];
 
 #[derive(Debug, Clone)]
 pub enum ProfileRow {
@@ -89,6 +97,8 @@ pub enum ProfileRow {
     VestingWalletDelete {
         wallet_id: String,
     },
+    MemoryAccountBootstrap(NewMemoryAccount),
+    AiCreditBalanceBootstrap(NewAiCreditBalance),
 }
 
 impl ProfileRow {
@@ -185,7 +195,7 @@ impl ProfileRow {
 }
 
 impl FieldCount for ProfileRow {
-    const FIELD_COUNT: usize = 20;
+    const FIELD_COUNT: usize = 22;
 }
 
 pub struct ProfilesHandler;
@@ -204,12 +214,14 @@ impl Processor for ProfilesHandler {
             let Some(events) = &tx.events else {
                 continue;
             };
+            let mut memory_by_profile: HashMap<String, String> = HashMap::new();
+            let mut balance_by_profile: HashMap<String, String> = HashMap::new();
             for (event_seq, ev) in events.data.iter().enumerate() {
                 if !common::is_social_package_event(&ev.package_id, &ev.type_.address) {
                     continue;
                 }
                 let module = ev.type_.module.as_str();
-                if !PROFILE_MODULES.contains(&module) {
+                if !PROFILE_BOOTSTRAP_MODULES.contains(&module) {
                     continue;
                 }
                 let event_name = ev.type_.name.as_str();
@@ -219,17 +231,59 @@ impl Processor for ProfilesHandler {
                         Ok(v) => v,
                         Err(_) => continue,
                     };
-                if let Some(rows) = profile::handle_profile_event(
-                    event_name,
-                    &event_data,
-                    &event_id,
-                    checkpoint_timestamp_ms,
-                ) {
-                    for row in rows {
-                        if let Some(r) = ProfileRow::from_social(row) {
-                            values.push(r);
+                match module {
+                    "memory" if event_name == "MemoryAccountCreated" => {
+                        if let Some(rows) =
+                            memory::handle_memory_event(event_name, &event_data, &event_id)
+                        {
+                            for row in rows {
+                                if let crate::handlers::SocialEventRow::MemoryAccount(a) = row {
+                                    memory_by_profile
+                                        .insert(a.profile_id.clone(), a.account_id.clone());
+                                    values.push(ProfileRow::MemoryAccountBootstrap(a));
+                                }
+                            }
                         }
                     }
+                    "ai_credit" if event_name == "AiCreditBalanceCreated" => {
+                        if let Some(rows) =
+                            ai_credit::handle_ai_credit_event(event_name, &event_data, &event_id)
+                        {
+                            for row in rows {
+                                if let crate::handlers::SocialEventRow::AiCreditBalanceUpsert(b) =
+                                    row
+                                {
+                                    balance_by_profile
+                                        .insert(b.profile_id.clone(), b.balance_id.clone());
+                                    values.push(ProfileRow::AiCreditBalanceBootstrap(b));
+                                }
+                            }
+                        }
+                    }
+                    "profile" if PROFILE_MODULES.contains(&module) => {
+                        if let Some(rows) = profile::handle_profile_event(
+                            event_name,
+                            &event_data,
+                            &event_id,
+                            checkpoint_timestamp_ms,
+                        ) {
+                            for row in rows {
+                                if let Some(mut r) = ProfileRow::from_social(row) {
+                                    if let ProfileRow::Profile(ref mut p) = r {
+                                        if let Some(ref profile_id) = p.profile_id {
+                                            profile::enrich_new_profile_bootstrap(
+                                                p,
+                                                memory_by_profile.get(profile_id).cloned(),
+                                                balance_by_profile.get(profile_id).cloned(),
+                                            );
+                                        }
+                                    }
+                                    values.push(r);
+                                }
+                            }
+                        }
+                    }
+                    _ => {}
                 }
             }
         }
@@ -241,8 +295,19 @@ impl Processor for ProfilesHandler {
 impl Handler for ProfilesHandler {
     async fn commit<'a>(values: &[Self::Value], conn: &mut Connection<'a>) -> Result<usize> {
         let mut total = 0;
-        // Pass 1: insert profiles before UsernameClaimed updates (Move emits UsernameClaimedEvent
-        // before ProfileCreatedEvent in the same transaction).
+        for row in values {
+            match row {
+                ProfileRow::MemoryAccountBootstrap(a) => {
+                    total += commit_memory_account_bootstrap(a, conn).await?;
+                }
+                ProfileRow::AiCreditBalanceBootstrap(b) => {
+                    total += commit_ai_credit_balance_bootstrap(b, conn).await?;
+                }
+                _ => {}
+            }
+        }
+        // Insert profiles before UsernameClaimed updates (Move emits UsernameClaimedEvent before
+        // ProfileCreatedEvent in the same transaction).
         for row in values {
             if let ProfileRow::Profile(profile) = row {
                 total += commit_profile_insert(profile, conn).await?;
@@ -250,7 +315,9 @@ impl Handler for ProfilesHandler {
         }
         for row in values {
             match row {
-                ProfileRow::Profile(_) => {}
+                ProfileRow::Profile(_)
+                | ProfileRow::MemoryAccountBootstrap(_)
+                | ProfileRow::AiCreditBalanceBootstrap(_) => {}
                 other => {
                     total += commit_profile_row(other, conn).await?;
                 }
@@ -258,6 +325,63 @@ impl Handler for ProfilesHandler {
         }
         Ok(total)
     }
+}
+
+async fn commit_memory_account_bootstrap<'a>(
+    a: &NewMemoryAccount,
+    conn: &mut Connection<'a>,
+) -> Result<usize> {
+    let principal_owner = a.principal_owner.clone();
+    let profile_id = a.profile_id.clone();
+    let active = a.active;
+    let created_at_ms = a.created_at_ms;
+    let event_id = a.event_id.clone();
+    let transaction_id = a.transaction_id.clone();
+    let time = a.time;
+    Ok(diesel::insert_into(memory_accounts::table)
+        .values(a)
+        .on_conflict(memory_accounts::account_id)
+        .do_update()
+        .set((
+            memory_accounts::principal_owner.eq(principal_owner),
+            memory_accounts::profile_id.eq(profile_id),
+            memory_accounts::active.eq(active),
+            memory_accounts::created_at_ms.eq(created_at_ms),
+            memory_accounts::event_id.eq(event_id),
+            memory_accounts::transaction_id.eq(transaction_id),
+            memory_accounts::time.eq(time),
+        ))
+        .execute(conn)
+        .await?)
+}
+
+async fn commit_ai_credit_balance_bootstrap<'a>(
+    b: &NewAiCreditBalance,
+    conn: &mut Connection<'a>,
+) -> Result<usize> {
+    Ok(diesel::insert_into(ai_credit_balances::table)
+        .values(b)
+        .on_conflict(ai_credit_balances::balance_id)
+        .do_update()
+        .set((
+            ai_credit_balances::memory_account_id.eq(b.memory_account_id.clone()),
+            ai_credit_balances::principal_owner.eq(b.principal_owner.clone()),
+            ai_credit_balances::profile_id.eq(b.profile_id.clone()),
+            ai_credit_balances::balance_mist.eq(b.balance_mist),
+            ai_credit_balances::spent_total_mist.eq(b.spent_total_mist),
+            ai_credit_balances::daily_cap_mist.eq(b.daily_cap_mist),
+            ai_credit_balances::monthly_cap_mist.eq(b.monthly_cap_mist),
+            ai_credit_balances::spent_day_mist.eq(b.spent_day_mist),
+            ai_credit_balances::spent_month_mist.eq(b.spent_month_mist),
+            ai_credit_balances::settlement_nonce.eq(b.settlement_nonce),
+            ai_credit_balances::active.eq(b.active),
+            ai_credit_balances::updated_at_ms.eq(b.updated_at_ms),
+            ai_credit_balances::event_id.eq(b.event_id.clone()),
+            ai_credit_balances::transaction_id.eq(b.transaction_id.clone()),
+            ai_credit_balances::time.eq(b.time),
+        ))
+        .execute(conn)
+        .await?)
 }
 
 async fn commit_profile_insert<'a>(
@@ -271,21 +395,41 @@ async fn commit_profile_insert<'a>(
         .execute(conn)
         .await?;
     if let Some(ref profile_id) = profile.profile_id {
-        if let Some(account_id) = memory_accounts::table
-            .filter(memory_accounts::profile_id.eq(profile_id))
-            .select(memory_accounts::account_id)
-            .first::<String>(conn)
-            .await
-            .optional()?
-        {
-            total += diesel::update(
-                profiles::table
-                    .filter(profiles::profile_id.eq(profile_id))
-                    .filter(profiles::memory_account_id.is_null()),
-            )
-            .set(profiles::memory_account_id.eq(account_id))
-            .execute(conn)
-            .await?;
+        if profile.memory_account_id.is_none() {
+            if let Some(account_id) = memory_accounts::table
+                .filter(memory_accounts::profile_id.eq(profile_id))
+                .select(memory_accounts::account_id)
+                .first::<String>(conn)
+                .await
+                .optional()?
+            {
+                total += diesel::update(
+                    profiles::table
+                        .filter(profiles::profile_id.eq(profile_id))
+                        .filter(profiles::memory_account_id.is_null()),
+                )
+                .set(profiles::memory_account_id.eq(account_id))
+                .execute(conn)
+                .await?;
+            }
+        }
+        if profile.ai_credit_balance_id.is_none() {
+            if let Some(balance_id) = ai_credit_balances::table
+                .filter(ai_credit_balances::profile_id.eq(profile_id))
+                .select(ai_credit_balances::balance_id)
+                .first::<String>(conn)
+                .await
+                .optional()?
+            {
+                total += diesel::update(
+                    profiles::table
+                        .filter(profiles::profile_id.eq(profile_id))
+                        .filter(profiles::ai_credit_balance_id.is_null()),
+                )
+                .set(profiles::ai_credit_balance_id.eq(balance_id))
+                .execute(conn)
+                .await?;
+            }
         }
     }
     Ok(total)
@@ -539,6 +683,7 @@ async fn commit_profile_row<'a>(row: &ProfileRow, conn: &mut Connection<'a>) -> 
                 .execute(conn)
                 .await?;
         }
+        ProfileRow::MemoryAccountBootstrap(_) | ProfileRow::AiCreditBalanceBootstrap(_) => {}
     }
     Ok(total)
 }

@@ -72,6 +72,10 @@ yarn-error.log*
 **/interact_addrs.env
 **/network.config/mydata/marketplace-session.env
 **/network.config/poc/poc-session.env
+**/network.config/ai-credit/ai-credit-session.env
+**/network.config/ai-credit/receipts.json
+**/network.config/ai-credit/oracle.log
+**/network.config/ai-credit/oracle.pid
 checkpoints_dir/*
 light_client.yaml
 docs/content/references/myso-api/myso-graphql/*

@@ -22,6 +22,10 @@ struct Args {
         default_value = "postgres://postgres:postgrespw@localhost:5432/social"
     )]
     database_url: Url,
+    /// Primary database URL for write paths (e.g. AI credit usage-line ingest). Defaults to
+    /// `DATABASE_URL` when unset.
+    #[clap(env, long)]
+    write_database_url: Option<Url>,
 }
 
 #[tokio::main]
@@ -35,9 +39,17 @@ async fn main() -> Result<(), anyhow::Error> {
         server_port,
         metrics_address,
         database_url,
+        write_database_url,
     } = Args::parse();
 
-    run_server(server_port, database_url, db_args, metrics_address).await?;
+    run_server(
+        server_port,
+        database_url,
+        write_database_url,
+        db_args,
+        metrics_address,
+    )
+    .await?;
 
     Ok(())
 }

@@ -8,6 +8,7 @@ pub mod insurance;
 pub mod memory;
 mod metrics;
 pub mod mydata;
+pub mod ai_credit;
 pub mod org_leaderboard;
 pub mod org_stats;
 pub mod organization;

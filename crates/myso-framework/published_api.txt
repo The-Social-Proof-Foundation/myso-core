@@ -7285,177 +7285,6 @@ emit_migration_event
 create_upgrade_admin_cap
 	public(package) fun
 	0x50c1::upgrade
-SocialGraph
-	public struct
-	0x50c1::social_graph
-FollowEvent
-	public struct
-	0x50c1::social_graph
-UnfollowEvent
-	public struct
-	0x50c1::social_graph
-bootstrap_init
-	public(package) fun
-	0x50c1::social_graph
-follow
-	public entry fun
-	0x50c1::social_graph
-unfollow
-	public entry fun
-	0x50c1::social_graph
-unfollow_internal
-	public(package) fun
-	0x50c1::social_graph
-migrate_social_graph
-	public entry fun
-	0x50c1::social_graph
-borrow_version_mut
-	public(package) fun
-	0x50c1::social_graph
-version
-	public fun
-	0x50c1::social_graph
-is_following
-	public fun
-	0x50c1::social_graph
-following_count
-	public fun
-	0x50c1::social_graph
-follower_count
-	public fun
-	0x50c1::social_graph
-get_following
-	public fun
-	0x50c1::social_graph
-get_followers
-	public fun
-	0x50c1::social_graph
-BlockListRegistry
-	public struct
-	0x50c1::block_list
-UserBlockEvent
-	public struct
-	0x50c1::block_list
-UserUnblockEvent
-	public struct
-	0x50c1::block_list
-bootstrap_init
-	public(package) fun
-	0x50c1::block_list
-block_wallet_internal
-	public(package) fun
-	0x50c1::block_list
-block_wallet
-	public entry fun
-	0x50c1::block_list
-unblock_wallet_internal
-	public(package) fun
-	0x50c1::block_list
-unblock_wallet
-	public entry fun
-	0x50c1::block_list
-either_blocked
-	public fun
-	0x50c1::block_list
-assert_not_blocked
-	public fun
-	0x50c1::block_list
-is_blocked
-	public fun
-	0x50c1::block_list
-blocked_count
-	public fun
-	0x50c1::block_list
-get_blocked_wallets
-	public fun
-	0x50c1::block_list
-registry_version
-	public fun
-	0x50c1::block_list
-borrow_registry_version_mut
-	public(package) fun
-	0x50c1::block_list
-migrate_block_list_registry
-	public entry fun
-	0x50c1::block_list
-ProfileSubscriptionService
-	public struct
-	0x50c1::subscription
-ProfileSubscription
-	public struct
-	0x50c1::subscription
-ProfileSubscriptionCreatedEvent
-	public struct
-	0x50c1::subscription
-ProfileSubscriptionRenewedEvent
-	public struct
-	0x50c1::subscription
-ProfileSubscriptionCancelledEvent
-	public struct
-	0x50c1::subscription
-ProfileSubscriptionUpdatedEvent
-	public struct
-	0x50c1::subscription
-ProfileSubscriptionServiceCreatedEvent
-	public struct
-	0x50c1::subscription
-RenewalBalanceFundedEvent
-	public struct
-	0x50c1::subscription
-ProfileSubscriptionServiceDeactivatedEvent
-	public struct
-	0x50c1::subscription
-create_profile_service
-	public fun
-	0x50c1::subscription
-create_profile_service_entry
-	public entry fun
-	0x50c1::subscription
-subscribe_to_profile
-	public entry fun
-	0x50c1::subscription
-renew_subscription
-	public entry fun
-	0x50c1::subscription
-auto_renew_subscription
-	public entry fun
-	0x50c1::subscription
-can_auto_renew
-	public fun
-	0x50c1::subscription
-fund_renewal_balance
-	public entry fun
-	0x50c1::subscription
-is_subscription_valid
-	public fun
-	0x50c1::subscription
-update_service_fee
-	public entry fun
-	0x50c1::subscription
-deactivate_service
-	public entry fun
-	0x50c1::subscription
-cancel_subscription
-	public entry fun
-	0x50c1::subscription
-service_monthly_fee
-	public fun
-	0x50c1::subscription
-service_subscriber_count
-	public fun
-	0x50c1::subscription
-subscription_expires_at
-	public fun
-	0x50c1::subscription
-subscription_auto_renew
-	public fun
-	0x50c1::subscription
-subscription_renewal_balance
-	public fun
-	0x50c1::subscription
-migrate_service
-	public entry fun
-	0x50c1::subscription
 MemoryRegistry
 	public struct
 	0x50c1::memory
@@ -7628,6 +7457,9 @@ cap_agent_revoke
 	public fun
 	0x50c1::memory
 cap_agent_update
+	public fun
+	0x50c1::memory
+cap_ai_spend
 	public fun
 	0x50c1::memory
 register_child
@@ -7916,7 +7748,7 @@ assert_organization_ready_for_root
 	fun
 	0x50c1::memory
 has_cap
-	fun
+	public(package) fun
 	0x50c1::memory
 cap_requires_approval
 	fun
@@ -7951,6 +7783,366 @@ assert_cap_for_this_package
 has_suffix
 	fun
 	0x50c1::memory
+AiCreditOracleAdminCap
+	public struct
+	0x50c1::ai_credit
+AiCreditConfig
+	public struct
+	0x50c1::ai_credit
+AgentBudgetEntry
+	public struct
+	0x50c1::ai_credit
+AiCreditBalance
+	public struct
+	0x50c1::ai_credit
+IntentMessage
+	public struct
+	0x50c1::ai_credit
+UsageReceipt
+	public struct
+	0x50c1::ai_credit
+AiCreditBalanceCreated
+	public struct
+	0x50c1::ai_credit
+AiCreditDeposited
+	public struct
+	0x50c1::ai_credit
+AiCreditWithdrawn
+	public struct
+	0x50c1::ai_credit
+AiCreditAccountCapsUpdated
+	public struct
+	0x50c1::ai_credit
+AiCreditAgentBudgetUpdated
+	public struct
+	0x50c1::ai_credit
+AiCreditAgentBudgetDisabled
+	public struct
+	0x50c1::ai_credit
+AiCreditUsageSettled
+	public struct
+	0x50c1::ai_credit
+AiCreditBalanceDepleted
+	public struct
+	0x50c1::ai_credit
+AiCreditBalancePaused
+	public struct
+	0x50c1::ai_credit
+AiCreditBalanceReactivated
+	public struct
+	0x50c1::ai_credit
+AiCreditOraclePubkeyUpdated
+	public struct
+	0x50c1::ai_credit
+AiCreditSettlementLimitsUpdated
+	public struct
+	0x50c1::ai_credit
+AiCreditConfigInitialized
+	public struct
+	0x50c1::ai_credit
+bootstrap_init
+	public(package) fun
+	0x50c1::ai_credit
+create_oracle_admin_cap
+	public(package) fun
+	0x50c1::ai_credit
+create_and_share_balance
+	public(package) fun
+	0x50c1::ai_credit
+transfer_balance_owner
+	public(package) fun
+	0x50c1::ai_credit
+new_balance
+	fun
+	0x50c1::ai_credit
+deposit
+	public entry fun
+	0x50c1::ai_credit
+withdraw
+	public entry fun
+	0x50c1::ai_credit
+set_account_caps
+	public entry fun
+	0x50c1::ai_credit
+set_agent_budget
+	public entry fun
+	0x50c1::ai_credit
+disable_agent_budget
+	public entry fun
+	0x50c1::ai_credit
+pause_balance
+	public entry fun
+	0x50c1::ai_credit
+reactivate_balance
+	public entry fun
+	0x50c1::ai_credit
+settle_usage
+	public fun
+	0x50c1::ai_credit
+settle_usage_batch
+	public fun
+	0x50c1::ai_credit
+settle_signed_usage
+	public fun
+	0x50c1::ai_credit
+make_usage_receipt_from_objects
+	public fun
+	0x50c1::ai_credit
+settle_usage_with_signature
+	fun
+	0x50c1::ai_credit
+execute_settlement
+	fun
+	0x50c1::ai_credit
+update_oracle_pubkey
+	public entry fun
+	0x50c1::ai_credit
+update_settlement_limits
+	public entry fun
+	0x50c1::ai_credit
+update_treasury
+	public entry fun
+	0x50c1::ai_credit
+balance_mist
+	public fun
+	0x50c1::ai_credit
+available_mist
+	public fun
+	0x50c1::ai_credit
+credits_from_mist
+	public fun
+	0x50c1::ai_credit
+mist_from_credits
+	public fun
+	0x50c1::ai_credit
+agent_remaining_mist
+	public fun
+	0x50c1::ai_credit
+usage_inference
+	public fun
+	0x50c1::ai_credit
+usage_tool
+	public fun
+	0x50c1::ai_credit
+usage_embed
+	public fun
+	0x50c1::ai_credit
+usage_storage
+	public fun
+	0x50c1::ai_credit
+usage_workflow
+	public fun
+	0x50c1::ai_credit
+mist_per_myso
+	public fun
+	0x50c1::ai_credit
+assert_agent_may_spend
+	public fun
+	0x50c1::ai_credit
+assert_version
+	fun
+	0x50c1::ai_credit
+assert_owner
+	fun
+	0x50c1::ai_credit
+assert_active
+	fun
+	0x50c1::ai_credit
+assert_agent_linked
+	fun
+	0x50c1::ai_credit
+assert_oracle_admin
+	fun
+	0x50c1::ai_credit
+verify_receipt_signature
+	fun
+	0x50c1::ai_credit
+assert_receipt_fresh
+	fun
+	0x50c1::ai_credit
+roll_account_windows
+	fun
+	0x50c1::ai_credit
+roll_agent_windows
+	fun
+	0x50c1::ai_credit
+assert_account_caps
+	fun
+	0x50c1::ai_credit
+assert_agent_caps
+	fun
+	0x50c1::ai_credit
+SocialGraph
+	public struct
+	0x50c1::social_graph
+FollowEvent
+	public struct
+	0x50c1::social_graph
+UnfollowEvent
+	public struct
+	0x50c1::social_graph
+bootstrap_init
+	public(package) fun
+	0x50c1::social_graph
+follow
+	public entry fun
+	0x50c1::social_graph
+unfollow
+	public entry fun
+	0x50c1::social_graph
+unfollow_internal
+	public(package) fun
+	0x50c1::social_graph
+migrate_social_graph
+	public entry fun
+	0x50c1::social_graph
+borrow_version_mut
+	public(package) fun
+	0x50c1::social_graph
+version
+	public fun
+	0x50c1::social_graph
+is_following
+	public fun
+	0x50c1::social_graph
+following_count
+	public fun
+	0x50c1::social_graph
+follower_count
+	public fun
+	0x50c1::social_graph
+get_following
+	public fun
+	0x50c1::social_graph
+get_followers
+	public fun
+	0x50c1::social_graph
+BlockListRegistry
+	public struct
+	0x50c1::block_list
+UserBlockEvent
+	public struct
+	0x50c1::block_list
+UserUnblockEvent
+	public struct
+	0x50c1::block_list
+bootstrap_init
+	public(package) fun
+	0x50c1::block_list
+block_wallet_internal
+	public(package) fun
+	0x50c1::block_list
+block_wallet
+	public entry fun
+	0x50c1::block_list
+unblock_wallet_internal
+	public(package) fun
+	0x50c1::block_list
+unblock_wallet
+	public entry fun
+	0x50c1::block_list
+either_blocked
+	public fun
+	0x50c1::block_list
+assert_not_blocked
+	public fun
+	0x50c1::block_list
+is_blocked
+	public fun
+	0x50c1::block_list
+blocked_count
+	public fun
+	0x50c1::block_list
+get_blocked_wallets
+	public fun
+	0x50c1::block_list
+registry_version
+	public fun
+	0x50c1::block_list
+borrow_registry_version_mut
+	public(package) fun
+	0x50c1::block_list
+migrate_block_list_registry
+	public entry fun
+	0x50c1::block_list
+ProfileSubscriptionService
+	public struct
+	0x50c1::subscription
+ProfileSubscription
+	public struct
+	0x50c1::subscription
+ProfileSubscriptionCreatedEvent
+	public struct
+	0x50c1::subscription
+ProfileSubscriptionRenewedEvent
+	public struct
+	0x50c1::subscription
+ProfileSubscriptionCancelledEvent
+	public struct
+	0x50c1::subscription
+ProfileSubscriptionUpdatedEvent
+	public struct
+	0x50c1::subscription
+ProfileSubscriptionServiceCreatedEvent
+	public struct
+	0x50c1::subscription
+RenewalBalanceFundedEvent
+	public struct
+	0x50c1::subscription
+ProfileSubscriptionServiceDeactivatedEvent
+	public struct
+	0x50c1::subscription
+create_profile_service
+	public fun
+	0x50c1::subscription
+create_profile_service_entry
+	public entry fun
+	0x50c1::subscription
+subscribe_to_profile
+	public entry fun
+	0x50c1::subscription
+renew_subscription
+	public entry fun
+	0x50c1::subscription
+auto_renew_subscription
+	public entry fun
+	0x50c1::subscription
+can_auto_renew
+	public fun
+	0x50c1::subscription
+fund_renewal_balance
+	public entry fun
+	0x50c1::subscription
+is_subscription_valid
+	public fun
+	0x50c1::subscription
+update_service_fee
+	public entry fun
+	0x50c1::subscription
+deactivate_service
+	public entry fun
+	0x50c1::subscription
+cancel_subscription
+	public entry fun
+	0x50c1::subscription
+service_monthly_fee
+	public fun
+	0x50c1::subscription
+service_subscriber_count
+	public fun
+	0x50c1::subscription
+subscription_expires_at
+	public fun
+	0x50c1::subscription
+subscription_auto_renew
+	public fun
+	0x50c1::subscription
+subscription_renewal_balance
+	public fun
+	0x50c1::subscription
+migrate_service
+	public entry fun
+	0x50c1::subscription
 EcosystemTreasuryAdminCap
 	public struct
 	0x50c1::profile
@@ -8222,6 +8414,9 @@ migrate_registry
 	public entry fun
 	0x50c1::profile
 linked_memory_account_id
+	public fun
+	0x50c1::profile
+linked_ai_credit_balance_id
 	public fun
 	0x50c1::profile
 min_offer_amount

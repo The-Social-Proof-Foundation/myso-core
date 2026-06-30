@@ -1,6 +1,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+mod ai_credit;
 mod governance;
 mod health;
 mod insurance;
@@ -30,6 +31,10 @@ pub use governance::{
     get_governance_registry, get_governance_registry_by_platform, list_governance_delegates,
     list_governance_events, list_governance_nominees, list_governance_proposals,
     list_governance_registries,
+};
+pub use ai_credit::{
+    get_ai_credit_config, get_profile_ai_credit_balance, ingest_usage_line_internal,
+    list_ai_credit_usage_history,
 };
 pub use health::health_check;
 pub use insurance::{

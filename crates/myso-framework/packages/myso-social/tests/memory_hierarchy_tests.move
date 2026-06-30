@@ -17,6 +17,7 @@ module social_contracts::memory_hierarchy_tests {
     use social_contracts::memory::{Self, MemoryRegistry, MemoryAccount, SubAgent, AgenticOrganization};
     use social_contracts::memory_test_helpers;
     use social_contracts::profile::{Self, Profile, UsernameRegistry};
+    use social_contracts::ai_credit::AiCreditConfig;
 
     const ADMIN: address = @0xAD;
     const USER1: address = @0x1;
@@ -42,11 +43,13 @@ module social_contracts::memory_hierarchy_tests {
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(scenario);
             let clock = test_scenario::take_shared<Clock>(scenario);
 
             profile::create_profile(
                 &mut registry,
                 &mut memory_registry,
+                &mut ai_credit_config,
                 string::utf8(b"User One"),
                 string::utf8(b"userone"),
                 string::utf8(b"bio"),
@@ -57,6 +60,7 @@ module social_contracts::memory_hierarchy_tests {
             );
 
             test_scenario::return_shared(clock);
+            test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(registry);
         };

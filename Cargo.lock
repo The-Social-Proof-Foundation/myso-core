@@ -10469,6 +10469,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "myso-ai-credit-oracle"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum 0.7.9",
+ "bcs",
+ "chrono",
+ "clap",
+ "ed25519-dalek",
+ "fastcrypto",
+ "hex",
+ "myso-json-rpc-types",
+ "myso-sdk",
+ "myso-types",
+ "rand 0.8.5",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "shared-crypto",
+ "tokio",
+ "toml 0.8.23",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
 name = "myso-analytics-indexer"
 version = "0.0.1"
 dependencies = [
@@ -19902,6 +19929,18 @@ dependencies = [
  "serde_spanned 0.6.9",
  "toml_datetime 0.6.11",
  "toml_edit 0.19.15",
+]
+
+[[package]]
+name = "toml"
+version = "0.8.23"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc1beb996b9d83529a9e75c17a1686767d148d70663143c7854d8b4a09ced362"
+dependencies = [
+ "serde",
+ "serde_spanned 0.6.9",
+ "toml_datetime 0.6.11",
+ "toml_edit 0.22.27",
 ]
 
 [[package]]

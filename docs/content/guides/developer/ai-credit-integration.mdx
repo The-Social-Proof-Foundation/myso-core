@@ -1,0 +1,153 @@
+# AI Credit Integration (Agent Gateway & Frontend)
+
+This repo ships the on-chain `social_contracts::ai_credit` module, indexer pipelines,
+`myso-ai-credit-oracle`, and `myso-social-server` read APIs. Agent runtimes and the
+mysocial-frontend live in separate repositories.
+
+## Deposit credits vs consumption pricing
+
+Two different units:
+
+| Concept | Meaning |
+|---------|---------|
+| **Balance credits (UI)** | `credits = balance_mist / 1_000_000_000` — **1 MYSO deposited ≈ 1 credit shown** |
+| **Consumption** | Oracle computes **MIST per usage** from `model_id` + token counts + ecosystem margin |
+
+Pricing happens at **preflight** and **record_usage**, not at settlement. Settlement only
+collects pre-signed `amount_mist` from escrow to treasury.
+
+### Worked example (GPT-4o mini)
+
+Catalog rates (MIST per 1M tokens): input `150_000_000`, output `600_000_000`.
+Margin default 12.5% (`AI_CREDIT_ECOSYSTEM_MARGIN_PCT`).
+
+For **2,000 input + 500 output tokens**:
+
+- Base: `(2000 × 150M / 1M) + (500 × 600M / 1M) = 600_000` MIST
+- With margin: `ceil(600_000 × 1.125) = 675_000` MIST
+- Display credits consumed: `675_000 / 1e9 ≈ 0.000675` MYSO worth of escrow
+
+Use `POST /v1/ai-credit/estimate` for the same breakdown without spending:
+
+```json
+{
+  "model_id": "openai/gpt-4o-mini",
+  "tokens_in": 2000,
+  "tokens_out": 500
+}
+```
+
+Response includes `estimated_mist`, `estimated_credits`, `base_mist`, `margin_mist`, `catalog_version`.
+
+Usage line metadata stores `base_mist`, `margin_mist`, and `ecosystem_margin_pct` for finance reporting.
+
+## What the oracle controls today
+
+| Path | Metered when `AI_CREDIT_ENABLED=1` |
+|------|-----------------------------------|
+| memory-server `/api/analyze`, `/api/ask`, `/api/remember` | Yes — preflight + `record_usage` |
+| memory-server `/api/ai-credit/record-inference` | Yes — post-hoc chatbot billing |
+| Chatbot `/api/chat` primary `streamText` | Yes — when memory credentials present |
+| Chatbot title + artifact document models | Yes — via `record-inference` after completion |
+| Playground client-side LLM | No — not billed yet |
+
+Inference compute runs against OpenAI/OpenRouter directly. The oracle is the **price authority and settlement engine**, not a compute proxy.
+
+## Agent runtime (`AgentSpendGate`)
+
+1. Resolve sub-agent from `derived_address` via social-server or GraphQL.
+2. Require `CAP_AI_SPEND` in `capabilities`.
+3. Read available MIST from `GET /profiles/{owner}/ai-credit` or GraphQL `Profile.aiCreditBalance`.
+4. **Preflight:** `POST http://oracle:8095/v1/ai-credit/preflight` — returns `estimated_mist`, optional `base_mist` / `margin_mist`.
+5. Run inference/tools.
+6. **Record usage:** `POST http://oracle:8095/v1/ai-credit/usage` — returns signed receipt for settlement.
+7. Oracle worker submits `settle_usage` PTB; social-server ingests line items via
+   `POST /internal/ai-credit/usage-lines` with header `x-ai-credit-sync-secret`.
+
+On preflight failure, return error code `insufficient_ai_credits` and suspend agent actions.
+
+### Chatbot post-hoc billing
+
+After inference completes, the chatbot calls memory-server:
+
+`POST /api/ai-credit/record-inference` with signed delegate auth, `model_id`, `tokens_in`, `tokens_out`.
+
+The SDK exposes `Memory.recordInferenceUsage({ modelId, tokensIn, tokensOut })`.
+
+## Model catalog
+
+`GET http://oracle:8095/v1/ai-credit/catalog` returns billable models, embeddings, tools, rates, and
+**reference** equal-weight average MIST per 1M tokens (`reference_mist_per_1m_in/out`) for UI hints only.
+
+Catalog metadata: `version`, `source`, `effective_date`.
+
+Sync OpenRouter pricing against local catalog:
+
+```bash
+OPENROUTER_API_KEY=... python3 scripts/sync_ai_credit_catalog.py --myso-usd 1.0
+```
+
+Review the diff, update `pricing_catalog.toml`, bump `version` + `effective_date`, deploy oracle.
+
+Set `AI_CREDIT_STRICT_CATALOG=1` in production to reject `record_usage` for unknown `model_id`.
+
+## Settlement triggers
+
+Settlement runs when **any** condition is true for a `balance_id`:
+
+| Trigger | Default env | Purpose |
+|---------|-------------|---------|
+| Per-balance pending MIST | `AI_CREDIT_SETTLE_THRESHOLD_MIST=10000000000` (10 MYSO) | Flush large per-user liability |
+| Max pending age | `AI_CREDIT_SETTLE_MAX_AGE_SECS=180` | Stay under 5 min on-chain receipt TTL |
+| Pending receipt count | `AI_CREDIT_SETTLE_MIN_COUNT=8` | Align with batch size (`MAX_BATCH=16`) |
+| Interval sweep | `AI_CREDIT_SETTLEMENT_INTERVAL_SECS=60` | Safety net for idle balances |
+
+Settlement **never reprices** — it transfers pre-signed `amount_mist` to treasury.
+
+## Frontend / SDK
+
+- Display `credits` from REST or GraphQL (integer MYSO units).
+- Top-up PTB: `ai_credit::deposit` with `Coin<MYSO>`.
+- Budget PTB: `ai_credit::set_agent_budget`.
+- Low balance: warn when `credits < threshold`.
+
+## Environment
+
+| Service | Variable |
+|---------|----------|
+| Oracle | `AI_CREDIT_ORACLE_PRIVATE_KEY_HEX`, `AI_CREDIT_SETTLEMENT_KEY_HEX`, `AI_CREDIT_CONFIG_OBJECT_ID`, `AI_CREDIT_ECOSYSTEM_MARGIN_PCT`, `AI_CREDIT_STRICT_CATALOG`, settlement trigger vars |
+| memory-server | `AI_CREDIT_ENABLED=1`, `AI_CREDIT_ORACLE_URL`, `DEFAULT_LLM_MODEL`, `SOCIAL_SERVER_URL` |
+| Social-server | `AI_CREDIT_USAGE_SYNC_SECRET` |
+| Chatbot | `MEMORY_KEY`, `MEMORY_ACCOUNT_ID`, `MEMORY_SERVER_URL`, `AI_CREDIT_ORACLE_URL` (catalog in model picker) |
+| Ops | Register oracle pubkey via `update_oracle_pubkey` after bootstrap |
+
+## Production checklist (P0)
+
+1. **Enable metering:** `AI_CREDIT_ENABLED=1` on memory-server; oracle and social-server share sync secret; settlement key funded with gas.
+2. **Bootstrap on-chain:** `AiCreditConfig`, treasury address, `update_oracle_pubkey` matches oracle signer.
+3. **Strict catalog in prod:** `AI_CREDIT_STRICT_CATALOG=1`.
+4. **Catalog ops:** periodic `scripts/sync_ai_credit_catalog.py` review; bump catalog version on rate changes (does not retroactively change signed receipts).
+5. **Receipt durability:** atomic JSON writes today; Postgres/Redis for multi-instance HA.
+6. **Alerting:** pending age warnings, settlement PTB failures, pubkey mismatch.
+
+## Margin and treasury
+
+Ecosystem margin is static: `AI_CREDIT_ECOSYSTEM_MARGIN_PCT` (default 12.5%, clamped 10–15%). On settlement, full `amount_mist` (base + margin) moves to `config.treasury`. On-chain transfer is a single treasury debit; provider cost vs ecosystem fee is tracked off-chain via usage metadata (`base_mist`, `margin_mist`).
+
+## E2E proof script (local)
+
+[`scripts/ai-credit-runnable.sh`](../../../../scripts/ai-credit-runnable.sh) exercises the full stack without memory-server or real LLM calls:
+
+1. Starts `myso-ai-credit-oracle` locally (preflight → usage → settlement worker).
+2. Submits on-chain setup PTBs (`create_profile`, org, sub-agent, deposit, `set_agent_budget`).
+3. Asserts indexer GraphQL (`Profile.aiCreditBalance`) and social-server REST (`/profiles/:address/ai-credit`, usage history).
+
+**Prerequisites:** `./scripts/bootstrap.sh`, local chain (`:9001`), social indexer GraphQL (`:9125`), social-server (`:9009`), `myso` CLI with the `social-proof2` key funded.
+
+```bash
+./scripts/ai-credit-runnable.sh --refresh-session
+ASSUME_YES=1 ./scripts/ai-credit-runnable.sh --run-all
+./scripts/ai-credit-runnable.sh --stop-oracle
+```
+
+Session and oracle state live under `network.config/ai-credit/` (gitignored). Override URLs with `GRAPHQL_URL`, `SOCIAL_SERVER_URL`, `ORACLE_URL`, `MYSO_RPC_URL`.

@@ -7,9 +7,10 @@ mod handlers;
 pub mod metrics;
 
 pub use handlers::{
-    BlockingHandler, GovernanceHandler, InsuranceHandler, MemoryHandler, MyDataHandler,
-    PaidMessagingPolicyHandler, PlatformHandler, PostsHandler, ProfilesHandler, SocialGraphHandler,
-    SpotHandler, SptHandler, SubAgentRegistryHandler, SubscriptionHandler, UpgradeHandler,
+    AiCreditHandler, BlockingHandler, GovernanceHandler, InsuranceHandler, MemoryHandler,
+    MyDataHandler, PaidMessagingPolicyHandler, PlatformHandler, PostsHandler, ProfilesHandler,
+    SocialGraphHandler, SpotHandler, SptHandler, SubAgentRegistryHandler, SubscriptionHandler,
+    UpgradeHandler,
 };
 
 pub const MAINNET_REMOTE_STORE_URL: &str = "https://checkpoints.mainnet.mysocial.network";
@@ -134,6 +135,10 @@ pub async fn setup_social_indexer(
         .concurrent_pipeline(MemoryHandler, Default::default())
         .await
         .context("Failed to add MemoryHandler pipeline")?;
+    indexer
+        .concurrent_pipeline(AiCreditHandler, Default::default())
+        .await
+        .context("Failed to add AiCreditHandler pipeline")?;
     indexer
         .concurrent_pipeline(ProfilesHandler, Default::default())
         .await

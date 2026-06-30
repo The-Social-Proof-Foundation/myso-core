@@ -239,7 +239,22 @@ impl ProfileCreatedEvent {
             reservation_pool_address: None,
             selected_badge_id: None,
             selected_ecosystem_badge_id: None,
+            memory_account_id: None,
+            ai_credit_balance_id: None,
         }
+    }
+}
+
+pub fn enrich_new_profile_bootstrap(
+    profile: &mut NewProfile,
+    memory_account_id: Option<String>,
+    ai_credit_balance_id: Option<String>,
+) {
+    if profile.memory_account_id.is_none() {
+        profile.memory_account_id = memory_account_id;
+    }
+    if profile.ai_credit_balance_id.is_none() {
+        profile.ai_credit_balance_id = ai_credit_balance_id;
     }
 }
 
@@ -1524,5 +1539,93 @@ mod tests {
             _ => None,
         });
         assert_eq!(up_row.as_deref(), Some("from_bcs"));
+    }
+
+    #[test]
+    fn test_enrich_new_profile_bootstrap_sets_linked_ids() {
+        let mut profile = ProfileCreatedEvent {
+            profile_id: "0xprofile".to_string(),
+            owner_address: "0xowner".to_string(),
+            display_name: "Test".to_string(),
+            bio: String::new(),
+            profile_photo: None,
+            cover_photo: None,
+            created_at: 1000,
+        }
+        .into_model(CK_MS);
+        assert!(profile.memory_account_id.is_none());
+        assert!(profile.ai_credit_balance_id.is_none());
+        enrich_new_profile_bootstrap(
+            &mut profile,
+            Some("0xmemory".to_string()),
+            Some("0xbalance".to_string()),
+        );
+        assert_eq!(profile.memory_account_id.as_deref(), Some("0xmemory"));
+        assert_eq!(profile.ai_credit_balance_id.as_deref(), Some("0xbalance"));
+    }
+
+    #[test]
+    fn test_create_profile_bootstrap_event_order_attaches_ids() {
+        use super::super::ai_credit;
+        use super::super::memory;
+        use std::collections::HashMap;
+
+        let profile_id = "0x0ea44175";
+        let memory_data = serde_json::json!({
+            "account_id": "0x45351697",
+            "owner": "0x24589501",
+            "profile_id": profile_id,
+        });
+        let balance_data = serde_json::json!({
+            "balance_id": "0xb472ecb4",
+            "memory_account_id": "0x45351697",
+            "principal_owner": "0x24589501",
+            "profile_id": profile_id,
+        });
+        let profile_data = serde_json::json!({
+            "profile_id": profile_id,
+            "owner_address": "0x24589501",
+            "display_name": "Creator",
+            "bio": "bio",
+            "created_at": 1000,
+        });
+
+        let mut memory_by_profile: HashMap<String, String> = HashMap::new();
+        let mut balance_by_profile: HashMap<String, String> = HashMap::new();
+
+        if let Some(rows) = memory::handle_memory_event("MemoryAccountCreated", &memory_data, "tx:0") {
+            for row in rows {
+                if let SocialEventRow::MemoryAccount(a) = row {
+                    memory_by_profile.insert(a.profile_id.clone(), a.account_id.clone());
+                }
+            }
+        }
+        if let Some(rows) =
+            ai_credit::handle_ai_credit_event("AiCreditBalanceCreated", &balance_data, "tx:1")
+        {
+            for row in rows {
+                if let SocialEventRow::AiCreditBalanceUpsert(b) = row {
+                    balance_by_profile.insert(b.profile_id.clone(), b.balance_id.clone());
+                }
+            }
+        }
+
+        let profile_rows =
+            handle_profile_event("ProfileCreatedEvent", &profile_data, "tx:2", CK_MS)
+                .expect("ProfileCreatedEvent");
+        let mut profile = profile_rows
+            .iter()
+            .find_map(|r| match r {
+                SocialEventRow::Profile(p) => Some(p.clone()),
+                _ => None,
+            })
+            .expect("profile row");
+        enrich_new_profile_bootstrap(
+            &mut profile,
+            memory_by_profile.get(profile_id).cloned(),
+            balance_by_profile.get(profile_id).cloned(),
+        );
+        assert_eq!(profile.memory_account_id.as_deref(), Some("0x45351697"));
+        assert_eq!(profile.ai_credit_balance_id.as_deref(), Some("0xb472ecb4"));
     }
 }

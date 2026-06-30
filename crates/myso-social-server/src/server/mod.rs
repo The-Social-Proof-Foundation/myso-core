@@ -4,7 +4,7 @@
 mod handlers;
 
 use axum::http::Method;
-use axum::routing::get;
+use axum::routing::{get, post};
 use axum::Router;
 use myso_indexer_alt_metrics::{MetricsArgs, MetricsService};
 use myso_pg_db::DbArgs;
@@ -320,13 +320,14 @@ impl VestingPageParams {
 pub async fn start_server(
     server_port: u16,
     database_url: Url,
+    write_database_url: Option<Url>,
     db_args: DbArgs,
     metrics_address: std::net::SocketAddr,
     registry: &Registry,
 ) -> Result<Service, anyhow::Error> {
     let metrics = MetricsService::new(MetricsArgs { metrics_address }, registry.clone());
 
-    let reader = Reader::new(database_url, db_args).await?;
+    let reader = Reader::new(database_url, write_database_url, db_args).await?;
     let state = Arc::new(AppState { reader });
 
     let socket_address = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), server_port);
@@ -355,6 +356,7 @@ pub async fn start_server(
 pub async fn run_server(
     server_port: u16,
     database_url: Url,
+    write_database_url: Option<Url>,
     db_args: DbArgs,
     metrics_address: std::net::SocketAddr,
 ) -> Result<(), anyhow::Error> {
@@ -364,6 +366,7 @@ pub async fn run_server(
     let service = start_server(
         server_port,
         database_url,
+        write_database_url,
         db_args,
         metrics_address,
         &registry,
@@ -414,6 +417,16 @@ fn make_router(state: Arc<AppState>) -> Router {
         .route(
             "/profiles/:address/memory-account",
             get(get_profile_memory_account),
+        )
+        .route("/profiles/:address/ai-credit", get(get_profile_ai_credit_balance))
+        .route("/ai-credit/config", get(get_ai_credit_config))
+        .route(
+            "/ai-credit/:balance_id/usage-history",
+            get(list_ai_credit_usage_history),
+        )
+        .route(
+            "/internal/ai-credit/usage-lines",
+            post(ingest_usage_line_internal),
         )
         .route("/sub-agents/:derivedAddress", get(get_sub_agent))
         .route(

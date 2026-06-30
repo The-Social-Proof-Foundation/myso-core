@@ -32,6 +32,7 @@ Uses the framework's centralized BootstrapKey for one-time initialization.
 <b>use</b> <a href="../myso/derived_object.md#myso_derived_object">myso::derived_object</a>;
 <b>use</b> <a href="../myso/dynamic_field.md#myso_dynamic_field">myso::dynamic_field</a>;
 <b>use</b> <a href="../myso/dynamic_object_field.md#myso_dynamic_object_field">myso::dynamic_object_field</a>;
+<b>use</b> <a href="../myso/ed25519.md#myso_ed25519">myso::ed25519</a>;
 <b>use</b> <a href="../myso/event.md#myso_event">myso::event</a>;
 <b>use</b> <a href="../myso/funds_accumulator.md#myso_funds_accumulator">myso::funds_accumulator</a>;
 <b>use</b> <a href="../myso/group_ops.md#myso_group_ops">myso::group_ops</a>;
@@ -56,6 +57,7 @@ Uses the framework's centralized BootstrapKey for one-time initialization.
 <b>use</b> <a href="../myso/versioned.md#myso_versioned">myso::versioned</a>;
 <b>use</b> <a href="../orderbook/constants.md#orderbook_constants">orderbook::constants</a>;
 <b>use</b> <a href="../orderbook/registry.md#orderbook_registry">orderbook::registry</a>;
+<b>use</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit">social_contracts::ai_credit</a>;
 <b>use</b> <a href="../social_contracts/block_list.md#social_contracts_block_list">social_contracts::block_list</a>;
 <b>use</b> <a href="../social_contracts/governance.md#social_contracts_governance">social_contracts::governance</a>;
 <b>use</b> <a href="../social_contracts/insurance.md#social_contracts_insurance">social_contracts::insurance</a>;
@@ -125,6 +127,11 @@ Creates and transfers all admin capabilities to caller, then seals the bootstrap
     <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_bootstrap_init">social_contracts::proof_of_creativity::bootstrap_init</a>(clock, ctx);
     <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_bootstrap_init">social_contracts::social_proof_of_truth::bootstrap_init</a>(clock, spot_governance_registry_id, ctx);
     <a href="../social_contracts/insurance.md#social_contracts_insurance_bootstrap_init">social_contracts::insurance::bootstrap_init</a>(clock, ctx);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_bootstrap_init">social_contracts::ai_credit::bootstrap_init</a>(
+        admin,
+        x"0000000000000000000000000000000000000000000000000000000000000000",
+        ctx,
+    );
     // Create admin capabilities
     transfer::public_transfer(<a href="../social_contracts/upgrade.md#social_contracts_upgrade_create_upgrade_admin_cap">upgrade::create_upgrade_admin_cap</a>(ctx), admin);
     transfer::public_transfer(<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_create_social_proof_tokens_admin_cap">social_proof_tokens::create_social_proof_tokens_admin_cap</a>(ctx), admin);
@@ -141,6 +148,7 @@ Creates and transfers all admin capabilities to caller, then seals the bootstrap
     transfer::public_transfer(<a href="../social_contracts/profile.md#social_contracts_profile_create_ecosystem_badge_admin_cap">profile::create_ecosystem_badge_admin_cap</a>(ctx), admin);
     transfer::public_transfer(<a href="../social_contracts/profile.md#social_contracts_profile_create_username_admin_cap">profile::create_username_admin_cap</a>(ctx), admin);
     transfer::public_transfer(<a href="../social_contracts/insurance.md#social_contracts_insurance_create_insurance_admin_cap">insurance::create_insurance_admin_cap</a>(ctx), admin);
+    transfer::public_transfer(<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_create_oracle_admin_cap">ai_credit::create_oracle_admin_cap</a>(ctx), admin);
     transfer::public_transfer(coin::create_coin_creation_admin_cap_for_bootstrap(bootstrap_key, ctx), admin);
     transfer::public_transfer(package::create_package_publishing_admin_cap_for_bootstrap(bootstrap_key, ctx), admin);
     <b>let</b> orderbook_admin_cap =

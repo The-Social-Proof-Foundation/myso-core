@@ -6,6 +6,8 @@
 //! Filters events by MYSO_SOCIAL_PACKAGE_ID, routes by module/event name, and inserts into
 //! profiles, social_graph_relationships, social_graph_events, etc.
 
+mod ai_credit;
+mod ai_credit_handler;
 mod blocking;
 mod blocking_handler;
 mod common;
@@ -68,9 +70,11 @@ use myso_indexer_alt_social_schema::models::{
     NewSptPriceHistory, NewSptReservation, NewSptReservationPool, NewSptTransaction,
     NewSubAgentEvent, NewSubscriptionEvent, NewTip, NewUnifiedRevenue, NewUpgradeEvent,
     NewUsernameRegistry, NewVestingEvent, NewVestingWallet, NewVoteDecryptionFailure,
+    NewAiCreditAgentBudget, NewAiCreditBalance, NewAiCreditConfig, NewAiCreditEvent,
     ProposalUpdateSet,
 };
 
+pub use ai_credit_handler::AiCreditHandler;
 pub use blocking_handler::BlockingHandler;
 pub use governance_handler::GovernanceHandler;
 pub use insurance_handler::InsuranceHandler;
@@ -746,6 +750,66 @@ pub enum SocialEventRow {
         active_delta: i32,
         activity_at_ms: i64,
     },
+    AiCreditBalanceUpsert(NewAiCreditBalance),
+    AiCreditBalanceBalanceUpdate {
+        balance_id: String,
+        balance_mist: i64,
+        updated_at_ms: i64,
+        event_id: String,
+        transaction_id: String,
+    },
+    AiCreditBalanceCapsUpdate {
+        balance_id: String,
+        daily_cap_mist: Option<i64>,
+        monthly_cap_mist: Option<i64>,
+        updated_at_ms: i64,
+        event_id: String,
+        transaction_id: String,
+    },
+    AiCreditBalanceSettlementUpdate {
+        balance_id: String,
+        settlement_nonce: i64,
+        spent_increment_mist: i64,
+        updated_at_ms: i64,
+        event_id: String,
+        transaction_id: String,
+    },
+    AiCreditBalanceActiveUpdate {
+        balance_id: String,
+        active: bool,
+        updated_at_ms: i64,
+        event_id: String,
+        transaction_id: String,
+    },
+    AiCreditAgentBudgetUpsert(NewAiCreditAgentBudget),
+    AiCreditAgentBudgetDisable {
+        balance_id: String,
+        agent_object_id: String,
+        updated_at_ms: i64,
+        event_id: String,
+        transaction_id: String,
+    },
+    AiCreditAgentBudgetSpendUpdate {
+        balance_id: String,
+        agent_object_id: String,
+        spent_increment_mist: i64,
+        updated_at_ms: i64,
+        event_id: String,
+        transaction_id: String,
+    },
+    ProfileAiCreditBalanceLink {
+        profile_id: String,
+        ai_credit_balance_id: String,
+    },
+    AiCreditConfigUpsert(NewAiCreditConfig),
+    AiCreditConfigLimitsUpdate {
+        max_single_settlement_mist: i64,
+        receipt_ttl_ms: i64,
+        updated_at_ms: i64,
+        event_id: String,
+        transaction_id: String,
+    },
+    AiCreditEvent(NewAiCreditEvent),
 }
 
 #[derive(Debug, Clone)]

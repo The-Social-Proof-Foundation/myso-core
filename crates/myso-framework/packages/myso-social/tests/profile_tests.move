@@ -10,6 +10,7 @@ module social_contracts::profile_tests {
     use myso::test_scenario;
     use myso::object;
     use social_contracts::memory::{MemoryRegistry, MemoryAccount};
+    use social_contracts::ai_credit::AiCreditConfig;
     use social_contracts::profile::{
         Self,
         Profile,
@@ -50,12 +51,14 @@ module social_contracts::profile_tests {
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             
             // Create profile
             profile::create_profile(
                 &mut registry,
                 &mut memory_registry,
+                &mut ai_credit_config,
                 string::utf8(b"User One"),
                 string::utf8(b"testname"),
                 string::utf8(b"This is my bio"),
@@ -67,6 +70,7 @@ module social_contracts::profile_tests {
             
             test_scenario::return_shared(registry);
             test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(clock);
         };
         
@@ -104,11 +108,13 @@ module social_contracts::profile_tests {
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
 
             profile::create_profile(
                 &mut registry,
                 &mut memory_registry,
+                &mut ai_credit_config,
                 string::utf8(b"Display"),
                 string::utf8(b"MiXeDcAsE"),
                 string::utf8(b"bio"),
@@ -120,6 +126,7 @@ module social_contracts::profile_tests {
 
             test_scenario::return_shared(registry);
             test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(clock);
         };
 
@@ -164,10 +171,12 @@ module social_contracts::profile_tests {
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             profile::create_profile(
                 &mut registry,
                 &mut memory_registry,
+                &mut ai_credit_config,
                 string::utf8(b"User One"),
                 string::utf8(b"revokeme"),
                 string::utf8(b"bio"),
@@ -178,6 +187,7 @@ module social_contracts::profile_tests {
             );
             test_scenario::return_shared(registry);
             test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(clock);
         };
 
@@ -220,10 +230,12 @@ module social_contracts::profile_tests {
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             profile::create_profile(
                 &mut registry,
                 &mut memory_registry,
+                &mut ai_credit_config,
                 string::utf8(b"User One"),
                 string::utf8(b"handoff"),
                 string::utf8(b"bio1"),
@@ -234,6 +246,7 @@ module social_contracts::profile_tests {
             );
             test_scenario::return_shared(registry);
             test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(clock);
         };
 
@@ -241,10 +254,12 @@ module social_contracts::profile_tests {
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             profile::create_profile(
                 &mut registry,
                 &mut memory_registry,
+                &mut ai_credit_config,
                 string::utf8(b"User Two"),
                 string::utf8(b"user2"),
                 string::utf8(b"bio2"),
@@ -255,6 +270,7 @@ module social_contracts::profile_tests {
             );
             test_scenario::return_shared(registry);
             test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(clock);
         };
 
@@ -302,10 +318,12 @@ module social_contracts::profile_tests {
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             profile::create_profile(
                 &mut registry,
                 &mut memory_registry,
+                &mut ai_credit_config,
                 string::utf8(b"User One"),
                 string::utf8(b"samename"),
                 string::utf8(b"bio"),
@@ -316,6 +334,7 @@ module social_contracts::profile_tests {
             );
             test_scenario::return_shared(registry);
             test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(clock);
         };
 
@@ -360,10 +379,12 @@ module social_contracts::profile_tests {
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             profile::create_profile(
                 &mut registry,
                 &mut memory_registry,
+                &mut ai_credit_config,
                 string::utf8(b"U1"),
                 string::utf8(b"MiXeDcAsE"),
                 string::utf8(b""),
@@ -374,6 +395,7 @@ module social_contracts::profile_tests {
             );
             test_scenario::return_shared(registry);
             test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(clock);
         };
 
@@ -381,10 +403,12 @@ module social_contracts::profile_tests {
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             profile::create_profile(
                 &mut registry,
                 &mut memory_registry,
+                &mut ai_credit_config,
                 string::utf8(b"U2"),
                 string::utf8(b"MIXEDCASE"),
                 string::utf8(b""),
@@ -395,6 +419,7 @@ module social_contracts::profile_tests {
             );
             test_scenario::return_shared(registry);
             test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(clock);
         };
 
@@ -421,12 +446,14 @@ module social_contracts::profile_tests {
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             
             // Create profile
             profile::create_profile(
                 &mut registry,
                 &mut memory_registry,
+                &mut ai_credit_config,
                 string::utf8(b"Original Name"),
                 string::utf8(b"username"),
                 string::utf8(b"Original bio"),
@@ -438,6 +465,7 @@ module social_contracts::profile_tests {
             
             test_scenario::return_shared(registry);
             test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(clock);
         };
         
@@ -494,12 +522,14 @@ module social_contracts::profile_tests {
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             
             // Create profile
             profile::create_profile(
                 &mut registry,
                 &mut memory_registry,
+                &mut ai_credit_config,
                 string::utf8(b"User One"),
                 string::utf8(b"myusername"),
                 string::utf8(b"This is my bio"),
@@ -511,6 +541,7 @@ module social_contracts::profile_tests {
             
             test_scenario::return_shared(registry);
             test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(clock);
         };
         
@@ -559,10 +590,12 @@ module social_contracts::profile_tests {
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             profile::create_profile(
                 &mut registry,
                 &mut memory_registry,
+                &mut ai_credit_config,
                 string::utf8(b"User One"),
                 string::utf8(b"xuser"),
                 string::utf8(b"bio"),
@@ -573,6 +606,7 @@ module social_contracts::profile_tests {
             );
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(registry);
+            test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(clock);
         };
 
@@ -625,10 +659,12 @@ module social_contracts::profile_tests {
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             profile::create_profile(
                 &mut registry,
                 &mut memory_registry,
+                &mut ai_credit_config,
                 string::utf8(b"User One"),
                 string::utf8(b"xuser2"),
                 string::utf8(b"bio"),
@@ -639,6 +675,7 @@ module social_contracts::profile_tests {
             );
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(registry);
+            test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(clock);
         };
 
@@ -708,10 +745,12 @@ module social_contracts::profile_tests {
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             profile::create_profile(
                 &mut registry,
                 &mut memory_registry,
+                &mut ai_credit_config,
                 string::utf8(b"User One"),
                 string::utf8(b"xuser3"),
                 string::utf8(b"original bio"),
@@ -722,6 +761,7 @@ module social_contracts::profile_tests {
             );
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(registry);
+            test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(clock);
         };
 
@@ -796,11 +836,13 @@ module social_contracts::profile_tests {
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
 
             profile::create_profile(
                 &mut registry,
                 &mut memory_registry,
+                &mut ai_credit_config,
                 string::utf8(b"Profile Owner"),
                 string::utf8(b"user1"),
                 string::utf8(b"This is User1's profile"),
@@ -812,6 +854,7 @@ module social_contracts::profile_tests {
             
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(clock);
+            test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(registry);
         };
 
@@ -873,11 +916,13 @@ module social_contracts::profile_tests {
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
 
             profile::create_profile(
                 &mut registry,
                 &mut memory_registry,
+                &mut ai_credit_config,
                 string::utf8(b"Profile Owner"),
                 string::utf8(b"user1"),
                 string::utf8(b"This is User1's profile"),
@@ -889,6 +934,7 @@ module social_contracts::profile_tests {
             
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(clock);
+            test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(registry);
         };
 
@@ -1009,11 +1055,13 @@ module social_contracts::profile_tests {
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
 
             profile::create_profile(
                 &mut registry,
                 &mut memory_registry,
+                &mut ai_credit_config,
                 string::utf8(b"Profile Owner"),
                 string::utf8(b"user1"),
                 string::utf8(b"This is User1's profile"),
@@ -1025,6 +1073,7 @@ module social_contracts::profile_tests {
             
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(clock);
+            test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(registry);
         };
 
@@ -1119,11 +1168,13 @@ module social_contracts::profile_tests {
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
 
             profile::create_profile(
                 &mut registry,
                 &mut memory_registry,
+                &mut ai_credit_config,
                 string::utf8(b"Profile Owner"),
                 string::utf8(b"user1"),
                 string::utf8(b"This is User1's profile"),
@@ -1135,6 +1186,7 @@ module social_contracts::profile_tests {
             
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(clock);
+            test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(registry);
         };
 
@@ -1227,11 +1279,13 @@ module social_contracts::profile_tests {
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
 
             profile::create_profile(
                 &mut registry,
                 &mut memory_registry,
+                &mut ai_credit_config,
                 string::utf8(b"Profile Owner"),
                 string::utf8(b"user1"),
                 string::utf8(b"This is User1's profile"),
@@ -1243,6 +1297,7 @@ module social_contracts::profile_tests {
             
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(clock);
+            test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(registry);
         };
         
@@ -1301,11 +1356,13 @@ module social_contracts::profile_tests {
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
 
             profile::create_profile(
                 &mut registry,
                 &mut memory_registry,
+                &mut ai_credit_config,
                 string::utf8(b"Profile Owner"),
                 string::utf8(b"user1"),
                 string::utf8(b"This is User1's profile"),
@@ -1317,6 +1374,7 @@ module social_contracts::profile_tests {
             
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(clock);
+            test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(registry);
         };
         
@@ -1381,11 +1439,13 @@ module social_contracts::profile_tests {
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
 
             profile::create_profile(
                 &mut registry,
                 &mut memory_registry,
+                &mut ai_credit_config,
                 string::utf8(b"Profile Owner"),
                 string::utf8(b"user1"),
                 string::utf8(b"This is User1's profile"),
@@ -1397,6 +1457,7 @@ module social_contracts::profile_tests {
             
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(clock);
+            test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(registry);
         };
 
@@ -1478,11 +1539,13 @@ module social_contracts::profile_tests {
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
 
             profile::create_profile(
                 &mut registry,
                 &mut memory_registry,
+                &mut ai_credit_config,
                 string::utf8(b"Profile Owner"),
                 string::utf8(b"user1"),
                 string::utf8(b"This is User1's profile"),
@@ -1494,6 +1557,7 @@ module social_contracts::profile_tests {
             
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(clock);
+            test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(registry);
         };
 

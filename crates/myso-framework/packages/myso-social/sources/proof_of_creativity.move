@@ -598,6 +598,7 @@ module social_contracts::proof_of_creativity {
         shard: &mut PoCUsernameBeneficiaryShard,
         username_registry: &mut UsernameRegistry,
         memory_registry: &mut social_contracts::memory::MemoryRegistry,
+        ai_credit_config: &mut social_contracts::ai_credit::AiCreditConfig,
         beneficiary: &mut PoCUsernameBeneficiary,
         evidence_hash: vector<u8>,
         attested_x_handle: vector<u8>,
@@ -615,6 +616,7 @@ module social_contracts::proof_of_creativity {
             shard,
             username_registry,
             memory_registry,
+            ai_credit_config,
             beneficiary,
             evidence_hash,
             attested_x_handle,
@@ -2079,6 +2081,7 @@ module social_contracts::poc_username_beneficiary {
     use social_contracts::profile::{Self, UsernameRegistry, EcosystemTreasury};
     use social_contracts::poc_vault::{Self as poc_vault, PoCBeneficiaryVault, PoCVaultDirectory};
     use social_contracts::memory;
+    use social_contracts::ai_credit;
 
     const NUM_SHARDS: u64 = 256;
 
@@ -2374,6 +2377,7 @@ module social_contracts::poc_username_beneficiary {
         shard: &mut PoCUsernameBeneficiaryShard,
         username_registry: &mut UsernameRegistry,
         memory_registry: &mut memory::MemoryRegistry,
+        ai_credit_config: &mut ai_credit::AiCreditConfig,
         beneficiary: &mut PoCUsernameBeneficiary,
         evidence_hash: vector<u8>,
         attested_x_handle: vector<u8>,
@@ -2400,6 +2404,7 @@ module social_contracts::poc_username_beneficiary {
         let profile_id = profile::create_profile_from_beneficiary_claim(
             username_registry,
             memory_registry,
+            ai_credit_config,
             display_name,
             beneficiary.username,
             bio,

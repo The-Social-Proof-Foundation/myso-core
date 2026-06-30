@@ -49,6 +49,8 @@ pub struct Profile {
     pub reservation_pool_address: Option<String>,
     pub selected_badge_id: Option<String>,
     pub selected_ecosystem_badge_id: Option<String>,
+    pub memory_account_id: Option<String>,
+    pub ai_credit_balance_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -85,6 +87,8 @@ pub struct NewProfile {
     pub reservation_pool_address: Option<String>,
     pub selected_badge_id: Option<String>,
     pub selected_ecosystem_badge_id: Option<String>,
+    pub memory_account_id: Option<String>,
+    pub ai_credit_balance_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]

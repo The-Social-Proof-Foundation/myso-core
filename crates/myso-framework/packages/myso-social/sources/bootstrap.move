@@ -25,7 +25,7 @@ module social_contracts::bootstrap {
     use social_contracts::social_proof_of_truth::{Self, SpotAdminCap, SpotOracleAdminCap};
     use social_contracts::insurance::{Self, InsuranceAdminCap};
     use social_contracts::profile::{Self, EcosystemTreasuryAdminCap, EcosystemBadgeAdminCap, UsernameAdminCap};
-    
+    use social_contracts::ai_credit::{Self, AiCreditOracleAdminCap};
     // Import framework coin module for coin creation admin cap
     use myso::coin::{Self, CoinCreationAdminCap};
     // Import framework package module for package publishing admin cap
@@ -56,6 +56,11 @@ module social_contracts::bootstrap {
         social_contracts::proof_of_creativity::bootstrap_init(clock, ctx);
         social_contracts::social_proof_of_truth::bootstrap_init(clock, spot_governance_registry_id, ctx);
         social_contracts::insurance::bootstrap_init(clock, ctx);
+        social_contracts::ai_credit::bootstrap_init(
+            admin,
+            x"0000000000000000000000000000000000000000000000000000000000000000",
+            ctx,
+        );
         
         // Create admin capabilities
         transfer::public_transfer(upgrade::create_upgrade_admin_cap(ctx), admin);
@@ -73,6 +78,7 @@ module social_contracts::bootstrap {
         transfer::public_transfer(profile::create_ecosystem_badge_admin_cap(ctx), admin);
         transfer::public_transfer(profile::create_username_admin_cap(ctx), admin);
         transfer::public_transfer(insurance::create_insurance_admin_cap(ctx), admin);
+        transfer::public_transfer(ai_credit::create_oracle_admin_cap(ctx), admin);
         transfer::public_transfer(coin::create_coin_creation_admin_cap_for_bootstrap(bootstrap_key, ctx), admin);
         transfer::public_transfer(package::create_package_publishing_admin_cap_for_bootstrap(bootstrap_key, ctx), admin);
 

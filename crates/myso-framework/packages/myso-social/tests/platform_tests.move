@@ -16,6 +16,7 @@ module social_contracts::platform_tests {
     
     use social_contracts::profile::{Self, Profile, UsernameRegistry};
     use social_contracts::memory::{MemoryRegistry, MemoryAccount};
+    use social_contracts::ai_credit::{AiCreditBalance, AiCreditConfig};
     use social_contracts::block_list::{Self, BlockListRegistry};
     use social_contracts::social_graph::{Self, SocialGraph};
     use social_contracts::platform::{
@@ -197,11 +198,13 @@ module social_contracts::platform_tests {
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(scenario);
             let clock = test_scenario::take_shared<Clock>(scenario);
 
             profile::create_profile(
                 &mut registry,
                 &mut memory_registry,
+                &mut ai_credit_config,
                 string::utf8(b"Test User"),
                 username,
                 string::utf8(b"This is a test profile for badges"),
@@ -212,11 +215,12 @@ module social_contracts::platform_tests {
             );
 
             test_scenario::return_shared(clock);
+            test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(registry);
         };
     }
-    
+
     #[test]
     fun test_platform_admin_assigns_badge() {
         let mut scenario = test_scenario::begin(ADMIN);
@@ -674,12 +678,14 @@ module social_contracts::platform_tests {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
             let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
+            let mut linked_balance = test_scenario::take_shared<AiCreditBalance>(&scenario);
             let profile = test_scenario::take_from_sender<Profile>(&scenario);
 
             profile::transfer_profile_with_memory(
                 &mut registry,
                 &mut memory_registry,
                 &mut memory_account,
+                &mut linked_balance,
                 profile,
                 USER2,
                 0,
@@ -687,6 +693,7 @@ module social_contracts::platform_tests {
                 test_scenario::ctx(&mut scenario)
             );
 
+            test_scenario::return_shared(linked_balance);
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(registry);
