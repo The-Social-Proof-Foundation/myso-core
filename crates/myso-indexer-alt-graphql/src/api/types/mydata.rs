@@ -8,11 +8,10 @@ use async_graphql::Context;
 use async_graphql::Object;
 use myso_indexer_alt_social_reader::SocialPgReader;
 use myso_indexer_alt_social_schema::models::{
-    MyDataAccessAnalyticsRow, MyDataAccessLogRow, MyDataDailyRevenueRow, MyDataPurchaseRow,
-    MyDataBroadPoolRow, MyDataClaimRow, MyDataDistributionRoundRow,
-    MyDataListingSubPoolRow, MyDataMerkleRootRow, MyDataSnapshotAnchorRow,
-    MyDataSubPoolRow, MyDataRecordRow, MyDataRevenueRow, MyDataStatsRow,
-    MyDataSubscriptionRow,
+    MyDataAccessAnalyticsRow, MyDataAccessLogRow, MyDataBroadPoolRow, MyDataClaimRow,
+    MyDataDailyRevenueRow, MyDataDistributionRoundRow, MyDataListingSubPoolRow,
+    MyDataMerkleRootRow, MyDataPurchaseRow, MyDataRecordRow, MyDataRevenueRow,
+    MyDataSnapshotAnchorRow, MyDataStatsRow, MyDataSubPoolRow, MyDataSubscriptionRow,
 };
 
 use crate::api::resolve_profile::resolve_profile_summary;
@@ -341,11 +340,10 @@ impl MyDataPurchase {
 
     /// Address that revoked access, if applicable.
     async fn revoked_by(&self) -> Option<MySoAddress> {
-        self.inner.revoked_by.as_ref().and_then(|a| {
-            MySoAddress::from_str(a)
-                .ok()
-                .map(|addr| addr.into())
-        })
+        self.inner
+            .revoked_by
+            .as_ref()
+            .and_then(|a| MySoAddress::from_str(a).ok().map(|addr| addr.into()))
     }
 }
 
@@ -410,11 +408,10 @@ impl MyDataSubscription {
 
     /// Address that revoked access, if applicable.
     async fn revoked_by(&self) -> Option<MySoAddress> {
-        self.inner.revoked_by.as_ref().and_then(|a| {
-            MySoAddress::from_str(a)
-                .ok()
-                .map(|addr| addr.into())
-        })
+        self.inner
+            .revoked_by
+            .as_ref()
+            .and_then(|a| MySoAddress::from_str(a).ok().map(|addr| addr.into()))
     }
 }
 

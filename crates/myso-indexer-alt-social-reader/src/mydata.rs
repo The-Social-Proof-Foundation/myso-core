@@ -7,11 +7,10 @@ use diesel::sql_types::{BigInt, Bool, Nullable, Text};
 use diesel_async::RunQueryDsl;
 
 use myso_indexer_alt_social_schema::models::{
-    MyDataAccessAnalyticsRow, MyDataAccessLogRow, MyDataDailyRevenueRow, MyDataPurchaseRow,
-    MyDataBroadPoolRow, MyDataClaimRow, MyDataDistributionRoundRow,
-    MyDataListingSubPoolRow, MyDataMerkleRootRow, MyDataSnapshotAnchorRow,
-    MyDataSubPoolRow, MyDataRecordRow, MyDataRevenueRow, MyDataStatsRow,
-    MyDataSubscriptionRow,
+    MyDataAccessAnalyticsRow, MyDataAccessLogRow, MyDataBroadPoolRow, MyDataClaimRow,
+    MyDataDailyRevenueRow, MyDataDistributionRoundRow, MyDataListingSubPoolRow,
+    MyDataMerkleRootRow, MyDataPurchaseRow, MyDataRecordRow, MyDataRevenueRow,
+    MyDataSnapshotAnchorRow, MyDataStatsRow, MyDataSubPoolRow, MyDataSubscriptionRow,
 };
 use myso_pg_db::Connection;
 

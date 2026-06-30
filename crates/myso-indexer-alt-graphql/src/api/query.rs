@@ -55,9 +55,8 @@ use crate::api::types::move_package::PackageKey;
 use crate::api::types::move_type;
 use crate::api::types::move_type::MoveType;
 use crate::api::types::mydata::{
-    MyDataPurchase, MyDataBroadPool, MyDataClaim, MyDataDistributionRound,
-    MyDataListingSubPool, MyDataMerkleRoot, MyDataSnapshotAnchor,
-    MyDataSubPool, MyDataRecord,
+    MyDataBroadPool, MyDataClaim, MyDataDistributionRound, MyDataListingSubPool, MyDataMerkleRoot,
+    MyDataPurchase, MyDataRecord, MyDataSnapshotAnchor, MyDataSubPool,
 };
 use crate::api::types::node::Node;
 use crate::api::types::object;
@@ -66,13 +65,16 @@ use crate::api::types::object::ObjectKey;
 use crate::api::types::object::VersionFilter;
 use crate::api::types::object_filter::ObjectFilter;
 use crate::api::types::object_filter::ObjectFilterValidator as OFValidator;
+use crate::api::types::organization::{
+    AgenticOrganization, AgenticOrganizationLeaderboardResponse, OrganizationCategory,
+    OrganizationLeaderboardSortGql, OrganizationStatsWindowGql, OrganizationType,
+};
 use crate::api::types::platform::{Platform, PlatformUserAccess};
 use crate::api::types::poc::PocBeneficiaryVault;
+use crate::api::types::poc_username_beneficiary::PocUsernameBeneficiary;
 use crate::api::types::post::{CommentSummary, Post, ReactionSummary, RepostSummary, TipSummary};
 use crate::api::types::profile::Profile;
 use crate::api::types::promotion::{Promotion, PromotionTimeSeries};
-use crate::api::types::username::{UsernameAvailability, UsernameRegistry};
-use crate::api::types::poc_username_beneficiary::PocUsernameBeneficiary;
 use crate::api::types::protocol_configs::ProtocolConfigs;
 use crate::api::types::service_config::ServiceConfig;
 use crate::api::types::simulation_result::SimulationResult;
@@ -91,12 +93,9 @@ use crate::api::types::transaction::Transaction;
 use crate::api::types::transaction::filter::TransactionFilter;
 use crate::api::types::transaction::filter::TransactionFilterValidator as TFValidator;
 use crate::api::types::transaction_effects::TransactionEffects;
+use crate::api::types::username::{UsernameAvailability, UsernameRegistry};
 use crate::api::types::vesting::{
     VestingLeaderboardEntry, VestingLeaderboardResponse, VestingWallet,
-};
-use crate::api::types::organization::{
-    AgenticOrganization, AgenticOrganizationLeaderboardResponse, OrganizationCategory,
-    OrganizationLeaderboardSortGql, OrganizationStatsWindowGql, OrganizationType,
 };
 use crate::api::types::zklogin;
 use crate::api::types::zklogin::ZkLoginIntentScope;
@@ -1355,11 +1354,7 @@ impl Query {
                 .list_mydata_listings_for_sub_pool(&sub_pool_id, limit, offset)
                 .await
                 .map_err(Into::into)
-                .map(|v| {
-                    v.into_iter()
-                        .map(MyDataListingSubPool::from_row)
-                        .collect()
-                }),
+                .map(|v| v.into_iter().map(MyDataListingSubPool::from_row).collect()),
         )
     }
 
@@ -1398,11 +1393,7 @@ impl Query {
                 .list_mydata_snapshot_anchors(limit, offset)
                 .await
                 .map_err(Into::into)
-                .map(|v| {
-                    v.into_iter()
-                        .map(MyDataSnapshotAnchor::from_row)
-                        .collect()
-                }),
+                .map(|v| v.into_iter().map(MyDataSnapshotAnchor::from_row).collect()),
         )
     }
 
@@ -2166,7 +2157,11 @@ impl Query {
                 .list_poc_username_beneficiaries(status, limit, offset)
                 .await
                 .map_err(Into::into)
-                .map(|rows| rows.into_iter().map(PocUsernameBeneficiary::from_row).collect()),
+                .map(|rows| {
+                    rows.into_iter()
+                        .map(PocUsernameBeneficiary::from_row)
+                        .collect()
+                }),
         )
     }
 
@@ -2267,7 +2262,11 @@ impl Query {
                     myso_indexer_alt_social_reader::MAX_MUTUAL_CONNECTIONS_LIMIT,
                 )
                 .await
-                .map(|(rows, _)| rows.into_iter().map(crate::api::types::profile_summary::ProfileSummary::from_row).collect())
+                .map(|(rows, _)| {
+                    rows.into_iter()
+                        .map(crate::api::types::profile_summary::ProfileSummary::from_row)
+                        .collect()
+                })
                 .map_err(Into::into),
         )
     }

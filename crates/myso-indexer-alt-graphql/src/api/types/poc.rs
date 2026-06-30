@@ -13,8 +13,8 @@ use myso_indexer_alt_social_reader::{
 use crate::api::resolve_profile::resolve_profile_summary;
 use crate::api::scalars::json::Json;
 use crate::api::scalars::myso_address::MySoAddress;
-use crate::api::types::profile_summary::ProfileSummary;
 use crate::api::types::poc_username_beneficiary::PocUsernameBeneficiary;
+use crate::api::types::profile_summary::ProfileSummary;
 
 #[derive(Clone)]
 pub(crate) struct PocBadge {
@@ -465,10 +465,7 @@ impl PocBeneficiaryVault {
         Some(rows.into_iter().map(PocVaultClaim::from_row).collect())
     }
 
-    async fn poc_username_beneficiary(
-        &self,
-        ctx: &Context<'_>,
-    ) -> Option<PocUsernameBeneficiary> {
+    async fn poc_username_beneficiary(&self, ctx: &Context<'_>) -> Option<PocUsernameBeneficiary> {
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;

@@ -20,7 +20,6 @@ use myso_indexer_alt_framework::postgres::handler::Handler;
 use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
-use myso_types::transaction::TransactionDataAPI;
 use myso_indexer_alt_social_schema::models::{
     NewComment, NewDeletionEvent, NewModerationEvent, NewPocAnalysisResult, NewPocBadge,
     NewPocConfiguration, NewPocCreatorIdentityLink, NewPocDispute, NewPocDisputeVote,
@@ -30,16 +29,17 @@ use myso_indexer_alt_social_schema::models::{
     NewReactionCount, NewReport, NewRepost, NewTip, NewUnifiedRevenue,
 };
 use myso_indexer_alt_social_schema::schema::{
-    comments, poc_analysis_results, poc_badges, poc_configuration, poc_dispute_votes, poc_disputes,
-    poc_revenue_redirections, poc_username_beneficiary_events,
-    poc_creator_identity_links, poc_vault_claims, poc_vault_deposits, post_config, posts,
-    promoted_posts, promotion_budget_events, promotion_status_events, promotion_views,
-    reaction_counts, reactions, reposts, tips,
+    comments, poc_analysis_results, poc_badges, poc_configuration, poc_creator_identity_links,
+    poc_dispute_votes, poc_disputes, poc_revenue_redirections, poc_username_beneficiary_events,
+    poc_vault_claims, poc_vault_deposits, post_config, posts, promoted_posts,
+    promotion_budget_events, promotion_status_events, promotion_views, reaction_counts, reactions,
+    reposts, tips,
 };
 use myso_indexer_alt_social_schema::schema::{
     posts_deletion_events, posts_moderation_events, posts_reports, posts_transfers, profiles,
     unified_revenue,
 };
+use myso_types::transaction::TransactionDataAPI;
 
 use super::common;
 use super::events;
@@ -569,7 +569,9 @@ impl PostRow {
                 timestamp_ms,
                 transaction_id,
             }),
-            SocialEventRow::PocUsernameBeneficiary(row) => Some(PostRow::PocUsernameBeneficiary(row)),
+            SocialEventRow::PocUsernameBeneficiary(row) => {
+                Some(PostRow::PocUsernameBeneficiary(row))
+            }
             SocialEventRow::PocUsernameBeneficiaryClaimed {
                 beneficiary_id,
                 username,
@@ -617,7 +619,9 @@ impl PostRow {
                 join_referral_paid_at_ms,
                 transaction_id,
             }),
-            SocialEventRow::PocCreatorIdentityLink(row) => Some(PostRow::PocCreatorIdentityLink(row)),
+            SocialEventRow::PocCreatorIdentityLink(row) => {
+                Some(PostRow::PocCreatorIdentityLink(row))
+            }
             SocialEventRow::PocUsernameBeneficiaryEvent(row) => {
                 Some(PostRow::PocUsernameBeneficiaryEvent(row))
             }
@@ -728,8 +732,7 @@ impl Processor for PostsHandler {
                         &event_id,
                         &mydata_snapshots,
                         checkpoint_timestamp_ms,
-                    )
-                    {
+                    ) {
                         for row in rows {
                             if let Some(r) = PostRow::from_social(row) {
                                 values.push(r);
@@ -868,13 +871,11 @@ async fn apply_tips_received_increment(
         return Ok(());
     }
     if is_post {
-        let _ = sql_query(
-            "UPDATE posts SET tips_received = tips_received + $1 WHERE post_id = $2",
-        )
-        .bind::<BigInt, _>(amount)
-        .bind::<Text, _>(object_id)
-        .execute(conn)
-        .await;
+        let _ = sql_query("UPDATE posts SET tips_received = tips_received + $1 WHERE post_id = $2")
+            .bind::<BigInt, _>(amount)
+            .bind::<Text, _>(object_id)
+            .execute(conn)
+            .await;
     } else {
         let _ = sql_query(
             "UPDATE comments SET tips_received = tips_received + $1 WHERE comment_id = $2",
@@ -893,13 +894,12 @@ async fn apply_total_tip_volume_increment(
     amount: i64,
 ) -> Result<()> {
     use diesel::sql_query;
-    let _ = sql_query(
-        "UPDATE posts SET total_tip_volume = total_tip_volume + $1 WHERE post_id = $2",
-    )
-    .bind::<BigInt, _>(amount)
-    .bind::<Text, _>(post_id)
-    .execute(conn)
-    .await;
+    let _ =
+        sql_query("UPDATE posts SET total_tip_volume = total_tip_volume + $1 WHERE post_id = $2")
+            .bind::<BigInt, _>(amount)
+            .bind::<Text, _>(post_id)
+            .execute(conn)
+            .await;
     Ok(())
 }
 
@@ -1234,14 +1234,8 @@ impl Handler for PostsHandler {
                     amount,
                     is_post,
                 } => {
-                    apply_tips_received_increment(
-                        conn,
-                        object_id,
-                        recipient,
-                        *amount,
-                        *is_post,
-                    )
-                    .await?;
+                    apply_tips_received_increment(conn, object_id, recipient, *amount, *is_post)
+                        .await?;
                 }
                 PostRow::PostModerationUpdate {
                     object_id,
@@ -1563,9 +1557,11 @@ impl Handler for PostsHandler {
                 PostRow::UnifiedRevenue(r) => {
                     let mut revenue = r.clone();
                     if revenue.organization_id.is_none() {
-                        revenue.organization_id =
-                            resolve_organization_id_for_derived_address(conn, &revenue.payer_address)
-                                .await?;
+                        revenue.organization_id = resolve_organization_id_for_derived_address(
+                            conn,
+                            &revenue.payer_address,
+                        )
+                        .await?;
                     }
                     total += diesel::insert_into(unified_revenue::table)
                         .values(&revenue)
@@ -1925,22 +1921,26 @@ impl Handler for PostsHandler {
                         ))
                         .do_update()
                         .set((
-                            poc_creator_identity_links::wallet_address
-                                .eq(diesel::upsert::excluded(
+                            poc_creator_identity_links::wallet_address.eq(
+                                diesel::upsert::excluded(
                                     poc_creator_identity_links::wallet_address,
-                                )),
-                            poc_creator_identity_links::beneficiary_id.eq(diesel::upsert::excluded(
-                                poc_creator_identity_links::beneficiary_id,
-                            )),
+                                ),
+                            ),
+                            poc_creator_identity_links::beneficiary_id.eq(
+                                diesel::upsert::excluded(
+                                    poc_creator_identity_links::beneficiary_id,
+                                ),
+                            ),
                             poc_creator_identity_links::linked_at_ms.eq(diesel::upsert::excluded(
                                 poc_creator_identity_links::linked_at_ms,
                             )),
-                            poc_creator_identity_links::transaction_id.eq(diesel::upsert::excluded(
-                                poc_creator_identity_links::transaction_id,
-                            )),
-                            poc_creator_identity_links::time.eq(diesel::upsert::excluded(
-                                poc_creator_identity_links::time,
-                            )),
+                            poc_creator_identity_links::transaction_id.eq(
+                                diesel::upsert::excluded(
+                                    poc_creator_identity_links::transaction_id,
+                                ),
+                            ),
+                            poc_creator_identity_links::time
+                                .eq(diesel::upsert::excluded(poc_creator_identity_links::time)),
                         ))
                         .execute(conn)
                         .await?;
@@ -2090,7 +2090,10 @@ mod post_row_poc_mapping_tests {
 
     #[test]
     fn classify_reaction_replay_when_same_emoji() {
-        assert_eq!(classify_reaction(Some("👍"), "👍"), ReactionApplyKind::Replay);
+        assert_eq!(
+            classify_reaction(Some("👍"), "👍"),
+            ReactionApplyKind::Replay
+        );
     }
 
     #[test]
@@ -2139,7 +2142,9 @@ mod post_row_poc_mapping_tests {
             time: chrono::Utc::now(),
         };
         let mapped = PostRow::from_social(SocialEventRow::PocUsernameBeneficiary(row.clone()));
-        assert!(matches!(mapped, Some(PostRow::PocUsernameBeneficiary(r)) if r.beneficiary_id == row.beneficiary_id));
+        assert!(
+            matches!(mapped, Some(PostRow::PocUsernameBeneficiary(r)) if r.beneficiary_id == row.beneficiary_id)
+        );
     }
 
     #[test]

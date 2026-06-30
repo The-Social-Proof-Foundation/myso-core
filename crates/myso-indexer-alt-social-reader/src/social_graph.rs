@@ -922,9 +922,7 @@ pub(crate) async fn get_follow_recommendations(
         cnt: i64,
     }
 
-    let count_sql = format!(
-        "WITH {CANDIDATES_CTE} SELECT COUNT(*)::bigint AS cnt FROM candidates"
-    );
+    let count_sql = format!("WITH {CANDIDATES_CTE} SELECT COUNT(*)::bigint AS cnt FROM candidates");
 
     let count_row = diesel::sql_query(&count_sql)
         .bind::<Text, _>(&subject_owner)

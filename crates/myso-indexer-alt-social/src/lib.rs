@@ -9,7 +9,7 @@ pub mod metrics;
 pub use handlers::{
     BlockingHandler, GovernanceHandler, InsuranceHandler, MemoryHandler, MyDataHandler,
     PaidMessagingPolicyHandler, PlatformHandler, PostsHandler, ProfilesHandler, SocialGraphHandler,
-    SpotHandler, SptHandler, SubscriptionHandler, UpgradeHandler,
+    SpotHandler, SptHandler, SubAgentRegistryHandler, SubscriptionHandler, UpgradeHandler,
 };
 
 pub const MAINNET_REMOTE_STORE_URL: &str = "https://checkpoints.mainnet.mysocial.network";
@@ -127,6 +127,10 @@ pub async fn setup_social_indexer(
         .await
         .context("Failed to add SubscriptionHandler pipeline")?;
     indexer
+        .concurrent_pipeline(SubAgentRegistryHandler, Default::default())
+        .await
+        .context("Failed to add SubAgentRegistryHandler pipeline")?;
+    indexer
         .concurrent_pipeline(MemoryHandler, Default::default())
         .await
         .context("Failed to add MemoryHandler pipeline")?;
@@ -141,7 +145,7 @@ pub async fn setup_social_indexer(
 
     tracing::info!(
         "Social indexer pipelines registered — blocking, paid_messaging_policy, governance, upgrade, social_graph, \
-         platform, mydata, insurance, spot, spt, subscription, memory, profiles, posts (includes PoC); \
+         platform, mydata, insurance, spot, spt, subscription, sub_agent_registry, memory, profiles, posts (includes PoC); \
          resuming from watermarks or checkpoint 0"
     );
 
@@ -150,8 +154,7 @@ pub async fn setup_social_indexer(
         .await
         .context("Failed to start social indexer")?;
     let s_metrics = metrics.run().await?;
-    let s_rollup =
-        handlers::organization_stats_rollup::spawn_default_rollup_service(rollup_store);
+    let s_rollup = handlers::organization_stats_rollup::spawn_default_rollup_service(rollup_store);
 
     Ok(s_indexer.attach(s_metrics).attach(s_rollup))
 }

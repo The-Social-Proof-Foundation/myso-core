@@ -7,10 +7,10 @@ use diesel::sql_types::{BigInt, Bool, Date, Int4, Jsonb, Nullable, Text, Timesta
 use serde::{Deserialize, Serialize};
 
 use crate::schema::{
-    mydata_access_logs, mydata_config, mydata_data, mydata_purchases, mydata_broad_pools,
-    mydata_claims, mydata_distribution_rounds, mydata_listing_sub_pools,
-    mydata_merkle_roots, mydata_snapshot_anchors, mydata_sub_pools,
-    mydata_registry, mydata_revenue, mydata_subscriptions,
+    mydata_access_logs, mydata_broad_pools, mydata_claims, mydata_config, mydata_data,
+    mydata_distribution_rounds, mydata_listing_sub_pools, mydata_merkle_roots, mydata_purchases,
+    mydata_registry, mydata_revenue, mydata_snapshot_anchors, mydata_sub_pools,
+    mydata_subscriptions,
 };
 
 // Constants matching social_contracts::mydata Move module

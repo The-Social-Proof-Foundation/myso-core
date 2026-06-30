@@ -56,9 +56,7 @@ pub async fn get_agentic_organization(
         .reader
         .get_agentic_organization(&organization_id)
         .await?
-        .ok_or_else(|| {
-            SocialError::not_found(format!("Organization '{}'", organization_id))
-        })?;
+        .ok_or_else(|| SocialError::not_found(format!("Organization '{}'", organization_id)))?;
     Ok(Json(org))
 }
 
@@ -94,9 +92,7 @@ pub async fn get_organization_statistics(
         .reader
         .get_organization_statistics(&organization_id, window)
         .await?
-        .ok_or_else(|| {
-            SocialError::not_found(format!("Organization '{}'", organization_id))
-        })?;
+        .ok_or_else(|| SocialError::not_found(format!("Organization '{}'", organization_id)))?;
     Ok(Json(stats))
 }
 
@@ -108,7 +104,10 @@ pub async fn get_organization_leaderboard(
         SocialError::bad_request(format!("Unknown leaderboard sort '{}'", query.sort))
     })?;
     let org_type = parse_org_type(&query.category).ok_or_else(|| {
-        SocialError::bad_request(format!("Unknown organization category '{}'", query.category))
+        SocialError::bad_request(format!(
+            "Unknown organization category '{}'",
+            query.category
+        ))
     })?;
     let window = query
         .window

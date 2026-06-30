@@ -95,8 +95,9 @@ pub(crate) async fn get_platform_moderators(
     offset: i64,
 ) -> Result<Vec<PlatformModeratorRow>, SocialError> {
     if let Some(filter) = permission_filter {
-        if !myso_indexer_alt_social_schema::platform_permissions::is_valid_moderator_permission(filter)
-        {
+        if !myso_indexer_alt_social_schema::platform_permissions::is_valid_moderator_permission(
+            filter,
+        ) {
             return Err(SocialError::bad_request(format!(
                 "invalid platform moderator permission filter: {filter}"
             )));

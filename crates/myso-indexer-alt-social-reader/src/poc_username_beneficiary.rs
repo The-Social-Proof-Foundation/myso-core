@@ -76,7 +76,8 @@ pub async fn is_username_available_for_registration(
     metrics: &DbReaderMetrics,
 ) -> anyhow::Result<bool> {
     let detail =
-        crate::username::get_username_availability(conn, username, exclude_address, metrics).await?;
+        crate::username::get_username_availability(conn, username, exclude_address, metrics)
+            .await?;
     Ok(detail.available)
 }
 

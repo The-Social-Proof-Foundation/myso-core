@@ -22,11 +22,8 @@ use myso_types::crypto::{
     AuthorityKeyPair, AuthorityPublicKeyBytes, AuthoritySignInfo, AuthoritySignInfoTrait,
     AuthoritySignature, DefaultHash, MySoAuthoritySignature,
 };
-use myso_types::orderbook::{
-    ORDERBOOK_REGISTRY_CREATE_FUNCTION_NAME, ORDERBOOK_REGISTRY_MODULE_NAME,
-};
-use myso_types::digests::ChainIdentifier;
 use myso_types::deny_list_v1::{DENY_LIST_CREATE_FUNC, DENY_LIST_MODULE};
+use myso_types::digests::ChainIdentifier;
 use myso_types::effects::{TransactionEffects, TransactionEffectsAPI, TransactionEvents};
 use myso_types::epoch_data::EpochData;
 use myso_types::execution_params::ExecutionOrEarlyError;
@@ -45,13 +42,16 @@ use myso_types::messages_checkpoint::{
 use myso_types::metrics::LimitsMetrics;
 use myso_types::myso_system_state::{MySoSystemState, MySoSystemStateTrait, get_myso_system_state};
 use myso_types::object::{Object, Owner};
+use myso_types::orderbook::{
+    ORDERBOOK_REGISTRY_CREATE_FUNCTION_NAME, ORDERBOOK_REGISTRY_MODULE_NAME,
+};
 use myso_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use myso_types::transaction::{
     CallArg, CheckedInputObjects, Command, InputObjectKind, ObjectReadResult, Transaction,
 };
 use myso_types::{
-    BRIDGE_ADDRESS, MYSO_BRIDGE_OBJECT_ID, MYSO_FRAMEWORK_ADDRESS, MYSO_ORDERBOOK_REGISTRY_OBJECT_ID,
-    MYSO_SYSTEM_ADDRESS, ORDERBOOK_ADDRESS,
+    BRIDGE_ADDRESS, MYSO_BRIDGE_OBJECT_ID, MYSO_FRAMEWORK_ADDRESS,
+    MYSO_ORDERBOOK_REGISTRY_OBJECT_ID, MYSO_SYSTEM_ADDRESS, ORDERBOOK_ADDRESS,
 };
 use shared_crypto::intent::{Intent, IntentMessage, IntentScope};
 use std::collections::BTreeMap;
@@ -1011,7 +1011,9 @@ fn create_genesis_objects(
             &protocol_config,
             metrics.clone(),
         )
-        .unwrap_or_else(|e| panic!("Genesis publish failed for system package {package_id}: {e:?}"));
+        .unwrap_or_else(|e| {
+            panic!("Genesis publish failed for system package {package_id}: {e:?}")
+        });
     }
 
     {
@@ -1219,7 +1221,9 @@ pub fn generate_genesis_system_object(
 
         if protocol_config.enable_bridge() {
             let bridge_uid = builder
-                .input(CallArg::Pure(UID::new(MYSO_BRIDGE_OBJECT_ID).to_bcs_bytes()))
+                .input(CallArg::Pure(
+                    UID::new(MYSO_BRIDGE_OBJECT_ID).to_bcs_bytes(),
+                ))
                 .unwrap();
             // TODO(bridge): this needs to be passed in as a parameter for next testnet regenesis
             // Hardcoding chain id to MySoCustom

@@ -619,10 +619,7 @@ fn process_reaction_event(
         data,
         "post reaction event JSON did not match ReactionEvent",
     )?;
-    let (created_at, now) = chain_post_times(
-        Some(ev.created_at as i64),
-        checkpoint_timestamp_ms,
-    );
+    let (created_at, now) = chain_post_times(Some(ev.created_at as i64), checkpoint_timestamp_ms);
 
     let (actor_address, sub_agent_id, organization_id, action_identity_class) =
         attribution_fields(data, &ev.user_address);
@@ -638,9 +635,7 @@ fn process_reaction_event(
         created_at,
         time: now,
         transaction_id: event_id.to_string(),
-        principal_owner: ev
-            .principal_owner
-            .or_else(|| Some(ev.user_address.clone())),
+        principal_owner: ev.principal_owner.or_else(|| Some(ev.user_address.clone())),
         actor_address: ev
             .actor_address
             .or(actor_address)
@@ -666,9 +661,7 @@ fn process_remove_reaction_event(
         data,
         "post remove-reaction event JSON did not match RemoveReactionEvent",
     )?;
-    let user_address = ev
-        .actor_address
-        .unwrap_or(ev.user_address);
+    let user_address = ev.actor_address.unwrap_or(ev.user_address);
     Some(vec![SocialEventRow::RemoveReaction {
         object_id: ev.object_id,
         user_address,
@@ -689,10 +682,7 @@ fn process_repost_event(
         data,
         "post repost event JSON did not match RepostEvent",
     )?;
-    let (created_at, now) = chain_post_times(
-        Some(ev.created_at as i64),
-        checkpoint_timestamp_ms,
-    );
+    let (created_at, now) = chain_post_times(Some(ev.created_at as i64), checkpoint_timestamp_ms);
     let id = format!("{}:{}", ev.repost_id, created_at);
     let (actor_address, sub_agent_id, organization_id, action_identity_class) =
         attribution_fields(data, &ev.owner);
@@ -737,10 +727,7 @@ fn process_tip_event(
         data,
         "post tip event JSON did not match TipEvent",
     )?;
-    let (created_at, now) = chain_post_times(
-        Some(ev.tip_time as i64),
-        checkpoint_timestamp_ms,
-    );
+    let (created_at, now) = chain_post_times(Some(ev.tip_time as i64), checkpoint_timestamp_ms);
 
     let tip = NewTip {
         tipper: ev.from.clone(),
@@ -810,10 +797,8 @@ fn process_moderation_event(
         data,
         "post moderation event JSON did not match ModerationEvent",
     )?;
-    let (moderated_at, now) = chain_post_times(
-        Some(ev.moderated_at as i64),
-        checkpoint_timestamp_ms,
-    );
+    let (moderated_at, now) =
+        chain_post_times(Some(ev.moderated_at as i64), checkpoint_timestamp_ms);
 
     let mod_ev = NewModerationEvent {
         object_id: ev.object_id.clone(),
@@ -1207,7 +1192,8 @@ mod tests {
             "sub_agent_id": null,
             "action_identity_class": 0,
         });
-        let rows = handle_post_event("ReactionEvent", &data, "tx:rx1", &HashMap::new(), CK_MS).expect("rows");
+        let rows = handle_post_event("ReactionEvent", &data, "tx:rx1", &HashMap::new(), CK_MS)
+            .expect("rows");
         assert_eq!(rows.len(), 1);
         assert!(
             rows.iter().any(|r| matches!(
@@ -1234,7 +1220,14 @@ mod tests {
             "sub_agent_id": null,
             "action_identity_class": 0,
         });
-        let rows = handle_post_event("RemoveReactionEvent", &data, "tx:rm1", &HashMap::new(), CK_MS).expect("rows");
+        let rows = handle_post_event(
+            "RemoveReactionEvent",
+            &data,
+            "tx:rm1",
+            &HashMap::new(),
+            CK_MS,
+        )
+        .expect("rows");
         assert_eq!(rows.len(), 1);
         assert!(
             rows.iter().any(|r| matches!(
@@ -1276,7 +1269,14 @@ mod tests {
             "spot_id": null,
             "spt_id": null,
         });
-        let rows = handle_post_event("PostCreatedEvent", &data, "digest:0", &HashMap::new(), CK_MS).expect("rows");
+        let rows = handle_post_event(
+            "PostCreatedEvent",
+            &data,
+            "digest:0",
+            &HashMap::new(),
+            CK_MS,
+        )
+        .expect("rows");
         assert!(
             rows.iter().any(|r| matches!(
                 r,
@@ -1318,8 +1318,14 @@ mod tests {
             "organization_id": "0xorg123",
             "action_identity_class": 0,
         });
-        let rows = handle_post_event("PostCreatedEvent", &data, "digest:org", &HashMap::new(), CK_MS)
-            .expect("rows");
+        let rows = handle_post_event(
+            "PostCreatedEvent",
+            &data,
+            "digest:org",
+            &HashMap::new(),
+            CK_MS,
+        )
+        .expect("rows");
         let post = rows
             .iter()
             .find_map(|r| match r {
@@ -1365,8 +1371,14 @@ mod tests {
             "spt_id": null,
         });
 
-        let rows =
-            handle_post_event("PostCreatedEvent", &data, "digest:mydata", &snapshots, CK_MS).expect("rows");
+        let rows = handle_post_event(
+            "PostCreatedEvent",
+            &data,
+            "digest:mydata",
+            &snapshots,
+            CK_MS,
+        )
+        .expect("rows");
         let post = rows
             .iter()
             .find_map(|r| match r {
@@ -1377,10 +1389,7 @@ mod tests {
         assert_eq!(post.mydata_id.as_deref(), Some(mydata_id));
         assert_eq!(post.requires_subscription, Some(true));
         assert_eq!(post.subscription_price, Some(5_000_000_000));
-        assert_eq!(
-            post.encrypted_content_hash.as_deref(),
-            Some("0xdeadbeef")
-        );
+        assert_eq!(post.encrypted_content_hash.as_deref(), Some("0xdeadbeef"));
 
         let fields = post_mydata::paywall_from_mydata(None, Some("0xabc".to_string()));
         assert_eq!(fields.requires_subscription, Some(false));
@@ -1408,7 +1417,14 @@ mod tests {
             "spot_id": null,
             "spt_id": null,
         });
-        let rows = handle_post_event("PostCreatedEvent", &data, "digest:0", &HashMap::new(), CK_MS).expect("rows");
+        let rows = handle_post_event(
+            "PostCreatedEvent",
+            &data,
+            "digest:0",
+            &HashMap::new(),
+            CK_MS,
+        )
+        .expect("rows");
         assert!(!rows
             .iter()
             .any(|r| matches!(r, SocialEventRow::PostRepostCountIncrement { .. })));
@@ -1424,7 +1440,14 @@ mod tests {
             "description": "Short description of the issue here.",
             "reported_at": 1714113519157_u64,
         });
-        let rows = handle_post_event("PostReportedEvent", &data, "digest:7", &HashMap::new(), CK_MS).expect("rows");
+        let rows = handle_post_event(
+            "PostReportedEvent",
+            &data,
+            "digest:7",
+            &HashMap::new(),
+            CK_MS,
+        )
+        .expect("rows");
         let SocialEventRow::Report(r) = &rows[0] else {
             panic!("expected Report row");
         };
@@ -1448,7 +1471,8 @@ mod tests {
             "moderated_by": "0x2458950181e415250823d6ce1d55f2b3427826a111939e0d6d38e9a1397411d8",
             "moderated_at": 0u64,
         });
-        let rows = handle_post_event("PostModerationEvent", &data, "tx:1", &HashMap::new(), CK_MS).expect("rows");
+        let rows = handle_post_event("PostModerationEvent", &data, "tx:1", &HashMap::new(), CK_MS)
+            .expect("rows");
         assert_eq!(rows.len(), 2);
         let SocialEventRow::ModerationEvent(m) = &rows[0] else {
             panic!("expected ModerationEvent");
@@ -1498,7 +1522,8 @@ mod tests {
             "post_id": post_oid,
             "deleted_at": 1_717_200_000_000_u64,
         });
-        let rows = handle_post_event("PostDeletedEvent", &data, "tx:del1", &HashMap::new(), CK_MS).expect("rows");
+        let rows = handle_post_event("PostDeletedEvent", &data, "tx:del1", &HashMap::new(), CK_MS)
+            .expect("rows");
         assert_eq!(rows.len(), 3);
         let SocialEventRow::DeletionEvent(d) = &rows[0] else {
             panic!("expected DeletionEvent");
@@ -1528,7 +1553,14 @@ mod tests {
             "total_budget": 1000000_u64,
             "created_at": 1_742_000_000_000_u64,
         });
-        let rows = handle_post_event("PromotedPostCreatedEvent", &data, "tx:promo1", &HashMap::new(), CK_MS).expect("rows");
+        let rows = handle_post_event(
+            "PromotedPostCreatedEvent",
+            &data,
+            "tx:promo1",
+            &HashMap::new(),
+            CK_MS,
+        )
+        .expect("rows");
         assert_eq!(rows.len(), 1);
         let SocialEventRow::PromotedPost {
             post_id,
@@ -1569,7 +1601,8 @@ mod tests {
             "is_post": false,
             "tip_time": 0u64,
         });
-        let rows = handle_post_event("TipEvent", &data, "tx:tip2", &HashMap::new(), CK_MS).expect("rows");
+        let rows =
+            handle_post_event("TipEvent", &data, "tx:tip2", &HashMap::new(), CK_MS).expect("rows");
         let SocialEventRow::Tip(tip_row) = &rows[0] else {
             panic!("expected Tip");
         };
@@ -1598,7 +1631,8 @@ mod tests {
             "is_post": true,
             "tip_time": 0u64,
         });
-        let rows = handle_post_event("TipEvent", &data, "tx:tip1", &HashMap::new(), CK_MS).expect("rows");
+        let rows =
+            handle_post_event("TipEvent", &data, "tx:tip1", &HashMap::new(), CK_MS).expect("rows");
         assert_eq!(rows.len(), 3);
         let SocialEventRow::Tip(t) = &rows[0] else {
             panic!("expected Tip");
@@ -1649,7 +1683,8 @@ mod tests {
             "is_post": true,
             "tip_time": 0u64,
         });
-        let rows = handle_post_event("TipEvent", &data, "tx:redirect", &HashMap::new(), CK_MS).expect("rows");
+        let rows = handle_post_event("TipEvent", &data, "tx:redirect", &HashMap::new(), CK_MS)
+            .expect("rows");
         let SocialEventRow::PostTipsReceivedIncrement { recipient, .. } = &rows[1] else {
             panic!("expected PostTipsReceivedIncrement");
         };
@@ -1669,7 +1704,14 @@ mod tests {
             "post_id": post_id,
             "deleted_at": 1_717_201_000_000_u64,
         });
-        let rows = handle_post_event("CommentDeletedEvent", &data, "tx:del2", &HashMap::new(), CK_MS).expect("rows");
+        let rows = handle_post_event(
+            "CommentDeletedEvent",
+            &data,
+            "tx:del2",
+            &HashMap::new(),
+            CK_MS,
+        )
+        .expect("rows");
         assert_eq!(rows.len(), 3);
         let SocialEventRow::DeletionEvent(d) = &rows[0] else {
             panic!("expected DeletionEvent");

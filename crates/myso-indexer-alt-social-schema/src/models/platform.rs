@@ -6,8 +6,8 @@ use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::schema::{
-    platform_blocked_profiles, platform_events, platform_memberships, platform_moderator_permissions,
-    platform_moderators, platform_token_airdrops, platforms,
+    platform_blocked_profiles, platform_events, platform_memberships,
+    platform_moderator_permissions, platform_moderators, platform_token_airdrops, platforms,
 };
 
 pub const PLATFORM_STATUS_DEVELOPMENT: i16 = 0;

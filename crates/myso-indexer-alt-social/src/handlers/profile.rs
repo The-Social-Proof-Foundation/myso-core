@@ -262,7 +262,9 @@ pub fn handle_profile_event(
         "UsernameClaimedEvent" => process_username_claimed_event(data, event_id),
         "UsernameRevokedEvent" => process_username_revoked_event(data, event_id),
         "UsernameReassignedEvent" => process_username_reassigned_event(data, event_id),
-        "BadgeAssignedEvent" => process_badge_assigned_event(data, event_id, checkpoint_timestamp_ms),
+        "BadgeAssignedEvent" => {
+            process_badge_assigned_event(data, event_id, checkpoint_timestamp_ms)
+        }
         "BadgeRevokedEvent" => process_badge_revoked_event(data, event_id, checkpoint_timestamp_ms),
         "BadgeRemovedEvent" => process_badge_removed_event(data, event_id, checkpoint_timestamp_ms),
         "BadgeSelectedEvent" => process_badge_selected_event(data, event_id),
@@ -270,7 +272,9 @@ pub fn handle_profile_event(
             process_ecosystem_badge_selection_cleared_event(data, event_id)
         }
         "TokensVestedEvent" => process_tokens_vested_event(data, event_id, checkpoint_timestamp_ms),
-        "TokensClaimedEvent" => process_tokens_claimed_event(data, event_id, checkpoint_timestamp_ms),
+        "TokensClaimedEvent" => {
+            process_tokens_claimed_event(data, event_id, checkpoint_timestamp_ms)
+        }
         "VestingWalletDeletedEvent" => {
             process_vesting_wallet_deleted_event(data, event_id, checkpoint_timestamp_ms)
         }
@@ -1003,10 +1007,7 @@ fn process_tokens_vested_event(
     let start_time = ev.start_time.unwrap_or(0) as i64;
     let schedule_end = ev.schedule_end.unwrap_or(0) as i64;
     let pieces_json = pieces_to_json(&ev.pieces);
-    let ms = common::chain_timestamp_ms(
-        ev.vested_at.map(|t| t as i64),
-        checkpoint_timestamp_ms,
-    );
+    let ms = common::chain_timestamp_ms(ev.vested_at.map(|t| t as i64), checkpoint_timestamp_ms);
     let now = common::chain_time_from_ms(ms);
     let naive = now.naive_utc();
     let wallet = NewVestingWallet {
@@ -1081,10 +1082,7 @@ fn process_tokens_claimed_event(
     )?;
     let claimed_amount = ev.claimed_amount.unwrap_or(0) as i64;
     let remaining_balance = ev.remaining_balance.unwrap_or(0) as i64;
-    let ms = common::chain_timestamp_ms(
-        ev.claimed_at.map(|t| t as i64),
-        checkpoint_timestamp_ms,
-    );
+    let ms = common::chain_timestamp_ms(ev.claimed_at.map(|t| t as i64), checkpoint_timestamp_ms);
     let time = common::chain_time_from_ms(ms);
     let vest_event = NewVestingEvent {
         wallet_id: ev.wallet_id.clone(),
@@ -1313,10 +1311,7 @@ fn process_vesting_wallet_deleted_event(
         data,
         "profile VestingWalletDeletedEvent JSON did not match VestingWalletDeletedEvent",
     )?;
-    let ms = common::chain_timestamp_ms(
-        ev.deleted_at.map(|t| t as i64),
-        checkpoint_timestamp_ms,
-    );
+    let ms = common::chain_timestamp_ms(ev.deleted_at.map(|t| t as i64), checkpoint_timestamp_ms);
     let time = common::chain_time_from_ms(ms);
     let vest_event = NewVestingEvent {
         wallet_id: ev.wallet_id.clone(),
@@ -1387,7 +1382,9 @@ mod tests {
         let rows = handle_profile_event("UsernameClaimedEvent", &data, "tx:1", CK_MS)
             .expect("handle_profile_event should return Some");
         assert_eq!(rows.len(), 3);
-        assert!(rows.iter().any(|r| matches!(r, SocialEventRow::UsernameRegistryUpsert(_))));
+        assert!(rows
+            .iter()
+            .any(|r| matches!(r, SocialEventRow::UsernameRegistryUpsert(_))));
         assert!(rows.iter().any(|r| matches!(
             r,
             SocialEventRow::ProfileUsernameSet {
@@ -1415,10 +1412,12 @@ mod tests {
             "bio": "bio",
             "created_at": 1000,
         });
-        let username_rows = handle_profile_event("UsernameClaimedEvent", &username_data, "tx:0", CK_MS)
-            .expect("UsernameClaimedEvent");
-        let profile_rows = handle_profile_event("ProfileCreatedEvent", &profile_data, "tx:1", CK_MS)
-            .expect("ProfileCreatedEvent");
+        let username_rows =
+            handle_profile_event("UsernameClaimedEvent", &username_data, "tx:0", CK_MS)
+                .expect("UsernameClaimedEvent");
+        let profile_rows =
+            handle_profile_event("ProfileCreatedEvent", &profile_data, "tx:1", CK_MS)
+                .expect("ProfileCreatedEvent");
         assert_eq!(username_rows.len(), 3);
         assert_eq!(profile_rows.len(), 2);
         assert!(username_rows.iter().any(|r| matches!(

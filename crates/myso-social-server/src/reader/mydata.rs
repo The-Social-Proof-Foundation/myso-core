@@ -2,18 +2,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use diesel::sql_types::{BigInt, Bool, Nullable, Text};
-use diesel::QueryableByName;
 use diesel::OptionalExtension;
+use diesel::QueryableByName;
 use diesel_async::RunQueryDsl;
 use myso_pg_db::Db;
 
 use crate::error::SocialError;
 use crate::reader::types::{
-    AccessAnalytics, AccessLogInfo, DailyRevenue, MyDataBasic, MyDataConfigInfo,
-    MyDataBroadPoolInfo, MyDataClaimInfo, MyDataDistributionRoundInfo,
-    MyDataListingSubPoolInfo, MyDataMerkleRootInfo, MyDataSnapshotAnchorInfo,
-    MyDataHasAccessResponse, MyDataSubPoolInfo, MyDataStatsResponse, PurchaseInfo, RevenueInfo,
-    SubscriptionInfo,
+    AccessAnalytics, AccessLogInfo, DailyRevenue, MyDataBasic, MyDataBroadPoolInfo,
+    MyDataClaimInfo, MyDataConfigInfo, MyDataDistributionRoundInfo, MyDataHasAccessResponse,
+    MyDataListingSubPoolInfo, MyDataMerkleRootInfo, MyDataSnapshotAnchorInfo, MyDataStatsResponse,
+    MyDataSubPoolInfo, PurchaseInfo, RevenueInfo, SubscriptionInfo,
 };
 
 pub(crate) async fn get_mydata_by_id(

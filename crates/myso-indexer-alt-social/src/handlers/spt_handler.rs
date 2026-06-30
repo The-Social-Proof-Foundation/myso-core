@@ -851,11 +851,9 @@ impl Handler for SptHandler {
                     };
                     let mut r = reservation.clone();
                     if r.organization_id.is_none() {
-                        r.organization_id = resolve_organization_id_for_derived_address(
-                            conn,
-                            &r.reserver_address,
-                        )
-                        .await?;
+                        r.organization_id =
+                            resolve_organization_id_for_derived_address(conn, &r.reserver_address)
+                                .await?;
                     }
                     r.pool_id = pool_id.clone();
                     let reserver_org = r.organization_id.clone();
@@ -907,8 +905,7 @@ impl Handler for SptHandler {
                     let creator_fee = reservation.creator_fee.unwrap_or(0);
                     let platform_fee = reservation.platform_fee.unwrap_or(0);
                     let treasury_fee = reservation.treasury_fee.unwrap_or(0);
-                    let fees_nonzero =
-                        creator_fee != 0 || platform_fee != 0 || treasury_fee != 0;
+                    let fees_nonzero = creator_fee != 0 || platform_fee != 0 || treasury_fee != 0;
                     let revenue_missing = if fees_nonzero {
                         !spt_revenue_exists_for_transaction(
                             conn,

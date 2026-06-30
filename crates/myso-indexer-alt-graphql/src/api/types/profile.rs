@@ -727,7 +727,13 @@ impl Profile {
             )
             .await
             .ok()
-            .map(|result| result.sub_agents.into_iter().map(SubAgent::from_row).collect())
+            .map(|result| {
+                result
+                    .sub_agents
+                    .into_iter()
+                    .map(SubAgent::from_row)
+                    .collect()
+            })
     }
 
     async fn sub_agents_total_count(
@@ -739,12 +745,7 @@ impl Profile {
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
         reader
-            .list_sub_agents(
-                &self.inner.owner_address,
-                active_only.unwrap_or(true),
-                1,
-                0,
-            )
+            .list_sub_agents(&self.inner.owner_address, active_only.unwrap_or(true), 1, 0)
             .await
             .ok()
             .map(|result| result.total_count)
@@ -784,11 +785,7 @@ impl Profile {
             })
     }
 
-    async fn sub_agent(
-        &self,
-        ctx: &Context<'_>,
-        derived_address: MySoAddress,
-    ) -> Option<SubAgent> {
+    async fn sub_agent(&self, ctx: &Context<'_>, derived_address: MySoAddress) -> Option<SubAgent> {
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;

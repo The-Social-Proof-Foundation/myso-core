@@ -214,9 +214,11 @@ mod tests {
             .collect();
 
         assert!(proof.verify_batch(&commitments, &range, dst).is_ok());
-        assert!(proof
-            .verify_batch(&commitments, &range, leak_dst(b"wrong-dst-21-byte-tag!!"))
-            .is_err());
+        assert!(
+            proof
+                .verify_batch(&commitments, &range, leak_dst(b"wrong-dst-21-byte-tag!!"))
+                .is_err()
+        );
     }
 
     #[test]

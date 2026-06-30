@@ -12,12 +12,12 @@ use myso_indexer_alt_social_reader::{
     DelegateRow, GovernanceRegistryRow, GovernanceStatsRow, PlatformRevenueSummaryRow, ProposalRow,
     SocialPgReader, ViewerSocialContext,
 };
-use myso_indexer_alt_social_schema::{PROPOSAL_TYPE_PLATFORM, PROPOSAL_TYPE_SPOT};
 use myso_indexer_alt_social_schema::models::{
     AnonymousVoteRow, AnonymousVotingStatsRow, AnonymousVotingTrendRow, CommunityVoteRow,
     DelegateRatingRow, DelegateVoteRow, GovernanceEventRow, NominatedDelegateRow,
     RewardDistributionRow, VoteDecryptionFailureRow,
 };
+use myso_indexer_alt_social_schema::{PROPOSAL_TYPE_PLATFORM, PROPOSAL_TYPE_SPOT};
 
 use crate::api::resolve_profile::resolve_profile_summary;
 use crate::api::scalars::json::Json;

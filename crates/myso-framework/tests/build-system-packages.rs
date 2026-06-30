@@ -3,12 +3,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::Result;
+use fs_extra::dir::CopyOptions;
 use move_binary_format::{CompiledModule, file_format::Visibility};
 use move_compiler::editions::{Edition, Flavor};
 use move_package_alt_compilation::{
     build_config::BuildConfig as MoveBuildConfig, lint_flag::LintFlag,
 };
-use fs_extra::dir::CopyOptions;
 use myso_move_build::BuildConfig;
 use myso_package_alt::mainnet_environment;
 use std::{collections::BTreeMap, env, fs, path::Path};
@@ -73,7 +73,14 @@ async fn build_system_packages() {
         }
     }
 
-    for pkg_name in ["bridge", "orderbook", "mydata", "myso-social", "messaging", "contra"] {
+    for pkg_name in [
+        "bridge",
+        "orderbook",
+        "mydata",
+        "myso-social",
+        "messaging",
+        "contra",
+    ] {
         let move_toml = packages_path.join(pkg_name).join("Move.toml");
         if move_toml.exists() {
             let content = fs::read_to_string(&move_toml).unwrap();
@@ -315,11 +322,8 @@ async fn build_packages_with_move_config(
     let myso_social_members =
         serialize_modules_to_file(myso_social, &compiled_packages_dir.join(myso_social_dir))
             .unwrap();
-    let messaging_members = serialize_modules_to_file(
-        messaging,
-        &compiled_packages_dir.join(messaging_dir),
-    )
-    .unwrap();
+    let messaging_members =
+        serialize_modules_to_file(messaging, &compiled_packages_dir.join(messaging_dir)).unwrap();
     let contra_members =
         serialize_modules_to_file(contra, &compiled_packages_dir.join(contra_dir)).unwrap();
 

@@ -84,11 +84,13 @@ pub(crate) async fn get_username_availability(
 
     let active_beneficiary =
         poc_username_beneficiary::get_by_username(conn, username, metrics).await?;
-    let beneficiary_provisioned = active_beneficiary
-        .as_ref()
-        .is_some_and(|row| row.status == myso_indexer_alt_social_schema::models::USERNAME_BENEFICIARY_STATUS_ACTIVE);
+    let beneficiary_provisioned = active_beneficiary.as_ref().is_some_and(|row| {
+        row.status == myso_indexer_alt_social_schema::models::USERNAME_BENEFICIARY_STATUS_ACTIVE
+    });
     let beneficiary_id = if beneficiary_provisioned {
-        active_beneficiary.as_ref().map(|row| row.beneficiary_id.clone())
+        active_beneficiary
+            .as_ref()
+            .map(|row| row.beneficiary_id.clone())
     } else {
         None
     };

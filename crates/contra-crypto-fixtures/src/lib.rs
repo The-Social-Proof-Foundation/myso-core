@@ -55,7 +55,10 @@ pub fn batch_range_proof_wire(
     let dst_label = leak_dst(dst);
     let mut prover_transcript = Transcript::new(dst_label);
 
-    let blindings: Vec<Scalar> = blindings.iter().map(|&b| dalek_scalar_from_u64(b)).collect();
+    let blindings: Vec<Scalar> = blindings
+        .iter()
+        .map(|&b| dalek_scalar_from_u64(b))
+        .collect();
 
     let (proof, _) = ExternalRangeProof::prove_multiple_with_rng(
         &bp_gens,
@@ -105,15 +108,17 @@ pub fn assert_wire_proof_valid(
                 .compress()
         })
         .collect();
-    assert!(external
-        .verify_multiple(
-            &bp_gens,
-            &pc_gens,
-            &mut verifier_transcript,
-            &compressed,
-            bits,
-        )
-        .is_ok());
+    assert!(
+        external
+            .verify_multiple(
+                &bp_gens,
+                &pc_gens,
+                &mut verifier_transcript,
+                &compressed,
+                bits,
+            )
+            .is_ok()
+    );
 }
 
 pub fn format_move_hex(bytes: &[u8]) -> String {

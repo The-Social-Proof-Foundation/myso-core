@@ -1,11 +1,10 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-//! Memory module pipeline: sub-agent registry and memory account linkage.
+//! Memory module pipeline: memory accounts, org stats, vaults, and migration audit events.
 //!
-//! `sub_agents` holds current registry state (upserted on register/update). `sub_agent_events`
-//! is an append-only audit hypertable written in the same commit batch — not a denormalized FK
-//! like `profiles.memory_account_id`. GraphQL reads `sub_agents` only.
+//! Sub-agent registry state (`sub_agents`) is indexed by [`SubAgentRegistryHandler`].
+//! This pipeline still writes migration audit rows to `sub_agent_events` when applicable.
 
 use std::sync::Arc;
 
@@ -21,12 +20,11 @@ use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
     NewAgentMemoryVault, NewAgenticOrganization, NewMemoryAccount, NewOrganizationEvent,
-    NewSubAgent, NewSubAgentEvent,
+    NewSubAgentEvent,
 };
 use myso_indexer_alt_social_schema::schema::{
-    memory_accounts, profiles, sub_agent_memory_vaults, sub_agent_organization_events,
-    sub_agent_organizations,
-    sub_agent_events, sub_agents,
+    memory_accounts, profiles, sub_agent_events, sub_agent_memory_vaults,
+    sub_agent_organization_events, sub_agent_organizations, sub_agents,
 };
 
 use super::common;
@@ -43,28 +41,6 @@ const MEMORY_MODULE: &str = "memory";
 #[derive(Debug, Clone)]
 pub enum MemoryRow {
     MemoryAccount(NewMemoryAccount),
-    SubAgentUpsert(NewSubAgent),
-    SubAgentDeactivate {
-        agent_object_id: String,
-        deactivated_at_ms: i64,
-        event_id: String,
-        transaction_id: String,
-    },
-    SubAgentRevoke {
-        agent_object_id: String,
-        revoked_at_ms: i64,
-        event_id: String,
-        transaction_id: String,
-    },
-    SubAgentBulkClear {
-        account_id: String,
-        new_principal_owner: String,
-        profile_id: String,
-        revoked_at_ms: i64,
-        revoked_count: i64,
-        event_id: String,
-        transaction_id: String,
-    },
     ProfileMemoryAccountLink {
         profile_id: String,
         memory_account_id: String,
@@ -115,46 +91,6 @@ impl MemoryRow {
     fn from_social(row: crate::handlers::SocialEventRow) -> Option<Self> {
         match row {
             crate::handlers::SocialEventRow::MemoryAccount(a) => Some(MemoryRow::MemoryAccount(a)),
-            crate::handlers::SocialEventRow::SubAgentUpsert(s) => Some(MemoryRow::SubAgentUpsert(s)),
-            crate::handlers::SocialEventRow::SubAgentDeactivate {
-                agent_object_id,
-                deactivated_at_ms,
-                event_id,
-                transaction_id,
-            } => Some(MemoryRow::SubAgentDeactivate {
-                agent_object_id,
-                deactivated_at_ms,
-                event_id,
-                transaction_id,
-            }),
-            crate::handlers::SocialEventRow::SubAgentRevoke {
-                agent_object_id,
-                revoked_at_ms,
-                event_id,
-                transaction_id,
-            } => Some(MemoryRow::SubAgentRevoke {
-                agent_object_id,
-                revoked_at_ms,
-                event_id,
-                transaction_id,
-            }),
-            crate::handlers::SocialEventRow::SubAgentBulkClear {
-                account_id,
-                new_principal_owner,
-                profile_id,
-                revoked_at_ms,
-                revoked_count,
-                event_id,
-                transaction_id,
-            } => Some(MemoryRow::SubAgentBulkClear {
-                account_id,
-                new_principal_owner,
-                profile_id,
-                revoked_at_ms,
-                revoked_count,
-                event_id,
-                transaction_id,
-            }),
             crate::handlers::SocialEventRow::ProfileMemoryAccountLink {
                 profile_id,
                 memory_account_id,
@@ -282,8 +218,7 @@ impl Processor for MemoryHandler {
                             continue;
                         }
                     };
-                if let Some(rows) =
-                    memory::handle_memory_event(event_name, &event_data, &event_id)
+                if let Some(rows) = memory::handle_memory_event(event_name, &event_data, &event_id)
                 {
                     for row in rows {
                         if let Some(r) = MemoryRow::from_social(row) {
@@ -327,135 +262,15 @@ impl Handler for MemoryHandler {
                         .execute(conn)
                         .await?;
                 }
-                MemoryRow::SubAgentUpsert(s) => {
-                    let organization_id = s.organization_id.clone();
-                    let label = s.label.clone();
-                    let identity_class = s.identity_class;
-                    let role_tags = s.role_tags;
-                    let capabilities = s.capabilities;
-                    let delegatable_caps = s.delegatable_caps;
-                    let register_scope = s.register_scope;
-                    let approval_required_caps = s.approval_required_caps;
-                    let max_action_spend = s.max_action_spend;
-                    let platform_scope = s.platform_scope.clone();
-                    let parent_object_id = s.parent_object_id.clone();
-                    let depth = s.depth;
-                    let registered_by = s.registered_by.clone();
-                    let expires_at_ms = s.expires_at_ms;
-                    let active = s.active;
-                    let updated_at_ms = s.updated_at_ms;
-                    let event_id = s.event_id.clone();
-                    let transaction_id = s.transaction_id.clone();
-                    let time = s.time;
-                    total += diesel::insert_into(sub_agents::table)
-                        .values(s)
-                        .on_conflict(sub_agents::agent_object_id)
-                        .do_update()
-                        .set((
-                            sub_agents::derived_address.eq(s.derived_address.clone()),
-                            sub_agents::account_id.eq(s.account_id.clone()),
-                            sub_agents::organization_id.eq(organization_id.clone()),
-                            sub_agents::label.eq(label),
-                            sub_agents::identity_class.eq(identity_class),
-                            sub_agents::role_tags.eq(role_tags),
-                            sub_agents::capabilities.eq(capabilities),
-                            sub_agents::delegatable_caps.eq(delegatable_caps),
-                            sub_agents::register_scope.eq(register_scope),
-                            sub_agents::approval_required_caps.eq(approval_required_caps),
-                            sub_agents::max_action_spend.eq(max_action_spend),
-                            sub_agents::platform_scope.eq(platform_scope),
-                            sub_agents::parent_object_id.eq(parent_object_id),
-                            sub_agents::depth.eq(depth),
-                            sub_agents::registered_by.eq(registered_by),
-                            sub_agents::expires_at_ms.eq(expires_at_ms),
-                            sub_agents::active.eq(active),
-                            sub_agents::updated_at_ms.eq(updated_at_ms),
-                            sub_agents::event_id.eq(event_id),
-                            sub_agents::transaction_id.eq(transaction_id),
-                            sub_agents::time.eq(time),
-                            sub_agents::deactivated_at_ms.eq(None::<i64>),
-                            sub_agents::revoked_at_ms.eq(None::<i64>),
-                        ))
-                        .execute(conn)
-                        .await?;
-                }
-                MemoryRow::SubAgentDeactivate {
-                    agent_object_id,
-                    deactivated_at_ms,
-                    event_id,
-                    transaction_id,
-                } => {
-                    total += diesel::update(
-                        sub_agents::table.filter(sub_agents::agent_object_id.eq(agent_object_id)),
-                    )
-                    .set((
-                        sub_agents::active.eq(false),
-                        sub_agents::deactivated_at_ms.eq(*deactivated_at_ms),
-                        sub_agents::updated_at_ms.eq(*deactivated_at_ms),
-                        sub_agents::event_id.eq(event_id),
-                        sub_agents::transaction_id.eq(transaction_id),
-                    ))
-                    .execute(conn)
-                    .await?;
-                }
-                MemoryRow::SubAgentRevoke {
-                    agent_object_id,
-                    revoked_at_ms,
-                    event_id,
-                    transaction_id,
-                } => {
-                    total += diesel::update(
-                        sub_agents::table.filter(sub_agents::agent_object_id.eq(agent_object_id)),
-                    )
-                    .set((
-                        sub_agents::active.eq(false),
-                        sub_agents::revoked_at_ms.eq(*revoked_at_ms),
-                        sub_agents::updated_at_ms.eq(*revoked_at_ms),
-                        sub_agents::event_id.eq(event_id),
-                        sub_agents::transaction_id.eq(transaction_id),
-                    ))
-                    .execute(conn)
-                    .await?;
-                }
-                MemoryRow::SubAgentBulkClear {
-                    account_id,
-                    new_principal_owner,
-                    revoked_at_ms,
-                    event_id,
-                    transaction_id,
-                    ..
-                } => {
-                    total += diesel::update(
-                        sub_agents::table
-                            .filter(sub_agents::account_id.eq(account_id))
-                            .filter(sub_agents::active.eq(true)),
-                    )
-                    .set((
-                        sub_agents::active.eq(false),
-                        sub_agents::revoked_at_ms.eq(*revoked_at_ms),
-                        sub_agents::updated_at_ms.eq(*revoked_at_ms),
-                        sub_agents::event_id.eq(event_id),
-                        sub_agents::transaction_id.eq(transaction_id),
-                    ))
-                    .execute(conn)
-                    .await?;
-                    total += diesel::update(
-                        memory_accounts::table.filter(memory_accounts::account_id.eq(account_id)),
-                    )
-                    .set(memory_accounts::principal_owner.eq(new_principal_owner))
-                    .execute(conn)
-                    .await?;
-                }
                 MemoryRow::ProfileMemoryAccountLink {
                     profile_id,
                     memory_account_id,
                 } => {
-                    let updated = diesel::update(
-                        profiles::table.filter(profiles::profile_id.eq(profile_id)),
-                    )
-                    .set(profiles::memory_account_id.eq(memory_account_id))
-                    .execute(conn)
-                    .await?;
+                    let updated =
+                        diesel::update(profiles::table.filter(profiles::profile_id.eq(profile_id)))
+                            .set(profiles::memory_account_id.eq(memory_account_id))
+                            .execute(conn)
+                            .await?;
                     if updated == 0 {
                         tracing::debug!(
                             profile_id = %profile_id,

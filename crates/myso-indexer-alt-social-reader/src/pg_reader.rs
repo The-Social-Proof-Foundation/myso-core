@@ -33,27 +33,24 @@ use crate::insurance::{
     list_insurance_user_exposure_totals_for_vault, list_insurance_vault_transactions,
     list_insurance_vaults,
 };
+use crate::memory::SubAgentListResult;
 use crate::metrics::DbReaderMetrics;
-use crate::memory::{SubAgentListResult};
-use myso_indexer_alt_social_schema::models::{AgenticOrganizationRow, MemoryAccountRow, SubAgentRow};
+use crate::mydata::{
+    check_mydata_has_access, get_mydata_access_analytics, get_mydata_access_logs,
+    get_mydata_config, get_mydata_distribution_round, get_mydata_merkle_root, get_mydata_purchases,
+    get_mydata_record, get_mydata_revenue, get_mydata_revenue_timeline, get_mydata_snapshot_anchor,
+    get_mydata_stats, get_mydata_subscriptions, get_popular_mydata, list_mydata,
+    list_mydata_broad_pools, list_mydata_claims_for_snapshot, list_mydata_distribution_rounds,
+    list_mydata_listings_for_sub_pool, list_mydata_purchases_by_buyer,
+    list_mydata_records_by_owner, list_mydata_snapshot_anchors,
+    list_mydata_sub_pools_for_broad_pool, list_mydata_sub_pools_for_listing,
+};
 use crate::org_leaderboard::{
-    OrganizationLeaderboardResult, OrganizationLeaderboardSort, organization_categories,
-    org_type_from_slug, OrganizationCategoryInfo,
+    OrganizationCategoryInfo, OrganizationLeaderboardResult, OrganizationLeaderboardSort,
+    org_type_from_slug, organization_categories,
 };
 use crate::org_stats::{OrganizationStatistics, OrganizationStatsWindow};
 use crate::organization::AgenticOrganizationListResult;
-use crate::mydata::{
-    check_mydata_has_access, get_mydata_access_analytics, get_mydata_access_logs, get_mydata_config,
-    get_mydata_purchases,
-    get_mydata_distribution_round, get_mydata_merkle_root,
-    get_mydata_snapshot_anchor, get_mydata_record, get_mydata_revenue,
-    get_mydata_revenue_timeline, get_mydata_stats, get_mydata_subscriptions, get_popular_mydata,
-    list_mydata, list_mydata_purchases_by_buyer, list_mydata_broad_pools,
-    list_mydata_claims_for_snapshot, list_mydata_distribution_rounds,
-    list_mydata_listings_for_sub_pool, list_mydata_snapshot_anchors,
-    list_mydata_sub_pools_for_broad_pool, list_mydata_sub_pools_for_listing,
-    list_mydata_records_by_owner,
-};
 use crate::platform::PlatformRow;
 use crate::platform::{
     get_platform_blocked_profiles, get_platform_members, get_platform_moderators,
@@ -100,6 +97,9 @@ use crate::spt::{
     get_spt_reservation_volume_history, get_spt_transactions, list_spt_pools,
 };
 use crate::vesting::{get_vesting_leaderboard, get_vesting_wallet, list_vesting_wallets};
+use myso_indexer_alt_social_schema::models::{
+    AgenticOrganizationRow, MemoryAccountRow, SubAgentRow,
+};
 
 pub use myso_indexer_alt_social_schema::models::Profile;
 
@@ -455,12 +455,8 @@ impl SocialPgReader {
         organization_id: &str,
     ) -> anyhow::Result<Option<AgenticOrganizationRow>> {
         let mut conn = self.connect().await?;
-        crate::organization::get_agentic_organization(
-            &mut conn,
-            organization_id,
-            &self.metrics,
-        )
-        .await
+        crate::organization::get_agentic_organization(&mut conn, organization_id, &self.metrics)
+            .await
     }
 
     pub async fn list_agentic_organizations_by_owner(
@@ -1719,14 +1715,8 @@ impl SocialPgReader {
         offset: i64,
     ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::MyDataSubPoolRow>> {
         let mut conn = self.connect().await?;
-        list_mydata_sub_pools_for_broad_pool(
-            &mut conn,
-            broad_pool_id,
-            limit,
-            offset,
-            &self.metrics,
-        )
-        .await
+        list_mydata_sub_pools_for_broad_pool(&mut conn, broad_pool_id, limit, offset, &self.metrics)
+            .await
     }
 
     /// Sub-pools a listing (MyData `ip_id`) is assigned to.
@@ -1737,8 +1727,7 @@ impl SocialPgReader {
         offset: i64,
     ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::MyDataSubPoolRow>> {
         let mut conn = self.connect().await?;
-        list_mydata_sub_pools_for_listing(&mut conn, listing_id, limit, offset, &self.metrics)
-            .await
+        list_mydata_sub_pools_for_listing(&mut conn, listing_id, limit, offset, &self.metrics).await
     }
 
     /// Listings in a sub-pool (junction rows).
@@ -1747,17 +1736,10 @@ impl SocialPgReader {
         sub_pool_id: &str,
         limit: i64,
         offset: i64,
-    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::MyDataListingSubPoolRow>>
-    {
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::MyDataListingSubPoolRow>> {
         let mut conn = self.connect().await?;
-        list_mydata_listings_for_sub_pool(
-            &mut conn,
-            sub_pool_id,
-            limit,
-            offset,
-            &self.metrics,
-        )
-        .await
+        list_mydata_listings_for_sub_pool(&mut conn, sub_pool_id, limit, offset, &self.metrics)
+            .await
     }
 
     /// Latest snapshot anchor row for a snapshot ID (includes manifest hash and payment reference when present).
@@ -1775,8 +1757,7 @@ impl SocialPgReader {
         &self,
         limit: i64,
         offset: i64,
-    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::MyDataSnapshotAnchorRow>>
-    {
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::MyDataSnapshotAnchorRow>> {
         let mut conn = self.connect().await?;
         list_mydata_snapshot_anchors(&mut conn, limit, offset, &self.metrics).await
     }
@@ -1785,9 +1766,8 @@ impl SocialPgReader {
     pub async fn get_mydata_distribution_round(
         &self,
         snapshot_id: &str,
-    ) -> anyhow::Result<
-        Option<myso_indexer_alt_social_schema::models::MyDataDistributionRoundRow>,
-    > {
+    ) -> anyhow::Result<Option<myso_indexer_alt_social_schema::models::MyDataDistributionRoundRow>>
+    {
         let mut conn = self.connect().await?;
         get_mydata_distribution_round(&mut conn, snapshot_id, &self.metrics).await
     }
@@ -1807,8 +1787,7 @@ impl SocialPgReader {
     pub async fn get_mydata_merkle_root(
         &self,
         snapshot_id: &str,
-    ) -> anyhow::Result<Option<myso_indexer_alt_social_schema::models::MyDataMerkleRootRow>>
-    {
+    ) -> anyhow::Result<Option<myso_indexer_alt_social_schema::models::MyDataMerkleRootRow>> {
         let mut conn = self.connect().await?;
         get_mydata_merkle_root(&mut conn, snapshot_id, &self.metrics).await
     }
@@ -1821,8 +1800,7 @@ impl SocialPgReader {
         offset: i64,
     ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::MyDataClaimRow>> {
         let mut conn = self.connect().await?;
-        list_mydata_claims_for_snapshot(&mut conn, snapshot_id, limit, offset, &self.metrics)
-            .await
+        list_mydata_claims_for_snapshot(&mut conn, snapshot_id, limit, offset, &self.metrics).await
     }
 
     /// Get insurance policy by ID.

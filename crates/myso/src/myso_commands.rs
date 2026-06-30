@@ -1431,7 +1431,8 @@ async fn start(
 
     if let Some(input) = with_graphql {
         let address = ensure_bindable_socket_addr(
-            parse_host_port(input, DEFAULT_GRAPHQL_PORT).context("Invalid graphql host and port")?,
+            parse_host_port(input, DEFAULT_GRAPHQL_PORT)
+                .context("Invalid graphql host and port")?,
             "GraphQL",
         );
 

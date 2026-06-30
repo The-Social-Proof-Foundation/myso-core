@@ -207,7 +207,9 @@ pub async fn get_poc_username_beneficiary_by_username(
         .get_poc_username_beneficiary_by_username(&username)
         .await?
         .ok_or_else(|| {
-            SocialError::not_found(format!("PoC username beneficiary for username '{username}'"))
+            SocialError::not_found(format!(
+                "PoC username beneficiary for username '{username}'"
+            ))
         })?;
     Ok(Json(row))
 }

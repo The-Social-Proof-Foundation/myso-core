@@ -51,7 +51,9 @@ pub fn chain_timestamp_ms(event_ms: Option<i64>, checkpoint_timestamp_ms: u64) -
 }
 
 pub fn chain_time_from_ms(ms: i64) -> DateTime<Utc> {
-    Utc.timestamp_millis_opt(ms).single().unwrap_or_else(Utc::now)
+    Utc.timestamp_millis_opt(ms)
+        .single()
+        .unwrap_or_else(Utc::now)
 }
 
 pub fn json_field_as_i64(v: Option<&serde_json::Value>) -> Option<i64> {
@@ -71,6 +73,5 @@ pub fn is_social_package_event(package_id: &ObjectID, type_address: &AccountAddr
 /// Returns true if the event belongs to the messaging package.
 pub fn is_messaging_package_event(package_id: &ObjectID, type_address: &AccountAddress) -> bool {
     use std::ops::Deref;
-    *package_id == MYSO_MESSAGING_PACKAGE_ID
-        || *type_address == *MYSO_MESSAGING_PACKAGE_ID.deref()
+    *package_id == MYSO_MESSAGING_PACKAGE_ID || *type_address == *MYSO_MESSAGING_PACKAGE_ID.deref()
 }

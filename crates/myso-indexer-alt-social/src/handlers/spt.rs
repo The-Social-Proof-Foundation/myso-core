@@ -16,7 +16,10 @@ fn transaction_id_from_event_id(event_id: &str) -> String {
 }
 
 /// Hypertable `time` for reservation ledger rows from on-chain ms or checkpoint fallback.
-fn reservation_row_time(chain_event_ms: i64, checkpoint_ts_ms: u64) -> chrono::DateTime<chrono::Utc> {
+fn reservation_row_time(
+    chain_event_ms: i64,
+    checkpoint_ts_ms: u64,
+) -> chrono::DateTime<chrono::Utc> {
     common::chain_time_from_ms(common::chain_timestamp_ms(
         Some(chain_event_ms),
         checkpoint_ts_ms,

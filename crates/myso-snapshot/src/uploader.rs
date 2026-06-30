@@ -140,7 +140,10 @@ impl StateSnapshotUploader {
                 )
                 .await?;
                 let db = Arc::new(AuthorityPerpetualTables::open(
-                    &path_to_filesystem(self.db_checkpoint_path.clone(), &db_path.clone().join("store"))?,
+                    &path_to_filesystem(
+                        self.db_checkpoint_path.clone(),
+                        &db_path.clone().join("store"),
+                    )?,
                     None,
                     None,
                 ));

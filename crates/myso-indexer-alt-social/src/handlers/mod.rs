@@ -16,11 +16,11 @@ mod insurance;
 mod insurance_handler;
 mod memory;
 mod memory_handler;
-mod organization_stats;
-pub mod organization_stats_rollup;
 mod mydata;
 mod mydata_handler;
 mod mydata_object;
+mod organization_stats;
+pub mod organization_stats_rollup;
 mod paid_messaging_policy_handler;
 mod platform;
 mod platform_handler;
@@ -36,6 +36,7 @@ mod spot;
 mod spot_handler;
 mod spt;
 mod spt_handler;
+mod sub_agent_registry_handler;
 mod subscription;
 mod subscription_handler;
 mod upgrade;
@@ -43,31 +44,31 @@ mod upgrade_handler;
 
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
-    GovernanceRegistryPanelBoundaryUpdate, GovernanceRegistryUpdate, NewAnonymousVote,
-    NewBlockedEvent, NewBlockedProfile, NewComment, NewCommunityVote, NewDelegate,
-    NewDelegateRating, NewDelegateVote, NewDeletionEvent, NewEcosystemTreasury, NewGovernanceEvent,
-    NewGovernanceRegistry, NewInsuranceCoverageRoute, NewInsuranceEventLog,
-    NewInsuranceMarketExposure, NewInsurancePolicy, NewInsurancePolicyEvent, NewInsuranceRouteFill,
-    NewInsuranceUserExposure, NewInsuranceVault, NewInsuranceVaultTransaction, NewModerationEvent,
-    NewMyDataAccessLog, NewMyDataConfig, NewMyDataData, NewMyDataPurchase, NewMyDataBroadPool,
-    NewMyDataClaim, NewMyDataDistributionRound, NewMyDataListingSubPool,
-    NewMyDataMerkleRoot, NewMyDataSnapshotAnchor, NewMyDataSubPool,
-    NewMyDataRegistry, NewMyDataRevenue, NewMyDataSubscription, NewMemoryAccount, NewNominatedDelegate,
-    NewObjectMigratedEvent, NewPlatform, NewPlatformBlockedProfile, NewPlatformEvent,
-    NewPlatformMembership, NewPlatformModerator, NewPlatformModeratorPermission,
-    NewPlatformTokenAirdrop, NewPocAnalysisResult,
-    NewPocBadge, NewPocConfiguration, NewPocCreatorIdentityLink, NewPocDispute, NewPocDisputeVote,
-    NewPocRevenueRedirection, NewPocUsernameBeneficiary, NewPocUsernameBeneficiaryEvent,
-    NewPost, NewPostTransfer, NewProfile, NewProfileBadge, NewProfileEvent, NewProfileOffer,
+    GovernanceRegistryPanelBoundaryUpdate, GovernanceRegistryUpdate, NewAgentMemoryVault,
+    NewAgenticOrganization, NewAnonymousVote, NewBlockedEvent, NewBlockedProfile, NewComment,
+    NewCommunityVote, NewDelegate, NewDelegateRating, NewDelegateVote, NewDeletionEvent,
+    NewEcosystemTreasury, NewGovernanceEvent, NewGovernanceRegistry, NewInsuranceCoverageRoute,
+    NewInsuranceEventLog, NewInsuranceMarketExposure, NewInsurancePolicy, NewInsurancePolicyEvent,
+    NewInsuranceRouteFill, NewInsuranceUserExposure, NewInsuranceVault,
+    NewInsuranceVaultTransaction, NewMemoryAccount, NewModerationEvent, NewMyDataAccessLog,
+    NewMyDataBroadPool, NewMyDataClaim, NewMyDataConfig, NewMyDataData, NewMyDataDistributionRound,
+    NewMyDataListingSubPool, NewMyDataMerkleRoot, NewMyDataPurchase, NewMyDataRegistry,
+    NewMyDataRevenue, NewMyDataSnapshotAnchor, NewMyDataSubPool, NewMyDataSubscription,
+    NewNominatedDelegate, NewObjectMigratedEvent, NewOrganizationEvent, NewPlatform,
+    NewPlatformBlockedProfile, NewPlatformEvent, NewPlatformMembership, NewPlatformModerator,
+    NewPlatformModeratorPermission, NewPlatformTokenAirdrop, NewPocAnalysisResult, NewPocBadge,
+    NewPocConfiguration, NewPocCreatorIdentityLink, NewPocDispute, NewPocDisputeVote,
+    NewPocRevenueRedirection, NewPocUsernameBeneficiary, NewPocUsernameBeneficiaryEvent, NewPost,
+    NewPostTransfer, NewProfile, NewProfileBadge, NewProfileEvent, NewProfileOffer,
     NewProfileSaleFee, NewProfileSubscription, NewProfileSubscriptionService, NewProposal,
-    NewReaction, NewReport, NewRepost, NewRewardDistribution,
-    NewSocialGraphEvent, NewSocialGraphRelationship, NewSocialProofTokensConfig,
-    NewSocialProofTokensEvent, NewSpotBet, NewSpotBetWithdrawal, NewSpotConfig, NewSpotEventLog,
-    NewSpotPayout, NewSpotRecord, NewSpotRefund, NewSpotResolution, NewSptExchangeConfig,
-    NewSptHolding, NewSptPool, NewSptPriceHistory, NewSptReservation, NewSptReservationPool,
-    NewSptTransaction, NewSubAgent, NewSubAgentEvent, NewAgentMemoryVault, NewAgenticOrganization,
-    NewOrganizationEvent, NewSubscriptionEvent, NewTip, NewUnifiedRevenue, NewUpgradeEvent,
-    NewUsernameRegistry, NewVestingEvent, NewVestingWallet, NewVoteDecryptionFailure, ProposalUpdateSet,
+    NewReaction, NewReport, NewRepost, NewRewardDistribution, NewSocialGraphEvent,
+    NewSocialGraphRelationship, NewSocialProofTokensConfig, NewSocialProofTokensEvent, NewSpotBet,
+    NewSpotBetWithdrawal, NewSpotConfig, NewSpotEventLog, NewSpotPayout, NewSpotRecord,
+    NewSpotRefund, NewSpotResolution, NewSptExchangeConfig, NewSptHolding, NewSptPool,
+    NewSptPriceHistory, NewSptReservation, NewSptReservationPool, NewSptTransaction,
+    NewSubAgentEvent, NewSubscriptionEvent, NewTip, NewUnifiedRevenue, NewUpgradeEvent,
+    NewUsernameRegistry, NewVestingEvent, NewVestingWallet, NewVoteDecryptionFailure,
+    ProposalUpdateSet,
 };
 
 pub use blocking_handler::BlockingHandler;
@@ -82,6 +83,7 @@ pub use profiles_handler::ProfilesHandler;
 pub use social_graph_handler::SocialGraphHandler;
 pub use spot_handler::SpotHandler;
 pub use spt_handler::SptHandler;
+pub use sub_agent_registry_handler::SubAgentRegistryHandler;
 pub use subscription_handler::SubscriptionHandler;
 pub use upgrade_handler::UpgradeHandler;
 
@@ -700,28 +702,6 @@ pub enum SocialEventRow {
         transaction_id: String,
     },
     MemoryAccount(NewMemoryAccount),
-    SubAgentUpsert(NewSubAgent),
-    SubAgentDeactivate {
-        agent_object_id: String,
-        deactivated_at_ms: i64,
-        event_id: String,
-        transaction_id: String,
-    },
-    SubAgentRevoke {
-        agent_object_id: String,
-        revoked_at_ms: i64,
-        event_id: String,
-        transaction_id: String,
-    },
-    SubAgentBulkClear {
-        account_id: String,
-        new_principal_owner: String,
-        profile_id: String,
-        revoked_at_ms: i64,
-        revoked_count: i64,
-        event_id: String,
-        transaction_id: String,
-    },
     ProfileMemoryAccountLink {
         profile_id: String,
         memory_account_id: String,

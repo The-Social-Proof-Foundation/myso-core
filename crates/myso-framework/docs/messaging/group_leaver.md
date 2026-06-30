@@ -28,6 +28,8 @@ All public entry points are in the <code><a href="../messaging/messaging.md#mess
     -  [Returns](#@Returns_3)
 -  [Function `leave`](#messaging_group_leaver_leave)
     -  [Aborts](#@Aborts_4)
+-  [Function `revoke_permissions_admin`](#messaging_group_leaver_revoke_permissions_admin)
+-  [Function `revoke_extension_permissions_admin`](#messaging_group_leaver_revoke_extension_permissions_admin)
 
 
 <pre><code><b>use</b> <a href="../myso/accumulator.md#myso_accumulator">myso::accumulator</a>;
@@ -240,6 +242,64 @@ Instantiated as <code><a href="../messaging/group_leaver.md#messaging_group_leav
     ctx: &TxContext,
 ) {
     group.object_remove_member&lt;T&gt;(&self.id, ctx.sender());
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="messaging_group_leaver_revoke_permissions_admin"></a>
+
+## Function `revoke_permissions_admin`
+
+Revokes <code>PermissionsAdmin</code> from <code>member</code> using this actor's admin capability.
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../messaging/group_leaver.md#messaging_group_leaver_revoke_permissions_admin">revoke_permissions_admin</a>&lt;T: drop&gt;(self: &<a href="../messaging/group_leaver.md#messaging_group_leaver_GroupLeaver">messaging::group_leaver::GroupLeaver</a>, group: &<b>mut</b> <a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;T&gt;, member: <b>address</b>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../messaging/group_leaver.md#messaging_group_leaver_revoke_permissions_admin">revoke_permissions_admin</a>&lt;T: drop&gt;(
+    self: &<a href="../messaging/group_leaver.md#messaging_group_leaver_GroupLeaver">GroupLeaver</a>,
+    group: &<b>mut</b> PermissionedGroup&lt;T&gt;,
+    member: <b>address</b>,
+) {
+    group.object_revoke_permission&lt;T, PermissionsAdmin&gt;(&self.id, member);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="messaging_group_leaver_revoke_extension_permissions_admin"></a>
+
+## Function `revoke_extension_permissions_admin`
+
+Revokes <code>ExtensionPermissionsAdmin</code> from <code>member</code> using this actor's admin capability.
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../messaging/group_leaver.md#messaging_group_leaver_revoke_extension_permissions_admin">revoke_extension_permissions_admin</a>&lt;T: drop&gt;(self: &<a href="../messaging/group_leaver.md#messaging_group_leaver_GroupLeaver">messaging::group_leaver::GroupLeaver</a>, group: &<b>mut</b> <a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;T&gt;, member: <b>address</b>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../messaging/group_leaver.md#messaging_group_leaver_revoke_extension_permissions_admin">revoke_extension_permissions_admin</a>&lt;T: drop&gt;(
+    self: &<a href="../messaging/group_leaver.md#messaging_group_leaver_GroupLeaver">GroupLeaver</a>,
+    group: &<b>mut</b> PermissionedGroup&lt;T&gt;,
+    member: <b>address</b>,
+) {
+    group.object_revoke_permission&lt;T, ExtensionPermissionsAdmin&gt;(&self.id, member);
 }
 </code></pre>
 

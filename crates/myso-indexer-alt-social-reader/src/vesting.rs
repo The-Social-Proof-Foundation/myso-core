@@ -8,7 +8,7 @@ use diesel::QueryDsl;
 use diesel::QueryableByName;
 use diesel::sql_types::{BigInt, Text};
 use diesel_async::RunQueryDsl;
-use myso_indexer_alt_social_schema::models::{parse_pieces, VestingPiece};
+use myso_indexer_alt_social_schema::models::{VestingPiece, parse_pieces};
 use myso_indexer_alt_social_schema::schema::vesting_wallets;
 
 use myso_pg_db::Connection;

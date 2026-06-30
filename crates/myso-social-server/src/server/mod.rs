@@ -407,18 +407,36 @@ fn make_router(state: Arc<AppState>) -> Router {
             get(check_username_availability),
         )
         .route("/profiles/:address/posts", get(get_profile_posts))
-        .route("/profiles/:address/sub-agents", get(list_profile_sub_agents))
-        .route("/profiles/:address/memory-account", get(get_profile_memory_account))
+        .route(
+            "/profiles/:address/sub-agents",
+            get(list_profile_sub_agents),
+        )
+        .route(
+            "/profiles/:address/memory-account",
+            get(get_profile_memory_account),
+        )
         .route("/sub-agents/:derivedAddress", get(get_sub_agent))
-        .route("/sub-agents/by-object/:agentObjectId", get(get_sub_agent_by_object_id))
+        .route(
+            "/sub-agents/by-object/:agentObjectId",
+            get(get_sub_agent_by_object_id),
+        )
         .route(
             "/sub-agents/:agentObjectId/children",
             get(list_sub_agent_children),
         )
-        .route("/organizations/categories", get(list_organization_categories))
-        .route("/organizations/leaderboard", get(get_organization_leaderboard))
+        .route(
+            "/organizations/categories",
+            get(list_organization_categories),
+        )
+        .route(
+            "/organizations/leaderboard",
+            get(get_organization_leaderboard),
+        )
         .route("/organizations/:id", get(get_agentic_organization))
-        .route("/organizations/:id/statistics", get(get_organization_statistics))
+        .route(
+            "/organizations/:id/statistics",
+            get(get_organization_statistics),
+        )
         .route(
             "/profiles/:address/organizations",
             get(list_profile_organizations),

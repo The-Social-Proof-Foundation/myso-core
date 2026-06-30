@@ -213,10 +213,7 @@ pub async fn get_wallet_messaging_policy(
         .get_wallet_messaging_policy(&address)
         .await?
         .ok_or_else(|| {
-            SocialError::not_found(format!(
-                "No messaging policy for wallet '{}'",
-                address
-            ))
+            SocialError::not_found(format!("No messaging policy for wallet '{}'", address))
         })?;
     Ok(Json(policy))
 }

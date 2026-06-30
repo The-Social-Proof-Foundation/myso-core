@@ -1,9 +1,9 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::api::scalars::date_time::DateTime as GqlDateTime;
 use async_graphql::{Context, Enum, Object, SimpleObject};
 use chrono::Utc;
-use crate::api::scalars::date_time::DateTime as GqlDateTime;
 use myso_indexer_alt_social_reader::{
     OrganizationCategoryInfo, OrganizationLeaderboardEntry as LeaderboardEntryRow,
     OrganizationLeaderboardResult, OrganizationLeaderboardSort, OrganizationStatistics,

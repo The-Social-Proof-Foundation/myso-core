@@ -4,8 +4,9 @@
 use myso_indexer_alt_social_reader::{
     get_agentic_organization_for_db, get_organization_leaderboard_for_db,
     get_organization_statistics_for_db, list_agentic_organizations_by_owner_for_db,
-    OrganizationCategoryInfo, OrganizationLeaderboardResult, OrganizationLeaderboardSort,
-    OrganizationStatistics, OrganizationStatsWindow, organization_categories, org_type_from_slug,
+    org_type_from_slug, organization_categories, OrganizationCategoryInfo,
+    OrganizationLeaderboardResult, OrganizationLeaderboardSort, OrganizationStatistics,
+    OrganizationStatsWindow,
 };
 use myso_indexer_alt_social_schema::models::AgenticOrganizationRow;
 use myso_pg_db::Db;

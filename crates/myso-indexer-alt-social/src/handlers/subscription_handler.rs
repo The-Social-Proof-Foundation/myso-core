@@ -237,8 +237,7 @@ impl Processor for SubscriptionHandler {
                     &event_data,
                     &event_id,
                     checkpoint_timestamp_ms,
-                )
-                {
+                ) {
                     for row in rows {
                         if let Some(r) = SubscriptionRow::from_social(row) {
                             values.push(r);

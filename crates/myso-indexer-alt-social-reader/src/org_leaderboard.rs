@@ -5,7 +5,7 @@ use diesel::QueryableByName;
 use diesel::sql_types::{BigInt, Int2, Nullable, Text};
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::{
-    AgenticOrganizationRow, AUM_LEADERBOARD_MIN_ATTRIBUTION_COVERAGE_BPS,
+    AUM_LEADERBOARD_MIN_ATTRIBUTION_COVERAGE_BPS, AgenticOrganizationRow,
     SPOT_ACCURACY_LEADERBOARD_MIN_RESOLVED,
 };
 use serde::{Deserialize, Serialize};
@@ -120,9 +120,7 @@ fn eligibility_bind(sort: OrganizationLeaderboardSort) -> Option<i64> {
 fn all_time_order_column(sort: OrganizationLeaderboardSort) -> &'static str {
     match sort {
         OrganizationLeaderboardSort::HighestNetCashFlow => "s.net_cash_flow_myso",
-        OrganizationLeaderboardSort::FastestGrowing => {
-            "COALESCE(d.growth_score, 0)"
-        }
+        OrganizationLeaderboardSort::FastestGrowing => "COALESCE(d.growth_score, 0)",
         OrganizationLeaderboardSort::HighestAccuracy => "COALESCE(s.spot_accuracy_bps, 0)",
         OrganizationLeaderboardSort::MostActive => "s.total_actions_executed",
         OrganizationLeaderboardSort::HighestRevenue => "s.total_revenue_myso",
@@ -209,7 +207,10 @@ pub async fn get_organization_leaderboard(
         )
     };
 
-    let total = match (window == OrganizationStatsWindow::All, eligibility_bind(sort)) {
+    let total = match (
+        window == OrganizationStatsWindow::All,
+        eligibility_bind(sort),
+    ) {
         (true, Some(bind)) => {
             diesel::sql_query(&count_sql)
                 .bind::<Int2, _>(org_type)
@@ -410,7 +411,11 @@ pub fn organization_categories() -> Vec<OrganizationCategoryInfo> {
     ]
 }
 
-fn category(value: i16, slug: &'static str, display_name: &'static str) -> OrganizationCategoryInfo {
+fn category(
+    value: i16,
+    slug: &'static str,
+    display_name: &'static str,
+) -> OrganizationCategoryInfo {
     OrganizationCategoryInfo {
         value,
         slug: slug.to_string(),

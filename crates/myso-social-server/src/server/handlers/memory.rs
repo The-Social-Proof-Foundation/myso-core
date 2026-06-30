@@ -61,9 +61,7 @@ pub async fn get_sub_agent(
         .reader
         .get_sub_agent(&derived_address)
         .await?
-        .ok_or_else(|| {
-            SocialError::not_found(format!("Sub-agent '{}'", derived_address))
-        })?;
+        .ok_or_else(|| SocialError::not_found(format!("Sub-agent '{}'", derived_address)))?;
     Ok(Json(agent))
 }
 
@@ -75,9 +73,7 @@ pub async fn get_sub_agent_by_object_id(
         .reader
         .get_sub_agent_by_object_id(&agent_object_id)
         .await?
-        .ok_or_else(|| {
-            SocialError::not_found(format!("Sub-agent object '{}'", agent_object_id))
-        })?;
+        .ok_or_else(|| SocialError::not_found(format!("Sub-agent object '{}'", agent_object_id)))?;
     Ok(Json(agent))
 }
 

@@ -7,6 +7,7 @@ use move_cli::base::{
     self,
     test::{self, UnitTestResult},
 };
+use move_package_alt::schema::Environment;
 use move_package_alt_compilation::build_config::BuildConfig;
 use move_unit_test::{
     UnitTestingConfig, extensions::set_extension_hook, vm_test_setup::VMTestSetup,
@@ -19,7 +20,6 @@ use myso_move_natives::{
     NativesCostTable, object_runtime::ObjectRuntime, test_scenario::InMemoryTestStore,
     transaction_context::TransactionContext,
 };
-use move_package_alt::schema::Environment;
 use myso_package_alt::find_environment;
 use myso_protocol_config::{Chain, ProtocolConfig, ProtocolVersion};
 use myso_sdk::wallet_context::WalletContext;
@@ -175,12 +175,12 @@ fn new_testing_object_and_natives_cost_runtime(ext: &mut NativeContextExtensions
     let metrics = Arc::new(LimitsMetrics::new(&registry));
     let store = Lazy::force(&TEST_STORE);
     let protocol_config = TEST_PROTOCOL_CONFIG.with(|cell| {
-        cell
-            .borrow()
+        cell.borrow()
             .clone()
             .unwrap_or_else(ProtocolConfig::get_for_max_version_UNSAFE)
     });
-    let protocol_config_leak: &'static ProtocolConfig = Box::leak(Box::new(protocol_config.clone()));
+    let protocol_config_leak: &'static ProtocolConfig =
+        Box::leak(Box::new(protocol_config.clone()));
 
     ext.add(ObjectRuntime::new(
         store,

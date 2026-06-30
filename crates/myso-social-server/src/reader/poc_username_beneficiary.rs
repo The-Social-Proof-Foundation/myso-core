@@ -14,10 +14,7 @@ pub(crate) async fn list_poc_username_beneficiaries(
 ) -> Result<Vec<PocUsernameBeneficiaryRow>, SocialError> {
     let mut conn = db.connect().await?;
     myso_indexer_alt_social_reader::list_username_beneficiaries_for_conn(
-        &mut conn,
-        status,
-        limit,
-        offset,
+        &mut conn, status, limit, offset,
     )
     .await
     .map_err(|e| SocialError::internal(e.to_string()))
@@ -29,8 +26,7 @@ pub(crate) async fn get_poc_username_beneficiary_by_username(
 ) -> Result<Option<PocUsernameBeneficiaryRow>, SocialError> {
     let mut conn = db.connect().await?;
     myso_indexer_alt_social_reader::get_poc_username_beneficiary_by_username_for_conn(
-        &mut conn,
-        username,
+        &mut conn, username,
     )
     .await
     .map_err(|e| SocialError::internal(e.to_string()))

@@ -15,7 +15,7 @@ use prometheus::Registry;
 use social_indexer::{
     BlockingHandler, GovernanceHandler, InsuranceHandler, MemoryHandler, MyDataHandler,
     PlatformHandler, PostsHandler, ProfilesHandler, SocialEnv, SocialGraphHandler, SpotHandler,
-    SptHandler, SubscriptionHandler, UpgradeHandler,
+    SptHandler, SubAgentRegistryHandler, SubscriptionHandler, UpgradeHandler,
 };
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -197,6 +197,9 @@ async fn run_indexer(args: Args) -> Result<(), anyhow::Error> {
         .await?;
     indexer
         .concurrent_pipeline(SubscriptionHandler, Default::default())
+        .await?;
+    indexer
+        .concurrent_pipeline(SubAgentRegistryHandler, Default::default())
         .await?;
     indexer
         .concurrent_pipeline(MemoryHandler, Default::default())

@@ -146,7 +146,11 @@ fn process_subscription_service_created_event(
     ])
 }
 
-fn process_subscription_created_event(data: &Value, event_id: &str, checkpoint_timestamp_ms: u64) -> Option<Vec<SocialEventRow>> {
+fn process_subscription_created_event(
+    data: &Value,
+    event_id: &str,
+    checkpoint_timestamp_ms: u64,
+) -> Option<Vec<SocialEventRow>> {
     let event: ProfileSubscriptionCreatedEvent = common::deserialize_social_event_json(
         "subscription",
         "ProfileSubscriptionCreatedEvent",
@@ -212,7 +216,11 @@ fn process_subscription_created_event(data: &Value, event_id: &str, checkpoint_t
     Some(rows)
 }
 
-fn process_subscription_renewed_event(data: &Value, event_id: &str, checkpoint_timestamp_ms: u64) -> Option<Vec<SocialEventRow>> {
+fn process_subscription_renewed_event(
+    data: &Value,
+    event_id: &str,
+    checkpoint_timestamp_ms: u64,
+) -> Option<Vec<SocialEventRow>> {
     let event: ProfileSubscriptionRenewedEvent = common::deserialize_social_event_json(
         "subscription",
         "ProfileSubscriptionRenewedEvent",
@@ -310,7 +318,11 @@ fn process_subscription_cancelled_event(
     Some(rows)
 }
 
-fn process_subscription_updated_event(data: &Value, event_id: &str, checkpoint_timestamp_ms: u64) -> Option<Vec<SocialEventRow>> {
+fn process_subscription_updated_event(
+    data: &Value,
+    event_id: &str,
+    checkpoint_timestamp_ms: u64,
+) -> Option<Vec<SocialEventRow>> {
     let event: ProfileSubscriptionUpdatedEvent = common::deserialize_social_event_json(
         "subscription",
         "ProfileSubscriptionUpdatedEvent",
@@ -450,7 +462,12 @@ mod tests {
             "monthly_fee": 100,
             "auto_renew": true
         });
-        let rows = handle_subscription_event("ProfileSubscriptionCreatedEvent", &data, "tx123", 1_700_000_000_000);
+        let rows = handle_subscription_event(
+            "ProfileSubscriptionCreatedEvent",
+            &data,
+            "tx123",
+            1_700_000_000_000,
+        );
         assert!(rows.is_some());
         let rows = rows.unwrap();
         assert!(!rows.is_empty());
@@ -472,8 +489,12 @@ mod tests {
             "monthly_fee": 500,
             "created_at": 1234567890
         });
-        let rows =
-            handle_subscription_event("ProfileSubscriptionServiceCreatedEvent", &data, "tx456", 1_700_000_000_000);
+        let rows = handle_subscription_event(
+            "ProfileSubscriptionServiceCreatedEvent",
+            &data,
+            "tx456",
+            1_700_000_000_000,
+        );
         assert!(rows.is_some());
         let rows = rows.unwrap();
         assert_eq!(rows.len(), 2);

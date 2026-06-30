@@ -76,20 +76,73 @@ pub fn handle_governance_event(
 ) -> Option<Vec<SocialEventRow>> {
     let normalized = event_name.strip_suffix("Event").unwrap_or(event_name);
     match normalized {
-        "GovernanceRegistryCreated" => process_governance_registry_created_event(data, event_id, checkpoint_timestamp_ms),
-        "DelegateNominated" => { process_delegate_nominated_event(data, event_id, governance_registry_id, checkpoint_timestamp_ms) }
-        "DelegateElected" => process_delegate_elected_event(data, event_id, governance_registry_id, checkpoint_timestamp_ms),
-        "DelegateVoted" => process_delegate_voted_event(data, event_id, governance_registry_id, checkpoint_timestamp_ms),
-        "DelegateVoteCleared" => { process_delegate_vote_cleared_event(data, event_id, governance_registry_id, checkpoint_timestamp_ms) }
-        "ProposalSubmitted" => { process_proposal_submitted_event(data, event_id, governance_registry_id, checkpoint_timestamp_ms) }
-        "DelegateVote" => process_delegate_vote_event(data, event_id, governance_registry_id, checkpoint_timestamp_ms),
+        "GovernanceRegistryCreated" => {
+            process_governance_registry_created_event(data, event_id, checkpoint_timestamp_ms)
+        }
+        "DelegateNominated" => process_delegate_nominated_event(
+            data,
+            event_id,
+            governance_registry_id,
+            checkpoint_timestamp_ms,
+        ),
+        "DelegateElected" => process_delegate_elected_event(
+            data,
+            event_id,
+            governance_registry_id,
+            checkpoint_timestamp_ms,
+        ),
+        "DelegateVoted" => process_delegate_voted_event(
+            data,
+            event_id,
+            governance_registry_id,
+            checkpoint_timestamp_ms,
+        ),
+        "DelegateVoteCleared" => process_delegate_vote_cleared_event(
+            data,
+            event_id,
+            governance_registry_id,
+            checkpoint_timestamp_ms,
+        ),
+        "ProposalSubmitted" => process_proposal_submitted_event(
+            data,
+            event_id,
+            governance_registry_id,
+            checkpoint_timestamp_ms,
+        ),
+        "DelegateVote" => process_delegate_vote_event(
+            data,
+            event_id,
+            governance_registry_id,
+            checkpoint_timestamp_ms,
+        ),
         "CommunityVote" => process_community_vote_event(data, event_id, checkpoint_timestamp_ms),
-        "ProposalApprovedForVoting" => process_proposal_approved_for_voting_event(data, event_id, checkpoint_timestamp_ms),
-        "ProposalRejected" => { process_proposal_rejected_event(data, event_id, governance_registry_id, checkpoint_timestamp_ms) }
-        "ProposalRescinded" => process_proposal_rescinded_event(data, event_id, checkpoint_timestamp_ms),
-        "ProposalRejectedByCommunity" => { process_proposal_rejected_by_community_event(data, event_id, governance_registry_id, checkpoint_timestamp_ms) }
-        "ProposalApproved" => { process_proposal_approved_event(data, event_id, governance_registry_id, checkpoint_timestamp_ms) }
-        "ProposalImplemented" => process_proposal_implemented_event(data, event_id, checkpoint_timestamp_ms),
+        "ProposalApprovedForVoting" => {
+            process_proposal_approved_for_voting_event(data, event_id, checkpoint_timestamp_ms)
+        }
+        "ProposalRejected" => process_proposal_rejected_event(
+            data,
+            event_id,
+            governance_registry_id,
+            checkpoint_timestamp_ms,
+        ),
+        "ProposalRescinded" => {
+            process_proposal_rescinded_event(data, event_id, checkpoint_timestamp_ms)
+        }
+        "ProposalRejectedByCommunity" => process_proposal_rejected_by_community_event(
+            data,
+            event_id,
+            governance_registry_id,
+            checkpoint_timestamp_ms,
+        ),
+        "ProposalApproved" => process_proposal_approved_event(
+            data,
+            event_id,
+            governance_registry_id,
+            checkpoint_timestamp_ms,
+        ),
+        "ProposalImplemented" => {
+            process_proposal_implemented_event(data, event_id, checkpoint_timestamp_ms)
+        }
         "ProposalImplementationRewardToSubmitter" => {
             process_proposal_implementation_reward_to_submitter_event(
                 data,
@@ -105,9 +158,18 @@ pub fn handle_governance_event(
             )
         }
         "AnonymousVote" => process_anonymous_vote_event(data, event_id, checkpoint_timestamp_ms),
-        "VoteDecryptionFailed" => process_vote_decryption_failed_event(data, event_id, checkpoint_timestamp_ms),
-        "GovernanceParametersUpdated" => { process_governance_parameters_updated_event(data, event_id, governance_registry_id, checkpoint_timestamp_ms) }
-        "DelegatePanelRefreshed" => process_delegate_panel_refreshed_event(data, event_id, checkpoint_timestamp_ms),
+        "VoteDecryptionFailed" => {
+            process_vote_decryption_failed_event(data, event_id, checkpoint_timestamp_ms)
+        }
+        "GovernanceParametersUpdated" => process_governance_parameters_updated_event(
+            data,
+            event_id,
+            governance_registry_id,
+            checkpoint_timestamp_ms,
+        ),
+        "DelegatePanelRefreshed" => {
+            process_delegate_panel_refreshed_event(data, event_id, checkpoint_timestamp_ms)
+        }
         _ => None,
     }
 }
@@ -129,7 +191,6 @@ fn require_registry_id(
         }
     }
 }
-
 
 fn governance_event_created_at(
     event_ms: Option<i64>,
@@ -188,7 +249,10 @@ fn process_governance_registry_created_event(
         registry_type: ev.registry_type as i16,
         event_data: data.clone(),
         event_id: event_id.to_string(),
-        created_at: governance_event_created_at(Some(ev.updated_at as i64), checkpoint_timestamp_ms),
+        created_at: governance_event_created_at(
+            Some(ev.updated_at as i64),
+            checkpoint_timestamp_ms,
+        ),
         anonymous_voting_related: None,
         governance_registry_id: Some(ev.registry_id.clone()),
         proposal_id: None,
@@ -488,7 +552,10 @@ fn process_proposal_submitted_event(
         registry_type: ev.proposal_type as i16,
         event_data: data.clone(),
         event_id: event_id.to_string(),
-        created_at: governance_event_created_at(Some(ev.submission_time as i64), checkpoint_timestamp_ms),
+        created_at: governance_event_created_at(
+            Some(ev.submission_time as i64),
+            checkpoint_timestamp_ms,
+        ),
         anonymous_voting_related: None,
         governance_registry_id: Some(proposal_scope),
         proposal_id: Some(ev.proposal_id.clone()),

@@ -9,11 +9,11 @@
 
 use anyhow::Result;
 use chrono::Utc;
+use diesel::sql_query;
+use diesel::sql_types::{BigInt, Int2, Int4, Text};
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
 use diesel::QueryDsl;
-use diesel::sql_query;
-use diesel::sql_types::{BigInt, Int2, Int4, Text};
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_social_schema::models::NewOrganizationStats;
@@ -78,14 +78,16 @@ pub async fn init_org_stats(
         stats_rollup_at: None,
         updated_at: now,
     };
-    diesel::insert_into(myso_indexer_alt_social_schema::schema::sub_agent_organization_stats::table)
-        .values(&row)
-        .on_conflict(
-            myso_indexer_alt_social_schema::schema::sub_agent_organization_stats::organization_id,
-        )
-        .do_nothing()
-        .execute(conn)
-        .await?;
+    diesel::insert_into(
+        myso_indexer_alt_social_schema::schema::sub_agent_organization_stats::table,
+    )
+    .values(&row)
+    .on_conflict(
+        myso_indexer_alt_social_schema::schema::sub_agent_organization_stats::organization_id,
+    )
+    .do_nothing()
+    .execute(conn)
+    .await?;
     Ok(())
 }
 
@@ -476,7 +478,8 @@ pub async fn apply_spot_bet_stats(
     }
     if let Some(org_id) = post_org {
         if bettor_org != Some(org_id) {
-            bump_org_bigint_column(conn, org_id, "total_spot_participation", 1, activity_at_ms).await?;
+            bump_org_bigint_column(conn, org_id, "total_spot_participation", 1, activity_at_ms)
+                .await?;
         }
         record_counterparty(conn, org_id, bettor_address, activity_at_ms).await?;
     }

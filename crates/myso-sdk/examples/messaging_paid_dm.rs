@@ -13,6 +13,7 @@ use myso_keys::keystore::{AccountKeystore, FileBasedKeystore};
 use myso_sdk::{
     rpc_types::MySoTransactionBlockResponseOptions,
     types::{
+        Identifier,
         base_types::ObjectID,
         programmable_transaction_builder::ProgrammableTransactionBuilder,
         transaction::{
@@ -20,7 +21,6 @@ use myso_sdk::{
             TransactionData,
         },
         transaction_driver_types::ExecuteTransactionRequestType,
-        Identifier,
     },
 };
 use myso_types::MYSO_MESSAGING_PACKAGE_ID;
@@ -76,11 +76,7 @@ async fn main() -> Result<(), anyhow::Error> {
         module.clone(),
         Identifier::new("set_paid_messaging_policy").map_err(|e| anyhow!(e))?,
         vec![],
-        vec![
-            Argument::Input(0),
-            Argument::Input(1),
-            Argument::Input(2),
-        ],
+        vec![Argument::Input(0), Argument::Input(1), Argument::Input(2)],
     ));
 
     // send_paid_message_digest requires Version, MessagingNamespace, GroupManager,

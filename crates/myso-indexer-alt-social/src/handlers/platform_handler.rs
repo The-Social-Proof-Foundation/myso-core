@@ -19,8 +19,8 @@ use myso_indexer_alt_social_schema::models::{
     NewPlatformModerator, NewPlatformModeratorPermission, NewPlatformTokenAirdrop,
 };
 use myso_indexer_alt_social_schema::schema::{
-    platform_blocked_profiles, platform_events, platform_memberships, platform_moderator_permissions,
-    platform_moderators, platform_token_airdrops, platforms,
+    platform_blocked_profiles, platform_events, platform_memberships,
+    platform_moderator_permissions, platform_moderators, platform_token_airdrops, platforms,
 };
 
 use super::common;
@@ -264,8 +264,7 @@ impl Processor for PlatformHandler {
                     &event_data,
                     &event_id,
                     checkpoint_timestamp_ms,
-                )
-                {
+                ) {
                     for row in rows {
                         if let Some(r) = PlatformRow::from_social(row) {
                             values.push(r);
@@ -382,15 +381,18 @@ impl Handler for PlatformHandler {
                         ))
                         .do_update()
                         .set((
-                            platform_moderator_permissions::revoked_at.eq(None::<chrono::NaiveDateTime>),
-                            platform_moderator_permissions::granted_by
-                                .eq(diesel::upsert::excluded(
+                            platform_moderator_permissions::revoked_at
+                                .eq(None::<chrono::NaiveDateTime>),
+                            platform_moderator_permissions::granted_by.eq(
+                                diesel::upsert::excluded(
                                     platform_moderator_permissions::granted_by,
-                                )),
-                            platform_moderator_permissions::granted_at
-                                .eq(diesel::upsert::excluded(
+                                ),
+                            ),
+                            platform_moderator_permissions::granted_at.eq(
+                                diesel::upsert::excluded(
                                     platform_moderator_permissions::granted_at,
-                                )),
+                                ),
+                            ),
                         ))
                         .execute(conn)
                         .await?;
@@ -406,9 +408,7 @@ impl Handler for PlatformHandler {
                         .filter(
                             platform_moderator_permissions::moderator_address.eq(moderator_address),
                         )
-                        .filter(
-                            platform_moderator_permissions::permission_type.eq(permission_type),
-                        )
+                        .filter(platform_moderator_permissions::permission_type.eq(permission_type))
                         .filter(platform_moderator_permissions::revoked_at.is_null())
                         .set(platform_moderator_permissions::revoked_at.eq(revoked_at))
                         .execute(conn)

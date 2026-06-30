@@ -317,9 +317,7 @@ pub fn handle_platform_event(
         "UserLeftPlatformEvent" => {
             process_user_left_platform_event(data, event_id, checkpoint_timestamp_ms)
         }
-        "TokenAirdropEvent" => {
-            process_token_airdrop_event(data, event_id, checkpoint_timestamp_ms)
-        }
+        "TokenAirdropEvent" => process_token_airdrop_event(data, event_id, checkpoint_timestamp_ms),
         "PlatformDeletedEvent" => {
             process_platform_deleted_event(data, event_id, checkpoint_timestamp_ms)
         }
@@ -487,7 +485,11 @@ fn process_platform_updated_event(
     )?;
     let updated_at = ms_to_naive(ev.updated_at, checkpoint_timestamp_ms);
 
-    let now = common::chain_time_from_ms(common::chain_timestamp_ms(Some(ev.updated_at as i64), checkpoint_timestamp_ms)).naive_utc();
+    let now = common::chain_time_from_ms(common::chain_timestamp_ms(
+        Some(ev.updated_at as i64),
+        checkpoint_timestamp_ms,
+    ))
+    .naive_utc();
     let platform_event = NewPlatformEvent {
         event_type: "PlatformUpdated".to_string(),
         platform_id: ev.platform_id.clone(),
@@ -538,7 +540,11 @@ fn process_platform_approval_changed_event(
     )?;
     let changed_at = ms_to_naive(ev.changed_at, checkpoint_timestamp_ms);
 
-    let now = common::chain_time_from_ms(common::chain_timestamp_ms(Some(ev.changed_at as i64), checkpoint_timestamp_ms)).naive_utc();
+    let now = common::chain_time_from_ms(common::chain_timestamp_ms(
+        Some(ev.changed_at as i64),
+        checkpoint_timestamp_ms,
+    ))
+    .naive_utc();
     let platform_event = NewPlatformEvent {
         event_type: "ApprovalChanged".to_string(),
         platform_id: ev.platform_id.clone(),
@@ -571,7 +577,11 @@ fn process_moderator_permissions_granted_event(
         data,
         "platform ModeratorPermissionsGrantedEvent JSON did not match ModeratorPermissionsGrantedEvent",
     )?;
-    let now = common::chain_time_from_ms(common::chain_timestamp_ms(common::json_field_as_i64(data.get("timestamp")), checkpoint_timestamp_ms)).naive_utc();
+    let now = common::chain_time_from_ms(common::chain_timestamp_ms(
+        common::json_field_as_i64(data.get("timestamp")),
+        checkpoint_timestamp_ms,
+    ))
+    .naive_utc();
     let mut rows = vec![SocialEventRow::PlatformModerator(NewPlatformModerator {
         platform_id: ev.platform_id.clone(),
         moderator_address: ev.member.clone(),
@@ -624,7 +634,11 @@ fn process_moderator_permissions_revoked_event(
         data,
         "platform ModeratorPermissionsRevokedEvent JSON did not match ModeratorPermissionsRevokedEvent",
     )?;
-    let now = common::chain_time_from_ms(common::chain_timestamp_ms(common::json_field_as_i64(data.get("timestamp")), checkpoint_timestamp_ms)).naive_utc();
+    let now = common::chain_time_from_ms(common::chain_timestamp_ms(
+        common::json_field_as_i64(data.get("timestamp")),
+        checkpoint_timestamp_ms,
+    ))
+    .naive_utc();
     let mut rows = Vec::new();
     for permission in &ev.permissions {
         if let Some(permission_type) = normalize_platform_permission(permission) {
@@ -667,7 +681,11 @@ fn process_moderator_removed_event(
         data,
         "platform ModeratorRemovedEvent JSON did not match ModeratorRemovedEvent",
     )?;
-    let now = common::chain_time_from_ms(common::chain_timestamp_ms(common::json_field_as_i64(data.get("timestamp")), checkpoint_timestamp_ms)).naive_utc();
+    let now = common::chain_time_from_ms(common::chain_timestamp_ms(
+        common::json_field_as_i64(data.get("timestamp")),
+        checkpoint_timestamp_ms,
+    ))
+    .naive_utc();
     let platform_event = NewPlatformEvent {
         event_type: "ModeratorRemoved".to_string(),
         platform_id: ev.platform_id.clone(),
@@ -702,7 +720,11 @@ fn process_platform_blocked_profile_event(
         data,
         "platform PlatformBlockedProfileEvent JSON did not match PlatformBlockedProfileEvent",
     )?;
-    let now = common::chain_time_from_ms(common::chain_timestamp_ms(common::json_field_as_i64(data.get("timestamp")), checkpoint_timestamp_ms)).naive_utc();
+    let now = common::chain_time_from_ms(common::chain_timestamp_ms(
+        common::json_field_as_i64(data.get("timestamp")),
+        checkpoint_timestamp_ms,
+    ))
+    .naive_utc();
 
     let blocked = NewPlatformBlockedProfile {
         platform_id: ev.platform_id.clone(),
@@ -738,7 +760,11 @@ fn process_platform_unblocked_profile_event(
         data,
         "platform PlatformUnblockedProfileEvent JSON did not match PlatformUnblockedProfileEvent",
     )?;
-    let now = common::chain_time_from_ms(common::chain_timestamp_ms(common::json_field_as_i64(data.get("timestamp")), checkpoint_timestamp_ms)).naive_utc();
+    let now = common::chain_time_from_ms(common::chain_timestamp_ms(
+        common::json_field_as_i64(data.get("timestamp")),
+        checkpoint_timestamp_ms,
+    ))
+    .naive_utc();
     let platform_event = NewPlatformEvent {
         event_type: "PlatformUnblockedProfile".to_string(),
         platform_id: ev.platform_id.clone(),
@@ -776,7 +802,11 @@ fn process_user_joined_platform_event(
         joined_at,
     };
 
-    let now = common::chain_time_from_ms(common::chain_timestamp_ms(Some(ev.timestamp as i64), checkpoint_timestamp_ms)).naive_utc();
+    let now = common::chain_time_from_ms(common::chain_timestamp_ms(
+        Some(ev.timestamp as i64),
+        checkpoint_timestamp_ms,
+    ))
+    .naive_utc();
     let platform_event = NewPlatformEvent {
         event_type: "UserJoinedPlatform".to_string(),
         platform_id: ev.platform_id,
@@ -804,7 +834,11 @@ fn process_user_left_platform_event(
         data,
         "platform UserLeftPlatformEvent JSON did not match UserLeftPlatformEvent",
     )?;
-    let now = common::chain_time_from_ms(common::chain_timestamp_ms(common::json_field_as_i64(data.get("timestamp")), checkpoint_timestamp_ms)).naive_utc();
+    let now = common::chain_time_from_ms(common::chain_timestamp_ms(
+        common::json_field_as_i64(data.get("timestamp")),
+        checkpoint_timestamp_ms,
+    ))
+    .naive_utc();
     let platform_event = NewPlatformEvent {
         event_type: "UserLeftPlatform".to_string(),
         platform_id: ev.platform_id.clone(),
@@ -834,7 +868,11 @@ fn process_token_airdrop_event(
         data,
         "platform TokenAirdropEvent JSON did not match TokenAirdropEvent",
     )?;
-    let now = common::chain_time_from_ms(common::chain_timestamp_ms(Some(ev.timestamp as i64), checkpoint_timestamp_ms)).naive_utc();
+    let now = common::chain_time_from_ms(common::chain_timestamp_ms(
+        Some(ev.timestamp as i64),
+        checkpoint_timestamp_ms,
+    ))
+    .naive_utc();
 
     let airdrop = NewPlatformTokenAirdrop {
         platform_id: ev.platform_id.clone(),
@@ -920,7 +958,11 @@ fn process_treasury_funded_event(
         data,
         "platform TreasuryFundedEvent JSON did not match TreasuryFundedEvent",
     )?;
-    let now = common::chain_time_from_ms(common::chain_timestamp_ms(Some(ev._timestamp as i64), checkpoint_timestamp_ms)).naive_utc();
+    let now = common::chain_time_from_ms(common::chain_timestamp_ms(
+        Some(ev._timestamp as i64),
+        checkpoint_timestamp_ms,
+    ))
+    .naive_utc();
     let platform_event = NewPlatformEvent {
         event_type: "TreasuryFunded".to_string(),
         platform_id: ev.platform_id,

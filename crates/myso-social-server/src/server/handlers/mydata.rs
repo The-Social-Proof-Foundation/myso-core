@@ -168,10 +168,7 @@ pub async fn list_mydata_broad_pools(
 ) -> Result<Json<Vec<crate::reader::MyDataBroadPoolInfo>>, SocialError> {
     let limit = params.limit.unwrap_or(50).min(100);
     let offset = params.offset.unwrap_or(0);
-    let data = state
-        .reader
-        .list_mydata_broad_pools(limit, offset)
-        .await?;
+    let data = state.reader.list_mydata_broad_pools(limit, offset).await?;
     Ok(Json(data))
 }
 

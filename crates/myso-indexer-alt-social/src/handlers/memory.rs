@@ -21,7 +21,7 @@ pub(crate) fn json_opt_i64(v: &serde_json::Value) -> Option<i64> {
         .or_else(|| v.as_u64().and_then(|u| u.try_into().ok()))
 }
 
-fn json_str(data: &serde_json::Value, key: &str) -> Option<String> {
+pub(crate) fn json_str(data: &serde_json::Value, key: &str) -> Option<String> {
     data.get(key).and_then(|v| v.as_str()).map(String::from)
 }
 
@@ -36,14 +36,13 @@ fn json_opt_string(data: &serde_json::Value, key: &str) -> Option<String> {
 }
 
 fn json_opt_addr(data: &serde_json::Value, key: &str) -> Option<String> {
-    data.get(key)
-        .and_then(|v| {
-            if v.is_null() {
-                None
-            } else {
-                v.as_str().map(String::from)
-            }
-        })
+    data.get(key).and_then(|v| {
+        if v.is_null() {
+            None
+        } else {
+            v.as_str().map(String::from)
+        }
+    })
 }
 
 fn json_u8(data: &serde_json::Value, key: &str) -> i16 {
@@ -61,7 +60,7 @@ fn json_bool(data: &serde_json::Value, key: &str) -> bool {
     data.get(key).and_then(|v| v.as_bool()).unwrap_or(true)
 }
 
-pub fn handle_memory_event(
+pub(crate) fn handle_memory_event(
     event_name: &str,
     data: &serde_json::Value,
     event_id: &str,
@@ -92,12 +91,7 @@ pub fn handle_memory_event(
         }
         "SubAgentRegistered" | "SubAgentUpdated" => {
             let is_register = event_name == "SubAgentRegistered";
-            let row = sub_agent_from_event(data, event_id, &transaction_id, now)?;
-            let audit = sub_agent_audit_event(event_name, data, event_id, &transaction_id, now);
-            let mut rows = vec![
-                SocialEventRow::SubAgentUpsert(row),
-                SocialEventRow::SubAgentEvent(audit),
-            ];
+            let mut rows = Vec::new();
             if is_register {
                 if let Some(organization_id) = json_str(data, "organization_id") {
                     rows.push(SocialEventRow::OrganizationAgentRegistered {
@@ -114,63 +108,29 @@ pub fn handle_memory_event(
                     });
                 }
             }
-            Some(rows)
+            if rows.is_empty() {
+                None
+            } else {
+                Some(rows)
+            }
         }
         "SubAgentDeactivated" => {
             let agent_object_id = json_str(data, "agent_object_id")?;
-            let audit = sub_agent_audit_event(event_name, data, event_id, &transaction_id, now);
-            Some(vec![
-                SocialEventRow::SubAgentDeactivate {
-                    agent_object_id: agent_object_id.clone(),
-                    deactivated_at_ms: now.timestamp_millis(),
-                    event_id: event_id.to_string(),
-                    transaction_id,
-                },
-                SocialEventRow::SubAgentEvent(audit),
-                SocialEventRow::OrganizationAgentActiveDelta {
-                    agent_object_id,
-                    active_delta: -1,
-                    activity_at_ms: now.timestamp_millis(),
-                },
-            ])
+            Some(vec![SocialEventRow::OrganizationAgentActiveDelta {
+                agent_object_id,
+                active_delta: -1,
+                activity_at_ms: now.timestamp_millis(),
+            }])
         }
         "SubAgentRevoked" => {
             let agent_object_id = json_str(data, "agent_object_id")?;
-            let audit = sub_agent_audit_event(event_name, data, event_id, &transaction_id, now);
-            Some(vec![
-                SocialEventRow::SubAgentRevoke {
-                    agent_object_id: agent_object_id.clone(),
-                    revoked_at_ms: now.timestamp_millis(),
-                    event_id: event_id.to_string(),
-                    transaction_id,
-                },
-                SocialEventRow::SubAgentEvent(audit),
-                SocialEventRow::OrganizationAgentActiveDelta {
-                    agent_object_id,
-                    active_delta: -1,
-                    activity_at_ms: now.timestamp_millis(),
-                },
-            ])
+            Some(vec![SocialEventRow::OrganizationAgentActiveDelta {
+                agent_object_id,
+                active_delta: -1,
+                activity_at_ms: now.timestamp_millis(),
+            }])
         }
-        "SubAgentsClearedOnTransfer" => {
-            let account_id = json_str(data, "account_id")?;
-            let profile_id = json_str(data, "profile_id")?;
-            let new_owner = json_str(data, "new_owner")?;
-            let revoked_count = json_u64(data, "revoked_count");
-            let audit = sub_agent_audit_event(event_name, data, event_id, &transaction_id, now);
-            Some(vec![
-                SocialEventRow::SubAgentBulkClear {
-                    account_id,
-                    new_principal_owner: new_owner,
-                    profile_id,
-                    revoked_at_ms: now.timestamp_millis(),
-                    revoked_count,
-                    event_id: event_id.to_string(),
-                    transaction_id,
-                },
-                SocialEventRow::SubAgentEvent(audit),
-            ])
-        }
+        "SubAgentsClearedOnTransfer" => None,
         "MemoryAccountDeactivated" => {
             let account_id = json_str(data, "account_id")?;
             Some(vec![SocialEventRow::MemoryAccountActiveUpdate {
@@ -265,15 +225,17 @@ pub fn handle_memory_event(
             let vault_id = json_str(data, "vault_id")?;
             let agent_object_id = json_str(data, "agent_object_id")?;
             let memory_account_id = json_str(data, "memory_account_id")?;
-            Some(vec![SocialEventRow::AgentMemoryVault(NewAgentMemoryVault {
-                vault_id,
-                agent_object_id,
-                memory_account_id,
-                created_at_ms: now.timestamp_millis(),
-                event_id: event_id.to_string(),
-                transaction_id,
-                time: now,
-            })])
+            Some(vec![SocialEventRow::AgentMemoryVault(
+                NewAgentMemoryVault {
+                    vault_id,
+                    agent_object_id,
+                    memory_account_id,
+                    created_at_ms: now.timestamp_millis(),
+                    event_id: event_id.to_string(),
+                    transaction_id,
+                    time: now,
+                },
+            )])
         }
         "AgenticOrganizationCreated" => {
             let organization_id = json_str(data, "organization_id")?;
@@ -440,7 +402,7 @@ pub fn handle_memory_event(
     }
 }
 
-fn sub_agent_from_event(
+pub(crate) fn sub_agent_from_event(
     data: &serde_json::Value,
     event_id: &str,
     transaction_id: &str,
@@ -480,7 +442,7 @@ fn sub_agent_from_event(
     })
 }
 
-fn sub_agent_audit_event(
+pub(crate) fn sub_agent_audit_event(
     event_type: &str,
     data: &serde_json::Value,
     event_id: &str,
@@ -496,13 +458,19 @@ fn sub_agent_audit_event(
         agent_object_id: json_str(data, "agent_object_id"),
         derived_address: json_str(data, "derived_address"),
         label: json_str(data, "label"),
-        identity_class: data.get("identity_class").map(|_| json_u8(data, "identity_class")),
+        identity_class: data
+            .get("identity_class")
+            .map(|_| json_u8(data, "identity_class")),
         role_tags: data.get("role_tags").map(|_| json_u64(data, "role_tags")),
-        capabilities: data.get("capabilities").map(|_| json_u64(data, "capabilities")),
+        capabilities: data
+            .get("capabilities")
+            .map(|_| json_u64(data, "capabilities")),
         delegatable_caps: data
             .get("delegatable_caps")
             .map(|_| json_u64(data, "delegatable_caps")),
-        register_scope: data.get("register_scope").map(|_| json_u8(data, "register_scope")),
+        register_scope: data
+            .get("register_scope")
+            .map(|_| json_u8(data, "register_scope")),
         approval_required_caps: data
             .get("approval_required_caps")
             .map(|_| json_u64(data, "approval_required_caps")),
@@ -514,7 +482,9 @@ fn sub_agent_audit_event(
         expires_at_ms: data.get("expires_at").and_then(json_opt_i64),
         active: data.get("active").and_then(|v| v.as_bool()),
         created_at_ms: data.get("created_at").and_then(json_opt_i64),
-        revoked_count: data.get("revoked_count").map(|_| json_u64(data, "revoked_count")),
+        revoked_count: data
+            .get("revoked_count")
+            .map(|_| json_u64(data, "revoked_count")),
         previous_owner: json_str(data, "previous_owner"),
         new_owner: json_str(data, "new_owner"),
         migration_from_version: None,
@@ -575,7 +545,7 @@ mod tests {
     }
 
     #[test]
-    fn sub_agent_registered_emits_state_and_audit_rows() {
+    fn sub_agent_registered_without_org_skips_registry_rows_in_memory_pipeline() {
         let data = serde_json::json!({
             "agent_object_id": "0xagent",
             "derived_address": "0xderived",
@@ -586,16 +556,35 @@ mod tests {
             "registered_by": "0xowner",
             "active": true,
         });
+        let rows = handle_memory_event("SubAgentRegistered", &data, "tx-digest:1");
+        assert!(
+            rows.is_none(),
+            "memory pipeline should not index sub_agents rows"
+        );
+    }
+
+    #[test]
+    fn sub_agent_registered_with_org_emits_org_stats_row_only() {
+        let data = serde_json::json!({
+            "agent_object_id": "0xagent",
+            "derived_address": "0xderived",
+            "account_id": "0xaccount",
+            "organization_id": "0xorg",
+            "label": "bot",
+            "registered_by": "0xowner",
+            "active": true,
+            "depth": 1,
+        });
         let rows = handle_memory_event("SubAgentRegistered", &data, "tx-digest:1")
-            .expect("SubAgentRegistered should produce rows");
-        assert_eq!(rows.len(), 2);
-        match (&rows[0], &rows[1]) {
-            (SocialEventRow::SubAgentUpsert(_), SocialEventRow::SubAgentEvent(e))
-            | (SocialEventRow::SubAgentEvent(e), SocialEventRow::SubAgentUpsert(_)) => {
-                assert_eq!(e.event_type, "SubAgentRegistered");
-            }
-            _ => panic!("expected SubAgentUpsert and SubAgentEvent rows"),
-        }
+            .expect("org agent registration should produce org stats row");
+        assert_eq!(rows.len(), 1);
+        let SocialEventRow::OrganizationAgentRegistered {
+            organization_id, ..
+        } = &rows[0]
+        else {
+            panic!("expected OrganizationAgentRegistered row");
+        };
+        assert_eq!(organization_id, "0xorg");
     }
 
     #[test]

@@ -25,12 +25,11 @@ use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
     NewPocAnalysisResult, NewPocBadge, NewPocConfiguration, NewPocCreatorIdentityLink,
     NewPocDispute, NewPocDisputeVote, NewPocRevenueRedirection, NewPocUsernameBeneficiary,
-    NewPocUsernameBeneficiaryEvent, NewTip, NewUnifiedRevenue, CURRENCY_MYSO, CONTENT_TYPE_POST,
-    EVENT_TYPE_CLAIMED, EVENT_TYPE_CONFLICT,
+    NewPocUsernameBeneficiaryEvent, NewTip, NewUnifiedRevenue, CONTENT_TYPE_POST, CURRENCY_MYSO,
+    DISPUTE_STATUS_VOTING, EVENT_TYPE_CLAIMED, EVENT_TYPE_CONFLICT,
     EVENT_TYPE_CREATOR_IDENTITY_WALLET_LINKED, EVENT_TYPE_ENDED, EVENT_TYPE_PROVISIONED,
     REVENUE_TYPE_TIPS_POST, USERNAME_BENEFICIARY_STATUS_ACTIVE, VAULT_CLAIM_KIND_JOIN_REFERRAL,
     VAULT_CLAIM_KIND_STANDARD,
-    DISPUTE_STATUS_VOTING,
 };
 
 fn transaction_id_from_event_id(event_id: &str) -> String {
@@ -706,8 +705,7 @@ fn process_poc_vault_deposit_event(
         timestamp_ms: ev.timestamp as i64,
         transaction_id: tx_id.to_string(),
     }];
-    if let (Some(post_id), Some(tipper)) = (source_post_id, tx_sender.filter(|s| !s.is_empty()))
-    {
+    if let (Some(post_id), Some(tipper)) = (source_post_id, tx_sender.filter(|s| !s.is_empty())) {
         let created_at = ev.timestamp as i64;
         let time = common::chain_time_from_ms(created_at);
         let coin_type = if ev.coin_type.is_empty() {
@@ -1010,7 +1008,8 @@ fn process_username_beneficiary_conflict_event(
         data,
         "poc_username_beneficiary UsernameBeneficiaryConflictEvent JSON did not match",
     )?;
-    if ev.username.is_empty() || ev.existing_beneficiary_id.is_empty() || ev.attempted_by.is_empty() {
+    if ev.username.is_empty() || ev.existing_beneficiary_id.is_empty() || ev.attempted_by.is_empty()
+    {
         return None;
     }
     Some(vec![username_beneficiary_audit_row(
@@ -1074,33 +1073,10 @@ fn process_creator_identity_wallet_linked_event(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::handlers::events::BcsUsernameBeneficiaryClaimedEvent;
-    use move_core_types::account_address::AccountAddress;
     use serde_json::json;
 
     fn test_username_beneficiary_claimed_bcs_fixture() -> Vec<u8> {
-        let ev = BcsUsernameBeneficiaryClaimedEvent {
-            beneficiary_id: AccountAddress::from_hex_literal(
-                "0x19e12c82effb103ed5a762f7d5c3daa0d7ed96b1d421ba686734de3e897ce939",
-            )
-            .unwrap(),
-            username: "pocub1782775058".to_string(),
-            profile_id: AccountAddress::from_hex_literal(
-                "0x3853b739126a0e3773c415eab400b4adc26a4257d58abf08be12992e0d0ee48f",
-            )
-            .unwrap(),
-            claimed_by: AccountAddress::from_hex_literal(
-                "0x7eb74c2ca45c41a4c4126f13c2286cbc9ac400c7b5ab5fe38694ecd71161ccaf",
-            )
-            .unwrap(),
-            wallet: AccountAddress::from_hex_literal(
-                "0x7e91c216898618e1c5f614a01dde30b5f5d7e1e2fb4fdfe0b4a3423d55202430",
-            )
-            .unwrap(),
-            oracle_evidence_hash: vec![],
-            claimed_at: 5_837_000_000,
-        };
-        bcs::to_bytes(&ev).expect("bcs")
+        crate::handlers::events::username_beneficiary_claimed_bcs_fixture()
     }
 
     #[test]
@@ -1116,11 +1092,14 @@ mod tests {
             "provisioned_by": "0xadmin",
             "provisioned_at": 1000
         });
-        let rows = process_username_beneficiary_provisioned_event(&data, "tx:0", "tx")
-            .expect("rows");
+        let rows =
+            process_username_beneficiary_provisioned_event(&data, "tx:0", "tx").expect("rows");
         assert_eq!(rows.len(), 2);
         assert!(matches!(rows[0], SocialEventRow::PocUsernameBeneficiary(_)));
-        assert!(matches!(rows[1], SocialEventRow::PocUsernameBeneficiaryEvent(_)));
+        assert!(matches!(
+            rows[1],
+            SocialEventRow::PocUsernameBeneficiaryEvent(_)
+        ));
     }
 
     #[test]
@@ -1145,7 +1124,10 @@ mod tests {
             rows[0],
             SocialEventRow::PocUsernameBeneficiaryClaimed { .. }
         ));
-        assert!(matches!(rows[1], SocialEventRow::PocUsernameBeneficiaryEvent(_)));
+        assert!(matches!(
+            rows[1],
+            SocialEventRow::PocUsernameBeneficiaryEvent(_)
+        ));
     }
 
     #[test]
@@ -1161,7 +1143,10 @@ mod tests {
         let rows =
             process_poc_vault_deposit_event(&data, "tx:1", "tx", Some("0xtipper")).expect("rows");
         assert_eq!(rows.len(), 3);
-        assert!(matches!(rows[0], SocialEventRow::PocBeneficiaryVaultDeposit { .. }));
+        assert!(matches!(
+            rows[0],
+            SocialEventRow::PocBeneficiaryVaultDeposit { .. }
+        ));
         match &rows[1] {
             SocialEventRow::Tip(tip) => {
                 assert_eq!(tip.tipper, "0xtipper");
@@ -1187,11 +1172,9 @@ mod tests {
         });
         let rows =
             process_poc_vault_deposit_event(&data, "tx:1", "tx", Some("0xtipper")).expect("rows");
-        assert!(
-            !rows
-                .iter()
-                .any(|r| matches!(r, SocialEventRow::PostTipsReceivedIncrement { .. }))
-        );
+        assert!(!rows
+            .iter()
+            .any(|r| matches!(r, SocialEventRow::PostTipsReceivedIncrement { .. })));
     }
 
     #[test]

@@ -33,8 +33,5 @@ fn check_packages(label: &str, packages: impl IntoIterator<Item = SystemPackage>
 
 #[test]
 fn check_builtin_framework_package_dependencies() {
-    check_packages(
-        "BuiltIn",
-        BuiltInFramework::iter_system_packages().cloned(),
-    );
+    check_packages("BuiltIn", BuiltInFramework::iter_system_packages().cloned());
 }

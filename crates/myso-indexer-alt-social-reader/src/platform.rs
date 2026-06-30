@@ -39,9 +39,9 @@ impl PlatformUserAccessRow {
     }
 
     pub fn can_block_users(&self) -> bool {
-        self.permissions()
-            .iter()
-            .any(|p| p == myso_indexer_alt_social_schema::platform_permissions::PLATFORM_BLOCK_ADMIN)
+        self.permissions().iter().any(|p| {
+            p == myso_indexer_alt_social_schema::platform_permissions::PLATFORM_BLOCK_ADMIN
+        })
     }
 
     pub fn can_moderate_content(&self) -> bool {
@@ -51,9 +51,9 @@ impl PlatformUserAccessRow {
     }
 
     pub fn can_manage_badges(&self) -> bool {
-        self.permissions()
-            .iter()
-            .any(|p| p == myso_indexer_alt_social_schema::platform_permissions::PLATFORM_BADGE_ADMIN)
+        self.permissions().iter().any(|p| {
+            p == myso_indexer_alt_social_schema::platform_permissions::PLATFORM_BADGE_ADMIN
+        })
     }
 
     pub fn can_airdrop_treasury(&self) -> bool {
@@ -310,8 +310,9 @@ pub(crate) async fn get_platform_moderators(
     metrics: &DbReaderMetrics,
 ) -> anyhow::Result<Vec<PlatformModeratorRow>> {
     if let Some(filter) = permission_filter {
-        if !myso_indexer_alt_social_schema::platform_permissions::is_valid_moderator_permission(filter)
-        {
+        if !myso_indexer_alt_social_schema::platform_permissions::is_valid_moderator_permission(
+            filter,
+        ) {
             anyhow::bail!("invalid platform moderator permission filter: {filter}");
         }
     }

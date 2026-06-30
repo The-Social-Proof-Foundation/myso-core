@@ -290,8 +290,7 @@ impl Reader {
         limit: i64,
         offset: i64,
     ) -> Result<Vec<MyDataSubPoolInfo>, crate::error::SocialError> {
-        mydata::list_mydata_sub_pools_for_broad_pool(&self.db, broad_pool_id, limit, offset)
-            .await
+        mydata::list_mydata_sub_pools_for_broad_pool(&self.db, broad_pool_id, limit, offset).await
     }
 
     pub async fn list_mydata_sub_pools_for_listing(
@@ -1084,13 +1083,8 @@ impl Reader {
         Vec<myso_indexer_alt_social_schema::models::PocUsernameBeneficiaryRow>,
         crate::error::SocialError,
     > {
-        poc_username_beneficiary::list_poc_username_beneficiaries(
-            &self.db,
-            status,
-            limit,
-            offset,
-        )
-        .await
+        poc_username_beneficiary::list_poc_username_beneficiaries(&self.db, status, limit, offset)
+            .await
     }
 
     pub async fn get_poc_username_beneficiary_by_username(
@@ -1100,8 +1094,7 @@ impl Reader {
         Option<myso_indexer_alt_social_schema::models::PocUsernameBeneficiaryRow>,
         crate::error::SocialError,
     > {
-        poc_username_beneficiary::get_poc_username_beneficiary_by_username(&self.db, username)
-            .await
+        poc_username_beneficiary::get_poc_username_beneficiary_by_username(&self.db, username).await
     }
 
     pub async fn get_poc_username_beneficiary_by_id(
@@ -1111,8 +1104,7 @@ impl Reader {
         Option<myso_indexer_alt_social_schema::models::PocUsernameBeneficiaryRow>,
         crate::error::SocialError,
     > {
-        poc_username_beneficiary::get_poc_username_beneficiary_by_id(&self.db, beneficiary_id)
-            .await
+        poc_username_beneficiary::get_poc_username_beneficiary_by_id(&self.db, beneficiary_id).await
     }
 
     pub async fn get_profile_posts(
@@ -1310,14 +1302,8 @@ impl Reader {
         limit: i64,
         offset: i64,
     ) -> Result<Vec<PlatformModeratorRow>, crate::error::SocialError> {
-        platform::get_platform_moderators(
-            &self.db,
-            platform_id,
-            permission_filter,
-            limit,
-            offset,
-        )
-        .await
+        platform::get_platform_moderators(&self.db, platform_id, permission_filter, limit, offset)
+            .await
     }
 
     pub async fn get_platform_user_access(
@@ -1418,21 +1404,17 @@ impl Reader {
         limit: i64,
         offset: i64,
     ) -> Result<Vec<SubAgentRow>, crate::error::SocialError> {
-        memory::list_sub_agent_children(
-            &self.db,
-            parent_object_id,
-            active_only,
-            limit,
-            offset,
-        )
-        .await
+        memory::list_sub_agent_children(&self.db, parent_object_id, active_only, limit, offset)
+            .await
     }
 
     pub async fn get_agentic_organization(
         &self,
         organization_id: &str,
-    ) -> Result<Option<myso_indexer_alt_social_schema::models::AgenticOrganizationRow>, crate::error::SocialError>
-    {
+    ) -> Result<
+        Option<myso_indexer_alt_social_schema::models::AgenticOrganizationRow>,
+        crate::error::SocialError,
+    > {
         organization::get_agentic_organization(&self.db, organization_id).await
     }
 
@@ -1459,8 +1441,10 @@ impl Reader {
         &self,
         organization_id: &str,
         window: myso_indexer_alt_social_reader::OrganizationStatsWindow,
-    ) -> Result<Option<myso_indexer_alt_social_reader::OrganizationStatistics>, crate::error::SocialError>
-    {
+    ) -> Result<
+        Option<myso_indexer_alt_social_reader::OrganizationStatistics>,
+        crate::error::SocialError,
+    > {
         organization::get_organization_statistics(&self.db, organization_id, window).await
     }
 
@@ -1475,10 +1459,8 @@ impl Reader {
         myso_indexer_alt_social_reader::OrganizationLeaderboardResult,
         crate::error::SocialError,
     > {
-        organization::get_organization_leaderboard(
-            &self.db, sort, org_type, window, limit, offset,
-        )
-        .await
+        organization::get_organization_leaderboard(&self.db, sort, org_type, window, limit, offset)
+            .await
     }
 
     pub fn organization_categories(

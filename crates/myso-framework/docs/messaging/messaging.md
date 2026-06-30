@@ -51,6 +51,7 @@ Messaging-specific:
 -  [Struct `GroupHandleAdmin`](#messaging_messaging_GroupHandleAdmin)
 -  [Struct `MetadataAdmin`](#messaging_messaging_MetadataAdmin)
 -  [Struct `MessagingNamespace`](#messaging_messaging_MessagingNamespace)
+-  [Struct `AgentGroupCreated`](#messaging_messaging_AgentGroupCreated)
 -  [Constants](#@Constants_2)
 -  [Function `init`](#messaging_messaging_init)
 -  [Function `create_group`](#messaging_messaging_create_group)
@@ -58,9 +59,12 @@ Messaging-specific:
     -  [Returns](#@Returns_4)
     -  [Note](#@Note_5)
     -  [Aborts](#@Aborts_6)
+-  [Function `create_group_inner`](#messaging_messaging_create_group_inner)
 -  [Function `create_and_share_group`](#messaging_messaging_create_and_share_group)
     -  [Parameters](#@Parameters_7)
     -  [Note](#@Note_8)
+-  [Function `create_agent_group`](#messaging_messaging_create_agent_group)
+-  [Function `create_agent_and_share_group`](#messaging_messaging_create_agent_and_share_group)
 -  [Function `rotate_encryption_key`](#messaging_messaging_rotate_encryption_key)
     -  [Parameters](#@Parameters_9)
     -  [Aborts](#@Aborts_10)
@@ -85,10 +89,22 @@ Messaging-specific:
 -  [Function `assert_message_log_matches_group`](#messaging_messaging_assert_message_log_matches_group)
 -  [Function `assert_group_not_archived`](#messaging_messaging_assert_group_not_archived)
 -  [Function `send_paid_message_digest`](#messaging_messaging_send_paid_message_digest)
+-  [Function `send_agent_paid_message_digest`](#messaging_messaging_send_agent_paid_message_digest)
 -  [Function `reply_to_paid_message_claim_coin`](#messaging_messaging_reply_to_paid_message_claim_coin)
 -  [Function `reply_to_paid_message_claim_settled`](#messaging_messaging_reply_to_paid_message_claim_settled)
 -  [Function `refund_paid_escrow`](#messaging_messaging_refund_paid_escrow)
 -  [Function `grant_all_messaging_permissions`](#messaging_messaging_grant_all_messaging_permissions)
+-  [Function `grant_agent_messaging_permissions`](#messaging_messaging_grant_agent_messaging_permissions)
+-  [Function `grant_principal_oversight`](#messaging_messaging_grant_principal_oversight)
+-  [Function `grant_human_peer_permissions`](#messaging_messaging_grant_human_peer_permissions)
+-  [Function `assert_human_group_creator`](#messaging_messaging_assert_human_group_creator)
+-  [Function `resolve_messaging_actor`](#messaging_messaging_resolve_messaging_actor)
+-  [Function `attach_agent_creator_metadata`](#messaging_messaging_attach_agent_creator_metadata)
+-  [Function `grant_agent_initial_members`](#messaging_messaging_grant_agent_initial_members)
+-  [Function `assert_agent_peers_not_blocked`](#messaging_messaging_assert_agent_peers_not_blocked)
+-  [Function `address_to_metadata_string`](#messaging_messaging_address_to_metadata_string)
+-  [Function `id_to_metadata_string`](#messaging_messaging_id_to_metadata_string)
+-  [Function `u64_to_metadata_string`](#messaging_messaging_u64_to_metadata_string)
 -  [Function `assert_peers_not_blocked`](#messaging_messaging_assert_peers_not_blocked)
 -  [Function `count_non_creator_peers`](#messaging_messaging_count_non_creator_peers)
 -  [Function `is_direct_message_group`](#messaging_messaging_is_direct_message_group)
@@ -105,12 +121,18 @@ Messaging-specific:
 <b>use</b> <a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement">messaging::paid_escrow_settlement</a>;
 <b>use</b> <a href="../messaging/paid_messaging_policy.md#messaging_paid_messaging_policy">messaging::paid_messaging_policy</a>;
 <b>use</b> <a href="../messaging/version.md#messaging_version">messaging::version</a>;
+<b>use</b> <a href="../mydata/bf_hmac_encryption.md#mydata_bf_hmac_encryption">mydata::bf_hmac_encryption</a>;
+<b>use</b> <a href="../mydata/gf256.md#mydata_gf256">mydata::gf256</a>;
+<b>use</b> <a href="../mydata/hmac256ctr.md#mydata_hmac256ctr">mydata::hmac256ctr</a>;
+<b>use</b> <a href="../mydata/kdf.md#mydata_kdf">mydata::kdf</a>;
+<b>use</b> <a href="../mydata/polynomial.md#mydata_polynomial">mydata::polynomial</a>;
 <b>use</b> <a href="../myso/accumulator.md#myso_accumulator">myso::accumulator</a>;
 <b>use</b> <a href="../myso/accumulator_settlement.md#myso_accumulator_settlement">myso::accumulator_settlement</a>;
 <b>use</b> <a href="../myso/address.md#myso_address">myso::address</a>;
 <b>use</b> <a href="../myso/bag.md#myso_bag">myso::bag</a>;
 <b>use</b> <a href="../myso/balance.md#myso_balance">myso::balance</a>;
 <b>use</b> <a href="../myso/bcs.md#myso_bcs">myso::bcs</a>;
+<b>use</b> <a href="../myso/bls12381.md#myso_bls12381">myso::bls12381</a>;
 <b>use</b> <a href="../myso/bootstrap_key.md#myso_bootstrap_key">myso::bootstrap_key</a>;
 <b>use</b> <a href="../myso/clock.md#myso_clock">myso::clock</a>;
 <b>use</b> <a href="../myso/coin.md#myso_coin">myso::coin</a>;
@@ -121,8 +143,10 @@ Messaging-specific:
 <b>use</b> <a href="../myso/dynamic_object_field.md#myso_dynamic_object_field">myso::dynamic_object_field</a>;
 <b>use</b> <a href="../myso/event.md#myso_event">myso::event</a>;
 <b>use</b> <a href="../myso/funds_accumulator.md#myso_funds_accumulator">myso::funds_accumulator</a>;
+<b>use</b> <a href="../myso/group_ops.md#myso_group_ops">myso::group_ops</a>;
 <b>use</b> <a href="../myso/hash.md#myso_hash">myso::hash</a>;
 <b>use</b> <a href="../myso/hex.md#myso_hex">myso::hex</a>;
+<b>use</b> <a href="../myso/hmac.md#myso_hmac">myso::hmac</a>;
 <b>use</b> <a href="../myso/myso.md#myso_myso">myso::myso</a>;
 <b>use</b> <a href="../myso/object.md#myso_object">myso::object</a>;
 <b>use</b> <a href="../myso/package.md#myso_package">myso::package</a>;
@@ -140,16 +164,23 @@ Messaging-specific:
 <b>use</b> <a href="../myso/vec_map.md#myso_vec_map">myso::vec_map</a>;
 <b>use</b> <a href="../myso/vec_set.md#myso_vec_set">myso::vec_set</a>;
 <b>use</b> <a href="../social_contracts/block_list.md#social_contracts_block_list">social_contracts::block_list</a>;
+<b>use</b> <a href="../social_contracts/governance.md#social_contracts_governance">social_contracts::governance</a>;
+<b>use</b> <a href="../social_contracts/memory.md#social_contracts_memory">social_contracts::memory</a>;
+<b>use</b> <a href="../social_contracts/platform.md#social_contracts_platform">social_contracts::platform</a>;
+<b>use</b> <a href="../social_contracts/profile.md#social_contracts_profile">social_contracts::profile</a>;
 <b>use</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_contracts::social_graph</a>;
+<b>use</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">social_contracts::subscription</a>;
 <b>use</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade">social_contracts::upgrade</a>;
 <b>use</b> <a href="../std/address.md#std_address">std::address</a>;
 <b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
 <b>use</b> <a href="../std/bcs.md#std_bcs">std::bcs</a>;
+<b>use</b> <a href="../std/hash.md#std_hash">std::hash</a>;
 <b>use</b> <a href="../std/internal.md#std_internal">std::internal</a>;
 <b>use</b> <a href="../std/option.md#std_option">std::option</a>;
 <b>use</b> <a href="../std/string.md#std_string">std::string</a>;
 <b>use</b> <a href="../std/type_name.md#std_type_name">std::type_name</a>;
 <b>use</b> <a href="../std/u128.md#std_u128">std::u128</a>;
+<b>use</b> <a href="../std/u64.md#std_u64">std::u64</a>;
 <b>use</b> <a href="../std/vector.md#std_vector">std::vector</a>;
 </code></pre>
 
@@ -361,6 +392,74 @@ One per package deployment.
 
 </details>
 
+<a name="messaging_messaging_AgentGroupCreated"></a>
+
+## Struct `AgentGroupCreated`
+
+Emitted when a sub-agent creates a messaging group via [<code><a href="../messaging/messaging.md#messaging_messaging_create_agent_group">create_agent_group</a></code>].
+Indexed by the messaging-stack relayer (not the social indexer) for conversation listing.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../messaging/messaging.md#messaging_messaging_AgentGroupCreated">AgentGroupCreated</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>group_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>creator_actor: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>creator_principal: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>creator_sub_agent_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>creator_identity_class: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>organization_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>group_name: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>group_uuid: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>created_at: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="@Constants_2"></a>
 
 ## Constants
@@ -439,6 +538,26 @@ Escrow is below the recipient's configured minimum for stranger paid DMs.
 
 
 
+<a name="messaging_messaging_EAgentSenderMismatch"></a>
+
+Transaction sender does not match the resolved agent actor address.
+
+
+<pre><code><b>const</b> <a href="../messaging/messaging.md#messaging_messaging_EAgentSenderMismatch">EAgentSenderMismatch</a>: u64 = 8;
+</code></pre>
+
+
+
+<a name="messaging_messaging_ERegisteredAgentCannotCreateGroup"></a>
+
+Registered sub-agents must use <code><a href="../messaging/messaging.md#messaging_messaging_create_agent_group">create_agent_group</a></code>, not human <code><a href="../messaging/messaging.md#messaging_messaging_create_group">create_group</a></code>.
+
+
+<pre><code><b>const</b> <a href="../messaging/messaging.md#messaging_messaging_ERegisteredAgentCannotCreateGroup">ERegisteredAgentCannotCreateGroup</a>: u64 = 9;
+</code></pre>
+
+
+
 <a name="messaging_messaging_CONVERSATION_KIND_KEY"></a>
 
 
@@ -453,6 +572,60 @@ Escrow is below the recipient's configured minimum for stranger paid DMs.
 
 
 <pre><code><b>const</b> <a href="../messaging/messaging.md#messaging_messaging_CONVERSATION_KIND_DM">CONVERSATION_KIND_DM</a>: vector&lt;u8&gt; = vector[100, 109];
+</code></pre>
+
+
+
+<a name="messaging_messaging_AGENT_CHAT_KEY"></a>
+
+
+
+<pre><code><b>const</b> <a href="../messaging/messaging.md#messaging_messaging_AGENT_CHAT_KEY">AGENT_CHAT_KEY</a>: vector&lt;u8&gt; = vector[97, 103, 101, 110, 116, 95, 99, 104, 97, 116];
+</code></pre>
+
+
+
+<a name="messaging_messaging_AGENT_CHAT_TRUE"></a>
+
+
+
+<pre><code><b>const</b> <a href="../messaging/messaging.md#messaging_messaging_AGENT_CHAT_TRUE">AGENT_CHAT_TRUE</a>: vector&lt;u8&gt; = vector[116, 114, 117, 101];
+</code></pre>
+
+
+
+<a name="messaging_messaging_CREATOR_ACTOR_KEY"></a>
+
+
+
+<pre><code><b>const</b> <a href="../messaging/messaging.md#messaging_messaging_CREATOR_ACTOR_KEY">CREATOR_ACTOR_KEY</a>: vector&lt;u8&gt; = vector[99, 114, 101, 97, 116, 111, 114, 95, 97, 99, 116, 111, 114];
+</code></pre>
+
+
+
+<a name="messaging_messaging_CREATOR_PRINCIPAL_KEY"></a>
+
+
+
+<pre><code><b>const</b> <a href="../messaging/messaging.md#messaging_messaging_CREATOR_PRINCIPAL_KEY">CREATOR_PRINCIPAL_KEY</a>: vector&lt;u8&gt; = vector[99, 114, 101, 97, 116, 111, 114, 95, 112, 114, 105, 110, 99, 105, 112, 97, 108];
+</code></pre>
+
+
+
+<a name="messaging_messaging_CREATOR_SUB_AGENT_ID_KEY"></a>
+
+
+
+<pre><code><b>const</b> <a href="../messaging/messaging.md#messaging_messaging_CREATOR_SUB_AGENT_ID_KEY">CREATOR_SUB_AGENT_ID_KEY</a>: vector&lt;u8&gt; = vector[99, 114, 101, 97, 116, 111, 114, 95, 115, 117, 98, 95, 97, 103, 101, 110, 116, 95, 105, 100];
+</code></pre>
+
+
+
+<a name="messaging_messaging_CREATOR_IDENTITY_CLASS_KEY"></a>
+
+
+
+<pre><code><b>const</b> <a href="../messaging/messaging.md#messaging_messaging_CREATOR_IDENTITY_CLASS_KEY">CREATOR_IDENTITY_CLASS_KEY</a>: vector&lt;u8&gt; = vector[99, 114, 101, 97, 116, 111, 114, 95, 105, 100, 101, 110, 116, 105, 116, 121, 95, 99, 108, 97, 115, 115];
 </code></pre>
 
 
@@ -486,6 +659,7 @@ Escrow is below the recipient's configured minimum for stranger paid DMs.
     <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>.share();
     <a href="../messaging/group_handle_registry.md#messaging_group_handle_registry">group_handle_registry</a>.share();
     paid_messaging_registry.share();
+    <a href="../messaging/version.md#messaging_version_share_initial">version::share_initial</a>(ctx);
 }
 </code></pre>
 
@@ -540,7 +714,7 @@ members list.
 - If the UUID has already been used (duplicate derivation)
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_create_group">create_group</a>(<a href="../messaging/version.md#messaging_version">version</a>: &<a href="../messaging/version.md#messaging_version_Version">messaging::version::Version</a>, namespace: &<b>mut</b> <a href="../messaging/messaging.md#messaging_messaging_MessagingNamespace">messaging::messaging::MessagingNamespace</a>, <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &<a href="../messaging/group_manager.md#messaging_group_manager_GroupManager">messaging::group_manager::GroupManager</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, name: <a href="../std/string.md#std_string_String">std::string::String</a>, uuid: <a href="../std/string.md#std_string_String">std::string::String</a>, initial_encrypted_dek: vector&lt;u8&gt;, initial_members: <a href="../myso/vec_set.md#myso_vec_set_VecSet">myso::vec_set::VecSet</a>&lt;<b>address</b>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, <a href="../messaging/encryption_history.md#messaging_encryption_history_EncryptionHistory">messaging::encryption_history::EncryptionHistory</a>, <a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_create_group">create_group</a>(<a href="../messaging/version.md#messaging_version">version</a>: &<a href="../messaging/version.md#messaging_version_Version">messaging::version::Version</a>, namespace: &<b>mut</b> <a href="../messaging/messaging.md#messaging_messaging_MessagingNamespace">messaging::messaging::MessagingNamespace</a>, <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &<a href="../messaging/group_manager.md#messaging_group_manager_GroupManager">messaging::group_manager::GroupManager</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, creator_memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, name: <a href="../std/string.md#std_string_String">std::string::String</a>, uuid: <a href="../std/string.md#std_string_String">std::string::String</a>, initial_encrypted_dek: vector&lt;u8&gt;, initial_members: <a href="../myso/vec_set.md#myso_vec_set_VecSet">myso::vec_set::VecSet</a>&lt;<b>address</b>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, <a href="../messaging/encryption_history.md#messaging_encryption_history_EncryptionHistory">messaging::encryption_history::EncryptionHistory</a>, <a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>)
 </code></pre>
 
 
@@ -550,6 +724,52 @@ members list.
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_create_group">create_group</a>(
+    <a href="../messaging/version.md#messaging_version">version</a>: &Version,
+    namespace: &<b>mut</b> <a href="../messaging/messaging.md#messaging_messaging_MessagingNamespace">MessagingNamespace</a>,
+    <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &GroupManager,
+    block_list: &BlockListRegistry,
+    creator_memory_account: &MemoryAccount,
+    name: String,
+    uuid: String,
+    initial_encrypted_dek: vector&lt;u8&gt;,
+    initial_members: VecSet&lt;<b>address</b>&gt;,
+    ctx: &<b>mut</b> TxContext,
+): (PermissionedGroup&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>&gt;, EncryptionHistory, MessageLog) {
+    <a href="../messaging/messaging.md#messaging_messaging_assert_human_group_creator">assert_human_group_creator</a>(creator_memory_account, ctx);
+    <a href="../messaging/messaging.md#messaging_messaging_create_group_inner">create_group_inner</a>(
+        <a href="../messaging/version.md#messaging_version">version</a>,
+        namespace,
+        <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>,
+        block_list,
+        name,
+        uuid,
+        initial_encrypted_dek,
+        initial_members,
+        ctx,
+    )
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="messaging_messaging_create_group_inner"></a>
+
+## Function `create_group_inner`
+
+
+
+<pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_create_group_inner">create_group_inner</a>(<a href="../messaging/version.md#messaging_version">version</a>: &<a href="../messaging/version.md#messaging_version_Version">messaging::version::Version</a>, namespace: &<b>mut</b> <a href="../messaging/messaging.md#messaging_messaging_MessagingNamespace">messaging::messaging::MessagingNamespace</a>, <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &<a href="../messaging/group_manager.md#messaging_group_manager_GroupManager">messaging::group_manager::GroupManager</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, name: <a href="../std/string.md#std_string_String">std::string::String</a>, uuid: <a href="../std/string.md#std_string_String">std::string::String</a>, initial_encrypted_dek: vector&lt;u8&gt;, initial_members: <a href="../myso/vec_set.md#myso_vec_set_VecSet">myso::vec_set::VecSet</a>&lt;<b>address</b>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, <a href="../messaging/encryption_history.md#messaging_encryption_history_EncryptionHistory">messaging::encryption_history::EncryptionHistory</a>, <a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_create_group_inner">create_group_inner</a>(
     <a href="../messaging/version.md#messaging_version">version</a>: &Version,
     namespace: &<b>mut</b> <a href="../messaging/messaging.md#messaging_messaging_MessagingNamespace">MessagingNamespace</a>,
     <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &GroupManager,
@@ -647,7 +867,7 @@ Creates a new messaging group and shares both objects.
 See <code><a href="../messaging/messaging.md#messaging_messaging_create_group">create_group</a></code> for details on creator permissions and initial member handling.
 
 
-<pre><code><b>entry</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_create_and_share_group">create_and_share_group</a>(<a href="../messaging/version.md#messaging_version">version</a>: &<a href="../messaging/version.md#messaging_version_Version">messaging::version::Version</a>, namespace: &<b>mut</b> <a href="../messaging/messaging.md#messaging_messaging_MessagingNamespace">messaging::messaging::MessagingNamespace</a>, <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &<a href="../messaging/group_manager.md#messaging_group_manager_GroupManager">messaging::group_manager::GroupManager</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, name: <a href="../std/string.md#std_string_String">std::string::String</a>, uuid: <a href="../std/string.md#std_string_String">std::string::String</a>, initial_encrypted_dek: vector&lt;u8&gt;, initial_members: vector&lt;<b>address</b>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>entry</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_create_and_share_group">create_and_share_group</a>(<a href="../messaging/version.md#messaging_version">version</a>: &<a href="../messaging/version.md#messaging_version_Version">messaging::version::Version</a>, namespace: &<b>mut</b> <a href="../messaging/messaging.md#messaging_messaging_MessagingNamespace">messaging::messaging::MessagingNamespace</a>, <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &<a href="../messaging/group_manager.md#messaging_group_manager_GroupManager">messaging::group_manager::GroupManager</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, creator_memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, name: <a href="../std/string.md#std_string_String">std::string::String</a>, uuid: <a href="../std/string.md#std_string_String">std::string::String</a>, initial_encrypted_dek: vector&lt;u8&gt;, initial_members: vector&lt;<b>address</b>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -661,6 +881,7 @@ See <code><a href="../messaging/messaging.md#messaging_messaging_create_group">c
     namespace: &<b>mut</b> <a href="../messaging/messaging.md#messaging_messaging_MessagingNamespace">MessagingNamespace</a>,
     <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &GroupManager,
     block_list: &BlockListRegistry,
+    creator_memory_account: &MemoryAccount,
     name: String,
     uuid: String,
     initial_encrypted_dek: vector&lt;u8&gt;,
@@ -672,10 +893,198 @@ See <code><a href="../messaging/messaging.md#messaging_messaging_create_group">c
         namespace,
         <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>,
         block_list,
+        creator_memory_account,
         name,
         uuid,
         initial_encrypted_dek,
         vec_set::from_keys(initial_members),
+        ctx,
+    );
+    transfer::public_share_object(group);
+    transfer::public_share_object(<a href="../messaging/encryption_history.md#messaging_encryption_history">encryption_history</a>);
+    transfer::public_share_object(<a href="../messaging/message_log.md#messaging_message_log">message_log</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="messaging_messaging_create_agent_group"></a>
+
+## Function `create_agent_group`
+
+Creates a messaging group on behalf of a sub-agent with principal oversight.
+
+The transaction sender must be the sub-agent <code>derived_address</code> with
+<code>CAP_MESSAGE_SEND</code>. The agent receives messaging permissions but not
+<code>PermissionsAdmin</code>. The human <code>principal_owner</code> receives <code><a href="../messaging/messaging.md#messaging_messaging_MessagingReader">MessagingReader</a></code>
+and <code>PermissionsAdmin</code>.
+
+For cross-principal agent peers in <code>initial_members</code>, pass their
+[<code>MemoryAccount</code>] as <code>cross_principal_peer_account</code>. When all peers are
+humans or agents under the same principal, pass the creator account again.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_create_agent_group">create_agent_group</a>(<a href="../messaging/version.md#messaging_version">version</a>: &<a href="../messaging/version.md#messaging_version_Version">messaging::version::Version</a>, namespace: &<b>mut</b> <a href="../messaging/messaging.md#messaging_messaging_MessagingNamespace">messaging::messaging::MessagingNamespace</a>, <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &<a href="../messaging/group_manager.md#messaging_group_manager_GroupManager">messaging::group_manager::GroupManager</a>, <a href="../messaging/group_leaver.md#messaging_group_leaver">group_leaver</a>: &<a href="../messaging/group_leaver.md#messaging_group_leaver_GroupLeaver">messaging::group_leaver::GroupLeaver</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, platform: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, creator_memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, cross_principal_peer_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, name: <a href="../std/string.md#std_string_String">std::string::String</a>, uuid: <a href="../std/string.md#std_string_String">std::string::String</a>, initial_encrypted_dek: vector&lt;u8&gt;, initial_members: <a href="../myso/vec_set.md#myso_vec_set_VecSet">myso::vec_set::VecSet</a>&lt;<b>address</b>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, <a href="../messaging/encryption_history.md#messaging_encryption_history_EncryptionHistory">messaging::encryption_history::EncryptionHistory</a>, <a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_create_agent_group">create_agent_group</a>(
+    <a href="../messaging/version.md#messaging_version">version</a>: &Version,
+    namespace: &<b>mut</b> <a href="../messaging/messaging.md#messaging_messaging_MessagingNamespace">MessagingNamespace</a>,
+    <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &GroupManager,
+    <a href="../messaging/group_leaver.md#messaging_group_leaver">group_leaver</a>: &GroupLeaver,
+    block_list: &BlockListRegistry,
+    platform: &Platform,
+    creator_memory_account: &MemoryAccount,
+    cross_principal_peer_account: &MemoryAccount,
+    name: String,
+    uuid: String,
+    initial_encrypted_dek: vector&lt;u8&gt;,
+    initial_members: VecSet&lt;<b>address</b>&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+): (PermissionedGroup&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>&gt;, EncryptionHistory, MessageLog) {
+    <a href="../messaging/version.md#messaging_version">version</a>.validate_version();
+    <b>let</b> acting = <a href="../messaging/messaging.md#messaging_messaging_resolve_messaging_actor">resolve_messaging_actor</a>(
+        creator_memory_account,
+        platform,
+        block_list,
+        memory::cap_message_send(),
+        0,
+        clock,
+        ctx,
+    );
+    <b>let</b> actor_address = memory::acting_actor_address(&acting);
+    <b>let</b> principal_owner = memory::acting_principal_owner(&acting);
+    <b>assert</b>!(actor_address == ctx.sender(), <a href="../messaging/messaging.md#messaging_messaging_EAgentSenderMismatch">EAgentSenderMismatch</a>);
+    <a href="../messaging/messaging.md#messaging_messaging_assert_agent_peers_not_blocked">assert_agent_peers_not_blocked</a>(
+        block_list,
+        &acting,
+        &initial_members,
+        actor_address,
+    );
+    <b>let</b> <b>mut</b> group: PermissionedGroup&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>&gt; = permissioned_group::new_derived&lt;
+        <a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>,
+        <a href="../messaging/encryption_history.md#messaging_encryption_history_PermissionedGroupTag">encryption_history::PermissionedGroupTag</a>,
+    &gt;(
+        <a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>(),
+        &<b>mut</b> namespace.id,
+        <a href="../messaging/encryption_history.md#messaging_encryption_history_permissions_group_tag">encryption_history::permissions_group_tag</a>(uuid),
+        ctx,
+    );
+    // `new_derived` grants PermissionsAdmin to the agent creator. Grant GroupLeaver
+    // admin first so it can revoke the agent's admin caps, then grant the principal.
+    <b>let</b> group_leaver_address = derived_object::derive_address(
+        object::id(namespace),
+        <a href="../messaging/group_leaver.md#messaging_group_leaver_derivation_key">group_leaver::derivation_key</a>(),
+    );
+    group.grant_permission&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>, PermissionsAdmin&gt;(group_leaver_address, ctx);
+    <a href="../messaging/messaging.md#messaging_messaging_grant_agent_messaging_permissions">grant_agent_messaging_permissions</a>(&<b>mut</b> group, actor_address, ctx);
+    <a href="../messaging/messaging.md#messaging_messaging_grant_principal_oversight">grant_principal_oversight</a>(&<b>mut</b> group, principal_owner, ctx);
+    group.grant_permission&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>, ObjectAdmin&gt;(
+        object::id(<a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>).to_address(),
+        ctx,
+    );
+    <b>let</b> m = <a href="../messaging/metadata.md#messaging_metadata_new">metadata::new</a>(name, uuid, actor_address);
+    <a href="../messaging/group_manager.md#messaging_group_manager_attach_metadata">group_manager::attach_metadata</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>&gt;(<a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>, &<b>mut</b> group, m);
+    <a href="../messaging/messaging.md#messaging_messaging_attach_agent_creator_metadata">attach_agent_creator_metadata</a>(<a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>, &<b>mut</b> group, &acting);
+    <b>if</b> (<a href="../messaging/messaging.md#messaging_messaging_count_non_creator_peers">count_non_creator_peers</a>(&initial_members, actor_address) == 1) {
+        <b>let</b> m = <a href="../messaging/group_manager.md#messaging_group_manager_borrow_metadata_mut">group_manager::borrow_metadata_mut</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>&gt;(<a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>, &<b>mut</b> group);
+        m.insert_data(
+            string::utf8(<a href="../messaging/messaging.md#messaging_messaging_CONVERSATION_KIND_KEY">CONVERSATION_KIND_KEY</a>),
+            string::utf8(<a href="../messaging/messaging.md#messaging_messaging_CONVERSATION_KIND_DM">CONVERSATION_KIND_DM</a>),
+        );
+    };
+    <a href="../messaging/messaging.md#messaging_messaging_grant_agent_initial_members">grant_agent_initial_members</a>(
+        &<b>mut</b> group,
+        creator_memory_account,
+        cross_principal_peer_account,
+        &initial_members,
+        actor_address,
+        ctx,
+    );
+    <a href="../messaging/group_leaver.md#messaging_group_leaver_revoke_permissions_admin">group_leaver::revoke_permissions_admin</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>&gt;(<a href="../messaging/group_leaver.md#messaging_group_leaver">group_leaver</a>, &<b>mut</b> group, actor_address);
+    <a href="../messaging/group_leaver.md#messaging_group_leaver_revoke_extension_permissions_admin">group_leaver::revoke_extension_permissions_admin</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>&gt;(<a href="../messaging/group_leaver.md#messaging_group_leaver">group_leaver</a>, &<b>mut</b> group, actor_address);
+    <b>let</b> <a href="../messaging/encryption_history.md#messaging_encryption_history">encryption_history</a> = <a href="../messaging/encryption_history.md#messaging_encryption_history_new">encryption_history::new</a>(
+        &<b>mut</b> namespace.id,
+        uuid,
+        object::id(&group),
+        initial_encrypted_dek,
+        ctx,
+    );
+    <b>let</b> <a href="../messaging/message_log.md#messaging_message_log">message_log</a> = <a href="../messaging/message_log.md#messaging_message_log_new">message_log::new</a>(&<b>mut</b> namespace.id, uuid, object::id(&group), ctx);
+    event::emit(<a href="../messaging/messaging.md#messaging_messaging_AgentGroupCreated">AgentGroupCreated</a> {
+        group_id: object::id(&group),
+        creator_actor: actor_address,
+        creator_principal: principal_owner,
+        creator_sub_agent_id: memory::acting_sub_agent_id(&acting),
+        creator_identity_class: memory::acting_identity_class(&acting) <b>as</b> u64,
+        organization_id: memory::acting_organization_id(&acting),
+        group_name: name,
+        group_uuid: uuid,
+        created_at: clock::timestamp_ms(clock),
+    });
+    (group, <a href="../messaging/encryption_history.md#messaging_encryption_history">encryption_history</a>, <a href="../messaging/message_log.md#messaging_message_log">message_log</a>)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="messaging_messaging_create_agent_and_share_group"></a>
+
+## Function `create_agent_and_share_group`
+
+Entry point: create and share an agent-associated messaging group.
+
+
+<pre><code><b>entry</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_create_agent_and_share_group">create_agent_and_share_group</a>(<a href="../messaging/version.md#messaging_version">version</a>: &<a href="../messaging/version.md#messaging_version_Version">messaging::version::Version</a>, namespace: &<b>mut</b> <a href="../messaging/messaging.md#messaging_messaging_MessagingNamespace">messaging::messaging::MessagingNamespace</a>, <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &<a href="../messaging/group_manager.md#messaging_group_manager_GroupManager">messaging::group_manager::GroupManager</a>, <a href="../messaging/group_leaver.md#messaging_group_leaver">group_leaver</a>: &<a href="../messaging/group_leaver.md#messaging_group_leaver_GroupLeaver">messaging::group_leaver::GroupLeaver</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, platform: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, creator_memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, cross_principal_peer_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, name: <a href="../std/string.md#std_string_String">std::string::String</a>, uuid: <a href="../std/string.md#std_string_String">std::string::String</a>, initial_encrypted_dek: vector&lt;u8&gt;, initial_members: vector&lt;<b>address</b>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>entry</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_create_agent_and_share_group">create_agent_and_share_group</a>(
+    <a href="../messaging/version.md#messaging_version">version</a>: &Version,
+    namespace: &<b>mut</b> <a href="../messaging/messaging.md#messaging_messaging_MessagingNamespace">MessagingNamespace</a>,
+    <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &GroupManager,
+    <a href="../messaging/group_leaver.md#messaging_group_leaver">group_leaver</a>: &GroupLeaver,
+    block_list: &BlockListRegistry,
+    platform: &Platform,
+    creator_memory_account: &MemoryAccount,
+    cross_principal_peer_account: &MemoryAccount,
+    name: String,
+    uuid: String,
+    initial_encrypted_dek: vector&lt;u8&gt;,
+    initial_members: vector&lt;<b>address</b>&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>let</b> (group, <a href="../messaging/encryption_history.md#messaging_encryption_history">encryption_history</a>, <a href="../messaging/message_log.md#messaging_message_log">message_log</a>) = <a href="../messaging/messaging.md#messaging_messaging_create_agent_group">create_agent_group</a>(
+        <a href="../messaging/version.md#messaging_version">version</a>,
+        namespace,
+        <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>,
+        <a href="../messaging/group_leaver.md#messaging_group_leaver">group_leaver</a>,
+        block_list,
+        platform,
+        creator_memory_account,
+        cross_principal_peer_account,
+        name,
+        uuid,
+        initial_encrypted_dek,
+        vec_set::from_keys(initial_members),
+        clock,
         ctx,
     );
     transfer::public_share_object(group);
@@ -1197,12 +1606,94 @@ Excess coin returns to the sender.
         group,
         log,
         sender,
+        sender,
         recipient,
         escrow_amount,
     );
     <a href="../messaging/message_log.md#messaging_message_log_send_paid_message">message_log::send_paid_message</a>(
         log,
         sender,
+        recipient,
+        payment,
+        escrow_amount,
+        dedupe_key,
+        nonce,
+        clock,
+        ctx,
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="messaging_messaging_send_agent_paid_message_digest"></a>
+
+## Function `send_agent_paid_message_digest`
+
+Agent variant of [<code><a href="../messaging/messaging.md#messaging_messaging_send_paid_message_digest">send_paid_message_digest</a></code>]. Resolves the sub-agent actor and
+evaluates paid-DM / social-graph rules against the human <code>principal_owner</code>.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_send_agent_paid_message_digest">send_agent_paid_message_digest</a>(<a href="../messaging/version.md#messaging_version">version</a>: &<a href="../messaging/version.md#messaging_version_Version">messaging::version::Version</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, log: &<b>mut</b> <a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>, paid_registry: &<a href="../messaging/paid_messaging_policy.md#messaging_paid_messaging_policy_PaidMessagingRegistry">messaging::paid_messaging_policy::PaidMessagingRegistry</a>, social_graph: &<a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_contracts::social_graph::SocialGraph</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &<a href="../messaging/group_manager.md#messaging_group_manager_GroupManager">messaging::group_manager::GroupManager</a>, platform: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, recipient: <b>address</b>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, escrow_amount: u64, dedupe_key: vector&lt;u8&gt;, nonce: u128, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_send_agent_paid_message_digest">send_agent_paid_message_digest</a>(
+    <a href="../messaging/version.md#messaging_version">version</a>: &Version,
+    group: &PermissionedGroup&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>&gt;,
+    log: &<b>mut</b> MessageLog,
+    paid_registry: &PaidMessagingRegistry,
+    social_graph: &SocialGraph,
+    block_list: &BlockListRegistry,
+    <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &GroupManager,
+    platform: &Platform,
+    memory_account: &MemoryAccount,
+    recipient: <b>address</b>,
+    payment: Coin&lt;MYSO&gt;,
+    escrow_amount: u64,
+    dedupe_key: vector&lt;u8&gt;,
+    nonce: u128,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <a href="../messaging/version.md#messaging_version">version</a>.validate_version();
+    <a href="../messaging/messaging.md#messaging_messaging_assert_group_not_archived">assert_group_not_archived</a>(group);
+    <a href="../messaging/messaging.md#messaging_messaging_assert_message_log_matches_group">assert_message_log_matches_group</a>(log, group);
+    <b>let</b> acting = <a href="../messaging/messaging.md#messaging_messaging_resolve_messaging_actor">resolve_messaging_actor</a>(
+        memory_account,
+        platform,
+        block_list,
+        memory::cap_message_send(),
+        coin::value(&payment),
+        clock,
+        ctx,
+    );
+    <b>let</b> actor_address = memory::acting_actor_address(&acting);
+    <b>let</b> principal_owner = memory::acting_principal_owner(&acting);
+    <b>assert</b>!(actor_address == ctx.sender(), <a href="../messaging/messaging.md#messaging_messaging_EAgentSenderMismatch">EAgentSenderMismatch</a>);
+    <b>assert</b>!(group.has_permission&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>, <a href="../messaging/messaging.md#messaging_messaging_MessagingSender">MessagingSender</a>&gt;(actor_address), <a href="../messaging/messaging.md#messaging_messaging_ENotPermitted">ENotPermitted</a>);
+    <a href="../messaging/messaging.md#messaging_messaging_assert_paid_open_allowed">assert_paid_open_allowed</a>(
+        paid_registry,
+        social_graph,
+        block_list,
+        <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>,
+        group,
+        log,
+        actor_address,
+        principal_owner,
+        recipient,
+        escrow_amount,
+    );
+    <a href="../messaging/message_log.md#messaging_message_log_send_paid_message">message_log::send_paid_message</a>(
+        log,
+        actor_address,
         recipient,
         payment,
         escrow_amount,
@@ -1400,6 +1891,380 @@ Grants all messaging permissions to a member.
 
 </details>
 
+<a name="messaging_messaging_grant_agent_messaging_permissions"></a>
+
+## Function `grant_agent_messaging_permissions`
+
+Messaging permissions for sub-agent creators and agent peers (no admin caps).
+
+
+<pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_grant_agent_messaging_permissions">grant_agent_messaging_permissions</a>(group: &<b>mut</b> <a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, member: <b>address</b>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_grant_agent_messaging_permissions">grant_agent_messaging_permissions</a>(
+    group: &<b>mut</b> PermissionedGroup&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>&gt;,
+    member: <b>address</b>,
+    ctx: &TxContext,
+) {
+    group.grant_permission&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>, <a href="../messaging/messaging.md#messaging_messaging_MessagingSender">MessagingSender</a>&gt;(member, ctx);
+    group.grant_permission&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>, <a href="../messaging/messaging.md#messaging_messaging_MessagingReader">MessagingReader</a>&gt;(member, ctx);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="messaging_messaging_grant_principal_oversight"></a>
+
+## Function `grant_principal_oversight`
+
+Principal human oversight: read-only membership plus group admin control.
+
+
+<pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_grant_principal_oversight">grant_principal_oversight</a>(group: &<b>mut</b> <a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, principal: <b>address</b>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_grant_principal_oversight">grant_principal_oversight</a>(
+    group: &<b>mut</b> PermissionedGroup&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>&gt;,
+    principal: <b>address</b>,
+    ctx: &TxContext,
+) {
+    group.grant_permission&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>, <a href="../messaging/messaging.md#messaging_messaging_MessagingReader">MessagingReader</a>&gt;(principal, ctx);
+    group.grant_permission&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>, PermissionsAdmin&gt;(principal, ctx);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="messaging_messaging_grant_human_peer_permissions"></a>
+
+## Function `grant_human_peer_permissions`
+
+Default permissions for human peers joining an agent-created group.
+
+
+<pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_grant_human_peer_permissions">grant_human_peer_permissions</a>(group: &<b>mut</b> <a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, member: <b>address</b>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_grant_human_peer_permissions">grant_human_peer_permissions</a>(
+    group: &<b>mut</b> PermissionedGroup&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>&gt;,
+    member: <b>address</b>,
+    ctx: &TxContext,
+) {
+    group.grant_permission&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>, <a href="../messaging/messaging.md#messaging_messaging_MessagingSender">MessagingSender</a>&gt;(member, ctx);
+    group.grant_permission&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>, <a href="../messaging/messaging.md#messaging_messaging_MessagingReader">MessagingReader</a>&gt;(member, ctx);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="messaging_messaging_assert_human_group_creator"></a>
+
+## Function `assert_human_group_creator`
+
+
+
+<pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_assert_human_group_creator">assert_human_group_creator</a>(memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_assert_human_group_creator">assert_human_group_creator</a>(memory_account: &MemoryAccount, ctx: &TxContext) {
+    <b>let</b> sender = ctx.sender();
+    <b>assert</b>!(sender == memory::owner(memory_account), <a href="../messaging/messaging.md#messaging_messaging_ENotPermitted">ENotPermitted</a>);
+    <b>assert</b>!(
+        !memory::is_registered_agent(memory_account, sender),
+        <a href="../messaging/messaging.md#messaging_messaging_ERegisteredAgentCannotCreateGroup">ERegisteredAgentCannotCreateGroup</a>,
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="messaging_messaging_resolve_messaging_actor"></a>
+
+## Function `resolve_messaging_actor`
+
+
+
+<pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_resolve_messaging_actor">resolve_messaging_actor</a>(memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, platform: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, required_cap: u64, spend_amount: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../social_contracts/memory.md#social_contracts_memory_ActingContext">social_contracts::memory::ActingContext</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_resolve_messaging_actor">resolve_messaging_actor</a>(
+    memory_account: &MemoryAccount,
+    platform: &Platform,
+    block_list: &BlockListRegistry,
+    required_cap: u64,
+    spend_amount: u64,
+    clock: &Clock,
+    ctx: &TxContext,
+): ActingContext {
+    <b>let</b> platform_id = object::uid_to_address(platform::id(platform));
+    <b>let</b> acting = memory::resolve_actor_with_cap(
+        memory_account,
+        required_cap,
+        option::some(platform_id),
+        spend_amount,
+        clock,
+        ctx,
+    );
+    memory::assert_direct_execution_allowed(memory_account, required_cap, ctx);
+    <b>let</b> principal = memory::acting_principal_owner(&acting);
+    <b>assert</b>!(memory::owner(memory_account) == principal, <a href="../messaging/messaging.md#messaging_messaging_ENotPermitted">ENotPermitted</a>);
+    <b>assert</b>!(platform::has_joined_platform(platform, principal), <a href="../messaging/messaging.md#messaging_messaging_ENotPermitted">ENotPermitted</a>);
+    <b>assert</b>!(
+        !block_list::is_blocked(block_list, platform_id, principal),
+        <a href="../messaging/messaging.md#messaging_messaging_ENotPermitted">ENotPermitted</a>,
+    );
+    acting
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="messaging_messaging_attach_agent_creator_metadata"></a>
+
+## Function `attach_agent_creator_metadata`
+
+
+
+<pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_attach_agent_creator_metadata">attach_agent_creator_metadata</a>(<a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &<a href="../messaging/group_manager.md#messaging_group_manager_GroupManager">messaging::group_manager::GroupManager</a>, group: &<b>mut</b> <a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, acting: &<a href="../social_contracts/memory.md#social_contracts_memory_ActingContext">social_contracts::memory::ActingContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_attach_agent_creator_metadata">attach_agent_creator_metadata</a>(
+    <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &GroupManager,
+    group: &<b>mut</b> PermissionedGroup&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>&gt;,
+    acting: &ActingContext,
+) {
+    <b>let</b> m = <a href="../messaging/group_manager.md#messaging_group_manager_borrow_metadata_mut">group_manager::borrow_metadata_mut</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>&gt;(<a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>, group);
+    m.insert_data(string::utf8(<a href="../messaging/messaging.md#messaging_messaging_AGENT_CHAT_KEY">AGENT_CHAT_KEY</a>), string::utf8(<a href="../messaging/messaging.md#messaging_messaging_AGENT_CHAT_TRUE">AGENT_CHAT_TRUE</a>));
+    m.insert_data(
+        string::utf8(<a href="../messaging/messaging.md#messaging_messaging_CREATOR_ACTOR_KEY">CREATOR_ACTOR_KEY</a>),
+        <a href="../messaging/messaging.md#messaging_messaging_address_to_metadata_string">address_to_metadata_string</a>(memory::acting_actor_address(acting)),
+    );
+    m.insert_data(
+        string::utf8(<a href="../messaging/messaging.md#messaging_messaging_CREATOR_PRINCIPAL_KEY">CREATOR_PRINCIPAL_KEY</a>),
+        <a href="../messaging/messaging.md#messaging_messaging_address_to_metadata_string">address_to_metadata_string</a>(memory::acting_principal_owner(acting)),
+    );
+    <b>if</b> (option::is_some(&memory::acting_sub_agent_id(acting))) {
+        m.insert_data(
+            string::utf8(<a href="../messaging/messaging.md#messaging_messaging_CREATOR_SUB_AGENT_ID_KEY">CREATOR_SUB_AGENT_ID_KEY</a>),
+            <a href="../messaging/messaging.md#messaging_messaging_id_to_metadata_string">id_to_metadata_string</a>(*option::borrow(&memory::acting_sub_agent_id(acting))),
+        );
+    };
+    m.insert_data(
+        string::utf8(<a href="../messaging/messaging.md#messaging_messaging_CREATOR_IDENTITY_CLASS_KEY">CREATOR_IDENTITY_CLASS_KEY</a>),
+        <a href="../messaging/messaging.md#messaging_messaging_u64_to_metadata_string">u64_to_metadata_string</a>(memory::acting_identity_class(acting) <b>as</b> u64),
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="messaging_messaging_grant_agent_initial_members"></a>
+
+## Function `grant_agent_initial_members`
+
+
+
+<pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_grant_agent_initial_members">grant_agent_initial_members</a>(group: &<b>mut</b> <a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, creator_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, cross_principal_peer_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, initial_members: &<a href="../myso/vec_set.md#myso_vec_set_VecSet">myso::vec_set::VecSet</a>&lt;<b>address</b>&gt;, actor_address: <b>address</b>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_grant_agent_initial_members">grant_agent_initial_members</a>(
+    group: &<b>mut</b> PermissionedGroup&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>&gt;,
+    creator_account: &MemoryAccount,
+    cross_principal_peer_account: &MemoryAccount,
+    initial_members: &VecSet&lt;<b>address</b>&gt;,
+    actor_address: <b>address</b>,
+    ctx: &TxContext,
+) {
+    <b>let</b> keys = initial_members.keys();
+    <b>let</b> len = vector::length(keys);
+    <b>let</b> <b>mut</b> i = 0;
+    <b>while</b> (i &lt; len) {
+        <b>let</b> member = *vector::borrow(keys, i);
+        <b>if</b> (member != actor_address) {
+            <b>if</b> (memory::is_registered_agent(creator_account, member)) {
+                <a href="../messaging/messaging.md#messaging_messaging_grant_agent_messaging_permissions">grant_agent_messaging_permissions</a>(group, member, ctx);
+            } <b>else</b> <b>if</b> (memory::is_registered_agent(cross_principal_peer_account, member)) {
+                <a href="../messaging/messaging.md#messaging_messaging_grant_agent_messaging_permissions">grant_agent_messaging_permissions</a>(group, member, ctx);
+                <a href="../messaging/messaging.md#messaging_messaging_grant_principal_oversight">grant_principal_oversight</a>(group, memory::owner(cross_principal_peer_account), ctx);
+            } <b>else</b> {
+                <a href="../messaging/messaging.md#messaging_messaging_grant_human_peer_permissions">grant_human_peer_permissions</a>(group, member, ctx);
+            };
+        };
+        i = i + 1;
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="messaging_messaging_assert_agent_peers_not_blocked"></a>
+
+## Function `assert_agent_peers_not_blocked`
+
+
+
+<pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_assert_agent_peers_not_blocked">assert_agent_peers_not_blocked</a>(block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, acting: &<a href="../social_contracts/memory.md#social_contracts_memory_ActingContext">social_contracts::memory::ActingContext</a>, members: &<a href="../myso/vec_set.md#myso_vec_set_VecSet">myso::vec_set::VecSet</a>&lt;<b>address</b>&gt;, actor_address: <b>address</b>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_assert_agent_peers_not_blocked">assert_agent_peers_not_blocked</a>(
+    block_list: &BlockListRegistry,
+    acting: &ActingContext,
+    members: &VecSet&lt;<b>address</b>&gt;,
+    actor_address: <b>address</b>,
+) {
+    <b>let</b> principal = memory::acting_principal_owner(acting);
+    <b>let</b> keys = members.keys();
+    <b>let</b> len = vector::length(keys);
+    <b>let</b> <b>mut</b> i = 0;
+    <b>while</b> (i &lt; len) {
+        <b>let</b> member = *vector::borrow(keys, i);
+        <b>if</b> (member != actor_address) {
+            block_list::assert_not_blocked(block_list, actor_address, member);
+            block_list::assert_not_blocked(block_list, principal, member);
+        };
+        i = i + 1;
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="messaging_messaging_address_to_metadata_string"></a>
+
+## Function `address_to_metadata_string`
+
+
+
+<pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_address_to_metadata_string">address_to_metadata_string</a>(addr: <b>address</b>): <a href="../std/string.md#std_string_String">std::string::String</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_address_to_metadata_string">address_to_metadata_string</a>(addr: <b>address</b>): String {
+    string::utf8(hex::encode(addr.to_bytes()))
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="messaging_messaging_id_to_metadata_string"></a>
+
+## Function `id_to_metadata_string`
+
+
+
+<pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_id_to_metadata_string">id_to_metadata_string</a>(id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>): <a href="../std/string.md#std_string_String">std::string::String</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_id_to_metadata_string">id_to_metadata_string</a>(id: ID): String {
+    string::utf8(hex::encode(id.to_bytes()))
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="messaging_messaging_u64_to_metadata_string"></a>
+
+## Function `u64_to_metadata_string`
+
+
+
+<pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_u64_to_metadata_string">u64_to_metadata_string</a>(value: u64): <a href="../std/string.md#std_string_String">std::string::String</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_u64_to_metadata_string">u64_to_metadata_string</a>(value: u64): String {
+    u64::to_string(value)
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="messaging_messaging_assert_peers_not_blocked"></a>
 
 ## Function `assert_peers_not_blocked`
@@ -1510,9 +2375,11 @@ Grants all messaging permissions to a member.
 
 ## Function `assert_paid_open_allowed`
 
+Paid-DM gate for new 1:1 conversations. <code>sender</code> is the transaction actor; <code>social_identity</code>
+is the human whose follow graph and paid policy apply (sender for humans, principal for agents).
 
 
-<pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_assert_paid_open_allowed">assert_paid_open_allowed</a>(paid_registry: &<a href="../messaging/paid_messaging_policy.md#messaging_paid_messaging_policy_PaidMessagingRegistry">messaging::paid_messaging_policy::PaidMessagingRegistry</a>, social_graph: &<a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_contracts::social_graph::SocialGraph</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &<a href="../messaging/group_manager.md#messaging_group_manager_GroupManager">messaging::group_manager::GroupManager</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, log: &<a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>, sender: <b>address</b>, recipient: <b>address</b>, escrow_amount: u64)
+<pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_assert_paid_open_allowed">assert_paid_open_allowed</a>(paid_registry: &<a href="../messaging/paid_messaging_policy.md#messaging_paid_messaging_policy_PaidMessagingRegistry">messaging::paid_messaging_policy::PaidMessagingRegistry</a>, social_graph: &<a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_contracts::social_graph::SocialGraph</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &<a href="../messaging/group_manager.md#messaging_group_manager_GroupManager">messaging::group_manager::GroupManager</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, log: &<a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>, sender: <b>address</b>, social_identity: <b>address</b>, recipient: <b>address</b>, escrow_amount: u64)
 </code></pre>
 
 
@@ -1529,17 +2396,19 @@ Grants all messaging permissions to a member.
     group: &PermissionedGroup&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>&gt;,
     log: &MessageLog,
     sender: <b>address</b>,
+    social_identity: <b>address</b>,
     recipient: <b>address</b>,
     escrow_amount: u64,
 ) {
     block_list::assert_not_blocked(block_list, sender, recipient);
+    block_list::assert_not_blocked(block_list, social_identity, recipient);
     <b>if</b> (!<a href="../messaging/messaging.md#messaging_messaging_is_direct_message_group">is_direct_message_group</a>(<a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>, group)) {
         <b>return</b>
     };
     <b>if</b> (<a href="../messaging/message_log.md#messaging_message_log_next_seq">message_log::next_seq</a>(log) != 0) {
         <b>return</b>
     };
-    <b>if</b> (social_graph::is_following(social_graph, sender, recipient)) {
+    <b>if</b> (social_graph::is_following(social_graph, social_identity, recipient)) {
         <b>abort</b> <a href="../messaging/messaging.md#messaging_messaging_EPaidNotRequiredForFollower">EPaidNotRequiredForFollower</a>
     };
     <b>let</b> min_cost = <a href="../messaging/paid_messaging_policy.md#messaging_paid_messaging_policy_requires_payment_from">paid_messaging_policy::requires_payment_from</a>(paid_registry, recipient);

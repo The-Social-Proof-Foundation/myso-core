@@ -36,9 +36,7 @@ use myso_types::{
     error::{ExecutionError, VMMVerifierErrorSubStatusCode},
     id::OBJECT_MODULE_NAME,
     myso_system_state::MYSO_SYSTEM_MODULE_NAME,
-    orderbook::{
-        ORDERBOOK_REGISTRY_CREATE_FUNCTION_NAME, ORDERBOOK_REGISTRY_MODULE_NAME,
-    },
+    orderbook::{ORDERBOOK_REGISTRY_CREATE_FUNCTION_NAME, ORDERBOOK_REGISTRY_MODULE_NAME},
     randomness_state::RANDOMNESS_MODULE_NAME,
 };
 use std::{collections::BTreeMap, error::Error, num::NonZeroU64};

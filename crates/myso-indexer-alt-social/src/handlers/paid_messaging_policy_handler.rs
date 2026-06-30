@@ -62,7 +62,8 @@ impl Processor for PaidMessagingPolicyHandler {
                     Ok(v) => v,
                     Err(_) => continue,
                 };
-                let Some(row) = handle_paid_messaging_policy_updated(&event_data, checkpoint_timestamp_ms)
+                let Some(row) =
+                    handle_paid_messaging_policy_updated(&event_data, checkpoint_timestamp_ms)
                 else {
                     continue;
                 };
@@ -79,15 +80,13 @@ fn handle_paid_messaging_policy_updated(
 ) -> Option<NewWalletMessagingPolicy> {
     let wallet = data.get("wallet")?.as_str()?.to_string();
     let enabled = data.get("enabled")?.as_bool()?;
-    let min_cost = data
-        .get("min_cost")
-        .and_then(|v| {
-            if v.is_null() {
-                None
-            } else {
-                v.as_u64().map(|n| n as i64)
-            }
-        });
+    let min_cost = data.get("min_cost").and_then(|v| {
+        if v.is_null() {
+            None
+        } else {
+            v.as_u64().map(|n| n as i64)
+        }
+    });
     Some(NewWalletMessagingPolicy {
         wallet_address: wallet,
         enabled,

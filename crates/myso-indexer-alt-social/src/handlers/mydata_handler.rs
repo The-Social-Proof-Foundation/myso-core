@@ -18,25 +18,25 @@ use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
-    NewMyDataAccessLog, NewMyDataConfig, NewMyDataData, NewMyDataPurchase, NewMyDataBroadPool,
-    NewMyDataClaim, NewMyDataDistributionRound, NewMyDataListingSubPool,
-    NewMyDataMerkleRoot, NewMyDataSnapshotAnchor, NewMyDataSubPool,
-    NewMyDataRegistry, NewMyDataRevenue, NewMyDataSubscription,
+    NewMyDataAccessLog, NewMyDataBroadPool, NewMyDataClaim, NewMyDataConfig, NewMyDataData,
+    NewMyDataDistributionRound, NewMyDataListingSubPool, NewMyDataMerkleRoot, NewMyDataPurchase,
+    NewMyDataRegistry, NewMyDataRevenue, NewMyDataSnapshotAnchor, NewMyDataSubPool,
+    NewMyDataSubscription,
 };
 use myso_indexer_alt_social_schema::schema::{
-    mydata_access_logs, mydata_config, mydata_data, mydata_purchases, mydata_broad_pools,
-    mydata_claims, mydata_distribution_rounds, mydata_listing_sub_pools,
-    mydata_merkle_roots, mydata_snapshot_anchors, mydata_sub_pools,
-    mydata_registry, mydata_revenue, mydata_subscriptions,
+    mydata_access_logs, mydata_broad_pools, mydata_claims, mydata_config, mydata_data,
+    mydata_distribution_rounds, mydata_listing_sub_pools, mydata_merkle_roots, mydata_purchases,
+    mydata_registry, mydata_revenue, mydata_snapshot_anchors, mydata_sub_pools,
+    mydata_subscriptions,
 };
 
 use super::common;
 use super::events;
 use super::mydata;
+use super::mydata_object;
 use super::organization_stats::{
     apply_org_outbound_spend, resolve_organization_id_for_derived_address,
 };
-use super::mydata_object;
 use super::post_mydata::{self, paywall_from_mydata};
 use crate::metrics::SocialMetrics;
 
@@ -139,13 +139,10 @@ impl MyDataRow {
             crate::handlers::SocialEventRow::MyDataBroadPool(b) => {
                 Some(MyDataRow::MyDataBroadPool(b))
             }
-            crate::handlers::SocialEventRow::MyDataSubPool(s) => {
-                Some(MyDataRow::MyDataSubPool(s))
+            crate::handlers::SocialEventRow::MyDataSubPool(s) => Some(MyDataRow::MyDataSubPool(s)),
+            crate::handlers::SocialEventRow::MyDataListingSubPoolsReplace { listing_id, rows } => {
+                Some(MyDataRow::MyDataListingSubPoolsReplace { listing_id, rows })
             }
-            crate::handlers::SocialEventRow::MyDataListingSubPoolsReplace {
-                listing_id,
-                rows,
-            } => Some(MyDataRow::MyDataListingSubPoolsReplace { listing_id, rows }),
             crate::handlers::SocialEventRow::MyDataSnapshotAnchor(a) => {
                 Some(MyDataRow::MyDataSnapshotAnchor(a))
             }
@@ -155,9 +152,7 @@ impl MyDataRow {
             crate::handlers::SocialEventRow::MyDataMerkleRoot(m) => {
                 Some(MyDataRow::MyDataMerkleRoot(m))
             }
-            crate::handlers::SocialEventRow::MyDataClaim(c) => {
-                Some(MyDataRow::MyDataClaim(c))
-            }
+            crate::handlers::SocialEventRow::MyDataClaim(c) => Some(MyDataRow::MyDataClaim(c)),
             _ => None,
         }
     }
@@ -314,8 +309,7 @@ impl Handler for MyDataHandler {
                         .execute(conn)
                         .await?;
                     let paywall = paywall_from_mydata(subscription_price, encrypted_content_hash);
-                    total += post_mydata::sync_posts_for_mydata(conn, &mydata_id, &paywall)
-                        .await?;
+                    total += post_mydata::sync_posts_for_mydata(conn, &mydata_id, &paywall).await?;
                 }
                 MyDataRow::MyDataPurchase(p) => {
                     let mut purchase = p.clone();
@@ -486,12 +480,10 @@ impl Handler for MyDataHandler {
                         .on_conflict(mydata_broad_pools::pool_id)
                         .do_update()
                         .set((
-                            mydata_broad_pools::name
-                                .eq(excluded(mydata_broad_pools::name)),
+                            mydata_broad_pools::name.eq(excluded(mydata_broad_pools::name)),
                             mydata_broad_pools::created_at_ms
                                 .eq(excluded(mydata_broad_pools::created_at_ms)),
-                            mydata_broad_pools::event_id
-                                .eq(excluded(mydata_broad_pools::event_id)),
+                            mydata_broad_pools::event_id.eq(excluded(mydata_broad_pools::event_id)),
                             mydata_broad_pools::transaction_id
                                 .eq(excluded(mydata_broad_pools::transaction_id)),
                         ))
@@ -509,8 +501,7 @@ impl Handler for MyDataHandler {
                             mydata_sub_pools::name.eq(excluded(mydata_sub_pools::name)),
                             mydata_sub_pools::created_at_ms
                                 .eq(excluded(mydata_sub_pools::created_at_ms)),
-                            mydata_sub_pools::event_id
-                                .eq(excluded(mydata_sub_pools::event_id)),
+                            mydata_sub_pools::event_id.eq(excluded(mydata_sub_pools::event_id)),
                             mydata_sub_pools::transaction_id
                                 .eq(excluded(mydata_sub_pools::transaction_id)),
                         ))
@@ -548,9 +539,8 @@ impl Handler for MyDataHandler {
                         .set((
                             mydata_distribution_rounds::total_amount
                                 .eq(excluded(mydata_distribution_rounds::total_amount)),
-                            mydata_distribution_rounds::contributor_count.eq(excluded(
-                                mydata_distribution_rounds::contributor_count,
-                            )),
+                            mydata_distribution_rounds::contributor_count
+                                .eq(excluded(mydata_distribution_rounds::contributor_count)),
                             mydata_distribution_rounds::merkle_root
                                 .eq(excluded(mydata_distribution_rounds::merkle_root)),
                             mydata_distribution_rounds::published_at_ms

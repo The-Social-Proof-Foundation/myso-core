@@ -7,7 +7,9 @@ use diesel::QueryDsl;
 use diesel::SelectableHelper;
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::{MemoryAccountRow, SubAgentRow};
-use myso_indexer_alt_social_schema::schema::{memory_accounts, profiles, sub_agent_memory_vaults, sub_agents};
+use myso_indexer_alt_social_schema::schema::{
+    memory_accounts, profiles, sub_agent_memory_vaults, sub_agents,
+};
 use myso_pg_db::Connection;
 use serde::Serialize;
 
@@ -194,7 +196,10 @@ pub(crate) async fn get_profile_memory_account_id(
             .optional()?
     };
     metrics.requests_succeeded.inc();
-    Ok(resolve_profile_memory_account_id(denormalized, registry_account_id))
+    Ok(resolve_profile_memory_account_id(
+        denormalized,
+        registry_account_id,
+    ))
 }
 
 fn resolve_profile_memory_account_id(

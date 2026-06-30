@@ -45,7 +45,7 @@ fn addr_to_string(addr: &AccountAddress) -> String {
 
 /// Move `myso::object::ID` BCS layout (`bytes: address`).
 #[derive(Debug, Clone, Deserialize, Serialize)]
-struct BcsMoveObjectId {
+pub struct BcsMoveObjectId {
     bytes: AccountAddress,
 }
 
@@ -819,7 +819,9 @@ struct ParsedCommentCreated {
     action_identity_class: u8,
 }
 
-fn bcs_comment_created_from_bytes(contents: &[u8]) -> Result<ParsedCommentCreated, EventParseError> {
+fn bcs_comment_created_from_bytes(
+    contents: &[u8],
+) -> Result<ParsedCommentCreated, EventParseError> {
     if let Ok(ev) = bcs::from_bytes::<BcsCommentCreatedEventWithOrganization>(contents) {
         return Ok(ParsedCommentCreated {
             comment_id: ev.comment_id,
@@ -927,7 +929,9 @@ fn parse_reaction_event(ev: BcsReactionEvent) -> ParsedReactionEvent {
     }
 }
 
-fn parse_reaction_event_with_organization(ev: BcsReactionEventWithOrganization) -> ParsedReactionEvent {
+fn parse_reaction_event_with_organization(
+    ev: BcsReactionEventWithOrganization,
+) -> ParsedReactionEvent {
     let actor_address = canonical_reaction_user(ev._user, ev.actor_address);
     ParsedReactionEvent {
         object_id: ev.object_id,
@@ -979,9 +983,7 @@ pub struct BcsRemoveReactionEvent {
     action_identity_class: u8,
 }
 
-fn bcs_remove_reaction_from_bytes(
-    contents: &[u8],
-) -> Result<ParsedReactionEvent, EventParseError> {
+fn bcs_remove_reaction_from_bytes(contents: &[u8]) -> Result<ParsedReactionEvent, EventParseError> {
     if let Ok(ev) = bcs::from_bytes::<BcsRemoveReactionEventWithOrganization>(contents) {
         let actor_address = canonical_reaction_user(ev.user, ev.actor_address);
         return Ok(ParsedReactionEvent {
@@ -4591,6 +4593,34 @@ fn parse_upgrade_event(
 }
 
 #[cfg(test)]
+pub(crate) fn username_beneficiary_claimed_bcs_fixture() -> Vec<u8> {
+    use move_core_types::account_address::AccountAddress;
+
+    let ev = BcsUsernameBeneficiaryClaimedEvent {
+        beneficiary_id: AccountAddress::from_hex_literal(
+            "0x19e12c82effb103ed5a762f7d5c3daa0d7ed96b1d421ba686734de3e897ce939",
+        )
+        .unwrap(),
+        username: "pocub1782775058".to_string(),
+        profile_id: AccountAddress::from_hex_literal(
+            "0x3853b739126a0e3773c415eab400b4adc26a4257d58abf08be12992e0d0ee48f",
+        )
+        .unwrap(),
+        claimed_by: AccountAddress::from_hex_literal(
+            "0x7eb74c2ca45c41a4c4126f13c2286cbc9ac400c7b5ab5fe38694ecd71161ccaf",
+        )
+        .unwrap(),
+        wallet: AccountAddress::from_hex_literal(
+            "0x7e91c216898618e1c5f614a01dde30b5f5d7e1e2fb4fdfe0b4a3423d55202430",
+        )
+        .unwrap(),
+        oracle_evidence_hash: vec![],
+        claimed_at: 5_837_000_000,
+    };
+    bcs::to_bytes(&ev).expect("bcs")
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use move_core_types::account_address::AccountAddress;
@@ -5382,7 +5412,7 @@ mod tests {
 
     #[test]
     fn username_beneficiary_claimed_bcs_via_proof_of_creativity_module() {
-        let bytes = super::tests::test_username_beneficiary_claimed_bcs_fixture();
+        let bytes = super::username_beneficiary_claimed_bcs_fixture();
         let json = parse_event_contents(
             "proof_of_creativity",
             "UsernameBeneficiaryClaimedEvent",
@@ -5641,10 +5671,7 @@ mod tests {
             addr_to_string(&actor_address),
             "user_address must come from actor_address, not legacy user field"
         );
-        assert_eq!(
-            json["actor_address"],
-            addr_to_string(&actor_address)
-        );
+        assert_eq!(json["actor_address"], addr_to_string(&actor_address));
         assert_eq!(
             json["principal_owner"],
             addr_to_string(&AccountAddress::from_hex_literal("0x3").unwrap())
@@ -5747,7 +5774,10 @@ mod tests {
             parse_event_contents("memory", "AgentMemoryVaultCreated", &bytes).expect("parse");
         assert!(json["vault_id"].as_str().unwrap().starts_with("0x"));
         assert!(json["agent_object_id"].as_str().unwrap().starts_with("0x"));
-        assert!(json["memory_account_id"].as_str().unwrap().starts_with("0x"));
+        assert!(json["memory_account_id"]
+            .as_str()
+            .unwrap()
+            .starts_with("0x"));
     }
 
     #[test]

@@ -5,9 +5,9 @@ pub mod governance;
 
 pub use governance::{DelegateRatingViewerTarget, delegate_rating_viewer_lookup_key};
 pub mod insurance;
+pub mod memory;
 mod metrics;
 pub mod mydata;
-pub mod memory;
 pub mod org_leaderboard;
 pub mod org_stats;
 pub mod organization;
@@ -31,38 +31,35 @@ pub use insurance::{
     InsuranceRouteFillRow, InsuranceUserExposureAggRow, InsuranceVaultExposureRow,
     InsuranceVaultTransactionRow,
 };
+pub use memory::{SocialAttributionRow, SubAgentListResult};
+pub use metrics::standalone_reader_metrics;
 pub use myso_indexer_alt_social_schema::models::{
-    DelegateRow, GovernanceRegistryRow, GovernanceStatsRow, InsurancePolicyRow, InsuranceVaultRow,
-    MyDataPurchaseRow, MyDataBroadPoolRow, MyDataClaimRow,
-    MyDataDistributionRoundRow, MyDataListingSubPoolRow, MyDataMerkleRootRow,
-    MyDataSnapshotAnchorRow, MyDataSubPoolRow, MyDataRecordRow,
-    PlatformRevenueSummaryRow, PromotedPostRow, PromotionHourlyRow, PromotionStatsRow,
-    PromotionTimeSeriesRow, PromotionViewRow, ProposalRow, SpotBetRow, SpotBetWithdrawalRow,
-    SpotPayoutRow, SpotRecordRow, SpotRefundRow, SpotResolutionRow,
+    AgenticOrganizationRow, MemoryAccountRow, SubAgentRow,
 };
 pub use myso_indexer_alt_social_schema::models::{
-    PocAnalysisResultRow, PocBadgeRow, PocBeneficiaryVaultRow, PocConfigRow, PocCreatorIdentityLinkRow,
-    PocDisputeRow, PocDisputeVoteRow, PocRevenueRedirectionRow, PocUsernameBeneficiaryRow,
-    PocVaultClaimRow, PocVaultCoinBalanceRow, PocVaultDepositRow,
+    DelegateRow, GovernanceRegistryRow, GovernanceStatsRow, InsurancePolicyRow, InsuranceVaultRow,
+    MyDataBroadPoolRow, MyDataClaimRow, MyDataDistributionRoundRow, MyDataListingSubPoolRow,
+    MyDataMerkleRootRow, MyDataPurchaseRow, MyDataRecordRow, MyDataSnapshotAnchorRow,
+    MyDataSubPoolRow, PlatformRevenueSummaryRow, PromotedPostRow, PromotionHourlyRow,
+    PromotionStatsRow, PromotionTimeSeriesRow, PromotionViewRow, ProposalRow, SpotBetRow,
+    SpotBetWithdrawalRow, SpotPayoutRow, SpotRecordRow, SpotRefundRow, SpotResolutionRow,
+};
+pub use myso_indexer_alt_social_schema::models::{
+    PocAnalysisResultRow, PocBadgeRow, PocBeneficiaryVaultRow, PocConfigRow,
+    PocCreatorIdentityLinkRow, PocDisputeRow, PocDisputeVoteRow, PocRevenueRedirectionRow,
+    PocUsernameBeneficiaryRow, PocVaultClaimRow, PocVaultCoinBalanceRow, PocVaultDepositRow,
 };
 pub use myso_indexer_alt_social_schema::models::{
     PostDeletionEventRow, PostModerationEventRow, SptHoldingRow, SptPoolRow, SptPriceHistory,
     SptTransaction,
 };
-pub use myso_indexer_alt_social_schema::models::{
-    AgenticOrganizationRow, MemoryAccountRow, SubAgentRow,
-};
-pub use memory::{
-    SocialAttributionRow, SubAgentListResult,
-};
 pub use org_leaderboard::{
     OrganizationCategoryInfo, OrganizationLeaderboardEntry, OrganizationLeaderboardResult,
-    OrganizationLeaderboardSort, organization_categories, org_type_from_slug,
+    OrganizationLeaderboardSort, org_type_from_slug, organization_categories,
 };
 pub use org_stats::{OrganizationStatistics, OrganizationStatsWindow};
-pub use organization::{AgenticOrganizationListResult};
+pub use organization::AgenticOrganizationListResult;
 pub use pg_reader::SocialPgReader;
-pub use metrics::standalone_reader_metrics;
 pub use platform::{PlatformBlockedProfileRow, PlatformRow, PlatformUserAccessRow};
 pub use pnl::{ProfilePnLWindow, ProfilePnLWindowResult, get_profile_pnl_for_windows};
 pub use poc::{
@@ -76,9 +73,9 @@ pub use poc_username_beneficiary::{
     get_creator_identity_link as get_poc_creator_identity_link,
     get_creator_identity_link_by_wallet as get_poc_creator_identity_link_by_wallet,
     get_poc_creator_identity_link_for_conn, get_poc_username_beneficiary_by_id_for_conn,
-    get_poc_username_beneficiary_by_username_for_conn, has_active as has_active_poc_username_beneficiary,
-    is_username_available_for_registration, list_username_beneficiaries,
-    list_username_beneficiaries_for_conn,
+    get_poc_username_beneficiary_by_username_for_conn,
+    has_active as has_active_poc_username_beneficiary, is_username_available_for_registration,
+    list_username_beneficiaries, list_username_beneficiaries_for_conn,
 };
 pub use post::{
     CommentRow, PostReportRow, PostRow, PostTransferRow, ReactionRow, RepostRow, TipRow,
@@ -88,8 +85,8 @@ pub use profile::{
     SocialProofTokenInfo, UniversalUserResult,
 };
 pub use social_graph::{
-    BlockedPlatformRow, BlockedProfileRow, ProfileSummaryRow, ViewerSocialContext,
-    DEFAULT_MUTUAL_CONNECTIONS_LIMIT, MAX_MUTUAL_CONNECTIONS_LIMIT,
+    BlockedPlatformRow, BlockedProfileRow, DEFAULT_MUTUAL_CONNECTIONS_LIMIT,
+    MAX_MUTUAL_CONNECTIONS_LIMIT, ProfileSummaryRow, ViewerSocialContext,
     clamp_mutual_connections_limit, get_follow_recommendations_standalone,
 };
 pub use spt::{
@@ -122,7 +119,8 @@ pub async fn get_agentic_organization_for_db(
     organization_id: &str,
 ) -> anyhow::Result<Option<AgenticOrganizationRow>> {
     let mut conn = db.connect().await?;
-    organization::get_agentic_organization(&mut conn, organization_id, standalone_reader_metrics()).await
+    organization::get_agentic_organization(&mut conn, organization_id, standalone_reader_metrics())
+        .await
 }
 
 pub async fn list_agentic_organizations_by_owner_for_db(

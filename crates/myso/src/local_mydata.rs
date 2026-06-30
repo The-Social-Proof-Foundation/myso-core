@@ -20,12 +20,12 @@ use myso_rpc_api::client::ExecutedTransaction;
 use myso_sdk::myso_client_config::{MySoClientConfig, MySoEnv};
 use myso_sdk::wallet_context::WalletContext;
 use myso_swarm::memory::Swarm;
-use myso_types::{MYDATA_PACKAGE_ID, MYSO_MESSAGING_PACKAGE_ID, MYSO_SOCIAL_PACKAGE_ID};
 use myso_types::base_types::{MySoAddress, ObjectID};
 use myso_types::crypto::{AccountKeyPair, MySoKeyPair};
 use myso_types::effects::TransactionEffectsAPI;
 use myso_types::object::Object;
 use myso_types::transaction::TEST_ONLY_GAS_UNIT_FOR_OBJECT_BASICS;
+use myso_types::{MYDATA_PACKAGE_ID, MYSO_MESSAGING_PACKAGE_ID, MYSO_SOCIAL_PACKAGE_ID};
 use serde_json::json;
 use tokio::process::{Child, Command};
 
@@ -265,8 +265,7 @@ async fn find_key_server_object_id(
 /// True for the parent `key_server::KeyServer` object (SDK `serverConfigs` object ID).
 /// Rejects `dynamic_field::Field<…, KeyServerV1>` children created in the same PTB.
 pub fn is_key_server_parent_type_canonical(canonical: &str) -> bool {
-    !canonical.contains("dynamic_field::Field")
-        && canonical.ends_with("::key_server::KeyServer")
+    !canonical.contains("dynamic_field::Field") && canonical.ends_with("::key_server::KeyServer")
 }
 
 fn is_key_server_object(object: &Object) -> anyhow::Result<bool> {
@@ -370,8 +369,7 @@ pub async fn bootstrap_and_spawn_key_server(
     let mydata_cli = resolve_binary(&repo_root, "mydata-cli")?;
 
     let key_material =
-        run_mydata_cli_derived_key_material(&mydata_cli, LOCAL_KEY_SERVER_DERIVATION_INDEX)
-            .await?;
+        run_mydata_cli_derived_key_material(&mydata_cli, LOCAL_KEY_SERVER_DERIVATION_INDEX).await?;
     let pk_move = public_key_bytes_for_move(&key_material.public_key_hex)?;
 
     let rgp = context.get_reference_gas_price().await?;
@@ -507,8 +505,8 @@ pub fn key_server_listen_url_for_clients(listen: SocketAddr) -> String {
 mod tests {
     use std::io::Write;
 
-    use myso_types::{MYDATA_PACKAGE_ID, MYSO_MESSAGING_PACKAGE_ID, MYSO_SOCIAL_PACKAGE_ID};
     use myso_types::base_types::ObjectID;
+    use myso_types::{MYDATA_PACKAGE_ID, MYSO_MESSAGING_PACKAGE_ID, MYSO_SOCIAL_PACKAGE_ID};
     use tempfile::NamedTempFile;
 
     use super::{
@@ -550,7 +548,8 @@ mod tests {
         file.flush().unwrap();
         let yaml = std::fs::read_to_string(file.path()).unwrap();
         assert_eq!(
-            yaml.matches(&format!("key_server_object_id: \"{ks}\"")).count(),
+            yaml.matches(&format!("key_server_object_id: \"{ks}\""))
+                .count(),
             1,
             "expected exactly one key_server_object_id entry: {yaml}"
         );
@@ -564,9 +563,7 @@ mod tests {
     fn is_key_server_parent_type_canonical_accepts_parent_rejects_field() {
         let mydata = ObjectID::from(MYDATA_PACKAGE_ID);
         let parent = format!("{mydata}::key_server::KeyServer");
-        let field = format!(
-            "0x2::dynamic_field::Field<u64,{mydata}::key_server::KeyServerV1>"
-        );
+        let field = format!("0x2::dynamic_field::Field<u64,{mydata}::key_server::KeyServerV1>");
         assert!(is_key_server_parent_type_canonical(&parent));
         assert!(!is_key_server_parent_type_canonical(&field));
     }

@@ -15,8 +15,13 @@ fn main() {
 
     let single_values = [1234u64, 0, 0, 0];
     let single_blindings = [7777u64, 0, 0, 0];
-    let single_proof =
-        batch_range_proof_wire(&single_values, &single_blindings, 16, SINGLE_AMOUNT_DST, &mut rng);
+    let single_proof = batch_range_proof_wire(
+        &single_values,
+        &single_blindings,
+        16,
+        SINGLE_AMOUNT_DST,
+        &mut rng,
+    );
     assert_wire_proof_valid(
         &single_proof,
         &single_values,

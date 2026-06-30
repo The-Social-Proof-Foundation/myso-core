@@ -8,6 +8,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use async_trait::async_trait;
 use diesel::sql_types::{BigInt, Text, Timestamp};
+use diesel::upsert::excluded;
 use diesel::BoolExpressionMethods;
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
@@ -18,11 +19,9 @@ use myso_indexer_alt_framework::postgres::handler::Handler;
 use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
-use diesel::upsert::excluded;
 use myso_indexer_alt_social_schema::models::{
     NewEcosystemTreasury, NewProfile, NewProfileBadge, NewProfileEvent, NewProfileOffer,
-    NewProfileSaleFee, NewUsernameRegistry, NewVestingEvent, NewVestingWallet,
-    ProfileUpdateSet,
+    NewProfileSaleFee, NewUsernameRegistry, NewVestingEvent, NewVestingWallet, ProfileUpdateSet,
 };
 use myso_indexer_alt_social_schema::schema::{
     ecosystem_treasury, memory_accounts, profile_badges, profile_events, profile_offers,
@@ -225,8 +224,7 @@ impl Processor for ProfilesHandler {
                     &event_data,
                     &event_id,
                     checkpoint_timestamp_ms,
-                )
-                {
+                ) {
                     for row in rows {
                         if let Some(r) = ProfileRow::from_social(row) {
                             values.push(r);
@@ -374,10 +372,7 @@ async fn commit_profile_row<'a>(row: &ProfileRow, conn: &mut Connection<'a>) -> 
             let now = chrono::Utc::now().naive_utc();
             total += diesel::update(profiles::table)
                 .filter(profiles::profile_id.eq(profile_id))
-                .set((
-                    profiles::username.eq(""),
-                    profiles::updated_at.eq(now),
-                ))
+                .set((profiles::username.eq(""), profiles::updated_at.eq(now)))
                 .execute(conn)
                 .await?;
         }
