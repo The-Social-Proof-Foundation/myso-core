@@ -4,6 +4,10 @@
 # Uses myso client call for public entry functions and myso client ptb for public fun
 # (e.g. post::create_post, platform::create_platform). See docs/content/references/cli/ptb.mdx.
 #
+# PTB notes:
+#   - Shared object args must be valid 0x… IDs; empty vars expand to bare @ and fail PTB parsing.
+#   - Keep vector literals single-quoted for zsh (e.g. 'vector[]').
+#
 # Optional local addresses file (sourced on startup if present):
 #   interact_addrs.env  — same directory as this script; see keys in record_saved_addresses().
 
@@ -38,6 +42,9 @@ SPOT_CONFIG_ID="${SPOT_CONFIG_ID:-}"
 INSURANCE_CONFIG_ID="${INSURANCE_CONFIG_ID:-}"
 # Shared Platform object (for posts/comments/reactions — not the PlatformRegistry ID)
 PLATFORM_OBJECT_ID="${PLATFORM_OBJECT_ID:-}"
+PLATFORM_ADMIN_CAP_ID="${PLATFORM_ADMIN_CAP_ID:-}"
+MEMORY_ACCOUNT_ID="${MEMORY_ACCOUNT_ID:-}"
+MODERATORS_GROUP_ID="${MODERATORS_GROUP_ID:-}"
 # social_proof_tokens::TokenRegistry shared object
 TOKEN_REGISTRY_ID="${TOKEN_REGISTRY_ID:-}"
 
@@ -83,6 +90,103 @@ literal_move_string() {
     s="${s//$'\n'/\\n}"
     s="${s//$'\r'/}"
     printf "'\"%s\"'" "$s"
+}
+
+normalize_hex_id() {
+    local id="$1"
+    id="${id#@}"
+    [[ -n "$id" ]] || return 1
+    case "$id" in
+        0x*) printf '%s' "$id" ;;
+        *) printf '0x%s' "$id" ;;
+    esac
+}
+
+ptb_shared_ref() {
+    local id normalized
+    id="$1"
+    normalized="$(normalize_hex_id "$id")" || {
+        echo "PTB shared object id is empty or invalid (got: '${id:-<empty>}')" >&2
+        return 1
+    }
+    printf '@%s' "$normalized"
+}
+
+literal_move_vector_empty() {
+    printf '%s' "'vector[]'"
+}
+
+literal_move_vector_from_csv() {
+    local csv="$1"
+    if [ -z "$csv" ]; then
+        literal_move_vector_empty
+        return 0
+    fi
+    local acc="" s2="" p
+    IFS=',' read -r -a _VA <<<"$csv"
+    for p in "${_VA[@]}"; do
+        p="${p## }"
+        p="${p%% }"
+        acc="${acc}${s2}$(literal_move_string "$p")"
+        s2=", "
+    done
+    printf 'vector[%s]' "$acc"
+}
+
+extract_tx_digest() {
+    local out="$1" digest
+    if command -v jq >/dev/null 2>&1; then
+        digest="$(echo "$out" | jq -r '
+            .effects.V2.transaction_digest //
+            .effects.transaction_digest //
+            .transaction_digest //
+            empty
+        ' 2>/dev/null | head -n1)"
+        if [ -n "$digest" ]; then
+            printf '%s' "$digest"
+            return 0
+        fi
+    fi
+    echo "$out" | grep -Eo 'Transaction Digest: [0-9a-zA-Z+/=_-]+' | head -n1 | awk '{print $3}' \
+        || echo "$out" | grep -Eo '[A-Za-z0-9+/]{43,44}=' | head -n1
+}
+
+extract_created_object_by_type() {
+    local digest="$1" type_substring="$2" json result
+    [ -n "$digest" ] && [ -n "$type_substring" ] || return 1
+    command -v jq >/dev/null 2>&1 || return 1
+    json="$(myso client tx-block "$digest" --json 2>/dev/null)" || return 1
+    result="$(echo "$json" | jq -r --arg t "$type_substring" '
+        def suffix_match($ot):
+            ($ot | tostring) | endswith("::" + $t);
+        def object_type($o):
+            ($o.objectType? // $o.object_type? // $o.type? // "") | tostring;
+        def object_id($o):
+            ($o.objectId? // $o.object_id? // $o.reference?.objectId? // "") | tostring;
+        (
+            (.changed_objects // .changedObjects // [])[]
+            | if type == "array" then empty else . end
+            | select(suffix_match(object_type(.)))
+            | object_id(.)
+        ),
+        (
+            .. | objects
+            | select(suffix_match(object_type(.)))
+            | object_id(.)
+        )
+        | select(. != null and . != "")
+    ' | head -n1)"
+    [ -n "$result" ] || return 1
+    printf '%s' "$result"
+}
+
+invoke_ptb_capture() {
+    local out ec
+    out="$(myso client ptb "$@" --gas-budget "$GAS_BUDGET" 2>&1)"
+    ec=$?
+    echo "$out" >&2
+    [ "$ec" -eq 0 ] || return 1
+    printf '%s' "$out"
 }
 
 # ---- Main menu ----
@@ -308,21 +412,32 @@ ptb_create_post() {
     cfg="${cfg:-$POST_CONFIG_ID}"
     read -r -p "MyDataRegistry [${MYDATA_REGISTRY_ID:-}]: " mr
     mr="${mr:-$MYDATA_REGISTRY_ID}"
+    read -r -p "MemoryAccount [${MEMORY_ACCOUNT_ID:-}]: " mem
+    mem="${mem:-$MEMORY_ACCOUNT_ID}"
     read -r -p "Post body (UTF-8; avoid unescaped double-quotes): " body
     CONTENT_LIT="$(literal_move_string "$body")"
-    if [ -z "$ur" ] || [ -z "$pr" ] || [ -z "$plat" ] || [ -z "$blr" ] || [ -z "$cfg" ] || [ -z "$mr" ]; then
+    if [ -z "$ur" ] || [ -z "$pr" ] || [ -z "$plat" ] || [ -z "$blr" ] || [ -z "$cfg" ] || [ -z "$mr" ] || [ -z "$mem" ]; then
         print_info "Missing required object id."
         press_enter
         content_menu
         return
     fi
+    local ref_ur ref_pr ref_plat ref_blr ref_cfg ref_mr ref_mem ref_clk
+    ref_ur="$(ptb_shared_ref "$ur")" || { press_enter; content_menu; return; }
+    ref_pr="$(ptb_shared_ref "$pr")" || { press_enter; content_menu; return; }
+    ref_plat="$(ptb_shared_ref "$plat")" || { press_enter; content_menu; return; }
+    ref_blr="$(ptb_shared_ref "$blr")" || { press_enter; content_menu; return; }
+    ref_cfg="$(ptb_shared_ref "$cfg")" || { press_enter; content_menu; return; }
+    ref_mr="$(ptb_shared_ref "$mr")" || { press_enter; content_menu; return; }
+    ref_mem="$(ptb_shared_ref "$mem")" || { press_enter; content_menu; return; }
+    ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || { press_enter; content_menu; return; }
     print_info "Running myso client ptb --move-call ${PACKAGE_ID}::post::create_post ..."
     invoke_ptb --move-call "${PACKAGE_ID}::post::create_post" \
-        "@${ur}" "@${pr}" "@${plat}" "@${blr}" "@${cfg}" \
+        "$ref_ur" "$ref_pr" "$ref_plat" "$ref_blr" "$ref_cfg" \
         "${CONTENT_LIT}" \
-        none none none none none none none none none none none none \
-        none \
-        "@${mr}"
+        none none none none none none none none \
+        none some\(true\) none none \
+        "$ref_mr" "$ref_mem" "$ref_clk"
     print_success "Submitted."
     press_enter
     content_menu
@@ -340,6 +455,8 @@ ptb_create_comment() {
     blr="${blr:-$BLOCK_LIST_REGISTRY_ID}"
     read -r -p "PostConfig [${POST_CONFIG_ID:-}]: " cfg
     cfg="${cfg:-$POST_CONFIG_ID}"
+    read -r -p "MemoryAccount [${MEMORY_ACCOUNT_ID:-}]: " mem
+    mem="${mem:-$MEMORY_ACCOUNT_ID}"
     read -r -p "Parent post (mutable Post object) ID: " pp
     read -r -p "Parent comment address (empty if top-level comment reply): " pc
     read -r -p "Comment body: " body
@@ -347,20 +464,30 @@ ptb_create_comment() {
     if [ -z "$pc" ]; then
         PC_ARG=none
     else
-        PC_ARG="some(@${pc})"
+        PC_ARG="some(@$(normalize_hex_id "$pc"))"
     fi
-    if [ -z "$ur" ] || [ -z "$pr" ] || [ -z "$plat" ] || [ -z "$blr" ] || [ -z "$cfg" ] || [ -z "$pp" ]; then
+    if [ -z "$ur" ] || [ -z "$pr" ] || [ -z "$plat" ] || [ -z "$blr" ] || [ -z "$cfg" ] || [ -z "$mem" ] || [ -z "$pp" ]; then
         print_info "Missing required id."
         press_enter
         content_menu
         return
     fi
+    local ref_ur ref_pr ref_plat ref_blr ref_cfg ref_mem ref_pp ref_clk
+    ref_ur="$(ptb_shared_ref "$ur")" || { press_enter; content_menu; return; }
+    ref_pr="$(ptb_shared_ref "$pr")" || { press_enter; content_menu; return; }
+    ref_plat="$(ptb_shared_ref "$plat")" || { press_enter; content_menu; return; }
+    ref_blr="$(ptb_shared_ref "$blr")" || { press_enter; content_menu; return; }
+    ref_cfg="$(ptb_shared_ref "$cfg")" || { press_enter; content_menu; return; }
+    ref_mem="$(ptb_shared_ref "$mem")" || { press_enter; content_menu; return; }
+    ref_pp="$(ptb_shared_ref "$pp")" || { press_enter; content_menu; return; }
+    ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || { press_enter; content_menu; return; }
     invoke_ptb --move-call "${PACKAGE_ID}::post::create_comment" \
-        "@${ur}" "@${pr}" "@${plat}" "@${blr}" "@${cfg}" \
-        "@${pp}" \
+        "$ref_ur" "$ref_pr" "$ref_plat" "$ref_blr" "$ref_cfg" \
+        "$ref_mem" "$ref_pp" \
         "${PC_ARG}" \
         "${BODY_LIT}" \
-        none none none
+        none none none \
+        "$ref_clk"
     print_success "Submitted."
     press_enter
     content_menu
@@ -368,6 +495,8 @@ ptb_create_comment() {
 
 ptb_react_to_post() {
     print_header "React to post (PTB)"
+    read -r -p "UsernameRegistry [${USERNAME_REGISTRY_ID:-}]: " ur
+    ur="${ur:-$USERNAME_REGISTRY_ID}"
     read -r -p "Post shared object ID (mutable Post): " post_id
     read -r -p "PlatformRegistry [${PLATFORM_REGISTRY_ID:-}]: " pr
     pr="${pr:-$PLATFORM_REGISTRY_ID}"
@@ -377,11 +506,28 @@ ptb_react_to_post() {
     blr="${blr:-$BLOCK_LIST_REGISTRY_ID}"
     read -r -p "PostConfig [${POST_CONFIG_ID:-}]: " cfg
     cfg="${cfg:-$POST_CONFIG_ID}"
+    read -r -p "MemoryAccount [${MEMORY_ACCOUNT_ID:-}]: " mem
+    mem="${mem:-$MEMORY_ACCOUNT_ID}"
     read -r -p "Reaction string (emoji/text): " reaction
     RX_LIT="$(literal_move_string "$reaction")"
+    if [ -z "$ur" ] || [ -z "$post_id" ] || [ -z "$pr" ] || [ -z "$plat" ] || [ -z "$blr" ] || [ -z "$cfg" ] || [ -z "$mem" ]; then
+        print_info "Missing required id."
+        press_enter
+        content_menu
+        return
+    fi
+    local ref_ur ref_post ref_pr ref_plat ref_blr ref_cfg ref_mem ref_clk
+    ref_ur="$(ptb_shared_ref "$ur")" || { press_enter; content_menu; return; }
+    ref_post="$(ptb_shared_ref "$post_id")" || { press_enter; content_menu; return; }
+    ref_pr="$(ptb_shared_ref "$pr")" || { press_enter; content_menu; return; }
+    ref_plat="$(ptb_shared_ref "$plat")" || { press_enter; content_menu; return; }
+    ref_blr="$(ptb_shared_ref "$blr")" || { press_enter; content_menu; return; }
+    ref_cfg="$(ptb_shared_ref "$cfg")" || { press_enter; content_menu; return; }
+    ref_mem="$(ptb_shared_ref "$mem")" || { press_enter; content_menu; return; }
+    ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || { press_enter; content_menu; return; }
     invoke_ptb --move-call "${PACKAGE_ID}::post::react_to_post" \
-        "@${post_id}" "@${pr}" "@${plat}" "@${blr}" "@${cfg}" \
-        "${RX_LIT}"
+        "$ref_ur" "$ref_post" "$ref_pr" "$ref_plat" "$ref_blr" "$ref_cfg" \
+        "$ref_mem" "${RX_LIT}" "$ref_clk"
     print_success "Submitted."
     press_enter
     content_menu
@@ -405,8 +551,20 @@ ptb_moderate_post() {
         rl="$(literal_move_string "$reason_raw")"
         R_ARG="some(${rl})"
     fi
+    if [ -z "$post_id" ] || [ -z "$plat" ] || [ -z "$group_id" ] || [ -z "$preg" ]; then
+        print_info "Missing required id."
+        press_enter
+        content_menu
+        return
+    fi
+    local ref_post ref_plat ref_group ref_preg ref_clk
+    ref_post="$(ptb_shared_ref "$post_id")" || { press_enter; content_menu; return; }
+    ref_plat="$(ptb_shared_ref "$plat")" || { press_enter; content_menu; return; }
+    ref_group="$(ptb_shared_ref "$group_id")" || { press_enter; content_menu; return; }
+    ref_preg="$(ptb_shared_ref "$preg")" || { press_enter; content_menu; return; }
+    ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || { press_enter; content_menu; return; }
     invoke_ptb --move-call "${PACKAGE_ID}::post::set_moderation_status" \
-        "@${post_id}" "@${plat}" "@${group_id}" "@${preg}" "${st}" "${R_ARG}"
+        "$ref_post" "$ref_plat" "$ref_group" "$ref_preg" "${st}" "${R_ARG}" "$ref_clk"
     print_success "Submitted."
     press_enter
     content_menu
@@ -417,7 +575,16 @@ ptb_delete_post() {
     print_info "On-chain Posts are normally SHARED; delete_post takes an owned Post by value."
     print_info "This call succeeds only if the Post object is truly owned (e.g. test flows)."
     read -r -p "Owned Post object ID: " post_id
-    invoke_ptb --move-call "${PACKAGE_ID}::post::delete_post" "@${post_id}"
+    if [ -z "$post_id" ]; then
+        print_info "Missing post id."
+        press_enter
+        content_menu
+        return
+    fi
+    local ref_post ref_clk
+    ref_post="$(ptb_shared_ref "$post_id")" || { press_enter; content_menu; return; }
+    ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || { press_enter; content_menu; return; }
+    invoke_ptb --move-call "${PACKAGE_ID}::post::delete_post" "$ref_post" "$ref_clk"
     print_success "Submitted."
     press_enter
     content_menu
@@ -428,8 +595,18 @@ ptb_delete_comment() {
     print_info "Comments are normally SHARED; delete_comment takes an owned Comment by value."
     read -r -p "Parent post (mutable shared Post) ID: " post_id
     read -r -p "Comment object ID (must be owned for this entry): " comment_id
+    if [ -z "$post_id" ] || [ -z "$comment_id" ]; then
+        print_info "Missing required id."
+        press_enter
+        content_menu
+        return
+    fi
+    local ref_post ref_comment ref_clk
+    ref_post="$(ptb_shared_ref "$post_id")" || { press_enter; content_menu; return; }
+    ref_comment="$(ptb_shared_ref "$comment_id")" || { press_enter; content_menu; return; }
+    ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || { press_enter; content_menu; return; }
     invoke_ptb --move-call "${PACKAGE_ID}::post::delete_comment" \
-        "@${post_id}" "@${comment_id}"
+        "$ref_post" "$ref_comment" "$ref_clk"
     print_success "Submitted."
     press_enter
     content_menu
@@ -629,18 +806,127 @@ mydata_create_and_share() {
 
 # ---- Platform (platform::create_platform PTB) ----
 
+maybe_approve_platform() {
+    local platform_id="$1"
+    local admin_cap="${PLATFORM_ADMIN_CAP_ID:-}"
+    local preg="${PLATFORM_REGISTRY_ID:-}"
+    local ref_preg ref_cap platform_addr out digest
+
+    [ -n "$platform_id" ] || return 0
+    [ -n "$admin_cap" ] || {
+        print_info "PLATFORM_ADMIN_CAP_ID unset — skip toggle_platform_approval."
+        return 0
+    }
+    ref_preg="$(ptb_shared_ref "$preg")" || return 1
+    ref_cap="$(ptb_shared_ref "$admin_cap")" || return 1
+    platform_addr="$(normalize_hex_id "$platform_id")" || return 1
+    print_info "Approving platform via toggle_platform_approval ..."
+    invoke_ptb --move-call "${PACKAGE_ID}::platform::toggle_platform_approval" \
+        "$ref_preg" "$platform_addr" "$ref_cap" none
+}
+
+invoke_platform_create_ptb() {
+    local preg="$1"
+    local nl="$2" tg="$3" ds="$4" lg="$5" tm="$6" pv="$7"
+    local pl_vec="$8" lk_vec="$9"
+    shift 9
+    local pc="$1" sc_arg="$2" st="$3" rd="$4" wdao="$5"
+    local dc_a="$6" dt_a="$7" psc_a="$8" mv_a="$9" qb_a="${10}" vp_a="${11}" qv_a="${12}"
+    local cp_arg="${13}" mp_arg="${14}"
+    local ref_preg ref_clk out digest platform_id
+
+    ref_preg="$(ptb_shared_ref "$preg")" || return 1
+    ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || return 1
+
+    out="$(invoke_ptb_capture --move-call "${PACKAGE_ID}::platform::create_platform" \
+        "$ref_preg" \
+        "$nl" "$tg" "$ds" "$lg" "$tm" "$pv" \
+        "$pl_vec" "$lk_vec" \
+        "$pc" "$sc_arg" \
+        "$st" \
+        "$rd" \
+        "$wdao" \
+        "$dc_a" "$dt_a" "$psc_a" "$mv_a" "$qb_a" "$vp_a" "$qv_a" \
+        "$cp_arg" "$mp_arg" \
+        "$ref_clk")" || return 1
+
+    digest="$(extract_tx_digest "$out")"
+    platform_id="$(extract_created_object_by_type "$digest" "platform::Platform")"
+    [ -n "$platform_id" ] || platform_id="$(extract_created_object_by_type "$digest" "Platform")"
+
+    if [ -n "$platform_id" ]; then
+        print_success "Created platform: $platform_id"
+        maybe_approve_platform "$platform_id" || return 1
+        read -r -p "Save as PLATFORM_OBJECT_ID in interact_addrs.env? [y/N]: " save_plat
+        if [ "${save_plat}" = "y" ] || [ "${save_plat}" = "Y" ]; then
+            PLATFORM_OBJECT_ID="$platform_id"
+            if [ -f "${INTERACT_ADDRS_FILE}" ]; then
+                if grep -q '^PLATFORM_OBJECT_ID=' "${INTERACT_ADDRS_FILE}"; then
+                    sed -i.bak "s|^PLATFORM_OBJECT_ID=.*|PLATFORM_OBJECT_ID=${platform_id}|" "${INTERACT_ADDRS_FILE}"
+                    rm -f "${INTERACT_ADDRS_FILE}.bak"
+                else
+                    printf '\nPLATFORM_OBJECT_ID=%s\n' "$platform_id" >>"${INTERACT_ADDRS_FILE}"
+                fi
+            else
+                printf 'PLATFORM_OBJECT_ID=%s\n' "$platform_id" >"${INTERACT_ADDRS_FILE}"
+            fi
+            print_success "Updated ${INTERACT_ADDRS_FILE}"
+        fi
+    else
+        print_info "Platform created; could not auto-detect object id from tx digest."
+    fi
+    return 0
+}
+
 platform_menu() {
     print_header "Platform Management Menu"
-    echo "1. create_platform (public fun PTB)"
-    echo "2. Back to Main Menu"
+    echo "1. create_platform (interactive PTB)"
+    echo "2. create_platform with test defaults (+ approve if admin cap set)"
+    echo "3. Back to Main Menu"
     echo ""
-    read -r -p "Select an option [1-2]: " choice
+    read -r -p "Select an option [1-3]: " choice
 
     case $choice in
         1) ptb_platform_create ;;
-        2) show_menu ;;
+        2) ptb_platform_create_with_defaults ;;
+        3) show_menu ;;
         *) echo "Invalid option" && platform_menu ;;
     esac
+}
+
+ptb_platform_create_with_defaults() {
+    local preg run_id
+    preg="${PLATFORM_REGISTRY_ID:-}"
+    if [ -z "$preg" ]; then
+        read -r -p "PlatformRegistry (mutable shared) ID: " preg
+    fi
+    if [ -z "$preg" ]; then
+        print_info "PLATFORM_REGISTRY_ID required."
+        press_enter
+        platform_menu
+        return
+    fi
+    run_id="$(date +%s)"
+    invoke_platform_create_ptb \
+        "$preg" \
+        "$(literal_move_string "Test Platform ${run_id}")" \
+        "$(literal_move_string 'A test platform')" \
+        "$(literal_move_string 'This is a test platform for badge testing')" \
+        "$(literal_move_string 'https://example.com/logo.png')" \
+        "$(literal_move_string 'https://example.com/terms')" \
+        "$(literal_move_string 'https://example.com/privacy')" \
+        "$(literal_move_vector_empty)" \
+        "$(literal_move_vector_from_csv 'https://example.com')" \
+        "$(literal_move_string 'Social Network')" \
+        none 2 \
+        "$(literal_move_string '2023-01-01')" \
+        false \
+        none none none none none none none \
+        none none \
+        || { press_enter; platform_menu; return; }
+    print_success "Submitted."
+    press_enter
+    platform_menu
 }
 
 ptb_platform_create() {
@@ -655,31 +941,15 @@ ptb_platform_create() {
     read -r -p "privacy_policy String: " priv
     read -r -p "additional platform links as comma-separated strings (optional, empty vector[]): " plat_links_in
     if [ -z "$plat_links_in" ]; then
-        PL_VEC="vector[]"
+        PL_VEC="$(literal_move_vector_empty)"
     else
-        IFS=',' read -r -a PA <<<"$plat_links_in"
-        acc=""
-        s2=""
-        for p in "${PA[@]}"; do
-            p="${p## }"; p="${p%% }"
-            acc="${acc}${s2}$(literal_move_string "$p")"
-            s2=", "
-        done
-        PL_VEC="vector[${acc}]"
+        PL_VEC="$(literal_move_vector_from_csv "$plat_links_in")"
     fi
     read -r -p "social links comma-separated (optional, empty vector[]): " lk_in
     if [ -z "$lk_in" ]; then
-        LK_VEC="vector[]"
+        LK_VEC="$(literal_move_vector_empty)"
     else
-        IFS=',' read -r -a LA <<<"$lk_in"
-        acc=""
-        s2=""
-        for p in "${LA[@]}"; do
-            p="${p## }"; p="${p%% }"
-            acc="${acc}${s2}$(literal_move_string "$p")"
-            s2=", "
-        done
-        LK_VEC="vector[${acc}]"
+        LK_VEC="$(literal_move_vector_from_csv "$lk_in")"
     fi
     read -r -p "primary_category String: " pc
     read -r -p "secondary_category optional (empty none): " sc
@@ -731,26 +1001,22 @@ ptb_platform_create() {
         return
     fi
 
-    NL="$(literal_move_string "$n")"
-    TG="$(literal_move_string "$tag")"
-    DS="$(literal_move_string "$desc")"
-    LG="$(literal_move_string "$logo")"
-    TM="$(literal_move_string "$terms")"
-    PV="$(literal_move_string "$priv")"
-    PC="$(literal_move_string "$pc")"
-    RD="$(literal_move_string "$rd")"
-
-    invoke_ptb --move-call "${PACKAGE_ID}::platform::create_platform" \
-        "@${preg}" \
-        "${NL}" "${TG}" "${DS}" "${LG}" "${TM}" "${PV}" \
-        "${PL_VEC}" "${LK_VEC}" \
-        "${PC}" "${SC_ARG}" \
+    invoke_platform_create_ptb \
+        "$preg" \
+        "$(literal_move_string "$n")" \
+        "$(literal_move_string "$tag")" \
+        "$(literal_move_string "$desc")" \
+        "$(literal_move_string "$logo")" \
+        "$(literal_move_string "$terms")" \
+        "$(literal_move_string "$priv")" \
+        "$PL_VEC" "$LK_VEC" \
+        "$(literal_move_string "$pc")" "$SC_ARG" \
         "${st}" \
-        "${RD}" \
+        "$(literal_move_string "$rd")" \
         "${wdao}" \
-        "${dc_a}" "${dt_a}" "${psc_a}" "${mv_a}" "${qb_a}" "${vp_a}" "${qv_a}" \
-        "${CP_ARG}" "${MP_ARG}" \
-        "@${CLOCK_ID}"
+        "$dc_a" "$dt_a" "$psc_a" "$mv_a" "$qb_a" "$vp_a" "$qv_a" \
+        "$CP_ARG" "$MP_ARG" \
+        || { press_enter; platform_menu; return; }
 
     print_success "Submitted."
     press_enter
@@ -1157,6 +1423,8 @@ record_saved_addresses() {
         read_one "SOCIAL_GRAPH_ID" "social_graph SocialGraph"
         read_one "PLATFORM_REGISTRY_ID" "platform PlatformRegistry"
         read_one "PLATFORM_OBJECT_ID" "platform Platform shared object (for posts/comments)"
+        read_one "PLATFORM_ADMIN_CAP_ID" "platform PlatformAdminCap (for approval PTB)"
+        read_one "MEMORY_ACCOUNT_ID" "memory MemoryAccount (for post PTBs)"
         read_one "MYDATA_REGISTRY_ID" "mydata MyDataRegistry"
         read_one "MYDATA_CONFIG_ID" "mydata MyDataConfig"
         read_one "GOVERNANCE_ECOSYSTEM_REGISTRY_ID" "governance ecosystem GovernanceDAO"
@@ -1200,6 +1468,8 @@ BLOCK_LIST_REGISTRY_ID=
 SOCIAL_GRAPH_ID=
 PLATFORM_REGISTRY_ID=
 PLATFORM_OBJECT_ID=
+PLATFORM_ADMIN_CAP_ID=
+MEMORY_ACCOUNT_ID=
 MYDATA_REGISTRY_ID=
 MYDATA_CONFIG_ID=
 GOVERNANCE_ECOSYSTEM_REGISTRY_ID=

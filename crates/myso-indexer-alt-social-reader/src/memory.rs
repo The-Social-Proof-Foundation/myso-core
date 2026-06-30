@@ -210,6 +210,7 @@ pub struct SocialAttributionRow {
     pub sub_agent_id: Option<String>,
     pub action_identity_class: i16,
     pub principal_owner: Option<String>,
+    pub organization_id: Option<String>,
 }
 
 impl SocialAttributionRow {
@@ -218,6 +219,7 @@ impl SocialAttributionRow {
         sub_agent_id: Option<String>,
         action_identity_class: Option<i16>,
         principal_owner: Option<String>,
+        organization_id: Option<String>,
         fallback_actor: &str,
     ) -> Self {
         Self {
@@ -225,6 +227,7 @@ impl SocialAttributionRow {
             sub_agent_id,
             action_identity_class: action_identity_class.unwrap_or(0),
             principal_owner,
+            organization_id,
         }
     }
 }

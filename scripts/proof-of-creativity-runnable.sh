@@ -14,9 +14,15 @@
 #
 # Usage:
 #   ./scripts/proof-of-creativity-runnable.sh --refresh-session
+#   ./scripts/proof-of-creativity-runnable.sh --create-platform
 #   ./scripts/proof-of-creativity-runnable.sh --run-all
+#   ./scripts/proof-of-creativity-runnable.sh --post-flow
+#   ./scripts/proof-of-creativity-runnable.sh --username-flow
 #   ASSUME_YES=1 ./scripts/proof-of-creativity-runnable.sh --run-all
 #   ./scripts/proof-of-creativity-runnable.sh   # interactive menu
+#
+# Platform: post flows require an approved Platform. Use menu C or --create-platform to
+# create test data on-chain (create_platform + toggle_platform_approval), then refresh session.
 #
 # Environment (optional flow flags only):
 #   ASSUME_YES=1, DRY_RUN=1, POC_AUTO_REFRESH=1, POC_NO_AUTO_REFRESH=1
@@ -76,6 +82,7 @@ ORDERBOOK_REGISTRY_ID=''
 POC_ADMIN_CAP_ID=''
 POC_BENEFICIARY_ADMIN_CAP_ID=''
 SPT_ADMIN_CAP_ID=''
+PLATFORM_ADMIN_CAP_ID=''
 MYDATA_ADMIN_CAP_ID=''
 POOL_ADMIN_CAP_ID=''
 GOVERNANCE_ECOSYSTEM_REGISTRY_ID=''
@@ -84,11 +91,14 @@ GOVERNANCE_POC_REGISTRY_ID=''
 CREATOR_ADDRESS=''
 TIPPER_ADDRESS=''
 ORACLE_ADDRESS=''
+USERNAME_CLAIM_ORACLE=''
 JOIN_REFERRER_ADDRESS=''
 MEMORY_ACCOUNT_ID=''
 TIPPER_MEMORY_ACCOUNT_ID=''
 ORACLE_PROFILE_ID=''
 RESERVATION_POOL_ID=''
+POC_BENEFICIARY_VAULT_ID=''
+ANALYZE_POST_LAST_DIGEST=''
 
 POC_RUN_ID="$(date +%s)"
 RUN_MODE=''
@@ -97,7 +107,8 @@ ASSUME_YES="${ASSUME_YES:-0}"
 GQL_REFRESH_FILE=''
 
 MANUAL_PRESERVE_KEYS=(
-    JOIN_REFERRER_ADDRESS GAS_BUDGET MEMORY_ACCOUNT_ID TIPPER_MEMORY_ACCOUNT_ID
+    JOIN_REFERRER_ADDRESS GAS_BUDGET ORACLE_ADDRESS MEMORY_ACCOUNT_ID
+    TIPPER_ADDRESS TIPPER_MEMORY_ACCOUNT_ID POC_BENEFICIARY_VAULT_ID
 )
 
 REQUIRED_CORE_KEYS=(
@@ -138,11 +149,26 @@ apply_session_defaults() {
 
 load_session_state() {
     local p="$REPO_ROOT/network.config/poc/poc-session.env"
+    local key val i
+    local -a _preserve_keys=()
+    local -a _preserve_vals=()
+    for key in "${MANUAL_PRESERVE_KEYS[@]}"; do
+        val="${!key:-}"
+        if [[ -n "$val" ]]; then
+            _preserve_keys+=("$key")
+            _preserve_vals+=("$val")
+        fi
+    done
     if [[ -f "$p" ]]; then
         # shellcheck disable=SC1090
-        source <(grep -v '^GRAPHQL_URL=' "$p")
+        source "$p"
         echo "Loaded PoC session from: $p" >&2
     fi
+    for i in "${!_preserve_keys[@]}"; do
+        key="${_preserve_keys[$i]}"
+        val="${_preserve_vals[$i]}"
+        printf -v "$key" '%s' "$val"
+    done
     apply_session_defaults
     return 0
 }
@@ -164,10 +190,11 @@ save_session_state() {
             POOL_REGISTRY_ID ANCHOR_REGISTRY_ID CLAIM_VAULT_ID POC_VAULT_DIRECTORY_ID \
             POC_USERNAME_BENEFICIARY_DIRECTORY_ID POST_CONFIG_ID SOCIAL_PROOF_TOKENS_CONFIG_ID \
             POC_CONFIG_ID MYDATA_CONFIG_ID SPOT_CONFIG_ID INSURANCE_CONFIG_ID ORDERBOOK_REGISTRY_ID \
-            POC_ADMIN_CAP_ID POC_BENEFICIARY_ADMIN_CAP_ID SPT_ADMIN_CAP_ID MYDATA_ADMIN_CAP_ID POOL_ADMIN_CAP_ID \
+            POC_ADMIN_CAP_ID POC_BENEFICIARY_ADMIN_CAP_ID SPT_ADMIN_CAP_ID PLATFORM_ADMIN_CAP_ID \
+            MYDATA_ADMIN_CAP_ID POOL_ADMIN_CAP_ID \
             GOVERNANCE_ECOSYSTEM_REGISTRY_ID GOVERNANCE_POC_REGISTRY_ID \
-            MEMORY_ACCOUNT_ID TIPPER_MEMORY_ACCOUNT_ID \
-            ORACLE_PROFILE_ID RESERVATION_POOL_ID; do
+            ORACLE_ADDRESS MEMORY_ACCOUNT_ID TIPPER_ADDRESS TIPPER_MEMORY_ACCOUNT_ID \
+            POC_BENEFICIARY_VAULT_ID ORACLE_PROFILE_ID RESERVATION_POOL_ID; do
             printf '%s=%q\n' "$key" "${!key-}"
         done
     } > "${f}.tmp"
@@ -202,13 +229,30 @@ resolve_myso_active_address() {
     myso client active-address 2>/dev/null
 }
 
+ensure_oracle_cli_address() {
+    local cap_owner active
+    [[ -n "${POC_ADMIN_CAP_ID:-}" ]] || return 0
+    cap_owner="$(object_address_owner "$POC_ADMIN_CAP_ID")" || return 0
+    cap_owner="$(normalize_hex_id "$cap_owner")" || return 0
+    active="$(resolve_myso_active_address)" || return 0
+    if [[ "$active" != "$cap_owner" ]]; then
+        log_step "Switching active address to PoCAdminCap owner $cap_owner"
+        myso client switch --address "$cap_owner" >/dev/null
+    fi
+}
+
 ensure_cli_addresses() {
+    ensure_oracle_cli_address
     ORACLE_ADDRESS="$(resolve_myso_active_address)" || {
         echo "Could not read myso client active-address" >&2
         return 1
     }
     CREATOR_ADDRESS="$ORACLE_ADDRESS"
-    TIPPER_ADDRESS="$ORACLE_ADDRESS"
+    if ! session_value_set TIPPER_ADDRESS; then
+        TIPPER_ADDRESS="$ORACLE_ADDRESS"
+    else
+        TIPPER_ADDRESS="$(normalize_hex_id "$TIPPER_ADDRESS")"
+    fi
     log_session_use "ORACLE_ADDRESS" "$ORACLE_ADDRESS"
     log_session_use "CREATOR_ADDRESS" "$CREATOR_ADDRESS"
     log_session_use "TIPPER_ADDRESS" "$TIPPER_ADDRESS"
@@ -224,33 +268,39 @@ restore_oracle_address() {
 }
 
 ensure_tipper_ready() {
-    local coin alt
+    local coin saved_oracle attempt
     ensure_cli_addresses || return 1
+    saved_oracle="$(resolve_myso_active_address)" || return 1
+    TIPPER_ADDRESS="$(normalize_hex_id "$TIPPER_ADDRESS")"
+
+    if [[ "$TIPPER_ADDRESS" != "$(normalize_hex_id "$ORACLE_ADDRESS")" ]]; then
+        myso client switch --address "$TIPPER_ADDRESS" >/dev/null
+    fi
+
     coin="$(resolve_gas_coin_for_address "$TIPPER_ADDRESS")"
     if [[ -n "$coin" ]]; then
+        if [[ "$(resolve_myso_active_address)" != "$saved_oracle" ]]; then
+            myso client switch --address "$saved_oracle" >/dev/null
+        fi
         return 0
     fi
-    log_step "Funding tipper via faucet"
-    myso client faucet
-    coin="$(resolve_gas_coin_for_address "$TIPPER_ADDRESS")"
-    if [[ -n "$coin" ]]; then
-        return 0
+
+    log_step "Funding tipper $TIPPER_ADDRESS via faucet"
+    myso client faucet >/dev/null 2>&1 || myso client faucet >&2
+    for attempt in $(seq 1 30); do
+        sleep 1
+        coin="$(resolve_gas_coin_for_address "$TIPPER_ADDRESS")"
+        [[ -n "$coin" ]] && break
+    done
+
+    if [[ "$(resolve_myso_active_address)" != "$saved_oracle" ]]; then
+        myso client switch --address "$saved_oracle" >/dev/null
     fi
-    alt="$(myso client addresses --json 2>/dev/null | jq -r --arg cur "$TIPPER_ADDRESS" '
-        .addresses[]? | .[1] | select(. != $cur)
-    ' | head -n1)" || true
-    if [[ -z "$alt" ]]; then
-        echo "No alternate address in keystore for tipping; run: myso client new-address ed25519" >&2
+
+    [[ -n "$coin" ]] || {
+        echo "No gas coin for tipper $TIPPER_ADDRESS after faucet (waited 30s)" >&2
         return 1
-    fi
-    log_step "Switching tipper to $alt and funding"
-    myso client switch --address "$alt"
-    myso client faucet
-    TIPPER_ADDRESS="$(resolve_myso_active_address)"
-    log_session_use "TIPPER_ADDRESS" "$TIPPER_ADDRESS"
-    coin="$(resolve_gas_coin_for_address "$TIPPER_ADDRESS")"
-    [[ -n "$coin" ]] || { echo "Tipper still has no gas coin after switch + faucet" >&2; return 1; }
-    restore_oracle_address
+    }
     return 0
 }
 
@@ -270,7 +320,61 @@ literal_move_string() {
     s="${s//\"/\\\"}"
     s="${s//$'\n'/\\n}"
     s="${s//$'\r'/}"
-    printf "'\"%s\"'" "$s"
+    printf '"%s"' "$s"
+}
+
+normalize_hex_id() {
+    local id="$1"
+    id="${id#@}"
+    [[ -n "$id" ]] || return 1
+    case "$id" in
+        0x*) printf '%s' "$id" ;;
+        *) printf '0x%s' "$id" ;;
+    esac
+}
+
+ptb_shared_ref() {
+    local id normalized
+    id="$1"
+    normalized="$(normalize_hex_id "$id")" || {
+        echo "PTB shared object id is empty or invalid (got: '${id:-<empty>}')" >&2
+        return 1
+    }
+    printf '@%s' "$normalized"
+}
+
+literal_move_vector_empty() {
+    printf '%s' 'vector[]'
+}
+
+literal_move_vector_from_csv() {
+    local csv="$1"
+    if [[ -z "$csv" ]]; then
+        literal_move_vector_empty
+        return 0
+    fi
+    local acc="" s2="" p
+    IFS=',' read -r -a _VA <<<"$csv"
+    for p in "${_VA[@]}"; do
+        p="${p## }"
+        p="${p%% }"
+        acc="${acc}${s2}\"${p}\""
+        s2=", "
+    done
+    printf 'vector[%s]' "$acc"
+}
+
+require_hex_ids() {
+    local name missing=()
+    for name in "$@"; do
+        if ! normalize_hex_id "${!name:-}" >/dev/null 2>&1; then
+            missing+=("$name")
+        fi
+    done
+    if ((${#missing[@]})); then
+        echo "Missing or invalid object ids: ${missing[*]}" >&2
+        return 1
+    fi
 }
 
 bytes_to_hex_arg() {
@@ -291,7 +395,26 @@ invoke_ptb() {
     printf ' %q\n' "${cmd[@]}" >&2
     echo "---" >&2
     if [[ "${SKIP_CONFIRM_RUN:-0}" == 1 ]] || confirm_run; then
-        "${cmd[@]}"
+        "${cmd[@]}" >&2
+    else
+        return 0
+    fi
+}
+
+invoke_ptb_capture() {
+    local -a cmd out
+    cmd=(myso client ptb)
+    local g
+    while IFS= read -r g; do [[ -n "$g" ]] && cmd+=("$g"); done < <(extra_gas_budget)
+    while IFS= read -r g; do [[ -n "$g" ]] && cmd+=("$g"); done < <(extra_dry)
+    cmd+=("$@")
+    echo "---" >&2
+    printf ' %q\n' "${cmd[@]}" >&2
+    echo "---" >&2
+    if [[ "${SKIP_CONFIRM_RUN:-0}" == 1 ]] || confirm_run; then
+        out="$("${cmd[@]}" 2>&1)" || { echo "$out" >&2; return 1; }
+        echo "$out" >&2
+        printf '%s' "$out"
     else
         return 0
     fi
@@ -357,16 +480,45 @@ invoke_ptb_as() {
     local sender="$1"
     shift
     local -a cmd
-    cmd=(myso client ptb --sender "$sender")
+    sender="$(normalize_hex_id "$sender")" || return 1
+    cmd=(myso client ptb --sender "@${sender}")
     local g
     while IFS= read -r g; do [[ -n "$g" ]] && cmd+=("$g"); done < <(extra_gas_budget)
+    if [[ -n "${PTB_GAS_COIN_ID:-}" ]]; then
+        cmd+=(--gas-coin "@$(normalize_hex_id "$PTB_GAS_COIN_ID")")
+    fi
     while IFS= read -r g; do [[ -n "$g" ]] && cmd+=("$g"); done < <(extra_dry)
     cmd+=("$@")
     echo "---" >&2
     printf ' %q\n' "${cmd[@]}" >&2
     echo "---" >&2
     if [[ "${SKIP_CONFIRM_RUN:-0}" == 1 ]] || confirm_run; then
-        "${cmd[@]}"
+        "${cmd[@]}" >&2
+    else
+        return 0
+    fi
+}
+
+invoke_ptb_as_capture() {
+    local sender="$1"
+    shift
+    local -a cmd out
+    sender="$(normalize_hex_id "$sender")" || return 1
+    cmd=(myso client ptb --sender "@${sender}")
+    local g
+    while IFS= read -r g; do [[ -n "$g" ]] && cmd+=("$g"); done < <(extra_gas_budget)
+    if [[ -n "${PTB_GAS_COIN_ID:-}" ]]; then
+        cmd+=(--gas-coin "@$(normalize_hex_id "$PTB_GAS_COIN_ID")")
+    fi
+    while IFS= read -r g; do [[ -n "$g" ]] && cmd+=("$g"); done < <(extra_dry)
+    cmd+=("$@")
+    echo "---" >&2
+    printf ' %q\n' "${cmd[@]}" >&2
+    echo "---" >&2
+    if [[ "${SKIP_CONFIRM_RUN:-0}" == 1 ]] || confirm_run; then
+        out="$("${cmd[@]}" 2>&1)" || { echo "$out" >&2; return 1; }
+        echo "$out" >&2
+        printf '%s' "$out"
     else
         return 0
     fi
@@ -436,9 +588,12 @@ require_platform_mode() {
 
 graphql_post() {
     local query="$1"
-    local vars="${2:-{}}"
+    local vars="${2-}"
     local body http_code resp
-    body="$(jq -nc --arg q "$query" --argjson v "$vars" '{query: $q, variables: $v}')"
+    if [[ -z "$vars" ]]; then
+        vars='{}'
+    fi
+    body="$(jq -nc --arg q "$query" --argjson v "$vars" '{query: $q, variables: $v}')" || return 1
     resp="$(curl -sS -w '\n%{http_code}' -X POST "$GRAPHQL_URL" \
         -H 'Content-Type: application/json' \
         -d "$body")" || {
@@ -500,6 +655,7 @@ readonly GQL_BATCH2='query MysocialGenesisObjectsBatch2 {
   socialProofTokensAdminCap: objects(filter: { type: "0x50c1::social_proof_tokens::SocialProofTokensAdminCap" }, last: 1) { nodes { address } }
   mydataAdminCap: objects(filter: { type: "0x50c1::mydata::MyDataAdminCap" }, last: 1) { nodes { address } }
   mydataPoolAdminCap: objects(filter: { type: "0x50c1::mydata::MyDataPoolAdminCap" }, last: 1) { nodes { address } }
+  platformAdminCap: objects(filter: { type: "0x50c1::platform::PlatformAdminCap" }, last: 1) { nodes { address } }
 }'
 
 readonly GQL_BATCH3='query MysocialGenesisObjectsBatch3 {
@@ -531,7 +687,7 @@ collect_gql_mappings() {
         mydataPoolRegistry snapshotAnchorRegistry mydataClaimVault pocVaultDirectory \
         pocUsernameBeneficiaryDirectory postConfig sptConfig pocConfig mydataConfig spotConfig insuranceConfig \
         orderbookRegistry proofOfCreativityAdminCap socialProofTokensAdminCap pocBeneficiaryAdminCap \
-        mydataAdminCap mydataPoolAdminCap; do
+        mydataAdminCap mydataPoolAdminCap platformAdminCap; do
         case "$alias" in
             bootstrapKey) env_key=BOOTSTRAP_KEY_ID ;;
             ecosystemTreasury) env_key=ECOSYSTEM_TREASURY_ID ;;
@@ -562,6 +718,7 @@ collect_gql_mappings() {
             pocBeneficiaryAdminCap) env_key=POC_BENEFICIARY_ADMIN_CAP_ID ;;
             mydataAdminCap) env_key=MYDATA_ADMIN_CAP_ID ;;
             mydataPoolAdminCap) env_key=POOL_ADMIN_CAP_ID ;;
+            platformAdminCap) env_key=PLATFORM_ADMIN_CAP_ID ;;
             *) continue ;;
         esac
         val="$(gql_object_address "$json" "$alias")"
@@ -632,7 +789,8 @@ refresh_poc_session_from_graphql() {
             POOL_REGISTRY_ID ANCHOR_REGISTRY_ID CLAIM_VAULT_ID POC_VAULT_DIRECTORY_ID \
             POC_USERNAME_BENEFICIARY_DIRECTORY_ID POST_CONFIG_ID SOCIAL_PROOF_TOKENS_CONFIG_ID \
             POC_CONFIG_ID MYDATA_CONFIG_ID SPOT_CONFIG_ID INSURANCE_CONFIG_ID ORDERBOOK_REGISTRY_ID \
-            POC_ADMIN_CAP_ID POC_BENEFICIARY_ADMIN_CAP_ID SPT_ADMIN_CAP_ID MYDATA_ADMIN_CAP_ID POOL_ADMIN_CAP_ID \
+            POC_ADMIN_CAP_ID POC_BENEFICIARY_ADMIN_CAP_ID SPT_ADMIN_CAP_ID PLATFORM_ADMIN_CAP_ID \
+            MYDATA_ADMIN_CAP_ID POOL_ADMIN_CAP_ID \
             GOVERNANCE_ECOSYSTEM_REGISTRY_ID GOVERNANCE_POC_REGISTRY_ID \
             JOIN_REFERRER_ADDRESS GAS_BUDGET MEMORY_ACCOUNT_ID TIPPER_MEMORY_ACCOUNT_ID \
             ORACLE_PROFILE_ID RESERVATION_POOL_ID; do
@@ -671,11 +829,18 @@ refresh_poc_session_from_graphql() {
 
     if ! session_value_set PLATFORM_OBJECT_ID; then
         if platform_mode_is_full; then
-            echo "Warning: PLATFORM_OBJECT_ID not found — create a platform via the app." >&2
+            echo "Warning: PLATFORM_OBJECT_ID not found — use menu C or --create-platform." >&2
         else
             echo "Note: no Platform on chain — no-platform mode (username PoC only)." >&2
+            echo "  Create one with menu C or --create-platform for post/dispute flows." >&2
         fi
     fi
+}
+
+object_exists_on_fullnode() {
+    local id="$1"
+    id="$(normalize_hex_id "$id")" || return 1
+    myso client object "$id" >/dev/null 2>&1
 }
 
 object_address_owner() {
@@ -705,18 +870,29 @@ object_address_owner() {
 
 extract_tx_digest() {
     local out="$1" digest
+    [[ -n "$out" ]] || return 1
     digest="$(echo "$out" | jq -r '
         .effects.V2.transaction_digest //
         .effects.transaction_digest //
         .transaction_digest //
         empty
-    ' 2>/dev/null | head -n1)"
+    ' 2>/dev/null | grep -E . | tail -n1)"
     if [[ -n "$digest" ]]; then
         printf '%s' "$digest"
         return 0
     fi
-    echo "$out" | grep -Eo 'Transaction Digest: [0-9a-zA-Z+/=_-]+' | head -n1 | awk '{print $3}' \
-        || echo "$out" | grep -Eo '[A-Za-z0-9+/]{43,44}=' | head -n1
+    digest="$(echo "$out" | grep -Eo '"transaction_digest"[[:space:]]*:[[:space:]]*"[^"]+"' \
+        | tail -n1 | sed -E 's/.*"([^"]+)"$/\1/')"
+    if [[ -n "$digest" ]]; then
+        printf '%s' "$digest"
+        return 0
+    fi
+    digest="$(echo "$out" | grep -Eo 'Transaction Digest: [0-9a-zA-Z+/=_-]+' | tail -n1 | awk '{print $3}')"
+    if [[ -n "$digest" ]]; then
+        printf '%s' "$digest"
+        return 0
+    fi
+    echo "$out" | grep -Eo '[A-Za-z0-9+/]{43,44}=' | tail -n1
 }
 
 extract_created_object_by_type() {
@@ -843,6 +1019,103 @@ verify_object_type() {
         return 1
     fi
     return 0
+}
+
+parse_beneficiary_address_from_vault_object() {
+    local vault_id="$1" json
+    vault_id="$(normalize_hex_id "$vault_id")" || return 1
+    json="$(myso client object "$vault_id" --json 2>/dev/null)" || return 1
+    python3 - "$json" <<'PY'
+import json, sys
+j = json.loads(sys.argv[1])
+contents = j.get("data", {}).get("Move", {}).get("contents")
+if not contents or len(contents) < 64:
+    raise SystemExit(1)
+print("0x" + bytes(contents[32:64]).hex())
+PY
+}
+
+gql_beneficiary_vault_id_for_address() {
+    local addr="$1" resp vars vault_id
+    [[ -n "$addr" ]] || return 1
+    vars="$(jq -nc --arg addr "$addr" '{addr: $addr}')"
+    resp="$(graphql_post \
+        'query VaultForBeneficiary($addr: MySoAddress!) { pocBeneficiaryVaultByBeneficiary(beneficiary: $addr) { vaultId } }' \
+        "$vars")" || return 1
+    vault_id="$(echo "$resp" | jq -r '.data.pocBeneficiaryVaultByBeneficiary.vaultId // empty' | head -n1)"
+    [[ -n "$vault_id" ]] || return 1
+    normalize_hex_id "$vault_id"
+}
+
+lookup_beneficiary_vault_id_on_fullnode() {
+    local beneficiary="$1" resp cursor="" vault_id ben normalized_ben
+    beneficiary="$(normalize_hex_id "$beneficiary")" || return 1
+    while true; do
+        if [[ -z "$cursor" ]]; then
+            resp="$(graphql_post \
+                'query { objects(filter: { type: "0x50c1::poc_vault::PoCBeneficiaryVault", ownerKind: SHARED }, first: 50) { nodes { address } pageInfo { hasNextPage endCursor } } }' \
+                '{}')" \
+                || return 1
+        else
+            resp="$(graphql_post \
+                'query VaultScan($cursor: String!) { objects(filter: { type: "0x50c1::poc_vault::PoCBeneficiaryVault", ownerKind: SHARED }, first: 50, after: $cursor) { nodes { address } pageInfo { hasNextPage endCursor } } }' \
+                "$(jq -nc --arg cursor "$cursor" '{cursor: $cursor}')")" || return 1
+        fi
+        while IFS= read -r vault_id; do
+            [[ -n "$vault_id" ]] || continue
+            ben="$(parse_beneficiary_address_from_vault_object "$vault_id")" || continue
+            normalized_ben="$(normalize_hex_id "$ben")" || continue
+            if [[ "$normalized_ben" == "$beneficiary" ]]; then
+                normalize_hex_id "$vault_id"
+                return 0
+            fi
+        done < <(echo "$resp" | jq -r '.data.objects.nodes[]?.address // empty')
+        if [[ "$(echo "$resp" | jq -r '.data.objects.pageInfo.hasNextPage // false')" != "true" ]]; then
+            break
+        fi
+        cursor="$(echo "$resp" | jq -r '.data.objects.pageInfo.endCursor // empty')"
+        [[ -n "$cursor" ]] || break
+    done
+    return 1
+}
+
+resolve_beneficiary_vault_id() {
+    local analyze_digest="$1" beneficiary_addr="$2"
+    local vault_id ben
+    [[ -n "$beneficiary_addr" ]] || return 1
+    beneficiary_addr="$(normalize_hex_id "$beneficiary_addr")" || return 1
+
+    if session_value_set POC_BENEFICIARY_VAULT_ID; then
+        vault_id="$(normalize_hex_id "$POC_BENEFICIARY_VAULT_ID")" || return 1
+        if verify_object_type "$vault_id" "PoCBeneficiaryVault" 2>/dev/null \
+            && object_exists_on_fullnode "$vault_id"; then
+            ben="$(parse_beneficiary_address_from_vault_object "$vault_id")" || true
+            if [[ -z "$ben" ]] || [[ "$(normalize_hex_id "$ben")" == "$beneficiary_addr" ]]; then
+                printf '%s' "$vault_id"
+                return 0
+            fi
+        fi
+    fi
+
+    if [[ -n "$analyze_digest" ]]; then
+        vault_id="$(extract_created_object_by_type "$analyze_digest" "PoCBeneficiaryVault")" || true
+        if [[ -n "$vault_id" ]] \
+            && verify_object_type "$vault_id" "PoCBeneficiaryVault" 2>/dev/null \
+            && object_exists_on_fullnode "$vault_id"; then
+            normalize_hex_id "$vault_id"
+            return 0
+        fi
+    fi
+
+    vault_id="$(gql_beneficiary_vault_id_for_address "$beneficiary_addr")" || true
+    if [[ -n "$vault_id" ]] \
+        && verify_object_type "$vault_id" "PoCBeneficiaryVault" 2>/dev/null \
+        && object_exists_on_fullnode "$vault_id"; then
+        printf '%s' "$vault_id"
+        return 0
+    fi
+
+    lookup_beneficiary_vault_id_on_fullnode "$beneficiary_addr"
 }
 
 assert_tx_success() {
@@ -1065,20 +1338,276 @@ print("0x" + h.hex())
 PY
 }
 
+resolve_gas_coins_json_for_address() {
+    local addr="$1"
+    addr="$(normalize_hex_id "$addr")" || return 1
+    myso client gas "$addr" --json 2>/dev/null
+}
+
+ensure_two_gas_coins_for_address() {
+    local addr="$1" attempt json count
+    addr="$(normalize_hex_id "$addr")" || return 1
+    for attempt in $(seq 1 30); do
+        json="$(resolve_gas_coins_json_for_address "$addr")" || json='[]'
+        count="$(echo "$json" | jq 'length')"
+        [[ "$count" -ge 2 ]] && return 0
+        if [[ "$attempt" == 1 ]]; then
+            myso client switch --address "$addr" >/dev/null
+            myso client faucet >/dev/null 2>&1 || myso client faucet >&2
+        fi
+        sleep 1
+    done
+    echo "Tipper $addr needs two gas coins (one for gas, one for tip payment)" >&2
+    return 1
+}
+
+pick_tip_and_gas_coins_for_address() {
+    local addr="$1" amount="$2"
+    local json tip_coin gas_coin
+    addr="$(normalize_hex_id "$addr")" || return 1
+    ensure_two_gas_coins_for_address "$addr" || return 1
+    json="$(resolve_gas_coins_json_for_address "$addr")" || return 1
+    tip_coin="$(echo "$json" | jq -r --argjson amt "$amount" '
+        [.[] | select((.mistBalance | tonumber) >= $amt)] |
+        if length == 0 then empty
+        elif length >= 2 then .[1].gasCoinId
+        else .[0].gasCoinId end
+    ')"
+    [[ -n "$tip_coin" ]] || {
+        echo "No coin with balance >= $amount for tipper $addr" >&2
+        return 1
+    }
+    gas_coin="$(echo "$json" | jq -r --arg tip "$tip_coin" '
+        [.[] | select(.gasCoinId != $tip)] | .[0].gasCoinId // empty
+    ')"
+    [[ -n "$gas_coin" ]] || gas_coin="$(echo "$json" | jq -r '.[0].gasCoinId // empty')"
+    [[ -n "$gas_coin" && "$gas_coin" != "$tip_coin" ]] || {
+        echo "Could not pick distinct gas and tip coins for $addr" >&2
+        return 1
+    }
+    case "$tip_coin" in 0x*) ;; *) echo "Invalid tip coin id: $tip_coin" >&2; return 1 ;; esac
+    case "$gas_coin" in 0x*) ;; *) echo "Invalid gas coin id: $gas_coin" >&2; return 1 ;; esac
+    printf '%s %s' "$tip_coin" "$gas_coin"
+}
+
 resolve_gas_coin_for_address() {
     local addr="$1"
     local json
-    json="$(myso client gas --json --address "$addr" 2>/dev/null)" || return 1
+    json="$(resolve_gas_coins_json_for_address "$addr")" || return 1
     echo "$json" | jq -r '.[0].gasCoinId // .[0].coinObjectId // empty' | head -n1
 }
 
+gql_profile_id_for_address() {
+    local addr="$1" resp vars
+    vars="$(jq -nc --arg addr "$addr" '{addr: $addr}')"
+    resp="$(graphql_post \
+        'query ProfileId($addr: MySoAddress!) { profile(address: $addr) { profileId } }' \
+        "$vars")" || return 1
+    echo "$resp" | jq -r '.data.profile.profileId // empty' | head -n1
+}
+
+gql_profile_memory_account_id() {
+    local addr="$1" resp vars
+    vars="$(jq -nc --arg addr "$addr" '{addr: $addr}')"
+    resp="$(graphql_post \
+        'query ProfileMemory($addr: MySoAddress!) { profile(address: $addr) { memoryAccountId } }' \
+        "$vars")" || return 1
+    echo "$resp" | jq -r '.data.profile.memoryAccountId // empty' | head -n1
+}
+
+assert_post_flow_tip_and_claim_graphql() {
+    local post_id="$1" vault_id="$2" resp vars
+    local tips_received total_tip_volume tip_amount gross_amount treasury_amount
+    post_id="$(normalize_hex_id "$post_id")" || return 1
+    vault_id="$(normalize_hex_id "$vault_id")" || return 1
+    sleep 1
+    vars="$(jq -nc --arg postId "$post_id" --arg vaultId "$vault_id" \
+        '{postId: $postId, vaultId: $vaultId}')"
+    resp="$(graphql_post \
+        'query PostFlowTipVolume($postId: ID!, $vaultId: String!) {
+            post(id: $postId) {
+                tipsReceived
+                totalTipVolume
+                tips(limit: 1) { amount }
+            }
+            pocBeneficiaryVaultByVaultId(vaultId: $vaultId) {
+                claims(limit: 1) {
+                    grossAmount
+                    treasuryAmount
+                }
+            }
+        }' \
+        "$vars")" || return 1
+    tips_received="$(echo "$resp" | jq -r '.data.post.tipsReceived // empty')"
+    total_tip_volume="$(echo "$resp" | jq -r '.data.post.totalTipVolume // empty')"
+    tip_amount="$(echo "$resp" | jq -r '.data.post.tips[0].amount // empty')"
+    gross_amount="$(echo "$resp" | jq -r '.data.pocBeneficiaryVaultByVaultId.claims[0].grossAmount // empty')"
+    treasury_amount="$(echo "$resp" | jq -r '.data.pocBeneficiaryVaultByVaultId.claims[0].treasuryAmount // empty')"
+    if [[ "$tips_received" != "0" ]]; then
+        echo "GraphQL post.tipsReceived expected 0 for escrow tip, got: $tips_received" >&2
+        return 1
+    fi
+    if [[ "$total_tip_volume" != "$DEFAULT_TIP_AMOUNT" ]]; then
+        echo "GraphQL post.totalTipVolume expected $DEFAULT_TIP_AMOUNT, got: $total_tip_volume" >&2
+        return 1
+    fi
+    if [[ "$tip_amount" != "$DEFAULT_TIP_AMOUNT" ]]; then
+        echo "GraphQL post.tips[0].amount expected $DEFAULT_TIP_AMOUNT, got: $tip_amount" >&2
+        return 1
+    fi
+    if [[ "$gross_amount" != "$DEFAULT_TIP_AMOUNT" ]]; then
+        echo "GraphQL claim grossAmount expected $DEFAULT_TIP_AMOUNT, got: $gross_amount" >&2
+        return 1
+    fi
+    if [[ "$treasury_amount" != "1000000" ]]; then
+        echo "GraphQL claim treasuryAmount expected 1000000, got: $treasury_amount" >&2
+        return 1
+    fi
+    log_step "GraphQL tip volume + vault claim amounts verified"
+}
+
+assert_username_beneficiary_graphql() {
+    local username="$1" beneficiary_id="$2" resp vars
+    local status indexed_id
+    sleep 1
+    vars="$(jq -nc --arg username "$username" '{username: $username}')"
+    resp="$(graphql_post \
+        'query PocUsernameBeneficiaryByUsername($username: String!) {
+            pocUsernameBeneficiaryByUsername(username: $username) {
+                beneficiaryId
+                username
+                status
+            }
+        }' \
+        "$vars")" || return 1
+    indexed_id="$(echo "$resp" | jq -r '.data.pocUsernameBeneficiaryByUsername.beneficiaryId // empty')"
+    status="$(echo "$resp" | jq -r '.data.pocUsernameBeneficiaryByUsername.status // empty')"
+    beneficiary_id="$(normalize_hex_id "$beneficiary_id")" || return 1
+    if [[ -z "$indexed_id" ]]; then
+        echo "GraphQL pocUsernameBeneficiaryByUsername($username) returned null" >&2
+        echo "$resp" | jq . >&2 || true
+        return 1
+    fi
+    indexed_id="$(normalize_hex_id "$indexed_id")" || return 1
+    if [[ "$indexed_id" != "$beneficiary_id" ]]; then
+        echo "GraphQL beneficiaryId expected $beneficiary_id, got: $indexed_id" >&2
+        return 1
+    fi
+    if [[ "$status" != "2" ]]; then
+        echo "GraphQL status expected 2 (claimed), got: $status" >&2
+        return 1
+    fi
+    log_step "GraphQL username beneficiary OK username=$username status=$status beneficiaryId=$indexed_id"
+}
+
+extract_memory_account_id_from_profile_object() {
+    local profile_id="$1" json
+    profile_id="$(normalize_hex_id "$profile_id")" || return 1
+    json="$(myso client object "$profile_id" --json 2>/dev/null)" || return 1
+    python3 - "$json" <<'PY'
+import json, sys
+j = json.loads(sys.argv[1])
+contents = j.get("data", {}).get("Move", {}).get("contents")
+if not contents or len(contents) < 41:
+    raise SystemExit(1)
+if contents[-9] != 1:
+    raise SystemExit(1)
+print("0x" + bytes(contents[-41:-9]).hex())
+PY
+}
+
 resolve_memory_account_for_address() {
-    local addr="$1"
-    local json
-    json="$(myso client objects "$addr" --json 2>/dev/null)" || return 1
-    echo "$json" | jq -r '
-        .[]? | select(.type? | tostring | contains("MemoryAccount")) | .data.objectId // .objectId // empty
-    ' | head -n1
+    local addr="$1" profile_id onchain_mem gql_mem normalized
+    profile_id="$(gql_profile_id_for_address "$addr")" || true
+    if [[ -n "$profile_id" ]]; then
+        profile_id="$(normalize_hex_id "$profile_id")" || profile_id=""
+    fi
+    if [[ -n "$profile_id" ]] && object_exists_on_fullnode "$profile_id"; then
+        gql_mem="$(gql_profile_memory_account_id "$addr")" || true
+        if [[ -n "$gql_mem" ]]; then
+            normalized="$(normalize_hex_id "$gql_mem")" || normalized=""
+            if [[ -n "$normalized" ]] && object_exists_on_fullnode "$normalized"; then
+                printf '%s' "$normalized"
+                return 0
+            fi
+        fi
+        onchain_mem="$(extract_memory_account_id_from_profile_object "$profile_id")" || true
+        if [[ -n "$onchain_mem" ]] && object_exists_on_fullnode "$onchain_mem"; then
+            normalize_hex_id "$onchain_mem"
+            return 0
+        fi
+    fi
+    gql_mem="$(gql_profile_memory_account_id "$addr")" || true
+    [[ -n "$gql_mem" ]] || return 1
+    normalized="$(normalize_hex_id "$gql_mem")" || return 1
+    object_exists_on_fullnode "$normalized" || return 1
+    printf '%s' "$normalized"
+}
+
+ensure_joined_platform() {
+    require_session_fields PLATFORM_REGISTRY_ID BLOCK_LIST_REGISTRY_ID PLATFORM_OBJECT_ID CLOCK_ID || return 1
+    require_hex_ids PLATFORM_REGISTRY_ID BLOCK_LIST_REGISTRY_ID PLATFORM_OBJECT_ID CLOCK_ID || return 1
+    log_step "Joining platform for $(resolve_myso_active_address) (join_platform PTB)"
+    if SKIP_CONFIRM_RUN=1 invoke_ptb \
+        --move-call "${PKG_SOCIAL}::platform::join_platform" \
+        "$(ptb_shared_ref "$PLATFORM_REGISTRY_ID")" \
+        "$(ptb_shared_ref "$BLOCK_LIST_REGISTRY_ID")" \
+        "$(ptb_shared_ref "$PLATFORM_OBJECT_ID")" \
+        "$(ptb_shared_ref "$CLOCK_ID")"; then
+        return 0
+    fi
+    return 1
+}
+
+create_profile_with_memory_for_address() {
+    local sender="$1" out digest mem profile_id username
+    [[ -n "$sender" ]] || return 1
+    require_session_fields USERNAME_REGISTRY_ID MEMORY_REGISTRY_ID CLOCK_ID || return 1
+    require_hex_ids USERNAME_REGISTRY_ID MEMORY_REGISTRY_ID CLOCK_ID || return 1
+    POC_RUN_ID="${POC_RUN_ID:-$(date +%s)}"
+    username="poc${POC_RUN_ID}${RANDOM}"
+    log_step "Creating profile + MemoryAccount for $sender (username=$username)"
+    out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_as_capture "$sender" \
+        --move-call "${PKG_SOCIAL}::profile::create_profile" \
+        "$(ptb_shared_ref "$USERNAME_REGISTRY_ID")" \
+        "$(ptb_shared_ref "$MEMORY_REGISTRY_ID")" \
+        "$(literal_move_string "PoC Runtime")" \
+        "$(literal_move_string "$username")" \
+        '""' \
+        'vector[]' 'vector[]' \
+        "$(ptb_shared_ref "$CLOCK_ID")")" || return 1
+    digest="$(extract_tx_digest "$out")"
+    mem="$(extract_created_object_by_type "$digest" "memory::MemoryAccount")"
+    [[ -n "$mem" ]] || mem="$(extract_created_object_by_type "$digest" "MemoryAccount")"
+    profile_id="$(extract_created_object_by_type "$digest" "profile::Profile")"
+    [[ -n "$profile_id" ]] || profile_id="$(extract_created_object_by_type "$digest" "Profile")"
+    [[ -n "$mem" ]] || {
+        echo "create_profile succeeded but MemoryAccount not found in tx effects" >&2
+        return 1
+    }
+    mem="$(normalize_hex_id "$mem")"
+    if [[ "$sender" == "$ORACLE_ADDRESS" ]]; then
+        MEMORY_ACCOUNT_ID="$mem"
+        if [[ -n "$profile_id" ]]; then
+            ORACLE_PROFILE_ID="$profile_id"
+            log_session_use "ORACLE_PROFILE_ID" "$profile_id"
+        fi
+        log_session_use "MEMORY_ACCOUNT_ID" "$MEMORY_ACCOUNT_ID"
+        save_session_state
+    fi
+    printf '%s' "$mem"
+}
+
+create_oracle_profile_with_memory() {
+    local mem
+    mem="$(resolve_memory_account_for_address "$ORACLE_ADDRESS")" || true
+    if [[ -n "$mem" ]]; then
+        MEMORY_ACCOUNT_ID="$mem"
+        log_session_use "MEMORY_ACCOUNT_ID" "$mem"
+        save_session_state
+        return 0
+    fi
+    create_profile_with_memory_for_address "$ORACLE_ADDRESS" >/dev/null
 }
 
 resolve_owned_cap_for_address() {
@@ -1121,6 +1650,54 @@ resolve_profile_object_for_address() {
     ' | head -n1
 }
 
+address_has_profile() {
+    local addr="$1" profile_id
+    addr="$(normalize_hex_id "$addr")" || return 1
+    profile_id="$(gql_profile_id_for_address "$addr")" || true
+    [[ -n "$profile_id" ]]
+}
+
+ensure_claim_wallet_without_profile() {
+    local candidate new_addr saved_oracle attempt coin
+    saved_oracle="$(normalize_hex_id "$ORACLE_ADDRESS")" || return 1
+    myso client switch --address "$saved_oracle" >/dev/null
+    for candidate in "$TIPPER_ADDRESS" "$ORACLE_ADDRESS"; do
+        [[ -n "$candidate" ]] || continue
+        candidate="$(normalize_hex_id "$candidate")" || continue
+        if ! address_has_profile "$candidate"; then
+            CREATOR_ADDRESS="$candidate"
+            log_step "Claim wallet (no profile yet): $candidate"
+            return 0
+        fi
+    done
+    log_step "Creating fresh wallet for username beneficiary claim"
+    new_addr="$(myso client new-address ed25519 "poc_claimer_${POC_RUN_ID}" --json | jq -r '.address // empty')"
+    [[ -n "$new_addr" ]] || { echo "Could not create claim wallet" >&2; return 1; }
+    new_addr="$(normalize_hex_id "$new_addr")"
+    myso client faucet --address "$new_addr" >/dev/null 2>&1 || myso client faucet --address "$new_addr" >&2 || true
+    CREATOR_ADDRESS="$new_addr"
+    log_step "Claim wallet (fresh): $CREATOR_ADDRESS"
+}
+
+ensure_ephemeral_oracle_for_username_claim() {
+    local mem
+    if [[ -n "${USERNAME_CLAIM_ORACLE:-}" ]]; then
+        return 0
+    fi
+    mem="$(gql_profile_memory_account_id "$ORACLE_ADDRESS")" || true
+    if [[ -z "$mem" ]]; then
+        USERNAME_CLAIM_ORACLE="$(normalize_hex_id "$ORACLE_ADDRESS")"
+        return 0
+    fi
+    log_step "PoC oracle already has MemoryAccount — using ephemeral oracle for username claim"
+    USERNAME_CLAIM_ORACLE="$(myso client new-address ed25519 "poc_oracle_${POC_RUN_ID}" --json | jq -r '.address // empty')"
+    [[ -n "$USERNAME_CLAIM_ORACLE" ]] || { echo "Could not create ephemeral claim oracle" >&2; return 1; }
+    USERNAME_CLAIM_ORACLE="$(normalize_hex_id "$USERNAME_CLAIM_ORACLE")"
+    myso client faucet --address "$USERNAME_CLAIM_ORACLE" >/dev/null 2>&1 || myso client faucet --address "$USERNAME_CLAIM_ORACLE" >&2
+    update_poc_config_oracle "$USERNAME_CLAIM_ORACLE" || return 1
+    log_step "Ephemeral claim oracle: $USERNAME_CLAIM_ORACLE"
+}
+
 read_spt_trading_enabled() {
     local json
     [[ -n "${SOCIAL_PROOF_TOKENS_CONFIG_ID:-}" ]] || return 1
@@ -1144,10 +1721,49 @@ ensure_spt_trading_enabled() {
         "$(bytes_to_hex_arg "PoC runtime test enable trading")" "@${CLOCK_ID}"
 }
 
+invalidate_stale_session_runtime_ids() {
+    local key id
+    for key in MEMORY_ACCOUNT_ID TIPPER_MEMORY_ACCOUNT_ID ORACLE_PROFILE_ID \
+        POC_BENEFICIARY_VAULT_ID RESERVATION_POOL_ID; do
+        id="${!key:-}"
+        [[ -n "$id" ]] || continue
+        if ! object_exists_on_fullnode "$id"; then
+            echo "Clearing stale session $key (not on fullnode)" >&2
+            printf -v "$key" '%s' ''
+        fi
+    done
+}
+
+prepare_for_create_post() {
+    invalidate_stale_session_runtime_ids
+    ensure_memory_account_for_post_flows || return 1
+    if ! platform_mode_is_full; then
+        return 0
+    fi
+    if [[ "${POC_PLATFORM_JOINED:-0}" == 1 ]]; then
+        return 0
+    fi
+    if ensure_joined_platform; then
+        POC_PLATFORM_JOINED=1
+        return 0
+    fi
+    log_step "Platform join failed — creating and approving a fresh test platform"
+    create_test_platform || return 1
+    if ensure_joined_platform; then
+        POC_PLATFORM_JOINED=1
+        return 0
+    fi
+    return 1
+}
+
 ensure_oracle_profile_id() {
     local oracle profile_id
     if [[ -n "${ORACLE_PROFILE_ID:-}" ]]; then
-        return 0
+        if object_exists_on_fullnode "$ORACLE_PROFILE_ID"; then
+            return 0
+        fi
+        echo "Session ORACLE_PROFILE_ID not on fullnode; re-resolving." >&2
+        ORACLE_PROFILE_ID=''
     fi
     oracle="$(resolve_myso_active_address)" || return 1
     profile_id="$(resolve_profile_object_for_address "$oracle")"
@@ -1183,42 +1799,61 @@ maybe_auto_refresh_session() {
     fi
 }
 
+update_poc_config_oracle() {
+    local oracle="$1"
+    oracle="$(normalize_hex_id "$oracle")" || return 1
+    require_session_fields POC_CONFIG_ID POC_ADMIN_CAP_ID CLOCK_ID || return 1
+    log_step "Updating PoCConfig (oracle=$oracle, short voting for runtime test)"
+    SKIP_CONFIRM_RUN=1 run_myso_call proof_of_creativity update_poc_config \
+        --args "$POC_ADMIN_CAP_ID" "@${POC_CONFIG_ID}" "$oracle" \
+        95 95 95 100 \
+        5000000000 1000000000 100000000000 \
+        3000 5000 10 10000 \
+        100 500 3000 \
+        0 10000 10000 500 \
+        "@${CLOCK_ID}"
+}
+
 preflight_oracle_and_config() {
     ensure_cli_addresses || return 1
     require_session_fields POC_CONFIG_ID POC_ADMIN_CAP_ID CLOCK_ID || return 1
-    local oracle active current_oracle
+    local oracle current_oracle
     oracle="$(resolve_myso_active_address)" || { echo "Could not read active-address" >&2; return 1; }
     log_step "Preflight: oracle active-address = $oracle"
     current_oracle="$(read_poc_config_oracle)" || true
 
     if [[ "$current_oracle" != "$oracle" ]] || [[ "${POC_FORCE_UPDATE_CONFIG:-0}" == 1 ]]; then
-        log_step "Updating PoCConfig (oracle=$oracle, short voting for runtime test)"
-        SKIP_CONFIRM_RUN=1 run_myso_call proof_of_creativity update_poc_config \
-            --args "$POC_ADMIN_CAP_ID" "@${POC_CONFIG_ID}" "$oracle" \
-            95 95 95 100 \
-            5000000000 1000000000 100000000000 \
-            3000 5000 10 10000 \
-            100 500 3000 \
-            0 10000 10000 500 \
-            "@${CLOCK_ID}"
+        update_poc_config_oracle "$oracle"
     fi
 }
 
 ensure_memory_account_for_post_flows() {
     local oracle mem
+    invalidate_stale_session_runtime_ids
     if [[ -n "${MEMORY_ACCOUNT_ID:-}" ]]; then
-        log_session_use "MEMORY_ACCOUNT_ID" "$MEMORY_ACCOUNT_ID"
-        return 0
+        if object_exists_on_fullnode "$MEMORY_ACCOUNT_ID"; then
+            MEMORY_ACCOUNT_ID="$(normalize_hex_id "$MEMORY_ACCOUNT_ID")"
+            log_session_use "MEMORY_ACCOUNT_ID" "$MEMORY_ACCOUNT_ID"
+            return 0
+        fi
+        echo "Session MEMORY_ACCOUNT_ID not on localnet fullnode; re-resolving." >&2
+        MEMORY_ACCOUNT_ID=''
     fi
     oracle="$(resolve_myso_active_address)" || return 1
-    mem="$(resolve_memory_account_for_address "$oracle")"
+    mem="$(resolve_memory_account_for_address "$oracle")" || true
     if [[ -n "$mem" ]]; then
         MEMORY_ACCOUNT_ID="$mem"
         log_session_use "MEMORY_ACCOUNT_ID" "$mem"
+        save_session_state
         return 0
     fi
-    echo "Post PoC flows require an existing MemoryAccount for $oracle." >&2
-    echo "  Create a profile in the app first, or set MEMORY_ACCOUNT_ID in poc-session.env." >&2
+    log_step "No live MemoryAccount for $oracle — trying create_profile"
+    if create_oracle_profile_with_memory; then
+        return 0
+    fi
+    echo "Post PoC flows require a MemoryAccount visible on the localnet fullnode." >&2
+    echo "  Your profile may reference a missing MemoryAccount (chain/indexer drift)." >&2
+    echo "  Restart localnet, re-run ./scripts/bootstrap.sh, then retry menu 3." >&2
     return 1
 }
 
@@ -1234,57 +1869,312 @@ ensure_oracle_profile_for_reservation() {
 }
 
 ensure_tipper_memory_account() {
-    [[ -n "${TIPPER_MEMORY_ACCOUNT_ID:-}" ]] && return 0
     local mem
+    if [[ "$TIPPER_ADDRESS" == "$ORACLE_ADDRESS" && -n "${MEMORY_ACCOUNT_ID:-}" ]]; then
+        if object_exists_on_fullnode "$MEMORY_ACCOUNT_ID"; then
+            TIPPER_MEMORY_ACCOUNT_ID="$(normalize_hex_id "$MEMORY_ACCOUNT_ID")"
+            return 0
+        fi
+    fi
+    if [[ -n "${TIPPER_MEMORY_ACCOUNT_ID:-}" ]]; then
+        if object_exists_on_fullnode "$TIPPER_MEMORY_ACCOUNT_ID"; then
+            TIPPER_MEMORY_ACCOUNT_ID="$(normalize_hex_id "$TIPPER_MEMORY_ACCOUNT_ID")"
+            return 0
+        fi
+        TIPPER_MEMORY_ACCOUNT_ID=''
+    fi
     mem="$(resolve_memory_account_for_address "$TIPPER_ADDRESS")"
     if [[ -n "$mem" ]]; then
         TIPPER_MEMORY_ACCOUNT_ID="$mem"
         return 0
     fi
-    echo "Warning: no MemoryAccount for TIPPER_ADDRESS; tip steps may fail." >&2
+    echo "Warning: no MemoryAccount for TIPPER_ADDRESS on localnet; tip steps may fail." >&2
     return 0
+}
+
+parse_post_owner_from_object() {
+    local post_id="$1" json
+    post_id="$(normalize_hex_id "$post_id")" || return 1
+    json="$(myso client object "$post_id" --json 2>/dev/null)" || return 1
+    python3 - "$json" <<'PY'
+import json, sys
+j = json.loads(sys.argv[1])
+contents = j.get("data", {}).get("Move", {}).get("contents")
+if not contents or len(contents) < 64:
+    raise SystemExit(1)
+print("0x" + bytes(contents[32:64]).hex())
+PY
+}
+
+pick_distinct_tipper_address() {
+    local oracle="$1" preferred="$2" addr coin_json
+    oracle="$(normalize_hex_id "$oracle")" || return 1
+    if [[ -n "$preferred" ]]; then
+        preferred="$(normalize_hex_id "$preferred")" || preferred=""
+        if [[ -n "$preferred" && "$preferred" != "$oracle" ]]; then
+            coin_json="$(myso client gas "$preferred" --json 2>/dev/null)" || coin_json='[]'
+            if [[ "$(echo "$coin_json" | jq 'length')" -gt 0 ]]; then
+                printf '%s' "$preferred"
+                return 0
+            fi
+        fi
+    fi
+    while IFS= read -r addr; do
+        [[ -n "$addr" ]] || continue
+        addr="$(normalize_hex_id "$addr")" || continue
+        [[ "$addr" == "$oracle" ]] && continue
+        coin_json="$(myso client gas "$addr" --json 2>/dev/null)" || continue
+        if [[ "$(echo "$coin_json" | jq 'length')" -gt 0 ]]; then
+            printf '%s' "$addr"
+            return 0
+        fi
+    done < <(myso client addresses --json 2>/dev/null | jq -r --arg cur "$oracle" '
+        .addresses[]? | .[1] | select(. != $cur)
+    ')
+    while IFS= read -r addr; do
+        [[ -n "$addr" ]] || continue
+        addr="$(normalize_hex_id "$addr")" || continue
+        [[ "$addr" == "$oracle" ]] && continue
+        printf '%s' "$addr"
+        return 0
+    done < <(myso client addresses --json 2>/dev/null | jq -r --arg cur "$oracle" '
+        .addresses[]? | .[1] | select(. != $cur)
+    ')
+    return 1
+}
+
+ensure_distinct_tipper_for_post() {
+    local post_id="$1" owner alt mem
+    post_id="$(normalize_hex_id "$post_id")" || return 1
+    ensure_cli_addresses || return 1
+    owner="$(parse_post_owner_from_object "$post_id")" || return 1
+    owner="$(normalize_hex_id "$owner")" || return 1
+    if [[ "$owner" != "$(normalize_hex_id "$ORACLE_ADDRESS")" ]]; then
+        TIPPER_ADDRESS="$ORACLE_ADDRESS"
+        ensure_tipper_memory_account
+        ensure_tipper_ready || return 1
+        return 0
+    fi
+    if session_value_set TIPPER_ADDRESS \
+        && [[ "$(normalize_hex_id "$TIPPER_ADDRESS")" != "$(normalize_hex_id "$ORACLE_ADDRESS")" ]]; then
+        alt="$(pick_distinct_tipper_address "$ORACLE_ADDRESS" "$TIPPER_ADDRESS")" || alt="$TIPPER_ADDRESS"
+        TIPPER_ADDRESS="$(normalize_hex_id "$alt")"
+        log_step "Using session tipper $TIPPER_ADDRESS (self-tip forbidden on oracle-owned post)"
+        TIPPER_MEMORY_ACCOUNT_ID=''
+        ensure_tipper_ready || return 1
+    else
+        alt="$(pick_distinct_tipper_address "$ORACLE_ADDRESS" "")" || true
+        [[ -n "$alt" ]] || {
+            echo "Need a second keystore address to tip a post owned by the oracle (self-tip forbidden)." >&2
+            echo "  Run: myso client new-address ed25519" >&2
+            return 1
+        }
+        log_step "Using distinct tipper $alt (post owner is oracle; self-tip forbidden)"
+        TIPPER_ADDRESS="$(normalize_hex_id "$alt")"
+        TIPPER_MEMORY_ACCOUNT_ID=''
+        ensure_tipper_ready || return 1
+    fi
+    mem="${TIPPER_MEMORY_ACCOUNT_ID:-}"
+    [[ -n "$mem" ]] && object_exists_on_fullnode "$mem" || mem=""
+    [[ -n "$mem" ]] || mem="$(resolve_memory_account_for_address "$TIPPER_ADDRESS")" || true
+    if [[ -z "$mem" ]]; then
+        mem="$(gql_profile_memory_account_id "$TIPPER_ADDRESS")" || true
+        if [[ -n "$mem" ]] && object_exists_on_fullnode "$mem"; then
+            mem="$(normalize_hex_id "$mem")"
+        else
+            mem=""
+        fi
+    fi
+    if [[ -z "$mem" ]]; then
+        mem="$(create_profile_with_memory_for_address "$TIPPER_ADDRESS")" || {
+            mem="$(gql_profile_memory_account_id "$TIPPER_ADDRESS")" || true
+            mem="$(normalize_hex_id "$mem" 2>/dev/null)" || mem=""
+        }
+    fi
+    [[ -n "$mem" ]] || {
+        echo "Could not resolve MemoryAccount for tipper $TIPPER_ADDRESS" >&2
+        restore_oracle_address
+        return 1
+    }
+    TIPPER_MEMORY_ACCOUNT_ID="$mem"
+    log_session_use "TIPPER_ADDRESS" "$TIPPER_ADDRESS"
+    log_session_use "TIPPER_MEMORY_ACCOUNT_ID" "$TIPPER_MEMORY_ACCOUNT_ID"
+    restore_oracle_address
+}
+
+claim_beneficiary_vault_balance_as() {
+    local beneficiary="$1" vault_id="$2" referrer="$3"
+    local ref_cfg ref_treasury ref_vault ref_clk referrer_arg normalized_ben normalized_ref
+    vault_id="$(normalize_hex_id "$vault_id")" || return 1
+    beneficiary="$(normalize_hex_id "$beneficiary")" || return 1
+    if [[ -n "$referrer" ]]; then
+        normalized_ref="$(normalize_hex_id "$referrer")" || return 1
+        if [[ "$normalized_ref" == "$beneficiary" ]]; then
+            referrer_arg="none"
+        else
+            referrer_arg="$(ptb_option_address_from_arg "some($referrer)")"
+        fi
+    else
+        referrer_arg="none"
+    fi
+    ref_cfg="$(ptb_shared_ref "$POC_CONFIG_ID")" || return 1
+    ref_treasury="$(ptb_shared_ref "$ECOSYSTEM_TREASURY_ID")" || return 1
+    ref_vault="$(ptb_shared_ref "$vault_id")" || return 1
+    ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || return 1
+    SKIP_CONFIRM_RUN=1 invoke_ptb_as "$beneficiary" \
+        --move-call "${PKG_SOCIAL}::proof_of_creativity::claim_beneficiary_vault_balance<${COIN_TYPE}>" \
+        "$ref_cfg" "$ref_treasury" "$ref_vault" "$referrer_arg" "$ref_clk"
+}
+
+create_test_platform() {
+    local out digest platform_id platform_addr
+    local ref_preg ref_clk ref_cap
+
+    require_session_fields PLATFORM_REGISTRY_ID PLATFORM_ADMIN_CAP_ID CLOCK_ID || return 1
+    require_hex_ids PLATFORM_REGISTRY_ID PLATFORM_ADMIN_CAP_ID CLOCK_ID || return 1
+
+    ref_preg="$(ptb_shared_ref "$PLATFORM_REGISTRY_ID")" || return 1
+    ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || return 1
+    ref_cap="$(ptb_shared_ref "$PLATFORM_ADMIN_CAP_ID")" || return 1
+
+    POC_RUN_ID="${POC_RUN_ID:-$(date +%s)}"
+
+    log_step "Creating test platform (create_platform PTB)"
+    out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_capture \
+        --move-call "${PKG_SOCIAL}::platform::create_platform" \
+        "$ref_preg" \
+        "$(literal_move_string "Test Platform poc${POC_RUN_ID}")" \
+        "$(literal_move_string 'A test platform')" \
+        "$(literal_move_string 'This is a test platform for badge testing')" \
+        "$(literal_move_string 'https://example.com/logo.png')" \
+        "$(literal_move_string 'https://example.com/terms')" \
+        "$(literal_move_string 'https://example.com/privacy')" \
+        "$(literal_move_vector_empty)" \
+        "$(literal_move_vector_from_csv 'https://example.com')" \
+        "$(literal_move_string 'Social Network')" \
+        none 2 \
+        "$(literal_move_string '2023-01-01')" \
+        false \
+        none none none none none none none \
+        none none \
+        "$ref_clk")" || return 1
+
+    digest="$(extract_tx_digest "$out")"
+    platform_id="$(extract_created_object_by_type "$digest" "platform::Platform")"
+    [[ -n "$platform_id" ]] || platform_id="$(extract_created_object_by_type "$digest" "Platform")"
+    [[ -n "$platform_id" ]] || { echo "Could not find Platform from create tx" >&2; return 1; }
+
+    log_session_use "PLATFORM_OBJECT_ID (pending approval)" "$platform_id"
+
+    log_step "Approving platform via toggle_platform_approval"
+    SKIP_CONFIRM_RUN=1 invoke_ptb \
+        --move-call "${PKG_SOCIAL}::platform::toggle_platform_approval" \
+        "$ref_preg" \
+        "$(ptb_shared_ref "$platform_id")" \
+        "$(ptb_shared_ref "$PLATFORM_ADMIN_CAP_ID")" \
+        none || return 1
+
+    PLATFORM_OBJECT_ID="$platform_id"
+    save_session_state
+    log_step "Test platform ready (approved): $platform_id"
 }
 
 create_post_poc_enabled() {
     local body_lit="$1"
+    local ref_ur ref_pr ref_plat ref_blr ref_cfg ref_mr ref_mem ref_clk
+
+    prepare_for_create_post || return 1
+
+    require_hex_ids USERNAME_REGISTRY_ID PLATFORM_REGISTRY_ID PLATFORM_OBJECT_ID \
+        BLOCK_LIST_REGISTRY_ID POST_CONFIG_ID MYDATA_REGISTRY_ID MEMORY_ACCOUNT_ID CLOCK_ID || return 1
+    ref_ur="$(ptb_shared_ref "$USERNAME_REGISTRY_ID")" || return 1
+    ref_pr="$(ptb_shared_ref "$PLATFORM_REGISTRY_ID")" || return 1
+    ref_plat="$(ptb_shared_ref "$PLATFORM_OBJECT_ID")" || return 1
+    ref_blr="$(ptb_shared_ref "$BLOCK_LIST_REGISTRY_ID")" || return 1
+    ref_cfg="$(ptb_shared_ref "$POST_CONFIG_ID")" || return 1
+    ref_mr="$(ptb_shared_ref "$MYDATA_REGISTRY_ID")" || return 1
+    ref_mem="$(ptb_shared_ref "$MEMORY_ACCOUNT_ID")" || return 1
+    ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || return 1
+
     log_step "Creating post: $body_lit"
-    SKIP_CONFIRM_RUN=1 invoke_ptb \
+    SKIP_CONFIRM_RUN=1 invoke_ptb_capture \
         --move-call "${PKG_SOCIAL}::post::create_post" \
-        "@${USERNAME_REGISTRY_ID}" "@${PLATFORM_REGISTRY_ID}" "@${PLATFORM_OBJECT_ID}" \
-        "@${BLOCK_LIST_REGISTRY_ID}" "@${POST_CONFIG_ID}" \
+        "$ref_ur" "$ref_pr" "$ref_plat" "$ref_blr" "$ref_cfg" \
         "$body_lit" \
         none none none none none none none none \
         none some\(true\) none none \
-        "@${MYDATA_REGISTRY_ID}" "@${MEMORY_ACCOUNT_ID}" "@${CLOCK_ID}"
+        "$ref_mr" "$ref_mem" "$ref_clk"
+}
+
+ptb_option_address_from_arg() {
+    local arg="$1"
+    if [[ "$arg" == none ]]; then
+        printf 'none'
+        return 0
+    fi
+    if [[ "$arg" =~ ^some\((0x[0-9a-fA-F]+)\)$ ]]; then
+        printf 'some(@%s)' "${BASH_REMATCH[1]}"
+        return 0
+    fi
+    printf '%s' "$arg"
 }
 
 analyze_post() {
     local post_id="$1" media_type="$2" score="$3" original_creator_arg="$4" \
         deriv_target="$5" embed_audio="$6" apply_explicit="$7" explicit_outcome="$8"
+    local ref_cfg ref_reg ref_vault ref_post ref_clk creator_arg out digest
+    creator_arg="$(ptb_option_address_from_arg "$original_creator_arg")"
     log_step "analyze_and_update_post post=$post_id score=$score"
-    SKIP_CONFIRM_RUN=1 run_myso_call proof_of_creativity analyze_and_update_post \
-        --args "@${POC_CONFIG_ID}" "@${POC_REGISTRY_ID}" "@${POC_VAULT_DIRECTORY_ID}" "@${post_id}" \
-        "$media_type" "$score" "$original_creator_arg" "$deriv_target" "$embed_audio" \
-        "$apply_explicit" "$explicit_outcome" none none "@${CLOCK_ID}"
+    ref_cfg="$(ptb_shared_ref "$POC_CONFIG_ID")" || return 1
+    ref_reg="$(ptb_shared_ref "$POC_REGISTRY_ID")" || return 1
+    ref_vault="$(ptb_shared_ref "$POC_VAULT_DIRECTORY_ID")" || return 1
+    ref_post="$(ptb_shared_ref "$post_id")" || return 1
+    ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || return 1
+    out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_capture \
+        --move-call "${PKG_SOCIAL}::proof_of_creativity::analyze_and_update_post" \
+        "$ref_cfg" "$ref_reg" "$ref_vault" "$ref_post" \
+        "$media_type" "$score" "$creator_arg" "$deriv_target" \
+        "$embed_audio" "$apply_explicit" "$explicit_outcome" \
+        none none "$ref_clk")" || return 1
+    digest="$(extract_tx_digest "$out")"
+    ANALYZE_POST_LAST_DIGEST="${digest:-}"
+    [[ -n "$ANALYZE_POST_LAST_DIGEST" ]]
 }
 
 tip_post_as_tipper() {
     local post_id="$1" vault_id="$2" amount="$3"
-    local coin mem saved_tipper
+    local tip_coin gas_coin mem saved_tipper saved_gas_coin
+    ensure_distinct_tipper_for_post "$post_id" || return 1
     ensure_tipper_ready || return 1
     saved_tipper="$TIPPER_ADDRESS"
     if [[ "$TIPPER_ADDRESS" != "$ORACLE_ADDRESS" ]]; then
         myso client switch --address "$TIPPER_ADDRESS"
     fi
-    coin="$(resolve_gas_coin_for_address "$TIPPER_ADDRESS")"
-    [[ -n "$coin" ]] || { echo "No coin for tipper $TIPPER_ADDRESS" >&2; restore_oracle_address; return 1; }
+    read -r tip_coin gas_coin <<<"$(pick_tip_and_gas_coins_for_address "$TIPPER_ADDRESS" "$amount")" || {
+        restore_oracle_address
+        return 1
+    }
     mem="${TIPPER_MEMORY_ACCOUNT_ID:-}"
     [[ -n "$mem" ]] || mem="$(resolve_memory_account_for_address "$TIPPER_ADDRESS")"
     [[ -n "$mem" ]] || { echo "Tipper MemoryAccount required" >&2; restore_oracle_address; return 1; }
     log_step "tip_post amount=$amount post=$post_id tipper=$TIPPER_ADDRESS"
+    local ref_post ref_vault ref_tip ref_mem ref_clk
+    ref_post="$(ptb_shared_ref "$post_id")" || { restore_oracle_address; return 1; }
+    ref_vault="$(ptb_shared_ref "$vault_id")" || { restore_oracle_address; return 1; }
+    ref_tip="$(ptb_shared_ref "$tip_coin")" || { restore_oracle_address; return 1; }
+    ref_mem="$(ptb_shared_ref "$mem")" || { restore_oracle_address; return 1; }
+    ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || { restore_oracle_address; return 1; }
+    saved_gas_coin="${PTB_GAS_COIN_ID:-}"
+    PTB_GAS_COIN_ID="$gas_coin"
     SKIP_CONFIRM_RUN=1 invoke_ptb_as "$TIPPER_ADDRESS" \
         --move-call "${PKG_SOCIAL}::post::tip_post<${COIN_TYPE}>" \
-        "@${post_id}" "@${vault_id}" "@${coin}" "$amount" "@${mem}" "@${CLOCK_ID}"
+        "$ref_post" "$ref_vault" "$ref_tip" "$amount" "$ref_mem" "$ref_clk" || {
+        PTB_GAS_COIN_ID="$saved_gas_coin"
+        TIPPER_ADDRESS="$saved_tipper"
+        restore_oracle_address
+        return 1
+    }
+    PTB_GAS_COIN_ID="$saved_gas_coin"
     TIPPER_ADDRESS="$saved_tipper"
     restore_oracle_address
 }
@@ -1292,6 +2182,7 @@ tip_post_as_tipper() {
 run_username_beneficiary_flow() {
     ensure_cli_addresses || return 1
     ensure_beneficiary_admin_cap || return 1
+    ensure_ephemeral_oracle_for_username_claim || return 1
     require_session_fields POC_BENEFICIARY_ADMIN_CAP_ID POC_USERNAME_BENEFICIARY_DIRECTORY_ID \
         POC_VAULT_DIRECTORY_ID USERNAME_REGISTRY_ID MEMORY_REGISTRY_ID POC_CONFIG_ID \
         ECOSYSTEM_TREASURY_ID || return 1
@@ -1355,9 +2246,10 @@ run_username_beneficiary_flow() {
         vault_id="$(echo "$bjson" | jq -r '.. | objects | select(has("vault_id")) | .vault_id // empty' | head -n1)"
     fi
 
-    log_step "1b claim_username_beneficiary wallet=$CREATOR_ADDRESS"
+    ensure_claim_wallet_without_profile || return 1
+    log_step "1b claim_username_beneficiary oracle=$USERNAME_CLAIM_ORACLE wallet=$CREATOR_ADDRESS"
     local claim_digest
-    out="$(SKIP_CONFIRM_RUN=1 run_myso_call proof_of_creativity claim_username_beneficiary \
+    out="$(SKIP_CONFIRM_RUN=1 run_myso_call_as "$USERNAME_CLAIM_ORACLE" proof_of_creativity claim_username_beneficiary \
         --args "@${POC_CONFIG_ID}" "@${POC_USERNAME_BENEFICIARY_DIRECTORY_ID}" "@${shard_id}" \
         "@${USERNAME_REGISTRY_ID}" "@${MEMORY_REGISTRY_ID}" "@${beneficiary_id}" \
         0x "$x_handle" \
@@ -1378,6 +2270,7 @@ run_username_beneficiary_flow() {
         return 1
     }
     verify_username_beneficiary_claimed "$claim_digest" "$beneficiary_id" "$ub_username" || return 1
+    assert_username_beneficiary_graphql "$ub_username" "$beneficiary_id" || return 1
 
     if should_skip_vault_funding; then
         if ! platform_mode_is_full; then
@@ -1399,8 +2292,8 @@ run_username_beneficiary_flow() {
     [[ -n "$fund_post" ]] || fund_post="$(extract_created_object_by_type "$digest2" "Post")"
     [[ -n "$fund_post" ]] || { echo "Could not find Post for vault funding" >&2; return 1; }
 
-    analyze_post "$fund_post" 1 100 "some($beneficiary_addr)" 1 false false 0
-    [[ -n "$vault_id" ]] || vault_id="$(extract_created_object_by_type "$digest2" "PoCBeneficiaryVault")"
+    analyze_post "$fund_post" 1 100 "some($beneficiary_addr)" 1 false false 0 || return 1
+    [[ -n "$vault_id" ]] || vault_id="$(resolve_beneficiary_vault_id "$ANALYZE_POST_LAST_DIGEST" "$beneficiary_addr")"
     [[ -n "$vault_id" ]] || { echo "Could not resolve beneficiary vault id" >&2; return 1; }
     ensure_tipper_memory_account
     tip_post_as_tipper "$fund_post" "$vault_id" "$DEFAULT_TIP_AMOUNT"
@@ -1411,6 +2304,7 @@ run_username_beneficiary_flow() {
         --type-args "$COIN_TYPE" \
         --args "@${POC_CONFIG_ID}" "@${POC_USERNAME_BENEFICIARY_DIRECTORY_ID}" "@${beneficiary_id}" \
         "@${ECOSYSTEM_TREASURY_ID}" "@${vault_id}" "some($referrer)" "@${CLOCK_ID}"
+    save_session_state
 }
 
 run_post_poc_flow() {
@@ -1422,40 +2316,54 @@ run_post_poc_flow() {
     local out digest post1 post2 post3 vault_id beneficiary_addr
     beneficiary_addr="$CREATOR_ADDRESS"
 
+    if ! ensure_joined_platform; then
+        log_step "Platform join failed — creating and approving a fresh test platform"
+        create_test_platform || return 1
+        ensure_joined_platform || return 1
+    fi
+    POC_PLATFORM_JOINED=1
+
     log_step "2a-2b Original post + analyze"
-    out="$(create_post_poc_enabled "$(literal_move_string "PoC original ${POC_RUN_ID}")")"
+    out="$(create_post_poc_enabled "$(literal_move_string "PoC original ${POC_RUN_ID}")")" || return 1
     digest="$(extract_tx_digest "$out")"
     post1="$(extract_created_object_by_type "$digest" "post::Post")"
     [[ -n "$post1" ]] || post1="$(extract_created_object_by_type "$digest" "Post")"
-    analyze_post "$post1" 1 50 none 0 false false 0
+    [[ -n "$post1" ]] || { echo "create_post did not produce a Post object" >&2; return 1; }
+    analyze_post "$post1" 1 50 none 0 false false 0 || return 1
 
     log_step "2c Derivative escrow post + analyze"
-    out="$(create_post_poc_enabled "$(literal_move_string "PoC derivative ${POC_RUN_ID}")")"
+    out="$(create_post_poc_enabled "$(literal_move_string "PoC derivative ${POC_RUN_ID}")")" || return 1
     digest="$(extract_tx_digest "$out")"
     post2="$(extract_created_object_by_type "$digest" "post::Post")"
     [[ -n "$post2" ]] || post2="$(extract_created_object_by_type "$digest" "Post")"
-    analyze_post "$post2" 1 100 "some($beneficiary_addr)" 1 false false 0
+    [[ -n "$post2" ]] || { echo "derivative create_post did not produce a Post object" >&2; return 1; }
+    analyze_post "$post2" 1 100 "some($beneficiary_addr)" 1 false false 0 || return 1
 
-    vault_id="$(extract_created_object_by_type "$digest" "PoCBeneficiaryVault")"
-    [[ -n "$vault_id" ]] || {
-        echo "Warning: vault not in tx effects; re-query after analyze may be needed" >&2
+    vault_id="$(resolve_beneficiary_vault_id "$ANALYZE_POST_LAST_DIGEST" "$beneficiary_addr")" || {
+        echo "Could not resolve beneficiary vault id after derivative analyze" >&2
+        return 1
     }
-    if [[ -n "$vault_id" ]]; then
-        ensure_tipper_memory_account
-        tip_post_as_tipper "$post2" "$vault_id" "$DEFAULT_TIP_AMOUNT"
-        log_step "2e claim_beneficiary_vault_balance"
-        SKIP_CONFIRM_RUN=1 run_myso_call_as "$beneficiary_addr" proof_of_creativity claim_beneficiary_vault_balance \
-            --type-args "$COIN_TYPE" \
-            --args "@${POC_CONFIG_ID}" "@${ECOSYSTEM_TREASURY_ID}" "@${vault_id}" \
-            "some($(resolve_myso_active_address))" "@${CLOCK_ID}"
-    fi
+    POC_BENEFICIARY_VAULT_ID="$vault_id"
+    log_session_use "POC_BENEFICIARY_VAULT_ID" "$vault_id"
+    log_step "2d tip_post vault=$vault_id"
+    tip_post_as_tipper "$post2" "$vault_id" "$DEFAULT_TIP_AMOUNT" || return 1
+    log_step "2e claim_beneficiary_vault_balance"
+    claim_beneficiary_vault_balance_as "$beneficiary_addr" "$vault_id" "$TIPPER_ADDRESS" || {
+        restore_oracle_address
+        return 1
+    }
+    restore_oracle_address
+
+    assert_post_flow_tip_and_claim_graphql "$post2" "$vault_id" || return 1
 
     log_step "2f Explicit royalty-free outcome post"
-    out="$(create_post_poc_enabled "$(literal_move_string "PoC royalty-free ${POC_RUN_ID}")")"
+    out="$(create_post_poc_enabled "$(literal_move_string "PoC royalty-free ${POC_RUN_ID}")")" || return 1
     digest="$(extract_tx_digest "$out")"
     post3="$(extract_created_object_by_type "$digest" "post::Post")"
     [[ -n "$post3" ]] || post3="$(extract_created_object_by_type "$digest" "Post")"
-    analyze_post "$post3" 1 0 none 0 false true 4
+    [[ -n "$post3" ]] || { echo "royalty-free create_post did not produce a Post object" >&2; return 1; }
+    analyze_post "$post3" 1 0 none 0 false true 4 || return 1
+    save_session_state
 }
 
 run_spt_sync_flow() {
@@ -1547,12 +2455,17 @@ run_profile_reservation_flow() {
     log_session_use "RESERVATION_POOL_ID" "$pool_id"
 
     log_step "6b reserve_towards_profile amount=${reserve_amount}"
+    local ref_token ref_spt ref_pool ref_treasury ref_clk
+    ref_token="$(ptb_shared_ref "$TOKEN_REGISTRY_ID")" || return 1
+    ref_spt="$(ptb_shared_ref "$SOCIAL_PROOF_TOKENS_CONFIG_ID")" || return 1
+    ref_pool="$(ptb_shared_ref "$pool_id")" || return 1
+    ref_treasury="$(ptb_shared_ref "$ECOSYSTEM_TREASURY_ID")" || return 1
+    ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || return 1
     SKIP_CONFIRM_RUN=1 invoke_ptb \
         --split-coins gas "[${pay_amount}]" \
         --assign pay_coin \
         --move-call "${PKG_SOCIAL}::social_proof_tokens::reserve_towards_profile" \
-        "@${TOKEN_REGISTRY_ID}" "@${SOCIAL_PROOF_TOKENS_CONFIG_ID}" "@${pool_id}" \
-        "@${ECOSYSTEM_TREASURY_ID}" pay_coin.0 "${reserve_amount}" "@${CLOCK_ID}"
+        "$ref_token" "$ref_spt" "$ref_pool" "$ref_treasury" pay_coin.0 "${reserve_amount}" "$ref_clk"
 }
 
 run_all_e2e() {
@@ -1573,6 +2486,7 @@ run_all_e2e() {
 
     if platform_mode_is_full; then
         ensure_memory_account_for_post_flows || return 1
+        preflight_oracle_and_config || return 1
         run_post_poc_flow
         if [[ "${POC_INCLUDE_SPT:-0}" == 1 ]]; then
             run_spt_sync_flow
@@ -1605,6 +2519,7 @@ show_menu() {
     echo "=== PoC Runtime Test Menu ==="
     echo " 0) Refresh poc-session.env from GraphQL"
     echo " R) Refresh poc-session.env from GraphQL"
+    echo " C) Create test platform (+ approve) and save PLATFORM_OBJECT_ID"
     echo " 1) Run full E2E (platform mode if PLATFORM_OBJECT_ID set, else username PoC only)"
     echo " 2) Username beneficiary flow only"
     echo " 3) Post PoC flow only (requires platform + MemoryAccount)"
@@ -1617,11 +2532,12 @@ show_menu() {
     case "${choice:-}" in
         0) menu_session_setup ;;
         [Rr]) refresh_poc_session_from_graphql; load_session_state ;;
+        [Cc]) maybe_auto_refresh_session; create_test_platform ;;
         1) run_all_e2e ;;
-        2) maybe_auto_refresh_session; preflight_oracle_and_config; run_username_beneficiary_flow ;;
-        3) maybe_auto_refresh_session; preflight_oracle_and_config; ensure_memory_account_for_post_flows; run_post_poc_flow ;;
-        4) maybe_auto_refresh_session; preflight_oracle_and_config; ensure_memory_account_for_post_flows; run_dispute_flow ;;
-        5) maybe_auto_refresh_session; preflight_oracle_and_config; ensure_memory_account_for_post_flows; run_spt_sync_flow ;;
+        2) maybe_auto_refresh_session; ensure_cli_addresses; preflight_oracle_and_config; run_username_beneficiary_flow ;;
+        3) maybe_auto_refresh_session; ensure_cli_addresses; ensure_memory_account_for_post_flows; preflight_oracle_and_config; run_post_poc_flow ;;
+        4) maybe_auto_refresh_session; ensure_cli_addresses; ensure_memory_account_for_post_flows; preflight_oracle_and_config; run_dispute_flow ;;
+        5) maybe_auto_refresh_session; ensure_cli_addresses; ensure_memory_account_for_post_flows; preflight_oracle_and_config; run_spt_sync_flow ;;
         6) maybe_auto_refresh_session; run_profile_reservation_flow ;;
         [Hh]) usage ;;
         [Qq]) exit 0 ;;
@@ -1636,6 +2552,9 @@ main() {
             --help|-h) usage; exit 0 ;;
             -y) ASSUME_YES=1; shift ;;
             --run-all) RUN_MODE=run_all; shift ;;
+            --post-flow) RUN_MODE=post_flow; shift ;;
+            --username-flow) RUN_MODE=username_flow; shift ;;
+            --create-platform) RUN_MODE=create_platform; shift ;;
             --refresh-session) RUN_MODE=refresh; shift ;;
             --no-auto-refresh) POC_NO_AUTO_REFRESH=1; shift ;;
             *) echo "Unknown option: $1" >&2; usage; exit 1 ;;
@@ -1646,6 +2565,28 @@ main() {
 
     case "${RUN_MODE:-}" in
         refresh) refresh_poc_session_from_graphql; exit 0 ;;
+        create_platform) maybe_auto_refresh_session; create_test_platform; exit 0 ;;
+        post_flow)
+            POC_RUN_ID="$(date +%s)"
+            maybe_auto_refresh_session
+            ensure_cli_addresses || exit 1
+            ensure_memory_account_for_post_flows || exit 1
+            preflight_oracle_and_config || exit 1
+            run_post_poc_flow || exit 1
+            save_session_state
+            log_step "Post PoC flow complete."
+            exit 0
+            ;;
+        username_flow)
+            POC_RUN_ID="$(date +%s)"
+            maybe_auto_refresh_session
+            ensure_cli_addresses || exit 1
+            preflight_oracle_and_config || exit 1
+            run_username_beneficiary_flow || exit 1
+            save_session_state
+            log_step "Username beneficiary flow complete."
+            exit 0
+            ;;
         run_all) run_all_e2e; exit 0 ;;
         "") show_menu ;;
         *) echo "Unknown run mode: $RUN_MODE" >&2; exit 1 ;;

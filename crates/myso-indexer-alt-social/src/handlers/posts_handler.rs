@@ -12,6 +12,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use diesel::sql_types::{BigInt, Text};
 use diesel::ExpressionMethods;
+use diesel::OptionalExtension;
 use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_framework::pipeline::Processor;
@@ -19,6 +20,7 @@ use myso_indexer_alt_framework::postgres::handler::Handler;
 use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
+use myso_types::transaction::TransactionDataAPI;
 use myso_indexer_alt_social_schema::models::{
     NewComment, NewDeletionEvent, NewModerationEvent, NewPocAnalysisResult, NewPocBadge,
     NewPocConfiguration, NewPocCreatorIdentityLink, NewPocDispute, NewPocDisputeVote,
@@ -29,7 +31,7 @@ use myso_indexer_alt_social_schema::models::{
 };
 use myso_indexer_alt_social_schema::schema::{
     comments, poc_analysis_results, poc_badges, poc_configuration, poc_dispute_votes, poc_disputes,
-    poc_revenue_redirections, poc_username_beneficiaries, poc_username_beneficiary_events,
+    poc_revenue_redirections, poc_username_beneficiary_events,
     poc_creator_identity_links, poc_vault_claims, poc_vault_deposits, post_config, posts,
     promoted_posts, promotion_budget_events, promotion_status_events, promotion_views,
     reaction_counts, reactions, reposts, tips,
@@ -685,6 +687,7 @@ impl Processor for PostsHandler {
         let mut values = Vec::new();
         for tx in &checkpoint.transactions {
             let tx_digest = tx.transaction.digest().to_string();
+            let tx_sender = tx.transaction.sender().to_string();
             let Some(events) = &tx.events else {
                 continue;
             };
@@ -733,7 +736,8 @@ impl Processor for PostsHandler {
                             }
                         }
                     }
-                } else if let Some(rows) = poc::handle_poc_event(event_name, &event_data, &event_id)
+                } else if let Some(rows) =
+                    poc::handle_poc_event(event_name, &event_data, &event_id, Some(&tx_sender))
                 {
                     for row in rows {
                         if let Some(r) = PostRow::from_social(row) {
@@ -769,6 +773,134 @@ fn classify_reaction(prior: Option<&str>, new: &str) -> ReactionApplyKind {
             previous: prev.to_string(),
         },
     }
+}
+
+async fn resolve_content_owner(
+    conn: &mut Connection<'_>,
+    object_id: &str,
+    is_post: bool,
+) -> Result<Option<String>> {
+    if is_post {
+        Ok(posts::table
+            .filter(posts::post_id.eq(object_id))
+            .select(posts::owner)
+            .first::<String>(conn)
+            .await
+            .optional()?)
+    } else {
+        Ok(comments::table
+            .filter(comments::comment_id.eq(object_id))
+            .select(comments::owner)
+            .first::<String>(conn)
+            .await
+            .optional()?)
+    }
+}
+
+async fn resolve_organization_id_for_comment(
+    conn: &mut Connection<'_>,
+    comment_id: &str,
+) -> Result<Option<String>> {
+    let comment_org = comments::table
+        .filter(comments::comment_id.eq(comment_id))
+        .select(comments::organization_id)
+        .first::<Option<String>>(conn)
+        .await
+        .optional()?;
+    if let Some(Some(org_id)) = comment_org {
+        return Ok(Some(org_id));
+    }
+    let post_id = comments::table
+        .filter(comments::comment_id.eq(comment_id))
+        .select(comments::post_id)
+        .first::<String>(conn)
+        .await
+        .optional()?;
+    match post_id {
+        Some(ref pid) => resolve_organization_id_for_post(conn, pid).await,
+        None => Ok(None),
+    }
+}
+
+async fn resolve_tip_recipient_org(
+    conn: &mut Connection<'_>,
+    tip: &NewTip,
+) -> Result<Option<String>> {
+    let content_owner = resolve_content_owner(conn, &tip.object_id, tip.is_post).await?;
+    let owner_is_recipient = content_owner.as_deref() == Some(tip.recipient.as_str());
+    if owner_is_recipient {
+        if tip.is_post {
+            resolve_organization_id_for_post(conn, &tip.object_id).await
+        } else {
+            resolve_organization_id_for_comment(conn, &tip.object_id).await
+        }
+    } else {
+        resolve_organization_id_for_derived_address(conn, &tip.recipient).await
+    }
+}
+
+async fn resolve_tip_organization_id(
+    conn: &mut Connection<'_>,
+    tip: &NewTip,
+) -> Result<Option<String>> {
+    if tip.is_post {
+        return resolve_organization_id_for_post(conn, &tip.object_id).await;
+    }
+    let content_owner = resolve_content_owner(conn, &tip.object_id, false).await?;
+    if content_owner.as_deref() != Some(tip.recipient.as_str()) {
+        return resolve_organization_id_for_derived_address(conn, &tip.recipient).await;
+    }
+    resolve_organization_id_for_comment(conn, &tip.object_id).await
+}
+
+async fn apply_tips_received_increment(
+    conn: &mut Connection<'_>,
+    object_id: &str,
+    recipient: &str,
+    amount: i64,
+    is_post: bool,
+) -> Result<()> {
+    use diesel::sql_query;
+    let Some(owner) = resolve_content_owner(conn, object_id, is_post).await? else {
+        return Ok(());
+    };
+    if !owner.eq_ignore_ascii_case(recipient) {
+        return Ok(());
+    }
+    if is_post {
+        let _ = sql_query(
+            "UPDATE posts SET tips_received = tips_received + $1 WHERE post_id = $2",
+        )
+        .bind::<BigInt, _>(amount)
+        .bind::<Text, _>(object_id)
+        .execute(conn)
+        .await;
+    } else {
+        let _ = sql_query(
+            "UPDATE comments SET tips_received = tips_received + $1 WHERE comment_id = $2",
+        )
+        .bind::<BigInt, _>(amount)
+        .bind::<Text, _>(object_id)
+        .execute(conn)
+        .await;
+    }
+    Ok(())
+}
+
+async fn apply_total_tip_volume_increment(
+    conn: &mut Connection<'_>,
+    post_id: &str,
+    amount: i64,
+) -> Result<()> {
+    use diesel::sql_query;
+    let _ = sql_query(
+        "UPDATE posts SET total_tip_volume = total_tip_volume + $1 WHERE post_id = $2",
+    )
+    .bind::<BigInt, _>(amount)
+    .bind::<Text, _>(post_id)
+    .execute(conn)
+    .await;
+    Ok(())
 }
 
 async fn resolve_attribution_organization_id(
@@ -1001,17 +1133,15 @@ impl Handler for PostsHandler {
                     .await?;
                 }
                 PostRow::Tip(t) => {
+                    let mut t = t.clone();
+                    t.organization_id = resolve_tip_organization_id(conn, &t).await?;
                     total += diesel::insert_into(tips::table)
-                        .values(t)
+                        .values(&t)
                         .execute(conn)
                         .await?;
                     let tipper_org =
                         resolve_organization_id_for_derived_address(conn, &t.tipper).await?;
-                    let recipient_org = if t.is_post {
-                        resolve_organization_id_for_post(conn, &t.object_id).await?
-                    } else {
-                        None
-                    };
+                    let recipient_org = resolve_tip_recipient_org(conn, &t).await?;
                     apply_org_outbound_spend(
                         conn,
                         tipper_org.as_deref(),
@@ -1028,6 +1158,9 @@ impl Handler for PostsHandler {
                         t.created_at,
                     )
                     .await?;
+                    if t.is_post {
+                        apply_total_tip_volume_increment(conn, &t.object_id, t.amount).await?;
+                    }
                 }
                 PostRow::ModerationEvent(m) => {
                     total += diesel::insert_into(posts_moderation_events::table)
@@ -1101,29 +1234,14 @@ impl Handler for PostsHandler {
                     amount,
                     is_post,
                 } => {
-                    // Match on-chain `tips_received`: only the share credited to the post/comment
-                    // owner increments the object (PoC redirect events pay `original_creator` instead).
-                    if *is_post {
-                        let _ = sql_query(
-                            "UPDATE posts SET tips_received = tips_received + $1 \
-                             WHERE post_id = $2 AND owner = $3",
-                        )
-                        .bind::<BigInt, _>(*amount)
-                        .bind::<Text, _>(object_id)
-                        .bind::<Text, _>(recipient)
-                        .execute(conn)
-                        .await;
-                    } else {
-                        let _ = sql_query(
-                            "UPDATE comments SET tips_received = tips_received + $1 \
-                             WHERE comment_id = $2 AND owner = $3",
-                        )
-                        .bind::<BigInt, _>(*amount)
-                        .bind::<Text, _>(object_id)
-                        .bind::<Text, _>(recipient)
-                        .execute(conn)
-                        .await;
-                    }
+                    apply_tips_received_increment(
+                        conn,
+                        object_id,
+                        recipient,
+                        *amount,
+                        *is_post,
+                    )
+                    .await?;
                 }
                 PostRow::PostModerationUpdate {
                     object_id,
@@ -1636,6 +1754,7 @@ impl Handler for PostsHandler {
                         occurred_at_ms: *timestamp_ms,
                         transaction_id: transaction_id.clone(),
                         claim_kind: claim_kind.clone(),
+                        gross_amount: gross_i64,
                     };
                     total += diesel::insert_into(poc_vault_claims::table)
                         .values(&row)
@@ -1660,8 +1779,59 @@ impl Handler for PostsHandler {
                         .await?;
                 }
                 PostRow::PocUsernameBeneficiary(row) => {
-                    total += diesel::insert_into(poc_username_beneficiaries::table)
-                        .values(row)
+                    use diesel::sql_types::{Bool, Int2, Nullable, Timestamptz};
+                    let upsert_sql = "INSERT INTO poc_username_beneficiaries (
+                        beneficiary_id, username, status, creator_identity_source, creator_identity_hash,
+                        vault_routing_key, vault_id, required_x_handle, oracle_evidence_hash,
+                        provisioned_at_ms, provisioned_by, claimed_profile_id, claimed_by, claimed_at_ms,
+                        ended_at_ms, ended_by, end_reason_code, join_referrer, join_referral_paid,
+                        join_referral_paid_at_ms, transaction_id, time
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+                    ON CONFLICT (beneficiary_id) DO UPDATE SET
+                        username = EXCLUDED.username,
+                        status = EXCLUDED.status,
+                        creator_identity_source = EXCLUDED.creator_identity_source,
+                        creator_identity_hash = EXCLUDED.creator_identity_hash,
+                        vault_routing_key = EXCLUDED.vault_routing_key,
+                        vault_id = EXCLUDED.vault_id,
+                        required_x_handle = EXCLUDED.required_x_handle,
+                        oracle_evidence_hash = EXCLUDED.oracle_evidence_hash,
+                        provisioned_at_ms = EXCLUDED.provisioned_at_ms,
+                        provisioned_by = EXCLUDED.provisioned_by,
+                        claimed_profile_id = EXCLUDED.claimed_profile_id,
+                        claimed_by = EXCLUDED.claimed_by,
+                        claimed_at_ms = EXCLUDED.claimed_at_ms,
+                        ended_at_ms = EXCLUDED.ended_at_ms,
+                        ended_by = EXCLUDED.ended_by,
+                        end_reason_code = EXCLUDED.end_reason_code,
+                        join_referrer = EXCLUDED.join_referrer,
+                        join_referral_paid = EXCLUDED.join_referral_paid,
+                        join_referral_paid_at_ms = EXCLUDED.join_referral_paid_at_ms,
+                        transaction_id = EXCLUDED.transaction_id,
+                        time = EXCLUDED.time";
+                    total += diesel::sql_query(upsert_sql)
+                        .bind::<Text, _>(&row.beneficiary_id)
+                        .bind::<Text, _>(&row.username)
+                        .bind::<Int2, _>(row.status)
+                        .bind::<Int2, _>(row.creator_identity_source)
+                        .bind::<Text, _>(&row.creator_identity_hash)
+                        .bind::<Text, _>(&row.vault_routing_key)
+                        .bind::<Text, _>(&row.vault_id)
+                        .bind::<Text, _>(&row.required_x_handle)
+                        .bind::<Text, _>(&row.oracle_evidence_hash)
+                        .bind::<BigInt, _>(row.provisioned_at_ms)
+                        .bind::<Text, _>(&row.provisioned_by)
+                        .bind::<Nullable<Text>, _>(row.claimed_profile_id.as_ref())
+                        .bind::<Nullable<Text>, _>(row.claimed_by.as_ref())
+                        .bind::<Nullable<BigInt>, _>(row.claimed_at_ms)
+                        .bind::<Nullable<BigInt>, _>(row.ended_at_ms)
+                        .bind::<Nullable<Text>, _>(row.ended_by.as_ref())
+                        .bind::<Nullable<Int2>, _>(row.end_reason_code)
+                        .bind::<Nullable<Text>, _>(row.join_referrer.as_ref())
+                        .bind::<Bool, _>(row.join_referral_paid)
+                        .bind::<Nullable<BigInt>, _>(row.join_referral_paid_at_ms)
+                        .bind::<Text, _>(&row.transaction_id)
+                        .bind::<Timestamptz, _>(row.time)
                         .execute(conn)
                         .await?;
                     let vault_meta_sql = "INSERT INTO poc_beneficiary_vaults (vault_id, vault_routing_key, updated_at_ms, transaction_id, time) \
@@ -1778,6 +1948,8 @@ impl Handler for PostsHandler {
                 PostRow::PocUsernameBeneficiaryEvent(row) => {
                     total += diesel::insert_into(poc_username_beneficiary_events::table)
                         .values(row)
+                        .on_conflict(poc_username_beneficiary_events::event_id)
+                        .do_nothing()
                         .execute(conn)
                         .await?;
                 }
@@ -1968,5 +2140,52 @@ mod post_row_poc_mapping_tests {
         };
         let mapped = PostRow::from_social(SocialEventRow::PocUsernameBeneficiary(row.clone()));
         assert!(matches!(mapped, Some(PostRow::PocUsernameBeneficiary(r)) if r.beneficiary_id == row.beneficiary_id));
+    }
+
+    #[test]
+    fn poc_vault_claim_gross_amount_is_sum_of_slices() {
+        let treasury = 1_000_000i64;
+        let referrer = 0i64;
+        let beneficiary = 99_000_000i64;
+        let gross: i64 = (treasury as i128 + referrer as i128 + beneficiary as i128)
+            .try_into()
+            .expect("gross fits i64");
+        assert_eq!(gross, 100_000_000);
+    }
+
+    #[test]
+    fn tips_received_increment_matches_owner_case_insensitively() {
+        let owner = "0xAbCd00000000000000000000000000000000000000000000000000000001";
+        let recipient = "0xabcd00000000000000000000000000000000000000000000000000000001";
+        assert!(owner.eq_ignore_ascii_case(recipient));
+    }
+
+    #[test]
+    fn post_tips_received_increment_row_type_is_distinct_from_tip() {
+        use myso_indexer_alt_social_schema::models::NewTip;
+        let tip = NewTip {
+            tipper: "0x1".to_string(),
+            recipient: "0x2".to_string(),
+            object_id: "0xpost".to_string(),
+            amount: 100,
+            coin_type: "0x2::myso::MYSO".to_string(),
+            is_post: true,
+            created_at: 0,
+            time: chrono::Utc::now(),
+            transaction_id: "tx".to_string(),
+            organization_id: None,
+        };
+        let tip_row = PostRow::from_social(SocialEventRow::Tip(tip));
+        let increment_row = PostRow::from_social(SocialEventRow::PostTipsReceivedIncrement {
+            object_id: "0xpost".to_string(),
+            recipient: "0x2".to_string(),
+            amount: 100,
+            is_post: true,
+        });
+        assert!(matches!(tip_row, Some(PostRow::Tip(_))));
+        assert!(matches!(
+            increment_row,
+            Some(PostRow::PostTipsReceivedIncrement { .. })
+        ));
     }
 }

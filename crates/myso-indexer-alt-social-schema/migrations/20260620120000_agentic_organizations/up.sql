@@ -192,3 +192,11 @@ CREATE INDEX IF NOT EXISTS idx_mydata_purchases_organization
 ALTER TABLE unified_revenue ADD COLUMN IF NOT EXISTS organization_id TEXT;
 CREATE INDEX IF NOT EXISTS idx_unified_revenue_organization
     ON unified_revenue (organization_id, time DESC);
+
+ALTER TABLE tips ADD COLUMN IF NOT EXISTS organization_id TEXT;
+CREATE INDEX IF NOT EXISTS idx_tips_organization_id
+    ON tips (organization_id, time DESC);
+
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS total_tip_volume BIGINT NOT NULL DEFAULT 0;
+COMMENT ON COLUMN posts.total_tip_volume IS
+    'Denormalized sum of indexed tips.amount for this post (is_post=true). Invariant: equals SUM(tips.amount).';

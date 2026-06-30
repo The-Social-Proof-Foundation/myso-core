@@ -529,7 +529,37 @@ pub struct BcsPostCreatedEvent {
     poc_redirection_kind: u8,
 }
 
-/// Current layout with sub-agent attribution tail fields.
+/// Current layout with sub-agent attribution and organization tail fields.
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsPostCreatedEventWithOrganization {
+    post_id: AccountAddress,
+    owner: AccountAddress,
+    profile_id: AccountAddress,
+    platform_id: AccountAddress,
+    permissions: u8,
+    content: String,
+    post_type: String,
+    parent_post_id: Option<AccountAddress>,
+    mentions: Option<Vec<AccountAddress>>,
+    media_urls: Option<Vec<String>>,
+    metadata_json: Option<String>,
+    mydata_id: Option<AccountAddress>,
+    promotion_id: Option<AccountAddress>,
+    revenue_redirect_to: Option<AccountAddress>,
+    revenue_redirect_percentage: Option<u64>,
+    enable_spt: bool,
+    enable_poc: bool,
+    enable_spot: bool,
+    spot_id: Option<AccountAddress>,
+    spt_id: Option<AccountAddress>,
+    poc_redirection_kind: u8,
+    actor_address: AccountAddress,
+    sub_agent_id: Option<BcsMoveObjectId>,
+    organization_id: Option<BcsMoveObjectId>,
+    action_identity_class: u8,
+}
+
+/// Previous attribution layout without `organization_id`.
 #[derive(Debug, Deserialize)]
 pub struct BcsPostCreatedEventWithAttribution {
     post_id: AccountAddress,
@@ -582,7 +612,40 @@ struct ParsedPostCreated {
     poc_redirection_kind: u8,
     actor_address: AccountAddress,
     sub_agent_id: Option<String>,
+    organization_id: Option<String>,
     action_identity_class: u8,
+}
+
+impl From<BcsPostCreatedEventWithOrganization> for ParsedPostCreated {
+    fn from(ev: BcsPostCreatedEventWithOrganization) -> Self {
+        Self {
+            post_id: ev.post_id,
+            owner: ev.owner,
+            profile_id: ev.profile_id,
+            platform_id: ev.platform_id,
+            permissions: ev.permissions,
+            content: ev.content,
+            post_type: ev.post_type,
+            parent_post_id: ev.parent_post_id,
+            mentions: ev.mentions,
+            media_urls: ev.media_urls,
+            metadata_json: ev.metadata_json,
+            mydata_id: ev.mydata_id,
+            promotion_id: ev.promotion_id,
+            revenue_redirect_to: ev.revenue_redirect_to,
+            revenue_redirect_percentage: ev.revenue_redirect_percentage,
+            enable_spt: ev.enable_spt,
+            enable_poc: ev.enable_poc,
+            enable_spot: ev.enable_spot,
+            spot_id: ev.spot_id,
+            spt_id: ev.spt_id,
+            poc_redirection_kind: ev.poc_redirection_kind,
+            actor_address: ev.actor_address,
+            sub_agent_id: optional_move_object_id_json(&ev.sub_agent_id),
+            organization_id: optional_move_object_id_json(&ev.organization_id),
+            action_identity_class: ev.action_identity_class,
+        }
+    }
 }
 
 impl From<BcsPostCreatedEventWithAttribution> for ParsedPostCreated {
@@ -611,6 +674,7 @@ impl From<BcsPostCreatedEventWithAttribution> for ParsedPostCreated {
             poc_redirection_kind: ev.poc_redirection_kind,
             actor_address: ev.actor_address,
             sub_agent_id: optional_move_object_id_json(&ev.sub_agent_id),
+            organization_id: None,
             action_identity_class: ev.action_identity_class,
         }
     }
@@ -642,6 +706,7 @@ impl From<BcsPostCreatedEvent> for ParsedPostCreated {
             poc_redirection_kind: ev.poc_redirection_kind,
             actor_address: ev.owner,
             sub_agent_id: None,
+            organization_id: None,
             action_identity_class: 0,
         }
     }
@@ -654,6 +719,9 @@ impl From<BcsPostCreatedEventLegacy> for ParsedPostCreated {
 }
 
 fn bcs_post_created_from_bytes(contents: &[u8]) -> Result<ParsedPostCreated, EventParseError> {
+    if let Ok(ev) = bcs::from_bytes::<BcsPostCreatedEventWithOrganization>(contents) {
+        return Ok(ParsedPostCreated::from(ev));
+    }
     if let Ok(ev) = bcs::from_bytes::<BcsPostCreatedEventWithAttribution>(contents) {
         return Ok(ParsedPostCreated::from(ev));
     }
@@ -709,6 +777,21 @@ pub struct BcsCommentCreatedEvent {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+pub struct BcsCommentCreatedEventWithOrganization {
+    comment_id: AccountAddress,
+    post_id: AccountAddress,
+    parent_comment_id: Option<AccountAddress>,
+    owner: AccountAddress,
+    profile_id: AccountAddress,
+    content: String,
+    mentions: Option<Vec<AccountAddress>>,
+    actor_address: AccountAddress,
+    sub_agent_id: Option<BcsMoveObjectId>,
+    organization_id: Option<BcsMoveObjectId>,
+    action_identity_class: u8,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsCommentCreatedEventWithAttribution {
     comment_id: AccountAddress,
     post_id: AccountAddress,
@@ -732,10 +815,26 @@ struct ParsedCommentCreated {
     mentions: Option<Vec<AccountAddress>>,
     actor_address: AccountAddress,
     sub_agent_id: Option<String>,
+    organization_id: Option<String>,
     action_identity_class: u8,
 }
 
 fn bcs_comment_created_from_bytes(contents: &[u8]) -> Result<ParsedCommentCreated, EventParseError> {
+    if let Ok(ev) = bcs::from_bytes::<BcsCommentCreatedEventWithOrganization>(contents) {
+        return Ok(ParsedCommentCreated {
+            comment_id: ev.comment_id,
+            post_id: ev.post_id,
+            parent_comment_id: ev.parent_comment_id,
+            owner: ev.owner,
+            profile_id: ev.profile_id,
+            content: ev.content,
+            mentions: ev.mentions,
+            actor_address: ev.actor_address,
+            sub_agent_id: optional_move_object_id_json(&ev.sub_agent_id),
+            organization_id: optional_move_object_id_json(&ev.organization_id),
+            action_identity_class: ev.action_identity_class,
+        });
+    }
     if let Ok(ev) = bcs::from_bytes::<BcsCommentCreatedEventWithAttribution>(contents) {
         return Ok(ParsedCommentCreated {
             comment_id: ev.comment_id,
@@ -747,6 +846,7 @@ fn bcs_comment_created_from_bytes(contents: &[u8]) -> Result<ParsedCommentCreate
             mentions: ev.mentions,
             actor_address: ev.actor_address,
             sub_agent_id: optional_move_object_id_json(&ev.sub_agent_id),
+            organization_id: None,
             action_identity_class: ev.action_identity_class,
         });
     }
@@ -761,6 +861,7 @@ fn bcs_comment_created_from_bytes(contents: &[u8]) -> Result<ParsedCommentCreate
             mentions: ev.mentions,
             actor_address: ev.owner,
             sub_agent_id: None,
+            organization_id: None,
             action_identity_class: 0,
         }),
         Err(e) => Err(EventParseError {
@@ -774,6 +875,19 @@ fn bcs_comment_created_from_bytes(contents: &[u8]) -> Result<ParsedCommentCreate
 fn canonical_reaction_user(user: AccountAddress, actor_address: AccountAddress) -> AccountAddress {
     let _legacy_user = user;
     actor_address
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsReactionEventWithOrganization {
+    object_id: AccountAddress,
+    _user: AccountAddress,
+    reaction: String,
+    is_post: bool,
+    principal_owner: AccountAddress,
+    actor_address: AccountAddress,
+    sub_agent_id: Option<BcsMoveObjectId>,
+    organization_id: Option<BcsMoveObjectId>,
+    action_identity_class: u8,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -795,28 +909,62 @@ struct ParsedReactionEvent {
     principal_owner: AccountAddress,
     actor_address: AccountAddress,
     sub_agent_id: Option<String>,
+    organization_id: Option<String>,
     action_identity_class: u8,
 }
 
+fn parse_reaction_event(ev: BcsReactionEvent) -> ParsedReactionEvent {
+    let actor_address = canonical_reaction_user(ev._user, ev.actor_address);
+    ParsedReactionEvent {
+        object_id: ev.object_id,
+        reaction: ev.reaction,
+        is_post: ev.is_post,
+        principal_owner: ev.principal_owner,
+        actor_address,
+        sub_agent_id: optional_move_object_id_json(&ev.sub_agent_id),
+        organization_id: None,
+        action_identity_class: ev.action_identity_class,
+    }
+}
+
+fn parse_reaction_event_with_organization(ev: BcsReactionEventWithOrganization) -> ParsedReactionEvent {
+    let actor_address = canonical_reaction_user(ev._user, ev.actor_address);
+    ParsedReactionEvent {
+        object_id: ev.object_id,
+        reaction: ev.reaction,
+        is_post: ev.is_post,
+        principal_owner: ev.principal_owner,
+        actor_address,
+        sub_agent_id: optional_move_object_id_json(&ev.sub_agent_id),
+        organization_id: optional_move_object_id_json(&ev.organization_id),
+        action_identity_class: ev.action_identity_class,
+    }
+}
+
 fn bcs_reaction_from_bytes(contents: &[u8]) -> Result<ParsedReactionEvent, EventParseError> {
+    if let Ok(ev) = bcs::from_bytes::<BcsReactionEventWithOrganization>(contents) {
+        return Ok(parse_reaction_event_with_organization(ev));
+    }
     match bcs::from_bytes::<BcsReactionEvent>(contents) {
-        Ok(ev) => {
-            let actor_address = canonical_reaction_user(ev._user, ev.actor_address);
-            Ok(ParsedReactionEvent {
-                object_id: ev.object_id,
-                reaction: ev.reaction,
-                is_post: ev.is_post,
-                principal_owner: ev.principal_owner,
-                actor_address,
-                sub_agent_id: optional_move_object_id_json(&ev.sub_agent_id),
-                action_identity_class: ev.action_identity_class,
-            })
-        }
+        Ok(ev) => Ok(parse_reaction_event(ev)),
         Err(e) => Err(EventParseError {
             error: format!("ReactionEvent BCS: {}", e),
             contents: contents.to_vec(),
         }),
     }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsRemoveReactionEventWithOrganization {
+    object_id: AccountAddress,
+    user: AccountAddress,
+    reaction: String,
+    is_post: bool,
+    principal_owner: AccountAddress,
+    actor_address: AccountAddress,
+    sub_agent_id: Option<BcsMoveObjectId>,
+    organization_id: Option<BcsMoveObjectId>,
+    action_identity_class: u8,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -834,6 +982,19 @@ pub struct BcsRemoveReactionEvent {
 fn bcs_remove_reaction_from_bytes(
     contents: &[u8],
 ) -> Result<ParsedReactionEvent, EventParseError> {
+    if let Ok(ev) = bcs::from_bytes::<BcsRemoveReactionEventWithOrganization>(contents) {
+        let actor_address = canonical_reaction_user(ev.user, ev.actor_address);
+        return Ok(ParsedReactionEvent {
+            object_id: ev.object_id,
+            reaction: ev.reaction,
+            is_post: ev.is_post,
+            principal_owner: ev.principal_owner,
+            actor_address,
+            sub_agent_id: optional_move_object_id_json(&ev.sub_agent_id),
+            organization_id: optional_move_object_id_json(&ev.organization_id),
+            action_identity_class: ev.action_identity_class,
+        });
+    }
     match bcs::from_bytes::<BcsRemoveReactionEvent>(contents) {
         Ok(ev) => {
             let actor_address = canonical_reaction_user(ev.user, ev.actor_address);
@@ -844,6 +1005,7 @@ fn bcs_remove_reaction_from_bytes(
                 principal_owner: ev.principal_owner,
                 actor_address,
                 sub_agent_id: optional_move_object_id_json(&ev.sub_agent_id),
+                organization_id: None,
                 action_identity_class: ev.action_identity_class,
             })
         }
@@ -861,6 +1023,19 @@ pub struct BcsRepostEvent {
     is_original_post: bool,
     owner: AccountAddress,
     profile_id: AccountAddress,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsRepostEventWithOrganization {
+    repost_id: AccountAddress,
+    original_id: AccountAddress,
+    is_original_post: bool,
+    owner: AccountAddress,
+    profile_id: AccountAddress,
+    actor_address: AccountAddress,
+    sub_agent_id: Option<BcsMoveObjectId>,
+    organization_id: Option<BcsMoveObjectId>,
+    action_identity_class: u8,
 }
 
 #[derive(Debug, Deserialize)]
@@ -883,10 +1058,24 @@ struct ParsedRepostEvent {
     profile_id: AccountAddress,
     actor_address: AccountAddress,
     sub_agent_id: Option<String>,
+    organization_id: Option<String>,
     action_identity_class: u8,
 }
 
 fn bcs_repost_from_bytes(contents: &[u8]) -> Result<ParsedRepostEvent, EventParseError> {
+    if let Ok(ev) = bcs::from_bytes::<BcsRepostEventWithOrganization>(contents) {
+        return Ok(ParsedRepostEvent {
+            repost_id: ev.repost_id,
+            original_id: ev.original_id,
+            is_original_post: ev.is_original_post,
+            owner: ev.owner,
+            profile_id: ev.profile_id,
+            actor_address: ev.actor_address,
+            sub_agent_id: optional_move_object_id_json(&ev.sub_agent_id),
+            organization_id: optional_move_object_id_json(&ev.organization_id),
+            action_identity_class: ev.action_identity_class,
+        });
+    }
     if let Ok(ev) = bcs::from_bytes::<BcsRepostEventWithAttribution>(contents) {
         return Ok(ParsedRepostEvent {
             repost_id: ev.repost_id,
@@ -896,6 +1085,7 @@ fn bcs_repost_from_bytes(contents: &[u8]) -> Result<ParsedRepostEvent, EventPars
             profile_id: ev.profile_id,
             actor_address: ev.actor_address,
             sub_agent_id: optional_move_object_id_json(&ev.sub_agent_id),
+            organization_id: None,
             action_identity_class: ev.action_identity_class,
         });
     }
@@ -908,6 +1098,7 @@ fn bcs_repost_from_bytes(contents: &[u8]) -> Result<ParsedRepostEvent, EventPars
             profile_id: ev.profile_id,
             actor_address: ev.owner,
             sub_agent_id: None,
+            organization_id: None,
             action_identity_class: 0,
         }),
         Err(e) => Err(EventParseError {
@@ -2759,6 +2950,7 @@ fn parse_post_event(
                 "poc_redirection_kind": ev.poc_redirection_kind,
                 "actor_address": addr_to_string(&ev.actor_address),
                 "sub_agent_id": ev.sub_agent_id,
+                "organization_id": ev.organization_id,
                 "action_identity_class": ev.action_identity_class,
             })))
         }
@@ -2774,6 +2966,7 @@ fn parse_post_event(
                 "mentions": mentions_to_json(&ev.mentions),
                 "actor_address": addr_to_string(&ev.actor_address),
                 "sub_agent_id": ev.sub_agent_id,
+                "organization_id": ev.organization_id,
                 "action_identity_class": ev.action_identity_class,
             })))
         }
@@ -2787,6 +2980,7 @@ fn parse_post_event(
                 "principal_owner": addr_to_string(&ev.principal_owner),
                 "actor_address": addr_to_string(&ev.actor_address),
                 "sub_agent_id": ev.sub_agent_id,
+                "organization_id": ev.organization_id,
                 "action_identity_class": ev.action_identity_class,
             })))
         }
@@ -2800,6 +2994,7 @@ fn parse_post_event(
                 "principal_owner": addr_to_string(&ev.principal_owner),
                 "actor_address": addr_to_string(&ev.actor_address),
                 "sub_agent_id": ev.sub_agent_id,
+                "organization_id": ev.organization_id,
                 "action_identity_class": ev.action_identity_class,
             })))
         }
@@ -2814,6 +3009,7 @@ fn parse_post_event(
                 "profile_id": addr_to_string(&ev.profile_id),
                 "actor_address": addr_to_string(&ev.actor_address),
                 "sub_agent_id": ev.sub_agent_id,
+                "organization_id": ev.organization_id,
                 "action_identity_class": ev.action_identity_class,
             })))
         }
@@ -3451,6 +3647,13 @@ fn parse_poc_event(
                 "username_beneficiary_join_referral_bps": ev.username_beneficiary_join_referral_bps,
                 "timestamp": ev.timestamp,
             })))
+        }
+        "UsernameBeneficiaryProvisionedEvent"
+        | "UsernameBeneficiaryClaimedEvent"
+        | "UsernameBeneficiaryEndedEvent"
+        | "UsernameBeneficiaryConflictEvent"
+        | "CreatorIdentityWalletLinkedEvent" => {
+            return parse_poc_username_beneficiary_event(event_name, contents);
         }
         _ => Ok(None),
     };
@@ -5178,6 +5381,18 @@ mod tests {
     }
 
     #[test]
+    fn username_beneficiary_claimed_bcs_via_proof_of_creativity_module() {
+        let bytes = super::tests::test_username_beneficiary_claimed_bcs_fixture();
+        let json = parse_event_contents(
+            "proof_of_creativity",
+            "UsernameBeneficiaryClaimedEvent",
+            &bytes,
+        )
+        .expect("parse via proof_of_creativity module tag");
+        assert_eq!(json["username"], "pocub1782775058");
+    }
+
+    #[test]
     fn creator_identity_wallet_linked_bcs_round_trip() {
         let wallet = AccountAddress::from_hex_literal("0x50").unwrap();
         let beneficiary_id = AccountAddress::from_hex_literal("0x60").unwrap();
@@ -5565,5 +5780,121 @@ mod tests {
         assert_eq!(json["label"], "bot");
         assert_eq!(json["capabilities"], 512_i64);
         assert_eq!(json["max_action_spend"], 1_000_000_000_i64);
+    }
+
+    fn sample_post_created_with_attribution(
+        organization_id: Option<BcsMoveObjectId>,
+    ) -> BcsPostCreatedEventWithOrganization {
+        BcsPostCreatedEventWithOrganization {
+            post_id: AccountAddress::from_hex_literal("0x1").unwrap(),
+            owner: AccountAddress::from_hex_literal("0x2").unwrap(),
+            profile_id: AccountAddress::from_hex_literal("0x3").unwrap(),
+            platform_id: AccountAddress::from_hex_literal("0x4").unwrap(),
+            permissions: 0,
+            content: "hello".into(),
+            post_type: "post".into(),
+            parent_post_id: None,
+            mentions: None,
+            media_urls: None,
+            metadata_json: None,
+            mydata_id: None,
+            promotion_id: None,
+            revenue_redirect_to: None,
+            revenue_redirect_percentage: None,
+            enable_spt: false,
+            enable_poc: true,
+            enable_spot: false,
+            spot_id: None,
+            spt_id: None,
+            poc_redirection_kind: 1,
+            actor_address: AccountAddress::from_hex_literal("0x2").unwrap(),
+            sub_agent_id: None,
+            organization_id,
+            action_identity_class: 0,
+        }
+    }
+
+    fn org_object_id() -> BcsMoveObjectId {
+        BcsMoveObjectId {
+            bytes: AccountAddress::from_hex_literal(
+                "0x0000000000000000000000000000000000000000000000000000000000000001",
+            )
+            .unwrap(),
+        }
+    }
+
+    #[test]
+    fn post_created_event_bcs_round_trip_with_organization_id() {
+        let ev = sample_post_created_with_attribution(Some(org_object_id()));
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let json = parse_event_contents("post", "PostCreatedEvent", &bytes).expect("parse");
+        assert_eq!(json["content"], "hello");
+        assert!(json["organization_id"].as_str().unwrap().starts_with("0x"));
+    }
+
+    #[test]
+    fn post_created_event_bcs_round_trip_without_organization_id() {
+        let ev = sample_post_created_with_attribution(None);
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let json = parse_event_contents("post", "PostCreatedEvent", &bytes).expect("parse");
+        assert!(json["organization_id"].is_null());
+    }
+
+    #[test]
+    fn comment_created_event_bcs_round_trip_with_organization_id() {
+        let ev = BcsCommentCreatedEventWithOrganization {
+            comment_id: AccountAddress::from_hex_literal("0xc1").unwrap(),
+            post_id: AccountAddress::from_hex_literal("0xc2").unwrap(),
+            parent_comment_id: None,
+            owner: AccountAddress::from_hex_literal("0xc3").unwrap(),
+            profile_id: AccountAddress::from_hex_literal("0xc4").unwrap(),
+            content: "comment".into(),
+            mentions: None,
+            actor_address: AccountAddress::from_hex_literal("0xc3").unwrap(),
+            sub_agent_id: None,
+            organization_id: Some(org_object_id()),
+            action_identity_class: 0,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let json = parse_event_contents("post", "CommentCreatedEvent", &bytes).expect("parse");
+        assert_eq!(json["content"], "comment");
+        assert!(json["organization_id"].as_str().unwrap().starts_with("0x"));
+    }
+
+    #[test]
+    fn repost_event_bcs_round_trip_with_organization_id() {
+        let ev = BcsRepostEventWithOrganization {
+            repost_id: AccountAddress::from_hex_literal("0x10").unwrap(),
+            original_id: AccountAddress::from_hex_literal("0x20").unwrap(),
+            is_original_post: true,
+            owner: AccountAddress::from_hex_literal("0x30").unwrap(),
+            profile_id: AccountAddress::from_hex_literal("0x40").unwrap(),
+            actor_address: AccountAddress::from_hex_literal("0x30").unwrap(),
+            sub_agent_id: None,
+            organization_id: Some(org_object_id()),
+            action_identity_class: 0,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let json = parse_event_contents("post", "RepostEvent", &bytes).expect("parse");
+        assert!(json["organization_id"].as_str().unwrap().starts_with("0x"));
+    }
+
+    #[test]
+    fn reaction_event_bcs_round_trip_with_organization_id() {
+        let ev = BcsReactionEventWithOrganization {
+            object_id: AccountAddress::from_hex_literal("0x50").unwrap(),
+            _user: AccountAddress::from_hex_literal("0x60").unwrap(),
+            reaction: "like".into(),
+            is_post: true,
+            principal_owner: AccountAddress::from_hex_literal("0x70").unwrap(),
+            actor_address: AccountAddress::from_hex_literal("0x60").unwrap(),
+            sub_agent_id: None,
+            organization_id: Some(org_object_id()),
+            action_identity_class: 0,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let json = parse_event_contents("post", "ReactionEvent", &bytes).expect("parse");
+        assert_eq!(json["reaction_text"], "like");
+        assert!(json["organization_id"].as_str().unwrap().starts_with("0x"));
     }
 }

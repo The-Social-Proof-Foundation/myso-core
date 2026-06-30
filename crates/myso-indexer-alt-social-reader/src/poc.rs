@@ -341,7 +341,7 @@ pub(crate) async fn list_poc_vault_claims_for_vault(
     let query = "
         SELECT id, vault_id, vault_routing_key, coin_type, referrer_address,
                treasury_amount, referrer_amount, beneficiary_amount,
-               occurred_at_ms, transaction_id
+               occurred_at_ms, transaction_id, claim_kind, gross_amount
         FROM poc_vault_claims
         WHERE vault_id = $1
         ORDER BY occurred_at_ms DESC, id DESC

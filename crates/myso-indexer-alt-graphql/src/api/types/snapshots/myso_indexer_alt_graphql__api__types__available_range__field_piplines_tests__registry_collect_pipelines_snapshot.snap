@@ -74,6 +74,48 @@ AddressAliasStateCreateTransaction._
 AddressOwner.address
   => {}
 
+AgenticOrganization.organizationId
+  => {}
+
+AgenticOrganization.name
+  => {}
+
+AgenticOrganization.description
+  => {}
+
+AgenticOrganization.orgType
+  => {}
+
+AgenticOrganization.active
+  => {}
+
+AgenticOrganization.createdAt
+  => {}
+
+AgenticOrganization.ageMs
+  => {}
+
+AgenticOrganization.rootAgent
+  => {}
+
+AgenticOrganization.statistics
+  => {}
+
+AgenticOrganizationLeaderboardEntry.rank
+  => {}
+
+AgenticOrganizationLeaderboardEntry.sortValue
+  => {}
+
+AgenticOrganizationLeaderboardEntry.organization
+  => {}
+
+AgenticOrganizationLeaderboardResponse.entries
+  => {}
+
+AgenticOrganizationLeaderboardResponse.total
+  => {}
+
 AnonymousVote.proposalId
   => {}
 
@@ -975,6 +1017,84 @@ GovernanceStats.implementedProposals
   => {}
 
 GovernanceStats.rescindedProposals
+  => {}
+
+GraphOrganizationStatistics.totalRevenueMyso
+  => {}
+
+GraphOrganizationStatistics.totalOutboundSpendMyso
+  => {}
+
+GraphOrganizationStatistics.netCashFlowMyso
+  => {}
+
+GraphOrganizationStatistics.totalActionsExecuted
+  => {}
+
+GraphOrganizationStatistics.totalAgents
+  => {}
+
+GraphOrganizationStatistics.activeAgents
+  => {}
+
+GraphOrganizationStatistics.totalCounterparties
+  => {}
+
+GraphOrganizationStatistics.totalPosts
+  => {}
+
+GraphOrganizationStatistics.totalEngagement
+  => {}
+
+GraphOrganizationStatistics.totalSpotParticipation
+  => {}
+
+GraphOrganizationStatistics.spotAccuracy
+  => {}
+
+GraphOrganizationStatistics.spotBetsResolved
+  => {}
+
+GraphOrganizationStatistics.insufficientSample
+  => {}
+
+GraphOrganizationStatistics.originalityScoreAverage
+  => {}
+
+GraphOrganizationStatistics.originalityPostsAnalyzed
+  => {}
+
+GraphOrganizationStatistics.estimatedAssetsUnderManagementMyso
+  => {}
+
+GraphOrganizationStatistics.attributionCoverage
+  => {}
+
+GraphOrganizationStatistics.organizationAgeMs
+  => {}
+
+GraphOrganizationStatistics.totalTransactions
+  => {}
+
+GraphOrganizationStatistics.statsRollupAt
+  => {}
+
+GraphVestingPiece.kind
+  => {}
+
+GraphVestingPiece.timeOffset
+  => {}
+
+GraphVestingPiece.duration
+  => {}
+
+GraphVestingPiece.amountBps
+  => {}
+
+GraphVestingPiece.curveFactor
+  => {}
+
+GraphVestingPiece.pieceAmount
   => {}
 
 IAddressable.address
@@ -2030,6 +2150,15 @@ MyDataPurchase.time
 MyDataPurchase.transactionId
   => {}
 
+MyDataPurchase.revoked
+  => {}
+
+MyDataPurchase.revokedAt
+  => {}
+
+MyDataPurchase.revokedBy
+  => {}
+
 MyDataRecord.mydataId
   => {}
 
@@ -2228,6 +2357,15 @@ MyDataSubscription.time
 MyDataSubscription.transactionId
   => {}
 
+MyDataSubscription.revoked
+  => {}
+
+MyDataSubscription.revokedAt
+  => {}
+
+MyDataSubscription.revokedBy
+  => {}
+
 Node.id
   => {}
 
@@ -2369,6 +2507,15 @@ OpenMoveType.signature
 OpenMoveType.repr
   => {}
 
+OrganizationCategory.value
+  => {}
+
+OrganizationCategory.slug
+  => {}
+
+OrganizationCategory.displayName
+  => {}
+
 OtherCommand._
   => {}
 
@@ -2415,6 +2562,9 @@ Platform.mediaPreviews
   => {}
 
 Platform.developerAddress
+  => {}
+
+Platform.moderatorsGroupId
   => {}
 
 Platform.developerProfile
@@ -2669,6 +2819,9 @@ PlatformModeratorSummary.addedByProfile
 PlatformModeratorSummary.createdAt
   => {}
 
+PlatformModeratorSummary.permissions
+  => {}
+
 PlatformRevenueSummary.platformAddress
   => {}
 
@@ -2709,6 +2862,24 @@ PlatformUserAccess.isBlocked
   => {}
 
 PlatformUserAccess.isModerator
+  => {}
+
+PlatformUserAccess.moderatorPermissions
+  => {}
+
+PlatformUserAccess.canBlockUsers
+  => {}
+
+PlatformUserAccess.canModerateContent
+  => {}
+
+PlatformUserAccess.canManageBadges
+  => {}
+
+PlatformUserAccess.canAirdropTreasury
+  => {}
+
+PlatformUserAccess.canManagePromotions
   => {}
 
 PocAnalysisResult.postId
@@ -2771,6 +2942,9 @@ PocBadge.pocBeneficiaryVault
 PocBeneficiaryVault.vaultId
   => {}
 
+PocBeneficiaryVault.vaultRoutingKey
+  => {}
+
 PocBeneficiaryVault.beneficiary
   => {}
 
@@ -2787,6 +2961,9 @@ PocBeneficiaryVault.deposits
   => {}
 
 PocBeneficiaryVault.claims
+  => {}
+
+PocBeneficiaryVault.pocUsernameBeneficiary
   => {}
 
 PocConfig.imageThreshold
@@ -2841,6 +3018,9 @@ PocConfig.maxReferralBps
   => {}
 
 PocConfig.videoEmbeddedAudioRedirectBps
+  => {}
+
+PocConfig.usernameBeneficiaryJoinReferralBps
   => {}
 
 PocConfig.updatedBy
@@ -2957,10 +3137,82 @@ PocRevenueRedirection.similarityScore
 PocRevenueRedirection.createdAt
   => {}
 
+PocUsernameBeneficiary.beneficiaryId
+  => {}
+
+PocUsernameBeneficiary.username
+  => {}
+
+PocUsernameBeneficiary.status
+  => {}
+
+PocUsernameBeneficiary.creatorIdentitySource
+  => {}
+
+PocUsernameBeneficiary.creatorIdentityHash
+  => {}
+
+PocUsernameBeneficiary.vaultRoutingKey
+  => {}
+
+PocUsernameBeneficiary.beneficiaryAddress
+  => {}
+
+PocUsernameBeneficiary.vaultId
+  => {}
+
+PocUsernameBeneficiary.requiredXHandle
+  => {}
+
+PocUsernameBeneficiary.oracleEvidenceHash
+  => {}
+
+PocUsernameBeneficiary.provisionedAtMs
+  => {}
+
+PocUsernameBeneficiary.provisionedBy
+  => {}
+
+PocUsernameBeneficiary.claimedProfileId
+  => {}
+
+PocUsernameBeneficiary.claimedBy
+  => {}
+
+PocUsernameBeneficiary.claimedAtMs
+  => {}
+
+PocUsernameBeneficiary.endedAtMs
+  => {}
+
+PocUsernameBeneficiary.endedBy
+  => {}
+
+PocUsernameBeneficiary.endReasonCode
+  => {}
+
+PocUsernameBeneficiary.joinReferrer
+  => {}
+
+PocUsernameBeneficiary.joinReferralPaid
+  => {}
+
+PocUsernameBeneficiary.joinReferralPaidAtMs
+  => {}
+
+PocUsernameBeneficiary.transactionId
+  => {}
+
+PocUsernameBeneficiary.pocBeneficiaryVault
+  => {}
+
 PocVaultClaim.id
   => {}
 
 PocVaultClaim.vaultId
+  => {}
+
+PocVaultClaim.vaultRoutingKey
   => {}
 
 PocVaultClaim.beneficiary
@@ -2973,6 +3225,9 @@ PocVaultClaim.referrer
   => {}
 
 PocVaultClaim.treasuryAmount
+  => {}
+
+PocVaultClaim.grossAmount
   => {}
 
 PocVaultClaim.referrerAmount
@@ -3003,6 +3258,9 @@ PocVaultDeposit.id
   => {}
 
 PocVaultDeposit.vaultId
+  => {}
+
+PocVaultDeposit.vaultRoutingKey
   => {}
 
 PocVaultDeposit.beneficiary
@@ -3057,6 +3315,9 @@ Post.repostCount
   => {}
 
 Post.tipsReceived
+  => {}
+
+Post.totalTipVolume
   => {}
 
 Post.mediaUrls
@@ -3132,6 +3393,9 @@ Post.permissions
   => {}
 
 Post.attribution
+  => {}
+
+Post.organizationId
   => {}
 
 Post.revenueRecipient
@@ -3533,6 +3797,9 @@ Profile.subAgents
 Profile.subAgentsTotalCount
   => {}
 
+Profile.agenticOrganizations
+  => {}
+
 Profile.subAgent
   => {}
 
@@ -3911,6 +4178,12 @@ Query.profile
 Query.profiles
   => {}
 
+Query.usernameRegistryEntry
+  => {}
+
+Query.usernameAvailability
+  => {}
+
 Query.post
   => {}
 
@@ -3962,6 +4235,15 @@ Query.vestingWallets
 Query.vestingLeaderboard
   => {}
 
+Query.agenticOrganization
+  => {}
+
+Query.agenticOrganizationsLeaderboard
+  => {}
+
+Query.organizationCategories
+  => {}
+
 Query.sptHoldings
   => {}
 
@@ -4008,6 +4290,9 @@ Query.mydataRecord
   => {}
 
 Query.mydataRecords
+  => {}
+
+Query.hasMydataAccess
   => {}
 
 Query.mydataPurchases
@@ -4107,6 +4392,15 @@ Query.pocBeneficiaryVaultByVaultId
   => {}
 
 Query.pocBeneficiaryVaultByBeneficiary
+  => {}
+
+Query.pocUsernameBeneficiaryByUsername
+  => {}
+
+Query.pocUsernameBeneficiaryById
+  => {}
+
+Query.pocUsernameBeneficiaries
   => {}
 
 Query.spotConfiguration
@@ -4452,6 +4746,9 @@ SocialAttribution.actionIdentityClass
   => {}
 
 SocialAttribution.principalOwner
+  => {}
+
+SocialAttribution.organizationId
   => {}
 
 SocialProofToken.poolId
@@ -5102,6 +5399,9 @@ TipSummary.amount
 TipSummary.createdAt
   => {}
 
+TipSummary.organizationId
+  => {}
+
 Transaction.id
   => {}
 
@@ -5222,6 +5522,36 @@ UpgradeCommand.upgradeTicket
 UserSignature.signatureBytes
   => {}
 
+UsernameAvailability.username
+  => {}
+
+UsernameAvailability.available
+  => {}
+
+UsernameAvailability.registryClaimed
+  => {}
+
+UsernameAvailability.beneficiaryProvisioned
+  => {}
+
+UsernameAvailability.registryProfileId
+  => {}
+
+UsernameAvailability.beneficiaryId
+  => {}
+
+UsernameAvailability.unavailableReasons
+  => {}
+
+UsernameRegistry.username
+  => {}
+
+UsernameRegistry.profileId
+  => {}
+
+UsernameRegistry.transactionId
+  => {}
+
 Validator.apy
   => {}
 
@@ -5288,10 +5618,16 @@ VestingWallet.totalAmount
 VestingWallet.startTime
   => {}
 
-VestingWallet.duration
+VestingWallet.scheduleEnd
   => {}
 
-VestingWallet.curveFactor
+VestingWallet.pieces
+  => {}
+
+VestingWallet.nextCliff
+  => {}
+
+VestingWallet.claimableAmount
   => {}
 
 VestingWallet.claimedAmount

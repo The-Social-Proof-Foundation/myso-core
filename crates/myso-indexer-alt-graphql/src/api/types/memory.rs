@@ -177,6 +177,7 @@ impl SocialAttribution {
                 row.sub_agent_id.clone(),
                 row.action_identity_class,
                 None,
+                row.organization_id.clone(),
                 owner,
             ),
         }
@@ -189,6 +190,7 @@ impl SocialAttribution {
                 row.sub_agent_id.clone(),
                 row.action_identity_class,
                 None,
+                row.organization_id.clone(),
                 &row.owner,
             ),
         }
@@ -201,6 +203,7 @@ impl SocialAttribution {
                 row.sub_agent_id.clone(),
                 row.action_identity_class,
                 row.principal_owner.clone(),
+                row.organization_id.clone(),
                 &row.user_address,
             ),
         }
@@ -213,6 +216,7 @@ impl SocialAttribution {
                 row.sub_agent_id.clone(),
                 row.action_identity_class,
                 None,
+                row.organization_id.clone(),
                 &row.owner,
             ),
         }
@@ -240,5 +244,9 @@ impl SocialAttribution {
             .as_deref()
             .and_then(|s| MySoAddress::from_str(s).ok())
             .map(Into::into)
+    }
+
+    async fn organization_id(&self) -> Option<&str> {
+        self.inner.organization_id.as_deref()
     }
 }

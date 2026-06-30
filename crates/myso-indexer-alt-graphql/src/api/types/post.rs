@@ -96,9 +96,14 @@ impl Post {
         self.inner.repost_count
     }
 
-    /// Total tips received.
+    /// Creator earnings credited on-chain to the post owner (`Post.tips_received`).
     async fn tips_received(&self) -> i64 {
         self.inner.tips_received
+    }
+
+    /// Total user spend on this post (sum of indexed tip rows with `is_post = true`).
+    async fn total_tip_volume(&self) -> i64 {
+        self.inner.total_tip_volume
     }
 
     /// Media URLs (JSON array).
@@ -242,6 +247,11 @@ impl Post {
     /// Actor vs principal attribution for delegated sub-agent actions.
     async fn attribution(&self) -> SocialAttribution {
         SocialAttribution::from_post(&self.inner.owner, &self.inner)
+    }
+
+    /// Agentic organization attributed to this post, when indexed.
+    async fn organization_id(&self) -> Option<&str> {
+        self.inner.organization_id.as_deref()
     }
 
     /// Optional off-chain / indexed revenue recipient address.
@@ -969,6 +979,10 @@ impl TipSummary {
 
     async fn created_at(&self) -> i64 {
         self.inner.created_at
+    }
+
+    async fn organization_id(&self) -> Option<&str> {
+        self.inner.organization_id.as_deref()
     }
 }
 

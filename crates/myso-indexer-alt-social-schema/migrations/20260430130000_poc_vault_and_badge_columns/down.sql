@@ -1,4 +1,5 @@
 DROP INDEX IF EXISTS idx_poc_vault_claims_vault_time;
+ALTER TABLE poc_vault_claims DROP COLUMN IF EXISTS gross_amount;
 DROP TABLE IF EXISTS poc_vault_claims;
 
 DROP INDEX IF EXISTS idx_poc_vault_deposits_vault_time;

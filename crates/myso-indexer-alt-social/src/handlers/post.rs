@@ -183,6 +183,8 @@ struct PostCreatedEvent {
     actor_address: Option<String>,
     #[serde(default)]
     sub_agent_id: Option<String>,
+    #[serde(default)]
+    organization_id: Option<String>,
     #[serde(default, deserialize_with = "de_opt_u8")]
     action_identity_class: Option<u8>,
     #[serde(default, deserialize_with = "de_u64")]
@@ -202,6 +204,8 @@ struct CommentCreatedEvent {
     actor_address: Option<String>,
     #[serde(default)]
     sub_agent_id: Option<String>,
+    #[serde(default)]
+    organization_id: Option<String>,
     #[serde(default, deserialize_with = "de_opt_u8")]
     action_identity_class: Option<u8>,
 }
@@ -220,6 +224,8 @@ struct ReactionEvent {
     actor_address: Option<String>,
     #[serde(default)]
     sub_agent_id: Option<String>,
+    #[serde(default)]
+    organization_id: Option<String>,
     #[serde(default, deserialize_with = "de_opt_u8")]
     action_identity_class: Option<u8>,
 }
@@ -248,6 +254,8 @@ struct RepostEvent {
     actor_address: Option<String>,
     #[serde(default)]
     sub_agent_id: Option<String>,
+    #[serde(default)]
+    organization_id: Option<String>,
     #[serde(default, deserialize_with = "de_opt_u8")]
     action_identity_class: Option<u8>,
 }
@@ -484,6 +492,7 @@ fn process_post_created_event(
         comment_count: 0,
         repost_count: 0,
         tips_received: 0,
+        total_tip_volume: 0,
         removed_from_platform: false,
         removed_by: None,
         transaction_id: event_id.to_string(),
@@ -523,7 +532,7 @@ fn process_post_created_event(
             .action_identity_class
             .map(i16::from)
             .or(action_identity_class),
-        organization_id,
+        organization_id: ev.organization_id.or(organization_id),
     };
     if let Some(mydata_id) = post.mydata_id.clone() {
         post_mydata::enrich_post_from_mydata_id(&mut post, &mydata_id, mydata_snapshots);
@@ -590,7 +599,7 @@ fn process_comment_created_event(
             .action_identity_class
             .map(i16::from)
             .or(action_identity_class),
-        organization_id,
+        organization_id: ev.organization_id.or(organization_id),
     };
     Some(vec![
         SocialEventRow::Comment(comment),
@@ -641,7 +650,7 @@ fn process_reaction_event(
             .action_identity_class
             .map(i16::from)
             .or(action_identity_class),
-        organization_id,
+        organization_id: ev.organization_id.or(organization_id),
     };
     Some(vec![SocialEventRow::Reaction(reaction)])
 }
@@ -705,7 +714,7 @@ fn process_repost_event(
             .action_identity_class
             .map(i16::from)
             .or(action_identity_class),
-        organization_id,
+        organization_id: ev.organization_id.or(organization_id),
     };
     Some(vec![
         SocialEventRow::Repost(repost),
@@ -747,6 +756,7 @@ fn process_tip_event(
         created_at,
         time: now,
         transaction_id: event_id.to_string(),
+        organization_id: None,
     };
     let revenue_type = if ev.is_post {
         REVENUE_TYPE_TIPS_POST.to_string()
@@ -1280,6 +1290,47 @@ mod tests {
     }
 
     #[test]
+    fn post_created_event_with_organization_id_produces_post_row() {
+        let data = serde_json::json!({
+            "post_id": "0xpostorg",
+            "owner": "0xowner",
+            "profile_id": "0xprofile",
+            "platform_id": "0xplatform",
+            "permissions": 0,
+            "content": "org post",
+            "post_type": "post",
+            "parent_post_id": null,
+            "mentions": null,
+            "media_urls": null,
+            "metadata_json": null,
+            "mydata_id": null,
+            "promotion_id": null,
+            "revenue_redirect_to": null,
+            "revenue_redirect_percentage": null,
+            "enable_spt": false,
+            "enable_poc": true,
+            "enable_spot": false,
+            "spot_id": null,
+            "spt_id": null,
+            "poc_redirection_kind": 1,
+            "actor_address": "0xowner",
+            "sub_agent_id": null,
+            "organization_id": "0xorg123",
+            "action_identity_class": 0,
+        });
+        let rows = handle_post_event("PostCreatedEvent", &data, "digest:org", &HashMap::new(), CK_MS)
+            .expect("rows");
+        let post = rows
+            .iter()
+            .find_map(|r| match r {
+                SocialEventRow::Post(p) => Some(p),
+                _ => None,
+            })
+            .expect("post row");
+        assert_eq!(post.organization_id.as_deref(), Some("0xorg123"));
+    }
+
+    #[test]
     fn post_created_with_mydata_snapshot_sets_paywall_fields() {
         use super::post_mydata::{self, MyDataPaywallSnapshot};
 
@@ -1585,6 +1636,24 @@ mod tests {
             object_id,
             "0xa7953fb1af6d0495b3da10d4d25888158e8dc451fa5354a9723dc70676d38f3d"
         );
+    }
+
+    #[test]
+    fn tip_event_redirect_payee_still_emits_increment_for_matching_recipient() {
+        let beneficiary = "0xbeneficiary00000000000000000000000000000000000000000000000001";
+        let data = serde_json::json!({
+            "object_id": "0xa7953fb1af6d0495b3da10d4d25888158e8dc451fa5354a9723dc70676d38f3d",
+            "from": "0x2458950181e415250823d6ce1d55f2b3427826a111939e0d6d38e9a1397411d8",
+            "to": beneficiary,
+            "amount": 1000_u64,
+            "is_post": true,
+            "tip_time": 0u64,
+        });
+        let rows = handle_post_event("TipEvent", &data, "tx:redirect", &HashMap::new(), CK_MS).expect("rows");
+        let SocialEventRow::PostTipsReceivedIncrement { recipient, .. } = &rows[1] else {
+            panic!("expected PostTipsReceivedIncrement");
+        };
+        assert_eq!(recipient, beneficiary);
     }
 
     #[test]

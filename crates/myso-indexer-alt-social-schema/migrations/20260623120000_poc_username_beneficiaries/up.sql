@@ -63,6 +63,9 @@ CREATE INDEX IF NOT EXISTS idx_poc_username_beneficiary_events_beneficiary_time
 CREATE INDEX IF NOT EXISTS idx_poc_username_beneficiary_events_username_time
     ON poc_username_beneficiary_events (username, time DESC);
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_poc_username_beneficiary_events_event_id
+    ON poc_username_beneficiary_events (event_id);
+
 ALTER TABLE poc_configuration
     ADD COLUMN IF NOT EXISTS username_beneficiary_join_referral_bps BIGINT NOT NULL DEFAULT 500;
 

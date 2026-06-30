@@ -25,9 +25,11 @@ use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
     NewPocAnalysisResult, NewPocBadge, NewPocConfiguration, NewPocCreatorIdentityLink,
     NewPocDispute, NewPocDisputeVote, NewPocRevenueRedirection, NewPocUsernameBeneficiary,
-    NewPocUsernameBeneficiaryEvent, EVENT_TYPE_CLAIMED, EVENT_TYPE_CONFLICT,
+    NewPocUsernameBeneficiaryEvent, NewTip, NewUnifiedRevenue, CURRENCY_MYSO, CONTENT_TYPE_POST,
+    EVENT_TYPE_CLAIMED, EVENT_TYPE_CONFLICT,
     EVENT_TYPE_CREATOR_IDENTITY_WALLET_LINKED, EVENT_TYPE_ENDED, EVENT_TYPE_PROVISIONED,
-    USERNAME_BENEFICIARY_STATUS_ACTIVE, VAULT_CLAIM_KIND_JOIN_REFERRAL, VAULT_CLAIM_KIND_STANDARD,
+    REVENUE_TYPE_TIPS_POST, USERNAME_BENEFICIARY_STATUS_ACTIVE, VAULT_CLAIM_KIND_JOIN_REFERRAL,
+    VAULT_CLAIM_KIND_STANDARD,
     DISPUTE_STATUS_VOTING,
 };
 
@@ -238,6 +240,7 @@ pub fn handle_poc_event(
     event_name: &str,
     data: &serde_json::Value,
     event_id: &str,
+    tx_sender: Option<&str>,
 ) -> Option<Vec<SocialEventRow>> {
     let tx_id = transaction_id_from_event_id(event_id);
     match event_name {
@@ -267,7 +270,7 @@ pub fn handle_poc_event(
             process_poc_config_updated_event(data, event_id, &tx_id)
         }
         "PoCBeneficiaryVaultDepositEvent" => {
-            process_poc_vault_deposit_event(data, event_id, &tx_id)
+            process_poc_vault_deposit_event(data, event_id, &tx_id, tx_sender)
         }
         "PoCBeneficiaryVaultClaimedEvent" => process_poc_vault_claim_event(data, event_id, &tx_id),
         "UsernameBeneficiaryProvisionedEvent" => {
@@ -668,6 +671,7 @@ fn process_poc_vault_deposit_event(
     data: &serde_json::Value,
     event_id: &str,
     tx_id: &str,
+    tx_sender: Option<&str>,
 ) -> Option<Vec<SocialEventRow>> {
     #[derive(Deserialize)]
     struct VaultDepositJson {
@@ -692,15 +696,50 @@ fn process_poc_vault_deposit_event(
         return None;
     }
     let amount = i64::try_from(ev.amount).ok()?;
-    Some(vec![SocialEventRow::PocBeneficiaryVaultDeposit {
+    let source_post_id = ev.source_post_id.filter(|s| !s.is_empty());
+    let mut rows = vec![SocialEventRow::PocBeneficiaryVaultDeposit {
         vault_id: ev.vault_id,
-        vault_routing_key: ev.beneficiary,
-        coin_type: ev.coin_type,
+        vault_routing_key: ev.beneficiary.clone(),
+        coin_type: ev.coin_type.clone(),
         amount,
-        source_post_id: ev.source_post_id.filter(|s| !s.is_empty()),
+        source_post_id: source_post_id.clone(),
         timestamp_ms: ev.timestamp as i64,
         transaction_id: tx_id.to_string(),
-    }])
+    }];
+    if let (Some(post_id), Some(tipper)) = (source_post_id, tx_sender.filter(|s| !s.is_empty()))
+    {
+        let created_at = ev.timestamp as i64;
+        let time = common::chain_time_from_ms(created_at);
+        let coin_type = if ev.coin_type.is_empty() {
+            CURRENCY_MYSO.to_string()
+        } else {
+            ev.coin_type.clone()
+        };
+        rows.push(SocialEventRow::Tip(NewTip {
+            tipper: tipper.to_string(),
+            recipient: ev.beneficiary.clone(),
+            object_id: post_id.clone(),
+            amount,
+            is_post: true,
+            coin_type: coin_type.clone(),
+            created_at,
+            time,
+            transaction_id: tx_id.to_string(),
+            organization_id: None,
+        }));
+        rows.push(SocialEventRow::UnifiedRevenue(NewUnifiedRevenue::from_tip(
+            REVENUE_TYPE_TIPS_POST.to_string(),
+            ev.beneficiary.clone(),
+            amount,
+            coin_type,
+            post_id,
+            CONTENT_TYPE_POST.to_string(),
+            tipper.to_string(),
+            created_at,
+            tx_id.to_string(),
+        )));
+    }
+    Some(rows)
 }
 
 fn process_poc_vault_claim_event(
@@ -1035,7 +1074,34 @@ fn process_creator_identity_wallet_linked_event(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::handlers::events::BcsUsernameBeneficiaryClaimedEvent;
+    use move_core_types::account_address::AccountAddress;
     use serde_json::json;
+
+    fn test_username_beneficiary_claimed_bcs_fixture() -> Vec<u8> {
+        let ev = BcsUsernameBeneficiaryClaimedEvent {
+            beneficiary_id: AccountAddress::from_hex_literal(
+                "0x19e12c82effb103ed5a762f7d5c3daa0d7ed96b1d421ba686734de3e897ce939",
+            )
+            .unwrap(),
+            username: "pocub1782775058".to_string(),
+            profile_id: AccountAddress::from_hex_literal(
+                "0x3853b739126a0e3773c415eab400b4adc26a4257d58abf08be12992e0d0ee48f",
+            )
+            .unwrap(),
+            claimed_by: AccountAddress::from_hex_literal(
+                "0x7eb74c2ca45c41a4c4126f13c2286cbc9ac400c7b5ab5fe38694ecd71161ccaf",
+            )
+            .unwrap(),
+            wallet: AccountAddress::from_hex_literal(
+                "0x7e91c216898618e1c5f614a01dde30b5f5d7e1e2fb4fdfe0b4a3423d55202430",
+            )
+            .unwrap(),
+            oracle_evidence_hash: vec![],
+            claimed_at: 5_837_000_000,
+        };
+        bcs::to_bytes(&ev).expect("bcs")
+    }
 
     #[test]
     fn username_beneficiary_provisioned_json_to_rows() {
@@ -1058,6 +1124,77 @@ mod tests {
     }
 
     #[test]
+    fn username_beneficiary_claimed_on_chain_bcs_to_rows() {
+        let bytes = test_username_beneficiary_claimed_bcs_fixture();
+        let json = crate::handlers::events::parse_event_contents(
+            "poc_username_beneficiary",
+            "UsernameBeneficiaryClaimedEvent",
+            &bytes,
+        )
+        .expect("parse claim event BCS");
+        assert_eq!(json["username"], "pocub1782775058");
+        let rows = handle_poc_event(
+            "UsernameBeneficiaryClaimedEvent",
+            &json,
+            "6eXytqXku9NP5yQWcmc5irAjpGKrYspqQ679tgFCT3zU:4",
+            None,
+        )
+        .expect("handler rows");
+        assert_eq!(rows.len(), 2);
+        assert!(matches!(
+            rows[0],
+            SocialEventRow::PocUsernameBeneficiaryClaimed { .. }
+        ));
+        assert!(matches!(rows[1], SocialEventRow::PocUsernameBeneficiaryEvent(_)));
+    }
+
+    #[test]
+    fn vault_deposit_with_source_post_emits_tip_row() {
+        let data = json!({
+            "vault_id": "0xv",
+            "beneficiary": "0xba",
+            "coin_type": "0x2::myso::MYSO",
+            "amount": 1000,
+            "source_post_id": "0xpost",
+            "timestamp": 500
+        });
+        let rows =
+            process_poc_vault_deposit_event(&data, "tx:1", "tx", Some("0xtipper")).expect("rows");
+        assert_eq!(rows.len(), 3);
+        assert!(matches!(rows[0], SocialEventRow::PocBeneficiaryVaultDeposit { .. }));
+        match &rows[1] {
+            SocialEventRow::Tip(tip) => {
+                assert_eq!(tip.tipper, "0xtipper");
+                assert_eq!(tip.recipient, "0xba");
+                assert_eq!(tip.object_id, "0xpost");
+                assert_eq!(tip.amount, 1000);
+                assert!(tip.is_post);
+            }
+            _ => panic!("expected Tip row for PoC escrow deposit"),
+        }
+        assert!(matches!(rows[2], SocialEventRow::UnifiedRevenue(_)));
+    }
+
+    #[test]
+    fn vault_deposit_with_source_post_has_no_tips_received_increment() {
+        let data = json!({
+            "vault_id": "0xv",
+            "beneficiary": "0xba",
+            "coin_type": "0x2::myso::MYSO",
+            "amount": 1000,
+            "source_post_id": "0xpost",
+            "timestamp": 500
+        });
+        let rows =
+            process_poc_vault_deposit_event(&data, "tx:1", "tx", Some("0xtipper")).expect("rows");
+        assert!(
+            !rows
+                .iter()
+                .any(|r| matches!(r, SocialEventRow::PostTipsReceivedIncrement { .. }))
+        );
+    }
+
+    #[test]
     fn vault_claim_join_referral_sets_kind() {
         let data = json!({
             "vault_id": "0xv",
@@ -1073,8 +1210,20 @@ mod tests {
         let rows = process_poc_vault_claim_event(&data, "tx:1", "tx").expect("rows");
         assert_eq!(rows.len(), 2);
         match &rows[0] {
-            SocialEventRow::PocBeneficiaryVaultClaimed { claim_kind, .. } => {
+            SocialEventRow::PocBeneficiaryVaultClaimed {
+                treasury_amount,
+                referrer_amount,
+                beneficiary_amount,
+                claim_kind,
+                ..
+            } => {
                 assert_eq!(claim_kind.as_deref(), Some(VAULT_CLAIM_KIND_JOIN_REFERRAL));
+                let gross: i64 = (*treasury_amount as i128
+                    + *referrer_amount as i128
+                    + *beneficiary_amount as i128)
+                    .try_into()
+                    .expect("gross fits i64");
+                assert_eq!(gross, 100);
             }
             _ => panic!("expected vault claim row"),
         }

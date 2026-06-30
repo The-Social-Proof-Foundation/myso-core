@@ -610,6 +610,11 @@ impl PocVaultClaim {
         self.inner.treasury_amount
     }
 
+    /// Full claim size in base units (`treasury + referrer + beneficiary`).
+    async fn gross_amount(&self) -> i64 {
+        self.inner.gross_amount
+    }
+
     async fn referrer_amount(&self) -> i64 {
         self.inner.referrer_amount
     }

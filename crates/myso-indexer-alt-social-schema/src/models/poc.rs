@@ -332,6 +332,7 @@ pub struct NewPocVaultClaim {
     pub occurred_at_ms: i64,
     pub transaction_id: String,
     pub claim_kind: Option<String>,
+    pub gross_amount: i64,
 }
 
 /// Sentinel `coin_type` in `poc_vault_coin_balances` seeded from legacy single-balance column.
@@ -396,6 +397,8 @@ pub struct PocVaultClaimRow {
     pub transaction_id: String,
     #[diesel(sql_type = Nullable<Text>)]
     pub claim_kind: Option<String>,
+    #[diesel(sql_type = BigInt)]
+    pub gross_amount: i64,
 }
 
 /// One `(vault_id, coin_type)` balance row from `poc_vault_coin_balances`.

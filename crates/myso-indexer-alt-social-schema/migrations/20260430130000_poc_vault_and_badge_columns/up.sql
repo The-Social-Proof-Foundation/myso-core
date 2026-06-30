@@ -56,3 +56,7 @@ CREATE TABLE IF NOT EXISTS poc_vault_claims (
 );
 
 CREATE INDEX IF NOT EXISTS idx_poc_vault_claims_vault_time ON poc_vault_claims (vault_id, time DESC);
+
+ALTER TABLE poc_vault_claims ADD COLUMN IF NOT EXISTS gross_amount BIGINT NOT NULL DEFAULT 0;
+COMMENT ON COLUMN poc_vault_claims.gross_amount IS
+    'Derived at index time: treasury_amount + referrer_amount + beneficiary_amount (full claim in base units).';

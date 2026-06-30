@@ -865,6 +865,7 @@ diesel::table! {
         transaction_id -> Text,
         time -> Timestamptz,
         claim_kind -> Nullable<Text>,
+        gross_amount -> Int8,
     }
 }
 
@@ -1000,6 +1001,7 @@ diesel::table! {
         comment_count -> Nullable<Int8>,
         repost_count -> Nullable<Int8>,
         tips_received -> Nullable<Int8>,
+        total_tip_volume -> Int8,
         removed_from_platform -> Nullable<Bool>,
         removed_by -> Nullable<Text>,
         transaction_id -> Text,
@@ -2003,6 +2005,7 @@ diesel::table! {
         created_at -> Int8,
         time -> Timestamptz,
         transaction_id -> Text,
+        organization_id -> Nullable<Text>,
     }
 }
 

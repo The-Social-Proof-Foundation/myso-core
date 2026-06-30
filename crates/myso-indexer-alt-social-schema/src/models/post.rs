@@ -60,6 +60,7 @@ pub struct NewPost {
     pub comment_count: i64,
     pub repost_count: i64,
     pub tips_received: i64,
+    pub total_tip_volume: i64,
     pub removed_from_platform: bool,
     pub removed_by: Option<String>,
     pub transaction_id: String,
@@ -182,6 +183,7 @@ pub struct NewTip {
     pub created_at: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
+    pub organization_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -303,6 +305,7 @@ pub struct CommentRow {
     pub actor_address: Option<String>,
     pub sub_agent_id: Option<String>,
     pub action_identity_class: Option<i16>,
+    pub organization_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -314,6 +317,7 @@ pub struct ReactionRow {
     pub actor_address: Option<String>,
     pub sub_agent_id: Option<String>,
     pub action_identity_class: Option<i16>,
+    pub organization_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -326,6 +330,7 @@ pub struct RepostRow {
     pub actor_address: Option<String>,
     pub sub_agent_id: Option<String>,
     pub action_identity_class: Option<i16>,
+    pub organization_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -334,4 +339,5 @@ pub struct TipRow {
     pub recipient: String,
     pub amount: i64,
     pub created_at: i64,
+    pub organization_id: Option<String>,
 }

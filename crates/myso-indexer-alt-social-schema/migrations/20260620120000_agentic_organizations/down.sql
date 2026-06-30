@@ -4,6 +4,9 @@ ALTER TABLE IF EXISTS sub_agent_memory_vaults RENAME TO agent_memory_vaults;
 DROP INDEX IF EXISTS idx_unified_revenue_organization;
 ALTER TABLE unified_revenue DROP COLUMN IF EXISTS organization_id;
 
+DROP INDEX IF EXISTS idx_tips_organization_id;
+ALTER TABLE tips DROP COLUMN IF EXISTS organization_id;
+
 DROP INDEX IF EXISTS idx_mydata_purchases_organization;
 ALTER TABLE mydata_purchases DROP COLUMN IF EXISTS organization_id;
 
@@ -26,6 +29,7 @@ DROP INDEX IF EXISTS idx_comments_organization;
 ALTER TABLE comments DROP COLUMN IF EXISTS organization_id;
 
 DROP INDEX IF EXISTS idx_posts_organization_time;
+ALTER TABLE posts DROP COLUMN IF EXISTS total_tip_volume;
 ALTER TABLE posts DROP COLUMN IF EXISTS organization_id;
 
 DROP INDEX IF EXISTS idx_sub_agent_events_organization;

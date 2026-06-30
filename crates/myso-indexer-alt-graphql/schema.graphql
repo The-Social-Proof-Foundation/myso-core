@@ -4832,7 +4832,7 @@ type PocBadge {
 
 type PocBeneficiaryVault {
 	"""
-	Beneficiary wallet for this vault.
+	Deprecated alias for [`vault_routing_key`](Self::vault_routing_key).
 	"""
 	beneficiary: MySoAddress!
 	claims(limit: Int, offset: Int): [PocVaultClaim!]
@@ -4851,6 +4851,10 @@ type PocBeneficiaryVault {
 	On-chain vault object address.
 	"""
 	vaultId: String!
+	"""
+	Vault directory lookup key stored on-chain as `PoCBeneficiaryVault.beneficiary`.
+	"""
+	vaultRoutingKey: MySoAddress!
 }
 
 type PocConfig {
@@ -5067,6 +5071,9 @@ type PocRevenueRedirection {
 }
 
 type PocUsernameBeneficiary {
+	"""
+	Deprecated alias for [`vault_routing_key`](Self::vault_routing_key).
+	"""
 	beneficiaryAddress: String!
 	beneficiaryId: String!
 	claimedAtMs: Int
@@ -5092,12 +5099,23 @@ type PocUsernameBeneficiary {
 	transactionId: String!
 	username: String!
 	vaultId: String!
+	"""
+	Identity-derived vault directory lookup key (not a user wallet).
+	"""
+	vaultRoutingKey: String!
 }
 
 type PocVaultClaim {
+	"""
+	Deprecated alias for [`vault_routing_key`](Self::vault_routing_key).
+	"""
 	beneficiary: MySoAddress!
 	beneficiaryAmount: Int!
 	coinType: String!
+	"""
+	Full claim size in base units (`treasury + referrer + beneficiary`).
+	"""
+	grossAmount: Int!
 	id: Int!
 	occurredAtMs: Int!
 	referrer: MySoAddress
@@ -5105,6 +5123,7 @@ type PocVaultClaim {
 	transactionId: String!
 	treasuryAmount: Int!
 	vaultId: String!
+	vaultRoutingKey: MySoAddress!
 }
 
 type PocVaultCoinBalance {
@@ -5116,6 +5135,9 @@ type PocVaultCoinBalance {
 
 type PocVaultDeposit {
 	amount: Int!
+	"""
+	Deprecated alias for [`vault_routing_key`](Self::vault_routing_key).
+	"""
 	beneficiary: MySoAddress!
 	coinType: String!
 	id: Int!
@@ -5123,6 +5145,7 @@ type PocVaultDeposit {
 	sourcePostId: String
 	transactionId: String!
 	vaultId: String!
+	vaultRoutingKey: MySoAddress!
 }
 
 type Post implements Node {
@@ -5194,6 +5217,10 @@ type Post implements Node {
 	Optional linked MyData object id.
 	"""
 	mydataId: String
+	"""
+	Agentic organization attributed to this post, when indexed.
+	"""
+	organizationId: String
 	"""
 	The wallet address of the post owner.
 	"""
@@ -5364,9 +5391,13 @@ type Post implements Node {
 	"""
 	tips(limit: Int, offset: Int): [TipSummary!]
 	"""
-	Total tips received.
+	Creator earnings credited on-chain to the post owner (`Post.tips_received`).
 	"""
 	tipsReceived: Int!
+	"""
+	Total user spend on this post (sum of indexed tip rows with `is_post = true`).
+	"""
+	totalTipVolume: Int!
 	"""
 	Ownership transfers for this post (paginated).
 	"""
@@ -7177,6 +7208,7 @@ type SimulationResult {
 type SocialAttribution {
 	actionIdentityClass: Int!
 	actorAddress: MySoAddress!
+	organizationId: String
 	principalOwner: MySoAddress
 	subAgentId: String
 }
@@ -8012,6 +8044,7 @@ enum SupplyState {
 type TipSummary {
 	amount: Int!
 	createdAt: Int!
+	organizationId: String
 	recipient: MySoAddress!
 	"""
 	Profile of the tip recipient.
