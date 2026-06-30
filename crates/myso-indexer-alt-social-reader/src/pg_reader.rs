@@ -380,6 +380,16 @@ impl SocialPgReader {
         crate::ai_credit::get_ai_credit_balance_by_owner(&mut conn, owner, &self.metrics).await
     }
 
+    pub async fn list_ai_credit_usage_lines(
+        &self,
+        balance_id: &str,
+        limit: i64,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::AiCreditUsageLineRow>> {
+        let mut conn = self.connect().await?;
+        crate::ai_credit::list_ai_credit_usage_lines(&mut conn, balance_id, limit, &self.metrics)
+            .await
+    }
+
     pub async fn get_memory_account_by_profile_id(
         &self,
         profile_id: &str,

@@ -28,3 +28,25 @@ pub(crate) async fn get_ai_credit_balance_by_owner(
     metrics.requests_succeeded.inc();
     Ok(row)
 }
+
+pub(crate) async fn list_ai_credit_usage_lines(
+    conn: &mut Connection<'_>,
+    balance_id: &str,
+    limit: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::AiCreditUsageLineRow>> {
+    use myso_indexer_alt_social_schema::models::AiCreditUsageLineRow;
+    use myso_indexer_alt_social_schema::schema::ai_credit_usage_lines;
+
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    let rows = ai_credit_usage_lines::table
+        .filter(ai_credit_usage_lines::balance_id.eq(balance_id))
+        .order(ai_credit_usage_lines::created_at.desc())
+        .limit(limit)
+        .select(AiCreditUsageLineRow::as_select())
+        .load(conn)
+        .await?;
+    metrics.requests_succeeded.inc();
+    Ok(rows)
+}

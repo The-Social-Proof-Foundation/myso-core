@@ -811,6 +811,126 @@ assert_usage_history_nonempty() {
     return 1
 }
 
+usage_history_response_settled() {
+    local resp="$1" receipt_id="${2:-}"
+    if [[ -n "$receipt_id" ]]; then
+        echo "$resp" | jq -e --arg rid "$receipt_id" '
+            (. | if type == "array" then . elif .items? then .items else [] end)
+            | [.[] | select(.receipt_id == $rid)]
+            | length == 1
+            and all(.[]; .settled == true and ((.settlement_tx // "") | length) > 0)
+        ' >/dev/null 2>&1
+    else
+        echo "$resp" | jq -e '
+            (. | if type == "array" then . elif .items? then .items else [] end)
+            | length > 0
+            and all(.[]; .settled == true and ((.settlement_tx // "") | length) > 0)
+        ' >/dev/null 2>&1
+    fi
+}
+
+assert_usage_history_settled() {
+    local balance_id="$1" receipt_id="${2:-}" attempt resp
+    balance_id="$(normalize_hex_id "$balance_id")" || return 1
+    for attempt in $(seq 1 90); do
+        resp="$(rest_get_usage_history "$balance_id" 2>/dev/null)" || resp='[]'
+        if usage_history_response_settled "$resp" "$receipt_id"; then
+            echo "$resp" >&2
+            return 0
+        fi
+        sleep 1
+    done
+    echo "Timed out waiting for REST usage-history settled=true (balance=$balance_id receipt_id=${receipt_id:-all})" >&2
+    echo "$resp" | jq '.' >&2 || echo "$resp" >&2
+    return 1
+}
+
+gql_ai_credit_usage_history() {
+    local addr="$1" resp vars
+    addr="$(normalize_hex_id "$addr")" || return 1
+    vars="$(jq -nc --arg addr "$addr" '{addr: $addr}')"
+    resp="$(graphql_post \
+        'query AiCreditUsageHistory($addr: MySoAddress!) {
+            profile(address: $addr) {
+                aiCreditBalance {
+                    balanceId
+                    usageHistory(first: 20) {
+                        receiptId
+                        settled
+                        settlementTx
+                        amountMist
+                    }
+                }
+            }
+        }' \
+        "$vars")" || return 1
+    printf '%s' "$resp"
+}
+
+gql_usage_history_response_settled() {
+    local resp="$1" receipt_id="${2:-}"
+    if [[ -n "$receipt_id" ]]; then
+        echo "$resp" | jq -e --arg rid "$receipt_id" '
+            (.data.profile.aiCreditBalance.usageHistory // [])
+            | [.[] | select(.receiptId == $rid)]
+            | length == 1
+            and all(.[]; .settled == true and ((.settlementTx // "") | length) > 0)
+        ' >/dev/null 2>&1
+    else
+        echo "$resp" | jq -e '
+            (.data.profile.aiCreditBalance.usageHistory // [])
+            | length > 0
+            and all(.[]; .settled == true and ((.settlementTx // "") | length) > 0)
+        ' >/dev/null 2>&1
+    fi
+}
+
+assert_gql_usage_history_settled() {
+    local addr="$1" receipt_id="${2:-}" attempt resp
+    addr="$(normalize_hex_id "$addr")" || return 1
+    for attempt in $(seq 1 90); do
+        resp="$(gql_ai_credit_usage_history "$addr" 2>/dev/null)" || resp='{}'
+        if gql_usage_history_response_settled "$resp" "$receipt_id"; then
+            echo "$resp" >&2
+            return 0
+        fi
+        sleep 1
+    done
+    echo "Timed out waiting for GraphQL usageHistory settled=true (addr=$addr receipt_id=${receipt_id:-all})" >&2
+    echo "$resp" | jq '.' >&2 || echo "$resp" >&2
+    return 1
+}
+
+verify_settlement_complete() {
+    local balance_id="$1" owner="$2" nonce_before="$3" spent_before="$4" receipt_id="$5"
+    local spent_after nonce_after
+
+    [[ -n "$receipt_id" && "$receipt_id" != "null" ]] || {
+        echo "Missing receipt_id from oracle record_usage response" >&2
+        return 1
+    }
+
+    log_step "Waiting for on-chain settlement (RPC settlement_nonce > $nonce_before)"
+    wait_for_on_chain_settlement "$balance_id" $((nonce_before + 1)) $((spent_before + 1))
+
+    log_step "Waiting for indexer/GraphQL settlement (settlementNonce > $nonce_before)"
+    wait_for_gql_settlement_nonce_at_least "$owner" $((nonce_before + 1))
+
+    log_step "Waiting for usage-history settled=true in REST"
+    assert_usage_history_settled "$balance_id" "$receipt_id"
+
+    log_step "Waiting for usage-history settled=true in GraphQL"
+    assert_gql_usage_history_settled "$owner" "$receipt_id"
+
+    spent_after="$(gql_ai_credit_snapshot "$owner" | jq -r '.data.profile.aiCreditBalance.spentTotalMist // 0')"
+    nonce_after="$(gql_ai_credit_snapshot "$owner" | jq -r '.data.profile.aiCreditBalance.settlementNonce // 0')"
+    if [[ "$spent_after" -le "$spent_before" ]]; then
+        echo "Expected GraphQL spentTotalMist to increase (before=$spent_before after=$spent_after nonce=$nonce_after)" >&2
+        return 1
+    fi
+    log_step "Settlement confirmed on-chain and indexed (nonce $nonce_before -> $nonce_after, spent $spent_before -> $spent_after MIST)"
+}
+
 oracle_health_ok() {
     curl -sf "${ORACLE_URL}/health" >/dev/null 2>&1
 }
@@ -1130,7 +1250,7 @@ set_agent_budget_and_deposit() {
 }
 
 run_oracle_usage_flow() {
-    local pre usage_resp allowed amount spent_before spent_after nonce_before nonce_after settle_resp
+    local pre usage_resp allowed amount receipt_id spent_before nonce_before settle_resp
     require_session_fields OWNER_ADDRESS AI_CREDIT_BALANCE_ID MEMORY_ACCOUNT_ID AGENT_OBJECT_ID || return 1
 
     log_step "Oracle preflight"
@@ -1153,6 +1273,7 @@ run_oracle_usage_flow() {
         echo "Usage recording failed: $(echo "$usage_resp" | jq -r '. // empty' 2>/dev/null || echo "$usage_resp")" >&2
         return 1
     }
+    receipt_id="$(echo "$usage_resp" | jq -r '.receipt_id // empty')"
 
     log_step "Waiting for usage-history ingest"
     assert_usage_history_nonempty "$AI_CREDIT_BALANCE_ID"
@@ -1164,34 +1285,37 @@ run_oracle_usage_flow() {
     settle_resp="$(oracle_trigger_settle)" || true
     echo "$settle_resp" | jq '.' >&2 || echo "$settle_resp" >&2
 
-    log_step "Waiting for on-chain settlement (RPC settlement_nonce > $nonce_before)"
-    wait_for_on_chain_settlement "$AI_CREDIT_BALANCE_ID" $((nonce_before + 1)) $((spent_before + 1))
-
-    spent_after="$(rpc_ai_credit_spent_total_mist "$AI_CREDIT_BALANCE_ID")"
-    nonce_after="$(rpc_ai_credit_settlement_nonce "$AI_CREDIT_BALANCE_ID")"
-    if [[ "$spent_after" -le "$spent_before" ]]; then
-        echo "Expected on-chain spent_total_mist to increase (before=$spent_before after=$spent_after nonce=$nonce_after)" >&2
-        return 1
-    fi
-    log_step "Settlement confirmed on-chain (nonce $nonce_before -> $nonce_after, spent $spent_before -> $spent_after MIST)"
+    verify_settlement_complete "$AI_CREDIT_BALANCE_ID" "$OWNER_ADDRESS" \
+        "$nonce_before" "$spent_before" "$receipt_id"
 
     log_step "REST config snapshot"
     rest_get_ai_credit_config | jq '.' >&2 || true
 }
 
 run_oracle_usage_second() {
-    local usage_resp nonce_before spent_before settle_resp
+    local usage_resp receipt_id nonce_before spent_before settle_resp
     nonce_before="$(rpc_ai_credit_settlement_nonce "$AI_CREDIT_BALANCE_ID" 2>/dev/null || echo 0)"
     spent_before="$(rpc_ai_credit_spent_total_mist "$AI_CREDIT_BALANCE_ID" 2>/dev/null || echo 0)"
     log_step "Second oracle usage (on-chain nonce before=$nonce_before spent=$spent_before)"
     usage_resp="$(oracle_record_usage "$OWNER_ADDRESS" "$AI_CREDIT_BALANCE_ID" "$MEMORY_ACCOUNT_ID" "$AGENT_OBJECT_ID")"
     echo "$usage_resp" | jq '.' >&2
+    receipt_id="$(echo "$usage_resp" | jq -r '.receipt_id // empty')"
+
+    log_step "Waiting for second usage-history ingest"
+    assert_usage_history_nonempty "$AI_CREDIT_BALANCE_ID"
+
+    log_step "Triggering settlement flush (second usage)"
     settle_resp="$(oracle_trigger_settle)" || true
     echo "$settle_resp" | jq '.' >&2 || echo "$settle_resp" >&2
     sleep 2
     settle_resp="$(oracle_trigger_settle)" || true
     echo "$settle_resp" | jq '.' >&2 || echo "$settle_resp" >&2
-    wait_for_on_chain_settlement "$AI_CREDIT_BALANCE_ID" $((nonce_before + 1)) $((spent_before + 1))
+
+    verify_settlement_complete "$AI_CREDIT_BALANCE_ID" "$OWNER_ADDRESS" \
+        "$nonce_before" "$spent_before" "$receipt_id"
+
+    log_step "Final GraphQL ai-credit snapshot"
+    gql_ai_credit_snapshot "$OWNER_ADDRESS" | jq '.' >&2
 }
 
 run_all_flow() {

@@ -1,8 +1,52 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use async_graphql::Object;
-use myso_indexer_alt_social_schema::models::AiCreditBalanceRow;
+use async_graphql::{Context, Object};
+use myso_indexer_alt_social_schema::models::{AiCreditBalanceRow, AiCreditUsageLineRow};
+
+use crate::api::scalars::date_time::DateTime;
+
+#[derive(Clone)]
+pub(crate) struct AiCreditUsageLine {
+    inner: AiCreditUsageLineRow,
+}
+
+impl AiCreditUsageLine {
+    fn from_row(row: AiCreditUsageLineRow) -> Self {
+        Self { inner: row }
+    }
+}
+
+#[Object]
+impl AiCreditUsageLine {
+    async fn receipt_id(&self) -> &str {
+        &self.inner.receipt_id
+    }
+
+    async fn amount_mist(&self) -> i64 {
+        self.inner.amount_mist
+    }
+
+    async fn usage_kind(&self) -> i16 {
+        self.inner.usage_kind
+    }
+
+    async fn model_id(&self) -> Option<&str> {
+        self.inner.model_id.as_deref()
+    }
+
+    async fn settled(&self) -> bool {
+        self.inner.settled
+    }
+
+    async fn settlement_tx(&self) -> Option<&str> {
+        self.inner.settlement_tx.as_deref()
+    }
+
+    async fn created_at(&self) -> DateTime {
+        DateTime::from_chrono(self.inner.created_at)
+    }
+}
 
 #[derive(Clone)]
 pub(crate) struct AiCreditBalance {
@@ -47,5 +91,21 @@ impl AiCreditBalance {
 
     async fn settlement_nonce(&self) -> i64 {
         self.inner.settlement_nonce
+    }
+
+    async fn usage_history(
+        &self,
+        ctx: &Context<'_>,
+        #[graphql(default = 20)] first: i32,
+    ) -> Option<Vec<AiCreditUsageLine>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = first.clamp(1, 100) as i64;
+        reader
+            .list_ai_credit_usage_lines(&self.inner.balance_id, limit)
+            .await
+            .ok()
+            .map(|rows| rows.into_iter().map(AiCreditUsageLine::from_row).collect())
     }
 }

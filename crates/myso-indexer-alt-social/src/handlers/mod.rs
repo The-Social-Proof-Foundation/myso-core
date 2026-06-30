@@ -797,6 +797,13 @@ pub enum SocialEventRow {
         event_id: String,
         transaction_id: String,
     },
+    AiCreditUsageLineSettle {
+        receipt_id: String,
+        settlement_tx: String,
+        updated_at_ms: i64,
+        event_id: String,
+        transaction_id: String,
+    },
     ProfileAiCreditBalanceLink {
         profile_id: String,
         ai_credit_balance_id: String,

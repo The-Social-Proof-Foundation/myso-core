@@ -3500,7 +3500,7 @@ fn parse_ai_credit_event(
             Ok(Some(serde_json::json!({
                 "balance_id": addr_to_string(&ev.balance_id),
                 "agent_object_id": addr_to_string(&ev.agent_object_id),
-                "receipt_id": ev.receipt_id,
+                "receipt_id": ev.receipt_id.to_string(),
                 "amount_mist": ev.amount_mist,
                 "usage_kind": ev.usage_kind,
                 "settlement_nonce": ev.settlement_nonce,
@@ -4842,6 +4842,38 @@ mod tests {
             created_at,
         })
         .expect("serialize ProfileCreatedEvent")
+    }
+
+    #[test]
+    fn ai_credit_usage_settled_bcs_roundtrip() {
+        let balance_id = AccountAddress::from_hex_literal(
+            "0x2f41b4f43f505d427e8777c511461de8e50eac26558a996627dded27dce50918",
+        )
+        .unwrap();
+        let agent_object_id = AccountAddress::from_hex_literal(
+            "0x124043762fbf1db8d8ba247c69a66e71702bebfc4f22ac5663a9b089bde73620",
+        )
+        .unwrap();
+        let ev = BcsAiCreditUsageSettledEvent {
+            balance_id,
+            agent_object_id,
+            receipt_id: 132625655239685005677817396617643760670,
+            amount_mist: 222222223,
+            usage_kind: 1,
+            settlement_nonce: 1,
+            remaining_mist: 4_677_777_777,
+            credits_remaining: 4,
+        };
+        let contents = bcs::to_bytes(&ev).expect("serialize AiCreditUsageSettled");
+        let json = parse_event_contents("ai_credit", "AiCreditUsageSettled", &contents)
+            .expect("parse AiCreditUsageSettled")
+            .expect("json payload");
+        assert_eq!(
+            json["receipt_id"],
+            "132625655239685005677817396617643760670"
+        );
+        assert_eq!(json["settlement_nonce"], 1);
+        assert_eq!(json["remaining_mist"], 4_677_777_777);
     }
 
     #[test]

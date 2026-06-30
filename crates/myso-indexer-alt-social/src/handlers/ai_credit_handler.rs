@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use async_trait::async_trait;
+use diesel::BoolExpressionMethods;
 use diesel::ExpressionMethods;
 use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
@@ -17,7 +18,8 @@ use myso_indexer_alt_social_schema::models::{
     NewAiCreditAgentBudget, NewAiCreditBalance, NewAiCreditConfig, NewAiCreditEvent,
 };
 use myso_indexer_alt_social_schema::schema::{
-    ai_credit_agent_budgets, ai_credit_balances, ai_credit_config, ai_credit_events, profiles,
+    ai_credit_agent_budgets, ai_credit_balances, ai_credit_config, ai_credit_events,
+    ai_credit_usage_lines, profiles,
 };
 
 use super::ai_credit;
@@ -72,6 +74,13 @@ pub enum AiCreditRow {
         balance_id: String,
         agent_object_id: String,
         spent_increment_mist: i64,
+        updated_at_ms: i64,
+        event_id: String,
+        transaction_id: String,
+    },
+    UsageLineSettle {
+        receipt_id: String,
+        settlement_tx: String,
         updated_at_ms: i64,
         event_id: String,
         transaction_id: String,
@@ -180,6 +189,19 @@ impl AiCreditRow {
                 balance_id,
                 agent_object_id,
                 spent_increment_mist,
+                updated_at_ms,
+                event_id,
+                transaction_id,
+            }),
+            crate::handlers::SocialEventRow::AiCreditUsageLineSettle {
+                receipt_id,
+                settlement_tx,
+                updated_at_ms,
+                event_id,
+                transaction_id,
+            } => Some(AiCreditRow::UsageLineSettle {
+                receipt_id,
+                settlement_tx,
                 updated_at_ms,
                 event_id,
                 transaction_id,
@@ -313,7 +335,7 @@ impl Handler for AiCreditHandler {
                     event_id,
                     transaction_id,
                 } => {
-                    total += diesel::update(
+                    let affected = diesel::update(
                         ai_credit_balances::table.filter(ai_credit_balances::balance_id.eq(balance_id)),
                     )
                     .set((
@@ -324,6 +346,15 @@ impl Handler for AiCreditHandler {
                     ))
                     .execute(conn)
                     .await?;
+                    if affected == 0 {
+                        tracing::warn!(
+                            balance_id = %balance_id,
+                            event_id = %event_id,
+                            transaction_id = %transaction_id,
+                            "ai_credit balance balance_mist update matched no rows"
+                        );
+                    }
+                    total += affected;
                 }
                 AiCreditRow::BalanceCapsUpdate {
                     balance_id,
@@ -354,13 +385,23 @@ impl Handler for AiCreditHandler {
                     event_id,
                     transaction_id,
                 } => {
-                    total += diesel::update(
-                        ai_credit_balances::table.filter(ai_credit_balances::balance_id.eq(balance_id)),
+                    let affected = diesel::update(
+                        ai_credit_balances::table.filter(
+                            ai_credit_balances::balance_id
+                                .eq(balance_id)
+                                .and(ai_credit_balances::settlement_nonce.lt(*settlement_nonce)),
+                        ),
                     )
                     .set((
                         ai_credit_balances::settlement_nonce.eq(*settlement_nonce),
                         ai_credit_balances::spent_total_mist.eq(
                             ai_credit_balances::spent_total_mist + *spent_increment_mist,
+                        ),
+                        ai_credit_balances::spent_day_mist.eq(
+                            ai_credit_balances::spent_day_mist + *spent_increment_mist,
+                        ),
+                        ai_credit_balances::spent_month_mist.eq(
+                            ai_credit_balances::spent_month_mist + *spent_increment_mist,
                         ),
                         ai_credit_balances::updated_at_ms.eq(*updated_at_ms),
                         ai_credit_balances::event_id.eq(event_id),
@@ -368,6 +409,16 @@ impl Handler for AiCreditHandler {
                     ))
                     .execute(conn)
                     .await?;
+                    if affected == 0 {
+                        tracing::warn!(
+                            balance_id = %balance_id,
+                            settlement_nonce = %settlement_nonce,
+                            event_id = %event_id,
+                            transaction_id = %transaction_id,
+                            "ai_credit balance settlement update matched no rows"
+                        );
+                    }
+                    total += affected;
                 }
                 AiCreditRow::BalanceActiveUpdate {
                     balance_id,
@@ -440,7 +491,7 @@ impl Handler for AiCreditHandler {
                     event_id,
                     transaction_id,
                 } => {
-                    total += diesel::update(
+                    let affected = diesel::update(
                         ai_credit_agent_budgets::table
                             .filter(ai_credit_agent_budgets::balance_id.eq(balance_id))
                             .filter(ai_credit_agent_budgets::agent_object_id.eq(agent_object_id)),
@@ -455,6 +506,44 @@ impl Handler for AiCreditHandler {
                     ))
                     .execute(conn)
                     .await?;
+                    if affected == 0 {
+                        tracing::warn!(
+                            balance_id = %balance_id,
+                            agent_object_id = %agent_object_id,
+                            event_id = %event_id,
+                            transaction_id = %transaction_id,
+                            "ai_credit agent budget spend update matched no rows"
+                        );
+                    }
+                    total += affected;
+                }
+                AiCreditRow::UsageLineSettle {
+                    receipt_id,
+                    settlement_tx,
+                    updated_at_ms: _,
+                    event_id,
+                    transaction_id,
+                } => {
+                    let affected = diesel::update(
+                        ai_credit_usage_lines::table
+                            .filter(ai_credit_usage_lines::receipt_id.eq(receipt_id))
+                            .filter(ai_credit_usage_lines::settled.eq(false)),
+                    )
+                    .set((
+                        ai_credit_usage_lines::settled.eq(true),
+                        ai_credit_usage_lines::settlement_tx.eq(settlement_tx),
+                    ))
+                    .execute(conn)
+                    .await?;
+                    if affected == 0 {
+                        tracing::warn!(
+                            receipt_id = %receipt_id,
+                            event_id = %event_id,
+                            transaction_id = %transaction_id,
+                            "ai_credit usage line settle matched no rows (ingest may lag settlement)"
+                        );
+                    }
+                    total += affected;
                 }
                 AiCreditRow::ProfileAiCreditBalanceLink {
                     profile_id,

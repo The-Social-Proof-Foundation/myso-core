@@ -92,13 +92,113 @@
       "signature_hex": "65652c94c09419a83109db07caed5536534fff2dd821302242375fa5df1ec66350d706db2959d9ba127a9e18547b7cf70e4d6178883ed3f169f8b787f41f0708",
       "settlement_nonce": 3,
       "timestamp_ms": 1782860725896,
-      "settled": false,
+      "settled": true,
       "created_at_ms": 1782860725896
+    },
+    {
+      "receipt_id": 307032926055224781074050647914107364569,
+      "balance_id": "0x431c49f374beba49799df45a8d91a014e5e4623c9803948b7c163dc12087c35c",
+      "memory_account_id": "0xa3cf5b5a6b173463dbd94ca123eaf3a517c45c895ea53617f3eccaa19089c030",
+      "agent_object_id": "0xd6c764177dcebd8d9773a6a8fbbb65591cc24299bf8c33f4337dc71d56d94d86",
+      "amount_mist": 222222223,
+      "usage_kind": 1,
+      "model_id": "openai/gpt-4o-mini",
+      "tool_id": null,
+      "metadata": {
+        "catalog_version": "2026-06-19",
+        "tokens_in": 2000,
+        "tokens_out": 500,
+        "base_mist": 133333334,
+        "margin_mist": 88888889,
+        "ecosystem_margin_pct": 0.125,
+        "myso_usd": 0.0045
+      },
+      "signature_hex": "994b69ebe503564dbc8cb6abbfd4aec91fcfd790f8a3469b53e1f8dfbc535983081ad6c1afc231ddd3920a449f89373dc412e79020f747f002966b295423310e",
+      "settlement_nonce": 1,
+      "timestamp_ms": 1782861871358,
+      "settled": true,
+      "created_at_ms": 1782861871358
+    },
+    {
+      "receipt_id": 155401913524407804805045169459766731750,
+      "balance_id": "0x431c49f374beba49799df45a8d91a014e5e4623c9803948b7c163dc12087c35c",
+      "memory_account_id": "0xa3cf5b5a6b173463dbd94ca123eaf3a517c45c895ea53617f3eccaa19089c030",
+      "agent_object_id": "0xd6c764177dcebd8d9773a6a8fbbb65591cc24299bf8c33f4337dc71d56d94d86",
+      "amount_mist": 222222223,
+      "usage_kind": 1,
+      "model_id": "openai/gpt-4o-mini",
+      "tool_id": null,
+      "metadata": {
+        "catalog_version": "2026-06-19",
+        "tokens_in": 2000,
+        "tokens_out": 500,
+        "base_mist": 133333334,
+        "margin_mist": 88888889,
+        "ecosystem_margin_pct": 0.125,
+        "myso_usd": 0.0045
+      },
+      "signature_hex": "a2ea64e4480bfa2b9ad24ef7c2348363f7ef9f4c19862fd2ec0877dc535494df624bcebb26688e3d2b40f41c3be0a4cc56cfca616a5994194e475841c247650a",
+      "settlement_nonce": 2,
+      "timestamp_ms": 1782861875726,
+      "settled": true,
+      "created_at_ms": 1782861875726
+    },
+    {
+      "receipt_id": 110343354400918150557058554799368224802,
+      "balance_id": "0x431c49f374beba49799df45a8d91a014e5e4623c9803948b7c163dc12087c35c",
+      "memory_account_id": "0xa3cf5b5a6b173463dbd94ca123eaf3a517c45c895ea53617f3eccaa19089c030",
+      "agent_object_id": "0xd6c764177dcebd8d9773a6a8fbbb65591cc24299bf8c33f4337dc71d56d94d86",
+      "amount_mist": 222222223,
+      "usage_kind": 1,
+      "model_id": "openai/gpt-4o-mini",
+      "tool_id": null,
+      "metadata": {
+        "catalog_version": "2026-06-19",
+        "tokens_in": 2000,
+        "tokens_out": 500,
+        "base_mist": 133333334,
+        "margin_mist": 88888889,
+        "ecosystem_margin_pct": 0.125,
+        "myso_usd": 0.0045
+      },
+      "signature_hex": "0f7a917da4bcbf8a1384ecc08b3b8fb3e4b7434ddc8093d4d977b2a85a573c352cc26535af933e70f5358ac27120e0ac2a2d6869e3565c9d604b8efb131d090c",
+      "settlement_nonce": 3,
+      "timestamp_ms": 1782862524926,
+      "settled": true,
+      "created_at_ms": 1782862524926
+    },
+    {
+      "receipt_id": 88258965242276035954351356860966687082,
+      "balance_id": "0x431c49f374beba49799df45a8d91a014e5e4623c9803948b7c163dc12087c35c",
+      "memory_account_id": "0xa3cf5b5a6b173463dbd94ca123eaf3a517c45c895ea53617f3eccaa19089c030",
+      "agent_object_id": "0xd6c764177dcebd8d9773a6a8fbbb65591cc24299bf8c33f4337dc71d56d94d86",
+      "amount_mist": 222222223,
+      "usage_kind": 1,
+      "model_id": "openai/gpt-4o-mini",
+      "tool_id": null,
+      "metadata": {
+        "catalog_version": "2026-06-19",
+        "tokens_in": 2000,
+        "tokens_out": 500,
+        "base_mist": 133333334,
+        "margin_mist": 88888889,
+        "ecosystem_margin_pct": 0.125,
+        "myso_usd": 0.0045
+      },
+      "signature_hex": "78d143a9c3ffa0cd036d8df966eeeb705b3603fafa601a6b2523d296bfd9b1462691cc2dee41e89259037dc4a72fec17f97f4a326c574f09c79a819843ef7f02",
+      "settlement_nonce": 4,
+      "timestamp_ms": 1782862529374,
+      "settled": false,
+      "created_at_ms": 1782862529374
     }
   ],
   "settled_ids": [
+    126555799418900604551142674086776968372,
     165516716406419993019032160590743677176,
-    132625655239685005677817396617643760670,
-    126555799418900604551142674086776968372
+    155401913524407804805045169459766731750,
+    110343354400918150557058554799368224802,
+    307032926055224781074050647914107364569,
+    70318709548070364327446078153307241952,
+    132625655239685005677817396617643760670
   ]
 }

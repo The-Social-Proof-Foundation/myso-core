@@ -23,6 +23,14 @@ fn json_str(data: &serde_json::Value, key: &str) -> Option<String> {
     data.get(key).and_then(|v| v.as_str()).map(String::from)
 }
 
+pub(crate) fn json_receipt_id(data: &serde_json::Value) -> Option<String> {
+    let v = data.get("receipt_id")?;
+    if let Some(s) = v.as_str() {
+        return Some(s.to_string());
+    }
+    v.as_u64().map(|n| n.to_string())
+}
+
 pub fn handle_ai_credit_event(
     event_name: &str,
     data: &serde_json::Value,
@@ -300,10 +308,8 @@ pub fn handle_ai_credit_event(
                 .get("usage_kind")
                 .and_then(|v| v.as_u64())
                 .and_then(|n| i16::try_from(n).ok());
-            let receipt_id = data.get("receipt_id").and_then(|v| {
-                v.as_u64().map(|n| n.to_string())
-            });
-            Some(vec![
+            let receipt_id = json_receipt_id(data);
+            let mut rows = vec![
                 SocialEventRow::AiCreditBalanceBalanceUpdate {
                     balance_id: balance_id.clone(),
                     balance_mist: remaining_mist,
@@ -327,7 +333,17 @@ pub fn handle_ai_credit_event(
                     event_id: event_id.to_string(),
                     transaction_id: transaction_id.clone(),
                 },
-                SocialEventRow::AiCreditEvent(NewAiCreditEvent {
+            ];
+            if let Some(receipt_id) = receipt_id.clone() {
+                rows.push(SocialEventRow::AiCreditUsageLineSettle {
+                    receipt_id,
+                    settlement_tx: transaction_id.clone(),
+                    updated_at_ms: now.timestamp_millis(),
+                    event_id: event_id.to_string(),
+                    transaction_id: transaction_id.clone(),
+                });
+            }
+            rows.push(SocialEventRow::AiCreditEvent(NewAiCreditEvent {
                     event_type: event_name.to_string(),
                     balance_id: Some(balance_id),
                     memory_account_id: None,
@@ -349,8 +365,8 @@ pub fn handle_ai_credit_event(
                     event_id: event_id.to_string(),
                     transaction_id,
                     time: now,
-                }),
-            ])
+                }));
+            Some(rows)
         }
         "AiCreditBalancePaused" | "AiCreditBalanceReactivated" => {
             let balance_id = json_str(data, "balance_id")?;
@@ -505,5 +521,57 @@ pub fn handle_ai_credit_event(
             ])
         }
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::handlers::SocialEventRow;
+
+    #[test]
+    fn usage_settled_emits_balance_usage_line_and_audit_rows() {
+        let data = serde_json::json!({
+            "balance_id": "0x2f41b4f43f505d427e8777c511461de8e50eac26558a996627dded27dce50918",
+            "agent_object_id": "0x124043762fbf1db8d8ba247c69a66e71702bebfc4f22ac5663a9b089bde73620",
+            "receipt_id": "132625655239685005677817396617643760670",
+            "amount_mist": 222222223,
+            "usage_kind": 1,
+            "settlement_nonce": 1,
+            "remaining_mist": 4677777777_i64,
+            "credits_remaining": 4
+        });
+        let rows = handle_ai_credit_event("AiCreditUsageSettled", &data, "tx:0")
+            .expect("handler should produce rows");
+        assert_eq!(rows.len(), 5);
+        assert!(rows.iter().any(|r| {
+            matches!(r, SocialEventRow::AiCreditBalanceSettlementUpdate { settlement_nonce: 1, .. })
+        }));
+        assert!(rows.iter().any(|r| {
+            matches!(
+                r,
+                SocialEventRow::AiCreditUsageLineSettle {
+                    receipt_id,
+                    settlement_tx,
+                    ..
+                } if receipt_id == "132625655239685005677817396617643760670"
+                    && settlement_tx == "tx"
+            )
+        }));
+        assert!(rows.iter().any(|r| {
+            matches!(
+                r,
+                SocialEventRow::AiCreditEvent(e) if e.event_type == "AiCreditUsageSettled"
+                    && e.receipt_id.as_deref() == Some("132625655239685005677817396617643760670")
+            )
+        }));
+    }
+
+    #[test]
+    fn json_receipt_id_parses_string_and_u64() {
+        let from_str = json_receipt_id(&serde_json::json!({ "receipt_id": "999" }));
+        assert_eq!(from_str.as_deref(), Some("999"));
+        let from_u64 = json_receipt_id(&serde_json::json!({ "receipt_id": 42 }));
+        assert_eq!(from_u64.as_deref(), Some("42"));
     }
 }
