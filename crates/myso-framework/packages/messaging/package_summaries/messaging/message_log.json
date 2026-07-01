@@ -1,0 +1,1343 @@
+{
+  "id": {
+    "address": "messaging",
+    "name": "message_log"
+  },
+  "doc": " Per-group **paid message escrow** only (`MYSO`). Free messaging, digests, reactions,\n pins, and receipts live off-chain (relayer / clients).\n\n Authorization is enforced in `messaging`; this module holds escrow state and invariants.",
+  "immediate_dependencies": [
+    {
+      "address": "messaging",
+      "name": "paid_escrow_settlement"
+    },
+    {
+      "address": "myso",
+      "name": "balance"
+    },
+    {
+      "address": "myso",
+      "name": "clock"
+    },
+    {
+      "address": "myso",
+      "name": "coin"
+    },
+    {
+      "address": "myso",
+      "name": "derived_object"
+    },
+    {
+      "address": "myso",
+      "name": "event"
+    },
+    {
+      "address": "myso",
+      "name": "myso"
+    },
+    {
+      "address": "myso",
+      "name": "object"
+    },
+    {
+      "address": "myso",
+      "name": "table"
+    },
+    {
+      "address": "myso",
+      "name": "transfer"
+    },
+    {
+      "address": "myso",
+      "name": "tx_context"
+    },
+    {
+      "address": "std",
+      "name": "string"
+    }
+  ],
+  "attributes": [],
+  "functions": {
+    "new": {
+      "source_index": 0,
+      "index": 0,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "namespace_uid",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "object"
+                  },
+                  "name": "UID",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "uuid",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "string"
+              },
+              "name": "String",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "group_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "messaging",
+              "name": "message_log"
+            },
+            "name": "MessageLog",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "group_id": {
+      "source_index": 1,
+      "index": 1,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "message_log"
+                  },
+                  "name": "MessageLog",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "object"
+            },
+            "name": "ID",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "uuid": {
+      "source_index": 2,
+      "index": 2,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "message_log"
+                  },
+                  "name": "MessageLog",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "std",
+              "name": "string"
+            },
+            "name": "String",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "next_seq": {
+      "source_index": 3,
+      "index": 3,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "message_log"
+                  },
+                  "name": "MessageLog",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "paid_message_parties": {
+      "source_index": 4,
+      "index": 4,
+      "doc": " Returns `(payer, recipient)` for a paid message escrow entry.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "message_log"
+                  },
+                  "name": "MessageLog",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "paid_msg_seq",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        "address",
+        "address"
+      ]
+    },
+    "consume_dedupe_and_nonce": {
+      "source_index": 5,
+      "index": 5,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "message_log"
+                  },
+                  "name": "MessageLog",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "sender",
+          "type_": "address"
+        },
+        {
+          "name": "dedupe_key",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "nonce",
+          "type_": "u128"
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "send_paid_message": {
+      "source_index": 6,
+      "index": 6,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "message_log"
+                  },
+                  "name": "MessageLog",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "sender",
+          "type_": "address"
+        },
+        {
+          "name": "recipient",
+          "type_": "address"
+        },
+        {
+          "name": "payment",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "coin"
+              },
+              "name": "Coin",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "myso"
+                      },
+                      "name": "MYSO",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "escrow_amount",
+          "type_": "u64"
+        },
+        {
+          "name": "dedupe_key",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "nonce",
+          "type_": "u128"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "reply_to_paid_message_claim_coin": {
+      "source_index": 7,
+      "index": 7,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "message_log"
+                  },
+                  "name": "MessageLog",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "sender",
+          "type_": "address"
+        },
+        {
+          "name": "paid_msg_seq",
+          "type_": "u64"
+        },
+        {
+          "name": "char_count",
+          "type_": "u32"
+        },
+        {
+          "name": "dedupe_key",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "nonce",
+          "type_": "u128"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "coin"
+            },
+            "name": "Coin",
+            "type_arguments": [
+              {
+                "phantom": true,
+                "argument": {
+                  "Datatype": {
+                    "module": {
+                      "address": "myso",
+                      "name": "myso"
+                    },
+                    "name": "MYSO",
+                    "type_arguments": []
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "reply_to_paid_message_claim_settled": {
+      "source_index": 8,
+      "index": 8,
+      "doc": " Same as [`reply_to_paid_message_claim_coin`], then splits escrow per paid-message BPS to\n `platform_fee_recipient`, `ecosystem_fee_recipient`, and the original paid-message recipient.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "message_log"
+                  },
+                  "name": "MessageLog",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "sender",
+          "type_": "address"
+        },
+        {
+          "name": "paid_msg_seq",
+          "type_": "u64"
+        },
+        {
+          "name": "char_count",
+          "type_": "u32"
+        },
+        {
+          "name": "dedupe_key",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "nonce",
+          "type_": "u128"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "platform_fee_recipient",
+          "type_": "address"
+        },
+        {
+          "name": "ecosystem_fee_recipient",
+          "type_": "address"
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "refund_paid_message": {
+      "source_index": 9,
+      "index": 9,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "message_log"
+                  },
+                  "name": "MessageLog",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "sender",
+          "type_": "address"
+        },
+        {
+          "name": "paid_msg_seq",
+          "type_": "u64"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    }
+  },
+  "structs": {
+    "MessageLogTag": {
+      "index": 0,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": true,
+        "fields": {
+          "pos0": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "string"
+                },
+                "name": "String",
+                "type_arguments": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "PaidMessageEscrow": {
+      "index": 1,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "payer": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "recipient": {
+            "index": 1,
+            "doc": null,
+            "type_": "address"
+          },
+          "amount": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "escrowed_balance": {
+            "index": 3,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "balance"
+                },
+                "name": "Balance",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "myso"
+                        },
+                        "name": "MYSO",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "created_at_ms": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "claimed": {
+            "index": 5,
+            "doc": null,
+            "type_": "bool"
+          }
+        }
+      }
+    },
+    "MessageLog": {
+      "index": 2,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Key",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          },
+          "group_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "uuid": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "string"
+                },
+                "name": "String",
+                "type_arguments": []
+              }
+            }
+          },
+          "next_seq": {
+            "index": 3,
+            "doc": " Monotonic id for each paid send (`seq` indexes `paid_msg_escrow`).",
+            "type_": "u64"
+          },
+          "used_dedupe": {
+            "index": 4,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "table"
+                },
+                "name": "Table",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "vector": "u8"
+                    }
+                  },
+                  {
+                    "phantom": true,
+                    "argument": "bool"
+                  }
+                ]
+              }
+            }
+          },
+          "nonces": {
+            "index": 5,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "table"
+                },
+                "name": "Table",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": "address"
+                  },
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "table"
+                        },
+                        "name": "Table",
+                        "type_arguments": [
+                          {
+                            "phantom": true,
+                            "argument": "u128"
+                          },
+                          {
+                            "phantom": true,
+                            "argument": "bool"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "paid_msg_escrow": {
+            "index": 6,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "table"
+                },
+                "name": "Table",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": "u64"
+                  },
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "messaging",
+                          "name": "message_log"
+                        },
+                        "name": "PaidMessageEscrow",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "MessageLogCreated": {
+      "index": 3,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "message_log_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "group_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "uuid": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "string"
+                },
+                "name": "String",
+                "type_arguments": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "PaidMessageSent": {
+      "index": 4,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "group_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "seq": {
+            "index": 1,
+            "doc": null,
+            "type_": "u64"
+          },
+          "payer": {
+            "index": 2,
+            "doc": null,
+            "type_": "address"
+          },
+          "recipient": {
+            "index": 3,
+            "doc": null,
+            "type_": "address"
+          },
+          "amount": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "created_at_ms": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "PaidMessageReplied": {
+      "index": 5,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "group_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "paid_msg_seq": {
+            "index": 1,
+            "doc": null,
+            "type_": "u64"
+          },
+          "recipient": {
+            "index": 2,
+            "doc": null,
+            "type_": "address"
+          },
+          "reply_char_count": {
+            "index": 3,
+            "doc": null,
+            "type_": "u32"
+          }
+        }
+      }
+    },
+    "PaymentClaimed": {
+      "index": 6,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "group_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "seq": {
+            "index": 1,
+            "doc": null,
+            "type_": "u64"
+          },
+          "recipient": {
+            "index": 2,
+            "doc": null,
+            "type_": "address"
+          },
+          "amount": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "claimed_at_ms": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "PaymentClaimedSettled": {
+      "index": 7,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "group_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "seq": {
+            "index": 1,
+            "doc": null,
+            "type_": "u64"
+          },
+          "recipient": {
+            "index": 2,
+            "doc": null,
+            "type_": "address"
+          },
+          "total_amount": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "platform_fee": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "treasury_fee": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "net_amount": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "platform_fee_recipient": {
+            "index": 7,
+            "doc": null,
+            "type_": "address"
+          },
+          "ecosystem_fee_recipient": {
+            "index": 8,
+            "doc": null,
+            "type_": "address"
+          },
+          "claimed_at_ms": {
+            "index": 9,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "PaymentRefunded": {
+      "index": 8,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "group_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "seq": {
+            "index": 1,
+            "doc": null,
+            "type_": "u64"
+          },
+          "payer": {
+            "index": 2,
+            "doc": null,
+            "type_": "address"
+          },
+          "amount": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "refunded_at_ms": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    }
+  },
+  "enums": {}
+}

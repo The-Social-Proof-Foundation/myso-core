@@ -1,0 +1,2408 @@
+{
+  "id": {
+    "address": "orderbook",
+    "name": "order_info"
+  },
+  "doc": " Order module defines the order struct and its methods.\n All order matching happens in this module.",
+  "immediate_dependencies": [
+    {
+      "address": "myso",
+      "name": "event"
+    },
+    {
+      "address": "myso",
+      "name": "object"
+    },
+    {
+      "address": "orderbook",
+      "name": "balances"
+    },
+    {
+      "address": "orderbook",
+      "name": "constants"
+    },
+    {
+      "address": "orderbook",
+      "name": "fill"
+    },
+    {
+      "address": "orderbook",
+      "name": "math"
+    },
+    {
+      "address": "orderbook",
+      "name": "myso_price"
+    },
+    {
+      "address": "orderbook",
+      "name": "order"
+    }
+  ],
+  "attributes": [],
+  "functions": {
+    "pool_id": {
+      "source_index": 0,
+      "index": 0,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "object"
+            },
+            "name": "ID",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "order_id": {
+      "source_index": 1,
+      "index": 1,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u128"
+      ]
+    },
+    "balance_manager_id": {
+      "source_index": 2,
+      "index": 2,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "object"
+            },
+            "name": "ID",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "client_order_id": {
+      "source_index": 3,
+      "index": 3,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "trader": {
+      "source_index": 4,
+      "index": 4,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "address"
+      ]
+    },
+    "order_type": {
+      "source_index": 5,
+      "index": 5,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u8"
+      ]
+    },
+    "self_matching_option": {
+      "source_index": 6,
+      "index": 6,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u8"
+      ]
+    },
+    "price": {
+      "source_index": 7,
+      "index": 7,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "is_bid": {
+      "source_index": 8,
+      "index": 8,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "original_quantity": {
+      "source_index": 9,
+      "index": 9,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "order_myso_price": {
+      "source_index": 10,
+      "index": 10,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "orderbook",
+              "name": "myso_price"
+            },
+            "name": "OrderMySoPrice",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "expire_timestamp": {
+      "source_index": 11,
+      "index": 11,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "executed_quantity": {
+      "source_index": 12,
+      "index": 12,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "cumulative_quote_quantity": {
+      "source_index": 13,
+      "index": 13,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "fills": {
+      "source_index": 14,
+      "index": 14,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "vector": {
+            "Datatype": {
+              "module": {
+                "address": "orderbook",
+                "name": "fill"
+              },
+              "name": "Fill",
+              "type_arguments": []
+            }
+          }
+        }
+      ]
+    },
+    "fee_is_myso": {
+      "source_index": 15,
+      "index": 15,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "paid_fees": {
+      "source_index": 16,
+      "index": 16,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "maker_fees": {
+      "source_index": 17,
+      "index": 17,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "epoch": {
+      "source_index": 18,
+      "index": 18,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "status": {
+      "source_index": 19,
+      "index": 19,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u8"
+      ]
+    },
+    "fill_limit_reached": {
+      "source_index": 20,
+      "index": 20,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "order_inserted": {
+      "source_index": 21,
+      "index": 21,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "new": {
+      "source_index": 22,
+      "index": 22,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "pool_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "balance_manager_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "client_order_id",
+          "type_": "u64"
+        },
+        {
+          "name": "trader",
+          "type_": "address"
+        },
+        {
+          "name": "order_type",
+          "type_": "u8"
+        },
+        {
+          "name": "self_matching_option",
+          "type_": "u8"
+        },
+        {
+          "name": "price",
+          "type_": "u64"
+        },
+        {
+          "name": "quantity",
+          "type_": "u64"
+        },
+        {
+          "name": "is_bid",
+          "type_": "bool"
+        },
+        {
+          "name": "fee_is_myso",
+          "type_": "bool"
+        },
+        {
+          "name": "epoch",
+          "type_": "u64"
+        },
+        {
+          "name": "expire_timestamp",
+          "type_": "u64"
+        },
+        {
+          "name": "order_myso_price",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "orderbook",
+                "name": "myso_price"
+              },
+              "name": "OrderMySoPrice",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "market_order",
+          "type_": "bool"
+        },
+        {
+          "name": "timestamp",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "orderbook",
+              "name": "order_info"
+            },
+            "name": "OrderInfo",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "market_order": {
+      "source_index": 23,
+      "index": 23,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "set_order_id": {
+      "source_index": 24,
+      "index": 24,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "order_id",
+          "type_": "u128"
+        }
+      ],
+      "return_": []
+    },
+    "set_paid_fees": {
+      "source_index": 25,
+      "index": 25,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "paid_fees",
+          "type_": "u64"
+        }
+      ],
+      "return_": []
+    },
+    "add_fill": {
+      "source_index": 26,
+      "index": 26,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "fill",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "orderbook",
+                "name": "fill"
+              },
+              "name": "Fill",
+              "type_arguments": []
+            }
+          }
+        }
+      ],
+      "return_": []
+    },
+    "fills_ref": {
+      "source_index": 27,
+      "index": 27,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            true,
+            {
+              "vector": {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "fill"
+                  },
+                  "name": "Fill",
+                  "type_arguments": []
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "paid_fees_balances": {
+      "source_index": 28,
+      "index": 28,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "orderbook",
+              "name": "balances"
+            },
+            "name": "Balances",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "calculate_partial_fill_balances": {
+      "source_index": 29,
+      "index": 29,
+      "doc": " Given a partially filled `OrderInfo`, the taker fee and maker fee, for the user\n placing the order, calculate all of the balances that need to be settled and\n the balances that are owed. The executed quantity is multiplied by the taker_fee\n and the remaining quantity is multiplied by the maker_fee to get the MYSO fee.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "taker_fee",
+          "type_": "u64"
+        },
+        {
+          "name": "maker_fee",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "orderbook",
+              "name": "balances"
+            },
+            "name": "Balances",
+            "type_arguments": []
+          }
+        },
+        {
+          "Datatype": {
+            "module": {
+              "address": "orderbook",
+              "name": "balances"
+            },
+            "name": "Balances",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "to_order": {
+      "source_index": 30,
+      "index": 30,
+      "doc": " `OrderInfo` is converted to an `Order` before being injected into the order book.\n This is done to save space in the order book. Order contains the minimum\n information required to match orders.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "orderbook",
+              "name": "order"
+            },
+            "name": "Order",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "validate_inputs": {
+      "source_index": 31,
+      "index": 31,
+      "doc": " Validates that the initial order created meets the pool requirements.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "order_info",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "tick_size",
+          "type_": "u64"
+        },
+        {
+          "name": "min_size",
+          "type_": "u64"
+        },
+        {
+          "name": "lot_size",
+          "type_": "u64"
+        },
+        {
+          "name": "timestamp",
+          "type_": "u64"
+        }
+      ],
+      "return_": []
+    },
+    "assert_execution": {
+      "source_index": 32,
+      "index": 32,
+      "doc": " Assert order types after partial fill against the order book.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "remaining_quantity": {
+      "source_index": 33,
+      "index": 33,
+      "doc": " Returns the remaining quantity for the order.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "can_match": {
+      "source_index": 34,
+      "index": 34,
+      "doc": " Returns true if two opposite orders are overlapping in price.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "order",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order"
+                  },
+                  "name": "Order",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "match_maker": {
+      "source_index": 35,
+      "index": 35,
+      "doc": " Matches an `OrderInfo` with an `Order` from the book. Appends a `Fill` to fills.\n If the book order is expired, the `Fill` will have the expired flag set to true.\n Funds for the match or an expired order are returned to the maker as settled.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "maker",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order"
+                  },
+                  "name": "Order",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "timestamp",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "emit_orders_filled": {
+      "source_index": 36,
+      "index": 36,
+      "doc": " Emit all fills for this order in a vector of `OrderFilled` events.\n To avoid DOS attacks, 100 fills are emitted at a time. Up to 10,000\n fills can be emitted in a single call.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "timestamp",
+          "type_": "u64"
+        }
+      ],
+      "return_": []
+    },
+    "emit_order_placed": {
+      "source_index": 37,
+      "index": 37,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "emit_order_info": {
+      "source_index": 38,
+      "index": 38,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "emit_order_fully_filled_if_filled": {
+      "source_index": 39,
+      "index": 39,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "timestamp",
+          "type_": "u64"
+        }
+      ],
+      "return_": []
+    },
+    "emit_order_fully_filled": {
+      "source_index": 40,
+      "index": 40,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "order_id",
+          "type_": "u128"
+        },
+        {
+          "name": "client_order_id",
+          "type_": "u64"
+        },
+        {
+          "name": "balance_manager_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "original_quantity",
+          "type_": "u64"
+        },
+        {
+          "name": "is_bid",
+          "type_": "bool"
+        },
+        {
+          "name": "timestamp",
+          "type_": "u64"
+        }
+      ],
+      "return_": []
+    },
+    "set_fill_limit_reached": {
+      "source_index": 41,
+      "index": 41,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "set_order_inserted": {
+      "source_index": 42,
+      "index": 42,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "order_filled_from_fill": {
+      "source_index": 43,
+      "index": 43,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "fill",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "fill"
+                  },
+                  "name": "Fill",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "timestamp",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "orderbook",
+              "name": "order_info"
+            },
+            "name": "OrderFilled",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "order_expired_from_fill": {
+      "source_index": 44,
+      "index": 44,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "fill",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "fill"
+                  },
+                  "name": "Fill",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "timestamp",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "orderbook",
+              "name": "order_info"
+            },
+            "name": "OrderExpired",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "emit_order_canceled_maker_from_fill": {
+      "source_index": 45,
+      "index": 45,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_info"
+                  },
+                  "name": "OrderInfo",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "fill",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "fill"
+                  },
+                  "name": "Fill",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "timestamp",
+          "type_": "u64"
+        }
+      ],
+      "return_": []
+    }
+  },
+  "structs": {
+    "OrderInfo": {
+      "index": 0,
+      "doc": " OrderInfo struct represents all order information.\n This objects gets created at the beginning of the order lifecycle and\n gets updated until it is completed or placed in the book.\n It is returned at the end of the order lifecycle.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "pool_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "order_id": {
+            "index": 1,
+            "doc": null,
+            "type_": "u128"
+          },
+          "balance_manager_id": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "client_order_id": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "trader": {
+            "index": 4,
+            "doc": null,
+            "type_": "address"
+          },
+          "order_type": {
+            "index": 5,
+            "doc": null,
+            "type_": "u8"
+          },
+          "self_matching_option": {
+            "index": 6,
+            "doc": null,
+            "type_": "u8"
+          },
+          "price": {
+            "index": 7,
+            "doc": null,
+            "type_": "u64"
+          },
+          "is_bid": {
+            "index": 8,
+            "doc": null,
+            "type_": "bool"
+          },
+          "original_quantity": {
+            "index": 9,
+            "doc": null,
+            "type_": "u64"
+          },
+          "order_myso_price": {
+            "index": 10,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "orderbook",
+                  "name": "myso_price"
+                },
+                "name": "OrderMySoPrice",
+                "type_arguments": []
+              }
+            }
+          },
+          "expire_timestamp": {
+            "index": 11,
+            "doc": null,
+            "type_": "u64"
+          },
+          "executed_quantity": {
+            "index": 12,
+            "doc": null,
+            "type_": "u64"
+          },
+          "cumulative_quote_quantity": {
+            "index": 13,
+            "doc": null,
+            "type_": "u64"
+          },
+          "fills": {
+            "index": 14,
+            "doc": null,
+            "type_": {
+              "vector": {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "fill"
+                  },
+                  "name": "Fill",
+                  "type_arguments": []
+                }
+              }
+            }
+          },
+          "fee_is_myso": {
+            "index": 15,
+            "doc": null,
+            "type_": "bool"
+          },
+          "paid_fees": {
+            "index": 16,
+            "doc": null,
+            "type_": "u64"
+          },
+          "maker_fees": {
+            "index": 17,
+            "doc": null,
+            "type_": "u64"
+          },
+          "epoch": {
+            "index": 18,
+            "doc": null,
+            "type_": "u64"
+          },
+          "status": {
+            "index": 19,
+            "doc": null,
+            "type_": "u8"
+          },
+          "market_order": {
+            "index": 20,
+            "doc": null,
+            "type_": "bool"
+          },
+          "fill_limit_reached": {
+            "index": 21,
+            "doc": null,
+            "type_": "bool"
+          },
+          "order_inserted": {
+            "index": 22,
+            "doc": null,
+            "type_": "bool"
+          },
+          "timestamp": {
+            "index": 23,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "OrderFilled": {
+      "index": 1,
+      "doc": " Emitted when a maker order is filled.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "pool_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "maker_order_id": {
+            "index": 1,
+            "doc": null,
+            "type_": "u128"
+          },
+          "taker_order_id": {
+            "index": 2,
+            "doc": null,
+            "type_": "u128"
+          },
+          "maker_client_order_id": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "taker_client_order_id": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "price": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "taker_is_bid": {
+            "index": 6,
+            "doc": null,
+            "type_": "bool"
+          },
+          "taker_fee": {
+            "index": 7,
+            "doc": null,
+            "type_": "u64"
+          },
+          "taker_fee_is_myso": {
+            "index": 8,
+            "doc": null,
+            "type_": "bool"
+          },
+          "maker_fee": {
+            "index": 9,
+            "doc": null,
+            "type_": "u64"
+          },
+          "maker_fee_is_myso": {
+            "index": 10,
+            "doc": null,
+            "type_": "bool"
+          },
+          "base_quantity": {
+            "index": 11,
+            "doc": null,
+            "type_": "u64"
+          },
+          "quote_quantity": {
+            "index": 12,
+            "doc": null,
+            "type_": "u64"
+          },
+          "maker_balance_manager_id": {
+            "index": 13,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "taker_balance_manager_id": {
+            "index": 14,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "timestamp": {
+            "index": 15,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "OrderPlaced": {
+      "index": 2,
+      "doc": " Emitted when a maker order is injected into the order book.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "balance_manager_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "pool_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "order_id": {
+            "index": 2,
+            "doc": null,
+            "type_": "u128"
+          },
+          "client_order_id": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "trader": {
+            "index": 4,
+            "doc": null,
+            "type_": "address"
+          },
+          "price": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "is_bid": {
+            "index": 6,
+            "doc": null,
+            "type_": "bool"
+          },
+          "placed_quantity": {
+            "index": 7,
+            "doc": null,
+            "type_": "u64"
+          },
+          "expire_timestamp": {
+            "index": 8,
+            "doc": null,
+            "type_": "u64"
+          },
+          "timestamp": {
+            "index": 9,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "OrderExpired": {
+      "index": 3,
+      "doc": " Emitted when a maker order is expired.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "balance_manager_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "pool_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "order_id": {
+            "index": 2,
+            "doc": null,
+            "type_": "u128"
+          },
+          "client_order_id": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "trader": {
+            "index": 4,
+            "doc": null,
+            "type_": "address"
+          },
+          "price": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "is_bid": {
+            "index": 6,
+            "doc": null,
+            "type_": "bool"
+          },
+          "original_quantity": {
+            "index": 7,
+            "doc": null,
+            "type_": "u64"
+          },
+          "base_asset_quantity_canceled": {
+            "index": 8,
+            "doc": null,
+            "type_": "u64"
+          },
+          "timestamp": {
+            "index": 9,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "OrderFullyFilled": {
+      "index": 4,
+      "doc": " Emitted when an order is fully filled.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "pool_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "order_id": {
+            "index": 1,
+            "doc": null,
+            "type_": "u128"
+          },
+          "client_order_id": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "balance_manager_id": {
+            "index": 3,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "original_quantity": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "is_bid": {
+            "index": 5,
+            "doc": null,
+            "type_": "bool"
+          },
+          "timestamp": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    }
+  },
+  "enums": {}
+}

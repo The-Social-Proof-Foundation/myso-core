@@ -1,0 +1,137 @@
+{
+  "id": {
+    "address": "mydata",
+    "name": "merkle"
+  },
+  "doc": " Reusable Merkle proof verification for claim settlement.\n Tree construction happens offchain; onchain only verifies proofs.\n Uses Blake2b-256 for hashing, aligned with accumulator_settlement pattern.",
+  "immediate_dependencies": [
+    {
+      "address": "myso",
+      "name": "bcs"
+    },
+    {
+      "address": "myso",
+      "name": "hash"
+    },
+    {
+      "address": "std",
+      "name": "vector"
+    }
+  ],
+  "attributes": [],
+  "functions": {
+    "verify_proof": {
+      "source_index": 0,
+      "index": 0,
+      "doc": " Verify that a leaf is included in a Merkle tree with the given root.\n @param leaf - Hash of the leaf (e.g. from leaf_hash)\n @param proof - Sibling hashes from leaf level up to root (excluding root)\n @param leaf_index - Index of the leaf in the tree (0 = leftmost)\n @param root - Expected Merkle root",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "leaf",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "proof",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "vector": {
+                  "vector": "u8"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "leaf_index",
+          "type_": "u64"
+        },
+        {
+          "name": "root",
+          "type_": {
+            "vector": "u8"
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "hash_pair": {
+      "source_index": 1,
+      "index": 1,
+      "doc": " Hash two 32-byte values for Merkle tree internal node.\n Order matters: hash(left || right).",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "left",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "vector": "u8"
+              }
+            ]
+          }
+        },
+        {
+          "name": "right",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "vector": "u8"
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "vector": "u8"
+        }
+      ]
+    },
+    "leaf_hash": {
+      "source_index": 2,
+      "index": 2,
+      "doc": " Construct leaf hash for claim verification.\n Leaf = blake2b256(address || amount || snapshot_id).",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "addr",
+          "type_": "address"
+        },
+        {
+          "name": "amount",
+          "type_": "u64"
+        },
+        {
+          "name": "snapshot_id",
+          "type_": {
+            "vector": "u8"
+          }
+        }
+      ],
+      "return_": [
+        {
+          "vector": "u8"
+        }
+      ]
+    }
+  },
+  "structs": {},
+  "enums": {}
+}

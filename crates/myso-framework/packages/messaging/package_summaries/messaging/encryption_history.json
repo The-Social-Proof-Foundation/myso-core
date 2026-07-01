@@ -1,0 +1,673 @@
+{
+  "id": {
+    "address": "messaging",
+    "name": "encryption_history"
+  },
+  "doc": " Module: encryption_history\n\n Internal module for envelope encryption key management.\n Stores encrypted DEKs (Data Encryption Keys) with version tracking for key rotation.\n\n `EncryptionHistory` is a derived object from `MessagingNamespace`, enabling\n deterministic address derivation for MyData encryption namespacing.\n\n Uses client-provided UUIDs for derivation, enabling predictable group IDs\n for single-transaction encryption with MyData.\n\n All public entry points are in the `messaging` module:\n - `messaging::create_group` - creates group with encryption\n - `messaging::rotate_encryption_key` - rotates keys\n",
+  "immediate_dependencies": [
+    {
+      "address": "myso",
+      "name": "derived_object"
+    },
+    {
+      "address": "myso",
+      "name": "event"
+    },
+    {
+      "address": "myso",
+      "name": "object"
+    },
+    {
+      "address": "myso",
+      "name": "table_vec"
+    },
+    {
+      "address": "myso",
+      "name": "tx_context"
+    },
+    {
+      "address": "std",
+      "name": "string"
+    }
+  ],
+  "attributes": [],
+  "functions": {
+    "new": {
+      "source_index": 0,
+      "index": 0,
+      "doc": " Creates a new `EncryptionHistory` derived from the namespace.\n Uses `EncryptionHistoryTag(uuid)` as the derivation key.\n\n # Parameters\n - `namespace_uid`: Mutable reference to the MessagingNamespace UID\n - `uuid`: Client-provided UUID for deterministic address derivation\n - `group_id`: ID of the associated PermissionedGroup<Messaging>\n - `initial_encrypted_dek`: Initial MyData-encrypted DEK bytes\n - `ctx`: Transaction context\n\n # Returns\n A new `EncryptionHistory` object.\n\n # Aborts\n - `EEncryptionHistoryAlreadyExists`: if derived address is already claimed (duplicate UUID)\n - `EEncryptedDEKTooLarge`: if the initial DEK exceeds maximum size",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "namespace_uid",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "object"
+                  },
+                  "name": "UID",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "uuid",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "string"
+              },
+              "name": "String",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "group_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "initial_encrypted_dek",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "messaging",
+              "name": "encryption_history"
+            },
+            "name": "EncryptionHistory",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "rotate_key": {
+      "source_index": 1,
+      "index": 1,
+      "doc": " Appends a new encrypted DEK. Caller must verify permissions.\n\n # Parameters\n - `self`: Mutable reference to the EncryptionHistory\n - `new_encrypted_dek`: New MyData-encrypted DEK bytes\n\n # Aborts\n - `EEncryptedDEKTooLarge`: if the new DEK exceeds maximum size",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "encryption_history"
+                  },
+                  "name": "EncryptionHistory",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "new_encrypted_dek",
+          "type_": {
+            "vector": "u8"
+          }
+        }
+      ],
+      "return_": []
+    },
+    "permissions_group_tag": {
+      "source_index": 2,
+      "index": 2,
+      "doc": " Returns the `PermissionedGroupTag` for address derivation.\n\n # Parameters\n - `uuid`: Client-provided UUID for deterministic address derivation\n\n # Returns\n A `PermissionedGroupTag` wrapping the UUID.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "uuid",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "string"
+              },
+              "name": "String",
+              "type_arguments": []
+            }
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "messaging",
+              "name": "encryption_history"
+            },
+            "name": "PermissionedGroupTag",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "group_id": {
+      "source_index": 3,
+      "index": 3,
+      "doc": " Returns the associated `PermissionedGroup<Messaging>` ID.\n\n # Parameters\n - `self`: Reference to the EncryptionHistory\n\n # Returns\n The group ID.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "encryption_history"
+                  },
+                  "name": "EncryptionHistory",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "object"
+            },
+            "name": "ID",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "uuid": {
+      "source_index": 4,
+      "index": 4,
+      "doc": " Returns the UUID used for derivation.\n\n # Parameters\n - `self`: Reference to the EncryptionHistory\n\n # Returns\n The UUID string.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "encryption_history"
+                  },
+                  "name": "EncryptionHistory",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "std",
+              "name": "string"
+            },
+            "name": "String",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "current_key_version": {
+      "source_index": 5,
+      "index": 5,
+      "doc": " Returns the current key version (0-indexed).\n\n # Parameters\n - `self`: Reference to the EncryptionHistory\n\n # Returns\n The current (latest) key version.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "encryption_history"
+                  },
+                  "name": "EncryptionHistory",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "encrypted_key": {
+      "source_index": 6,
+      "index": 6,
+      "doc": " Returns the encrypted DEK for a specific version.\n\n # Parameters\n - `self`: Reference to the EncryptionHistory\n - `version`: The key version to retrieve (0-indexed)\n\n # Returns\n Reference to the encrypted DEK bytes.\n\n # Aborts\n - `EKeyVersionNotFound`: if the version doesn't exist",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "encryption_history"
+                  },
+                  "name": "EncryptionHistory",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "version",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            false,
+            {
+              "vector": "u8"
+            }
+          ]
+        }
+      ]
+    },
+    "current_encrypted_key": {
+      "source_index": 7,
+      "index": 7,
+      "doc": " Returns the encrypted DEK for the current (latest) version.\n\n # Parameters\n - `self`: Reference to the EncryptionHistory\n\n # Returns\n Reference to the current encrypted DEK bytes.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "encryption_history"
+                  },
+                  "name": "EncryptionHistory",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            false,
+            {
+              "vector": "u8"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "structs": {
+    "EncryptionHistoryTag": {
+      "index": 0,
+      "doc": " Key for deriving `EncryptionHistory` address from `MessagingNamespace`.\n Uses client-provided UUID (String) for predictable address derivation.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": true,
+        "fields": {
+          "pos0": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "string"
+                },
+                "name": "String",
+                "type_arguments": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "PermissionedGroupTag": {
+      "index": 1,
+      "doc": " Key for deriving `PermissionedGroup<Messaging>` address from `MessagingNamespace`.\n Uses client-provided UUID (String) for predictable address derivation.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": true,
+        "fields": {
+          "pos0": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "string"
+                },
+                "name": "String",
+                "type_arguments": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "EncryptionKeyRotator": {
+      "index": 2,
+      "doc": " Permission to rotate encryption keys. Auto-granted to group creator.",
+      "attributes": [],
+      "abilities": [
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": true,
+        "fields": {
+          "dummy_field": {
+            "index": 0,
+            "type_": "bool"
+          }
+        }
+      }
+    },
+    "EncryptionHistory": {
+      "index": 3,
+      "doc": " Encrypted key history for a messaging group.\n Derived object from `MessagingNamespace` with 1:1 relationship to `PermissionedGroup<Messaging>`.",
+      "attributes": [],
+      "abilities": [
+        "Key",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          },
+          "group_id": {
+            "index": 1,
+            "doc": " Associated `PermissionedGroup<Messaging>` ID.",
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "uuid": {
+            "index": 2,
+            "doc": " UUID used for derivation.",
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "string"
+                },
+                "name": "String",
+                "type_arguments": []
+              }
+            }
+          },
+          "encrypted_keys": {
+            "index": 3,
+            "doc": " Versioned encrypted DEKs. Index = version number.\n Each entry is MyData `EncryptedObject` bytes.",
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "table_vec"
+                },
+                "name": "TableVec",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "vector": "u8"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "EncryptionHistoryCreated": {
+      "index": 4,
+      "doc": " Emitted when a new EncryptionHistory is created.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "encryption_history_id": {
+            "index": 0,
+            "doc": " ID of the created EncryptionHistory.",
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "group_id": {
+            "index": 1,
+            "doc": " ID of the associated PermissionedGroup<Messaging>.",
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "uuid": {
+            "index": 2,
+            "doc": " UUID used for derivation.",
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "string"
+                },
+                "name": "String",
+                "type_arguments": []
+              }
+            }
+          },
+          "initial_encrypted_dek": {
+            "index": 3,
+            "doc": " Initial encrypted DEK bytes.",
+            "type_": {
+              "vector": "u8"
+            }
+          }
+        }
+      }
+    },
+    "EncryptionKeyRotated": {
+      "index": 5,
+      "doc": " Emitted when an encryption key is rotated.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "encryption_history_id": {
+            "index": 0,
+            "doc": " ID of the EncryptionHistory.",
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "group_id": {
+            "index": 1,
+            "doc": " ID of the associated PermissionedGroup<Messaging>.",
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "new_key_version": {
+            "index": 2,
+            "doc": " New key version (0-indexed).",
+            "type_": "u64"
+          },
+          "new_encrypted_dek": {
+            "index": 3,
+            "doc": " New encrypted DEK bytes.",
+            "type_": {
+              "vector": "u8"
+            }
+          }
+        }
+      }
+    }
+  },
+  "enums": {}
+}

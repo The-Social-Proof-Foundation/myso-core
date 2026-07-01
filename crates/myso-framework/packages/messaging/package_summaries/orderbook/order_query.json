@@ -1,0 +1,275 @@
+{
+  "id": {
+    "address": "orderbook",
+    "name": "order_query"
+  },
+  "doc": " This module defines the OrderPage struct and its methods to iterate over orders in a pool.",
+  "immediate_dependencies": [
+    {
+      "address": "orderbook",
+      "name": "big_vector"
+    },
+    {
+      "address": "orderbook",
+      "name": "constants"
+    },
+    {
+      "address": "orderbook",
+      "name": "order"
+    },
+    {
+      "address": "orderbook",
+      "name": "pool"
+    },
+    {
+      "address": "std",
+      "name": "option"
+    }
+  ],
+  "attributes": [],
+  "functions": {
+    "iter_orders": {
+      "source_index": 0,
+      "index": 0,
+      "doc": " Bid minimum order id has 0 for its first bit, 0 for next 63 bits for price, and 1 for next 64 bits for order id.\n Ask minimum order id has 1 for its first bit, 0 for next 63 bits for price, and 0 for next 64 bits for order id.\n Bids are iterated from high to low order id, and asks are iterated from low to high order id.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "BaseAsset",
+          "constraints": []
+        },
+        {
+          "name": "QuoteAsset",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "pool"
+                  },
+                  "name": "Pool",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "BaseAsset"
+                      }
+                    },
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "QuoteAsset"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "start_order_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "u128"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "end_order_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "u128"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "min_expire_timestamp",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "u64"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "limit",
+          "type_": "u64"
+        },
+        {
+          "name": "bids",
+          "type_": "bool"
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "orderbook",
+              "name": "order_query"
+            },
+            "name": "OrderPage",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "orders": {
+      "source_index": 1,
+      "index": 1,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_query"
+                  },
+                  "name": "OrderPage",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            false,
+            {
+              "vector": {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order"
+                  },
+                  "name": "Order",
+                  "type_arguments": []
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "has_next_page": {
+      "source_index": 2,
+      "index": 2,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order_query"
+                  },
+                  "name": "OrderPage",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    }
+  },
+  "structs": {
+    "OrderPage": {
+      "index": 0,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "orders": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "vector": {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "order"
+                  },
+                  "name": "Order",
+                  "type_arguments": []
+                }
+              }
+            }
+          },
+          "has_next_page": {
+            "index": 1,
+            "doc": null,
+            "type_": "bool"
+          }
+        }
+      }
+    }
+  },
+  "enums": {}
+}

@@ -421,6 +421,52 @@ fun create_and_share_group_creates_shared_objects() {
     ts.end();
 }
 
+// === create_and_share_wallet_group tests ===
+
+#[test]
+fun create_and_share_wallet_group_creates_shared_objects() {
+    let mut ts = ts::begin(ALICE);
+
+    ts.next_tx(ALICE);
+    msg::init_for_testing(ts.ctx());
+    version::init_for_testing(ts.ctx());
+
+    ts.next_tx(ALICE);
+    let version = ts.take_shared<Version>();
+    let mut namespace = ts.take_shared<MessagingNamespace>();
+    let group_manager = ts.take_shared<GroupManager>();
+    let block_list = ts.take_shared<BlockListRegistry>();
+    msg::create_and_share_wallet_group(
+        &version,
+        &mut namespace,
+        &group_manager,
+        &block_list,
+        string::utf8(TEST_GROUP_NAME),
+        string::utf8(TEST_UUID),
+        TEST_ENCRYPTED_DEK,
+        vector[],
+        ts.ctx(),
+    );
+    ts::return_shared(version);
+    ts::return_shared(namespace);
+    ts::return_shared(group_manager);
+    ts::return_shared(block_list);
+
+    ts.next_tx(ALICE);
+    let group = ts.take_shared<PermissionedGroup<Messaging>>();
+    let encryption_history = ts.take_shared<EncryptionHistory>();
+    let msg_log = ts.take_shared<message_log::MessageLog>();
+
+    assert!(group.creator<Messaging>() == ALICE);
+    assert_eq!(encryption_history.group_id(), object::id(&group));
+    assert_eq!(message_log::group_id(&msg_log), object::id(&group));
+
+    ts::return_shared(group);
+    ts::return_shared(encryption_history);
+    ts::return_shared(msg_log);
+    ts.end();
+}
+
 // === rotate_encryption_key tests ===
 
 #[test]

@@ -135,7 +135,6 @@ impl DepositAddressManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fastcrypto::traits::KeyPair;
     use myso_types::crypto::get_key_pair;
 
     #[test]

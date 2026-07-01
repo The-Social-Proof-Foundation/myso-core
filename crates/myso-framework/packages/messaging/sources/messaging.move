@@ -363,6 +363,63 @@ entry fun create_and_share_group(
     transfer::public_share_object(message_log);
 }
 
+/// Wallet-only group creation. Creator is `ctx.sender()`; no [`MemoryAccount`] required.
+///
+/// Use when the sender has no linked profile/memory account. For profile owners with a
+/// [`MemoryAccount`], prefer [`create_group`] which enforces human-only creation.
+public fun create_wallet_group(
+    version: &Version,
+    namespace: &mut MessagingNamespace,
+    group_manager: &GroupManager,
+    block_list: &BlockListRegistry,
+    name: String,
+    uuid: String,
+    initial_encrypted_dek: vector<u8>,
+    initial_members: VecSet<address>,
+    ctx: &mut TxContext,
+): (PermissionedGroup<Messaging>, EncryptionHistory, MessageLog) {
+    create_group_inner(
+        version,
+        namespace,
+        group_manager,
+        block_list,
+        name,
+        uuid,
+        initial_encrypted_dek,
+        initial_members,
+        ctx,
+    )
+}
+
+/// Entry point: create and share a group without a [`MemoryAccount`].
+#[allow(lint(share_owned))]
+entry fun create_and_share_wallet_group(
+    version: &Version,
+    namespace: &mut MessagingNamespace,
+    group_manager: &GroupManager,
+    block_list: &BlockListRegistry,
+    name: String,
+    uuid: String,
+    initial_encrypted_dek: vector<u8>,
+    initial_members: vector<address>,
+    ctx: &mut TxContext,
+) {
+    let (group, encryption_history, message_log) = create_wallet_group(
+        version,
+        namespace,
+        group_manager,
+        block_list,
+        name,
+        uuid,
+        initial_encrypted_dek,
+        vec_set::from_keys(initial_members),
+        ctx,
+    );
+    transfer::public_share_object(group);
+    transfer::public_share_object(encryption_history);
+    transfer::public_share_object(message_log);
+}
+
 /// Creates a messaging group on behalf of a sub-agent with principal oversight.
 ///
 /// The transaction sender must be the sub-agent `derived_address` with

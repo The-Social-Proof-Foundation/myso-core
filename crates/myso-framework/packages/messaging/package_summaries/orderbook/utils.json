@@ -1,0 +1,144 @@
+{
+  "id": {
+    "address": "orderbook",
+    "name": "utils"
+  },
+  "doc": " Orderbook utility functions.",
+  "immediate_dependencies": [
+    {
+      "address": "std",
+      "name": "vector"
+    }
+  ],
+  "attributes": [],
+  "functions": {
+    "pop_until": {
+      "source_index": 0,
+      "index": 0,
+      "doc": " Pop elements from the back of `v` until its length equals `n`,\n returning the elements that were popped in the order they\n appeared in `v`.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "v",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "vector": {
+                  "NamedTypeParameter": "T"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "n",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        {
+          "vector": {
+            "NamedTypeParameter": "T"
+          }
+        }
+      ]
+    },
+    "pop_n": {
+      "source_index": 1,
+      "index": 1,
+      "doc": " Pop `n` elements from the back of `v`, returning the elements\n that were popped in the order they appeared in `v`.\n\n Aborts if `v` has fewer than `n` elements.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "v",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "vector": {
+                  "NamedTypeParameter": "T"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "n",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        {
+          "vector": {
+            "NamedTypeParameter": "T"
+          }
+        }
+      ]
+    },
+    "encode_order_id": {
+      "source_index": 2,
+      "index": 2,
+      "doc": " first bit is 0 for bid, 1 for ask\n next 63 bits are price (assertion for price is done in order function)\n last 64 bits are order_id",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "is_bid",
+          "type_": "bool"
+        },
+        {
+          "name": "price",
+          "type_": "u64"
+        },
+        {
+          "name": "order_id",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        "u128"
+      ]
+    },
+    "decode_order_id": {
+      "source_index": 3,
+      "index": 3,
+      "doc": " Decode order_id into (is_bid, price, order_id)",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "encoded_order_id",
+          "type_": "u128"
+        }
+      ],
+      "return_": [
+        "bool",
+        "u64",
+        "u64"
+      ]
+    }
+  },
+  "structs": {},
+  "enums": {}
+}

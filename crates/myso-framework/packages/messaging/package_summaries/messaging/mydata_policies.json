@@ -1,0 +1,514 @@
+{
+  "id": {
+    "address": "messaging",
+    "name": "mydata_policies"
+  },
+  "doc": " Module: mydata_policies\n\n Default `mydata_approve` functions for MyData encryption access control.\n Called by MyData key servers (via dry-run) to authorize decryption.\n\n ## Identity Bytes Format\n\n Identity bytes: `[group_id (32 bytes)][key_version (8 bytes LE u64)]`\n Total: 40 bytes\n\n - `group_id`: The PermissionedGroup<Messaging> object ID\n - `key_version`: The encryption key version (supports key rotation)\n\n ## Custom Policies\n\n Apps can implement custom `mydata_approve` with different logic:\n - Subscription-based, time-limited, NFT-gated access, etc.\n - Must be in the same package used during `mydata.encrypt`.\n",
+  "immediate_dependencies": [
+    {
+      "address": "messaging",
+      "name": "encryption_history"
+    },
+    {
+      "address": "messaging",
+      "name": "messaging"
+    },
+    {
+      "address": "messaging",
+      "name": "version"
+    },
+    {
+      "address": "myso",
+      "name": "bcs"
+    },
+    {
+      "address": "myso",
+      "name": "clock"
+    },
+    {
+      "address": "myso",
+      "name": "object"
+    },
+    {
+      "address": "myso",
+      "name": "permissioned_group"
+    },
+    {
+      "address": "myso",
+      "name": "tx_context"
+    },
+    {
+      "address": "social_contracts",
+      "name": "memory"
+    },
+    {
+      "address": "social_contracts",
+      "name": "platform"
+    },
+    {
+      "address": "std",
+      "name": "option"
+    }
+  ],
+  "attributes": [],
+  "functions": {
+    "validate_identity": {
+      "source_index": 0,
+      "index": 0,
+      "doc": " Validates identity bytes format and extracts components.\n\n Expected format: `[group_id (32 bytes)][key_version (8 bytes LE u64)]`\n\n Custom `mydata_approve` functions in external packages should call this\n to reuse the standard identity validation logic instead of duplicating it.\n\n # Parameters\n - `group`: Reference to the PermissionedGroup<Messaging>\n - `encryption_history`: Reference to the EncryptionHistory\n - `id`: The MyData identity bytes to validate\n\n # Aborts\n - `EEncryptionHistoryMismatch`: if encryption_history doesn't belong to this group\n - `EInvalidIdentity`: if length != 40 or group_id doesn't match\n - `EInvalidKeyVersion`: if key_version > current_key_version",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "group",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "messaging",
+                            "name": "messaging"
+                          },
+                          "name": "Messaging",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "encryption_history",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "encryption_history"
+                  },
+                  "name": "EncryptionHistory",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "id",
+          "type_": {
+            "vector": "u8"
+          }
+        }
+      ],
+      "return_": []
+    },
+    "mydata_approve_reader": {
+      "source_index": 1,
+      "index": 1,
+      "doc": " Default mydata_approve that checks `MessagingReader` permission.\n\n # Parameters\n - `id`: MyData identity bytes `[group_id (32 bytes)][key_version (8 bytes LE u64)]`\n - `group`: Reference to the PermissionedGroup<Messaging>\n - `encryption_history`: Reference to the EncryptionHistory\n - `ctx`: Transaction context\n\n # Aborts\n - `EEncryptionHistoryMismatch`: if encryption_history doesn't belong to this group\n - `EInvalidIdentity`: if identity bytes are malformed or group_id doesn't match\n - `EInvalidKeyVersion`: if key_version doesn't exist\n - `ENotPermitted`: if caller doesn't have `MessagingReader` permission",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "id",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "version",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "version"
+                  },
+                  "name": "Version",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "group",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "messaging",
+                            "name": "messaging"
+                          },
+                          "name": "Messaging",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "encryption_history",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "encryption_history"
+                  },
+                  "name": "EncryptionHistory",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "mydata_approve_reader_with_oversight": {
+      "source_index": 2,
+      "index": 2,
+      "doc": " Principal oversight fallback: allows the human owner to decrypt when they hold\n no direct `MessagingReader` but a registered sub-agent on the same\n [`MemoryAccount`] does.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "id",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "version",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "version"
+                  },
+                  "name": "Version",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "group",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "messaging",
+                            "name": "messaging"
+                          },
+                          "name": "Messaging",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "encryption_history",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "encryption_history"
+                  },
+                  "name": "EncryptionHistory",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "memory_account",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryAccount",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "agent_derived_address",
+          "type_": "address"
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "mydata_approve_agent_reader": {
+      "source_index": 3,
+      "index": 3,
+      "doc": " Sub-agent MyData reader approval via `CAP_MESSAGE_READ` on the [`MemoryAccount`].",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "id",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "version",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "version"
+                  },
+                  "name": "Version",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "group",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "messaging",
+                            "name": "messaging"
+                          },
+                          "name": "Messaging",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "encryption_history",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "encryption_history"
+                  },
+                  "name": "EncryptionHistory",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "platform",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "Platform",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "memory_account",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryAccount",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    }
+  },
+  "structs": {},
+  "enums": {}
+}

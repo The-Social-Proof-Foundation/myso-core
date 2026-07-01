@@ -1,0 +1,56 @@
+{
+  "id": {
+    "address": "mydata",
+    "name": "time"
+  },
+  "doc": null,
+  "immediate_dependencies": [
+    {
+      "address": "myso",
+      "name": "clock"
+    }
+  ],
+  "attributes": [],
+  "functions": {
+    "check_staleness": {
+      "source_index": 0,
+      "index": 0,
+      "doc": " Check that the state of the chain is not stale: Abort if the on-chain time is more than `allowed_staleness_in_ms` behind `now`.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "now",
+          "type_": "u64"
+        },
+        {
+          "name": "allowed_staleness_in_ms",
+          "type_": "u64"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    }
+  },
+  "structs": {},
+  "enums": {}
+}

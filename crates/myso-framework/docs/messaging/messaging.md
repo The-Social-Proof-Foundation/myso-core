@@ -63,6 +63,8 @@ Messaging-specific:
 -  [Function `create_and_share_group`](#messaging_messaging_create_and_share_group)
     -  [Parameters](#@Parameters_7)
     -  [Note](#@Note_8)
+-  [Function `create_wallet_group`](#messaging_messaging_create_wallet_group)
+-  [Function `create_and_share_wallet_group`](#messaging_messaging_create_and_share_wallet_group)
 -  [Function `create_agent_group`](#messaging_messaging_create_agent_group)
 -  [Function `create_agent_and_share_group`](#messaging_messaging_create_agent_and_share_group)
 -  [Function `rotate_encryption_key`](#messaging_messaging_rotate_encryption_key)
@@ -896,6 +898,102 @@ See <code><a href="../messaging/messaging.md#messaging_messaging_create_group">c
         <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>,
         block_list,
         creator_memory_account,
+        name,
+        uuid,
+        initial_encrypted_dek,
+        vec_set::from_keys(initial_members),
+        ctx,
+    );
+    transfer::public_share_object(group);
+    transfer::public_share_object(<a href="../messaging/encryption_history.md#messaging_encryption_history">encryption_history</a>);
+    transfer::public_share_object(<a href="../messaging/message_log.md#messaging_message_log">message_log</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="messaging_messaging_create_wallet_group"></a>
+
+## Function `create_wallet_group`
+
+Wallet-only group creation. Creator is <code>ctx.sender()</code>; no [<code>MemoryAccount</code>] required.
+
+Use when the sender has no linked profile/memory account. For profile owners with a
+[<code>MemoryAccount</code>], prefer [<code><a href="../messaging/messaging.md#messaging_messaging_create_group">create_group</a></code>] which enforces human-only creation.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_create_wallet_group">create_wallet_group</a>(<a href="../messaging/version.md#messaging_version">version</a>: &<a href="../messaging/version.md#messaging_version_Version">messaging::version::Version</a>, namespace: &<b>mut</b> <a href="../messaging/messaging.md#messaging_messaging_MessagingNamespace">messaging::messaging::MessagingNamespace</a>, <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &<a href="../messaging/group_manager.md#messaging_group_manager_GroupManager">messaging::group_manager::GroupManager</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, name: <a href="../std/string.md#std_string_String">std::string::String</a>, uuid: <a href="../std/string.md#std_string_String">std::string::String</a>, initial_encrypted_dek: vector&lt;u8&gt;, initial_members: <a href="../myso/vec_set.md#myso_vec_set_VecSet">myso::vec_set::VecSet</a>&lt;<b>address</b>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, <a href="../messaging/encryption_history.md#messaging_encryption_history_EncryptionHistory">messaging::encryption_history::EncryptionHistory</a>, <a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_create_wallet_group">create_wallet_group</a>(
+    <a href="../messaging/version.md#messaging_version">version</a>: &Version,
+    namespace: &<b>mut</b> <a href="../messaging/messaging.md#messaging_messaging_MessagingNamespace">MessagingNamespace</a>,
+    <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &GroupManager,
+    block_list: &BlockListRegistry,
+    name: String,
+    uuid: String,
+    initial_encrypted_dek: vector&lt;u8&gt;,
+    initial_members: VecSet&lt;<b>address</b>&gt;,
+    ctx: &<b>mut</b> TxContext,
+): (PermissionedGroup&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>&gt;, EncryptionHistory, MessageLog) {
+    <a href="../messaging/messaging.md#messaging_messaging_create_group_inner">create_group_inner</a>(
+        <a href="../messaging/version.md#messaging_version">version</a>,
+        namespace,
+        <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>,
+        block_list,
+        name,
+        uuid,
+        initial_encrypted_dek,
+        initial_members,
+        ctx,
+    )
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="messaging_messaging_create_and_share_wallet_group"></a>
+
+## Function `create_and_share_wallet_group`
+
+Entry point: create and share a group without a [<code>MemoryAccount</code>].
+
+
+<pre><code><b>entry</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_create_and_share_wallet_group">create_and_share_wallet_group</a>(<a href="../messaging/version.md#messaging_version">version</a>: &<a href="../messaging/version.md#messaging_version_Version">messaging::version::Version</a>, namespace: &<b>mut</b> <a href="../messaging/messaging.md#messaging_messaging_MessagingNamespace">messaging::messaging::MessagingNamespace</a>, <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &<a href="../messaging/group_manager.md#messaging_group_manager_GroupManager">messaging::group_manager::GroupManager</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, name: <a href="../std/string.md#std_string_String">std::string::String</a>, uuid: <a href="../std/string.md#std_string_String">std::string::String</a>, initial_encrypted_dek: vector&lt;u8&gt;, initial_members: vector&lt;<b>address</b>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>entry</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_create_and_share_wallet_group">create_and_share_wallet_group</a>(
+    <a href="../messaging/version.md#messaging_version">version</a>: &Version,
+    namespace: &<b>mut</b> <a href="../messaging/messaging.md#messaging_messaging_MessagingNamespace">MessagingNamespace</a>,
+    <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &GroupManager,
+    block_list: &BlockListRegistry,
+    name: String,
+    uuid: String,
+    initial_encrypted_dek: vector&lt;u8&gt;,
+    initial_members: vector&lt;<b>address</b>&gt;,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>let</b> (group, <a href="../messaging/encryption_history.md#messaging_encryption_history">encryption_history</a>, <a href="../messaging/message_log.md#messaging_message_log">message_log</a>) = <a href="../messaging/messaging.md#messaging_messaging_create_wallet_group">create_wallet_group</a>(
+        <a href="../messaging/version.md#messaging_version">version</a>,
+        namespace,
+        <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>,
+        block_list,
         name,
         uuid,
         initial_encrypted_dek,

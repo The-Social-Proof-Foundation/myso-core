@@ -1,0 +1,2747 @@
+{
+  "id": {
+    "address": "orderbook",
+    "name": "big_vector"
+  },
+  "doc": " BigVector is an arbitrary sized vector-like data structure,\n implemented using an on-chain B+ Tree to support almost constant\n time (log base max_fan_out) random access, insertion and removal.\n\n Iteration is supported by exposing access to leaf nodes (slices).\n Finding the initial slice can be done in almost constant time, and\n subsequently finding the previous or next slice can also be done\n in constant time.\n\n Nodes in the B+ Tree are stored as individual dynamic fields\n hanging off the `BigVector`.\n\n Note: The index type is `u128`, but the length is stored as `u64`\n because the expectation is that indices are sparsely distributed.",
+  "immediate_dependencies": [
+    {
+      "address": "myso",
+      "name": "dynamic_field"
+    },
+    {
+      "address": "myso",
+      "name": "object"
+    },
+    {
+      "address": "myso",
+      "name": "tx_context"
+    },
+    {
+      "address": "orderbook",
+      "name": "utils"
+    },
+    {
+      "address": "std",
+      "name": "vector"
+    }
+  ],
+  "attributes": [],
+  "functions": {
+    "empty": {
+      "source_index": 0,
+      "index": 0,
+      "doc": " Construct a new, empty `BigVector`. `max_slice_size` contains\n the maximum size of its leaf nodes, and `max_fan_out` contains\n the maximum fan-out of its interior nodes.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "max_slice_size",
+          "type_": "u64"
+        },
+        {
+          "name": "max_fan_out",
+          "type_": "u64"
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "orderbook",
+              "name": "big_vector"
+            },
+            "name": "BigVector",
+            "type_arguments": [
+              {
+                "phantom": true,
+                "argument": {
+                  "NamedTypeParameter": "E"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "destroy_empty": {
+      "source_index": 1,
+      "index": 1,
+      "doc": " Destroy `self` as long as it is empty, even if its elements\n are not droppable. Fails if `self` is not empty.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "orderbook",
+                "name": "big_vector"
+              },
+              "name": "BigVector",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "NamedTypeParameter": "E"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "return_": []
+    },
+    "is_empty": {
+      "source_index": 2,
+      "index": 2,
+      "doc": " Whether `self` contains no elements or not.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "BigVector",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "length": {
+      "source_index": 3,
+      "index": 3,
+      "doc": " The number of elements contained in `self`.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "BigVector",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "depth": {
+      "source_index": 4,
+      "index": 4,
+      "doc": " The number of nodes between the root and the leaves in `self`.\n This is within a constant factor of log base `max_fan_out` of\n the length.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "BigVector",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u8"
+      ]
+    },
+    "borrow": {
+      "source_index": 5,
+      "index": 5,
+      "doc": " Access the element at index `ix` in `self`.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "BigVector",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ix",
+          "type_": "u128"
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            false,
+            {
+              "NamedTypeParameter": "E"
+            }
+          ]
+        }
+      ]
+    },
+    "borrow_mut": {
+      "source_index": 6,
+      "index": 6,
+      "doc": " Access the element at index `ix` in `self`, mutably.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "BigVector",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ix",
+          "type_": "u128"
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            true,
+            {
+              "NamedTypeParameter": "E"
+            }
+          ]
+        }
+      ]
+    },
+    "insert": {
+      "source_index": 7,
+      "index": 7,
+      "doc": " Add `val` to `self` at index `key`. Aborts if `key` is already\n present in `self`.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "BigVector",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "key",
+          "type_": "u128"
+        },
+        {
+          "name": "val",
+          "type_": {
+            "NamedTypeParameter": "E"
+          }
+        }
+      ],
+      "return_": []
+    },
+    "remove": {
+      "source_index": 8,
+      "index": 8,
+      "doc": " Remove the element with key `key` from `self`, returning its\n value. Aborts if `key` is not found.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "BigVector",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "key",
+          "type_": "u128"
+        }
+      ],
+      "return_": [
+        {
+          "NamedTypeParameter": "E"
+        }
+      ]
+    },
+    "remove_batch": {
+      "source_index": 9,
+      "index": 9,
+      "doc": " Remove elements from `self` at the indices in `keys`,\n returning the associated values.\n\n Aborts if any of the keys are not found.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "_self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "BigVector",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "_keys",
+          "type_": {
+            "vector": "u128"
+          }
+        }
+      ],
+      "return_": [
+        {
+          "vector": {
+            "NamedTypeParameter": "E"
+          }
+        }
+      ]
+    },
+    "slice_around": {
+      "source_index": 10,
+      "index": 10,
+      "doc": " Find the slice that contains the key-value pair for `key`,\n assuming it exists in the data structure. Returns the\n reference to the slice and the local offset within the slice\n if it exists, aborts with `ENotFound` otherwise.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "BigVector",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "key",
+          "type_": "u128"
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "orderbook",
+              "name": "big_vector"
+            },
+            "name": "SliceRef",
+            "type_arguments": []
+          }
+        },
+        "u64"
+      ]
+    },
+    "slice_following": {
+      "source_index": 11,
+      "index": 11,
+      "doc": " Find the slice that contains the key-value pair corresponding\n to the next key in `self` at or after `key`. Returns the\n reference to the slice and the local offset within the slice\n if it exists, or (NO_SLICE, 0), if there is no matching\n key-value pair.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "BigVector",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "key",
+          "type_": "u128"
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "orderbook",
+              "name": "big_vector"
+            },
+            "name": "SliceRef",
+            "type_arguments": []
+          }
+        },
+        "u64"
+      ]
+    },
+    "slice_before": {
+      "source_index": 12,
+      "index": 12,
+      "doc": " Find the slice that contains the key-value pair corresponding\n to the previous key in `self`. Returns the reference to the slice\n and the local offset within the slice if it exists, or (NO_SLICE, 0),\n if there is no matching key-value pair.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "BigVector",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "key",
+          "type_": "u128"
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "orderbook",
+              "name": "big_vector"
+            },
+            "name": "SliceRef",
+            "type_arguments": []
+          }
+        },
+        "u64"
+      ]
+    },
+    "min_slice": {
+      "source_index": 13,
+      "index": 13,
+      "doc": " Find the slice that contains the key-value pair corresponding\n to the minimum key in `self`. Returns the reference to the\n slice and the local offset within the slice if it exists, or\n (NO_SLICE, 0), if there is no matching key-value pair.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "BigVector",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "orderbook",
+              "name": "big_vector"
+            },
+            "name": "SliceRef",
+            "type_arguments": []
+          }
+        },
+        "u64"
+      ]
+    },
+    "max_slice": {
+      "source_index": 14,
+      "index": 14,
+      "doc": " Find the slice that contains the key-value pair corresponding\n to the maximum key in `self`. Returns the reference to the\n slice and the local offset within the slice if it exists, or\n (NO_SLICE, 0), if there is no matching key-value pair.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "BigVector",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "orderbook",
+              "name": "big_vector"
+            },
+            "name": "SliceRef",
+            "type_arguments": []
+          }
+        },
+        "u64"
+      ]
+    },
+    "next_slice": {
+      "source_index": 15,
+      "index": 15,
+      "doc": " Given the current slice and offset, get the next slice and offset. Can be null.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "BigVector",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ref",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "orderbook",
+                "name": "big_vector"
+              },
+              "name": "SliceRef",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "offset",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "orderbook",
+              "name": "big_vector"
+            },
+            "name": "SliceRef",
+            "type_arguments": []
+          }
+        },
+        "u64"
+      ]
+    },
+    "prev_slice": {
+      "source_index": 16,
+      "index": 16,
+      "doc": " Given the current slice and offset, get the previous slice and offset. Can be null.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "BigVector",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ref",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "orderbook",
+                "name": "big_vector"
+              },
+              "name": "SliceRef",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "offset",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "orderbook",
+              "name": "big_vector"
+            },
+            "name": "SliceRef",
+            "type_arguments": []
+          }
+        },
+        "u64"
+      ]
+    },
+    "borrow_slice": {
+      "source_index": 17,
+      "index": 17,
+      "doc": " Borrow a slice from this vector.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "BigVector",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ref",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "orderbook",
+                "name": "big_vector"
+              },
+              "name": "SliceRef",
+              "type_arguments": []
+            }
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            false,
+            {
+              "Datatype": {
+                "module": {
+                  "address": "orderbook",
+                  "name": "big_vector"
+                },
+                "name": "Slice",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "NamedTypeParameter": "E"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "borrow_slice_mut": {
+      "source_index": 18,
+      "index": 18,
+      "doc": " Borrow a slice from this vector, mutably.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "BigVector",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ref",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "orderbook",
+                "name": "big_vector"
+              },
+              "name": "SliceRef",
+              "type_arguments": []
+            }
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            true,
+            {
+              "Datatype": {
+                "module": {
+                  "address": "orderbook",
+                  "name": "big_vector"
+                },
+                "name": "Slice",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "NamedTypeParameter": "E"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "slice_is_null": {
+      "source_index": 19,
+      "index": 19,
+      "doc": " Returns whether the SliceRef points to an actual slice, or the\n `NO_SLICE` sentinel. It is an error to attempt to borrow a\n slice from a `BigVector` if it doesn't exist.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "SliceRef",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "slice_is_leaf": {
+      "source_index": 20,
+      "index": 20,
+      "doc": " Returns whether the slice is a leaf node or not. Leaf nodes\n have as many keys as values.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "Slice",
+                  "type_arguments": [
+                    {
+                      "phantom": false,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "slice_next": {
+      "source_index": 21,
+      "index": 21,
+      "doc": " Reference to the next (neighbouring) slice to this one.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "Slice",
+                  "type_arguments": [
+                    {
+                      "phantom": false,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "orderbook",
+              "name": "big_vector"
+            },
+            "name": "SliceRef",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "slice_prev": {
+      "source_index": 22,
+      "index": 22,
+      "doc": " Reference to the previous (neighbouring) slice to this one.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "Slice",
+                  "type_arguments": [
+                    {
+                      "phantom": false,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "orderbook",
+              "name": "big_vector"
+            },
+            "name": "SliceRef",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "slice_length": {
+      "source_index": 23,
+      "index": 23,
+      "doc": " Number of children (values) in this slice.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "Slice",
+                  "type_arguments": [
+                    {
+                      "phantom": false,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "slice_key": {
+      "source_index": 24,
+      "index": 24,
+      "doc": " Access a key from this slice, referenced by its offset, local\n to the slice.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "Slice",
+                  "type_arguments": [
+                    {
+                      "phantom": false,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ix",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        "u128"
+      ]
+    },
+    "slice_borrow": {
+      "source_index": 25,
+      "index": 25,
+      "doc": " Access a value from this slice, referenced by its offset,\n local to the slice.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "Slice",
+                  "type_arguments": [
+                    {
+                      "phantom": false,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ix",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            false,
+            {
+              "NamedTypeParameter": "E"
+            }
+          ]
+        }
+      ]
+    },
+    "slice_borrow_mut": {
+      "source_index": 26,
+      "index": 26,
+      "doc": " Access a value from this slice, mutably, referenced by its\n offset, local to the slice.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "Slice",
+                  "type_arguments": [
+                    {
+                      "phantom": false,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ix",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            true,
+            {
+              "NamedTypeParameter": "E"
+            }
+          ]
+        }
+      ]
+    },
+    "alloc": {
+      "source_index": 27,
+      "index": 27,
+      "doc": " Store `slice` as a dynamic field on `self`, and use its\n dynamic field ID to connect it into the doubly linked list\n structure at its level. Returns the ID of the slice to be used\n in a `SliceRef`.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        },
+        {
+          "name": "F",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "BigVector",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "slice",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "orderbook",
+                "name": "big_vector"
+              },
+              "name": "Slice",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "NamedTypeParameter": "F"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "singleton": {
+      "source_index": 28,
+      "index": 28,
+      "doc": " Create a slice representing a leaf node containing a single\n key-value pair.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "key",
+          "type_": "u128"
+        },
+        {
+          "name": "val",
+          "type_": {
+            "NamedTypeParameter": "E"
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "orderbook",
+              "name": "big_vector"
+            },
+            "name": "Slice",
+            "type_arguments": [
+              {
+                "phantom": false,
+                "argument": {
+                  "NamedTypeParameter": "E"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "branch": {
+      "source_index": 29,
+      "index": 29,
+      "doc": " Create a slice representing an interior node containing a\n single branch.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "key",
+          "type_": "u128"
+        },
+        {
+          "name": "left",
+          "type_": "u64"
+        },
+        {
+          "name": "right",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "orderbook",
+              "name": "big_vector"
+            },
+            "name": "Slice",
+            "type_arguments": [
+              {
+                "phantom": false,
+                "argument": "u64"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "drop_slice": {
+      "source_index": 30,
+      "index": 30,
+      "doc": " Recursively `drop` the nodes under the node at id `node`.\n Assumes that node has depth `depth` and is owned by `id`.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Drop",
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "id",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "object"
+                  },
+                  "name": "UID",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "depth",
+          "type_": "u8"
+        },
+        {
+          "name": "slice",
+          "type_": "u64"
+        }
+      ],
+      "return_": []
+    },
+    "find_leaf": {
+      "source_index": 31,
+      "index": 31,
+      "doc": " Find the leaf slice that would contain `key` if it existed in\n `self`. Returns the slice ref for the leaf, a reference to the\n leaf, and the offset in the leaf of the key (if the key were\n to exist in `self` it would appear here).\n\n Assumes `self` is non-empty.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "BigVector",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "key",
+          "type_": "u128"
+        }
+      ],
+      "return_": [
+        "u64",
+        {
+          "Reference": [
+            false,
+            {
+              "Datatype": {
+                "module": {
+                  "address": "orderbook",
+                  "name": "big_vector"
+                },
+                "name": "Slice",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "NamedTypeParameter": "E"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "u64"
+      ]
+    },
+    "find_min_leaf": {
+      "source_index": 32,
+      "index": 32,
+      "doc": " Find the minimum leaf node that contains the smallest key in the BigVector.\n Assumes `self` is non-empty.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "BigVector",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64",
+        {
+          "Reference": [
+            false,
+            {
+              "Datatype": {
+                "module": {
+                  "address": "orderbook",
+                  "name": "big_vector"
+                },
+                "name": "Slice",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "NamedTypeParameter": "E"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "u64"
+      ]
+    },
+    "find_max_leaf": {
+      "source_index": 33,
+      "index": 33,
+      "doc": " Find the maximum leaf node that contains the largest key in the BigVector.\n Assumes `self` is non-empty.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "BigVector",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64",
+        {
+          "Reference": [
+            false,
+            {
+              "Datatype": {
+                "module": {
+                  "address": "orderbook",
+                  "name": "big_vector"
+                },
+                "name": "Slice",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "NamedTypeParameter": "E"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "u64"
+      ]
+    },
+    "slice_bisect_left": {
+      "source_index": 34,
+      "index": 34,
+      "doc": " Find the position in `slice.keys` of `key` if it exists, or\n the minimal position it should be inserted in to maintain\n sorted order.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "Slice",
+                  "type_arguments": [
+                    {
+                      "phantom": false,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "key",
+          "type_": "u128"
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "slice_bisect_right": {
+      "source_index": 35,
+      "index": 35,
+      "doc": " Find the largest index in `slice.keys` to insert `key` to\n maintain sorted order.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "Slice",
+                  "type_arguments": [
+                    {
+                      "phantom": false,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "key",
+          "type_": "u128"
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "slice_insert": {
+      "source_index": 36,
+      "index": 36,
+      "doc": " Insert `key: val` into the slice at ID `slice_id` with depth\n `depth`.\n\n Returns (0, NO_SLICE), if the insertion could be completed\n without splitting, otherwise returns the key that was split\n upon, and the ID of the new Slice which always sits next to\n (and not previously to) `slice_id`.\n\n Upon returning, sibling pointers are fixed up, but children\n pointers will not be.\n\n Aborts if `key` is already found within the slice.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "BigVector",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "slice_id",
+          "type_": "u64"
+        },
+        {
+          "name": "depth",
+          "type_": "u8"
+        },
+        {
+          "name": "key",
+          "type_": "u128"
+        },
+        {
+          "name": "val",
+          "type_": {
+            "NamedTypeParameter": "E"
+          }
+        }
+      ],
+      "return_": [
+        "u128",
+        "u64"
+      ]
+    },
+    "leaf_insert": {
+      "source_index": 37,
+      "index": 37,
+      "doc": " Like `slice_insert` but you know that `slice_id` points to a leaf node.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "BigVector",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "slice_id",
+          "type_": "u64"
+        },
+        {
+          "name": "key",
+          "type_": "u128"
+        },
+        {
+          "name": "val",
+          "type_": {
+            "NamedTypeParameter": "E"
+          }
+        }
+      ],
+      "return_": [
+        "u128",
+        "u64"
+      ]
+    },
+    "node_insert": {
+      "source_index": 38,
+      "index": 38,
+      "doc": " Like `slice_insert` but you know that `slice_id` points to an\n interior node, and `depth` is the depth of its children, not\n itself.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "BigVector",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "slice_id",
+          "type_": "u64"
+        },
+        {
+          "name": "depth",
+          "type_": "u8"
+        },
+        {
+          "name": "key",
+          "type_": "u128"
+        },
+        {
+          "name": "val",
+          "type_": {
+            "NamedTypeParameter": "E"
+          }
+        }
+      ],
+      "return_": [
+        "u128",
+        "u64"
+      ]
+    },
+    "slice_remove": {
+      "source_index": 39,
+      "index": 39,
+      "doc": " Remove `key` from the slice at ID `slice_id` with depth\n `depth`, in `self`.\n\n `prev_id` and `next_id` are the IDs of slices either side of\n `slice_id` that share the same parent, to be used for\n redistribution and merging.\n\n Aborts if `key` does not exist within the slice.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "BigVector",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "prev_id",
+          "type_": "u64"
+        },
+        {
+          "name": "prev_key",
+          "type_": "u128"
+        },
+        {
+          "name": "slice_id",
+          "type_": "u64"
+        },
+        {
+          "name": "next_key",
+          "type_": "u128"
+        },
+        {
+          "name": "next_id",
+          "type_": "u64"
+        },
+        {
+          "name": "depth",
+          "type_": "u8"
+        },
+        {
+          "name": "key",
+          "type_": "u128"
+        }
+      ],
+      "return_": [
+        {
+          "NamedTypeParameter": "E"
+        },
+        "u8",
+        "u128"
+      ]
+    },
+    "leaf_remove": {
+      "source_index": 40,
+      "index": 40,
+      "doc": " Like `slice_remove` but you know that `slice_id` points to a\n leaf.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "BigVector",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "prev_id",
+          "type_": "u64"
+        },
+        {
+          "name": "prev_key",
+          "type_": "u128"
+        },
+        {
+          "name": "slice_id",
+          "type_": "u64"
+        },
+        {
+          "name": "next_key",
+          "type_": "u128"
+        },
+        {
+          "name": "next_id",
+          "type_": "u64"
+        },
+        {
+          "name": "key",
+          "type_": "u128"
+        }
+      ],
+      "return_": [
+        {
+          "NamedTypeParameter": "E"
+        },
+        "u8",
+        "u128"
+      ]
+    },
+    "node_remove": {
+      "source_index": 41,
+      "index": 41,
+      "doc": " Like `slice_remove` but you know that `slice_id` points to an\n interior node, and `depth` refers to the depth of its child\n nodes.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "BigVector",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "prev_id",
+          "type_": "u64"
+        },
+        {
+          "name": "prev_key",
+          "type_": "u128"
+        },
+        {
+          "name": "slice_id",
+          "type_": "u64"
+        },
+        {
+          "name": "next_key",
+          "type_": "u128"
+        },
+        {
+          "name": "next_id",
+          "type_": "u64"
+        },
+        {
+          "name": "depth",
+          "type_": "u8"
+        },
+        {
+          "name": "key",
+          "type_": "u128"
+        }
+      ],
+      "return_": [
+        {
+          "NamedTypeParameter": "E"
+        },
+        "u8",
+        "u128"
+      ]
+    },
+    "slice_redistribute": {
+      "source_index": 42,
+      "index": 42,
+      "doc": " Redistribute the elements in `left_id` and `right_id`\n separated by `pivot`, evenly between each other. Returns the\n new pivot element between the two slices.\n\n Aborts if left and right are not adjacent slices.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        },
+        {
+          "name": "F",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "BigVector",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "left_id",
+          "type_": "u64"
+        },
+        {
+          "name": "pivot",
+          "type_": "u128"
+        },
+        {
+          "name": "right_id",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        "u128"
+      ]
+    },
+    "slice_merge": {
+      "source_index": 43,
+      "index": 43,
+      "doc": " Merge the `right_id` slice into `left_id` (represented by\n their IDs). Assumes that `left_id` and `right_id` are adjacent\n slices, separated by `pivot`, and aborts if this is not the\n case.\n\n Upon success, `left_id` contains all the elements of both\n slices, and the `right_id` slice has been removed from the\n vector.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        },
+        {
+          "name": "F",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "big_vector"
+                  },
+                  "name": "BigVector",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "E"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "left_id",
+          "type_": "u64"
+        },
+        {
+          "name": "pivot",
+          "type_": "u128"
+        },
+        {
+          "name": "right_id",
+          "type_": "u64"
+        }
+      ],
+      "return_": []
+    }
+  },
+  "structs": {
+    "BigVector": {
+      "index": 0,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Key",
+        "Store"
+      ],
+      "type_parameters": [
+        {
+          "phantom": true,
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          },
+          "depth": {
+            "index": 1,
+            "doc": " How deep the tree structure is.",
+            "type_": "u8"
+          },
+          "length": {
+            "index": 2,
+            "doc": " Total number of elements that this vector contains, not\n including gaps in the vector.",
+            "type_": "u64"
+          },
+          "max_slice_size": {
+            "index": 3,
+            "doc": " Max size of leaf nodes (counted in number of elements, `E`).",
+            "type_": "u64"
+          },
+          "max_fan_out": {
+            "index": 4,
+            "doc": " Max size of interior nodes (counted in number of children).",
+            "type_": "u64"
+          },
+          "root_id": {
+            "index": 5,
+            "doc": " ID of the tree's root structure. Value of `NO_SLICE` means\n there's no root.",
+            "type_": "u64"
+          },
+          "last_id": {
+            "index": 6,
+            "doc": " The last node ID that was allocated.",
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "Slice": {
+      "index": 1,
+      "doc": " A node in the B+ tree.\n\n If representing a leaf node, there are as many keys as values\n (such that `keys[i]` is the key corresponding to `vals[i]`).\n\n A `Slice<u64>` can also represent an interior node, in which\n case `vals` contain the IDs of its children and `keys`\n represent the partitions between children. There will be one\n fewer key than value in this configuration.",
+      "attributes": [],
+      "abilities": [
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [
+        {
+          "phantom": false,
+          "name": "E",
+          "constraints": [
+            "Store"
+          ]
+        }
+      ],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "prev": {
+            "index": 0,
+            "doc": " Previous node in the intrusive doubly-linked list data\n structure.",
+            "type_": "u64"
+          },
+          "next": {
+            "index": 1,
+            "doc": " Next node in the intrusive doubly-linked list data\n structure.",
+            "type_": "u64"
+          },
+          "keys": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "vector": "u128"
+            }
+          },
+          "vals": {
+            "index": 3,
+            "doc": null,
+            "type_": {
+              "vector": {
+                "NamedTypeParameter": "E"
+              }
+            }
+          }
+        }
+      }
+    },
+    "SliceRef": {
+      "index": 2,
+      "doc": " Wrapper type around indices for slices. The internal index is\n the ID of the dynamic field containing the slice.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "ix": {
+            "index": 0,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    }
+  },
+  "enums": {}
+}

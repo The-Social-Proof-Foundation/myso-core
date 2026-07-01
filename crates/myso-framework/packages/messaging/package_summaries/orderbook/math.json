@@ -1,0 +1,328 @@
+{
+  "id": {
+    "address": "orderbook",
+    "name": "math"
+  },
+  "doc": null,
+  "immediate_dependencies": [
+    {
+      "address": "std",
+      "name": "u128"
+    },
+    {
+      "address": "std",
+      "name": "vector"
+    }
+  ],
+  "attributes": [],
+  "functions": {
+    "mul": {
+      "source_index": 0,
+      "index": 0,
+      "doc": " Multiply two floating numbers.\n This function will round down the result.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "x",
+          "type_": "u64"
+        },
+        {
+          "name": "y",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "mul_u128": {
+      "source_index": 1,
+      "index": 1,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "x",
+          "type_": "u128"
+        },
+        {
+          "name": "y",
+          "type_": "u128"
+        }
+      ],
+      "return_": [
+        "u128"
+      ]
+    },
+    "mul_round_up": {
+      "source_index": 2,
+      "index": 2,
+      "doc": " Multiply two floating numbers.\n This function will round up the result.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "x",
+          "type_": "u64"
+        },
+        {
+          "name": "y",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "div": {
+      "source_index": 3,
+      "index": 3,
+      "doc": " Divide two floating numbers.\n This function will round down the result.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "x",
+          "type_": "u64"
+        },
+        {
+          "name": "y",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "div_u128": {
+      "source_index": 4,
+      "index": 4,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "x",
+          "type_": "u128"
+        },
+        {
+          "name": "y",
+          "type_": "u128"
+        }
+      ],
+      "return_": [
+        "u128"
+      ]
+    },
+    "div_round_up": {
+      "source_index": 5,
+      "index": 5,
+      "doc": " Divide two floating numbers.\n This function will round up the result.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "x",
+          "type_": "u64"
+        },
+        {
+          "name": "y",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "median": {
+      "source_index": 6,
+      "index": 6,
+      "doc": " given a vector of u128, return the median",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "v",
+          "type_": {
+            "vector": "u128"
+          }
+        }
+      ],
+      "return_": [
+        "u128"
+      ]
+    },
+    "sqrt": {
+      "source_index": 7,
+      "index": 7,
+      "doc": " Computes the integer square root of a scaled u64 value, assuming the\n original value\n is scaled by precision. The result will be in the same floating-point\n representation.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "x",
+          "type_": "u64"
+        },
+        {
+          "name": "precision",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "is_power_of_ten": {
+      "source_index": 8,
+      "index": 8,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "n",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "quick_sort": {
+      "source_index": 9,
+      "index": 9,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "data",
+          "type_": {
+            "vector": "u128"
+          }
+        }
+      ],
+      "return_": [
+        {
+          "vector": "u128"
+        }
+      ]
+    },
+    "mul_internal": {
+      "source_index": 10,
+      "index": 10,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "x",
+          "type_": "u64"
+        },
+        {
+          "name": "y",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        "u64",
+        "u64"
+      ]
+    },
+    "mul_internal_u128": {
+      "source_index": 11,
+      "index": 11,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "x",
+          "type_": "u128"
+        },
+        {
+          "name": "y",
+          "type_": "u128"
+        }
+      ],
+      "return_": [
+        "u128",
+        "u128"
+      ]
+    },
+    "div_internal": {
+      "source_index": 12,
+      "index": 12,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "x",
+          "type_": "u64"
+        },
+        {
+          "name": "y",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        "u64",
+        "u64"
+      ]
+    },
+    "div_internal_u128": {
+      "source_index": 13,
+      "index": 13,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "x",
+          "type_": "u128"
+        },
+        {
+          "name": "y",
+          "type_": "u128"
+        }
+      ],
+      "return_": [
+        "u128",
+        "u128"
+      ]
+    }
+  },
+  "structs": {},
+  "enums": {}
+}

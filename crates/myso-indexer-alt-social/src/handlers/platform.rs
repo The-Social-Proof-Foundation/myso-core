@@ -976,8 +976,6 @@ fn process_treasury_funded_event(
 
 #[cfg(test)]
 mod platform_deleted_tests {
-    use chrono::{TimeZone, Utc};
-
     use super::handle_platform_event;
     use crate::handlers::common;
     use crate::handlers::SocialEventRow;

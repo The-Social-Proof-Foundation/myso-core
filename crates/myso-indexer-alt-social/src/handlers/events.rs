@@ -1311,7 +1311,7 @@ struct BcsAiCreditAgentBudgetDisabledEvent {
     agent_object_id: AccountAddress,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct BcsAiCreditUsageSettledEvent {
     balance_id: AccountAddress,
     agent_object_id: AccountAddress,
@@ -4866,14 +4866,13 @@ mod tests {
         };
         let contents = bcs::to_bytes(&ev).expect("serialize AiCreditUsageSettled");
         let json = parse_event_contents("ai_credit", "AiCreditUsageSettled", &contents)
-            .expect("parse AiCreditUsageSettled")
-            .expect("json payload");
+            .expect("parse AiCreditUsageSettled");
         assert_eq!(
             json["receipt_id"],
             "132625655239685005677817396617643760670"
         );
         assert_eq!(json["settlement_nonce"], 1);
-        assert_eq!(json["remaining_mist"], 4_677_777_777);
+        assert_eq!(json["remaining_mist"], 4_677_777_777_i64);
     }
 
     #[test]

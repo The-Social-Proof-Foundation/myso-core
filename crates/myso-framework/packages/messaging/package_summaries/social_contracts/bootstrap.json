@@ -1,0 +1,278 @@
+{
+  "id": {
+    "address": "social_contracts",
+    "name": "bootstrap"
+  },
+  "doc": " Bootstrap service for MySocial - claims all admin capabilities in one call.\n Uses the framework's centralized BootstrapKey for one-time initialization.",
+  "immediate_dependencies": [
+    {
+      "address": "myso",
+      "name": "bootstrap_key"
+    },
+    {
+      "address": "myso",
+      "name": "clock"
+    },
+    {
+      "address": "myso",
+      "name": "coin"
+    },
+    {
+      "address": "myso",
+      "name": "object"
+    },
+    {
+      "address": "myso",
+      "name": "package"
+    },
+    {
+      "address": "myso",
+      "name": "transfer"
+    },
+    {
+      "address": "myso",
+      "name": "tx_context"
+    },
+    {
+      "address": "orderbook",
+      "name": "registry"
+    },
+    {
+      "address": "social_contracts",
+      "name": "ai_credit"
+    },
+    {
+      "address": "social_contracts",
+      "name": "block_list"
+    },
+    {
+      "address": "social_contracts",
+      "name": "governance"
+    },
+    {
+      "address": "social_contracts",
+      "name": "insurance"
+    },
+    {
+      "address": "social_contracts",
+      "name": "memory"
+    },
+    {
+      "address": "social_contracts",
+      "name": "mydata"
+    },
+    {
+      "address": "social_contracts",
+      "name": "platform"
+    },
+    {
+      "address": "social_contracts",
+      "name": "poc_username_beneficiary"
+    },
+    {
+      "address": "social_contracts",
+      "name": "post"
+    },
+    {
+      "address": "social_contracts",
+      "name": "profile"
+    },
+    {
+      "address": "social_contracts",
+      "name": "proof_of_creativity"
+    },
+    {
+      "address": "social_contracts",
+      "name": "social_graph"
+    },
+    {
+      "address": "social_contracts",
+      "name": "social_proof_of_truth"
+    },
+    {
+      "address": "social_contracts",
+      "name": "social_proof_tokens"
+    },
+    {
+      "address": "social_contracts",
+      "name": "upgrade"
+    }
+  ],
+  "attributes": [
+    {
+      "Parameterized": [
+        "allow",
+        [
+          {
+            "Name": "duplicate_alias"
+          },
+          {
+            "Name": "unused_use"
+          },
+          {
+            "Parameterized": [
+              "lint",
+              [
+                {
+                  "Name": "public_entry"
+                }
+              ]
+            ]
+          }
+        ]
+      ]
+    }
+  ],
+  "functions": {
+    "claim_all_admin_capabilities": {
+      "source_index": 0,
+      "index": 0,
+      "doc": " Claim all admin capabilities (one-time only)\n Creates and transfers all admin capabilities to caller, then seals the bootstrap key.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "registry"
+                  },
+                  "name": "Registry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "bootstrap_key",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "bootstrap_key"
+                  },
+                  "name": "BootstrapKey",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "is_bootstrap_used": {
+      "source_index": 1,
+      "index": 1,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "key",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "bootstrap_key"
+                  },
+                  "name": "BootstrapKey",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "bootstrap_version": {
+      "source_index": 2,
+      "index": 2,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "key",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "bootstrap_key"
+                  },
+                  "name": "BootstrapKey",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    }
+  },
+  "structs": {},
+  "enums": {}
+}

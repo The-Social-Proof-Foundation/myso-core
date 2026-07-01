@@ -1,0 +1,463 @@
+{
+  "id": {
+    "address": "messaging",
+    "name": "group_manager"
+  },
+  "doc": " Module: group_manager\n\n Actor object that provides controlled `&mut UID` access to `PermissionedGroup<T>` objects.\n\n `GroupManager` is a derived singleton object from `MessagingNamespace`.\n It is granted `ObjectAdmin` on every group created via `messaging::create_group`,\n and exposes functions for:\n - Metadata dynamic field management\n\n This module does NOT import `messaging.move` to avoid a circular dependency.\n The generic functions are instantiated with the concrete `Messaging` type\n at the call site in `messaging.move`.\n\n All public entry points are in the `messaging` module.",
+  "immediate_dependencies": [
+    {
+      "address": "messaging",
+      "name": "metadata"
+    },
+    {
+      "address": "myso",
+      "name": "derived_object"
+    },
+    {
+      "address": "myso",
+      "name": "dynamic_field"
+    },
+    {
+      "address": "myso",
+      "name": "object"
+    },
+    {
+      "address": "myso",
+      "name": "permissioned_group"
+    },
+    {
+      "address": "myso",
+      "name": "transfer"
+    },
+    {
+      "address": "std",
+      "name": "string"
+    }
+  ],
+  "attributes": [],
+  "functions": {
+    "new": {
+      "source_index": 0,
+      "index": 0,
+      "doc": " Creates a new `GroupManager` derived from the namespace UID.\n Called once during `messaging::init`.\n\n # Parameters\n - `namespace_uid`: Mutable reference to the `MessagingNamespace` UID\n\n # Returns\n A new `GroupManager` object with a deterministic address.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "namespace_uid",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "object"
+                  },
+                  "name": "UID",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "messaging",
+              "name": "group_manager"
+            },
+            "name": "GroupManager",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "share": {
+      "source_index": 1,
+      "index": 1,
+      "doc": " Shares the `GroupManager` object on-chain.\n Called once during `messaging::init` after creating the object.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "messaging",
+                "name": "group_manager"
+              },
+              "name": "GroupManager",
+              "type_arguments": []
+            }
+          }
+        }
+      ],
+      "return_": []
+    },
+    "derivation_key": {
+      "source_index": 2,
+      "index": 2,
+      "doc": " Returns the fixed derivation key string.\n Used by `messaging::create_group` to compute the `GroupManager`'s address via\n `derived_object::derive_address` without holding the object.\n\n # Returns\n The string key used for address derivation.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "std",
+              "name": "string"
+            },
+            "name": "String",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "attach_metadata": {
+      "source_index": 3,
+      "index": 3,
+      "doc": " Attaches Metadata as a dynamic field on the group.\n Called during `messaging::create_group`.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "group_manager"
+                  },
+                  "name": "GroupManager",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "group",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "m",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "messaging",
+                "name": "metadata"
+              },
+              "name": "Metadata",
+              "type_arguments": []
+            }
+          }
+        }
+      ],
+      "return_": []
+    },
+    "remove_metadata": {
+      "source_index": 4,
+      "index": 4,
+      "doc": " Removes and returns Metadata from the group.\n Used when archiving/destroying a group to preserve metadata.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "group_manager"
+                  },
+                  "name": "GroupManager",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "group",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "messaging",
+              "name": "metadata"
+            },
+            "name": "Metadata",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "borrow_metadata": {
+      "source_index": 5,
+      "index": 5,
+      "doc": " Returns an immutable reference to the group's Metadata.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "group_manager"
+                  },
+                  "name": "GroupManager",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "group",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            false,
+            {
+              "Datatype": {
+                "module": {
+                  "address": "messaging",
+                  "name": "metadata"
+                },
+                "name": "Metadata",
+                "type_arguments": []
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "borrow_metadata_mut": {
+      "source_index": 6,
+      "index": 6,
+      "doc": " Returns a mutable reference to the group's Metadata.\n Used by messaging.move to expose field-level setters with permission checks.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "group_manager"
+                  },
+                  "name": "GroupManager",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "group",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            true,
+            {
+              "Datatype": {
+                "module": {
+                  "address": "messaging",
+                  "name": "metadata"
+                },
+                "name": "Metadata",
+                "type_arguments": []
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "structs": {
+    "GroupManager": {
+      "index": 0,
+      "doc": " Actor object that holds `ObjectAdmin` on all messaging groups.\n The `id` field is intentionally private — no UID getter is exposed.\n All operations go through the package-internal functions.",
+      "attributes": [],
+      "abilities": [
+        "Key"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "enums": {}
+}

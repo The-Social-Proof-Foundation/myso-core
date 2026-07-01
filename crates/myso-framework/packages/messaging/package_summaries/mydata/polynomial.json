@@ -1,0 +1,499 @@
+{
+  "id": {
+    "address": "mydata",
+    "name": "polynomial"
+  },
+  "doc": null,
+  "immediate_dependencies": [
+    {
+      "address": "mydata",
+      "name": "gf256"
+    },
+    {
+      "address": "std",
+      "name": "vector"
+    }
+  ],
+  "attributes": [],
+  "functions": {
+    "evaluate": {
+      "source_index": 0,
+      "index": 0,
+      "doc": " Evaluate a polynomial at a given point.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "p",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "mydata",
+                    "name": "polynomial"
+                  },
+                  "name": "Polynomial",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "x",
+          "type_": "u8"
+        }
+      ],
+      "return_": [
+        "u8"
+      ]
+    },
+    "get_constant_term": {
+      "source_index": 1,
+      "index": 1,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "p",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "mydata",
+                    "name": "polynomial"
+                  },
+                  "name": "Polynomial",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u8"
+      ]
+    },
+    "div_by_monic_linear": {
+      "source_index": 2,
+      "index": 2,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "x",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "mydata",
+                    "name": "polynomial"
+                  },
+                  "name": "Polynomial",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "c",
+          "type_": "u8"
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "mydata",
+              "name": "polynomial"
+            },
+            "name": "Polynomial",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "interpolate_with_numerators": {
+      "source_index": 3,
+      "index": 3,
+      "doc": " Same as interpolate, but the numerator product, \\prod_i (x - x_i), is precomputed.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "x",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "vector": "u8"
+              }
+            ]
+          }
+        },
+        {
+          "name": "y",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "vector": "u8"
+              }
+            ]
+          }
+        },
+        {
+          "name": "numerators",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "vector": {
+                  "Datatype": {
+                    "module": {
+                      "address": "mydata",
+                      "name": "polynomial"
+                    },
+                    "name": "Polynomial",
+                    "type_arguments": []
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "mydata",
+              "name": "polynomial"
+            },
+            "name": "Polynomial",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "compute_numerators": {
+      "source_index": 4,
+      "index": 4,
+      "doc": " Compute the numerators of the Lagrange polynomials for the given x values.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "x",
+          "type_": {
+            "vector": "u8"
+          }
+        }
+      ],
+      "return_": [
+        {
+          "vector": {
+            "Datatype": {
+              "module": {
+                "address": "mydata",
+                "name": "polynomial"
+              },
+              "name": "Polynomial",
+              "type_arguments": []
+            }
+          }
+        }
+      ]
+    },
+    "interpolate_all": {
+      "source_index": 5,
+      "index": 5,
+      "doc": " Interpolate l polynomials p_1, ..., p_l such that p_i(x_j) = y[j][i] for all i, j.\n The length of the input vectors must be the same.\n The length of each vector in y must be the same (equal to the l above).\n Aborts if the input lengths are not compatible or if the vectors are empty.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "x",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "vector": "u8"
+              }
+            ]
+          }
+        },
+        {
+          "name": "y",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "vector": {
+                  "vector": "u8"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "vector": {
+            "Datatype": {
+              "module": {
+                "address": "mydata",
+                "name": "polynomial"
+              },
+              "name": "Polynomial",
+              "type_arguments": []
+            }
+          }
+        }
+      ]
+    },
+    "add": {
+      "source_index": 6,
+      "index": 6,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "x",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "mydata",
+                    "name": "polynomial"
+                  },
+                  "name": "Polynomial",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "y",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "mydata",
+                    "name": "polynomial"
+                  },
+                  "name": "Polynomial",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "mydata",
+              "name": "polynomial"
+            },
+            "name": "Polynomial",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "mul": {
+      "source_index": 7,
+      "index": 7,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "x",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "mydata",
+                    "name": "polynomial"
+                  },
+                  "name": "Polynomial",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "y",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "mydata",
+                    "name": "polynomial"
+                  },
+                  "name": "Polynomial",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "mydata",
+              "name": "polynomial"
+            },
+            "name": "Polynomial",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "scale": {
+      "source_index": 8,
+      "index": 8,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "x",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "mydata",
+                    "name": "polynomial"
+                  },
+                  "name": "Polynomial",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "s",
+          "type_": "u8"
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "mydata",
+              "name": "polynomial"
+            },
+            "name": "Polynomial",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "monic_linear": {
+      "source_index": 9,
+      "index": 9,
+      "doc": " Return x - c (same as x + c since GF256 is a binary field)",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "c",
+          "type_": {
+            "Reference": [
+              false,
+              "u8"
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "mydata",
+              "name": "polynomial"
+            },
+            "name": "Polynomial",
+            "type_arguments": []
+          }
+        }
+      ]
+    }
+  },
+  "structs": {
+    "Polynomial": {
+      "index": 0,
+      "doc": " This represents a polynomial over GF(2^8).\n The first coefficient is the constant term.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "coefficients": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "vector": "u8"
+            }
+          }
+        }
+      }
+    }
+  },
+  "enums": {}
+}

@@ -1,0 +1,747 @@
+{
+  "id": {
+    "address": "social_contracts",
+    "name": "social_graph"
+  },
+  "doc": " Social graph module for the MySocial network\n Manages social relationships between users (following/followers)",
+  "immediate_dependencies": [
+    {
+      "address": "myso",
+      "name": "clock"
+    },
+    {
+      "address": "myso",
+      "name": "event"
+    },
+    {
+      "address": "myso",
+      "name": "object"
+    },
+    {
+      "address": "myso",
+      "name": "table"
+    },
+    {
+      "address": "myso",
+      "name": "transfer"
+    },
+    {
+      "address": "myso",
+      "name": "tx_context"
+    },
+    {
+      "address": "myso",
+      "name": "vec_set"
+    },
+    {
+      "address": "social_contracts",
+      "name": "upgrade"
+    },
+    {
+      "address": "std",
+      "name": "string"
+    }
+  ],
+  "attributes": [
+    {
+      "Parameterized": [
+        "allow",
+        [
+          {
+            "Name": "duplicate_alias"
+          },
+          {
+            "Name": "unused_use"
+          },
+          {
+            "Parameterized": [
+              "lint",
+              [
+                {
+                  "Name": "public_entry"
+                }
+              ]
+            ]
+          }
+        ]
+      ]
+    }
+  ],
+  "functions": {
+    "bootstrap_init": {
+      "source_index": 0,
+      "index": 0,
+      "doc": " Bootstrap initialization function - creates the social graph shared object",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "_clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "follow": {
+      "source_index": 1,
+      "index": 1,
+      "doc": " Follow a wallet address\n Uses wallet-level architecture - no profile required",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "social_graph",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_graph"
+                  },
+                  "name": "SocialGraph",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "following_address",
+          "type_": "address"
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "unfollow": {
+      "source_index": 2,
+      "index": 2,
+      "doc": " Unfollow a wallet address\n Uses wallet-level architecture - no profile required",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "social_graph",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_graph"
+                  },
+                  "name": "SocialGraph",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "following_address",
+          "type_": "address"
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "unfollow_internal": {
+      "source_index": 3,
+      "index": 3,
+      "doc": " Internal unfollow function that accepts explicit wallet addresses\n Used for bidirectional unfollow during blocking operations\n Returns true if unfollow occurred, false if not following",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "social_graph",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_graph"
+                  },
+                  "name": "SocialGraph",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "follower_address",
+          "type_": "address"
+        },
+        {
+          "name": "following_address",
+          "type_": "address"
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "migrate_social_graph": {
+      "source_index": 4,
+      "index": 4,
+      "doc": " Migrate the social graph to a new version\n Only callable by the admin with the AdminCap",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "social_graph",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_graph"
+                  },
+                  "name": "SocialGraph",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "upgrade"
+                  },
+                  "name": "UpgradeAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "borrow_version_mut": {
+      "source_index": 5,
+      "index": 5,
+      "doc": " Get a mutable reference to the version field (for upgrade module)",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "social_graph",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_graph"
+                  },
+                  "name": "SocialGraph",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            true,
+            "u64"
+          ]
+        }
+      ]
+    },
+    "version": {
+      "source_index": 6,
+      "index": 6,
+      "doc": " Get the version of the social graph",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "social_graph",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_graph"
+                  },
+                  "name": "SocialGraph",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "is_following": {
+      "source_index": 7,
+      "index": 7,
+      "doc": " Check if a wallet address is following another wallet address",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "social_graph",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_graph"
+                  },
+                  "name": "SocialGraph",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "follower_address",
+          "type_": "address"
+        },
+        {
+          "name": "following_address",
+          "type_": "address"
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "following_count": {
+      "source_index": 8,
+      "index": 8,
+      "doc": " Get the number of wallet addresses a user is following",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "social_graph",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_graph"
+                  },
+                  "name": "SocialGraph",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "wallet_address",
+          "type_": "address"
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "follower_count": {
+      "source_index": 9,
+      "index": 9,
+      "doc": " Get the number of followers a wallet address has",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "social_graph",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_graph"
+                  },
+                  "name": "SocialGraph",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "wallet_address",
+          "type_": "address"
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "get_following": {
+      "source_index": 10,
+      "index": 10,
+      "doc": " Get the list of wallet addresses a user is following",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "social_graph",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_graph"
+                  },
+                  "name": "SocialGraph",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "wallet_address",
+          "type_": "address"
+        }
+      ],
+      "return_": [
+        {
+          "vector": "address"
+        }
+      ]
+    },
+    "get_followers": {
+      "source_index": 11,
+      "index": 11,
+      "doc": " Get the list of followers for a wallet address",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "social_graph",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_graph"
+                  },
+                  "name": "SocialGraph",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "wallet_address",
+          "type_": "address"
+        }
+      ],
+      "return_": [
+        {
+          "vector": "address"
+        }
+      ]
+    }
+  },
+  "structs": {
+    "SocialGraph": {
+      "index": 0,
+      "doc": " Global social graph object that tracks relationships between wallet addresses\n Uses wallet-level architecture - no profile required",
+      "attributes": [],
+      "abilities": [
+        "Key"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          },
+          "following": {
+            "index": 1,
+            "doc": " Table mapping wallet addresses to sets of addresses they are following",
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "table"
+                },
+                "name": "Table",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": "address"
+                  },
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "vec_set"
+                        },
+                        "name": "VecSet",
+                        "type_arguments": [
+                          {
+                            "phantom": false,
+                            "argument": "address"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "followers": {
+            "index": 2,
+            "doc": " Table mapping wallet addresses to sets of addresses following them",
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "table"
+                },
+                "name": "Table",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": "address"
+                  },
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "vec_set"
+                        },
+                        "name": "VecSet",
+                        "type_arguments": [
+                          {
+                            "phantom": false,
+                            "argument": "address"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "version": {
+            "index": 3,
+            "doc": " Current version of the object",
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "FollowEvent": {
+      "index": 1,
+      "doc": " Follow event - emitted when a wallet address follows another wallet address",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "follower": {
+            "index": 0,
+            "doc": " Wallet address of the follower",
+            "type_": "address"
+          },
+          "following": {
+            "index": 1,
+            "doc": " Wallet address being followed",
+            "type_": "address"
+          }
+        }
+      }
+    },
+    "UnfollowEvent": {
+      "index": 2,
+      "doc": " Unfollow event - emitted when a wallet address unfollows another wallet address",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "follower": {
+            "index": 0,
+            "doc": " Wallet address of the unfollower",
+            "type_": "address"
+          },
+          "unfollowed": {
+            "index": 1,
+            "doc": " Wallet address being unfollowed",
+            "type_": "address"
+          }
+        }
+      }
+    }
+  },
+  "enums": {}
+}

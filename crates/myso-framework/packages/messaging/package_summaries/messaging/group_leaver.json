@@ -1,0 +1,367 @@
+{
+  "id": {
+    "address": "messaging",
+    "name": "group_leaver"
+  },
+  "doc": " Module: group_leaver\n\n Actor object that allows group members to leave a `PermissionedGroup<T>`.\n\n `GroupLeaver` is a derived singleton object from `MessagingNamespace`.\n It is granted `PermissionsAdmin` on every group created via `messaging::create_group`,\n and exposes a `leave` function that calls `object_remove_member` on behalf of the caller.\n\n This module does NOT import `messaging.move` to avoid a circular dependency.\n The generic `leave<T: drop>` is instantiated with the concrete `Messaging` type\n at the call site in `messaging.move`.\n\n All public entry points are in the `messaging` module:\n - `messaging::leave` - removes the caller from a group",
+  "immediate_dependencies": [
+    {
+      "address": "myso",
+      "name": "derived_object"
+    },
+    {
+      "address": "myso",
+      "name": "object"
+    },
+    {
+      "address": "myso",
+      "name": "permissioned_group"
+    },
+    {
+      "address": "myso",
+      "name": "transfer"
+    },
+    {
+      "address": "myso",
+      "name": "tx_context"
+    },
+    {
+      "address": "std",
+      "name": "string"
+    }
+  ],
+  "attributes": [],
+  "functions": {
+    "new": {
+      "source_index": 0,
+      "index": 0,
+      "doc": " Creates a new `GroupLeaver` derived from the namespace UID.\n Called once during `messaging::init`.\n\n # Parameters\n - `namespace_uid`: Mutable reference to the `MessagingNamespace` UID\n\n # Returns\n A new `GroupLeaver` object with a deterministic address.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "namespace_uid",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "object"
+                  },
+                  "name": "UID",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "messaging",
+              "name": "group_leaver"
+            },
+            "name": "GroupLeaver",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "share": {
+      "source_index": 1,
+      "index": 1,
+      "doc": " Shares the `GroupLeaver` object on-chain.\n Called once during `messaging::init` after creating the object.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "messaging",
+                "name": "group_leaver"
+              },
+              "name": "GroupLeaver",
+              "type_arguments": []
+            }
+          }
+        }
+      ],
+      "return_": []
+    },
+    "derivation_key": {
+      "source_index": 2,
+      "index": 2,
+      "doc": " Returns the fixed derivation key string.\n Used by `messaging::create_group` to compute the `GroupLeaver`'s address via\n `derived_object::derive_address` without holding the object.\n\n # Returns\n The string key used for address derivation.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "std",
+              "name": "string"
+            },
+            "name": "String",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "leave": {
+      "source_index": 3,
+      "index": 3,
+      "doc": " Removes the caller (`ctx.sender()`) from the group.\n The `GroupLeaver` must have `PermissionsAdmin` on the group (granted at creation time).\n\n Generic over `T: drop` so this module does not need to import `messaging.move`.\n Instantiated as `leave<Messaging>` at the call site in `messaging.move`.\n\n # Aborts\n - `ENotPermitted`: if this actor doesn't have `PermissionsAdmin` on the group\n - `EMemberNotFound`: if the caller is not a member of the group\n - `ELastPermissionsAdmin`: if the caller is the last `PermissionsAdmin`",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "group_leaver"
+                  },
+                  "name": "GroupLeaver",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "group",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "revoke_permissions_admin": {
+      "source_index": 4,
+      "index": 4,
+      "doc": " Revokes `PermissionsAdmin` from `member` using this actor's admin capability.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "group_leaver"
+                  },
+                  "name": "GroupLeaver",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "group",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "member",
+          "type_": "address"
+        }
+      ],
+      "return_": []
+    },
+    "revoke_extension_permissions_admin": {
+      "source_index": 5,
+      "index": 5,
+      "doc": " Revokes `ExtensionPermissionsAdmin` from `member` using this actor's admin capability.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "group_leaver"
+                  },
+                  "name": "GroupLeaver",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "group",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "member",
+          "type_": "address"
+        }
+      ],
+      "return_": []
+    }
+  },
+  "structs": {
+    "GroupLeaver": {
+      "index": 0,
+      "doc": " Actor object that holds `PermissionsAdmin` on all messaging groups.\n The `id` field is intentionally private — no UID getter is exposed.\n All leave operations go through the package-internal `leave<T>` function.",
+      "attributes": [],
+      "abilities": [
+        "Key"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "enums": {}
+}

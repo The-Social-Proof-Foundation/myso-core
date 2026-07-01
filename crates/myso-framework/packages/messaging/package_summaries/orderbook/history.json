@@ -1,0 +1,704 @@
+{
+  "id": {
+    "address": "orderbook",
+    "name": "history"
+  },
+  "doc": " History module tracks the volume data for the current epoch and past epochs.\n It also tracks past trade params. Past maker fees are used to calculate\n fills for old orders. The historic median is used to calculate rebates and\n burns.",
+  "immediate_dependencies": [
+    {
+      "address": "myso",
+      "name": "event"
+    },
+    {
+      "address": "myso",
+      "name": "object"
+    },
+    {
+      "address": "myso",
+      "name": "table"
+    },
+    {
+      "address": "myso",
+      "name": "tx_context"
+    },
+    {
+      "address": "orderbook",
+      "name": "balances"
+    },
+    {
+      "address": "orderbook",
+      "name": "constants"
+    },
+    {
+      "address": "orderbook",
+      "name": "math"
+    },
+    {
+      "address": "orderbook",
+      "name": "trade_params"
+    },
+    {
+      "address": "std",
+      "name": "u128"
+    }
+  ],
+  "attributes": [],
+  "functions": {
+    "empty": {
+      "source_index": 0,
+      "index": 0,
+      "doc": " Create a new `History` instance. Called once upon pool creation. A single\n blank `Volumes` instance is created and added to the historic_volumes table.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "trade_params",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "orderbook",
+                "name": "trade_params"
+              },
+              "name": "TradeParams",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "epoch_created",
+          "type_": "u64"
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "orderbook",
+              "name": "history"
+            },
+            "name": "History",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "update": {
+      "source_index": 1,
+      "index": 1,
+      "doc": " Update the epoch if it has changed. If there are accounts with rebates,\n add the current epoch's volume data to the historic volumes.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "history"
+                  },
+                  "name": "History",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "trade_params",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "orderbook",
+                "name": "trade_params"
+              },
+              "name": "TradeParams",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "pool_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "reset_volumes": {
+      "source_index": 2,
+      "index": 2,
+      "doc": " Reset the current epoch's volume data.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "history"
+                  },
+                  "name": "History",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "trade_params",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "orderbook",
+                "name": "trade_params"
+              },
+              "name": "TradeParams",
+              "type_arguments": []
+            }
+          }
+        }
+      ],
+      "return_": []
+    },
+    "calculate_rebate_amount": {
+      "source_index": 3,
+      "index": 3,
+      "doc": " Given the epoch's volume data and the account's volume data,\n calculate and returns rebate amount, updates the burn amount.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "history"
+                  },
+                  "name": "History",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "prev_epoch",
+          "type_": "u64"
+        },
+        {
+          "name": "maker_volume",
+          "type_": "u128"
+        },
+        {
+          "name": "account_stake",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "orderbook",
+              "name": "balances"
+            },
+            "name": "Balances",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "update_historic_median": {
+      "source_index": 4,
+      "index": 4,
+      "doc": " Updates the historic_median for past 28 epochs.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "history"
+                  },
+                  "name": "History",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "add_volume": {
+      "source_index": 5,
+      "index": 5,
+      "doc": " Add volume to the current epoch's volume data.\n Increments the total volume and total staked volume.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "history"
+                  },
+                  "name": "History",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "maker_volume",
+          "type_": "u64"
+        },
+        {
+          "name": "account_stake",
+          "type_": "u64"
+        }
+      ],
+      "return_": []
+    },
+    "balance_to_burn": {
+      "source_index": 6,
+      "index": 6,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "history"
+                  },
+                  "name": "History",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "reset_balance_to_burn": {
+      "source_index": 7,
+      "index": 7,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "history"
+                  },
+                  "name": "History",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "historic_maker_fee": {
+      "source_index": 8,
+      "index": 8,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "history"
+                  },
+                  "name": "History",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "epoch",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "add_total_fees_collected": {
+      "source_index": 9,
+      "index": 9,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "orderbook",
+                    "name": "history"
+                  },
+                  "name": "History",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "fees",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "orderbook",
+                "name": "balances"
+              },
+              "name": "Balances",
+              "type_arguments": []
+            }
+          }
+        }
+      ],
+      "return_": []
+    }
+  },
+  "structs": {
+    "Volumes": {
+      "index": 0,
+      "doc": " `Volumes` represents volume data for a single epoch.\n Using flashloans on a whitelisted pool, assuming 1_000_000 * 1_000_000_000\n in volume per trade, at 1 trade per millisecond, the total volume can reach\n 1_000_000 * 1_000_000_000 * 1000 * 60 * 60 * 24 * 365 = 8.64e22 in one\n epoch.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "total_volume": {
+            "index": 0,
+            "doc": null,
+            "type_": "u128"
+          },
+          "total_staked_volume": {
+            "index": 1,
+            "doc": null,
+            "type_": "u128"
+          },
+          "total_fees_collected": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "orderbook",
+                  "name": "balances"
+                },
+                "name": "Balances",
+                "type_arguments": []
+              }
+            }
+          },
+          "historic_median": {
+            "index": 3,
+            "doc": null,
+            "type_": "u128"
+          },
+          "trade_params": {
+            "index": 4,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "orderbook",
+                  "name": "trade_params"
+                },
+                "name": "TradeParams",
+                "type_arguments": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "History": {
+      "index": 1,
+      "doc": " `History` represents the volume data for the current epoch and past epochs.",
+      "attributes": [],
+      "abilities": [
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "epoch": {
+            "index": 0,
+            "doc": null,
+            "type_": "u64"
+          },
+          "epoch_created": {
+            "index": 1,
+            "doc": null,
+            "type_": "u64"
+          },
+          "volumes": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "orderbook",
+                  "name": "history"
+                },
+                "name": "Volumes",
+                "type_arguments": []
+              }
+            }
+          },
+          "historic_volumes": {
+            "index": 3,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "table"
+                },
+                "name": "Table",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": "u64"
+                  },
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "orderbook",
+                          "name": "history"
+                        },
+                        "name": "Volumes",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "balance_to_burn": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "EpochData": {
+      "index": 2,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "epoch": {
+            "index": 0,
+            "doc": null,
+            "type_": "u64"
+          },
+          "pool_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "total_volume": {
+            "index": 2,
+            "doc": null,
+            "type_": "u128"
+          },
+          "total_staked_volume": {
+            "index": 3,
+            "doc": null,
+            "type_": "u128"
+          },
+          "base_fees_collected": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "quote_fees_collected": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "myso_fees_collected": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "historic_median": {
+            "index": 7,
+            "doc": null,
+            "type_": "u128"
+          },
+          "taker_fee": {
+            "index": 8,
+            "doc": null,
+            "type_": "u64"
+          },
+          "maker_fee": {
+            "index": 9,
+            "doc": null,
+            "type_": "u64"
+          },
+          "stake_required": {
+            "index": 10,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    }
+  },
+  "enums": {}
+}

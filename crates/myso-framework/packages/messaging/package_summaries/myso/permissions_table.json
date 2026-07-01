@@ -1,0 +1,498 @@
+{
+  "id": {
+    "address": "myso",
+    "name": "permissions_table"
+  },
+  "doc": " Module: permissions_table\n\n Internal data structure for storing member permissions.\n Maps `address -> VecSet<TypeName>` using dynamic fields on a derived object.\n Created as a child of `PermissionedGroup` for easy discoverability.",
+  "immediate_dependencies": [
+    {
+      "address": "myso",
+      "name": "derived_object"
+    },
+    {
+      "address": "myso",
+      "name": "dynamic_field"
+    },
+    {
+      "address": "myso",
+      "name": "object"
+    },
+    {
+      "address": "myso",
+      "name": "vec_set"
+    },
+    {
+      "address": "std",
+      "name": "string"
+    },
+    {
+      "address": "std",
+      "name": "type_name"
+    }
+  ],
+  "attributes": [],
+  "functions": {
+    "new_derived": {
+      "source_index": 0,
+      "index": 0,
+      "doc": " Creates a new `PermissionsTable` derived from the given parent UID.\n\n # Aborts\n - `EPermissionsTableAlreadyExists`: if a table already exists for this derivation key",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "parent_uid",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "object"
+                  },
+                  "name": "UID",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "derivation_key",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "string"
+              },
+              "name": "String",
+              "type_arguments": []
+            }
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "permissions_table"
+            },
+            "name": "PermissionsTable",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "add_member": {
+      "source_index": 1,
+      "index": 1,
+      "doc": " Adds a new member with the given initial permission set.\n Stores the mapping as a dynamic field keyed by the member's address.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissions_table"
+                  },
+                  "name": "PermissionsTable",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "member",
+          "type_": "address"
+        },
+        {
+          "name": "initial_permissions",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "vec_set"
+              },
+              "name": "VecSet",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "std",
+                        "name": "type_name"
+                      },
+                      "name": "TypeName",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "return_": []
+    },
+    "remove_member": {
+      "source_index": 2,
+      "index": 2,
+      "doc": " Removes a member and their entire permission set from the table.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissions_table"
+                  },
+                  "name": "PermissionsTable",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "member",
+          "type_": "address"
+        }
+      ],
+      "return_": []
+    },
+    "add_permission": {
+      "source_index": 3,
+      "index": 3,
+      "doc": " Adds a permission to an existing member's permission set.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissions_table"
+                  },
+                  "name": "PermissionsTable",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "member",
+          "type_": "address"
+        },
+        {
+          "name": "permission",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "type_name"
+              },
+              "name": "TypeName",
+              "type_arguments": []
+            }
+          }
+        }
+      ],
+      "return_": []
+    },
+    "remove_permission": {
+      "source_index": 4,
+      "index": 4,
+      "doc": " Removes a permission from a member's set and returns the remaining permissions.\n Useful for checking if the member should be removed (empty set).",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissions_table"
+                  },
+                  "name": "PermissionsTable",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "member",
+          "type_": "address"
+        },
+        {
+          "name": "permission",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "std",
+                    "name": "type_name"
+                  },
+                  "name": "TypeName",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            false,
+            {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "vec_set"
+                },
+                "name": "VecSet",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "std",
+                          "name": "type_name"
+                        },
+                        "name": "TypeName",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "has_permission": {
+      "source_index": 5,
+      "index": 5,
+      "doc": " Returns whether a member has the specified permission.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissions_table"
+                  },
+                  "name": "PermissionsTable",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "member",
+          "type_": "address"
+        },
+        {
+          "name": "permission",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "std",
+                    "name": "type_name"
+                  },
+                  "name": "TypeName",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "is_member": {
+      "source_index": 6,
+      "index": 6,
+      "doc": " Returns whether the given address is a member (has a dynamic field entry).",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissions_table"
+                  },
+                  "name": "PermissionsTable",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "member",
+          "type_": "address"
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "length": {
+      "source_index": 7,
+      "index": 7,
+      "doc": " Returns the number of members in the table.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissions_table"
+                  },
+                  "name": "PermissionsTable",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "destroy_empty": {
+      "source_index": 8,
+      "index": 8,
+      "doc": " Destroys an empty PermissionsTable.\n\n # Aborts\n - `EPermissionsTableNotEmpty`: if the table still has members",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "self",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "permissions_table"
+              },
+              "name": "PermissionsTable",
+              "type_arguments": []
+            }
+          }
+        }
+      ],
+      "return_": []
+    }
+  },
+  "structs": {
+    "PermissionsTable": {
+      "index": 0,
+      "doc": " A PermissionsTable is a derived object from a parent PermissionedGroup,\n that holds all the `address -> VecSet<TypeName>` mappings for permissions.\n The permissions are stored as dynamic fields.\n This enables easy discoverability, given a PermissionedGroup ID.",
+      "attributes": [],
+      "abilities": [
+        "Key",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          },
+          "length": {
+            "index": 1,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    }
+  },
+  "enums": {}
+}

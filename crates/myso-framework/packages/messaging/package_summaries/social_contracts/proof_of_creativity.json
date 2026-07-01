@@ -1,0 +1,4412 @@
+{
+  "id": {
+    "address": "social_contracts",
+    "name": "proof_of_creativity"
+  },
+  "doc": " Proof of Creativity module for the MySocial network\n Manages content originality verification through oracle analysis,\n PoC badge issuance, revenue redirection, and community dispute voting",
+  "immediate_dependencies": [
+    {
+      "address": "myso",
+      "name": "balance"
+    },
+    {
+      "address": "myso",
+      "name": "clock"
+    },
+    {
+      "address": "myso",
+      "name": "coin"
+    },
+    {
+      "address": "myso",
+      "name": "event"
+    },
+    {
+      "address": "myso",
+      "name": "myso"
+    },
+    {
+      "address": "myso",
+      "name": "object"
+    },
+    {
+      "address": "myso",
+      "name": "table"
+    },
+    {
+      "address": "myso",
+      "name": "transfer"
+    },
+    {
+      "address": "myso",
+      "name": "tx_context"
+    },
+    {
+      "address": "social_contracts",
+      "name": "ai_credit"
+    },
+    {
+      "address": "social_contracts",
+      "name": "memory"
+    },
+    {
+      "address": "social_contracts",
+      "name": "poc_username_beneficiary"
+    },
+    {
+      "address": "social_contracts",
+      "name": "poc_vault"
+    },
+    {
+      "address": "social_contracts",
+      "name": "post"
+    },
+    {
+      "address": "social_contracts",
+      "name": "profile"
+    },
+    {
+      "address": "social_contracts",
+      "name": "social_proof_tokens"
+    },
+    {
+      "address": "social_contracts",
+      "name": "upgrade"
+    },
+    {
+      "address": "std",
+      "name": "option"
+    },
+    {
+      "address": "std",
+      "name": "string"
+    }
+  ],
+  "attributes": [
+    {
+      "Parameterized": [
+        "allow",
+        [
+          {
+            "Name": "duplicate_alias"
+          },
+          {
+            "Name": "unused_const"
+          },
+          {
+            "Name": "unused_use"
+          },
+          {
+            "Name": "unused_variable"
+          },
+          {
+            "Parameterized": [
+              "lint",
+              [
+                {
+                  "Name": "public_entry"
+                }
+              ]
+            ]
+          }
+        ]
+      ]
+    }
+  ],
+  "functions": {
+    "create_poc_beneficiary_admin_cap": {
+      "source_index": 0,
+      "index": 0,
+      "doc": " Create admin capability for username beneficiary provisioning (bootstrap only).",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "social_contracts",
+              "name": "poc_username_beneficiary"
+            },
+            "name": "PoCBeneficiaryAdminCap",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "mul_div_u64_loose": {
+      "source_index": 1,
+      "index": 1,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "a",
+          "type_": "u64"
+        },
+        {
+          "name": "b",
+          "type_": "u64"
+        },
+        {
+          "name": "divisor",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "bootstrap_init": {
+      "source_index": 2,
+      "index": 2,
+      "doc": " Bootstrap initialization function - creates the PoC configuration and registry",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "update_poc_config": {
+      "source_index": 3,
+      "index": 3,
+      "doc": " Update PoC configuration (admin only)",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "oracle_address",
+          "type_": "address"
+        },
+        {
+          "name": "image_threshold",
+          "type_": "u64"
+        },
+        {
+          "name": "video_threshold",
+          "type_": "u64"
+        },
+        {
+          "name": "audio_threshold",
+          "type_": "u64"
+        },
+        {
+          "name": "revenue_redirect_percentage",
+          "type_": "u64"
+        },
+        {
+          "name": "dispute_cost",
+          "type_": "u64"
+        },
+        {
+          "name": "min_vote_stake",
+          "type_": "u64"
+        },
+        {
+          "name": "max_vote_stake",
+          "type_": "u64"
+        },
+        {
+          "name": "voting_duration_ms",
+          "type_": "u64"
+        },
+        {
+          "name": "max_reasoning_length",
+          "type_": "u64"
+        },
+        {
+          "name": "max_evidence_urls",
+          "type_": "u64"
+        },
+        {
+          "name": "max_votes_per_dispute",
+          "type_": "u64"
+        },
+        {
+          "name": "claim_treasury_fee_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "max_referral_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "video_embedded_audio_redirect_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "dispute_quorum_base_stake",
+          "type_": "u64"
+        },
+        {
+          "name": "dispute_second_round_fee_multiplier_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "dispute_second_round_quorum_multiplier_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "username_beneficiary_join_referral_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "create_username_beneficiary": {
+      "source_index": 4,
+      "index": 4,
+      "doc": " Provision a username beneficiary vault for an off-platform creator (admin only).",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "poc_username_beneficiary"
+                  },
+                  "name": "PoCBeneficiaryAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "directory",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "poc_username_beneficiary"
+                  },
+                  "name": "PoCUsernameBeneficiaryDirectory",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "shard",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "poc_username_beneficiary"
+                  },
+                  "name": "PoCUsernameBeneficiaryShard",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault_directory",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "poc_vault"
+                  },
+                  "name": "PoCVaultDirectory",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "username_registry",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "UsernameRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "username",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "identity_source",
+          "type_": "u8"
+        },
+        {
+          "name": "identity_hash",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "required_x_handle",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "end_username_beneficiary": {
+      "source_index": 5,
+      "index": 5,
+      "doc": " End an active username beneficiary provision (admin only).",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "poc_username_beneficiary"
+                  },
+                  "name": "PoCBeneficiaryAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "directory",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "poc_username_beneficiary"
+                  },
+                  "name": "PoCUsernameBeneficiaryDirectory",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "shard",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "poc_username_beneficiary"
+                  },
+                  "name": "PoCUsernameBeneficiaryShard",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "username_registry",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "UsernameRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "beneficiary",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "poc_username_beneficiary"
+                  },
+                  "name": "PoCUsernameBeneficiary",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "poc_vault"
+                  },
+                  "name": "PoCBeneficiaryVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "claim_username_beneficiary": {
+      "source_index": 6,
+      "index": 6,
+      "doc": " Oracle-verified claim of a provisioned username beneficiary.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "directory",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "poc_username_beneficiary"
+                  },
+                  "name": "PoCUsernameBeneficiaryDirectory",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "shard",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "poc_username_beneficiary"
+                  },
+                  "name": "PoCUsernameBeneficiaryShard",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "username_registry",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "UsernameRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "memory_registry",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ai_credit_config",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "beneficiary",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "poc_username_beneficiary"
+                  },
+                  "name": "PoCUsernameBeneficiary",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "evidence_hash",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "attested_x_handle",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "display_name",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "bio",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "profile_picture_url",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "cover_photo_url",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "wallet",
+          "type_": "address"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "claim_username_beneficiary_vault_balance": {
+      "source_index": 7,
+      "index": 7,
+      "doc": " Claim vault balance for a username-beneficiary-linked creator wallet (one-time join referral on first claim).",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "directory",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "poc_username_beneficiary"
+                  },
+                  "name": "PoCUsernameBeneficiaryDirectory",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "beneficiary",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "poc_username_beneficiary"
+                  },
+                  "name": "PoCUsernameBeneficiary",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "poc_vault"
+                  },
+                  "name": "PoCBeneficiaryVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "join_referrer",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "address"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "mint_shared_poc_badge_object": {
+      "source_index": 8,
+      "index": 8,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "post_id",
+          "type_": "address"
+        },
+        {
+          "name": "beneficiary_address",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "address"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "matched_anchor_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "address"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "similarity_score",
+          "type_": "u64"
+        },
+        {
+          "name": "media_type",
+          "type_": "u8"
+        },
+        {
+          "name": "oracle_address",
+          "type_": "address"
+        },
+        {
+          "name": "analyzed_at",
+          "type_": "u64"
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "object"
+            },
+            "name": "ID",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "run_analyze_and_update_post": {
+      "source_index": 9,
+      "index": 9,
+      "doc": " Oracle analyzes content and updates post PoC status. Does not require a social token pool.\n `derivative_redirection_target`: wallet (0) or beneficiary vault (1) when similarity is detected.\n `embedded_audio_only_derivative`: VIDEO only — oracle detected match on embedded audio track; uses `audio_threshold` and `video_embedded_audio_redirect_bps` ceiling with the same delta ramp.\n `apply_explicit_outcome` + `explicit_poc_outcome == 4`: royalty-free — accumulation via beneficiary vault (same as escrow redirect mode).",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault_directory",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "poc_vault"
+                  },
+                  "name": "PoCVaultDirectory",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "post",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "post"
+                  },
+                  "name": "Post",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "media_type",
+          "type_": "u8"
+        },
+        {
+          "name": "highest_similarity_score",
+          "type_": "u64"
+        },
+        {
+          "name": "original_creator",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "address"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "derivative_redirection_target",
+          "type_": "u8"
+        },
+        {
+          "name": "embedded_audio_only_derivative",
+          "type_": "bool"
+        },
+        {
+          "name": "apply_explicit_outcome",
+          "type_": "bool"
+        },
+        {
+          "name": "explicit_poc_outcome",
+          "type_": "u8"
+        },
+        {
+          "name": "reasoning",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "std",
+                        "name": "string"
+                      },
+                      "name": "String",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "evidence_urls",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "vector": {
+                      "Datatype": {
+                        "module": {
+                          "address": "std",
+                          "name": "string"
+                        },
+                        "name": "String",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "analyze_and_update_post": {
+      "source_index": 10,
+      "index": 10,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault_directory",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "poc_vault"
+                  },
+                  "name": "PoCVaultDirectory",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "post",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "post"
+                  },
+                  "name": "Post",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "media_type",
+          "type_": "u8"
+        },
+        {
+          "name": "highest_similarity_score",
+          "type_": "u64"
+        },
+        {
+          "name": "original_creator",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "address"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "derivative_redirection_target",
+          "type_": "u8"
+        },
+        {
+          "name": "embedded_audio_only_derivative",
+          "type_": "bool"
+        },
+        {
+          "name": "apply_explicit_outcome",
+          "type_": "bool"
+        },
+        {
+          "name": "explicit_poc_outcome",
+          "type_": "u8"
+        },
+        {
+          "name": "reasoning",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "std",
+                        "name": "string"
+                      },
+                      "name": "String",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "evidence_urls",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "vector": {
+                      "Datatype": {
+                        "module": {
+                          "address": "std",
+                          "name": "string"
+                        },
+                        "name": "String",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "analyze_and_update_post_sync_token_pool": {
+      "source_index": 11,
+      "index": 11,
+      "doc": " Same as `analyze_and_update_post`, then mirrors PoC redirect fields onto `TokenPool` when the post has an SPT registry entry.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_tokens"
+                  },
+                  "name": "TokenRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault_directory",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "poc_vault"
+                  },
+                  "name": "PoCVaultDirectory",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "post",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "post"
+                  },
+                  "name": "Post",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_tokens"
+                  },
+                  "name": "TokenPool",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "media_type",
+          "type_": "u8"
+        },
+        {
+          "name": "highest_similarity_score",
+          "type_": "u64"
+        },
+        {
+          "name": "original_creator",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "address"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "derivative_redirection_target",
+          "type_": "u8"
+        },
+        {
+          "name": "embedded_audio_only_derivative",
+          "type_": "bool"
+        },
+        {
+          "name": "apply_explicit_outcome",
+          "type_": "bool"
+        },
+        {
+          "name": "explicit_poc_outcome",
+          "type_": "u8"
+        },
+        {
+          "name": "reasoning",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "std",
+                        "name": "string"
+                      },
+                      "name": "String",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "evidence_urls",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "vector": {
+                      "Datatype": {
+                        "module": {
+                          "address": "std",
+                          "name": "string"
+                        },
+                        "name": "String",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "claim_beneficiary_vault_balance": {
+      "source_index": 12,
+      "index": 12,
+      "doc": " Claim accumulated balance for coin type `T` from a beneficiary vault (splits per config bps + optional referrer).",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "poc_vault"
+                  },
+                  "name": "PoCBeneficiaryVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "referrer_opt",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "address"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "submit_poc_dispute": {
+      "source_index": 13,
+      "index": 13,
+      "doc": " Submit a PoC dispute with community voting",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "post",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "post"
+                  },
+                  "name": "Post",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "evidence",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "string"
+              },
+              "name": "String",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "payment",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "coin"
+              },
+              "name": "Coin",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "myso"
+                      },
+                      "name": "MYSO",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "vote_on_dispute": {
+      "source_index": 14,
+      "index": 14,
+      "doc": " Cast a vote on a PoC dispute (community voting)",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "dispute",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCDispute",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "vote_choice",
+          "type_": "u8"
+        },
+        {
+          "name": "stake_coin",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "coin"
+              },
+              "name": "Coin",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "myso"
+                      },
+                      "name": "MYSO",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "finalize_dispute_voting_resolution": {
+      "source_index": 15,
+      "index": 15,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "dispute",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCDispute",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "post",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "post"
+                  },
+                  "name": "Post",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "resolve_dispute_voting": {
+      "source_index": 16,
+      "index": 16,
+      "doc": " Resolve PoC dispute after voting period ends",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "dispute",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCDispute",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "post",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "post"
+                  },
+                  "name": "Post",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "resolve_dispute_voting_sync_token_pool": {
+      "source_index": 17,
+      "index": 17,
+      "doc": " Same as `resolve_dispute_voting`, then mirrors post PoC state onto `TokenPool` when the post has an SPT registry entry.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "dispute",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCDispute",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "post",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "post"
+                  },
+                  "name": "Post",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_tokens"
+                  },
+                  "name": "TokenRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_tokens"
+                  },
+                  "name": "TokenPool",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "claim_voting_reward": {
+      "source_index": 18,
+      "index": 18,
+      "doc": " Claim voting rewards after dispute resolution",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "dispute",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCDispute",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "assert_embed_audio_derivative_media_type": {
+      "source_index": 19,
+      "index": 19,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "embedded_audio_only_derivative",
+          "type_": "bool"
+        },
+        {
+          "name": "media_type",
+          "type_": "u8"
+        }
+      ],
+      "return_": []
+    },
+    "similarity_redirect_percentage": {
+      "source_index": 20,
+      "index": 20,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "threshold",
+          "type_": "u64"
+        },
+        {
+          "name": "highest_similarity_score",
+          "type_": "u64"
+        },
+        {
+          "name": "redirect_ceiling",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "bps_to_redirect_percent": {
+      "source_index": 21,
+      "index": 21,
+      "doc": " Converts basis points (0-10000) to redirect percent 0-100 for `post::revenue_redirect_percentage` (nearest integer percent).",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "bps",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "get_threshold_for_media_type": {
+      "source_index": 22,
+      "index": 22,
+      "doc": " Get similarity threshold for a media type",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "media_type",
+          "type_": "u8"
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "is_authorized_oracle": {
+      "source_index": 23,
+      "index": 23,
+      "doc": " Check if an address is the authorized oracle",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "caller",
+          "type_": "address"
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "get_registry_stats": {
+      "source_index": 24,
+      "index": 24,
+      "doc": " Get registry statistics",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64",
+        "u64",
+        "u64",
+        "u64"
+      ]
+    },
+    "has_poc_data": {
+      "source_index": 25,
+      "index": 25,
+      "doc": " Check if a post has PoC data that can be disputed",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "post",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "post"
+                  },
+                  "name": "Post",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "get_dispute_voting_status": {
+      "source_index": 26,
+      "index": 26,
+      "doc": " Get dispute voting status; `current_time_ms` should be `clock::timestamp_ms(clock)`.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "dispute",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCDispute",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "current_time_ms",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        "bool",
+        "bool",
+        "u8"
+      ]
+    },
+    "get_dispute_stakes": {
+      "source_index": 27,
+      "index": 27,
+      "doc": " Get dispute stake totals",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "dispute",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCDispute",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64",
+        "u64",
+        "u64"
+      ]
+    },
+    "has_user_voted": {
+      "source_index": 28,
+      "index": 28,
+      "doc": " Check if user has already voted on dispute",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "dispute",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCDispute",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "type_": "address"
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "config_version": {
+      "source_index": 29,
+      "index": 29,
+      "doc": " Get the version of the PoC config",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "dispute_version": {
+      "source_index": 30,
+      "index": 30,
+      "doc": " Get the version of a PoC dispute",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "dispute",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCDispute",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "registry_version": {
+      "source_index": 31,
+      "index": 31,
+      "doc": " Get the version of the PoC registry",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "migrate_poc_config": {
+      "source_index": 32,
+      "index": 32,
+      "doc": " Migration function for PoCConfig",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "upgrade"
+                  },
+                  "name": "UpgradeAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "migrate_poc_dispute": {
+      "source_index": 33,
+      "index": 33,
+      "doc": " Migration function for PoCDispute",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "dispute",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCDispute",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "upgrade"
+                  },
+                  "name": "UpgradeAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "migrate_poc_registry": {
+      "source_index": 34,
+      "index": 34,
+      "doc": " Migration function for PoCRegistry",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "upgrade"
+                  },
+                  "name": "UpgradeAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "create_poc_admin_cap": {
+      "source_index": 35,
+      "index": 35,
+      "doc": " Create a PoCAdminCap for bootstrap (package visibility only)\n This function is only callable by other modules in the same package",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "social_contracts",
+              "name": "proof_of_creativity"
+            },
+            "name": "PoCAdminCap",
+            "type_arguments": []
+          }
+        }
+      ]
+    }
+  },
+  "structs": {
+    "PoCAdminCap": {
+      "index": 0,
+      "doc": " Admin capability for Proof of Creativity system management",
+      "attributes": [],
+      "abilities": [
+        "Key",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "PoCConfig": {
+      "index": 1,
+      "doc": " Global configuration for Proof of Creativity system",
+      "attributes": [],
+      "abilities": [
+        "Key"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          },
+          "oracle_address": {
+            "index": 1,
+            "doc": " Oracle address authorized to submit analysis results",
+            "type_": "address"
+          },
+          "image_threshold": {
+            "index": 2,
+            "doc": " Similarity thresholds for different media types (stored as percentages 0-100)",
+            "type_": "u64"
+          },
+          "video_threshold": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "audio_threshold": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "revenue_redirect_percentage": {
+            "index": 5,
+            "doc": " Percentage of revenue to redirect when similarity detected (0-100)",
+            "type_": "u64"
+          },
+          "dispute_cost": {
+            "index": 6,
+            "doc": " Cost to submit a dispute (paid to ecosystem treasury)",
+            "type_": "u64"
+          },
+          "min_vote_stake": {
+            "index": 7,
+            "doc": " Minimum stake amount required to vote on disputes",
+            "type_": "u64"
+          },
+          "max_vote_stake": {
+            "index": 8,
+            "doc": " Maximum stake amount allowed per vote",
+            "type_": "u64"
+          },
+          "voting_duration_ms": {
+            "index": 9,
+            "doc": " Voting period duration in milliseconds (on-chain clock)",
+            "type_": "u64"
+          },
+          "max_reasoning_length": {
+            "index": 10,
+            "doc": " Maximum length for reasoning text",
+            "type_": "u64"
+          },
+          "max_evidence_urls": {
+            "index": 11,
+            "doc": " Maximum number of evidence URLs allowed",
+            "type_": "u64"
+          },
+          "max_votes_per_dispute": {
+            "index": 12,
+            "doc": " Maximum number of votes allowed per dispute",
+            "type_": "u64"
+          },
+          "dispute_governance_id": {
+            "index": 13,
+            "doc": " Governance registry ID for PoC disputes",
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "claim_treasury_fee_bps": {
+            "index": 14,
+            "doc": " Treasury fee (bps of gross) taken at vault claim",
+            "type_": "u64"
+          },
+          "max_referral_bps": {
+            "index": 15,
+            "doc": " Max referral fee (bps of post-treasury gross) when beneficiary supplies `Some(referrer)` at claim",
+            "type_": "u64"
+          },
+          "video_embedded_audio_redirect_bps": {
+            "index": 16,
+            "doc": " Max redirect ceiling for VIDEO posts when only embedded audio matches (`embedded_audio_only_derivative`), in bps (0-10000)",
+            "type_": "u64"
+          },
+          "dispute_quorum_base_stake": {
+            "index": 17,
+            "doc": " Minimum total voting stake (`uphold` + `overturn`) for round 1 to count as full participation (`0` disables).",
+            "type_": "u64"
+          },
+          "dispute_second_round_fee_multiplier_bps": {
+            "index": 18,
+            "doc": " Round-2 fee multiplier in bps; applied as `dispute_cost * bps / 10000`. Must be >= 10000.",
+            "type_": "u64"
+          },
+          "dispute_second_round_quorum_multiplier_bps": {
+            "index": 19,
+            "doc": " Round-2 quorum multiplier in bps; applied as `dispute_quorum_base_stake * bps / 10000`. Must be >= 10000.",
+            "type_": "u64"
+          },
+          "username_beneficiary_join_referral_bps": {
+            "index": 20,
+            "doc": " One-time join-referral fee (bps of post-treasury gross) on first username-beneficiary vault claim.",
+            "type_": "u64"
+          },
+          "version": {
+            "index": 21,
+            "doc": " Version for upgrades",
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "Vote": {
+      "index": 2,
+      "doc": " Individual vote record in a dispute",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "voter": {
+            "index": 0,
+            "doc": " Voter's address",
+            "type_": "address"
+          },
+          "vote_choice": {
+            "index": 1,
+            "doc": " Vote choice (VOTE_UPHOLD or VOTE_OVERTURN)",
+            "type_": "u8"
+          },
+          "stake_amount": {
+            "index": 2,
+            "doc": " Amount of MySo staked with this vote",
+            "type_": "u64"
+          },
+          "voted_at": {
+            "index": 3,
+            "doc": " Vote timestamp in milliseconds (on-chain clock)",
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "PoCDispute": {
+      "index": 3,
+      "doc": " Dispute challenging a PoC badge or revenue redirection with community voting",
+      "attributes": [],
+      "abilities": [
+        "Key"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          },
+          "post_id": {
+            "index": 1,
+            "doc": " Post being disputed",
+            "type_": "address"
+          },
+          "disputer": {
+            "index": 2,
+            "doc": " Address that submitted the dispute (post owner)",
+            "type_": "address"
+          },
+          "dispute_type": {
+            "index": 3,
+            "doc": " Type of dispute (challenging badge or redirection)",
+            "type_": "u8"
+          },
+          "status": {
+            "index": 4,
+            "doc": " Current status of dispute",
+            "type_": "u8"
+          },
+          "evidence": {
+            "index": 5,
+            "doc": " Evidence or reasoning provided by disputer",
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "string"
+                },
+                "name": "String",
+                "type_arguments": []
+              }
+            }
+          },
+          "submitted_at": {
+            "index": 6,
+            "doc": " Dispute submission timestamp",
+            "type_": "u64"
+          },
+          "voting_start_ms": {
+            "index": 7,
+            "doc": " Wall-clock ms when voting starts (inclusive)",
+            "type_": "u64"
+          },
+          "voting_end_ms": {
+            "index": 8,
+            "doc": " Wall-clock ms when voting ends (inclusive)",
+            "type_": "u64"
+          },
+          "votes": {
+            "index": 9,
+            "doc": " All votes cast on this dispute",
+            "type_": {
+              "vector": {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "Vote",
+                  "type_arguments": []
+                }
+              }
+            }
+          },
+          "uphold_stake": {
+            "index": 10,
+            "doc": " Total stake on uphold side",
+            "type_": "u64"
+          },
+          "overturn_stake": {
+            "index": 11,
+            "doc": " Total stake on overturn side",
+            "type_": "u64"
+          },
+          "voter_records": {
+            "index": 12,
+            "doc": " Mapping of voter addresses to prevent double voting",
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "table"
+                },
+                "name": "Table",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": "address"
+                  },
+                  {
+                    "phantom": true,
+                    "argument": "bool"
+                  }
+                ]
+              }
+            }
+          },
+          "voting_rewards_claimed": {
+            "index": 13,
+            "doc": " Prevents double-claim of voting rewards after resolution",
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "table"
+                },
+                "name": "Table",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": "address"
+                  },
+                  {
+                    "phantom": true,
+                    "argument": "bool"
+                  }
+                ]
+              }
+            }
+          },
+          "reward_pool": {
+            "index": 14,
+            "doc": " Total reward pool from losing side (set after resolution)",
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "balance"
+                },
+                "name": "Balance",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "myso"
+                        },
+                        "name": "MYSO",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "dispute_round": {
+            "index": 15,
+            "doc": " 1 = first dispute on post, 2 = second (final allowed).",
+            "type_": "u8"
+          },
+          "effective_dispute_fee": {
+            "index": 16,
+            "doc": " Fee charged when this dispute was opened.",
+            "type_": "u64"
+          },
+          "required_total_stake_quorum": {
+            "index": 17,
+            "doc": " Minimum `uphold_stake + overturn_stake` for stake-weighted outcome (else default uphold).",
+            "type_": "u64"
+          },
+          "version": {
+            "index": 18,
+            "doc": " Version for upgrades",
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "PoCRegistry": {
+      "index": 4,
+      "doc": " Simplified registry to track PoC statistics",
+      "attributes": [],
+      "abilities": [
+        "Key"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          },
+          "total_badges_issued": {
+            "index": 1,
+            "doc": " Total badges issued",
+            "type_": "u64"
+          },
+          "total_redirections_created": {
+            "index": 2,
+            "doc": " Total redirections created",
+            "type_": "u64"
+          },
+          "total_disputes_submitted": {
+            "index": 3,
+            "doc": " Total disputes submitted",
+            "type_": "u64"
+          },
+          "total_votes_cast": {
+            "index": 4,
+            "doc": " Total votes cast across all disputes",
+            "type_": "u64"
+          },
+          "version": {
+            "index": 5,
+            "doc": " Version for upgrades",
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "PoCResultAppliedEvent": {
+      "index": 5,
+      "doc": " Emitted when oracle applies an explicit or similarity-based PoC outcome (for indexers).",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "post_id": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "poc_outcome": {
+            "index": 1,
+            "doc": null,
+            "type_": "u8"
+          },
+          "poc_redirection_kind": {
+            "index": 2,
+            "doc": null,
+            "type_": "u8"
+          },
+          "similarity_detected": {
+            "index": 3,
+            "doc": null,
+            "type_": "bool"
+          },
+          "timestamp": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "AnalysisSubmittedEvent": {
+      "index": 6,
+      "doc": " Event emitted when oracle submits analysis results",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "post_id": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "media_type": {
+            "index": 1,
+            "doc": null,
+            "type_": "u8"
+          },
+          "similarity_detected": {
+            "index": 2,
+            "doc": null,
+            "type_": "bool"
+          },
+          "highest_similarity_score": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "oracle_address": {
+            "index": 4,
+            "doc": null,
+            "type_": "address"
+          },
+          "timestamp": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "reasoning": {
+            "index": 6,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "std",
+                          "name": "string"
+                        },
+                        "name": "String",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "evidence_urls": {
+            "index": 7,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "vector": {
+                        "Datatype": {
+                          "module": {
+                            "address": "std",
+                            "name": "string"
+                          },
+                          "name": "String",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "PoCBadgeIssuedEvent": {
+      "index": 7,
+      "doc": " Event emitted when a PoC badge is issued",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "badge_id": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "post_id": {
+            "index": 1,
+            "doc": null,
+            "type_": "address"
+          },
+          "media_type": {
+            "index": 2,
+            "doc": null,
+            "type_": "u8"
+          },
+          "issued_by": {
+            "index": 3,
+            "doc": null,
+            "type_": "address"
+          },
+          "beneficiary_address": {
+            "index": 4,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "address"
+                  }
+                ]
+              }
+            }
+          },
+          "matched_anchor_id": {
+            "index": 5,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "address"
+                  }
+                ]
+              }
+            }
+          },
+          "media_index": {
+            "index": 6,
+            "doc": null,
+            "type_": "u8"
+          },
+          "timestamp": {
+            "index": 7,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "RevenueRedirectionActivatedEvent": {
+      "index": 8,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "redirection_id": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "accused_post_id": {
+            "index": 1,
+            "doc": null,
+            "type_": "address"
+          },
+          "original_post_id": {
+            "index": 2,
+            "doc": null,
+            "type_": "address"
+          },
+          "redirect_percentage": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "similarity_score": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "timestamp": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "PoCDisputeSubmittedEvent": {
+      "index": 9,
+      "doc": " Event emitted when a PoC dispute is submitted",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "dispute_id": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "post_id": {
+            "index": 1,
+            "doc": null,
+            "type_": "address"
+          },
+          "disputer": {
+            "index": 2,
+            "doc": null,
+            "type_": "address"
+          },
+          "dispute_type": {
+            "index": 3,
+            "doc": null,
+            "type_": "u8"
+          },
+          "stake_amount": {
+            "index": 4,
+            "doc": " Fee paid (same as `effective_fee`).",
+            "type_": "u64"
+          },
+          "dispute_round": {
+            "index": 5,
+            "doc": null,
+            "type_": "u8"
+          },
+          "effective_fee": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "required_total_stake_quorum": {
+            "index": 7,
+            "doc": null,
+            "type_": "u64"
+          },
+          "post_poc_disputes_submitted_after": {
+            "index": 8,
+            "doc": null,
+            "type_": "u8"
+          },
+          "voting_start_ms": {
+            "index": 9,
+            "doc": null,
+            "type_": "u64"
+          },
+          "voting_end_ms": {
+            "index": 10,
+            "doc": null,
+            "type_": "u64"
+          },
+          "evidence": {
+            "index": 11,
+            "doc": " Disputer evidence (duplicate of shared `PoCDispute`; for indexers/RPC consumption).",
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "string"
+                },
+                "name": "String",
+                "type_arguments": []
+              }
+            }
+          },
+          "timestamp": {
+            "index": 12,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "DisputeVoteCastEvent": {
+      "index": 10,
+      "doc": " Event emitted when a vote is cast on a dispute",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "dispute_id": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "voter": {
+            "index": 1,
+            "doc": null,
+            "type_": "address"
+          },
+          "vote_choice": {
+            "index": 2,
+            "doc": null,
+            "type_": "u8"
+          },
+          "stake_amount": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "total_uphold_stake": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "total_overturn_stake": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "timestamp": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "PoCDisputeResolvedEvent": {
+      "index": 11,
+      "doc": " Event emitted when a dispute is resolved",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "dispute_id": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "post_id": {
+            "index": 1,
+            "doc": null,
+            "type_": "address"
+          },
+          "resolution": {
+            "index": 2,
+            "doc": null,
+            "type_": "u8"
+          },
+          "winning_side": {
+            "index": 3,
+            "doc": null,
+            "type_": "u8"
+          },
+          "total_winning_stake": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "total_losing_stake": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "badge_revoked": {
+            "index": 6,
+            "doc": null,
+            "type_": "bool"
+          },
+          "redirection_removed": {
+            "index": 7,
+            "doc": null,
+            "type_": "bool"
+          },
+          "quorum_met": {
+            "index": 8,
+            "doc": null,
+            "type_": "bool"
+          },
+          "post_poc_disputes_submitted": {
+            "index": 9,
+            "doc": null,
+            "type_": "u8"
+          },
+          "timestamp": {
+            "index": 10,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "VotingRewardClaimedEvent": {
+      "index": 12,
+      "doc": " Event emitted when voting rewards are claimed",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "dispute_id": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "voter": {
+            "index": 1,
+            "doc": null,
+            "type_": "address"
+          },
+          "original_stake": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "reward_amount": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "total_payout": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "timestamp": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "PoCConfigUpdatedEvent": {
+      "index": 13,
+      "doc": " Event emitted when PoC configuration is updated",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "updated_by": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "oracle_address": {
+            "index": 1,
+            "doc": null,
+            "type_": "address"
+          },
+          "image_threshold": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "video_threshold": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "audio_threshold": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "revenue_redirect_percentage": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "dispute_cost": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "min_vote_stake": {
+            "index": 7,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_vote_stake": {
+            "index": 8,
+            "doc": null,
+            "type_": "u64"
+          },
+          "voting_duration_ms": {
+            "index": 9,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_reasoning_length": {
+            "index": 10,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_evidence_urls": {
+            "index": 11,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_votes_per_dispute": {
+            "index": 12,
+            "doc": null,
+            "type_": "u64"
+          },
+          "claim_treasury_fee_bps": {
+            "index": 13,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_referral_bps": {
+            "index": 14,
+            "doc": null,
+            "type_": "u64"
+          },
+          "video_embedded_audio_redirect_bps": {
+            "index": 15,
+            "doc": null,
+            "type_": "u64"
+          },
+          "dispute_quorum_base_stake": {
+            "index": 16,
+            "doc": null,
+            "type_": "u64"
+          },
+          "dispute_second_round_fee_multiplier_bps": {
+            "index": 17,
+            "doc": null,
+            "type_": "u64"
+          },
+          "dispute_second_round_quorum_multiplier_bps": {
+            "index": 18,
+            "doc": null,
+            "type_": "u64"
+          },
+          "username_beneficiary_join_referral_bps": {
+            "index": 19,
+            "doc": null,
+            "type_": "u64"
+          },
+          "timestamp": {
+            "index": 20,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    }
+  },
+  "enums": {}
+}

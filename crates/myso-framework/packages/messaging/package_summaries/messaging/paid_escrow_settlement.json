@@ -1,0 +1,275 @@
+{
+  "id": {
+    "address": "messaging",
+    "name": "paid_escrow_settlement"
+  },
+  "doc": " Fee distribution for claimed paid-message escrow (`MYSO`).\n\n **BPS** match `social_contracts::message` (`PAID_MSG_PLATFORM_FEE_BPS` / `PAID_MSG_TREASURY_FEE_BPS`).\n\n Uses `transfer::public_transfer` to fee recipients. Credits to the live `Platform` treasury balance\n require `social_contracts::platform::add_to_treasury` (same-package); see\n `ref_social_contract/sources/messaging_paid_fee_bridge.move` for a foundation-side helper.",
+  "immediate_dependencies": [
+    {
+      "address": "myso",
+      "name": "coin"
+    },
+    {
+      "address": "myso",
+      "name": "myso"
+    },
+    {
+      "address": "myso",
+      "name": "transfer"
+    },
+    {
+      "address": "myso",
+      "name": "tx_context"
+    }
+  ],
+  "attributes": [],
+  "functions": {
+    "total_amount": {
+      "source_index": 0,
+      "index": 0,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "t",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "paid_escrow_settlement"
+                  },
+                  "name": "EscrowFeeTotals",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "platform_fee": {
+      "source_index": 1,
+      "index": 1,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "t",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "paid_escrow_settlement"
+                  },
+                  "name": "EscrowFeeTotals",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "treasury_fee": {
+      "source_index": 2,
+      "index": 2,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "t",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "paid_escrow_settlement"
+                  },
+                  "name": "EscrowFeeTotals",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "net_amount": {
+      "source_index": 3,
+      "index": 3,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "t",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "paid_escrow_settlement"
+                  },
+                  "name": "EscrowFeeTotals",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "distribute_escrow_to_recipients": {
+      "source_index": 4,
+      "index": 4,
+      "doc": " Splits `escrow_coin` per paid-message BPS: platform, ecosystem, then `primary_recipient`.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "escrow_coin",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "coin"
+              },
+              "name": "Coin",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "myso"
+                      },
+                      "name": "MYSO",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "platform_fee_recipient",
+          "type_": "address"
+        },
+        {
+          "name": "ecosystem_fee_recipient",
+          "type_": "address"
+        },
+        {
+          "name": "primary_recipient",
+          "type_": "address"
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "messaging",
+              "name": "paid_escrow_settlement"
+            },
+            "name": "EscrowFeeTotals",
+            "type_arguments": []
+          }
+        }
+      ]
+    }
+  },
+  "structs": {
+    "EscrowFeeTotals": {
+      "index": 0,
+      "doc": " Totals from a settled escrow split (for events and testing).",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "total_amount": {
+            "index": 0,
+            "doc": null,
+            "type_": "u64"
+          },
+          "platform_fee": {
+            "index": 1,
+            "doc": null,
+            "type_": "u64"
+          },
+          "treasury_fee": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "net_amount": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    }
+  },
+  "enums": {}
+}

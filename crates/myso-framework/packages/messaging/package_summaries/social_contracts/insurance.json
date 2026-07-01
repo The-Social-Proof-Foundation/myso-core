@@ -1,0 +1,6069 @@
+{
+  "id": {
+    "address": "social_contracts",
+    "name": "insurance"
+  },
+  "doc": " Insurance module for SPoT positions\n Sells coverage against losing outcomes and pays out deterministically on SPoT resolution.",
+  "immediate_dependencies": [
+    {
+      "address": "myso",
+      "name": "balance"
+    },
+    {
+      "address": "myso",
+      "name": "clock"
+    },
+    {
+      "address": "myso",
+      "name": "coin"
+    },
+    {
+      "address": "myso",
+      "name": "event"
+    },
+    {
+      "address": "myso",
+      "name": "myso"
+    },
+    {
+      "address": "myso",
+      "name": "object"
+    },
+    {
+      "address": "myso",
+      "name": "table"
+    },
+    {
+      "address": "myso",
+      "name": "transfer"
+    },
+    {
+      "address": "myso",
+      "name": "tx_context"
+    },
+    {
+      "address": "social_contracts",
+      "name": "profile"
+    },
+    {
+      "address": "social_contracts",
+      "name": "social_proof_of_truth"
+    },
+    {
+      "address": "social_contracts",
+      "name": "upgrade"
+    },
+    {
+      "address": "std",
+      "name": "option"
+    },
+    {
+      "address": "std",
+      "name": "string"
+    }
+  ],
+  "attributes": [
+    {
+      "Parameterized": [
+        "allow",
+        [
+          {
+            "Name": "duplicate_alias"
+          },
+          {
+            "Name": "unused_const"
+          },
+          {
+            "Name": "unused_use"
+          },
+          {
+            "Name": "unused_variable"
+          },
+          {
+            "Parameterized": [
+              "lint",
+              [
+                {
+                  "Name": "public_entry"
+                }
+              ]
+            ]
+          },
+          {
+            "Parameterized": [
+              "lint",
+              [
+                {
+                  "Name": "self_transfer"
+                }
+              ]
+            ]
+          },
+          {
+            "Parameterized": [
+              "lint",
+              [
+                {
+                  "Name": "share_owned"
+                }
+              ]
+            ]
+          }
+        ]
+      ]
+    }
+  ],
+  "functions": {
+    "init_config": {
+      "source_index": 0,
+      "index": 0,
+      "doc": " Initialize config (package only)\n Creates InsuranceConfig and transfers InsuranceAdminCap to caller.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "min_coverage_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "max_coverage_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "max_duration_ms",
+          "type_": "u64"
+        },
+        {
+          "name": "fee_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "set_config": {
+      "source_index": 1,
+      "index": 1,
+      "doc": " Update config (admin only)",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "min_coverage_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "max_coverage_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "max_duration_ms",
+          "type_": "u64"
+        },
+        {
+          "name": "fee_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "set_risk_pricing_config": {
+      "source_index": 2,
+      "index": 2,
+      "doc": " Update SPoT-linked risk pricing (admin only).",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "min_spot_total_liquidity",
+          "type_": "u64"
+        },
+        {
+          "name": "max_coverage_fraction_of_option_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "max_risk_multiplier_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "min_premium_amount",
+          "type_": "u64"
+        },
+        {
+          "name": "spot_smoothing_per_option",
+          "type_": "u64"
+        },
+        {
+          "name": "implied_prob_floor_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "odds_floor_1x",
+          "type_": "bool"
+        },
+        {
+          "name": "odds_cap_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "liq_cap_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "liq_ref_amount",
+          "type_": "u64"
+        },
+        {
+          "name": "exposure_cap_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "exposure_k_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "set_enable_flag": {
+      "source_index": 3,
+      "index": 3,
+      "doc": " Emergency enable/disable toggle (admin only)",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "enable_flag",
+          "type_": "bool"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "create_insurance_admin_cap": {
+      "source_index": 4,
+      "index": 4,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "social_contracts",
+              "name": "insurance"
+            },
+            "name": "InsuranceAdminCap",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "bootstrap_init": {
+      "source_index": 5,
+      "index": 5,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "create_vault": {
+      "source_index": 6,
+      "index": 6,
+      "doc": " Create an underwriter vault",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "base_rate_bps_per_day",
+          "type_": "u64"
+        },
+        {
+          "name": "utilization_multiplier_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "max_exposure_per_market",
+          "type_": "u64"
+        },
+        {
+          "name": "max_exposure_per_user",
+          "type_": "u64"
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "set_vault_status": {
+      "source_index": 7,
+      "index": 7,
+      "doc": " Underwriter updates vault listing parameters (emit for indexer discovery).",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "vault",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "UnderwriterVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "enabled",
+          "type_": "bool"
+        },
+        {
+          "name": "paused",
+          "type_": "bool"
+        },
+        {
+          "name": "max_exposure_per_option",
+          "type_": "u64"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "set_router_flags": {
+      "source_index": 8,
+      "index": 8,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "router_cfg",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceRouterConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "router_enabled",
+          "type_": "bool"
+        },
+        {
+          "name": "router_paused",
+          "type_": "bool"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "set_router_limits": {
+      "source_index": 9,
+      "index": 9,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "router_cfg",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceRouterConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "max_route_reserve_market",
+          "type_": "u64"
+        },
+        {
+          "name": "max_route_reserve_user",
+          "type_": "u64"
+        },
+        {
+          "name": "max_route_reserve_option",
+          "type_": "u64"
+        },
+        {
+          "name": "max_vault_concentration_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "min_vault_health_factor_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "set_market_pause": {
+      "source_index": 10,
+      "index": 10,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "router_cfg",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceRouterConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "market_id",
+          "type_": "address"
+        },
+        {
+          "name": "paused",
+          "type_": "bool"
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "set_backstop_caps": {
+      "source_index": 11,
+      "index": 11,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceBackstopPool",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "max_payout_per_market",
+          "type_": "u64"
+        },
+        {
+          "name": "max_payout_per_event",
+          "type_": "u64"
+        },
+        {
+          "name": "global_hard_cap",
+          "type_": "u64"
+        },
+        {
+          "name": "sweep_premium_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "tail_pay_partial_on_cap",
+          "type_": "bool"
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "set_tail_mode": {
+      "source_index": 12,
+      "index": 12,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceBackstopPool",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "tail_mode_enabled",
+          "type_": "bool"
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "set_backstop_paused": {
+      "source_index": 13,
+      "index": 13,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceBackstopPool",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "paused",
+          "type_": "bool"
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "deposit_backstop_treasury": {
+      "source_index": 14,
+      "index": 14,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceBackstopPool",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "payment",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "coin"
+              },
+              "name": "Coin",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "myso"
+                      },
+                      "name": "MYSO",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "tail_pay_shortfall": {
+      "source_index": 15,
+      "index": 15,
+      "doc": " Tail shortfall payout only (`tail_mode_enabled` + caps). Does not interact with `claim`.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceBackstopPool",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "recipient",
+          "type_": "address"
+        },
+        {
+          "name": "market_id",
+          "type_": "address"
+        },
+        {
+          "name": "amount_requested",
+          "type_": "u64"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "min_cap_sub": {
+      "source_index": 16,
+      "index": 16,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "cap",
+          "type_": "u64"
+        },
+        {
+          "name": "used",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "min_u64": {
+      "source_index": 17,
+      "index": 17,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "a",
+          "type_": "u64"
+        },
+        {
+          "name": "b",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "copy_id_vec": {
+      "source_index": 18,
+      "index": 18,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "src",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "vector": {
+                  "Datatype": {
+                    "module": {
+                      "address": "myso",
+                      "name": "object"
+                    },
+                    "name": "ID",
+                    "type_arguments": []
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "vector": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        }
+      ]
+    },
+    "new_router_config_defaults": {
+      "source_index": 19,
+      "index": 19,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "social_contracts",
+              "name": "insurance"
+            },
+            "name": "InsuranceRouterConfig",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "new_backstop_pool_defaults": {
+      "source_index": 20,
+      "index": 20,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "social_contracts",
+              "name": "insurance"
+            },
+            "name": "InsuranceBackstopPool",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "assert_market_router_open": {
+      "source_index": 21,
+      "index": 21,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "router_cfg",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceRouterConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "market_id",
+          "type_": "address"
+        }
+      ],
+      "return_": []
+    },
+    "assert_vault_buy_guards": {
+      "source_index": 22,
+      "index": 22,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "vault",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "UnderwriterVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "router_cfg",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceRouterConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "check_health",
+          "type_": "bool"
+        }
+      ],
+      "return_": []
+    },
+    "deposit_capital": {
+      "source_index": 23,
+      "index": 23,
+      "doc": " Deposit capital into vault",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "UnderwriterVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "payment",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "coin"
+              },
+              "name": "Coin",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "myso"
+                      },
+                      "name": "MYSO",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "withdraw_capital": {
+      "source_index": 24,
+      "index": 24,
+      "doc": " Withdraw unreserved capital (underwriter only)",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "UnderwriterVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "amount",
+          "type_": "u64"
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "premium_quote_premium": {
+      "source_index": 25,
+      "index": 25,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "q",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "PremiumQuote",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "premium_quote_implied_prob_win_bps": {
+      "source_index": 26,
+      "index": 26,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "q",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "PremiumQuote",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "premium_quote_risk_multiplier_bps": {
+      "source_index": 27,
+      "index": 27,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "q",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "PremiumQuote",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "premium_quote_premium_raw": {
+      "source_index": 28,
+      "index": 28,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "q",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "PremiumQuote",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "quote_base_premium": {
+      "source_index": 29,
+      "index": 29,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "vault",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "UnderwriterVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "covered_amount",
+          "type_": "u64"
+        },
+        {
+          "name": "coverage_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "duration_ms",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "quote_premium": {
+      "source_index": 30,
+      "index": 30,
+      "doc": " Utilization curve only (`quote_base_premium`).",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "vault",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "UnderwriterVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "covered_amount",
+          "type_": "u64"
+        },
+        {
+          "name": "coverage_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "duration_ms",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "get_market_option_reserved": {
+      "source_index": 31,
+      "index": 31,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "vault",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "UnderwriterVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "market_id",
+          "type_": "address"
+        },
+        {
+          "name": "option_id",
+          "type_": "u8"
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "compute_spot_risk_quote": {
+      "source_index": 32,
+      "index": 32,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "UnderwriterVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "record",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotRecord",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault_market_id",
+          "type_": "address"
+        },
+        {
+          "name": "option_id",
+          "type_": "u8"
+        },
+        {
+          "name": "covered_amount",
+          "type_": "u64"
+        },
+        {
+          "name": "coverage_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "duration_ms",
+          "type_": "u64"
+        },
+        {
+          "name": "enforce_max_risk",
+          "type_": "bool"
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "social_contracts",
+              "name": "insurance"
+            },
+            "name": "PremiumQuote",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "quote_premium_with_spot_risk": {
+      "source_index": 33,
+      "index": 33,
+      "doc": " Preview premium with SPoT pool odds, liquidity, and vault concentration on this option (`reserved` excludes a not-yet-open policy).",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "UnderwriterVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "record",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotRecord",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "option_id",
+          "type_": "u8"
+        },
+        {
+          "name": "covered_amount",
+          "type_": "u64"
+        },
+        {
+          "name": "coverage_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "duration_ms",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "social_contracts",
+              "name": "insurance"
+            },
+            "name": "PremiumQuote",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "coverage_quote_skipped": {
+      "source_index": 34,
+      "index": 34,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "reason",
+          "type_": "u8"
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "social_contracts",
+              "name": "insurance"
+            },
+            "name": "VaultCoverageQuote",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "max_fill_covered_for_vault": {
+      "source_index": 35,
+      "index": 35,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "UnderwriterVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "record",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotRecord",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "market_id",
+          "type_": "address"
+        },
+        {
+          "name": "insured",
+          "type_": "address"
+        },
+        {
+          "name": "option_id",
+          "type_": "u8"
+        },
+        {
+          "name": "coverage_bps",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "reserve_to_covered": {
+      "source_index": 36,
+      "index": 36,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "head_reserve",
+          "type_": "u64"
+        },
+        {
+          "name": "coverage_bps",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "quote_vault_for_spot_coverage": {
+      "source_index": 37,
+      "index": 37,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "router_cfg",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceRouterConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "UnderwriterVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "record",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotRecord",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "insured",
+          "type_": "address"
+        },
+        {
+          "name": "option_id",
+          "type_": "u8"
+        },
+        {
+          "name": "requested_coverage_amount",
+          "type_": "u64"
+        },
+        {
+          "name": "coverage_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "duration_ms",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "social_contracts",
+              "name": "insurance"
+            },
+            "name": "VaultCoverageQuote",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "vault_utilization_bps": {
+      "source_index": 38,
+      "index": 38,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "vault",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "UnderwriterVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "buy_coverage_execute": {
+      "source_index": 39,
+      "index": 39,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "router_cfg",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceRouterConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "backstop",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceBackstopPool",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "spot_config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "UnderwriterVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "record",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotRecord",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "option_id",
+          "type_": "u8"
+        },
+        {
+          "name": "covered_amount",
+          "type_": "u64"
+        },
+        {
+          "name": "coverage_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "duration_ms",
+          "type_": "u64"
+        },
+        {
+          "name": "payment",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "coin"
+                  },
+                  "name": "Coin",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "myso"
+                          },
+                          "name": "MYSO",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "route_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "object"
+                      },
+                      "name": "ID",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "route_leg_index",
+          "type_": "u8"
+        },
+        {
+          "name": "check_market_router",
+          "type_": "bool"
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "object"
+            },
+            "name": "ID",
+            "type_arguments": []
+          }
+        },
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "object"
+            },
+            "name": "ID",
+            "type_arguments": []
+          }
+        },
+        "u64",
+        "u64",
+        "u64",
+        "u64",
+        "u64"
+      ]
+    },
+    "buy_coverage": {
+      "source_index": 40,
+      "index": 40,
+      "doc": " Buy coverage for a SPoT position",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "router_cfg",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceRouterConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "backstop",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceBackstopPool",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "spot_config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "UnderwriterVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "record",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotRecord",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "option_id",
+          "type_": "u8"
+        },
+        {
+          "name": "requested_coverage_amount",
+          "type_": "u64"
+        },
+        {
+          "name": "coverage_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "duration_ms",
+          "type_": "u64"
+        },
+        {
+          "name": "payment",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "coin"
+              },
+              "name": "Coin",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "myso"
+                      },
+                      "name": "MYSO",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "route_buy_coverage_4": {
+      "source_index": 41,
+      "index": 41,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "router_cfg",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceRouterConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "backstop",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceBackstopPool",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "spot_config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "record",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotRecord",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "v0",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "UnderwriterVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "v1",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "UnderwriterVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "v2",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "UnderwriterVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "v3",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "UnderwriterVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "option_id",
+          "type_": "u8"
+        },
+        {
+          "name": "fill_0",
+          "type_": "u64"
+        },
+        {
+          "name": "fill_1",
+          "type_": "u64"
+        },
+        {
+          "name": "fill_2",
+          "type_": "u64"
+        },
+        {
+          "name": "fill_3",
+          "type_": "u64"
+        },
+        {
+          "name": "coverage_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "duration_ms",
+          "type_": "u64"
+        },
+        {
+          "name": "deadline_ms",
+          "type_": "u64"
+        },
+        {
+          "name": "min_total_covered",
+          "type_": "u64"
+        },
+        {
+          "name": "max_total_premium",
+          "type_": "u64"
+        },
+        {
+          "name": "payment",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "coin"
+              },
+              "name": "Coin",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "myso"
+                      },
+                      "name": "MYSO",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "cancel_coverage": {
+      "source_index": 42,
+      "index": 42,
+      "doc": " Cancel coverage while the market is open\n Cancellation can result in 0 refund due to fee + rounding",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "spot_config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "UnderwriterVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "record",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotRecord",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "policy",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "CoveragePolicy",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "claim": {
+      "source_index": 43,
+      "index": 43,
+      "doc": " Claim payout after SPoT resolution\n Payout is calculated as min(current_position, covered_amount) * coverage_bps / BPS_DENOM\n Dynamic coverage: payout adjusts if user reduces their SPoT position after buying insurance.\n This prevents exploitation where user buys insurance then exits bet.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "spot_config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "UnderwriterVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "record",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotRecord",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "policy",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "CoveragePolicy",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "expire_policy": {
+      "source_index": 44,
+      "index": 44,
+      "doc": " Expire policy and release reserves",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "vault",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "UnderwriterVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "policy",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "CoveragePolicy",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "compute_reserve": {
+      "source_index": 45,
+      "index": 45,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "covered_amount",
+          "type_": "u64"
+        },
+        {
+          "name": "coverage_bps",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "enforce_exposure_limits": {
+      "source_index": 46,
+      "index": 46,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "vault",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "UnderwriterVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "market_id",
+          "type_": "address"
+        },
+        {
+          "name": "insured",
+          "type_": "address"
+        },
+        {
+          "name": "option_id",
+          "type_": "u8"
+        },
+        {
+          "name": "reserve_amount",
+          "type_": "u64"
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "add_exposure": {
+      "source_index": 47,
+      "index": 47,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "vault",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "UnderwriterVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "market_id",
+          "type_": "address"
+        },
+        {
+          "name": "insured",
+          "type_": "address"
+        },
+        {
+          "name": "option_id",
+          "type_": "u8"
+        },
+        {
+          "name": "reserve_amount",
+          "type_": "u64"
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "release_exposure": {
+      "source_index": 48,
+      "index": 48,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "vault",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "UnderwriterVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "market_id",
+          "type_": "address"
+        },
+        {
+          "name": "insured",
+          "type_": "address"
+        },
+        {
+          "name": "option_id",
+          "type_": "u8"
+        },
+        {
+          "name": "reserve_amount",
+          "type_": "u64"
+        }
+      ],
+      "return_": []
+    },
+    "get_market_exposure_mut": {
+      "source_index": 49,
+      "index": 49,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "vault",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "UnderwriterVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "market_id",
+          "type_": "address"
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            true,
+            {
+              "Datatype": {
+                "module": {
+                  "address": "social_contracts",
+                  "name": "insurance"
+                },
+                "name": "MarketExposure",
+                "type_arguments": []
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "get_user_exposure": {
+      "source_index": 50,
+      "index": 50,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "vault",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "UnderwriterVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "insured",
+          "type_": "address"
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "set_user_exposure": {
+      "source_index": 51,
+      "index": 51,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "vault",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "UnderwriterVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "insured",
+          "type_": "address"
+        },
+        {
+          "name": "amount",
+          "type_": "u64"
+        }
+      ],
+      "return_": []
+    },
+    "get_option_reserved": {
+      "source_index": 52,
+      "index": 52,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "exposure",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "MarketExposure",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "option_id",
+          "type_": "u8"
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "set_option_reserved": {
+      "source_index": 53,
+      "index": 53,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "exposure",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "MarketExposure",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "option_id",
+          "type_": "u8"
+        },
+        {
+          "name": "amount",
+          "type_": "u64"
+        }
+      ],
+      "return_": []
+    },
+    "migrate_config": {
+      "source_index": 54,
+      "index": 54,
+      "doc": " Migration function for InsuranceConfig",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "upgrade"
+                  },
+                  "name": "UpgradeAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "migrate_vault": {
+      "source_index": 55,
+      "index": 55,
+      "doc": " Migration function for UnderwriterVault",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "vault",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "UnderwriterVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "upgrade"
+                  },
+                  "name": "UpgradeAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    }
+  },
+  "structs": {
+    "InsuranceAdminCap": {
+      "index": 0,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Key",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "InsuranceConfig": {
+      "index": 1,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Key"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          },
+          "enable_flag": {
+            "index": 1,
+            "doc": null,
+            "type_": "bool"
+          },
+          "min_coverage_bps": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_coverage_bps": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_duration_ms": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "fee_bps": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "min_spot_total_liquidity": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_coverage_fraction_of_option_bps": {
+            "index": 7,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_risk_multiplier_bps": {
+            "index": 8,
+            "doc": null,
+            "type_": "u64"
+          },
+          "min_premium_amount": {
+            "index": 9,
+            "doc": null,
+            "type_": "u64"
+          },
+          "spot_smoothing_per_option": {
+            "index": 10,
+            "doc": null,
+            "type_": "u64"
+          },
+          "implied_prob_floor_bps": {
+            "index": 11,
+            "doc": null,
+            "type_": "u64"
+          },
+          "odds_floor_1x": {
+            "index": 12,
+            "doc": null,
+            "type_": "bool"
+          },
+          "odds_cap_bps": {
+            "index": 13,
+            "doc": null,
+            "type_": "u64"
+          },
+          "liq_cap_bps": {
+            "index": 14,
+            "doc": null,
+            "type_": "u64"
+          },
+          "liq_ref_amount": {
+            "index": 15,
+            "doc": null,
+            "type_": "u64"
+          },
+          "exposure_cap_bps": {
+            "index": 16,
+            "doc": null,
+            "type_": "u64"
+          },
+          "exposure_k_bps": {
+            "index": 17,
+            "doc": null,
+            "type_": "u64"
+          },
+          "version": {
+            "index": 18,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "InsuranceRouterConfig": {
+      "index": 2,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Key"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          },
+          "router_enabled": {
+            "index": 1,
+            "doc": null,
+            "type_": "bool"
+          },
+          "router_paused": {
+            "index": 2,
+            "doc": null,
+            "type_": "bool"
+          },
+          "max_route_reserve_market": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_route_reserve_user": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_route_reserve_option": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_vault_concentration_bps": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "min_vault_health_factor_bps": {
+            "index": 7,
+            "doc": null,
+            "type_": "u64"
+          },
+          "market_pause": {
+            "index": 8,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "table"
+                },
+                "name": "Table",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": "address"
+                  },
+                  {
+                    "phantom": true,
+                    "argument": "bool"
+                  }
+                ]
+              }
+            }
+          },
+          "version": {
+            "index": 9,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "InsuranceBackstopPool": {
+      "index": 3,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Key"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          },
+          "capital": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "balance"
+                },
+                "name": "Balance",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "myso"
+                        },
+                        "name": "MYSO",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "total_paid_out": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "paid_by_market": {
+            "index": 3,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "table"
+                },
+                "name": "Table",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": "address"
+                  },
+                  {
+                    "phantom": true,
+                    "argument": "u64"
+                  }
+                ]
+              }
+            }
+          },
+          "max_payout_per_market": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_payout_per_event": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "global_hard_cap": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "tail_mode_enabled": {
+            "index": 7,
+            "doc": null,
+            "type_": "bool"
+          },
+          "paused": {
+            "index": 8,
+            "doc": null,
+            "type_": "bool"
+          },
+          "sweep_premium_bps": {
+            "index": 9,
+            "doc": null,
+            "type_": "u64"
+          },
+          "tail_pay_partial_on_cap": {
+            "index": 10,
+            "doc": null,
+            "type_": "bool"
+          },
+          "version": {
+            "index": 11,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "CoverageRoute": {
+      "index": 4,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Key"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          },
+          "insured": {
+            "index": 1,
+            "doc": null,
+            "type_": "address"
+          },
+          "market_id": {
+            "index": 2,
+            "doc": null,
+            "type_": "address"
+          },
+          "option_id": {
+            "index": 3,
+            "doc": null,
+            "type_": "u8"
+          },
+          "coverage_bps": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "start_time_ms": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "expiry_time_ms": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "policy_ids": {
+            "index": 7,
+            "doc": null,
+            "type_": {
+              "vector": {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "object"
+                  },
+                  "name": "ID",
+                  "type_arguments": []
+                }
+              }
+            }
+          },
+          "vault_ids": {
+            "index": 8,
+            "doc": null,
+            "type_": {
+              "vector": {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "object"
+                  },
+                  "name": "ID",
+                  "type_arguments": []
+                }
+              }
+            }
+          },
+          "total_covered": {
+            "index": 9,
+            "doc": null,
+            "type_": "u64"
+          },
+          "total_premium": {
+            "index": 10,
+            "doc": null,
+            "type_": "u64"
+          },
+          "total_reserve": {
+            "index": 11,
+            "doc": null,
+            "type_": "u64"
+          },
+          "total_backstop_sweep": {
+            "index": 12,
+            "doc": null,
+            "type_": "u64"
+          },
+          "version": {
+            "index": 13,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "UnderwriterVault": {
+      "index": 5,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Key"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          },
+          "underwriter": {
+            "index": 1,
+            "doc": null,
+            "type_": "address"
+          },
+          "capital": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "balance"
+                },
+                "name": "Balance",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "myso"
+                        },
+                        "name": "MYSO",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "reserved": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "base_rate_bps_per_day": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "utilization_multiplier_bps": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_exposure_per_market": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_exposure_per_user": {
+            "index": 7,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_exposure_per_option": {
+            "index": 8,
+            "doc": null,
+            "type_": "u64"
+          },
+          "enabled": {
+            "index": 9,
+            "doc": null,
+            "type_": "bool"
+          },
+          "paused": {
+            "index": 10,
+            "doc": null,
+            "type_": "bool"
+          },
+          "market_exposures": {
+            "index": 11,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "table"
+                },
+                "name": "Table",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": "address"
+                  },
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "social_contracts",
+                          "name": "insurance"
+                        },
+                        "name": "MarketExposure",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "user_exposures": {
+            "index": 12,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "table"
+                },
+                "name": "Table",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": "address"
+                  },
+                  {
+                    "phantom": true,
+                    "argument": "u64"
+                  }
+                ]
+              }
+            }
+          },
+          "version": {
+            "index": 13,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "MarketExposure": {
+      "index": 6,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "market_id": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "total_reserved": {
+            "index": 1,
+            "doc": null,
+            "type_": "u64"
+          },
+          "reserved_by_option": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "table"
+                },
+                "name": "Table",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": "u8"
+                  },
+                  {
+                    "phantom": true,
+                    "argument": "u64"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "CoveragePolicy": {
+      "index": 7,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Key"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          },
+          "market_id": {
+            "index": 1,
+            "doc": null,
+            "type_": "address"
+          },
+          "insured": {
+            "index": 2,
+            "doc": null,
+            "type_": "address"
+          },
+          "option_id": {
+            "index": 3,
+            "doc": null,
+            "type_": "u8"
+          },
+          "covered_amount": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "coverage_bps": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "premium_paid": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "start_time_ms": {
+            "index": 7,
+            "doc": null,
+            "type_": "u64"
+          },
+          "expiry_time_ms": {
+            "index": 8,
+            "doc": null,
+            "type_": "u64"
+          },
+          "vault_id": {
+            "index": 9,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "status": {
+            "index": 10,
+            "doc": null,
+            "type_": "u8"
+          },
+          "route_id": {
+            "index": 11,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "object"
+                        },
+                        "name": "ID",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "route_leg_index": {
+            "index": 12,
+            "doc": null,
+            "type_": "u8"
+          }
+        }
+      }
+    },
+    "PremiumQuote": {
+      "index": 8,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "premium": {
+            "index": 0,
+            "doc": null,
+            "type_": "u64"
+          },
+          "premium_raw": {
+            "index": 1,
+            "doc": null,
+            "type_": "u64"
+          },
+          "implied_prob_win_bps": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "risk_multiplier_bps": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "market_total_amount": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "option_amount": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "base_premium": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "VaultCoverageQuote": {
+      "index": 9,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "premium": {
+            "index": 0,
+            "doc": null,
+            "type_": "u64"
+          },
+          "premium_raw": {
+            "index": 1,
+            "doc": null,
+            "type_": "u64"
+          },
+          "reserve_required": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "available_capacity_reserve": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "risk_multiplier_bps": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "implied_prob_win_bps": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "utilization_bps": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_fill_covered_amount": {
+            "index": 7,
+            "doc": null,
+            "type_": "u64"
+          },
+          "skipped_reason": {
+            "index": 8,
+            "doc": null,
+            "type_": "u8"
+          }
+        }
+      }
+    },
+    "RiskPricingConfigUpdatedEvent": {
+      "index": 10,
+      "doc": " Events",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "updated_by": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "min_spot_total_liquidity": {
+            "index": 1,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_coverage_fraction_of_option_bps": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_risk_multiplier_bps": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "min_premium_amount": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "spot_smoothing_per_option": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "implied_prob_floor_bps": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "odds_floor_1x": {
+            "index": 7,
+            "doc": null,
+            "type_": "bool"
+          },
+          "odds_cap_bps": {
+            "index": 8,
+            "doc": null,
+            "type_": "u64"
+          },
+          "liq_cap_bps": {
+            "index": 9,
+            "doc": null,
+            "type_": "u64"
+          },
+          "liq_ref_amount": {
+            "index": 10,
+            "doc": null,
+            "type_": "u64"
+          },
+          "exposure_cap_bps": {
+            "index": 11,
+            "doc": null,
+            "type_": "u64"
+          },
+          "exposure_k_bps": {
+            "index": 12,
+            "doc": null,
+            "type_": "u64"
+          },
+          "timestamp": {
+            "index": 13,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "ConfigInitializedEvent": {
+      "index": 11,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "admin": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "min_coverage_bps": {
+            "index": 1,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_coverage_bps": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_duration_ms": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "fee_bps": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "UnderwriterVaultCreatedEvent": {
+      "index": 12,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "vault_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "underwriter": {
+            "index": 1,
+            "doc": null,
+            "type_": "address"
+          },
+          "base_rate_bps_per_day": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "utilization_multiplier_bps": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_exposure_per_market": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_exposure_per_user": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_exposure_per_option": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "enabled": {
+            "index": 7,
+            "doc": null,
+            "type_": "bool"
+          },
+          "paused": {
+            "index": 8,
+            "doc": null,
+            "type_": "bool"
+          }
+        }
+      }
+    },
+    "VaultStatusUpdatedEvent": {
+      "index": 13,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "vault_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "enabled": {
+            "index": 1,
+            "doc": null,
+            "type_": "bool"
+          },
+          "paused": {
+            "index": 2,
+            "doc": null,
+            "type_": "bool"
+          },
+          "max_exposure_per_option": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_exposure_per_market": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_exposure_per_user": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "base_rate_bps_per_day": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "utilization_multiplier_bps": {
+            "index": 7,
+            "doc": null,
+            "type_": "u64"
+          },
+          "updated_by": {
+            "index": 8,
+            "doc": null,
+            "type_": "address"
+          },
+          "timestamp_ms": {
+            "index": 9,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "UnderwriterVaultDepositedEvent": {
+      "index": 14,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "vault_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "amount": {
+            "index": 1,
+            "doc": null,
+            "type_": "u64"
+          },
+          "new_balance": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "UnderwriterVaultWithdrawnEvent": {
+      "index": 15,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "vault_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "amount": {
+            "index": 1,
+            "doc": null,
+            "type_": "u64"
+          },
+          "new_balance": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "CoveragePurchasedEvent": {
+      "index": 16,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "policy_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "vault_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "market_id": {
+            "index": 2,
+            "doc": null,
+            "type_": "address"
+          },
+          "insured": {
+            "index": 3,
+            "doc": null,
+            "type_": "address"
+          },
+          "option_id": {
+            "index": 4,
+            "doc": null,
+            "type_": "u8"
+          },
+          "covered_amount": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "coverage_bps": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "premium_paid": {
+            "index": 7,
+            "doc": null,
+            "type_": "u64"
+          },
+          "premium_raw": {
+            "index": 8,
+            "doc": null,
+            "type_": "u64"
+          },
+          "reserve_locked": {
+            "index": 9,
+            "doc": null,
+            "type_": "u64"
+          },
+          "expiry_time_ms": {
+            "index": 10,
+            "doc": null,
+            "type_": "u64"
+          },
+          "implied_probability_bps": {
+            "index": 11,
+            "doc": null,
+            "type_": "u64"
+          },
+          "risk_multiplier_bps": {
+            "index": 12,
+            "doc": null,
+            "type_": "u64"
+          },
+          "base_premium": {
+            "index": 13,
+            "doc": null,
+            "type_": "u64"
+          },
+          "market_total_amount": {
+            "index": 14,
+            "doc": null,
+            "type_": "u64"
+          },
+          "option_amount": {
+            "index": 15,
+            "doc": null,
+            "type_": "u64"
+          },
+          "backstop_sweep_amount": {
+            "index": 16,
+            "doc": null,
+            "type_": "u64"
+          },
+          "route_id": {
+            "index": 17,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "object"
+                        },
+                        "name": "ID",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "route_leg_index": {
+            "index": 18,
+            "doc": null,
+            "type_": "u8"
+          }
+        }
+      }
+    },
+    "CoverageRoutedEvent": {
+      "index": 17,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "route_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "insured": {
+            "index": 1,
+            "doc": null,
+            "type_": "address"
+          },
+          "market_id": {
+            "index": 2,
+            "doc": null,
+            "type_": "address"
+          },
+          "option_id": {
+            "index": 3,
+            "doc": null,
+            "type_": "u8"
+          },
+          "coverage_bps": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "duration_ms": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "total_covered": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "total_premium": {
+            "index": 7,
+            "doc": null,
+            "type_": "u64"
+          },
+          "total_reserve": {
+            "index": 8,
+            "doc": null,
+            "type_": "u64"
+          },
+          "total_backstop_sweep": {
+            "index": 9,
+            "doc": null,
+            "type_": "u64"
+          },
+          "expiry_time_ms": {
+            "index": 10,
+            "doc": null,
+            "type_": "u64"
+          },
+          "policy_ids": {
+            "index": 11,
+            "doc": null,
+            "type_": {
+              "vector": {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "object"
+                  },
+                  "name": "ID",
+                  "type_arguments": []
+                }
+              }
+            }
+          },
+          "vault_ids": {
+            "index": 12,
+            "doc": null,
+            "type_": {
+              "vector": {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "object"
+                  },
+                  "name": "ID",
+                  "type_arguments": []
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "RouteFillEvent": {
+      "index": 18,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "route_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "leg_index": {
+            "index": 1,
+            "doc": null,
+            "type_": "u8"
+          },
+          "vault_id": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "policy_id": {
+            "index": 3,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "covered_amount": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "premium_paid": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "reserve_locked": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "backstop_sweep_amount": {
+            "index": 7,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "BackstopUsedEvent": {
+      "index": 19,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "market_id": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "recipient": {
+            "index": 1,
+            "doc": null,
+            "type_": "address"
+          },
+          "amount": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "total_paid_out_after": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "tail_mode_enabled": {
+            "index": 4,
+            "doc": null,
+            "type_": "bool"
+          }
+        }
+      }
+    },
+    "BackstopTreasuryDepositEvent": {
+      "index": 20,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "depositor": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "amount": {
+            "index": 1,
+            "doc": null,
+            "type_": "u64"
+          },
+          "new_balance": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "CoverageCancelledEvent": {
+      "index": 21,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "policy_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "insured": {
+            "index": 1,
+            "doc": null,
+            "type_": "address"
+          },
+          "refunded_amount": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "fee_paid": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "CoverageClaimedEvent": {
+      "index": 22,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "policy_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "insured": {
+            "index": 1,
+            "doc": null,
+            "type_": "address"
+          },
+          "payout": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "ConfigUpdatedEvent": {
+      "index": 23,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "updated_by": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "enable_flag": {
+            "index": 1,
+            "doc": null,
+            "type_": "bool"
+          },
+          "min_coverage_bps": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_coverage_bps": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_duration_ms": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "fee_bps": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "timestamp": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "PolicyExpiredEvent": {
+      "index": 24,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "policy_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "insured": {
+            "index": 1,
+            "doc": null,
+            "type_": "address"
+          },
+          "market_id": {
+            "index": 2,
+            "doc": null,
+            "type_": "address"
+          },
+          "vault_id": {
+            "index": 3,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "reserve_released": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "expiry_time_ms": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    }
+  },
+  "enums": {}
+}

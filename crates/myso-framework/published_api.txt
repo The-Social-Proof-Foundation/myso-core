@@ -11344,6 +11344,12 @@ create_group_inner
 create_and_share_group
 	entry fun
 	0xe110::messaging
+create_wallet_group
+	public fun
+	0xe110::messaging
+create_and_share_wallet_group
+	entry fun
+	0xe110::messaging
 create_agent_group
 	public fun
 	0xe110::messaging
