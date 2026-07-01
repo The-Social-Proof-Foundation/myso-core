@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """
-Diff OpenRouter model pricing against myso-ai-credit-oracle pricing_catalog.toml.
+DEPRECATED: OpenRouter catalog drift is handled by myso-ai-credit-oracle when
+AI_CREDIT_CATALOG_SYNC_ENABLED=true and AI_CREDIT_OPENROUTER_API_KEY are set.
+See docs/content/guides/developer/ai-credit-integration.mdx.
+
+Legacy diff tool — compares OpenRouter model pricing against pricing_catalog.toml.
 
 Usage:
   OPENROUTER_API_KEY=... python3 scripts/sync_ai_credit_catalog.py [--myso-usd 1.0]

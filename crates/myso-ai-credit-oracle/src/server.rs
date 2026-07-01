@@ -10,10 +10,12 @@ use axum::{Json, Router};
 use tokio::sync::{Mutex, RwLock};
 
 use crate::catalog::{CAP_AI_SPEND, PricingCatalog};
+use crate::catalog_sync::{spawn_catalog_sync_worker, startup_catalog_sync};
 use crate::chain_balance;
 use crate::config::OracleArgs;
 use crate::ledger::BalanceLedger;
 use crate::myso_price_client::MysoPriceClient;
+use crate::openrouter_client::OpenRouterClient;
 use crate::price_refresh::{spawn_price_refresh_worker, startup_price_refresh};
 use crate::pricing::{PriceBreakdown, PricingEngine, CATALOG_USD_PEG, USAGE_EMBED, USAGE_INFERENCE, USAGE_TOOL};
 use crate::receipt::{ReceiptStore, UsageLine};
@@ -32,7 +34,7 @@ pub struct AppState {
     pub settlement_secret: Option<String>,
     pub oracle_args: OracleArgs,
     pub settlement_coordinator: Arc<SettlementCoordinator>,
-    pub pricing_catalog: PricingCatalog,
+    pub catalog: Arc<RwLock<PricingCatalog>>,
     pub myso_price_oracle_url: String,
 }
 
@@ -126,8 +128,9 @@ pub async fn serve(args: OracleArgs) -> anyhow::Result<()> {
         std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(&args.pricing_catalog_path)
     };
     let catalog = PricingCatalog::load(&catalog_path)?;
+    let catalog = Arc::new(RwLock::new(catalog));
     let pricing = Arc::new(RwLock::new(PricingEngine::new(
-        catalog.clone(),
+        catalog.read().await.clone(),
         args.ecosystem_margin_pct,
     )));
     let myso_price_client = MysoPriceClient::new(args.myso_price_oracle_url.clone());
@@ -137,15 +140,43 @@ pub async fn serve(args: OracleArgs) -> anyhow::Result<()> {
         pricing.clone(),
         myso_price_client,
     );
+
+    let store = ReceiptStore::load(&args.receipt_store_path)?;
+    let store_arc = Arc::new(Mutex::new(store));
+    let args_arc = Arc::new(args.clone());
+
+    if args.catalog_sync_active() {
+        let openrouter = OpenRouterClient::new(
+            args.openrouter_api_url.clone(),
+            args.openrouter_api_key.clone().expect("catalog_sync_active implies key"),
+        );
+        startup_catalog_sync(
+            &args,
+            &catalog_path,
+            catalog.clone(),
+            pricing.clone(),
+            openrouter.clone(),
+        )
+        .await;
+        spawn_catalog_sync_worker(
+            args_arc.clone(),
+            catalog_path.clone(),
+            catalog.clone(),
+            pricing.clone(),
+            openrouter,
+        );
+    } else if args.catalog_sync_enabled && args.openrouter_api_key.is_none() {
+        tracing::error!(
+            "AI_CREDIT_CATALOG_SYNC_ENABLED=true but AI_CREDIT_OPENROUTER_API_KEY is unset"
+        );
+    }
+
     let social = SocialClient::new(
         args.social_server_url.clone(),
         args.usage_sync_secret.clone(),
     );
     let ledger = BalanceLedger::new(social.clone());
 
-    let store = ReceiptStore::load(&args.receipt_store_path)?;
-    let store_arc = Arc::new(Mutex::new(store));
-    let args_arc = Arc::new(args.clone());
     let settlement_coordinator = Arc::new(SettlementCoordinator::new(
         args_arc.clone(),
         store_arc.clone(),
@@ -163,7 +194,7 @@ pub async fn serve(args: OracleArgs) -> anyhow::Result<()> {
         settlement_secret: args.settlement_secret.clone(),
         oracle_args: args.clone(),
         settlement_coordinator,
-        pricing_catalog: catalog,
+        catalog,
         myso_price_oracle_url: args.myso_price_oracle_url.clone(),
     };
 
@@ -257,25 +288,26 @@ fn combine_breakdowns(a: PriceBreakdown, b: PriceBreakdown) -> PriceBreakdown {
 fn compute_usage_breakdown(
     state: &AppState,
     pricing: &PricingEngine,
+    catalog: &PricingCatalog,
     req: &UsageRequest,
 ) -> Result<PriceBreakdown, String> {
     if state.oracle_args.strict_catalog {
         match req.usage_kind {
             USAGE_TOOL => {
                 let tool_id = req.tool_id.as_deref().unwrap_or("default");
-                if !state.pricing_catalog.is_known_tool(tool_id) {
+                if !catalog.is_known_tool(tool_id) {
                     return Err("unknown_tool_id".into());
                 }
             }
             USAGE_EMBED => {
                 let model = req.model_id.as_deref().unwrap_or("text-embedding-3-small");
-                if !state.pricing_catalog.is_known_embedding_model(model) {
+                if !catalog.is_known_embedding_model(model) {
                     return Err("unknown_embedding_model_id".into());
                 }
             }
             _ => {
                 let model = req.model_id.as_deref().unwrap_or("openai/gpt-4o-mini");
-                if !state.pricing_catalog.is_known_inference_model(model) {
+                if !catalog.is_known_inference_model(model) {
                     return Err("unknown_model_id".into());
                 }
             }
@@ -464,7 +496,8 @@ async fn record_usage(
         return Err(StatusCode::SERVICE_UNAVAILABLE);
     }
 
-    let breakdown = match compute_usage_breakdown(&state, &pricing, &req) {
+    let catalog = state.catalog.read().await;
+    let breakdown = match compute_usage_breakdown(&state, &pricing, &catalog, &req) {
         Ok(b) => b,
         Err(reason) => {
             tracing::warn!(reason = %reason, "usage rejected");
@@ -631,8 +664,9 @@ async fn usage_history(
 
 async fn get_catalog(State(state): State<AppState>) -> Json<crate::catalog::CatalogResponse> {
     let pricing = state.pricing.read().await;
+    let catalog = state.catalog.read().await;
     let fx = pricing_fx_from_engine(&state, &pricing);
-    Json(state.pricing_catalog.to_response_with_fx(
+    Json(catalog.to_response_with_fx(
         fx.catalog_usd_peg,
         fx.myso_usd,
         fx.price_oracle_url,

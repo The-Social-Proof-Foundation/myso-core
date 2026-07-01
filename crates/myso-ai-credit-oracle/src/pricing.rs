@@ -82,6 +82,10 @@ impl PricingEngine {
         &self.catalog.version
     }
 
+    pub fn replace_catalog(&mut self, catalog: PricingCatalog) {
+        self.catalog = catalog;
+    }
+
     pub fn inference_mist(&self, model_id: &str, tokens_in: u64, tokens_out: u64) -> u64 {
         self.inference_breakdown(model_id, tokens_in, tokens_out).amount_mist
     }

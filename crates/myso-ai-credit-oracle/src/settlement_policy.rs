@@ -104,6 +104,12 @@ mod tests {
             price_refresh_interval_secs: 60,
             myso_price_max_stale_secs: 300,
             myso_price_enabled: false,
+            openrouter_api_key: None,
+            catalog_sync_enabled: false,
+            catalog_sync_interval_secs: 86400,
+            catalog_sync_on_startup: true,
+            openrouter_api_url: "https://openrouter.ai/api/v1/models".into(),
+            catalog_max_drift_pct: 50.0,
         }
     }
 

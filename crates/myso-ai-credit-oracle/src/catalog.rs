@@ -2,15 +2,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use std::collections::{HashMap, HashSet};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
+use crate::openrouter_client::OpenRouterModelRate;
+use crate::pricing::CATALOG_USD_PEG;
+
 pub const MIST_PER_MYSO: u64 = 1_000_000_000;
 pub const CAP_AI_SPEND: u64 = 16384;
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct CatalogFile {
     pub catalog: CatalogMeta,
     #[serde(default)]
@@ -23,7 +26,7 @@ pub struct CatalogFile {
     pub defaults: CatalogDefaults,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct CatalogMeta {
     pub version: String,
     #[serde(default)]
@@ -53,7 +56,7 @@ pub struct ToolRates {
     pub flat_mist: u64,
 }
 
-#[derive(Debug, Clone, Deserialize, Default)]
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct CatalogDefaults {
     pub unknown_model_input_mist_per_1m: u64,
     pub unknown_model_output_mist_per_1m: u64,
@@ -69,6 +72,28 @@ pub struct PricingCatalog {
     pub embeddings: HashMap<String, EmbeddingRates>,
     pub tools: HashMap<String, ToolRates>,
     pub defaults: CatalogDefaults,
+}
+
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct CatalogSyncReport {
+    pub checked: usize,
+    pub updated: usize,
+    pub skipped_drift: usize,
+    pub unchanged: usize,
+}
+
+pub fn usd_per_1m_to_mist(usd_per_1m: f64, catalog_usd_peg: f64) -> u64 {
+    if catalog_usd_peg <= 0.0 {
+        return 0;
+    }
+    (usd_per_1m * (MIST_PER_MYSO as f64 / catalog_usd_peg)).round() as u64
+}
+
+fn relative_drift_pct(old: u64, new: u64) -> f64 {
+    if old == 0 {
+        return if new == 0 { 0.0 } else { 100.0 };
+    }
+    ((new as f64 - old as f64).abs() / old as f64) * 100.0
 }
 
 impl PricingCatalog {
@@ -177,6 +202,124 @@ impl PricingCatalog {
             .unwrap_or(10_000_000)
     }
 
+    fn unique_models(&self) -> Vec<ModelRates> {
+        let mut models: Vec<ModelRates> = Vec::new();
+        let mut seen = HashSet::new();
+        for model in self.models.values() {
+            if seen.insert(model.display_name.clone()) {
+                models.push(model.clone());
+            }
+        }
+        models.sort_by(|a, b| a.display_name.cmp(&b.display_name));
+        models
+    }
+
+    fn unique_embeddings(&self) -> Vec<EmbeddingRates> {
+        let mut embeddings: Vec<EmbeddingRates> = Vec::new();
+        let mut seen = HashSet::new();
+        for embed in self.embeddings.values() {
+            if seen.insert(embed.display_name.clone()) {
+                embeddings.push(embed.clone());
+            }
+        }
+        embeddings.sort_by(|a, b| a.display_name.cmp(&b.display_name));
+        embeddings
+    }
+
+    pub fn to_catalog_file(&self) -> CatalogFile {
+        let mut tools: Vec<ToolRates> = self.tools.values().cloned().collect();
+        tools.sort_by(|a, b| a.id.cmp(&b.id));
+        CatalogFile {
+            catalog: CatalogMeta {
+                version: self.version.clone(),
+                source: self.source.clone(),
+                effective_date: self.effective_date.clone(),
+            },
+            models: self.unique_models(),
+            embeddings: self.unique_embeddings(),
+            tools,
+            defaults: self.defaults.clone(),
+        }
+    }
+
+    pub fn save(&self, path: &Path) -> Result<()> {
+        let file = self.to_catalog_file();
+        let text = toml::to_string_pretty(&file).context("serialize pricing catalog")?;
+        let tmp_path = PathBuf::from(format!("{}.tmp", path.display()));
+        std::fs::write(&tmp_path, text.as_bytes())
+            .with_context(|| format!("write catalog tmp {}", tmp_path.display()))?;
+        std::fs::rename(&tmp_path, path)
+            .with_context(|| format!("rename catalog to {}", path.display()))?;
+        Ok(())
+    }
+
+    pub fn apply_openrouter_rates(
+        &mut self,
+        remote: &HashMap<String, OpenRouterModelRate>,
+        max_drift_pct: f64,
+    ) -> CatalogSyncReport {
+        let mut report = CatalogSyncReport::default();
+        let mut updated_models: Vec<ModelRates> = self.unique_models();
+        let mut any_changed = false;
+
+        for model in &mut updated_models {
+            let Some(remote_rate) = model
+                .aliases
+                .iter()
+                .find_map(|alias| remote.get(&alias.to_lowercase()))
+            else {
+                continue;
+            };
+
+            report.checked += 1;
+            let new_input = usd_per_1m_to_mist(remote_rate.input_usd_per_1m, CATALOG_USD_PEG);
+            let new_output = usd_per_1m_to_mist(remote_rate.output_usd_per_1m, CATALOG_USD_PEG);
+
+            if model.input_mist_per_1m == new_input && model.output_mist_per_1m == new_output {
+                report.unchanged += 1;
+                continue;
+            }
+
+            let input_drift = relative_drift_pct(model.input_mist_per_1m, new_input);
+            let output_drift = relative_drift_pct(model.output_mist_per_1m, new_output);
+            if input_drift > max_drift_pct || output_drift > max_drift_pct {
+                tracing::warn!(
+                    model = %model.display_name,
+                    alias = %remote_rate.id,
+                    input_drift_pct = input_drift,
+                    output_drift_pct = output_drift,
+                    max_drift_pct,
+                    "skipping catalog rate update due to drift cap"
+                );
+                report.skipped_drift += 1;
+                continue;
+            }
+
+            model.input_mist_per_1m = new_input;
+            model.output_mist_per_1m = new_output;
+            report.updated += 1;
+            any_changed = true;
+        }
+
+        if any_changed {
+            let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
+            self.version = today.clone();
+            self.effective_date = Some(today);
+            if self.source.is_none() {
+                self.source = Some("openrouter+manual".to_string());
+            }
+
+            self.models.clear();
+            for model in updated_models {
+                for alias in &model.aliases {
+                    self.models.insert(alias.to_lowercase(), model.clone());
+                }
+            }
+        }
+
+        report
+    }
+
     pub fn to_response(&self) -> CatalogResponse {
         self.to_response_with_fx(crate::pricing::CATALOG_USD_PEG, 1.0, String::new(), None, true)
     }
@@ -255,4 +398,111 @@ pub struct CatalogResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub price_age_secs: Option<u64>,
     pub price_stale: bool,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    use crate::openrouter_client::OpenRouterModelRate;
+
+    fn sample_catalog() -> PricingCatalog {
+        let file: CatalogFile = toml::from_str(
+            r#"
+[catalog]
+version = "2026-01-01"
+source = "openrouter+manual"
+effective_date = "2026-01-01"
+
+[[models]]
+aliases = ["openai/gpt-4o-mini", "gpt-4o-mini"]
+display_name = "GPT-4o mini"
+input_mist_per_1m = 150_000_000
+output_mist_per_1m = 600_000_000
+
+[defaults]
+unknown_model_input_mist_per_1m = 1_000_000_000
+unknown_model_output_mist_per_1m = 1_000_000_000
+min_charge_mist = 1_000_000
+"#,
+        )
+        .unwrap();
+        PricingCatalog::from_file(file)
+    }
+
+    #[test]
+    fn apply_openrouter_rates_updates_matching_alias() {
+        let mut catalog = sample_catalog();
+        let mut remote = HashMap::new();
+        remote.insert(
+            "openai/gpt-4o-mini".to_string(),
+            OpenRouterModelRate {
+                id: "openai/gpt-4o-mini".to_string(),
+                input_usd_per_1m: 0.2,
+                output_usd_per_1m: 0.8,
+            },
+        );
+
+        let report = catalog.apply_openrouter_rates(&remote, 50.0);
+        assert_eq!(report.checked, 1);
+        assert_eq!(report.updated, 1);
+        assert_eq!(catalog.model_rates("gpt-4o-mini").input_mist_per_1m, 200_000_000);
+        assert_eq!(catalog.model_rates("gpt-4o-mini").output_mist_per_1m, 800_000_000);
+    }
+
+    #[test]
+    fn apply_openrouter_rates_skips_unknown_models() {
+        let mut catalog = sample_catalog();
+        let mut remote = HashMap::new();
+        remote.insert(
+            "anthropic/claude-unknown".to_string(),
+            OpenRouterModelRate {
+                id: "anthropic/claude-unknown".to_string(),
+                input_usd_per_1m: 100.0,
+                output_usd_per_1m: 100.0,
+            },
+        );
+
+        let report = catalog.apply_openrouter_rates(&remote, 50.0);
+        assert_eq!(report.checked, 0);
+        assert_eq!(report.updated, 0);
+    }
+
+    #[test]
+    fn apply_openrouter_rates_respects_drift_cap() {
+        let mut catalog = sample_catalog();
+        let mut remote = HashMap::new();
+        remote.insert(
+            "openai/gpt-4o-mini".to_string(),
+            OpenRouterModelRate {
+                id: "openai/gpt-4o-mini".to_string(),
+                input_usd_per_1m: 10.0,
+                output_usd_per_1m: 10.0,
+            },
+        );
+
+        let report = catalog.apply_openrouter_rates(&remote, 5.0);
+        assert_eq!(report.checked, 1);
+        assert_eq!(report.skipped_drift, 1);
+        assert_eq!(report.updated, 0);
+        assert_eq!(catalog.model_rates("gpt-4o-mini").input_mist_per_1m, 150_000_000);
+    }
+
+    #[test]
+    fn save_and_load_round_trip() {
+        let catalog = sample_catalog();
+        let path = std::env::temp_dir().join(format!(
+            "myso_ai_credit_catalog_test_{}.toml",
+            uuid::Uuid::new_v4()
+        ));
+        catalog.save(&path).unwrap();
+        let loaded = PricingCatalog::load(&path).unwrap();
+        assert_eq!(loaded.version, catalog.version);
+        assert_eq!(
+            loaded.model_rates("openai/gpt-4o-mini").input_mist_per_1m,
+            catalog.model_rates("openai/gpt-4o-mini").input_mist_per_1m
+        );
+        let _ = std::fs::remove_file(path);
+    }
 }

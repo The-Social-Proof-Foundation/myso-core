@@ -2,10 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 pub mod catalog;
+pub mod catalog_sync;
 pub mod chain_balance;
 pub mod config;
 pub mod ledger;
 pub mod myso_price_client;
+pub mod openrouter_client;
 pub mod price_refresh;
 pub mod pricing;
 pub mod receipt;

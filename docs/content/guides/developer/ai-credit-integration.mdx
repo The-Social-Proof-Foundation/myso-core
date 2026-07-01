@@ -81,13 +81,18 @@ The SDK exposes `Memory.recordInferenceUsage({ modelId, tokensIn, tokensOut })`.
 
 Catalog metadata: `version`, `source`, `effective_date`.
 
-Sync OpenRouter pricing against local catalog:
+The oracle can sync OpenRouter USD rates into `pricing_catalog.toml` for **models already in the catalog** (no auto-add). Enable with:
 
 ```bash
-OPENROUTER_API_KEY=... python3 scripts/sync_ai_credit_catalog.py --myso-usd 1.0
+AI_CREDIT_CATALOG_SYNC_ENABLED=true
+AI_CREDIT_OPENROUTER_API_KEY=sk-or-v1-...
+# optional: AI_CREDIT_CATALOG_SYNC_INTERVAL_SECS=86400
+# optional: AI_CREDIT_CATALOG_MAX_DRIFT_PCT=50.0
 ```
 
-Review the diff, update `pricing_catalog.toml`, bump `version` + `effective_date`, deploy oracle.
+On startup (when enabled) and on each interval, the worker fetches OpenRouter model pricing, updates matching aliases, bumps `version` + `effective_date`, persists the TOML, and hot-reloads the in-memory catalog. Large per-model drift is skipped when it exceeds `AI_CREDIT_CATALOG_MAX_DRIFT_PCT`.
+
+The legacy script `scripts/sync_ai_credit_catalog.py` is deprecated (manual diff only).
 
 Set `AI_CREDIT_STRICT_CATALOG=1` in production to reject `record_usage` for unknown `model_id`.
 
@@ -115,7 +120,7 @@ Settlement **never reprices** — it transfers pre-signed `amount_mist` to treas
 
 | Service | Variable |
 |---------|----------|
-| Oracle | `AI_CREDIT_ORACLE_PRIVATE_KEY_HEX`, `AI_CREDIT_SETTLEMENT_KEY_HEX`, `AI_CREDIT_CONFIG_OBJECT_ID`, `AI_CREDIT_ECOSYSTEM_MARGIN_PCT`, `AI_CREDIT_STRICT_CATALOG`, settlement trigger vars |
+| Oracle | `AI_CREDIT_ORACLE_PRIVATE_KEY_HEX`, `AI_CREDIT_SETTLEMENT_KEY_HEX`, `AI_CREDIT_CONFIG_OBJECT_ID`, `AI_CREDIT_ECOSYSTEM_MARGIN_PCT`, `AI_CREDIT_STRICT_CATALOG`, settlement trigger vars, optional `AI_CREDIT_CATALOG_SYNC_ENABLED`, `AI_CREDIT_OPENROUTER_API_KEY` |
 | memory-server | `AI_CREDIT_ENABLED=1`, `AI_CREDIT_ORACLE_URL`, `DEFAULT_LLM_MODEL`, `SOCIAL_SERVER_URL` |
 | Social-server | `AI_CREDIT_USAGE_SYNC_SECRET` |
 | Chatbot | `MEMORY_KEY`, `MEMORY_ACCOUNT_ID`, `MEMORY_SERVER_URL`, `AI_CREDIT_ORACLE_URL` (catalog in model picker) |

@@ -85,4 +85,32 @@ pub struct OracleArgs {
 
     #[arg(long, env = "AI_CREDIT_MYSO_PRICE_ENABLED", default_value = "true")]
     pub myso_price_enabled: bool,
+
+    #[arg(long, env = "AI_CREDIT_OPENROUTER_API_KEY")]
+    pub openrouter_api_key: Option<String>,
+
+    #[arg(long, env = "AI_CREDIT_CATALOG_SYNC_ENABLED", default_value = "false")]
+    pub catalog_sync_enabled: bool,
+
+    #[arg(long, env = "AI_CREDIT_CATALOG_SYNC_INTERVAL_SECS", default_value = "86400")]
+    pub catalog_sync_interval_secs: u64,
+
+    #[arg(long, env = "AI_CREDIT_CATALOG_SYNC_ON_STARTUP", default_value = "true")]
+    pub catalog_sync_on_startup: bool,
+
+    #[arg(
+        long,
+        env = "AI_CREDIT_OPENROUTER_API_URL",
+        default_value = "https://openrouter.ai/api/v1/models"
+    )]
+    pub openrouter_api_url: String,
+
+    #[arg(long, env = "AI_CREDIT_CATALOG_MAX_DRIFT_PCT", default_value = "50.0")]
+    pub catalog_max_drift_pct: f64,
+}
+
+impl OracleArgs {
+    pub fn catalog_sync_active(&self) -> bool {
+        self.catalog_sync_enabled && self.openrouter_api_key.is_some()
+    }
 }
