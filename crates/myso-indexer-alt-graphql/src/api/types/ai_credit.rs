@@ -5,6 +5,7 @@ use async_graphql::{Context, Object};
 use myso_indexer_alt_social_schema::models::{AiCreditBalanceRow, AiCreditUsageLineRow};
 
 use crate::api::scalars::date_time::DateTime;
+use crate::api::types::enterprise::{AiCreditAgentBudget, SpendApproval};
 
 #[derive(Clone)]
 pub(crate) struct AiCreditUsageLine {
@@ -107,5 +108,27 @@ impl AiCreditBalance {
             .await
             .ok()
             .map(|rows| rows.into_iter().map(AiCreditUsageLine::from_row).collect())
+    }
+
+    async fn pending_approvals(&self, ctx: &Context<'_>) -> Option<Vec<SpendApproval>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        reader
+            .list_pending_spend_approvals_for_balance(&self.inner.balance_id)
+            .await
+            .ok()
+            .map(|rows| rows.into_iter().map(SpendApproval::from_row).collect())
+    }
+
+    async fn agent_budgets(&self, ctx: &Context<'_>) -> Option<Vec<AiCreditAgentBudget>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        reader
+            .list_agent_budgets_for_balance(&self.inner.balance_id)
+            .await
+            .ok()
+            .map(|rows| rows.into_iter().map(AiCreditAgentBudget::from_row).collect())
     }
 }

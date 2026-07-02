@@ -1265,6 +1265,73 @@ pub struct BcsAgenticOrganizationDeactivatedEvent {
     deactivated_at: u64,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsOrgMemoryGroupCreatedEvent {
+    group_id: AccountAddress,
+    organization_id: AccountAddress,
+    account_id: AccountAddress,
+    principal_owner: AccountAddress,
+    created_at: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsOrgMemoryPermissionGrantedEvent {
+    organization_id: AccountAddress,
+    account_id: AccountAddress,
+    group_id: AccountAddress,
+    member: AccountAddress,
+    permissions_mask: u64,
+    granted_by: AccountAddress,
+    timestamp_ms: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsOrgMemoryPermissionRevokedEvent {
+    organization_id: AccountAddress,
+    account_id: AccountAddress,
+    group_id: AccountAddress,
+    member: AccountAddress,
+    permissions_mask: u64,
+    revoked_by: AccountAddress,
+    timestamp_ms: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsOrgRoleDefinedEvent {
+    organization_id: AccountAddress,
+    account_id: AccountAddress,
+    role_name: String,
+    mask: u64,
+    previous_mask: Option<u64>,
+    defined_by: AccountAddress,
+    timestamp_ms: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsOrgRoleAssignedEvent {
+    organization_id: AccountAddress,
+    account_id: AccountAddress,
+    group_id: AccountAddress,
+    member: AccountAddress,
+    role_name: String,
+    mask: u64,
+    granted_mask: u64,
+    assigned_by: AccountAddress,
+    timestamp_ms: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsOrgRoleRevokedEvent {
+    organization_id: AccountAddress,
+    account_id: AccountAddress,
+    group_id: AccountAddress,
+    member: AccountAddress,
+    role_name: String,
+    revoked_mask: u64,
+    revoked_by: AccountAddress,
+    timestamp_ms: u64,
+}
+
 #[derive(Debug, Deserialize)]
 struct BcsAiCreditBalanceCreatedEvent {
     balance_id: AccountAddress,
@@ -1309,6 +1376,59 @@ struct BcsAiCreditAgentBudgetUpdatedEvent {
 struct BcsAiCreditAgentBudgetDisabledEvent {
     balance_id: AccountAddress,
     agent_object_id: AccountAddress,
+}
+
+#[derive(Debug, Deserialize)]
+struct BcsAiCreditAgentBudgetChangedEvent {
+    balance_id: AccountAddress,
+    agent_object_id: AccountAddress,
+    had_previous_entry: bool,
+    prev_budget_mist: Option<u64>,
+    prev_daily_cap_mist: Option<u64>,
+    prev_monthly_cap_mist: Option<u64>,
+    prev_require_approval_above_mist: Option<u64>,
+    prev_enabled: bool,
+    budget_mist: Option<u64>,
+    daily_cap_mist: Option<u64>,
+    monthly_cap_mist: Option<u64>,
+    require_approval_above_mist: Option<u64>,
+    enabled: bool,
+    set_by: AccountAddress,
+    set_by_agent_id: Option<AccountAddress>,
+    organization_id: Option<AccountAddress>,
+    timestamp_ms: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct BcsAiCreditSpendApprovedEvent {
+    balance_id: AccountAddress,
+    agent_object_id: AccountAddress,
+    approval_nonce: u64,
+    max_amount_mist: u64,
+    expires_at_ms: u64,
+    approved_by: AccountAddress,
+    approved_by_agent_id: Option<AccountAddress>,
+    organization_id: Option<AccountAddress>,
+    timestamp_ms: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct BcsAiCreditSpendApprovalRevokedEvent {
+    balance_id: AccountAddress,
+    agent_object_id: AccountAddress,
+    approval_nonce: u64,
+    revoked_by: AccountAddress,
+    timestamp_ms: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct BcsAiCreditSpendApprovalConsumedEvent {
+    balance_id: AccountAddress,
+    agent_object_id: AccountAddress,
+    approval_nonce: u64,
+    amount_mist: u64,
+    approved_by: AccountAddress,
+    timestamp_ms: u64,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -3427,6 +3547,85 @@ fn parse_memory_event(
                 "deactivated_at": ev.deactivated_at,
             })))
         }
+        "OrgMemoryGroupCreated" => {
+            let ev = bcs::from_bytes::<BcsOrgMemoryGroupCreatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "group_id": addr_to_string(&ev.group_id),
+                "organization_id": addr_to_string(&ev.organization_id),
+                "account_id": addr_to_string(&ev.account_id),
+                "principal_owner": addr_to_string(&ev.principal_owner),
+                "created_at": ev.created_at,
+            })))
+        }
+        "OrgMemoryPermissionGranted" => {
+            let ev = bcs::from_bytes::<BcsOrgMemoryPermissionGrantedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "organization_id": addr_to_string(&ev.organization_id),
+                "account_id": addr_to_string(&ev.account_id),
+                "group_id": addr_to_string(&ev.group_id),
+                "member": addr_to_string(&ev.member),
+                "permissions_mask": ev.permissions_mask,
+                "granted_by": addr_to_string(&ev.granted_by),
+                "timestamp_ms": ev.timestamp_ms,
+            })))
+        }
+        "OrgMemoryPermissionRevoked" => {
+            let ev = bcs::from_bytes::<BcsOrgMemoryPermissionRevokedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "organization_id": addr_to_string(&ev.organization_id),
+                "account_id": addr_to_string(&ev.account_id),
+                "group_id": addr_to_string(&ev.group_id),
+                "member": addr_to_string(&ev.member),
+                "permissions_mask": ev.permissions_mask,
+                "revoked_by": addr_to_string(&ev.revoked_by),
+                "timestamp_ms": ev.timestamp_ms,
+            })))
+        }
+        "OrgRoleDefined" => {
+            let ev = bcs::from_bytes::<BcsOrgRoleDefinedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "organization_id": addr_to_string(&ev.organization_id),
+                "account_id": addr_to_string(&ev.account_id),
+                "role_name": ev.role_name,
+                "mask": ev.mask,
+                "previous_mask": ev.previous_mask,
+                "defined_by": addr_to_string(&ev.defined_by),
+                "timestamp_ms": ev.timestamp_ms,
+            })))
+        }
+        "OrgRoleAssigned" => {
+            let ev = bcs::from_bytes::<BcsOrgRoleAssignedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "organization_id": addr_to_string(&ev.organization_id),
+                "account_id": addr_to_string(&ev.account_id),
+                "group_id": addr_to_string(&ev.group_id),
+                "member": addr_to_string(&ev.member),
+                "role_name": ev.role_name,
+                "mask": ev.mask,
+                "granted_mask": ev.granted_mask,
+                "assigned_by": addr_to_string(&ev.assigned_by),
+                "timestamp_ms": ev.timestamp_ms,
+            })))
+        }
+        "OrgRoleRevoked" => {
+            let ev = bcs::from_bytes::<BcsOrgRoleRevokedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "organization_id": addr_to_string(&ev.organization_id),
+                "account_id": addr_to_string(&ev.account_id),
+                "group_id": addr_to_string(&ev.group_id),
+                "member": addr_to_string(&ev.member),
+                "role_name": ev.role_name,
+                "revoked_mask": ev.revoked_mask,
+                "revoked_by": addr_to_string(&ev.revoked_by),
+                "timestamp_ms": ev.timestamp_ms,
+            })))
+        }
         _ => Ok(None),
     }
 }
@@ -3492,6 +3691,67 @@ fn parse_ai_credit_event(
             Ok(Some(serde_json::json!({
                 "balance_id": addr_to_string(&ev.balance_id),
                 "agent_object_id": addr_to_string(&ev.agent_object_id),
+            })))
+        }
+        "AiCreditAgentBudgetChanged" => {
+            let ev = bcs::from_bytes::<BcsAiCreditAgentBudgetChangedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "balance_id": addr_to_string(&ev.balance_id),
+                "agent_object_id": addr_to_string(&ev.agent_object_id),
+                "had_previous_entry": ev.had_previous_entry,
+                "prev_budget_mist": ev.prev_budget_mist,
+                "prev_daily_cap_mist": ev.prev_daily_cap_mist,
+                "prev_monthly_cap_mist": ev.prev_monthly_cap_mist,
+                "prev_require_approval_above_mist": ev.prev_require_approval_above_mist,
+                "prev_enabled": ev.prev_enabled,
+                "budget_mist": ev.budget_mist,
+                "daily_cap_mist": ev.daily_cap_mist,
+                "monthly_cap_mist": ev.monthly_cap_mist,
+                "require_approval_above_mist": ev.require_approval_above_mist,
+                "enabled": ev.enabled,
+                "set_by": addr_to_string(&ev.set_by),
+                "set_by_agent_id": optional_addr_json(&ev.set_by_agent_id),
+                "organization_id": optional_addr_json(&ev.organization_id),
+                "timestamp_ms": ev.timestamp_ms,
+            })))
+        }
+        "AiCreditSpendApproved" => {
+            let ev = bcs::from_bytes::<BcsAiCreditSpendApprovedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "balance_id": addr_to_string(&ev.balance_id),
+                "agent_object_id": addr_to_string(&ev.agent_object_id),
+                "approval_nonce": ev.approval_nonce,
+                "max_amount_mist": ev.max_amount_mist,
+                "expires_at_ms": ev.expires_at_ms,
+                "approved_by": addr_to_string(&ev.approved_by),
+                "approved_by_agent_id": optional_addr_json(&ev.approved_by_agent_id),
+                "organization_id": optional_addr_json(&ev.organization_id),
+                "timestamp_ms": ev.timestamp_ms,
+            })))
+        }
+        "AiCreditSpendApprovalRevoked" => {
+            let ev = bcs::from_bytes::<BcsAiCreditSpendApprovalRevokedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "balance_id": addr_to_string(&ev.balance_id),
+                "agent_object_id": addr_to_string(&ev.agent_object_id),
+                "approval_nonce": ev.approval_nonce,
+                "revoked_by": addr_to_string(&ev.revoked_by),
+                "timestamp_ms": ev.timestamp_ms,
+            })))
+        }
+        "AiCreditSpendApprovalConsumed" => {
+            let ev = bcs::from_bytes::<BcsAiCreditSpendApprovalConsumedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "balance_id": addr_to_string(&ev.balance_id),
+                "agent_object_id": addr_to_string(&ev.agent_object_id),
+                "approval_nonce": ev.approval_nonce,
+                "amount_mist": ev.amount_mist,
+                "approved_by": addr_to_string(&ev.approved_by),
+                "timestamp_ms": ev.timestamp_ms,
             })))
         }
         "AiCreditUsageSettled" => {

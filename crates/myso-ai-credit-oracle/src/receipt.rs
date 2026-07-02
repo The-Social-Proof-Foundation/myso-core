@@ -24,6 +24,13 @@ pub struct UsageLine {
     pub timestamp_ms: u64,
     pub settled: bool,
     pub created_at_ms: u64,
+    /// Voided by the approval-abort recovery path (revoked/expired allowance between
+    /// signing and settlement). Voided lines never settle and are excluded from pending.
+    #[serde(default)]
+    pub void: bool,
+    /// Org attribution resolved from the sub-agent at record time.
+    #[serde(default)]
+    pub organization_id: Option<String>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -63,7 +70,7 @@ impl ReceiptStore {
     pub fn total_pending_mist(&self) -> u64 {
         self.lines
             .iter()
-            .filter(|l| !l.settled)
+            .filter(|l| !l.settled && !l.void)
             .map(|l| l.amount_mist)
             .sum()
     }
@@ -72,7 +79,7 @@ impl ReceiptStore {
         let mut ids: Vec<String> = self
             .lines
             .iter()
-            .filter(|l| !l.settled)
+            .filter(|l| !l.settled && !l.void)
             .map(|l| l.balance_id.clone())
             .collect();
         ids.sort();
@@ -105,7 +112,7 @@ impl ReceiptStore {
     pub fn pending_for_balance(&self, balance_id: &str) -> Vec<&UsageLine> {
         self.lines
             .iter()
-            .filter(|l| l.balance_id == balance_id && !l.settled)
+            .filter(|l| l.balance_id == balance_id && !l.settled && !l.void)
             .collect()
     }
 
@@ -116,5 +123,46 @@ impl ReceiptStore {
                 line.settled = true;
             }
         }
+    }
+
+    /// Void a receipt that can no longer settle (approval revoked/expired after signing).
+    pub fn mark_void(&mut self, receipt_id: u128) -> bool {
+        if let Some(line) = self
+            .lines
+            .iter_mut()
+            .find(|l| l.receipt_id == receipt_id && !l.settled)
+        {
+            line.void = true;
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Renumber and update timestamps of the balance's pending lines so the sequence is
+    /// contiguous starting at `base_nonce + 1`. Returns the lines (in order) that must be
+    /// re-signed by the caller.
+    pub fn renumber_pending_for_balance(
+        &mut self,
+        balance_id: &str,
+        base_nonce: u64,
+        now_ms: u64,
+    ) -> Vec<usize> {
+        let mut indices: Vec<usize> = self
+            .lines
+            .iter()
+            .enumerate()
+            .filter(|(_, l)| l.balance_id == balance_id && !l.settled && !l.void)
+            .map(|(i, _)| i)
+            .collect();
+        indices.sort_by_key(|i| self.lines[*i].created_at_ms);
+        let mut nonce = base_nonce;
+        for i in &indices {
+            nonce += 1;
+            let line = &mut self.lines[*i];
+            line.settlement_nonce = nonce;
+            line.timestamp_ms = now_ms;
+        }
+        indices
     }
 }

@@ -85,6 +85,17 @@ pub struct OrganizationStatistics {
     /// Fraction of financial events carrying organization attribution (0.0–1.0).
     pub attribution_coverage: f64,
 
+    /// AI-credit spend attributed to the org's agents (MIST; window-aware).
+    pub ai_credit_spent_mist: i64,
+    /// Count of indexed AI-credit usage lines attributed to the org.
+    pub ai_credit_usage_events: i64,
+    /// Memory entries stored by the org's agents (relayer-pushed).
+    pub memory_entries: i64,
+    /// Memory bytes stored by the org's agents (relayer-pushed; window-aware).
+    pub memory_bytes: i64,
+    /// Entries shared at org visibility.
+    pub org_shared_memory_entries: i64,
+
     pub organization_age_ms: i64,
     pub stats_rollup_at: Option<DateTime<Utc>>,
 }
@@ -131,6 +142,11 @@ fn build_statistics_from_rows(
         originality_posts_analyzed: stats.originality_posts_analyzed,
         estimated_assets_under_management_myso: stats.estimated_assets_under_management_myso,
         attribution_coverage: (stats.attribution_coverage_bps as f64) / 10_000.0,
+        ai_credit_spent_mist: stats.ai_credit_spent_mist,
+        ai_credit_usage_events: stats.ai_credit_usage_events,
+        memory_entries: stats.memory_entries,
+        memory_bytes: stats.memory_bytes,
+        org_shared_memory_entries: stats.org_shared_memory_entries,
         organization_age_ms,
         stats_rollup_at: stats.stats_rollup_at,
     }
@@ -158,6 +174,10 @@ struct WindowedStatsRow {
     spot_bets_resolved: i64,
     #[diesel(sql_type = Int4)]
     attribution_coverage_bps: i32,
+    #[diesel(sql_type = BigInt)]
+    ai_credit_spent_mist: i64,
+    #[diesel(sql_type = BigInt)]
+    memory_bytes: i64,
 }
 
 async fn load_windowed_financial_overlay(
@@ -192,7 +212,9 @@ async fn load_windowed_financial_overlay(
             l.estimated_aum_myso::bigint AS estimated_aum_myso,
             l.spot_accuracy_bps,
             COALESCE(s.spot_bets_resolved, 0)::bigint AS spot_bets_resolved,
-            l.attribution_coverage_bps::int AS attribution_coverage_bps
+            l.attribution_coverage_bps::int AS attribution_coverage_bps,
+            GREATEST(l.ai_credit_spent_mist - COALESCE(e.ai_credit_spent_mist, 0), 0)::bigint AS ai_credit_spent_mist,
+            l.memory_bytes::bigint AS memory_bytes
         FROM latest l
         LEFT JOIN earliest e ON true
         LEFT JOIN sub_agent_organization_stats s ON s.organization_id = $1
@@ -254,6 +276,11 @@ pub async fn get_organization_statistics(
         last_activity_at_ms: None,
         stats_rollup_at: None,
         updated_at: Utc::now(),
+        ai_credit_spent_mist: 0,
+        ai_credit_usage_events: 0,
+        memory_entries: 0,
+        memory_bytes: 0,
+        org_shared_memory_entries: 0,
     });
 
     let mut result = build_statistics_from_rows(org, &stats, window);
@@ -279,6 +306,8 @@ pub async fn get_organization_statistics(
                 } else {
                     bps_to_ratio(overlay.spot_accuracy_bps)
                 };
+                result.ai_credit_spent_mist = overlay.ai_credit_spent_mist;
+                result.memory_bytes = overlay.memory_bytes;
             }
         }
     }

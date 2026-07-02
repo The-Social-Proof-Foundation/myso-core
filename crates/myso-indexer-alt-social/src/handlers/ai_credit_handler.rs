@@ -16,15 +16,17 @@ use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
     NewAiCreditAgentBudget, NewAiCreditBalance, NewAiCreditConfig, NewAiCreditEvent,
+    NewAiCreditSpendApproval, NewAuditLog,
 };
 use myso_indexer_alt_social_schema::schema::{
     ai_credit_agent_budgets, ai_credit_balances, ai_credit_config, ai_credit_events,
-    ai_credit_usage_lines, profiles,
+    ai_credit_spend_approvals, ai_credit_usage_lines, profiles, sub_agents,
 };
 
 use super::ai_credit;
 use super::common;
 use super::events;
+use super::organization_stats::apply_org_ai_credit_spend;
 use crate::metrics::SocialMetrics;
 
 const AI_CREDIT_MODULE: &str = "ai_credit";
@@ -98,6 +100,21 @@ pub enum AiCreditRow {
         transaction_id: String,
     },
     Event(NewAiCreditEvent),
+    SpendApprovalUpsert(NewAiCreditSpendApproval),
+    SpendApprovalStatus {
+        balance_id: String,
+        agent_object_id: String,
+        status: String,
+        consumed_amount_mist: Option<i64>,
+        event_id: String,
+    },
+    OrgSpendFromAgent {
+        agent_object_id: String,
+        amount_mist: i64,
+        receipt_id: Option<String>,
+        activity_at_ms: i64,
+    },
+    AuditLog(NewAuditLog),
 }
 
 impl AiCreditRow {
@@ -230,6 +247,34 @@ impl AiCreditRow {
                 transaction_id,
             }),
             crate::handlers::SocialEventRow::AiCreditEvent(e) => Some(AiCreditRow::Event(e)),
+            crate::handlers::SocialEventRow::AiCreditSpendApprovalUpsert(a) => {
+                Some(AiCreditRow::SpendApprovalUpsert(a))
+            }
+            crate::handlers::SocialEventRow::AiCreditSpendApprovalStatus {
+                balance_id,
+                agent_object_id,
+                status,
+                consumed_amount_mist,
+                event_id,
+            } => Some(AiCreditRow::SpendApprovalStatus {
+                balance_id,
+                agent_object_id,
+                status,
+                consumed_amount_mist,
+                event_id,
+            }),
+            crate::handlers::SocialEventRow::AiCreditOrgSpendFromAgent {
+                agent_object_id,
+                amount_mist,
+                receipt_id,
+                activity_at_ms,
+            } => Some(AiCreditRow::OrgSpendFromAgent {
+                agent_object_id,
+                amount_mist,
+                receipt_id,
+                activity_at_ms,
+            }),
+            crate::handlers::SocialEventRow::AuditLog(a) => Some(AiCreditRow::AuditLog(a)),
             _ => None,
         }
     }
@@ -601,6 +646,109 @@ impl Handler for AiCreditHandler {
                         .values(e)
                         .execute(conn)
                         .await?;
+                }
+                AiCreditRow::SpendApprovalUpsert(a) => {
+                    total += diesel::insert_into(ai_credit_spend_approvals::table)
+                        .values(a)
+                        .on_conflict((
+                            ai_credit_spend_approvals::balance_id,
+                            ai_credit_spend_approvals::agent_object_id,
+                        ))
+                        .do_update()
+                        .set((
+                            ai_credit_spend_approvals::status.eq(a.status.clone()),
+                            ai_credit_spend_approvals::approval_nonce.eq(a.approval_nonce),
+                            ai_credit_spend_approvals::max_amount_mist.eq(a.max_amount_mist),
+                            ai_credit_spend_approvals::expires_at_ms.eq(a.expires_at_ms),
+                            ai_credit_spend_approvals::approved_by.eq(a.approved_by.clone()),
+                            ai_credit_spend_approvals::approved_by_agent_id
+                                .eq(a.approved_by_agent_id.clone()),
+                            ai_credit_spend_approvals::organization_id
+                                .eq(a.organization_id.clone()),
+                            ai_credit_spend_approvals::updated_at.eq(a.updated_at),
+                            ai_credit_spend_approvals::event_id.eq(a.event_id.clone()),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                AiCreditRow::SpendApprovalStatus {
+                    balance_id,
+                    agent_object_id,
+                    status,
+                    consumed_amount_mist,
+                    event_id,
+                } => {
+                    let affected = diesel::update(
+                        ai_credit_spend_approvals::table
+                            .filter(ai_credit_spend_approvals::balance_id.eq(balance_id))
+                            .filter(
+                                ai_credit_spend_approvals::agent_object_id.eq(agent_object_id),
+                            ),
+                    )
+                    .set((
+                        ai_credit_spend_approvals::status.eq(status),
+                        ai_credit_spend_approvals::consumed_amount_mist.eq(*consumed_amount_mist),
+                        ai_credit_spend_approvals::updated_at.eq(chrono::Utc::now()),
+                        ai_credit_spend_approvals::event_id.eq(Some(event_id.clone())),
+                    ))
+                    .execute(conn)
+                    .await?;
+                    if affected == 0 {
+                        tracing::warn!(
+                            balance_id = %balance_id,
+                            agent_object_id = %agent_object_id,
+                            status = %status,
+                            "ai_credit spend approval status update matched no rows"
+                        );
+                    }
+                    total += affected;
+                }
+                AiCreditRow::OrgSpendFromAgent {
+                    agent_object_id,
+                    amount_mist,
+                    receipt_id,
+                    activity_at_ms,
+                } => {
+                    let org_id = sub_agents::table
+                        .filter(sub_agents::agent_object_id.eq(agent_object_id))
+                        .select(sub_agents::organization_id)
+                        .first::<Option<String>>(conn)
+                        .await
+                        .ok()
+                        .flatten();
+                    if let Some(organization_id) = &org_id {
+                        apply_org_ai_credit_spend(
+                            conn,
+                            Some(organization_id),
+                            *amount_mist,
+                            *activity_at_ms,
+                        )
+                        .await?;
+                        // Backfill org attribution on the usage line when the oracle
+                        // ingest predates the agent's org registration.
+                        if let Some(receipt_id) = receipt_id {
+                            diesel::update(
+                                ai_credit_usage_lines::table
+                                    .filter(ai_credit_usage_lines::receipt_id.eq(receipt_id))
+                                    .filter(ai_credit_usage_lines::organization_id.is_null()),
+                            )
+                            .set(
+                                ai_credit_usage_lines::organization_id
+                                    .eq(Some(organization_id.clone())),
+                            )
+                            .execute(conn)
+                            .await?;
+                        }
+                    }
+                    total += 1;
+                }
+                AiCreditRow::AuditLog(a) => {
+                    total += diesel::insert_into(
+                        myso_indexer_alt_social_schema::schema::audit_log::table,
+                    )
+                    .values(a)
+                    .execute(conn)
+                    .await?;
                 }
             }
         }

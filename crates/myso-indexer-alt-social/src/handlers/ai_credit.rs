@@ -3,9 +3,12 @@
 
 use chrono::Utc;
 
+use super::memory::chain_audit_row;
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
-    NewAiCreditAgentBudget, NewAiCreditBalance, NewAiCreditConfig, NewAiCreditEvent,
+    AuditAction, NewAiCreditAgentBudget, NewAiCreditBalance, NewAiCreditConfig, NewAiCreditEvent,
+    NewAiCreditSpendApproval, APPROVAL_STATUS_APPROVED, APPROVAL_STATUS_CONSUMED,
+    APPROVAL_STATUS_REVOKED,
 };
 
 pub(crate) fn json_to_i64(v: &serde_json::Value) -> i64 {
@@ -343,6 +346,13 @@ pub fn handle_ai_credit_event(
                     transaction_id: transaction_id.clone(),
                 });
             }
+            // Tier 1 org spend attribution (org resolved via sub_agents at commit time).
+            rows.push(SocialEventRow::AiCreditOrgSpendFromAgent {
+                agent_object_id: agent_object_id.clone(),
+                amount_mist,
+                receipt_id: receipt_id.clone(),
+                activity_at_ms: now.timestamp_millis(),
+            });
             rows.push(SocialEventRow::AiCreditEvent(NewAiCreditEvent {
                     event_type: event_name.to_string(),
                     balance_id: Some(balance_id),
@@ -429,6 +439,167 @@ pub fn handle_ai_credit_event(
                 transaction_id,
                 time: now,
             })])
+        }
+        "AiCreditAgentBudgetChanged" => {
+            let balance_id = json_str(data, "balance_id")?;
+            let agent_object_id = json_str(data, "agent_object_id")?;
+            let enabled = data.get("enabled").and_then(|v| v.as_bool()).unwrap_or(true);
+            let set_by = json_str(data, "set_by")?;
+            let set_by_agent_id = json_str(data, "set_by_agent_id");
+            let organization_id = json_str(data, "organization_id");
+            let had_previous = data
+                .get("had_previous_entry")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+            let prev_state = if had_previous {
+                Some(serde_json::json!({
+                    "budget_mist": data.get("prev_budget_mist"),
+                    "daily_cap_mist": data.get("prev_daily_cap_mist"),
+                    "monthly_cap_mist": data.get("prev_monthly_cap_mist"),
+                    "require_approval_above_mist": data.get("prev_require_approval_above_mist"),
+                    "enabled": data.get("prev_enabled"),
+                }))
+            } else {
+                None
+            };
+            let new_state = serde_json::json!({
+                "budget_mist": data.get("budget_mist"),
+                "daily_cap_mist": data.get("daily_cap_mist"),
+                "monthly_cap_mist": data.get("monthly_cap_mist"),
+                "require_approval_above_mist": data.get("require_approval_above_mist"),
+                "enabled": enabled,
+                "set_by_agent_id": set_by_agent_id,
+            });
+            let mut audit = chain_audit_row(
+                if enabled {
+                    AuditAction::AgentBudgetChange
+                } else {
+                    AuditAction::AgentBudgetDisable
+                },
+                set_by,
+                "agent_budget",
+                agent_object_id,
+                organization_id,
+                None,
+                prev_state,
+                Some(new_state),
+                event_id,
+                &transaction_id,
+                now,
+            );
+            audit.metadata = Some(serde_json::json!({ "balance_id": balance_id }));
+            Some(vec![SocialEventRow::AuditLog(audit)])
+        }
+        "AiCreditSpendApproved" => {
+            let balance_id = json_str(data, "balance_id")?;
+            let agent_object_id = json_str(data, "agent_object_id")?;
+            let approval_nonce = json_to_i64(data.get("approval_nonce").unwrap_or(&serde_json::Value::Null));
+            let max_amount_mist =
+                json_to_i64(data.get("max_amount_mist").unwrap_or(&serde_json::Value::Null));
+            let expires_at_ms =
+                json_to_i64(data.get("expires_at_ms").unwrap_or(&serde_json::Value::Null));
+            let approved_by = json_str(data, "approved_by")?;
+            let approved_by_agent_id = json_str(data, "approved_by_agent_id");
+            let organization_id = json_str(data, "organization_id");
+            Some(vec![
+                SocialEventRow::AiCreditSpendApprovalUpsert(NewAiCreditSpendApproval {
+                    balance_id: balance_id.clone(),
+                    agent_object_id: agent_object_id.clone(),
+                    status: APPROVAL_STATUS_APPROVED.to_string(),
+                    requested_amount_mist: None,
+                    threshold_mist: None,
+                    approval_nonce: Some(approval_nonce),
+                    max_amount_mist: Some(max_amount_mist),
+                    expires_at_ms: Some(expires_at_ms),
+                    approved_by: Some(approved_by.clone()),
+                    approved_by_agent_id: approved_by_agent_id.clone(),
+                    organization_id: organization_id.clone(),
+                    consumed_amount_mist: None,
+                    requested_at: now,
+                    updated_at: now,
+                    event_id: Some(event_id.to_string()),
+                }),
+                SocialEventRow::AuditLog(chain_audit_row(
+                    AuditAction::SpendApprovalApprove,
+                    approved_by,
+                    "spend_approval",
+                    agent_object_id,
+                    organization_id,
+                    None,
+                    None,
+                    Some(serde_json::json!({
+                        "balance_id": balance_id,
+                        "approval_nonce": approval_nonce,
+                        "max_amount_mist": max_amount_mist,
+                        "expires_at_ms": expires_at_ms,
+                        "approved_by_agent_id": approved_by_agent_id,
+                    })),
+                    event_id,
+                    &transaction_id,
+                    now,
+                )),
+            ])
+        }
+        "AiCreditSpendApprovalRevoked" => {
+            let balance_id = json_str(data, "balance_id")?;
+            let agent_object_id = json_str(data, "agent_object_id")?;
+            let approval_nonce = json_to_i64(data.get("approval_nonce").unwrap_or(&serde_json::Value::Null));
+            let revoked_by = json_str(data, "revoked_by")?;
+            Some(vec![
+                SocialEventRow::AiCreditSpendApprovalStatus {
+                    balance_id: balance_id.clone(),
+                    agent_object_id: agent_object_id.clone(),
+                    status: APPROVAL_STATUS_REVOKED.to_string(),
+                    consumed_amount_mist: None,
+                    event_id: event_id.to_string(),
+                },
+                SocialEventRow::AuditLog(chain_audit_row(
+                    AuditAction::SpendApprovalRevoke,
+                    revoked_by,
+                    "spend_approval",
+                    agent_object_id,
+                    None,
+                    None,
+                    Some(serde_json::json!({ "approval_nonce": approval_nonce })),
+                    None,
+                    event_id,
+                    &transaction_id,
+                    now,
+                )),
+            ])
+        }
+        "AiCreditSpendApprovalConsumed" => {
+            let balance_id = json_str(data, "balance_id")?;
+            let agent_object_id = json_str(data, "agent_object_id")?;
+            let approval_nonce = json_to_i64(data.get("approval_nonce").unwrap_or(&serde_json::Value::Null));
+            let amount_mist = json_to_i64(data.get("amount_mist").unwrap_or(&serde_json::Value::Null));
+            let approved_by = json_str(data, "approved_by")?;
+            Some(vec![
+                SocialEventRow::AiCreditSpendApprovalStatus {
+                    balance_id: balance_id.clone(),
+                    agent_object_id: agent_object_id.clone(),
+                    status: APPROVAL_STATUS_CONSUMED.to_string(),
+                    consumed_amount_mist: Some(amount_mist),
+                    event_id: event_id.to_string(),
+                },
+                SocialEventRow::AuditLog(chain_audit_row(
+                    AuditAction::SpendApprovalConsume,
+                    approved_by,
+                    "spend_approval",
+                    agent_object_id,
+                    None,
+                    None,
+                    None,
+                    Some(serde_json::json!({
+                        "balance_id": balance_id,
+                        "approval_nonce": approval_nonce,
+                        "amount_mist": amount_mist,
+                    })),
+                    event_id,
+                    &transaction_id,
+                    now,
+                )),
+            ])
         }
         "AiCreditConfigInitialized" => {
             let oracle_pubkey_hex = json_str(data, "oracle_pubkey_hex")?;
@@ -543,7 +714,13 @@ mod tests {
         });
         let rows = handle_ai_credit_event("AiCreditUsageSettled", &data, "tx:0")
             .expect("handler should produce rows");
-        assert_eq!(rows.len(), 5);
+        assert_eq!(rows.len(), 6);
+        assert!(rows.iter().any(|r| {
+            matches!(
+                r,
+                SocialEventRow::AiCreditOrgSpendFromAgent { amount_mist: 222222223, .. }
+            )
+        }));
         assert!(rows.iter().any(|r| {
             matches!(r, SocialEventRow::AiCreditBalanceSettlementUpdate { settlement_nonce: 1, .. })
         }));

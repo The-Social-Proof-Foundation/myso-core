@@ -74,6 +74,42 @@ AddressAliasStateCreateTransaction._
 AddressOwner.address
   => {}
 
+AgentSpendBreakdown.agentObjectId
+  => {}
+
+AgentSpendBreakdown.label
+  => {}
+
+AgentSpendBreakdown.derivedAddress
+  => {}
+
+AgentSpendBreakdown.spentMist
+  => {}
+
+AgentSpendBreakdown.usageEvents
+  => {}
+
+AgentSpendBreakdown.budgetMist
+  => {}
+
+AgentSpendBreakdown.requireApprovalAboveMist
+  => {}
+
+AgentSpendBreakdown.budgetEnabled
+  => {}
+
+AgentSpendBreakdown.memoryEntries
+  => {}
+
+AgentSpendBreakdown.memoryBytes
+  => {}
+
+AgentSpendBreakdown.orgSharedMemoryEntries
+  => {}
+
+AgentSpendBreakdown.agent
+  => {}
+
 AgenticOrganization.organizationId
   => {}
 
@@ -101,6 +137,24 @@ AgenticOrganization.rootAgent
 AgenticOrganization.statistics
   => {}
 
+AgenticOrganization.agentSpendBreakdown
+  => {}
+
+AgenticOrganization.roles
+  => {}
+
+AgenticOrganization.roleAssignments
+  => {}
+
+AgenticOrganization.memoryPermissions
+  => {}
+
+AgenticOrganization.spendApprovals
+  => {}
+
+AgenticOrganization.auditLog
+  => {}
+
 AgenticOrganizationLeaderboardEntry.rank
   => {}
 
@@ -114,6 +168,81 @@ AgenticOrganizationLeaderboardResponse.entries
   => {}
 
 AgenticOrganizationLeaderboardResponse.total
+  => {}
+
+AiCreditAgentBudget.agentObjectId
+  => {}
+
+AiCreditAgentBudget.budgetMist
+  => {}
+
+AiCreditAgentBudget.spentMist
+  => {}
+
+AiCreditAgentBudget.dailyCapMist
+  => {}
+
+AiCreditAgentBudget.monthlyCapMist
+  => {}
+
+AiCreditAgentBudget.requireApprovalAboveMist
+  => {}
+
+AiCreditAgentBudget.enabled
+  => {}
+
+AiCreditBalance.balanceId
+  => {}
+
+AiCreditBalance.balanceMist
+  => {}
+
+AiCreditBalance.credits
+  => {}
+
+AiCreditBalance.spentTotalMist
+  => {}
+
+AiCreditBalance.dailyCapMist
+  => {}
+
+AiCreditBalance.monthlyCapMist
+  => {}
+
+AiCreditBalance.active
+  => {}
+
+AiCreditBalance.settlementNonce
+  => {}
+
+AiCreditBalance.usageHistory
+  => {}
+
+AiCreditBalance.pendingApprovals
+  => {}
+
+AiCreditBalance.agentBudgets
+  => {}
+
+AiCreditUsageLine.receiptId
+  => {}
+
+AiCreditUsageLine.amountMist
+  => {}
+
+AiCreditUsageLine.usageKind
+  => {}
+
+AiCreditUsageLine.modelId
+  => {}
+
+AiCreditUsageLine.settled
+  => {}
+
+AiCreditUsageLine.settlementTx
+  => {}
+
+AiCreditUsageLine.createdAt
   => {}
 
 AnonymousVote.proposalId
@@ -159,6 +288,51 @@ AnonymousVotingTrend.successfulDecryptions
   => {}
 
 AnonymousVotingTrend.failedDecryptions
+  => {}
+
+AuditLogConnection.entries
+  => {}
+
+AuditLogEntry.id
+  => {}
+
+AuditLogEntry.time
+  => {}
+
+AuditLogEntry.source
+  => {}
+
+AuditLogEntry.actorAddress
+  => {}
+
+AuditLogEntry.actorType
+  => {}
+
+AuditLogEntry.action
+  => {}
+
+AuditLogEntry.targetType
+  => {}
+
+AuditLogEntry.targetId
+  => {}
+
+AuditLogEntry.organizationId
+  => {}
+
+AuditLogEntry.accountId
+  => {}
+
+AuditLogEntry.prevState
+  => {}
+
+AuditLogEntry.newState
+  => {}
+
+AuditLogEntry.txDigest
+  => {}
+
+AuditLogEntry.metadata
   => {}
 
 AuthenticatorStateCreateTransaction._
@@ -1077,6 +1251,21 @@ GraphOrganizationStatistics.totalTransactions
   => {}
 
 GraphOrganizationStatistics.statsRollupAt
+  => {}
+
+GraphOrganizationStatistics.aiCreditSpentMist
+  => {}
+
+GraphOrganizationStatistics.aiCreditUsageEvents
+  => {}
+
+GraphOrganizationStatistics.memoryEntries
+  => {}
+
+GraphOrganizationStatistics.memoryBytes
+  => {}
+
+GraphOrganizationStatistics.orgSharedMemoryEntries
   => {}
 
 GraphVestingPiece.kind
@@ -2507,6 +2696,51 @@ OpenMoveType.signature
 OpenMoveType.repr
   => {}
 
+OrgMemoryPermission.memberAddress
+  => {}
+
+OrgMemoryPermission.permissionKind
+  => {}
+
+OrgMemoryPermission.active
+  => {}
+
+OrgMemoryPermission.grantedBy
+  => {}
+
+OrgMemoryPermission.grantedAt
+  => {}
+
+OrgRole.roleName
+  => {}
+
+OrgRole.mask
+  => {}
+
+OrgRole.isBuiltin
+  => {}
+
+OrgRole.definedBy
+  => {}
+
+OrgRoleAssignment.memberAddress
+  => {}
+
+OrgRoleAssignment.roleName
+  => {}
+
+OrgRoleAssignment.assignedMask
+  => {}
+
+OrgRoleAssignment.active
+  => {}
+
+OrgRoleAssignment.assignedBy
+  => {}
+
+OrgRoleAssignment.assignedAtMs
+  => {}
+
 OrganizationCategory.value
   => {}
 
@@ -3791,6 +4025,12 @@ Profile.memoryAccountId
 Profile.memoryAccount
   => {}
 
+Profile.aiCreditBalance
+  => {}
+
+Profile.auditLog
+  => {}
+
 Profile.subAgents
   => {}
 
@@ -4817,6 +5057,39 @@ SocialProofToken.reservationHolders
 SocialProofToken.formerReservationHolders
   => {}
 
+SpendApproval.balanceId
+  => {}
+
+SpendApproval.agentObjectId
+  => {}
+
+SpendApproval.status
+  => {}
+
+SpendApproval.requestedAmountMist
+  => {}
+
+SpendApproval.thresholdMist
+  => {}
+
+SpendApproval.maxAmountMist
+  => {}
+
+SpendApproval.expiresAtMs
+  => {}
+
+SpendApproval.approvedBy
+  => {}
+
+SpendApproval.organizationId
+  => {}
+
+SpendApproval.requestedAt
+  => {}
+
+SpendApproval.updatedAt
+  => {}
+
 SplitCoinsCommand.coin
   => {}
 
@@ -5376,6 +5649,18 @@ SubAgent.expiresAt
   => {}
 
 SubAgent.createdAt
+  => {}
+
+SubAgent.organizationId
+  => {}
+
+SubAgent.budget
+  => {}
+
+SubAgent.orgMemoryPermissions
+  => {}
+
+SubAgent.orgRoles
   => {}
 
 SubAgent.children

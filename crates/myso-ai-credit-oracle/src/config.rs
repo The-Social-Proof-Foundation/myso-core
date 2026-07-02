@@ -107,6 +107,30 @@ pub struct OracleArgs {
 
     #[arg(long, env = "AI_CREDIT_CATALOG_MAX_DRIFT_PCT", default_value = "50.0")]
     pub catalog_max_drift_pct: f64,
+
+    /// Enforce `require_approval_above_mist` with reject-before-sign gating.
+    /// Deploy with `false`, flip once the indexer is caught up on approval events.
+    #[arg(long, env = "AI_CREDIT_APPROVALS_ENABLED", default_value = "false")]
+    pub approvals_enabled: bool,
+
+    #[arg(long, env = "AI_CREDIT_APPROVAL_LOOKUP_TTL_SECS", default_value = "5")]
+    pub approval_lookup_ttl_secs: u64,
+
+    /// Don't accept an allowance that expires sooner than this (must outlive the
+    /// settlement window, `settle_max_age_secs`).
+    #[arg(long, env = "AI_CREDIT_APPROVAL_MIN_REMAINING_SECS", default_value = "180")]
+    pub approval_min_remaining_secs: u64,
+
+    /// Workflow relayer base URL for ApprovalRequest inbox items (unset = disabled).
+    #[arg(long, env = "AI_CREDIT_WORKFLOW_RELAYER_URL")]
+    pub workflow_relayer_url: Option<String>,
+
+    #[arg(long, env = "AI_CREDIT_WORKFLOW_SYNC_SECRET")]
+    pub workflow_sync_secret: Option<String>,
+
+    /// Shared secret for `POST /internal/audit/logs` on social-server.
+    #[arg(long, env = "AI_CREDIT_AUDIT_SYNC_SECRET")]
+    pub audit_sync_secret: Option<String>,
 }
 
 impl OracleArgs {

@@ -84,6 +84,8 @@ pub struct IngestUsageLineRequest {
     pub model_id: Option<String>,
     pub tool_id: Option<String>,
     pub metadata: Option<serde_json::Value>,
+    #[serde(default)]
+    pub organization_id: Option<String>,
 }
 
 pub(crate) async fn ingest_usage_line(
@@ -104,6 +106,7 @@ pub(crate) async fn ingest_usage_line(
             settled: false,
             settlement_tx: None,
             created_at: chrono::Utc::now(),
+            organization_id: req.organization_id,
         })
         .execute(&mut conn)
         .await?;
@@ -136,7 +139,8 @@ mod ingest_tests {
                 metadata JSONB,
                 settled BOOLEAN NOT NULL DEFAULT FALSE,
                 settlement_tx TEXT,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                organization_id TEXT
             )
             "#,
         )
@@ -166,6 +170,7 @@ mod ingest_tests {
             model_id: None,
             tool_id: None,
             metadata: None,
+            organization_id: None,
         };
 
         let read_err = ingest_usage_line(&read_db, req.clone()).await.unwrap_err();

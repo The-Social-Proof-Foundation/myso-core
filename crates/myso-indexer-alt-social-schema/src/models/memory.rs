@@ -4,7 +4,9 @@
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::schema::{memory_accounts, sub_agent_events, sub_agent_memory_vaults, sub_agents};
+use crate::schema::{
+    memory_accounts, memory_usage_stats, sub_agent_events, sub_agent_memory_vaults, sub_agents,
+};
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
 #[diesel(table_name = memory_accounts)]
@@ -120,6 +122,19 @@ pub struct MemoryAccountRow {
     pub event_id: String,
     pub transaction_id: String,
     pub time: chrono::DateTime<chrono::Utc>,
+}
+
+/// Per-agent memory usage pushed by the memory relayer (internal ingest).
+#[derive(Debug, Clone, Insertable, AsChangeset, Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = memory_usage_stats)]
+pub struct MemoryUsageStatsRow {
+    pub agent_object_id: String,
+    pub organization_id: Option<String>,
+    pub account_id: Option<String>,
+    pub entries: i64,
+    pub bytes: i64,
+    pub org_shared_entries: i64,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
 }
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]

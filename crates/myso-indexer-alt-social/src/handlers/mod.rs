@@ -71,7 +71,8 @@ use myso_indexer_alt_social_schema::models::{
     NewSubAgentEvent, NewSubscriptionEvent, NewTip, NewUnifiedRevenue, NewUpgradeEvent,
     NewUsernameRegistry, NewVestingEvent, NewVestingWallet, NewVoteDecryptionFailure,
     NewAiCreditAgentBudget, NewAiCreditBalance, NewAiCreditConfig, NewAiCreditEvent,
-    ProposalUpdateSet,
+    NewAiCreditSpendApproval, NewAuditLog, NewOrgMemoryPermission, NewOrgRole,
+    NewOrgRoleAssignment, ProposalUpdateSet,
 };
 
 pub use ai_credit_handler::AiCreditHandler;
@@ -817,6 +818,39 @@ pub enum SocialEventRow {
         transaction_id: String,
     },
     AiCreditEvent(NewAiCreditEvent),
+    // ==== Enterprise workforce foundation rows ====
+    /// Upsert one org memory permission bit (handlers expand event masks per bit).
+    OrgMemoryPermissionUpsert(NewOrgMemoryPermission),
+    OrgRoleUpsert(NewOrgRole),
+    OrgRoleAssignmentUpsert(NewOrgRoleAssignment),
+    OrgRoleAssignmentRevoke {
+        organization_id: String,
+        member_address: String,
+        role_name: String,
+        revoked_at_ms: i64,
+        event_id: String,
+        transaction_id: String,
+    },
+    /// Unified audit-log row (written in the same commit as the domain update).
+    AuditLog(NewAuditLog),
+    /// Approved-state upsert from `AiCreditSpendApproved` (overwrites requested rows).
+    AiCreditSpendApprovalUpsert(NewAiCreditSpendApproval),
+    /// Status transition (consumed / revoked / expired) keyed by (balance, agent).
+    AiCreditSpendApprovalStatus {
+        balance_id: String,
+        agent_object_id: String,
+        status: String,
+        consumed_amount_mist: Option<i64>,
+        event_id: String,
+    },
+    /// Tier 1 org AI-credit spend increment; the handler resolves the org via
+    /// `sub_agents.organization_id` and backfills the usage line's org attribution.
+    AiCreditOrgSpendFromAgent {
+        agent_object_id: String,
+        amount_mist: i64,
+        receipt_id: Option<String>,
+        activity_at_ms: i64,
+    },
 }
 
 #[derive(Debug, Clone)]

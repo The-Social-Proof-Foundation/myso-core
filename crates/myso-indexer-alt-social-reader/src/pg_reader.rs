@@ -518,6 +518,171 @@ impl SocialPgReader {
             .map(Some)
     }
 
+    pub async fn list_agent_spend_breakdown(
+        &self,
+        organization_id: &str,
+        window: OrganizationStatsWindow,
+        limit: i64,
+    ) -> anyhow::Result<Vec<crate::enterprise::AgentSpendBreakdownEntry>> {
+        let mut conn = self.connect().await?;
+        crate::enterprise::list_agent_spend_breakdown(
+            &mut conn,
+            organization_id,
+            window,
+            limit,
+            &self.metrics,
+        )
+        .await
+    }
+
+    pub async fn list_org_memory_permissions(
+        &self,
+        organization_id: &str,
+        member: Option<&str>,
+        active_only: bool,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::OrgMemoryPermissionRow>> {
+        let mut conn = self.connect().await?;
+        crate::enterprise::list_org_memory_permissions(
+            &mut conn,
+            organization_id,
+            member,
+            active_only,
+            &self.metrics,
+        )
+        .await
+    }
+
+    pub async fn list_org_roles(
+        &self,
+        organization_id: &str,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::OrgRoleRow>> {
+        let mut conn = self.connect().await?;
+        crate::enterprise::list_org_roles(&mut conn, organization_id, &self.metrics)
+            .await
+    }
+
+    pub async fn list_org_role_assignments(
+        &self,
+        organization_id: &str,
+        member: Option<&str>,
+        active_only: bool,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::OrgRoleAssignmentRow>> {
+        let mut conn = self.connect().await?;
+        crate::enterprise::list_org_role_assignments(
+            &mut conn,
+            organization_id,
+            member,
+            active_only,
+            &self.metrics,
+        )
+        .await
+    }
+
+    pub async fn list_spend_approvals_by_owner(
+        &self,
+        owner: &str,
+        status: Option<&str>,
+        agent_object_id: Option<&str>,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::AiCreditSpendApprovalRow>> {
+        let mut conn = self.connect().await?;
+        crate::enterprise::list_spend_approvals_by_owner(
+            &mut conn,
+            owner,
+            status,
+            agent_object_id,
+            &self.metrics,
+        )
+        .await
+    }
+
+    pub async fn list_spend_approvals_by_org(
+        &self,
+        organization_id: &str,
+        status: Option<&str>,
+        agent_object_id: Option<&str>,
+        limit: i64,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::AiCreditSpendApprovalRow>> {
+        let mut conn = self.connect().await?;
+        crate::enterprise::list_spend_approvals_by_org(
+            &mut conn,
+            organization_id,
+            status,
+            agent_object_id,
+            limit,
+            &self.metrics,
+        )
+        .await
+    }
+
+    pub async fn list_pending_spend_approvals_for_balance(
+        &self,
+        balance_id: &str,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::AiCreditSpendApprovalRow>> {
+        let mut conn = self.connect().await?;
+        crate::enterprise::list_pending_spend_approvals_for_balance(
+            &mut conn,
+            balance_id,
+            &self.metrics,
+        )
+        .await
+    }
+
+    pub async fn get_agent_budget(
+        &self,
+        agent_object_id: &str,
+    ) -> anyhow::Result<Option<myso_indexer_alt_social_schema::models::AiCreditAgentBudgetRow>> {
+        let mut conn = self.connect().await?;
+        crate::enterprise::get_agent_budget(&mut conn, agent_object_id, &self.metrics)
+            .await
+    }
+
+    pub async fn list_agent_budgets_for_balance(
+        &self,
+        balance_id: &str,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::AiCreditAgentBudgetRow>> {
+        let mut conn = self.connect().await?;
+        crate::enterprise::list_agent_budgets_for_balance(&mut conn, balance_id, &self.metrics)
+            .await
+    }
+
+    pub async fn list_audit_logs_for_org(
+        &self,
+        organization_id: &str,
+        filter: &crate::enterprise::AuditLogFilter,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::AuditLogRow>> {
+        let mut conn = self.connect().await?;
+        crate::enterprise::list_audit_logs_for_org(
+            &mut conn,
+            organization_id,
+            filter,
+            limit,
+            offset,
+            &self.metrics,
+        )
+        .await
+    }
+
+    pub async fn list_audit_logs_for_actor(
+        &self,
+        actor: &str,
+        filter: &crate::enterprise::AuditLogFilter,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::AuditLogRow>> {
+        let mut conn = self.connect().await?;
+        crate::enterprise::list_audit_logs_for_actor(
+            &mut conn,
+            actor,
+            filter,
+            limit,
+            offset,
+            &self.metrics,
+        )
+        .await
+    }
+
     pub async fn get_agentic_organizations_leaderboard(
         &self,
         sort: OrganizationLeaderboardSort,

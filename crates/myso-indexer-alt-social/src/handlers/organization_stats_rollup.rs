@@ -82,6 +82,25 @@ pub async fn run_organization_stats_rollup(conn: &mut Connection<'_>) -> Result<
                     + (3 * os.total_comments)
                     + (2 * os.total_reposts) AS weighted_engagement
             FROM sub_agent_organization_stats os
+        ),
+        ai_credit AS (
+            SELECT
+                l.organization_id,
+                COALESCE(SUM(l.amount_mist) FILTER (WHERE l.settled), 0) AS spent_mist,
+                COUNT(*) AS usage_events
+            FROM ai_credit_usage_lines l
+            WHERE l.organization_id IS NOT NULL
+            GROUP BY l.organization_id
+        ),
+        memory_usage AS (
+            SELECT
+                m.organization_id,
+                COALESCE(SUM(m.entries), 0) AS entries,
+                COALESCE(SUM(m.bytes), 0) AS bytes,
+                COALESCE(SUM(m.org_shared_entries), 0) AS org_shared_entries
+            FROM memory_usage_stats m
+            WHERE m.organization_id IS NOT NULL
+            GROUP BY m.organization_id
         )
         UPDATE sub_agent_organization_stats os
         SET
@@ -98,12 +117,19 @@ pub async fn run_organization_stats_rollup(conn: &mut Connection<'_>) -> Result<
             estimated_assets_under_management_myso = COALESCE(a.estimated_aum, 0),
             attribution_coverage_bps = COALESCE(a.coverage_bps, 0),
             total_engagement = COALESCE(e.weighted_engagement, 0),
+            ai_credit_spent_mist = COALESCE(ac.spent_mist, os.ai_credit_spent_mist),
+            ai_credit_usage_events = COALESCE(ac.usage_events, os.ai_credit_usage_events),
+            memory_entries = COALESCE(mu.entries, 0),
+            memory_bytes = COALESCE(mu.bytes, 0),
+            org_shared_memory_entries = COALESCE(mu.org_shared_entries, 0),
             stats_rollup_at = $1,
             updated_at = $1
         FROM engagement e
         LEFT JOIN spot sp ON sp.organization_id = os.organization_id
         LEFT JOIN originality o ON o.organization_id = os.organization_id
         LEFT JOIN aum a ON a.organization_id = os.organization_id
+        LEFT JOIN ai_credit ac ON ac.organization_id = os.organization_id
+        LEFT JOIN memory_usage mu ON mu.organization_id = os.organization_id
         WHERE os.organization_id = e.organization_id
         "#,
     )
@@ -111,6 +137,22 @@ pub async fn run_organization_stats_rollup(conn: &mut Connection<'_>) -> Result<
     .execute(conn)
     .await
     .context("sub_agent_organization_stats tier-2 update")?;
+
+    // Expire stale spend approvals: approved allowances past their on-chain expiry, and
+    // requested rows the owner never acted on within seven days.
+    let approvals_expired = sql_query(
+        r#"
+        UPDATE ai_credit_spend_approvals
+        SET status = 'expired', updated_at = $1
+        WHERE (status = 'approved' AND expires_at_ms IS NOT NULL AND expires_at_ms < $2)
+           OR (status = 'requested' AND requested_at < $1 - INTERVAL '7 days')
+        "#,
+    )
+    .bind::<diesel::sql_types::Timestamptz, _>(now)
+    .bind::<diesel::sql_types::BigInt, _>(now.timestamp_millis())
+    .execute(conn)
+    .await
+    .context("ai_credit_spend_approvals expiry sweep")?;
 
     let daily_updated = sql_query(
         r#"
@@ -129,6 +171,8 @@ pub async fn run_organization_stats_rollup(conn: &mut Connection<'_>) -> Result<
             growth_score,
             spot_accuracy_bps,
             attribution_coverage_bps,
+            ai_credit_spent_mist,
+            memory_bytes,
             time
         )
         SELECT
@@ -160,6 +204,8 @@ pub async fn run_organization_stats_rollup(conn: &mut Connection<'_>) -> Result<
             ) AS growth_score,
             os.spot_accuracy_bps,
             os.attribution_coverage_bps,
+            os.ai_credit_spent_mist,
+            os.memory_bytes,
             $1
         FROM sub_agent_organization_stats os
         INNER JOIN sub_agent_organizations ao ON ao.organization_id = os.organization_id
@@ -183,6 +229,8 @@ pub async fn run_organization_stats_rollup(conn: &mut Connection<'_>) -> Result<
             growth_score = EXCLUDED.growth_score,
             spot_accuracy_bps = EXCLUDED.spot_accuracy_bps,
             attribution_coverage_bps = EXCLUDED.attribution_coverage_bps,
+            ai_credit_spent_mist = EXCLUDED.ai_credit_spent_mist,
+            memory_bytes = EXCLUDED.memory_bytes,
             time = EXCLUDED.time
         "#,
     )
@@ -195,9 +243,10 @@ pub async fn run_organization_stats_rollup(conn: &mut Connection<'_>) -> Result<
     info!(
         tier2_rows = tier2_updated,
         daily_rows = daily_updated,
+        approvals_expired,
         "organization stats rollup completed"
     );
-    Ok(tier2_updated + daily_updated)
+    Ok(tier2_updated + daily_updated + approvals_expired)
 }
 
 /// Spawn a background service that runs the rollup on a fixed interval.

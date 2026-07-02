@@ -1285,6 +1285,106 @@ diesel::table! {
         settled -> Bool,
         settlement_tx -> Nullable<Text>,
         created_at -> Timestamptz,
+        organization_id -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
+    ai_credit_spend_approvals (balance_id, agent_object_id) {
+        balance_id -> Text,
+        agent_object_id -> Text,
+        status -> Text,
+        requested_amount_mist -> Nullable<Int8>,
+        threshold_mist -> Nullable<Int8>,
+        approval_nonce -> Nullable<Int8>,
+        max_amount_mist -> Nullable<Int8>,
+        expires_at_ms -> Nullable<Int8>,
+        approved_by -> Nullable<Text>,
+        approved_by_agent_id -> Nullable<Text>,
+        organization_id -> Nullable<Text>,
+        consumed_amount_mist -> Nullable<Int8>,
+        requested_at -> Timestamptz,
+        updated_at -> Timestamptz,
+        event_id -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
+    org_memory_permissions (organization_id, member_address, permission_kind) {
+        organization_id -> Text,
+        member_address -> Text,
+        permission_kind -> Int8,
+        active -> Bool,
+        granted_by -> Text,
+        group_id -> Nullable<Text>,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    org_roles (organization_id, role_name) {
+        organization_id -> Text,
+        role_name -> Text,
+        mask -> Int8,
+        is_builtin -> Bool,
+        defined_by -> Text,
+        active -> Bool,
+        updated_at_ms -> Int8,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    org_role_assignments (organization_id, member_address, role_name) {
+        organization_id -> Text,
+        member_address -> Text,
+        role_name -> Text,
+        role_mask -> Int8,
+        assigned_mask -> Int8,
+        active -> Bool,
+        assigned_by -> Text,
+        assigned_at_ms -> Int8,
+        revoked_at_ms -> Nullable<Int8>,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    audit_log (id, time) {
+        id -> Int8,
+        time -> Timestamptz,
+        source -> Text,
+        actor_address -> Text,
+        actor_type -> Text,
+        action -> Text,
+        target_type -> Text,
+        target_id -> Text,
+        organization_id -> Nullable<Text>,
+        account_id -> Nullable<Text>,
+        prev_state -> Nullable<Jsonb>,
+        new_state -> Nullable<Jsonb>,
+        tx_digest -> Nullable<Text>,
+        event_id -> Nullable<Text>,
+        idempotency_key -> Nullable<Text>,
+        metadata -> Nullable<Jsonb>,
+    }
+}
+
+diesel::table! {
+    memory_usage_stats (agent_object_id) {
+        agent_object_id -> Text,
+        organization_id -> Nullable<Text>,
+        account_id -> Nullable<Text>,
+        entries -> Int8,
+        bytes -> Int8,
+        org_shared_entries -> Int8,
+        updated_at -> Timestamptz,
     }
 }
 
@@ -1442,6 +1542,11 @@ diesel::table! {
         last_activity_at_ms -> Nullable<Int8>,
         stats_rollup_at -> Nullable<Timestamptz>,
         updated_at -> Timestamptz,
+        ai_credit_spent_mist -> Int8,
+        ai_credit_usage_events -> Int8,
+        memory_entries -> Int8,
+        memory_bytes -> Int8,
+        org_shared_memory_entries -> Int8,
     }
 }
 
@@ -1462,6 +1567,8 @@ diesel::table! {
         spot_accuracy_bps -> Nullable<Int4>,
         attribution_coverage_bps -> Int4,
         time -> Timestamptz,
+        ai_credit_spent_mist -> Int8,
+        memory_bytes -> Int8,
     }
 }
 
@@ -2222,8 +2329,14 @@ diesel::allow_tables_to_appear_in_same_query!(
     ai_credit_balances,
     ai_credit_config,
     ai_credit_events,
+    ai_credit_spend_approvals,
     ai_credit_usage_lines,
     anonymous_votes,
+    audit_log,
+    memory_usage_stats,
+    org_memory_permissions,
+    org_role_assignments,
+    org_roles,
     blocked_events,
     blocked_profiles,
     checkpoint_processing,

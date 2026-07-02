@@ -419,6 +419,14 @@ fn make_router(state: Arc<AppState>) -> Router {
             get(get_profile_memory_account),
         )
         .route("/profiles/:address/ai-credit", get(get_profile_ai_credit_balance))
+        .route(
+            "/profiles/:address/ai-credit/approvals",
+            get(list_profile_spend_approvals),
+        )
+        .route(
+            "/profiles/:address/audit-logs",
+            get(list_profile_audit_logs),
+        )
         .route("/ai-credit/config", get(get_ai_credit_config))
         .route(
             "/ai-credit/:balance_id/usage-history",
@@ -428,6 +436,15 @@ fn make_router(state: Arc<AppState>) -> Router {
             "/internal/ai-credit/usage-lines",
             post(ingest_usage_line_internal),
         )
+        .route(
+            "/internal/ai-credit/approvals",
+            post(ingest_approval_internal),
+        )
+        .route(
+            "/internal/memory/usage-stats",
+            post(ingest_memory_usage_stats_internal),
+        )
+        .route("/internal/audit/logs", post(ingest_audit_logs_internal))
         .route("/sub-agents/:derivedAddress", get(get_sub_agent))
         .route(
             "/sub-agents/by-object/:agentObjectId",
@@ -449,6 +466,24 @@ fn make_router(state: Arc<AppState>) -> Router {
         .route(
             "/organizations/:id/statistics",
             get(get_organization_statistics),
+        )
+        .route(
+            "/organizations/:id/memory-permissions",
+            get(list_org_memory_permissions),
+        )
+        .route("/organizations/:id/roles", get(list_org_roles))
+        .route(
+            "/organizations/:id/role-assignments",
+            get(list_org_role_assignments),
+        )
+        .route("/organizations/:id/audit-logs", get(list_org_audit_logs))
+        .route(
+            "/organizations/:id/spend-breakdown",
+            get(list_org_spend_breakdown),
+        )
+        .route(
+            "/organizations/:id/approvals",
+            get(list_org_spend_approvals),
         )
         .route(
             "/profiles/:address/organizations",

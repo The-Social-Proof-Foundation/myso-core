@@ -207,15 +207,36 @@ enum AddressTransactionRelationship {
 	AFFECTED
 }
 
+type AgentSpendBreakdown {
+	agent: SubAgent
+	agentObjectId: String!
+	budgetEnabled: Boolean!
+	budgetMist: BigInt
+	derivedAddress: MySoAddress!
+	label: String!
+	memoryBytes: BigInt!
+	memoryEntries: BigInt!
+	orgSharedMemoryEntries: BigInt!
+	requireApprovalAboveMist: BigInt
+	spentMist: BigInt!
+	usageEvents: BigInt!
+}
+
 type AgenticOrganization {
 	active: Boolean!
 	ageMs: BigInt!
+	agentSpendBreakdown(window: OrganizationStatsWindowGql, limit: Int! = 20): [AgentSpendBreakdown!]
+	auditLog(filter: AuditLogFilterInput, limit: Int! = 20, offset: Int! = 0): AuditLogConnection
 	createdAt: Int!
 	description: String
+	memoryPermissions(member: String, activeOnly: Boolean): [OrgMemoryPermission!]
 	name: String
 	orgType: OrganizationType!
 	organizationId: String!
+	roleAssignments(member: String, activeOnly: Boolean): [OrgRoleAssignment!]
+	roles: [OrgRole!]
 	rootAgent: SubAgent
+	spendApprovals(status: String, agent: String, limit: Int! = 20): [SpendApproval!]
 	statistics(window: OrganizationStatsWindowGql): GraphOrganizationStatistics
 }
 
@@ -228,6 +249,40 @@ type AgenticOrganizationLeaderboardEntry {
 type AgenticOrganizationLeaderboardResponse {
 	entries: [AgenticOrganizationLeaderboardEntry!]!
 	total: Int!
+}
+
+type AiCreditAgentBudget {
+	agentObjectId: String!
+	budgetMist: BigInt
+	dailyCapMist: BigInt
+	enabled: Boolean!
+	monthlyCapMist: BigInt
+	requireApprovalAboveMist: BigInt
+	spentMist: BigInt!
+}
+
+type AiCreditBalance {
+	active: Boolean!
+	agentBudgets: [AiCreditAgentBudget!]
+	balanceId: String!
+	balanceMist: Int!
+	credits: Int!
+	dailyCapMist: Int
+	monthlyCapMist: Int
+	pendingApprovals: [SpendApproval!]
+	settlementNonce: Int!
+	spentTotalMist: Int!
+	usageHistory(first: Int! = 20): [AiCreditUsageLine!]
+}
+
+type AiCreditUsageLine {
+	amountMist: Int!
+	createdAt: DateTime!
+	modelId: String
+	receiptId: String!
+	settled: Boolean!
+	settlementTx: String
+	usageKind: Int!
 }
 
 type AnonymousVote {
@@ -252,6 +307,34 @@ type AnonymousVotingTrend {
 	failedDecryptions: Int!
 	successfulDecryptions: Int!
 	totalVotes: Int!
+}
+
+type AuditLogConnection {
+	entries: [AuditLogEntry!]!
+}
+
+type AuditLogEntry {
+	accountId: String
+	action: String!
+	actorAddress: MySoAddress!
+	actorType: String!
+	id: BigInt!
+	metadata: JSON
+	newState: JSON
+	organizationId: String
+	prevState: JSON
+	source: String!
+	targetId: String!
+	targetType: String!
+	time: DateTime!
+	txDigest: String
+}
+
+input AuditLogFilterInput {
+	action: String
+	actor: String
+	source: String
+	targetType: String
 }
 
 """
@@ -1902,10 +1985,15 @@ type GovernanceStats {
 
 type GraphOrganizationStatistics {
 	activeAgents: Int!
+	aiCreditSpentMist: BigInt!
+	aiCreditUsageEvents: BigInt!
 	attributionCoverage: Float!
 	estimatedAssetsUnderManagementMyso: BigInt!
 	insufficientSample: Boolean!
+	memoryBytes: BigInt!
+	memoryEntries: BigInt!
 	netCashFlowMyso: BigInt!
+	orgSharedMemoryEntries: BigInt!
 	organizationAgeMs: BigInt!
 	originalityPostsAnalyzed: BigInt!
 	originalityScoreAverage: Float
@@ -4272,6 +4360,30 @@ type OpenMoveTypeSignatureBody =
 """
 scalar OpenMoveTypeSignature
 
+type OrgMemoryPermission {
+	active: Boolean!
+	grantedAt: DateTime!
+	grantedBy: MySoAddress!
+	memberAddress: MySoAddress!
+	permissionKind: BigInt!
+}
+
+type OrgRole {
+	definedBy: MySoAddress!
+	isBuiltin: Boolean!
+	mask: BigInt!
+	roleName: String!
+}
+
+type OrgRoleAssignment {
+	active: Boolean!
+	assignedAtMs: BigInt!
+	assignedBy: MySoAddress!
+	assignedMask: BigInt!
+	memberAddress: MySoAddress!
+	roleName: String!
+}
+
 type OrganizationCategory {
 	displayName: String!
 	slug: String!
@@ -5586,6 +5698,11 @@ type Profile implements Node {
 	Agentic organizations owned by this profile (max 8 per user on-chain).
 	"""
 	agenticOrganizations(orgType: Int, activeOnly: Boolean, limit: Int, offset: Int): [AgenticOrganization!]
+	"""
+	AI credit balance for this profile owner (1 MYSO = 1 credit).
+	"""
+	aiCreditBalance: AiCreditBalance
+	auditLog(filter: AuditLogFilterInput, limit: Int! = 20, offset: Int! = 0): AuditLogConnection
 	"""
 	Profile badges (paginated).
 	"""
@@ -7256,6 +7373,28 @@ type SocialProofToken {
 	volume24H: Int
 }
 
+type SpendApproval {
+	agentObjectId: String!
+	approvedBy: MySoAddress
+	balanceId: String!
+	expiresAtMs: BigInt
+	maxAmountMist: BigInt
+	organizationId: String
+	requestedAmountMist: BigInt
+	requestedAt: DateTime!
+	status: SpendApprovalStatusGql!
+	thresholdMist: BigInt
+	updatedAt: DateTime!
+}
+
+enum SpendApprovalStatusGql {
+	REQUESTED
+	APPROVED
+	CONSUMED
+	REVOKED
+	EXPIRED
+}
+
 """
 Splits off coins with denominations in `amounts` from `coin`, returning multiple results (as many as there are amounts.)
 """
@@ -8013,6 +8152,7 @@ type StoreExecutionTimeObservationsTransaction {
 type SubAgent {
 	active: Boolean!
 	agentObjectId: String!
+	budget: AiCreditAgentBudget
 	capabilities: Int!
 	children(activeOnly: Boolean, limit: Int, offset: Int): [SubAgent!]
 	createdAt: Int!
@@ -8024,6 +8164,9 @@ type SubAgent {
 	label: String!
 	maxActionSpend: Int
 	memoryVaultId: String
+	orgMemoryPermissions: [OrgMemoryPermission!]
+	orgRoles: [OrgRoleAssignment!]
+	organizationId: String
 	parentObjectId: String
 	platformScope: MySoAddress
 	registerScope: Int!

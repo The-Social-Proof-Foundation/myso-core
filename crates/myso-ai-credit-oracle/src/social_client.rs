@@ -36,6 +36,8 @@ pub struct AiCreditAgentBudgetRow {
     pub spent_mist: i64,
     pub daily_cap_mist: Option<i64>,
     pub monthly_cap_mist: Option<i64>,
+    #[serde(default)]
+    pub require_approval_above_mist: Option<i64>,
     pub enabled: bool,
 }
 
@@ -47,6 +49,23 @@ pub struct SocialSubAgent {
     pub active: bool,
     pub expires_at_ms: Option<i64>,
     pub revoked_at_ms: Option<i64>,
+    #[serde(default)]
+    pub organization_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct SpendApprovalRow {
+    pub balance_id: String,
+    pub agent_object_id: String,
+    pub status: String,
+    pub requested_amount_mist: Option<i64>,
+    pub threshold_mist: Option<i64>,
+    pub approval_nonce: Option<i64>,
+    pub max_amount_mist: Option<i64>,
+    pub expires_at_ms: Option<i64>,
+    pub approved_by: Option<String>,
+    pub approved_by_agent_id: Option<String>,
+    pub organization_id: Option<String>,
 }
 
 #[derive(Clone)]
@@ -98,6 +117,71 @@ impl SocialClient {
         }
         Ok(())
     }
+
+    pub async fn get_spend_approvals(
+        &self,
+        owner: &str,
+        agent_object_id: Option<&str>,
+        status: Option<&str>,
+    ) -> Result<Vec<SpendApprovalRow>> {
+        let mut url = format!("{}/profiles/{}/ai-credit/approvals", self.base_url, owner);
+        let mut params = Vec::new();
+        if let Some(agent) = agent_object_id {
+            params.push(format!("agent={}", agent));
+        }
+        if let Some(status) = status {
+            params.push(format!("status={}", status));
+        }
+        if !params.is_empty() {
+            url = format!("{}?{}", url, params.join("&"));
+        }
+        let resp = self.client.get(&url).send().await?;
+        if resp.status() == reqwest::StatusCode::NOT_FOUND {
+            return Ok(Vec::new());
+        }
+        if !resp.status().is_success() {
+            anyhow::bail!("social-server approvals status {}", resp.status());
+        }
+        resp.json().await.context("parse spend approvals")
+    }
+
+    /// Idempotent `requested` upsert used when an over-threshold spend is rejected.
+    pub async fn ingest_requested_approval(&self, req: &IngestApprovalRequest) -> Result<()> {
+        let url = format!("{}/internal/ai-credit/approvals", self.base_url);
+        let mut builder = self.client.post(&url).json(req);
+        if let Some(secret) = &self.usage_sync_secret {
+            builder = builder.header("x-ai-credit-sync-secret", secret);
+        }
+        let resp = builder.send().await?;
+        if !resp.status().is_success() {
+            anyhow::bail!("ingest approval status {}", resp.status());
+        }
+        Ok(())
+    }
+
+    /// Batch audit-log push (idempotent per entry via `idempotency_key`).
+    pub async fn ingest_audit_logs(
+        &self,
+        audit_sync_secret: Option<&str>,
+        entries: Vec<IngestAuditLogEntry>,
+    ) -> Result<()> {
+        if entries.is_empty() {
+            return Ok(());
+        }
+        let url = format!("{}/internal/audit/logs", self.base_url);
+        let mut builder = self
+            .client
+            .post(&url)
+            .json(&serde_json::json!({ "entries": entries }));
+        if let Some(secret) = audit_sync_secret {
+            builder = builder.header("x-audit-sync-secret", secret);
+        }
+        let resp = builder.send().await?;
+        if !resp.status().is_success() {
+            anyhow::bail!("ingest audit logs status {}", resp.status());
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -109,5 +193,32 @@ pub struct IngestUsageLineRequest {
     pub amount_mist: i64,
     pub model_id: Option<String>,
     pub tool_id: Option<String>,
+    pub metadata: Option<serde_json::Value>,
+    pub organization_id: Option<String>,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct IngestApprovalRequest {
+    pub balance_id: String,
+    pub agent_object_id: String,
+    pub requested_amount_mist: Option<i64>,
+    pub threshold_mist: Option<i64>,
+    pub organization_id: Option<String>,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct IngestAuditLogEntry {
+    pub source: String,
+    pub actor_address: String,
+    pub actor_type: String,
+    pub action: String,
+    pub target_type: String,
+    pub target_id: String,
+    pub organization_id: Option<String>,
+    pub account_id: Option<String>,
+    pub prev_state: Option<serde_json::Value>,
+    pub new_state: Option<serde_json::Value>,
+    pub tx_digest: Option<String>,
+    pub idempotency_key: Option<String>,
     pub metadata: Option<serde_json::Value>,
 }

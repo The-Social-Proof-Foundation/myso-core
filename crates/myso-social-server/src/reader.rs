@@ -4,6 +4,7 @@
 mod governance;
 mod insurance;
 pub mod ai_credit;
+pub mod enterprise;
 pub mod memory;
 mod messaging;
 mod mydata;
@@ -1445,6 +1446,134 @@ impl Reader {
         req: ai_credit::IngestUsageLineRequest,
     ) -> Result<(), crate::error::SocialError> {
         ai_credit::ingest_usage_line(&self.write_db, req).await
+    }
+
+    // ==== Enterprise workforce foundation ====
+
+    pub async fn list_org_memory_permissions(
+        &self,
+        organization_id: &str,
+        member: Option<&str>,
+        active_only: bool,
+    ) -> Result<
+        Vec<myso_indexer_alt_social_schema::models::OrgMemoryPermissionRow>,
+        crate::error::SocialError,
+    > {
+        enterprise::list_org_memory_permissions(&self.db, organization_id, member, active_only)
+            .await
+    }
+
+    pub async fn list_org_roles(
+        &self,
+        organization_id: &str,
+    ) -> Result<Vec<myso_indexer_alt_social_schema::models::OrgRoleRow>, crate::error::SocialError>
+    {
+        enterprise::list_org_roles(&self.db, organization_id).await
+    }
+
+    pub async fn list_org_role_assignments(
+        &self,
+        organization_id: &str,
+        member: Option<&str>,
+        active_only: bool,
+    ) -> Result<
+        Vec<myso_indexer_alt_social_schema::models::OrgRoleAssignmentRow>,
+        crate::error::SocialError,
+    > {
+        enterprise::list_org_role_assignments(&self.db, organization_id, member, active_only).await
+    }
+
+    pub async fn list_spend_approvals_by_owner(
+        &self,
+        owner: &str,
+        status: Option<&str>,
+        agent_object_id: Option<&str>,
+    ) -> Result<
+        Vec<myso_indexer_alt_social_schema::models::AiCreditSpendApprovalRow>,
+        crate::error::SocialError,
+    > {
+        enterprise::list_spend_approvals_by_owner(&self.db, owner, status, agent_object_id).await
+    }
+
+    pub async fn list_spend_approvals_by_org(
+        &self,
+        organization_id: &str,
+        status: Option<&str>,
+        agent_object_id: Option<&str>,
+        limit: i64,
+    ) -> Result<
+        Vec<myso_indexer_alt_social_schema::models::AiCreditSpendApprovalRow>,
+        crate::error::SocialError,
+    > {
+        myso_indexer_alt_social_reader::list_spend_approvals_by_org_for_db(
+            &self.db,
+            organization_id,
+            status,
+            agent_object_id,
+            limit,
+        )
+        .await
+        .map_err(Into::into)
+    }
+
+    pub async fn list_agent_spend_breakdown(
+        &self,
+        organization_id: &str,
+        window: myso_indexer_alt_social_reader::OrganizationStatsWindow,
+        limit: i64,
+    ) -> Result<Vec<myso_indexer_alt_social_reader::AgentSpendBreakdownEntry>, crate::error::SocialError>
+    {
+        myso_indexer_alt_social_reader::list_agent_spend_breakdown_for_db(
+            &self.db,
+            organization_id,
+            window,
+            limit,
+        )
+        .await
+        .map_err(Into::into)
+    }
+
+    pub async fn ingest_requested_approval(
+        &self,
+        req: enterprise::IngestApprovalRequest,
+    ) -> Result<(), crate::error::SocialError> {
+        enterprise::ingest_requested_approval(&self.write_db, req).await
+    }
+
+    pub async fn list_audit_logs_for_org(
+        &self,
+        organization_id: &str,
+        filter: &enterprise::AuditLogFilter,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<myso_indexer_alt_social_schema::models::AuditLogRow>, crate::error::SocialError>
+    {
+        enterprise::list_audit_logs_for_org(&self.db, organization_id, filter, limit, offset).await
+    }
+
+    pub async fn list_audit_logs_for_actor(
+        &self,
+        actor: &str,
+        filter: &enterprise::AuditLogFilter,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<myso_indexer_alt_social_schema::models::AuditLogRow>, crate::error::SocialError>
+    {
+        enterprise::list_audit_logs_for_actor(&self.db, actor, filter, limit, offset).await
+    }
+
+    pub async fn ingest_audit_logs(
+        &self,
+        req: enterprise::IngestAuditLogsRequest,
+    ) -> Result<usize, crate::error::SocialError> {
+        enterprise::ingest_audit_logs(&self.write_db, req).await
+    }
+
+    pub async fn ingest_memory_usage_stats(
+        &self,
+        req: enterprise::IngestMemoryUsageStatsRequest,
+    ) -> Result<usize, crate::error::SocialError> {
+        enterprise::ingest_memory_usage_stats(&self.write_db, req).await
     }
 
     pub async fn list_sub_agent_children(

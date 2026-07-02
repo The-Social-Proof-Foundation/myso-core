@@ -9,6 +9,7 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use tokio::sync::{Mutex, RwLock};
 
+use crate::approvals::{approval_covers, ApprovalsCache};
 use crate::catalog::{CAP_AI_SPEND, PricingCatalog};
 use crate::catalog_sync::{spawn_catalog_sync_worker, startup_catalog_sync};
 use crate::chain_balance;
@@ -21,7 +22,13 @@ use crate::pricing::{PriceBreakdown, PricingEngine, CATALOG_USD_PEG, USAGE_EMBED
 use crate::receipt::{ReceiptStore, UsageLine};
 use crate::settlement_coordinator::{spawn_settlement_worker, SettlementCoordinator, SettlementMode};
 use crate::signing::{parse_object_id_hex, ReceiptSigner, UsageReceipt};
-use crate::social_client::{IngestUsageLineRequest, SocialClient};
+use crate::social_client::{
+    IngestApprovalRequest, IngestAuditLogEntry, IngestUsageLineRequest, SocialClient,
+    SocialSubAgent,
+};
+use crate::workflow_client::{approval_idempotency_key, WorkflowClient, WorkflowItemIngest};
+
+pub const APPROVAL_REQUIRED_REASON: &str = "approval_required";
 
 #[derive(Clone)]
 pub struct AppState {
@@ -36,6 +43,29 @@ pub struct AppState {
     pub settlement_coordinator: Arc<SettlementCoordinator>,
     pub catalog: Arc<RwLock<PricingCatalog>>,
     pub myso_price_oracle_url: String,
+    pub approvals: ApprovalsCache,
+    pub workflow: Option<WorkflowClient>,
+}
+
+/// Structured spend-policy rejection so approval gating can carry context to the caller
+/// and the side-effect pipeline (requested-approval ingest, inbox item, audit entry).
+#[derive(Debug, Clone)]
+pub enum SpendPolicyError {
+    Denied(String),
+    ApprovalRequired {
+        balance_id: String,
+        threshold_mist: u64,
+        organization_id: Option<String>,
+    },
+}
+
+impl SpendPolicyError {
+    pub fn reason(&self) -> String {
+        match self {
+            SpendPolicyError::Denied(reason) => reason.clone(),
+            SpendPolicyError::ApprovalRequired { .. } => APPROVAL_REQUIRED_REASON.to_string(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -68,6 +98,11 @@ pub struct PreflightResponse {
     pub base_mist: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub margin_mist: Option<u64>,
+    /// True when the spend exceeds the agent's approval threshold and no live allowance
+    /// covers it; the owner (or an org spend approver) must approve on-chain first.
+    pub approval_required: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub approval_threshold_mist: Option<u64>,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -176,6 +211,11 @@ pub async fn serve(args: OracleArgs) -> anyhow::Result<()> {
         args.usage_sync_secret.clone(),
     );
     let ledger = BalanceLedger::new(social.clone());
+    let approvals = ApprovalsCache::new(social.clone(), args.approval_lookup_ttl_secs);
+    let workflow = WorkflowClient::from_args(
+        args.workflow_relayer_url.as_ref(),
+        args.workflow_sync_secret.as_ref(),
+    );
 
     let settlement_coordinator = Arc::new(SettlementCoordinator::new(
         args_arc.clone(),
@@ -196,6 +236,8 @@ pub async fn serve(args: OracleArgs) -> anyhow::Result<()> {
         settlement_coordinator,
         catalog,
         myso_price_oracle_url: args.myso_price_oracle_url.clone(),
+        approvals,
+        workflow,
     };
 
     let app = Router::new()
@@ -335,55 +377,57 @@ async fn validate_spend_policy(
     agent_object_id: &str,
     amount_mist: u64,
     store: &ReceiptStore,
-) -> Result<u64, String> {
+) -> Result<(u64, SocialSubAgent), SpendPolicyError> {
+    let denied = SpendPolicyError::Denied;
+
     let balance_resp = state
         .ledger
         .fetch_balance(owner)
         .await
-        .map_err(|e| format!("balance_fetch_failed: {e}"))?
-        .ok_or_else(|| "no_ai_credit_balance".to_string())?;
+        .map_err(|e| denied(format!("balance_fetch_failed: {e}")))?
+        .ok_or_else(|| denied("no_ai_credit_balance".to_string()))?;
 
     if !balance_resp.balance.active {
-        return Err("balance_inactive".into());
+        return Err(denied("balance_inactive".into()));
     }
 
     if let Some(expected) = balance_id {
         if balance_resp.balance.balance_id != expected {
-            return Err("balance_id_mismatch".into());
+            return Err(denied("balance_id_mismatch".into()));
         }
     }
 
     let effective = BalanceLedger::effective_available_mist(&balance_resp, store);
     if amount_mist > effective {
-        return Err("insufficient_ai_credits".into());
+        return Err(denied("insufficient_ai_credits".into()));
     }
 
     let agent = state
         .social
         .get_sub_agent_by_object_id(agent_object_id)
         .await
-        .map_err(|e| format!("agent_fetch_failed: {e}"))?;
+        .map_err(|e| denied(format!("agent_fetch_failed: {e}")))?;
 
     if !agent.active || agent.revoked_at_ms.is_some() {
-        return Err("sub_agent_not_active".into());
+        return Err(denied("sub_agent_not_active".into()));
     }
     if agent.capabilities & CAP_AI_SPEND as i64 != CAP_AI_SPEND as i64 {
-        return Err("missing_cap_ai_spend".into());
+        return Err(denied("missing_cap_ai_spend".into()));
     }
     if let Some(exp) = agent.expires_at_ms {
         if chrono::Utc::now().timestamp_millis() > exp {
-            return Err("sub_agent_expired".into());
+            return Err(denied("sub_agent_expired".into()));
         }
     }
 
     if let Some(daily) = balance_resp.balance.daily_cap_mist {
         if balance_resp.balance.spent_day_mist + amount_mist as i64 > daily {
-            return Err("daily_cap_exceeded".into());
+            return Err(denied("daily_cap_exceeded".into()));
         }
     }
     if let Some(monthly) = balance_resp.balance.monthly_cap_mist {
         if balance_resp.balance.spent_month_mist + amount_mist as i64 > monthly {
-            return Err("monthly_cap_exceeded".into());
+            return Err(denied("monthly_cap_exceeded".into()));
         }
     }
 
@@ -393,16 +437,140 @@ async fn validate_spend_policy(
         .find(|b| b.agent_object_id == agent_object_id)
     {
         if !budget.enabled {
-            return Err("agent_budget_disabled".into());
+            return Err(denied("agent_budget_disabled".into()));
         }
         if let Some(max) = budget.budget_mist {
             if budget.spent_mist + amount_mist as i64 > max {
-                return Err("agent_budget_exceeded".into());
+                return Err(denied("agent_budget_exceeded".into()));
+            }
+        }
+
+        // Reject-before-sign approval gate: an over-threshold spend never produces a
+        // signed receipt (and never consumes a settlement nonce) until a live allowance
+        // is indexed — so approvals can never block the sequential nonce queue.
+        if state.oracle_args.approvals_enabled {
+            if let Some(threshold) = budget.require_approval_above_mist {
+                if threshold >= 0 && amount_mist > threshold as u64 {
+                    let approval = state
+                        .approvals
+                        .fetch_approved(
+                            owner,
+                            &balance_resp.balance.balance_id,
+                            agent_object_id,
+                        )
+                        .await
+                        .map_err(|e| denied(format!("approval_lookup_failed: {e}")))?;
+                    let now_ms = chrono::Utc::now().timestamp_millis();
+                    let min_remaining_ms =
+                        (state.oracle_args.approval_min_remaining_secs * 1000) as i64;
+                    let covered = approval
+                        .as_ref()
+                        .map(|row| approval_covers(row, amount_mist, now_ms, min_remaining_ms))
+                        .unwrap_or(false);
+                    if !covered {
+                        return Err(SpendPolicyError::ApprovalRequired {
+                            balance_id: balance_resp.balance.balance_id.clone(),
+                            threshold_mist: threshold as u64,
+                            organization_id: agent.organization_id.clone(),
+                        });
+                    }
+                }
             }
         }
     }
 
-    Ok(effective)
+    Ok((effective, agent))
+}
+
+/// Fire-and-forget side effects when an over-threshold spend is rejected: upsert the
+/// `requested` approval row, surface an ApprovalRequest inbox item, and audit the request.
+/// Never blocks or fails the caller.
+fn spawn_approval_request_side_effects(
+    state: &AppState,
+    owner: String,
+    balance_id: String,
+    agent_object_id: String,
+    organization_id: Option<String>,
+    requested_amount_mist: u64,
+    threshold_mist: u64,
+) {
+    let social = state.social.clone();
+    let approvals = state.approvals.clone();
+    let workflow = state.workflow.clone();
+    let audit_secret = state.oracle_args.audit_sync_secret.clone();
+    tokio::spawn(async move {
+        let ingest = IngestApprovalRequest {
+            balance_id: balance_id.clone(),
+            agent_object_id: agent_object_id.clone(),
+            requested_amount_mist: Some(requested_amount_mist as i64),
+            threshold_mist: Some(threshold_mist as i64),
+            organization_id: organization_id.clone(),
+        };
+        if let Err(err) = social.ingest_requested_approval(&ingest).await {
+            tracing::warn!(error = %err, "failed to ingest requested approval");
+        }
+        approvals.invalidate(&balance_id, &agent_object_id).await;
+
+        if let Some(workflow) = workflow {
+            let item = WorkflowItemIngest {
+                idempotency_key: approval_idempotency_key(&balance_id, &agent_object_id),
+                recipient_address: owner.clone(),
+                item_type: "approval_request".to_string(),
+                title: "AI spend approval requested".to_string(),
+                body: Some(format!(
+                    "Agent requested {} MIST (threshold {} MIST)",
+                    requested_amount_mist, threshold_mist
+                )),
+                payload: serde_json::json!({
+                    "balance_id": balance_id,
+                    "agent_object_id": agent_object_id,
+                    "requested_amount_mist": requested_amount_mist,
+                    "threshold_mist": threshold_mist,
+                    "organization_id": organization_id,
+                }),
+                organization_id: organization_id.clone(),
+                account_id: None,
+                source_service: "ai_credit_oracle".to_string(),
+                action_deadline_ms: None,
+            };
+            if let Err(err) = workflow.ingest_item(&item).await {
+                tracing::warn!(error = %err, "failed to ingest approval workflow item");
+            }
+        }
+
+        let now_ms = chrono::Utc::now().timestamp_millis();
+        let audit = IngestAuditLogEntry {
+            source: "oracle".to_string(),
+            actor_address: agent_object_id.clone(),
+            actor_type: "agent".to_string(),
+            action: "spend_approval_request".to_string(),
+            target_type: "spend_approval".to_string(),
+            target_id: agent_object_id.clone(),
+            organization_id,
+            account_id: None,
+            prev_state: None,
+            new_state: Some(serde_json::json!({
+                "requested_amount_mist": requested_amount_mist,
+                "threshold_mist": threshold_mist,
+                "owner": owner,
+            })),
+            tx_digest: None,
+            // Per-minute dedupe so repeated preflight retries don't spam the log.
+            idempotency_key: Some(format!(
+                "spend_approval_request:{}:{}:{}",
+                balance_id,
+                agent_object_id,
+                now_ms / 60_000
+            )),
+            metadata: Some(serde_json::json!({ "balance_id": balance_id })),
+        };
+        if let Err(err) = social
+            .ingest_audit_logs(audit_secret.as_deref(), vec![audit])
+            .await
+        {
+            tracing::warn!(error = %err, "failed to ingest approval audit entry");
+        }
+    });
 }
 
 async fn preflight(
@@ -431,6 +599,8 @@ async fn preflight(
             effective_available_mist: None,
             base_mist: Some(breakdown.base_mist),
             margin_mist: Some(breakdown.margin_mist),
+            approval_required: false,
+            approval_threshold_mist: None,
         });
     }
 
@@ -445,21 +615,50 @@ async fn preflight(
     )
     .await
     {
-        Ok(effective) => Json(PreflightResponse {
+        Ok((effective, _agent)) => Json(PreflightResponse {
             allowed: true,
             reason: None,
             estimated_mist: Some(estimated_mist),
             effective_available_mist: Some(effective),
             base_mist: Some(breakdown.base_mist),
             margin_mist: Some(breakdown.margin_mist),
+            approval_required: false,
+            approval_threshold_mist: None,
         }),
-        Err(reason) => Json(PreflightResponse {
+        Err(SpendPolicyError::ApprovalRequired {
+            balance_id,
+            threshold_mist,
+            organization_id,
+        }) => {
+            spawn_approval_request_side_effects(
+                &state,
+                req.owner.clone(),
+                balance_id,
+                req.agent_object_id.clone(),
+                organization_id,
+                estimated_mist,
+                threshold_mist,
+            );
+            Json(PreflightResponse {
+                allowed: false,
+                reason: Some(APPROVAL_REQUIRED_REASON.to_string()),
+                estimated_mist: Some(estimated_mist),
+                effective_available_mist: None,
+                base_mist: Some(breakdown.base_mist),
+                margin_mist: Some(breakdown.margin_mist),
+                approval_required: true,
+                approval_threshold_mist: Some(threshold_mist),
+            })
+        }
+        Err(err) => Json(PreflightResponse {
             allowed: false,
-            reason: Some(reason),
+            reason: Some(err.reason()),
             estimated_mist: Some(estimated_mist),
             effective_available_mist: None,
             base_mist: Some(breakdown.base_mist),
             margin_mist: Some(breakdown.margin_mist),
+            approval_required: false,
+            approval_threshold_mist: None,
         }),
     }
 }
@@ -523,7 +722,7 @@ async fn record_usage(
 
     let (usage_response, ingest) = {
         let mut store_guard = state.store.lock().await;
-        if let Err(reason) = validate_spend_policy(
+        let agent = match validate_spend_policy(
             &state,
             &req.owner,
             Some(&req.balance_id),
@@ -533,9 +732,37 @@ async fn record_usage(
         )
         .await
         {
-            tracing::warn!(reason = %reason, "usage rejected");
-            return Err(StatusCode::BAD_REQUEST);
-        }
+            Ok((_effective, agent)) => agent,
+            Err(SpendPolicyError::ApprovalRequired {
+                balance_id,
+                threshold_mist,
+                organization_id,
+            }) => {
+                // Post-hoc callers may have already burned compute; the spend stays
+                // unbilled (never silently bypassed) and is audited for reconciliation.
+                tracing::warn!(
+                    balance_id = %balance_id,
+                    agent_object_id = %req.agent_object_id,
+                    amount_mist,
+                    threshold_mist,
+                    "usage rejected: unbilled_over_threshold (approval required)"
+                );
+                spawn_approval_request_side_effects(
+                    &state,
+                    req.owner.clone(),
+                    balance_id,
+                    req.agent_object_id.clone(),
+                    organization_id,
+                    amount_mist,
+                    threshold_mist,
+                );
+                return Err(StatusCode::PAYMENT_REQUIRED);
+            }
+            Err(err) => {
+                tracing::warn!(reason = %err.reason(), "usage rejected");
+                return Err(StatusCode::BAD_REQUEST);
+            }
+        };
 
         let on_chain_nonce = chain_balance::fetch_on_chain_settlement_nonce(
             &state.oracle_args.myso_rpc,
@@ -589,6 +816,8 @@ async fn record_usage(
             timestamp_ms,
             settled: false,
             created_at_ms: timestamp_ms,
+            void: false,
+            organization_id: agent.organization_id.clone(),
         };
 
         if store_guard.insert_pending(line).is_err() {
@@ -607,6 +836,7 @@ async fn record_usage(
             model_id: req.model_id.clone(),
             tool_id: req.tool_id.clone(),
             metadata: Some(metadata),
+            organization_id: agent.organization_id.clone(),
         };
 
         (

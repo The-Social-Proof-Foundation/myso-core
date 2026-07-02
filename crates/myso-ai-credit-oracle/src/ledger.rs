@@ -58,7 +58,7 @@ impl BalanceLedger {
         store
             .lines
             .iter()
-            .filter(|l| l.balance_id == balance_id && !l.settled)
+            .filter(|l| l.balance_id == balance_id && !l.settled && !l.void)
             .map(|l| l.amount_mist)
             .sum()
     }
@@ -67,7 +67,7 @@ impl BalanceLedger {
         store
             .lines
             .iter()
-            .filter(|l| l.balance_id == balance_id && !l.settled)
+            .filter(|l| l.balance_id == balance_id && !l.settled && !l.void)
             .count() as u64
     }
 

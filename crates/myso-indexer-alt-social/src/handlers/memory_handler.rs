@@ -19,12 +19,14 @@ use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
-    NewAgentMemoryVault, NewAgenticOrganization, NewMemoryAccount, NewOrganizationEvent,
+    NewAgentMemoryVault, NewAgenticOrganization, NewAuditLog, NewMemoryAccount,
+    NewOrgMemoryPermission, NewOrgRole, NewOrgRoleAssignment, NewOrganizationEvent,
     NewSubAgentEvent,
 };
 use myso_indexer_alt_social_schema::schema::{
-    memory_accounts, profiles, sub_agent_events, sub_agent_memory_vaults,
-    sub_agent_organization_events, sub_agent_organizations, sub_agents,
+    audit_log, memory_accounts, org_memory_permissions, org_role_assignments, org_roles, profiles,
+    sub_agent_events, sub_agent_memory_vaults, sub_agent_organization_events,
+    sub_agent_organizations, sub_agents,
 };
 
 use super::common;
@@ -85,6 +87,18 @@ pub enum MemoryRow {
         active_delta: i32,
         activity_at_ms: i64,
     },
+    OrgMemoryPermissionUpsert(NewOrgMemoryPermission),
+    OrgRoleUpsert(NewOrgRole),
+    OrgRoleAssignmentUpsert(NewOrgRoleAssignment),
+    OrgRoleAssignmentRevoke {
+        organization_id: String,
+        member_address: String,
+        role_name: String,
+        revoked_at_ms: i64,
+        event_id: String,
+        transaction_id: String,
+    },
+    AuditLog(NewAuditLog),
 }
 
 impl MemoryRow {
@@ -169,6 +183,29 @@ impl MemoryRow {
                 active_delta,
                 activity_at_ms,
             }),
+            crate::handlers::SocialEventRow::OrgMemoryPermissionUpsert(p) => {
+                Some(MemoryRow::OrgMemoryPermissionUpsert(p))
+            }
+            crate::handlers::SocialEventRow::OrgRoleUpsert(r) => Some(MemoryRow::OrgRoleUpsert(r)),
+            crate::handlers::SocialEventRow::OrgRoleAssignmentUpsert(a) => {
+                Some(MemoryRow::OrgRoleAssignmentUpsert(a))
+            }
+            crate::handlers::SocialEventRow::OrgRoleAssignmentRevoke {
+                organization_id,
+                member_address,
+                role_name,
+                revoked_at_ms,
+                event_id,
+                transaction_id,
+            } => Some(MemoryRow::OrgRoleAssignmentRevoke {
+                organization_id,
+                member_address,
+                role_name,
+                revoked_at_ms,
+                event_id,
+                transaction_id,
+            }),
+            crate::handlers::SocialEventRow::AuditLog(a) => Some(MemoryRow::AuditLog(a)),
             _ => None,
         }
     }
@@ -452,6 +489,96 @@ impl Handler for MemoryHandler {
                         .await?;
                     }
                     total += 1;
+                }
+                MemoryRow::OrgMemoryPermissionUpsert(p) => {
+                    total += diesel::insert_into(org_memory_permissions::table)
+                        .values(p)
+                        .on_conflict((
+                            org_memory_permissions::organization_id,
+                            org_memory_permissions::member_address,
+                            org_memory_permissions::permission_kind,
+                        ))
+                        .do_update()
+                        .set((
+                            org_memory_permissions::active.eq(p.active),
+                            org_memory_permissions::granted_by.eq(p.granted_by.clone()),
+                            org_memory_permissions::group_id.eq(p.group_id.clone()),
+                            org_memory_permissions::event_id.eq(p.event_id.clone()),
+                            org_memory_permissions::transaction_id.eq(p.transaction_id.clone()),
+                            org_memory_permissions::time.eq(p.time),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                MemoryRow::OrgRoleUpsert(r) => {
+                    total += diesel::insert_into(org_roles::table)
+                        .values(r)
+                        .on_conflict((org_roles::organization_id, org_roles::role_name))
+                        .do_update()
+                        .set((
+                            org_roles::mask.eq(r.mask),
+                            org_roles::is_builtin.eq(r.is_builtin),
+                            org_roles::defined_by.eq(r.defined_by.clone()),
+                            org_roles::active.eq(r.active),
+                            org_roles::updated_at_ms.eq(r.updated_at_ms),
+                            org_roles::event_id.eq(r.event_id.clone()),
+                            org_roles::transaction_id.eq(r.transaction_id.clone()),
+                            org_roles::time.eq(r.time),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                MemoryRow::OrgRoleAssignmentUpsert(a) => {
+                    total += diesel::insert_into(org_role_assignments::table)
+                        .values(a)
+                        .on_conflict((
+                            org_role_assignments::organization_id,
+                            org_role_assignments::member_address,
+                            org_role_assignments::role_name,
+                        ))
+                        .do_update()
+                        .set((
+                            org_role_assignments::role_mask.eq(a.role_mask),
+                            org_role_assignments::assigned_mask.eq(a.assigned_mask),
+                            org_role_assignments::active.eq(a.active),
+                            org_role_assignments::assigned_by.eq(a.assigned_by.clone()),
+                            org_role_assignments::assigned_at_ms.eq(a.assigned_at_ms),
+                            org_role_assignments::revoked_at_ms.eq(a.revoked_at_ms),
+                            org_role_assignments::event_id.eq(a.event_id.clone()),
+                            org_role_assignments::transaction_id.eq(a.transaction_id.clone()),
+                            org_role_assignments::time.eq(a.time),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                MemoryRow::OrgRoleAssignmentRevoke {
+                    organization_id,
+                    member_address,
+                    role_name,
+                    revoked_at_ms,
+                    event_id,
+                    transaction_id,
+                } => {
+                    total += diesel::update(
+                        org_role_assignments::table
+                            .filter(org_role_assignments::organization_id.eq(organization_id))
+                            .filter(org_role_assignments::member_address.eq(member_address))
+                            .filter(org_role_assignments::role_name.eq(role_name)),
+                    )
+                    .set((
+                        org_role_assignments::active.eq(false),
+                        org_role_assignments::revoked_at_ms.eq(Some(*revoked_at_ms)),
+                        org_role_assignments::event_id.eq(event_id),
+                        org_role_assignments::transaction_id.eq(transaction_id),
+                    ))
+                    .execute(conn)
+                    .await?;
+                }
+                MemoryRow::AuditLog(a) => {
+                    total += diesel::insert_into(audit_log::table)
+                        .values(a)
+                        .execute(conn)
+                        .await?;
                 }
             }
         }

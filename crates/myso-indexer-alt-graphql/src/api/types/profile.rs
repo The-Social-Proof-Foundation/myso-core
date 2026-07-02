@@ -18,6 +18,7 @@ use crate::api::scalars::id::Id;
 use crate::api::scalars::myso_address::MySoAddress;
 use crate::api::types::blocked::{BlockedPlatformSummary, BlockedProfileSummary};
 use crate::api::types::ai_credit::AiCreditBalance;
+use crate::api::types::enterprise::{AuditLogConnection, AuditLogEntry, AuditLogFilterInput};
 use crate::api::types::memory::{MemoryAccount, SubAgent};
 use crate::api::types::mydata::MyDataRecord;
 use crate::api::types::organization::AgenticOrganization;
@@ -717,6 +718,31 @@ impl Profile {
             .ok()
             .flatten()
             .map(AiCreditBalance::from_row)
+    }
+
+    async fn audit_log(
+        &self,
+        ctx: &Context<'_>,
+        filter: Option<AuditLogFilterInput>,
+        #[graphql(default = 20)] limit: i32,
+        #[graphql(default = 0)] offset: i32,
+    ) -> Option<AuditLogConnection> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let filter: AuditLogFilterInput = filter.unwrap_or_default();
+        reader
+            .list_audit_logs_for_actor(
+                &self.inner.owner_address,
+                &filter.into(),
+                limit as i64,
+                offset as i64,
+            )
+            .await
+            .ok()
+            .map(|rows| AuditLogConnection {
+                entries: rows.into_iter().map(AuditLogEntry::from_row).collect(),
+            })
     }
 
     /// Sub-agents registered under this profile's memory account.

@@ -131,6 +131,11 @@ pub struct NewOrganizationStats {
     pub last_activity_at_ms: Option<i64>,
     pub stats_rollup_at: Option<chrono::DateTime<chrono::Utc>>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
+    pub ai_credit_spent_mist: i64,
+    pub ai_credit_usage_events: i64,
+    pub memory_entries: i64,
+    pub memory_bytes: i64,
+    pub org_shared_memory_entries: i64,
 }
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
@@ -163,6 +168,11 @@ pub struct OrganizationStatsRow {
     pub last_activity_at_ms: Option<i64>,
     pub stats_rollup_at: Option<chrono::DateTime<chrono::Utc>>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
+    pub ai_credit_spent_mist: i64,
+    pub ai_credit_usage_events: i64,
+    pub memory_entries: i64,
+    pub memory_bytes: i64,
+    pub org_shared_memory_entries: i64,
 }
 
 #[derive(Debug, Clone, Insertable, AsChangeset, Serialize, Deserialize)]
@@ -183,6 +193,8 @@ pub struct NewOrganizationStatsDaily {
     pub spot_accuracy_bps: Option<i32>,
     pub attribution_coverage_bps: i32,
     pub time: chrono::DateTime<chrono::Utc>,
+    pub ai_credit_spent_mist: i64,
+    pub memory_bytes: i64,
 }
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
@@ -203,6 +215,8 @@ pub struct OrganizationStatsDailyRow {
     pub spot_accuracy_bps: Option<i32>,
     pub attribution_coverage_bps: i32,
     pub time: chrono::DateTime<chrono::Utc>,
+    pub ai_credit_spent_mist: i64,
+    pub memory_bytes: i64,
 }
 
 #[derive(Debug, Clone, Insertable, AsChangeset, Serialize, Deserialize)]

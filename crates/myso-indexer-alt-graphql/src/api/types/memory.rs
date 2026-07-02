@@ -8,6 +8,7 @@ use myso_indexer_alt_social_reader::{SocialAttributionRow, SubAgentRow};
 use myso_indexer_alt_social_schema::models::MemoryAccountRow;
 
 use crate::api::scalars::myso_address::MySoAddress;
+use crate::api::types::enterprise::{AiCreditAgentBudget, OrgMemoryPermission, OrgRoleAssignment};
 
 #[derive(Clone)]
 pub(crate) struct SubAgent {
@@ -101,6 +102,52 @@ impl SubAgent {
 
     async fn created_at(&self) -> i64 {
         self.inner.created_at_ms
+    }
+
+    async fn organization_id(&self) -> Option<&str> {
+        self.inner.organization_id.as_deref()
+    }
+
+    async fn budget(&self, ctx: &async_graphql::Context<'_>) -> Option<AiCreditAgentBudget> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        reader
+            .get_agent_budget(&self.inner.agent_object_id)
+            .await
+            .ok()
+            .flatten()
+            .map(AiCreditAgentBudget::from_row)
+    }
+
+    async fn org_memory_permissions(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> Option<Vec<OrgMemoryPermission>> {
+        let org_id = self.inner.organization_id.as_deref()?;
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        reader
+            .list_org_memory_permissions(org_id, Some(&self.inner.derived_address), true)
+            .await
+            .ok()
+            .map(|rows| rows.into_iter().map(OrgMemoryPermission::from_row).collect())
+    }
+
+    async fn org_roles(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> Option<Vec<OrgRoleAssignment>> {
+        let org_id = self.inner.organization_id.as_deref()?;
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        reader
+            .list_org_role_assignments(org_id, Some(&self.inner.derived_address), true)
+            .await
+            .ok()
+            .map(|rows| rows.into_iter().map(OrgRoleAssignment::from_row).collect())
     }
 
     async fn children(

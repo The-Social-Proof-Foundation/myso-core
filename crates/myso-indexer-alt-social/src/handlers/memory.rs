@@ -5,9 +5,11 @@ use chrono::Utc;
 
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
-    NewAgentMemoryVault, NewAgenticOrganization, NewMemoryAccount, NewOrganizationEvent,
-    NewSubAgent, NewSubAgentEvent, EVENT_TYPE_ORG_CATEGORY_UPDATED, EVENT_TYPE_ORG_CREATED,
-    EVENT_TYPE_ORG_DEACTIVATED, EVENT_TYPE_ORG_UPDATED,
+    builtin_org_role_mask, expand_org_permission_mask, AuditAction, NewAgentMemoryVault,
+    NewAgenticOrganization, NewAuditLog, NewMemoryAccount, NewOrgMemoryPermission, NewOrgRole,
+    NewOrgRoleAssignment, NewOrganizationEvent, NewSubAgent, NewSubAgentEvent,
+    AUDIT_ACTOR_HUMAN, AUDIT_SOURCE_CHAIN, BUILTIN_ORG_ROLES, EVENT_TYPE_ORG_CATEGORY_UPDATED,
+    EVENT_TYPE_ORG_CREATED, EVENT_TYPE_ORG_DEACTIVATED, EVENT_TYPE_ORG_UPDATED,
 };
 
 pub(crate) fn json_to_i64(v: &serde_json::Value) -> i64 {
@@ -58,6 +60,42 @@ fn json_u64(data: &serde_json::Value, key: &str) -> i64 {
 
 fn json_bool(data: &serde_json::Value, key: &str) -> bool {
     data.get(key).and_then(|v| v.as_bool()).unwrap_or(true)
+}
+
+/// Chain-derived audit row written in the same commit as the domain update.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn chain_audit_row(
+    action: AuditAction,
+    actor_address: String,
+    target_type: &str,
+    target_id: String,
+    organization_id: Option<String>,
+    account_id: Option<String>,
+    prev_state: Option<serde_json::Value>,
+    new_state: Option<serde_json::Value>,
+    event_id: &str,
+    transaction_id: &str,
+    now: chrono::DateTime<Utc>,
+) -> NewAuditLog {
+    NewAuditLog {
+        time: now,
+        source: AUDIT_SOURCE_CHAIN.to_string(),
+        actor_address,
+        // Best-effort: the on-chain signer address is authoritative; class refinement is a
+        // read-side concern (agents can be resolved via sub_agents.derived_address).
+        actor_type: AUDIT_ACTOR_HUMAN.to_string(),
+        action: action.as_str().to_string(),
+        target_type: target_type.to_string(),
+        target_id,
+        organization_id,
+        account_id,
+        prev_state,
+        new_state,
+        tx_digest: Some(transaction_id.to_string()),
+        event_id: Some(event_id.to_string()),
+        idempotency_key: None,
+        metadata: None,
+    }
 }
 
 pub(crate) fn handle_memory_event(
@@ -266,7 +304,7 @@ pub(crate) fn handle_memory_event(
                 transaction_id: transaction_id.clone(),
                 time: now,
             };
-            Some(vec![
+            let mut rows = vec![
                 SocialEventRow::AgenticOrganizationUpsert(org),
                 SocialEventRow::OrganizationStatsInit {
                     organization_id: organization_id.clone(),
@@ -274,9 +312,9 @@ pub(crate) fn handle_memory_event(
                 },
                 SocialEventRow::OrganizationEvent(NewOrganizationEvent {
                     event_type: EVENT_TYPE_ORG_CREATED.to_string(),
-                    organization_id: Some(organization_id),
-                    account_id: Some(account_id),
-                    principal_owner: Some(principal_owner),
+                    organization_id: Some(organization_id.clone()),
+                    account_id: Some(account_id.clone()),
+                    principal_owner: Some(principal_owner.clone()),
                     profile_id: Some(profile_id),
                     name,
                     description,
@@ -289,10 +327,41 @@ pub(crate) fn handle_memory_event(
                     deactivated_at_ms: None,
                     updated_at_ms: None,
                     event_id: event_id.to_string(),
-                    transaction_id,
+                    transaction_id: transaction_id.clone(),
                     time: now,
                 }),
-            ])
+            ];
+            // Seed the built-in role definitions so dashboards can list them per org.
+            for role_name in BUILTIN_ORG_ROLES {
+                if let Some(mask) = builtin_org_role_mask(role_name) {
+                    rows.push(SocialEventRow::OrgRoleUpsert(NewOrgRole {
+                        organization_id: organization_id.clone(),
+                        role_name: role_name.to_string(),
+                        mask,
+                        is_builtin: true,
+                        defined_by: principal_owner.clone(),
+                        active: true,
+                        updated_at_ms: created_at_ms,
+                        event_id: event_id.to_string(),
+                        transaction_id: transaction_id.clone(),
+                        time: now,
+                    }));
+                }
+            }
+            rows.push(SocialEventRow::AuditLog(chain_audit_row(
+                AuditAction::OrgCreate,
+                principal_owner,
+                "organization",
+                organization_id.clone(),
+                Some(organization_id),
+                Some(account_id),
+                None,
+                Some(serde_json::json!({ "org_type": org_type })),
+                event_id,
+                &transaction_id,
+                now,
+            )));
+            Some(rows)
         }
         "AgenticOrganizationUpdated" => {
             let organization_id = json_str(data, "organization_id")?;
@@ -378,7 +447,7 @@ pub(crate) fn handle_memory_event(
                 },
                 SocialEventRow::OrganizationEvent(NewOrganizationEvent {
                     event_type: EVENT_TYPE_ORG_DEACTIVATED.to_string(),
-                    organization_id: Some(organization_id),
+                    organization_id: Some(organization_id.clone()),
                     account_id: None,
                     principal_owner: None,
                     profile_id: None,
@@ -393,10 +462,242 @@ pub(crate) fn handle_memory_event(
                     deactivated_at_ms: Some(deactivated_at_ms),
                     updated_at_ms: None,
                     event_id: event_id.to_string(),
-                    transaction_id,
+                    transaction_id: transaction_id.clone(),
                     time: now,
                 }),
+                SocialEventRow::AuditLog(chain_audit_row(
+                    AuditAction::OrgDeactivate,
+                    // Event does not carry the signer; the tx digest identifies it on-chain.
+                    "unknown".to_string(),
+                    "organization",
+                    organization_id.clone(),
+                    Some(organization_id),
+                    None,
+                    Some(serde_json::json!({ "active": true })),
+                    Some(serde_json::json!({ "active": false })),
+                    event_id,
+                    &transaction_id,
+                    now,
+                )),
             ])
+        }
+        "OrgMemoryGroupCreated" => {
+            let group_id = json_str(data, "group_id")?;
+            let organization_id = json_str(data, "organization_id")?;
+            let account_id = json_str(data, "account_id")?;
+            let principal_owner = json_str(data, "principal_owner")?;
+            Some(vec![SocialEventRow::AuditLog(chain_audit_row(
+                AuditAction::OrgMemoryGroupCreate,
+                principal_owner,
+                "org_memory_group",
+                group_id.clone(),
+                Some(organization_id),
+                Some(account_id),
+                None,
+                Some(serde_json::json!({ "group_id": group_id })),
+                event_id,
+                &transaction_id,
+                now,
+            ))])
+        }
+        "OrgMemoryPermissionGranted" | "OrgMemoryPermissionRevoked" => {
+            let granted = event_name == "OrgMemoryPermissionGranted";
+            let organization_id = json_str(data, "organization_id")?;
+            let account_id = json_str(data, "account_id")?;
+            let group_id = json_str(data, "group_id")?;
+            let member = json_str(data, "member")?;
+            let mask = json_u64(data, "permissions_mask");
+            let actor = if granted {
+                json_str(data, "granted_by")?
+            } else {
+                json_str(data, "revoked_by")?
+            };
+            let timestamp_ms = json_u64(data, "timestamp_ms");
+            let mut rows = Vec::new();
+            for bit in expand_org_permission_mask(mask) {
+                rows.push(SocialEventRow::OrgMemoryPermissionUpsert(
+                    NewOrgMemoryPermission {
+                        organization_id: organization_id.clone(),
+                        member_address: member.clone(),
+                        permission_kind: bit,
+                        active: granted,
+                        granted_by: actor.clone(),
+                        group_id: Some(group_id.clone()),
+                        event_id: event_id.to_string(),
+                        transaction_id: transaction_id.clone(),
+                        time: now,
+                    },
+                ));
+            }
+            rows.push(SocialEventRow::AuditLog(chain_audit_row(
+                if granted {
+                    AuditAction::OrgMemoryGrant
+                } else {
+                    AuditAction::OrgMemoryRevoke
+                },
+                actor,
+                "org_member",
+                member,
+                Some(organization_id),
+                Some(account_id),
+                None,
+                Some(serde_json::json!({
+                    "permissions_mask": mask,
+                    "active": granted,
+                    "timestamp_ms": timestamp_ms,
+                })),
+                event_id,
+                &transaction_id,
+                now,
+            )));
+            Some(rows)
+        }
+        "OrgRoleDefined" => {
+            let organization_id = json_str(data, "organization_id")?;
+            let account_id = json_str(data, "account_id")?;
+            let role_name = json_str(data, "role_name")?;
+            let mask = json_u64(data, "mask");
+            let previous_mask = data.get("previous_mask").and_then(json_opt_i64);
+            let defined_by = json_str(data, "defined_by")?;
+            let timestamp_ms = json_u64(data, "timestamp_ms");
+            Some(vec![
+                SocialEventRow::OrgRoleUpsert(NewOrgRole {
+                    organization_id: organization_id.clone(),
+                    role_name: role_name.clone(),
+                    mask,
+                    is_builtin: false,
+                    defined_by: defined_by.clone(),
+                    active: true,
+                    updated_at_ms: timestamp_ms,
+                    event_id: event_id.to_string(),
+                    transaction_id: transaction_id.clone(),
+                    time: now,
+                }),
+                SocialEventRow::AuditLog(chain_audit_row(
+                    AuditAction::OrgRoleDefine,
+                    defined_by,
+                    "org_role",
+                    role_name,
+                    Some(organization_id),
+                    Some(account_id),
+                    previous_mask.map(|m| serde_json::json!({ "mask": m })),
+                    Some(serde_json::json!({ "mask": mask })),
+                    event_id,
+                    &transaction_id,
+                    now,
+                )),
+            ])
+        }
+        "OrgRoleAssigned" => {
+            let organization_id = json_str(data, "organization_id")?;
+            let account_id = json_str(data, "account_id")?;
+            let group_id = json_str(data, "group_id")?;
+            let member = json_str(data, "member")?;
+            let role_name = json_str(data, "role_name")?;
+            let mask = json_u64(data, "mask");
+            let granted_mask = json_u64(data, "granted_mask");
+            let assigned_by = json_str(data, "assigned_by")?;
+            let timestamp_ms = json_u64(data, "timestamp_ms");
+            let mut rows = vec![SocialEventRow::OrgRoleAssignmentUpsert(
+                NewOrgRoleAssignment {
+                    organization_id: organization_id.clone(),
+                    member_address: member.clone(),
+                    role_name: role_name.clone(),
+                    role_mask: mask,
+                    assigned_mask: granted_mask,
+                    active: true,
+                    assigned_by: assigned_by.clone(),
+                    assigned_at_ms: timestamp_ms,
+                    revoked_at_ms: None,
+                    event_id: event_id.to_string(),
+                    transaction_id: transaction_id.clone(),
+                    time: now,
+                },
+            )];
+            // The role's constituent permissions become active member permissions.
+            for bit in expand_org_permission_mask(granted_mask) {
+                rows.push(SocialEventRow::OrgMemoryPermissionUpsert(
+                    NewOrgMemoryPermission {
+                        organization_id: organization_id.clone(),
+                        member_address: member.clone(),
+                        permission_kind: bit,
+                        active: true,
+                        granted_by: assigned_by.clone(),
+                        group_id: Some(group_id.clone()),
+                        event_id: event_id.to_string(),
+                        transaction_id: transaction_id.clone(),
+                        time: now,
+                    },
+                ));
+            }
+            rows.push(SocialEventRow::AuditLog(chain_audit_row(
+                AuditAction::OrgRoleAssign,
+                assigned_by,
+                "org_member",
+                member,
+                Some(organization_id),
+                Some(account_id),
+                None,
+                Some(serde_json::json!({
+                    "role_name": role_name,
+                    "mask": mask,
+                    "granted_mask": granted_mask,
+                })),
+                event_id,
+                &transaction_id,
+                now,
+            )));
+            Some(rows)
+        }
+        "OrgRoleRevoked" => {
+            let organization_id = json_str(data, "organization_id")?;
+            let account_id = json_str(data, "account_id")?;
+            let group_id = json_str(data, "group_id")?;
+            let member = json_str(data, "member")?;
+            let role_name = json_str(data, "role_name")?;
+            let revoked_mask = json_u64(data, "revoked_mask");
+            let revoked_by = json_str(data, "revoked_by")?;
+            let timestamp_ms = json_u64(data, "timestamp_ms");
+            let mut rows = vec![SocialEventRow::OrgRoleAssignmentRevoke {
+                organization_id: organization_id.clone(),
+                member_address: member.clone(),
+                role_name: role_name.clone(),
+                revoked_at_ms: timestamp_ms,
+                event_id: event_id.to_string(),
+                transaction_id: transaction_id.clone(),
+            }];
+            for bit in expand_org_permission_mask(revoked_mask) {
+                rows.push(SocialEventRow::OrgMemoryPermissionUpsert(
+                    NewOrgMemoryPermission {
+                        organization_id: organization_id.clone(),
+                        member_address: member.clone(),
+                        permission_kind: bit,
+                        active: false,
+                        granted_by: revoked_by.clone(),
+                        group_id: Some(group_id.clone()),
+                        event_id: event_id.to_string(),
+                        transaction_id: transaction_id.clone(),
+                        time: now,
+                    },
+                ));
+            }
+            rows.push(SocialEventRow::AuditLog(chain_audit_row(
+                AuditAction::OrgRoleRevoke,
+                revoked_by,
+                "org_member",
+                member,
+                Some(organization_id),
+                Some(account_id),
+                Some(serde_json::json!({
+                    "role_name": role_name,
+                    "granted_mask": revoked_mask,
+                })),
+                None,
+                event_id,
+                &transaction_id,
+                now,
+            )));
+            Some(rows)
         }
         _ => None,
     }

@@ -4,7 +4,17 @@
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::schema::{ai_credit_agent_budgets, ai_credit_balances, ai_credit_config, ai_credit_events, ai_credit_usage_lines};
+use crate::schema::{
+    ai_credit_agent_budgets, ai_credit_balances, ai_credit_config, ai_credit_events,
+    ai_credit_spend_approvals, ai_credit_usage_lines,
+};
+
+/// Spend-approval lifecycle states (see `ai_credit_spend_approvals.status`).
+pub const APPROVAL_STATUS_REQUESTED: &str = "requested";
+pub const APPROVAL_STATUS_APPROVED: &str = "approved";
+pub const APPROVAL_STATUS_CONSUMED: &str = "consumed";
+pub const APPROVAL_STATUS_REVOKED: &str = "revoked";
+pub const APPROVAL_STATUS_EXPIRED: &str = "expired";
 
 #[derive(Debug, Clone, Insertable, AsChangeset, Serialize, Deserialize)]
 #[diesel(table_name = ai_credit_balances)]
@@ -122,6 +132,7 @@ pub struct NewAiCreditUsageLine {
     pub settled: bool,
     pub settlement_tx: Option<String>,
     pub created_at: chrono::DateTime<chrono::Utc>,
+    pub organization_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
@@ -139,6 +150,47 @@ pub struct AiCreditUsageLineRow {
     pub settled: bool,
     pub settlement_tx: Option<String>,
     pub created_at: chrono::DateTime<chrono::Utc>,
+    pub organization_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Insertable, AsChangeset, Serialize, Deserialize)]
+#[diesel(table_name = ai_credit_spend_approvals)]
+pub struct NewAiCreditSpendApproval {
+    pub balance_id: String,
+    pub agent_object_id: String,
+    pub status: String,
+    pub requested_amount_mist: Option<i64>,
+    pub threshold_mist: Option<i64>,
+    pub approval_nonce: Option<i64>,
+    pub max_amount_mist: Option<i64>,
+    pub expires_at_ms: Option<i64>,
+    pub approved_by: Option<String>,
+    pub approved_by_agent_id: Option<String>,
+    pub organization_id: Option<String>,
+    pub consumed_amount_mist: Option<i64>,
+    pub requested_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+    pub event_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = ai_credit_spend_approvals)]
+pub struct AiCreditSpendApprovalRow {
+    pub balance_id: String,
+    pub agent_object_id: String,
+    pub status: String,
+    pub requested_amount_mist: Option<i64>,
+    pub threshold_mist: Option<i64>,
+    pub approval_nonce: Option<i64>,
+    pub max_amount_mist: Option<i64>,
+    pub expires_at_ms: Option<i64>,
+    pub approved_by: Option<String>,
+    pub approved_by_agent_id: Option<String>,
+    pub organization_id: Option<String>,
+    pub consumed_amount_mist: Option<i64>,
+    pub requested_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+    pub event_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Insertable, AsChangeset, Serialize, Deserialize)]

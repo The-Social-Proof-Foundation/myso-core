@@ -110,6 +110,12 @@ mod tests {
             catalog_sync_on_startup: true,
             openrouter_api_url: "https://openrouter.ai/api/v1/models".into(),
             catalog_max_drift_pct: 50.0,
+            approvals_enabled: false,
+            approval_lookup_ttl_secs: 5,
+            approval_min_remaining_secs: 180,
+            workflow_relayer_url: None,
+            workflow_sync_secret: None,
+            audit_sync_secret: None,
         }
     }
 
@@ -129,6 +135,8 @@ mod tests {
             timestamp_ms,
             settled: false,
             created_at_ms: timestamp_ms,
+            void: false,
+            organization_id: None,
         }
     }
 
@@ -168,5 +176,44 @@ mod tests {
         };
         let trigger = should_settle_balance("0xbal", &store, &args, now_ms);
         assert_eq!(trigger, Some(SettleTrigger::MaxAge));
+    }
+
+    #[test]
+    fn void_lines_excluded_from_pending_and_settlement() {
+        let args = test_args();
+        let mut voided = line("0xbal", 10_000_000_000, 1_000_000, 1);
+        voided.void = true;
+        let store = ReceiptStore {
+            lines: vec![voided],
+            settled_ids: HashSet::new(),
+        };
+        assert_eq!(store.total_pending_mist(), 0);
+        assert!(store.pending_for_balance("0xbal").is_empty());
+        assert_eq!(should_settle_balance("0xbal", &store, &args, 2_000_000), None);
+    }
+
+    #[test]
+    fn renumber_pending_assigns_contiguous_nonces_ordered_by_creation() {
+        let mut voided = line("0xbal", 100, 2_000, 2);
+        voided.void = true;
+        let mut store = ReceiptStore {
+            lines: vec![
+                line("0xbal", 100, 3_000, 3),
+                voided,
+                line("0xbal", 100, 1_000, 1),
+                line("0xother", 100, 1_500, 9),
+            ],
+            settled_ids: HashSet::new(),
+        };
+        let indices = store.renumber_pending_for_balance("0xbal", 7, 99_000);
+        assert_eq!(indices.len(), 2);
+        // Oldest first: receipt 1 gets nonce 8, receipt 3 gets nonce 9.
+        let by_receipt = |id: u128| store.lines.iter().find(|l| l.receipt_id == id).unwrap();
+        assert_eq!(by_receipt(1).settlement_nonce, 8);
+        assert_eq!(by_receipt(3).settlement_nonce, 9);
+        assert_eq!(by_receipt(1).timestamp_ms, 99_000);
+        // Voided and foreign-balance lines untouched.
+        assert_eq!(by_receipt(2).settlement_nonce, 1);
+        assert_eq!(by_receipt(9).settlement_nonce, 1);
     }
 }

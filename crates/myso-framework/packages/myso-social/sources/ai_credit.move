@@ -16,16 +16,26 @@ module social_contracts::ai_credit {
         balance::{Self, Balance},
         clock::{Self, Clock},
         coin::{Self, Coin},
+        dynamic_field as df,
         ed25519,
         event,
         object::{Self, ID, UID},
+        permissioned_group::PermissionedGroup,
         table::{Self, Table},
         transfer,
         tx_context::{Self, TxContext},
     };
     use myso::myso::MYSO;
 
-    use social_contracts::memory::{Self, MemoryAccount, SubAgent};
+    use social_contracts::memory::{
+        Self,
+        AgenticOrganization,
+        MemoryAccount,
+        MemorySharePackage,
+        OrgBudgetManager,
+        OrgSpendApprover,
+        SubAgent,
+    };
     use social_contracts::upgrade;
 
     const MIST_PER_MYSO: u64 = 1_000_000_000;
@@ -55,6 +65,16 @@ module social_contracts::ai_credit {
     const EAccountMismatch: u64 = 13;
     const EAgentMissingCap: u64 = 15;
     const EBalanceAlreadyExists: u64 = 17;
+    const EApprovalRequired: u64 = 18;
+    const EApprovalExpired: u64 = 19;
+    const EApprovalInsufficient: u64 = 20;
+    const EApprovalNotFound: u64 = 21;
+    const ENotDescendant: u64 = 22;
+    const ENotParentSigner: u64 = 23;
+    const EParentEnvelopeExceeded: u64 = 24;
+    const ECannotManageSelf: u64 = 25;
+    const EAgentNotInOrg: u64 = 26;
+    const EInvalidExpiry: u64 = 27;
 
     public struct AiCreditOracleAdminCap has key, store {
         id: UID,
@@ -85,6 +105,24 @@ module social_contracts::ai_credit {
         month_anchor_ms: u64,
         require_approval_above_mist: Option<u64>,
     }
+
+    /// Dynamic-field key on `AiCreditBalance.id` for the agent's live spend allowance.
+    /// One allowance per agent; re-approving overwrites. Stored as a dynamic field so the
+    /// `AiCreditBalance` struct layout never changes (upgrade-safe).
+    public struct SpendApprovalKey has copy, drop, store {
+        agent_object_id: ID,
+    }
+
+    /// One-shot spend allowance consumed by the first over-threshold settlement it covers.
+    public struct SpendApproval has store, copy, drop {
+        max_amount_mist: u64,
+        expires_at_ms: u64,
+        approved_by: address,
+        approval_nonce: u64,
+    }
+
+    /// Dynamic-field key on `AiCreditBalance.id` for the monotonic approval nonce counter.
+    public struct ApprovalNonceKey has copy, drop, store {}
 
     public struct AiCreditBalance has key {
         id: UID,
@@ -159,6 +197,61 @@ module social_contracts::ai_credit {
     public struct AiCreditAgentBudgetDisabled has copy, drop {
         balance_id: ID,
         agent_object_id: ID,
+    }
+
+    /// Audit-grade budget change event carrying previous and new values plus the actor.
+    /// Emitted alongside the legacy `AiCreditAgentBudgetUpdated`/`Disabled` events.
+    public struct AiCreditAgentBudgetChanged has copy, drop {
+        balance_id: ID,
+        agent_object_id: ID,
+        had_previous_entry: bool,
+        prev_budget_mist: Option<u64>,
+        prev_daily_cap_mist: Option<u64>,
+        prev_monthly_cap_mist: Option<u64>,
+        prev_require_approval_above_mist: Option<u64>,
+        prev_enabled: bool,
+        budget_mist: Option<u64>,
+        daily_cap_mist: Option<u64>,
+        monthly_cap_mist: Option<u64>,
+        require_approval_above_mist: Option<u64>,
+        enabled: bool,
+        set_by: address,
+        /// Set when a parent agent changed a descendant's budget.
+        set_by_agent_id: Option<ID>,
+        /// Set when the change went through an org role gate.
+        organization_id: Option<ID>,
+        timestamp_ms: u64,
+    }
+
+    public struct AiCreditSpendApproved has copy, drop {
+        balance_id: ID,
+        agent_object_id: ID,
+        approval_nonce: u64,
+        max_amount_mist: u64,
+        expires_at_ms: u64,
+        approved_by: address,
+        /// Set when a parent agent approved a descendant's spend.
+        approved_by_agent_id: Option<ID>,
+        /// Set when the approval went through an org role gate.
+        organization_id: Option<ID>,
+        timestamp_ms: u64,
+    }
+
+    public struct AiCreditSpendApprovalRevoked has copy, drop {
+        balance_id: ID,
+        agent_object_id: ID,
+        approval_nonce: u64,
+        revoked_by: address,
+        timestamp_ms: u64,
+    }
+
+    public struct AiCreditSpendApprovalConsumed has copy, drop {
+        balance_id: ID,
+        agent_object_id: ID,
+        approval_nonce: u64,
+        amount_mist: u64,
+        approved_by: address,
+        timestamp_ms: u64,
     }
 
     public struct AiCreditUsageSettled has copy, drop {
@@ -371,59 +464,266 @@ module social_contracts::ai_credit {
         assert_owner(balance, ctx);
         assert_agent_linked(balance, agent);
         memory::assert_sub_agent_active(agent, clock);
-        let agent_id = memory::agent_object_id(agent);
-        let now = clock::timestamp_ms(clock);
-        let entry = if (table::contains(&balance.agent_budgets, agent_id)) {
-            let e = table::borrow_mut(&mut balance.agent_budgets, agent_id);
-            e.budget_mist = budget_mist;
-            e.daily_cap_mist = daily_cap_mist;
-            e.monthly_cap_mist = monthly_cap_mist;
-            e.require_approval_above_mist = require_approval_above_mist;
-            e.enabled = true;
-            *e
-        } else {
-            let e = AgentBudgetEntry {
-                agent_object_id: agent_id,
-                derived_address: memory::sub_agent_derived_address(agent),
-                enabled: true,
-                budget_mist,
-                spent_mist: 0,
-                daily_cap_mist,
-                monthly_cap_mist,
-                spent_day_mist: 0,
-                spent_month_mist: 0,
-                day_anchor_ms: now,
-                month_anchor_ms: now,
-                require_approval_above_mist,
-            };
-            table::add(&mut balance.agent_budgets, agent_id, e);
-            e
-        };
-        event::emit(AiCreditAgentBudgetUpdated {
-            balance_id: object::id(balance),
-            agent_object_id: entry.agent_object_id,
-            budget_mist: entry.budget_mist,
-            daily_cap_mist: entry.daily_cap_mist,
-            monthly_cap_mist: entry.monthly_cap_mist,
-            require_approval_above_mist: entry.require_approval_above_mist,
-        });
+        upsert_agent_budget(
+            balance,
+            agent,
+            budget_mist,
+            daily_cap_mist,
+            monthly_cap_mist,
+            require_approval_above_mist,
+            tx_context::sender(ctx),
+            option::none(),
+            option::none(),
+            clock,
+        );
+    }
+
+    /// Org role-gated budget management: a holder of `OrgBudgetManager` on the org's memory
+    /// share group may manage budgets for agents belonging to that org, without the owner key.
+    public entry fun set_agent_budget_as_manager(
+        config: &AiCreditConfig,
+        balance: &mut AiCreditBalance,
+        account: &MemoryAccount,
+        org: &AgenticOrganization,
+        group: &PermissionedGroup<MemorySharePackage>,
+        agent: &SubAgent,
+        budget_mist: Option<u64>,
+        daily_cap_mist: Option<u64>,
+        monthly_cap_mist: Option<u64>,
+        require_approval_above_mist: Option<u64>,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_version(config, balance);
+        assert_active(balance);
+        assert_agent_linked(balance, agent);
+        assert_org_gate_for_agent(balance, account, org, agent);
+        memory::assert_org_permission<OrgBudgetManager>(org, group, tx_context::sender(ctx));
+        memory::assert_sub_agent_active(agent, clock);
+        upsert_agent_budget(
+            balance,
+            agent,
+            budget_mist,
+            daily_cap_mist,
+            monthly_cap_mist,
+            require_approval_above_mist,
+            tx_context::sender(ctx),
+            option::none(),
+            option::some(memory::organization_id(org)),
+            clock,
+        );
     }
 
     public entry fun disable_agent_budget(
         config: &AiCreditConfig,
         balance: &mut AiCreditBalance,
         agent_object_id: ID,
+        clock: &Clock,
         ctx: &TxContext,
     ) {
         assert_version(config, balance);
         assert_owner(balance, ctx);
-        assert!(table::contains(&balance.agent_budgets, agent_object_id), EAgentNotFound);
-        let entry = table::borrow_mut(&mut balance.agent_budgets, agent_object_id);
-        entry.enabled = false;
-        event::emit(AiCreditAgentBudgetDisabled {
+        disable_agent_budget_internal(
+            balance,
+            agent_object_id,
+            tx_context::sender(ctx),
+            option::none(),
+            clock,
+        );
+    }
+
+    // ============================================================
+    // Spend approvals (one-shot allowances)
+    //
+    // Reject-before-sign contract with the oracle: an over-threshold usage request is
+    // rejected off-chain until a live allowance exists, so no receipt (and no settlement
+    // nonce) is ever created for an unapprovable spend. On-chain, `execute_settlement`
+    // consumes the allowance — the chain is the enforcer, the oracle only pre-checks.
+    // ============================================================
+
+    /// Owner grants a one-shot allowance: the agent may settle a single usage receipt up to
+    /// `max_amount_mist` above its approval threshold, until `expires_at_ms`. Re-approving
+    /// overwrites any existing allowance for the agent.
+    public entry fun approve_agent_spend(
+        config: &AiCreditConfig,
+        balance: &mut AiCreditBalance,
+        agent_object_id: ID,
+        max_amount_mist: u64,
+        expires_at_ms: u64,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_version(config, balance);
+        assert_owner(balance, ctx);
+        assert_active(balance);
+        store_spend_approval(
+            balance,
+            agent_object_id,
+            max_amount_mist,
+            expires_at_ms,
+            tx_context::sender(ctx),
+            option::none(),
+            option::none(),
+            clock,
+        );
+    }
+
+    /// Org role-gated approval: a holder of `OrgSpendApprover` on the org's memory share
+    /// group may approve spends for agents belonging to that org (Finance Approver flow).
+    public entry fun approve_agent_spend_as_approver(
+        config: &AiCreditConfig,
+        balance: &mut AiCreditBalance,
+        account: &MemoryAccount,
+        org: &AgenticOrganization,
+        group: &PermissionedGroup<MemorySharePackage>,
+        agent: &SubAgent,
+        max_amount_mist: u64,
+        expires_at_ms: u64,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_version(config, balance);
+        assert_active(balance);
+        assert_agent_linked(balance, agent);
+        assert_org_gate_for_agent(balance, account, org, agent);
+        memory::assert_org_permission<OrgSpendApprover>(org, group, tx_context::sender(ctx));
+        store_spend_approval(
+            balance,
+            memory::agent_object_id(agent),
+            max_amount_mist,
+            expires_at_ms,
+            tx_context::sender(ctx),
+            option::none(),
+            option::some(memory::organization_id(org)),
+            clock,
+        );
+    }
+
+    /// Owner revokes an agent's live allowance.
+    public entry fun revoke_agent_spend_approval(
+        config: &AiCreditConfig,
+        balance: &mut AiCreditBalance,
+        agent_object_id: ID,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_version(config, balance);
+        assert_owner(balance, ctx);
+        let key = SpendApprovalKey { agent_object_id };
+        assert!(
+            df::exists_with_type<SpendApprovalKey, SpendApproval>(&balance.id, key),
+            EApprovalNotFound,
+        );
+        let approval: SpendApproval = df::remove(&mut balance.id, key);
+        event::emit(AiCreditSpendApprovalRevoked {
             balance_id: object::id(balance),
             agent_object_id,
+            approval_nonce: approval.approval_nonce,
+            revoked_by: tx_context::sender(ctx),
+            timestamp_ms: clock::timestamp_ms(clock),
         });
+    }
+
+    // ============================================================
+    // Delegated budgets (parent agents manage descendants without human txs)
+    // ============================================================
+
+    /// Parent agent (holding `CAP_BUDGET_MANAGE`) sets a descendant's budget. Child limits
+    /// must be at least as strict as the parent's own envelope; the human owner remains the
+    /// unconstrained root.
+    public entry fun set_child_agent_budget(
+        config: &AiCreditConfig,
+        balance: &mut AiCreditBalance,
+        account: &MemoryAccount,
+        parent: &SubAgent,
+        child: &SubAgent,
+        budget_mist: Option<u64>,
+        daily_cap_mist: Option<u64>,
+        monthly_cap_mist: Option<u64>,
+        require_approval_above_mist: Option<u64>,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_version(config, balance);
+        assert_active(balance);
+        assert_parent_manages_child(balance, account, parent, child, clock, ctx);
+        assert_child_budget_within_parent_envelope(
+            balance,
+            memory::agent_object_id(parent),
+            &budget_mist,
+            &daily_cap_mist,
+            &monthly_cap_mist,
+            &require_approval_above_mist,
+        );
+        memory::assert_sub_agent_active(child, clock);
+        upsert_agent_budget(
+            balance,
+            child,
+            budget_mist,
+            daily_cap_mist,
+            monthly_cap_mist,
+            require_approval_above_mist,
+            tx_context::sender(ctx),
+            option::some(memory::agent_object_id(parent)),
+            option::none(),
+            clock,
+        );
+    }
+
+    /// Parent kill switch for a descendant's budget.
+    public entry fun disable_child_agent_budget(
+        config: &AiCreditConfig,
+        balance: &mut AiCreditBalance,
+        account: &MemoryAccount,
+        parent: &SubAgent,
+        child: &SubAgent,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_version(config, balance);
+        assert_parent_manages_child(balance, account, parent, child, clock, ctx);
+        disable_agent_budget_internal(
+            balance,
+            memory::agent_object_id(child),
+            tx_context::sender(ctx),
+            option::some(memory::agent_object_id(parent)),
+            clock,
+        );
+    }
+
+    /// Parent approves a descendant's over-threshold spend, but only within the parent's own
+    /// envelope (its threshold and remaining caps). Beyond that, approval escalates up the
+    /// tree — ultimately to the human owner via `approve_agent_spend`.
+    public entry fun approve_child_agent_spend(
+        config: &AiCreditConfig,
+        balance: &mut AiCreditBalance,
+        account: &MemoryAccount,
+        parent: &SubAgent,
+        child: &SubAgent,
+        max_amount_mist: u64,
+        expires_at_ms: u64,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_version(config, balance);
+        assert_active(balance);
+        assert_parent_manages_child(balance, account, parent, child, clock, ctx);
+        assert_within_parent_envelope(
+            balance,
+            memory::agent_object_id(parent),
+            max_amount_mist,
+            clock,
+        );
+        store_spend_approval(
+            balance,
+            memory::agent_object_id(child),
+            max_amount_mist,
+            expires_at_ms,
+            tx_context::sender(ctx),
+            option::some(memory::agent_object_id(parent)),
+            option::none(),
+            clock,
+        );
     }
 
     public entry fun pause_balance(
@@ -593,6 +893,10 @@ module social_contracts::ai_credit {
             entry.spent_month_mist = entry.spent_month_mist + receipt.amount_mist;
         };
 
+        // Over-threshold settlements must consume a live spend allowance (the previously
+        // unenforced `require_approval_above_mist` gate).
+        maybe_consume_spend_approval(balance, agent_id, receipt.amount_mist, clock);
+
         assert!(receipt.amount_mist <= available_mist(balance), EInsufficientBalance);
 
         balance.settlement_nonce = receipt.settlement_nonce;
@@ -687,6 +991,47 @@ module social_contracts::ai_credit {
         credits * MIST_PER_MYSO
     }
 
+    /// Live allowance for an agent, if any (may be expired — check `approval_expires_at`).
+    public fun spend_approval_for(
+        balance: &AiCreditBalance,
+        agent_object_id: ID,
+    ): Option<SpendApproval> {
+        let key = SpendApprovalKey { agent_object_id };
+        if (df::exists_with_type<SpendApprovalKey, SpendApproval>(&balance.id, key)) {
+            option::some(*df::borrow<SpendApprovalKey, SpendApproval>(&balance.id, key))
+        } else {
+            option::none()
+        }
+    }
+
+    public fun approval_max_amount_mist(approval: &SpendApproval): u64 {
+        approval.max_amount_mist
+    }
+
+    public fun approval_expires_at_ms(approval: &SpendApproval): u64 {
+        approval.expires_at_ms
+    }
+
+    public fun approval_approved_by(approval: &SpendApproval): address {
+        approval.approved_by
+    }
+
+    public fun approval_nonce(approval: &SpendApproval): u64 {
+        approval.approval_nonce
+    }
+
+    /// Approval threshold on the agent's budget entry, if configured.
+    public fun agent_approval_threshold(
+        balance: &AiCreditBalance,
+        agent_object_id: ID,
+    ): Option<u64> {
+        if (!table::contains(&balance.agent_budgets, agent_object_id)) {
+            return option::none()
+        };
+        let entry = table::borrow(&balance.agent_budgets, agent_object_id);
+        entry.require_approval_above_mist
+    }
+
     public fun agent_remaining_mist(balance: &AiCreditBalance, agent_object_id: ID): Option<u64> {
         if (!table::contains(&balance.agent_budgets, agent_object_id)) {
             return option::none()
@@ -759,6 +1104,337 @@ module social_contracts::ai_credit {
             memory::sub_agent_memory_account_id(agent) == balance.memory_account_id,
             EAccountMismatch,
         );
+    }
+
+    /// Org role gates require: account matches the balance, org belongs to the account,
+    /// and the target agent belongs to that org.
+    fun assert_org_gate_for_agent(
+        balance: &AiCreditBalance,
+        account: &MemoryAccount,
+        org: &AgenticOrganization,
+        agent: &SubAgent,
+    ) {
+        assert!(object::id(account) == balance.memory_account_id, EAccountMismatch);
+        assert!(
+            memory::organization_memory_account_id(org) == object::id(account),
+            EAccountMismatch,
+        );
+        assert!(
+            memory::sub_agent_organization_id(agent) == memory::organization_id(org),
+            EAgentNotInOrg,
+        );
+    }
+
+    /// Common authorization for parent-delegated budget operations: sender is the parent's
+    /// derived address, parent is active with `CAP_BUDGET_MANAGE`, both agents are linked to
+    /// this balance, and the child sits strictly below the parent in the agent tree.
+    fun assert_parent_manages_child(
+        balance: &AiCreditBalance,
+        account: &MemoryAccount,
+        parent: &SubAgent,
+        child: &SubAgent,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert!(object::id(account) == balance.memory_account_id, EAccountMismatch);
+        assert_agent_linked(balance, parent);
+        assert_agent_linked(balance, child);
+        assert!(
+            tx_context::sender(ctx) == memory::sub_agent_derived_address(parent),
+            ENotParentSigner,
+        );
+        memory::assert_sub_agent_active(parent, clock);
+        assert!(
+            memory::has_cap(memory::sub_agent_capabilities(parent), memory::cap_budget_manage()),
+            EAgentMissingCap,
+        );
+        let parent_id = memory::agent_object_id(parent);
+        let child_id = memory::agent_object_id(child);
+        assert!(parent_id != child_id, ECannotManageSelf);
+        assert!(memory::is_descendant_agent(account, parent_id, child_id), ENotDescendant);
+    }
+
+    /// Child budget limits must be at least as strict as the parent's own entry (when the
+    /// parent has one; an unconstrained parent may set anything).
+    fun assert_child_budget_within_parent_envelope(
+        balance: &AiCreditBalance,
+        parent_id: ID,
+        budget_mist: &Option<u64>,
+        daily_cap_mist: &Option<u64>,
+        monthly_cap_mist: &Option<u64>,
+        require_approval_above_mist: &Option<u64>,
+    ) {
+        if (!table::contains(&balance.agent_budgets, parent_id)) {
+            return
+        };
+        let parent_entry = table::borrow(&balance.agent_budgets, parent_id);
+        assert_limit_not_looser(budget_mist, &parent_entry.budget_mist);
+        assert_limit_not_looser(daily_cap_mist, &parent_entry.daily_cap_mist);
+        assert_limit_not_looser(monthly_cap_mist, &parent_entry.monthly_cap_mist);
+        assert_limit_not_looser(
+            require_approval_above_mist,
+            &parent_entry.require_approval_above_mist,
+        );
+    }
+
+    /// `child` is not looser than `parent`: when the parent limit is set, the child limit
+    /// must be set and must not exceed it.
+    fun assert_limit_not_looser(child: &Option<u64>, parent: &Option<u64>) {
+        if (option::is_none(parent)) {
+            return
+        };
+        assert!(option::is_some(child), EParentEnvelopeExceeded);
+        assert!(*option::borrow(child) <= *option::borrow(parent), EParentEnvelopeExceeded);
+    }
+
+    /// Parents may only approve amounts they could spend themselves: within their own
+    /// approval threshold (if set) and remaining budget/day/month caps (if set).
+    fun assert_within_parent_envelope(
+        balance: &mut AiCreditBalance,
+        parent_id: ID,
+        amount_mist: u64,
+        clock: &Clock,
+    ) {
+        if (!table::contains(&balance.agent_budgets, parent_id)) {
+            return
+        };
+        let entry = table::borrow_mut(&mut balance.agent_budgets, parent_id);
+        assert!(entry.enabled, EAgentDisabled);
+        roll_agent_windows(entry, clock::timestamp_ms(clock));
+        if (option::is_some(&entry.require_approval_above_mist)) {
+            assert!(
+                amount_mist <= *option::borrow(&entry.require_approval_above_mist),
+                EParentEnvelopeExceeded,
+            );
+        };
+        if (option::is_some(&entry.budget_mist)) {
+            let max = *option::borrow(&entry.budget_mist);
+            assert!(entry.spent_mist + amount_mist <= max, EParentEnvelopeExceeded);
+        };
+        if (option::is_some(&entry.daily_cap_mist)) {
+            let cap = *option::borrow(&entry.daily_cap_mist);
+            assert!(entry.spent_day_mist + amount_mist <= cap, EParentEnvelopeExceeded);
+        };
+        if (option::is_some(&entry.monthly_cap_mist)) {
+            let cap = *option::borrow(&entry.monthly_cap_mist);
+            assert!(entry.spent_month_mist + amount_mist <= cap, EParentEnvelopeExceeded);
+        };
+    }
+
+    /// Shared budget upsert used by owner, org-manager, and parent paths. Emits the legacy
+    /// `AiCreditAgentBudgetUpdated` plus the audit-grade `AiCreditAgentBudgetChanged`.
+    fun upsert_agent_budget(
+        balance: &mut AiCreditBalance,
+        agent: &SubAgent,
+        budget_mist: Option<u64>,
+        daily_cap_mist: Option<u64>,
+        monthly_cap_mist: Option<u64>,
+        require_approval_above_mist: Option<u64>,
+        set_by: address,
+        set_by_agent_id: Option<ID>,
+        organization_id: Option<ID>,
+        clock: &Clock,
+    ) {
+        let agent_id = memory::agent_object_id(agent);
+        let now = clock::timestamp_ms(clock);
+
+        let had_previous_entry = table::contains(&balance.agent_budgets, agent_id);
+        let (prev_budget, prev_daily, prev_monthly, prev_approval, prev_enabled) =
+            if (had_previous_entry) {
+                let prev = table::borrow(&balance.agent_budgets, agent_id);
+                (
+                    prev.budget_mist,
+                    prev.daily_cap_mist,
+                    prev.monthly_cap_mist,
+                    prev.require_approval_above_mist,
+                    prev.enabled,
+                )
+            } else {
+                (option::none(), option::none(), option::none(), option::none(), false)
+            };
+
+        let entry = if (had_previous_entry) {
+            let e = table::borrow_mut(&mut balance.agent_budgets, agent_id);
+            e.budget_mist = budget_mist;
+            e.daily_cap_mist = daily_cap_mist;
+            e.monthly_cap_mist = monthly_cap_mist;
+            e.require_approval_above_mist = require_approval_above_mist;
+            e.enabled = true;
+            *e
+        } else {
+            let e = AgentBudgetEntry {
+                agent_object_id: agent_id,
+                derived_address: memory::sub_agent_derived_address(agent),
+                enabled: true,
+                budget_mist,
+                spent_mist: 0,
+                daily_cap_mist,
+                monthly_cap_mist,
+                spent_day_mist: 0,
+                spent_month_mist: 0,
+                day_anchor_ms: now,
+                month_anchor_ms: now,
+                require_approval_above_mist,
+            };
+            table::add(&mut balance.agent_budgets, agent_id, e);
+            e
+        };
+
+        event::emit(AiCreditAgentBudgetUpdated {
+            balance_id: object::id(balance),
+            agent_object_id: entry.agent_object_id,
+            budget_mist: entry.budget_mist,
+            daily_cap_mist: entry.daily_cap_mist,
+            monthly_cap_mist: entry.monthly_cap_mist,
+            require_approval_above_mist: entry.require_approval_above_mist,
+        });
+        event::emit(AiCreditAgentBudgetChanged {
+            balance_id: object::id(balance),
+            agent_object_id: agent_id,
+            had_previous_entry,
+            prev_budget_mist: prev_budget,
+            prev_daily_cap_mist: prev_daily,
+            prev_monthly_cap_mist: prev_monthly,
+            prev_require_approval_above_mist: prev_approval,
+            prev_enabled,
+            budget_mist,
+            daily_cap_mist,
+            monthly_cap_mist,
+            require_approval_above_mist,
+            enabled: true,
+            set_by,
+            set_by_agent_id,
+            organization_id,
+            timestamp_ms: now,
+        });
+    }
+
+    fun disable_agent_budget_internal(
+        balance: &mut AiCreditBalance,
+        agent_object_id: ID,
+        set_by: address,
+        set_by_agent_id: Option<ID>,
+        clock: &Clock,
+    ) {
+        assert!(table::contains(&balance.agent_budgets, agent_object_id), EAgentNotFound);
+        let entry = table::borrow_mut(&mut balance.agent_budgets, agent_object_id);
+        let prev_enabled = entry.enabled;
+        entry.enabled = false;
+        let snapshot = *entry;
+        event::emit(AiCreditAgentBudgetDisabled {
+            balance_id: object::id(balance),
+            agent_object_id,
+        });
+        event::emit(AiCreditAgentBudgetChanged {
+            balance_id: object::id(balance),
+            agent_object_id,
+            had_previous_entry: true,
+            prev_budget_mist: snapshot.budget_mist,
+            prev_daily_cap_mist: snapshot.daily_cap_mist,
+            prev_monthly_cap_mist: snapshot.monthly_cap_mist,
+            prev_require_approval_above_mist: snapshot.require_approval_above_mist,
+            prev_enabled,
+            budget_mist: snapshot.budget_mist,
+            daily_cap_mist: snapshot.daily_cap_mist,
+            monthly_cap_mist: snapshot.monthly_cap_mist,
+            require_approval_above_mist: snapshot.require_approval_above_mist,
+            enabled: false,
+            set_by,
+            set_by_agent_id,
+            organization_id: option::none(),
+            timestamp_ms: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// Store (or overwrite) the agent's one-shot allowance and emit the approval event.
+    fun store_spend_approval(
+        balance: &mut AiCreditBalance,
+        agent_object_id: ID,
+        max_amount_mist: u64,
+        expires_at_ms: u64,
+        approved_by: address,
+        approved_by_agent_id: Option<ID>,
+        organization_id: Option<ID>,
+        clock: &Clock,
+    ) {
+        assert!(max_amount_mist > 0, EInvalidAmount);
+        let now = clock::timestamp_ms(clock);
+        assert!(expires_at_ms > now, EInvalidExpiry);
+
+        let approval_nonce = next_approval_nonce(balance);
+        let key = SpendApprovalKey { agent_object_id };
+        if (df::exists_with_type<SpendApprovalKey, SpendApproval>(&balance.id, key)) {
+            let _old: SpendApproval = df::remove(&mut balance.id, key);
+        };
+        df::add(&mut balance.id, key, SpendApproval {
+            max_amount_mist,
+            expires_at_ms,
+            approved_by,
+            approval_nonce,
+        });
+
+        event::emit(AiCreditSpendApproved {
+            balance_id: object::id(balance),
+            agent_object_id,
+            approval_nonce,
+            max_amount_mist,
+            expires_at_ms,
+            approved_by,
+            approved_by_agent_id,
+            organization_id,
+            timestamp_ms: now,
+        });
+    }
+
+    fun next_approval_nonce(balance: &mut AiCreditBalance): u64 {
+        if (!df::exists_with_type<ApprovalNonceKey, u64>(&balance.id, ApprovalNonceKey {})) {
+            df::add(&mut balance.id, ApprovalNonceKey {}, 0u64);
+        };
+        let counter = df::borrow_mut<ApprovalNonceKey, u64>(&mut balance.id, ApprovalNonceKey {});
+        *counter = *counter + 1;
+        *counter
+    }
+
+    /// Consume the agent's allowance when the settlement amount exceeds its approval
+    /// threshold. Aborts when no live, sufficient allowance exists — this is the on-chain
+    /// enforcement of `require_approval_above_mist`.
+    fun maybe_consume_spend_approval(
+        balance: &mut AiCreditBalance,
+        agent_object_id: ID,
+        amount_mist: u64,
+        clock: &Clock,
+    ) {
+        if (!table::contains(&balance.agent_budgets, agent_object_id)) {
+            return
+        };
+        let threshold_opt = {
+            let entry = table::borrow(&balance.agent_budgets, agent_object_id);
+            entry.require_approval_above_mist
+        };
+        if (option::is_none(&threshold_opt)) {
+            return
+        };
+        if (amount_mist <= *option::borrow(&threshold_opt)) {
+            return
+        };
+
+        let key = SpendApprovalKey { agent_object_id };
+        assert!(
+            df::exists_with_type<SpendApprovalKey, SpendApproval>(&balance.id, key),
+            EApprovalRequired,
+        );
+        let approval: SpendApproval = df::remove(&mut balance.id, key);
+        assert!(clock::timestamp_ms(clock) <= approval.expires_at_ms, EApprovalExpired);
+        assert!(amount_mist <= approval.max_amount_mist, EApprovalInsufficient);
+
+        event::emit(AiCreditSpendApprovalConsumed {
+            balance_id: object::id(balance),
+            agent_object_id,
+            approval_nonce: approval.approval_nonce,
+            amount_mist,
+            approved_by: approval.approved_by,
+            timestamp_ms: clock::timestamp_ms(clock),
+        });
     }
 
     fun assert_oracle_admin(_cap: &AiCreditOracleAdminCap, _ctx: &TxContext) {
@@ -903,4 +1579,28 @@ module social_contracts::ai_credit {
     public fun error_insufficient_balance(): u64 { EInsufficientBalance }
     #[test_only]
     public fun error_cap_exceeded(): u64 { ECapExceeded }
+    #[test_only]
+    public fun error_approval_required(): u64 { EApprovalRequired }
+    #[test_only]
+    public fun error_approval_expired(): u64 { EApprovalExpired }
+    #[test_only]
+    public fun error_approval_insufficient(): u64 { EApprovalInsufficient }
+    #[test_only]
+    public fun error_approval_not_found(): u64 { EApprovalNotFound }
+    #[test_only]
+    public fun error_not_descendant(): u64 { ENotDescendant }
+    #[test_only]
+    public fun error_not_parent_signer(): u64 { ENotParentSigner }
+    #[test_only]
+    public fun error_parent_envelope_exceeded(): u64 { EParentEnvelopeExceeded }
+    #[test_only]
+    public fun error_cannot_manage_self(): u64 { ECannotManageSelf }
+    #[test_only]
+    public fun error_agent_not_in_org(): u64 { EAgentNotInOrg }
+    #[test_only]
+    public fun error_invalid_expiry(): u64 { EInvalidExpiry }
+    #[test_only]
+    public fun error_agent_missing_cap(): u64 { EAgentMissingCap }
+    #[test_only]
+    public fun error_agent_disabled(): u64 { EAgentDisabled }
 }

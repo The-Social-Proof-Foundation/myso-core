@@ -41,6 +41,17 @@ computed off-chain (indexer/server).
 -  [Struct `MemoryRegistry`](#social_contracts_memory_MemoryRegistry)
 -  [Struct `SubAgentKey`](#social_contracts_memory_SubAgentKey)
 -  [Struct `AgentMemoryVaultKey`](#social_contracts_memory_AgentMemoryVaultKey)
+-  [Struct `MemorySharePackage`](#social_contracts_memory_MemorySharePackage)
+-  [Struct `OrgMemoryGroupTag`](#social_contracts_memory_OrgMemoryGroupTag)
+-  [Struct `OrgMemoryReader`](#social_contracts_memory_OrgMemoryReader)
+-  [Struct `OrgMemoryWriter`](#social_contracts_memory_OrgMemoryWriter)
+-  [Struct `OrgAgentManager`](#social_contracts_memory_OrgAgentManager)
+-  [Struct `OrgBudgetManager`](#social_contracts_memory_OrgBudgetManager)
+-  [Struct `OrgSpendApprover`](#social_contracts_memory_OrgSpendApprover)
+-  [Struct `OrgDashboardViewer`](#social_contracts_memory_OrgDashboardViewer)
+-  [Struct `OrgAuditor`](#social_contracts_memory_OrgAuditor)
+-  [Struct `OrgCustomRoleKey`](#social_contracts_memory_OrgCustomRoleKey)
+-  [Struct `OrgRoleAssignmentKey`](#social_contracts_memory_OrgRoleAssignmentKey)
 -  [Struct `SubAgentConstraints`](#social_contracts_memory_SubAgentConstraints)
 -  [Struct `OrgRegistryEntry`](#social_contracts_memory_OrgRegistryEntry)
 -  [Struct `AgenticOrganization`](#social_contracts_memory_AgenticOrganization)
@@ -64,6 +75,12 @@ computed off-chain (indexer/server).
 -  [Struct `AgenticOrganizationUpdated`](#social_contracts_memory_AgenticOrganizationUpdated)
 -  [Struct `AgenticOrganizationCategoryUpdated`](#social_contracts_memory_AgenticOrganizationCategoryUpdated)
 -  [Struct `AgenticOrganizationDeactivated`](#social_contracts_memory_AgenticOrganizationDeactivated)
+-  [Struct `OrgMemoryGroupCreated`](#social_contracts_memory_OrgMemoryGroupCreated)
+-  [Struct `OrgMemoryPermissionGranted`](#social_contracts_memory_OrgMemoryPermissionGranted)
+-  [Struct `OrgMemoryPermissionRevoked`](#social_contracts_memory_OrgMemoryPermissionRevoked)
+-  [Struct `OrgRoleDefined`](#social_contracts_memory_OrgRoleDefined)
+-  [Struct `OrgRoleAssigned`](#social_contracts_memory_OrgRoleAssigned)
+-  [Struct `OrgRoleRevoked`](#social_contracts_memory_OrgRoleRevoked)
 -  [Constants](#@Constants_1)
 -  [Function `class_human`](#social_contracts_memory_class_human)
 -  [Function `class_delegated_ai`](#social_contracts_memory_class_delegated_ai)
@@ -98,11 +115,28 @@ computed off-chain (indexer/server).
 -  [Function `cap_agent_revoke`](#social_contracts_memory_cap_agent_revoke)
 -  [Function `cap_agent_update`](#social_contracts_memory_cap_agent_update)
 -  [Function `cap_ai_spend`](#social_contracts_memory_cap_ai_spend)
+-  [Function `cap_budget_manage`](#social_contracts_memory_cap_budget_manage)
+-  [Function `org_perm_memory_read`](#social_contracts_memory_org_perm_memory_read)
+-  [Function `org_perm_memory_write`](#social_contracts_memory_org_perm_memory_write)
+-  [Function `org_perm_agent_manager`](#social_contracts_memory_org_perm_agent_manager)
+-  [Function `org_perm_budget_manager`](#social_contracts_memory_org_perm_budget_manager)
+-  [Function `org_perm_spend_approver`](#social_contracts_memory_org_perm_spend_approver)
+-  [Function `org_perm_dashboard_viewer`](#social_contracts_memory_org_perm_dashboard_viewer)
+-  [Function `org_perm_auditor`](#social_contracts_memory_org_perm_auditor)
+-  [Function `org_perm_all`](#social_contracts_memory_org_perm_all)
+-  [Function `role_mask_owner`](#social_contracts_memory_role_mask_owner)
+-  [Function `role_mask_admin`](#social_contracts_memory_role_mask_admin)
+-  [Function `role_mask_agent_manager`](#social_contracts_memory_role_mask_agent_manager)
+-  [Function `role_mask_finance_approver`](#social_contracts_memory_role_mask_finance_approver)
+-  [Function `role_mask_memory_administrator`](#social_contracts_memory_role_mask_memory_administrator)
+-  [Function `role_mask_auditor`](#social_contracts_memory_role_mask_auditor)
 -  [Function `register_child`](#social_contracts_memory_register_child)
 -  [Function `register_peer`](#social_contracts_memory_register_peer)
 -  [Function `derive_sub_agent_address`](#social_contracts_memory_derive_sub_agent_address)
 -  [Function `agent_object_id`](#social_contracts_memory_agent_object_id)
 -  [Function `organization_id`](#social_contracts_memory_organization_id)
+-  [Function `organization_memory_account_id`](#social_contracts_memory_organization_memory_account_id)
+-  [Function `organization_active`](#social_contracts_memory_organization_active)
 -  [Function `sub_agent_organization_id`](#social_contracts_memory_sub_agent_organization_id)
 -  [Function `organization_org_type`](#social_contracts_memory_organization_org_type)
 -  [Function `organization_root_agent_id`](#social_contracts_memory_organization_root_agent_id)
@@ -116,6 +150,19 @@ computed off-chain (indexer/server).
 -  [Function `update_agentic_organization_metadata`](#social_contracts_memory_update_agentic_organization_metadata)
 -  [Function `update_agentic_organization_category`](#social_contracts_memory_update_agentic_organization_category)
 -  [Function `deactivate_agentic_organization`](#social_contracts_memory_deactivate_agentic_organization)
+-  [Function `ensure_org_memory_group`](#social_contracts_memory_ensure_org_memory_group)
+-  [Function `org_memory_group_address`](#social_contracts_memory_org_memory_group_address)
+-  [Function `org_memory_group_exists`](#social_contracts_memory_org_memory_group_exists)
+-  [Function `assert_org_permission`](#social_contracts_memory_assert_org_permission)
+-  [Function `has_org_permission`](#social_contracts_memory_has_org_permission)
+-  [Function `grant_org_memory_permission`](#social_contracts_memory_grant_org_memory_permission)
+-  [Function `revoke_org_memory_permission`](#social_contracts_memory_revoke_org_memory_permission)
+-  [Function `define_custom_org_role`](#social_contracts_memory_define_custom_org_role)
+-  [Function `assign_org_role`](#social_contracts_memory_assign_org_role)
+-  [Function `revoke_org_role`](#social_contracts_memory_revoke_org_role)
+-  [Function `org_role_assignment_mask`](#social_contracts_memory_org_role_assignment_mask)
+-  [Function `org_role_mask`](#social_contracts_memory_org_role_mask)
+-  [Function `approve_org_key_policy`](#social_contracts_memory_approve_org_key_policy)
 -  [Function `register_sub_agent`](#social_contracts_memory_register_sub_agent)
 -  [Function `register_sub_agent_delegated`](#social_contracts_memory_register_sub_agent_delegated)
 -  [Function `update_sub_agent`](#social_contracts_memory_update_sub_agent)
@@ -158,6 +205,7 @@ computed off-chain (indexer/server).
 -  [Function `has_account`](#social_contracts_memory_has_account)
 -  [Function `account_id_for_owner`](#social_contracts_memory_account_id_for_owner)
 -  [Function `is_registered_agent`](#social_contracts_memory_is_registered_agent)
+-  [Function `is_descendant_agent`](#social_contracts_memory_is_descendant_agent)
 -  [Function `is_active`](#social_contracts_memory_is_active)
 -  [Function `account_version`](#social_contracts_memory_account_version)
 -  [Function `registry_version`](#social_contracts_memory_registry_version)
@@ -193,6 +241,16 @@ computed off-chain (indexer/server).
 -  [Function `assert_valid_org_type`](#social_contracts_memory_assert_valid_org_type)
 -  [Function `assert_organization_belongs_to_account`](#social_contracts_memory_assert_organization_belongs_to_account)
 -  [Function `assert_organization_ready_for_root`](#social_contracts_memory_assert_organization_ready_for_root)
+-  [Function `is_org_group`](#social_contracts_memory_is_org_group)
+-  [Function `assert_org_group`](#social_contracts_memory_assert_org_group)
+-  [Function `assert_org_permission_manager`](#social_contracts_memory_assert_org_permission_manager)
+-  [Function `assert_valid_org_permission_mask`](#social_contracts_memory_assert_valid_org_permission_mask)
+-  [Function `assert_member_grantable`](#social_contracts_memory_assert_member_grantable)
+-  [Function `grant_org_permissions_from_mask`](#social_contracts_memory_grant_org_permissions_from_mask)
+-  [Function `revoke_org_permissions_from_mask`](#social_contracts_memory_revoke_org_permissions_from_mask)
+-  [Function `is_builtin_role_name`](#social_contracts_memory_is_builtin_role_name)
+-  [Function `builtin_role_mask`](#social_contracts_memory_builtin_role_mask)
+-  [Function `resolve_role_mask`](#social_contracts_memory_resolve_role_mask)
 -  [Function `has_cap`](#social_contracts_memory_has_cap)
 -  [Function `cap_requires_approval`](#social_contracts_memory_cap_requires_approval)
 -  [Function `emit_sub_agent_registered`](#social_contracts_memory_emit_sub_agent_registered)
@@ -221,11 +279,15 @@ computed off-chain (indexer/server).
 <b>use</b> <a href="../myso/object.md#myso_object">myso::object</a>;
 <b>use</b> <a href="../myso/package.md#myso_package">myso::package</a>;
 <b>use</b> <a href="../myso/party.md#myso_party">myso::party</a>;
+<b>use</b> <a href="../myso/permissioned_group.md#myso_permissioned_group">myso::permissioned_group</a>;
+<b>use</b> <a href="../myso/permissions_table.md#myso_permissions_table">myso::permissions_table</a>;
 <b>use</b> <a href="../myso/table.md#myso_table">myso::table</a>;
 <b>use</b> <a href="../myso/transfer.md#myso_transfer">myso::transfer</a>;
 <b>use</b> <a href="../myso/tx_context.md#myso_tx_context">myso::tx_context</a>;
 <b>use</b> <a href="../myso/types.md#myso_types">myso::types</a>;
+<b>use</b> <a href="../myso/unpause_cap.md#myso_unpause_cap">myso::unpause_cap</a>;
 <b>use</b> <a href="../myso/vec_map.md#myso_vec_map">myso::vec_map</a>;
+<b>use</b> <a href="../myso/vec_set.md#myso_vec_set">myso::vec_set</a>;
 <b>use</b> <a href="../std/address.md#std_address">std::address</a>;
 <b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
 <b>use</b> <a href="../std/bcs.md#std_bcs">std::bcs</a>;
@@ -310,6 +372,265 @@ computed off-chain (indexer/server).
 
 
 <dl>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_MemorySharePackage"></a>
+
+## Struct `MemorySharePackage`
+
+Package witness for <code>PermissionedGroup&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>&gt;</code> (org memory share groups).
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a> <b>has</b> drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_OrgMemoryGroupTag"></a>
+
+## Struct `OrgMemoryGroupTag`
+
+Derivation key for the per-organization memory share group (derived from the org UID).
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_OrgMemoryGroupTag">OrgMemoryGroupTag</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_OrgMemoryReader"></a>
+
+## Struct `OrgMemoryReader`
+
+Permission to read org-visible shared memory (relayer recall scope + MYDATA key release).
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_OrgMemoryReader">OrgMemoryReader</a> <b>has</b> drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_OrgMemoryWriter"></a>
+
+## Struct `OrgMemoryWriter`
+
+Permission to write org-visible shared memory.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_OrgMemoryWriter">OrgMemoryWriter</a> <b>has</b> drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_OrgAgentManager"></a>
+
+## Struct `OrgAgentManager`
+
+Permission to manage the org's agent fleet (dashboard + future scheduler surfaces).
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_OrgAgentManager">OrgAgentManager</a> <b>has</b> drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_OrgBudgetManager"></a>
+
+## Struct `OrgBudgetManager`
+
+Permission to manage AI-credit budgets for the org's agents (<code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_set_agent_budget_as_manager">ai_credit::set_agent_budget_as_manager</a></code>).
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_OrgBudgetManager">OrgBudgetManager</a> <b>has</b> drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_OrgSpendApprover"></a>
+
+## Struct `OrgSpendApprover`
+
+Permission to approve over-threshold AI-credit spends (<code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_approve_agent_spend_as_approver">ai_credit::approve_agent_spend_as_approver</a></code>).
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_OrgSpendApprover">OrgSpendApprover</a> <b>has</b> drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_OrgDashboardViewer"></a>
+
+## Struct `OrgDashboardViewer`
+
+Permission to view org dashboards (recorded on-chain; server-side read gating is a later phase).
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_OrgDashboardViewer">OrgDashboardViewer</a> <b>has</b> drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_OrgAuditor"></a>
+
+## Struct `OrgAuditor`
+
+Permission to read org audit logs (recorded on-chain; server-side read gating is a later phase).
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_OrgAuditor">OrgAuditor</a> <b>has</b> drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_OrgCustomRoleKey"></a>
+
+## Struct `OrgCustomRoleKey`
+
+Dynamic-field key on the org UID for a custom role definition (<code>name -&gt; mask</code>).
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_OrgCustomRoleKey">OrgCustomRoleKey</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>name: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_OrgRoleAssignmentKey"></a>
+
+## Struct `OrgRoleAssignmentKey`
+
+Dynamic-field key on the org UID recording a role assignment's exact granted delta,
+so revocation removes precisely what the assignment added (immune to role redefinition
+and to overlap with direct grants or other roles).
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_OrgRoleAssignmentKey">OrgRoleAssignmentKey</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>member: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>role_name: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
 </dl>
 
 
@@ -1603,6 +1924,350 @@ Human root plus on-chain agent auth index (shared [<code><a href="../social_cont
 
 </details>
 
+<a name="social_contracts_memory_OrgMemoryGroupCreated"></a>
+
+## Struct `OrgMemoryGroupCreated`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_OrgMemoryGroupCreated">OrgMemoryGroupCreated</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>group_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>account_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>principal_owner: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>created_at: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_OrgMemoryPermissionGranted"></a>
+
+## Struct `OrgMemoryPermissionGranted`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_OrgMemoryPermissionGranted">OrgMemoryPermissionGranted</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code><a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>account_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>group_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>member: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>permissions_mask: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>granted_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp_ms: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_OrgMemoryPermissionRevoked"></a>
+
+## Struct `OrgMemoryPermissionRevoked`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_OrgMemoryPermissionRevoked">OrgMemoryPermissionRevoked</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code><a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>account_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>group_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>member: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>permissions_mask: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>revoked_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp_ms: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_OrgRoleDefined"></a>
+
+## Struct `OrgRoleDefined`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_OrgRoleDefined">OrgRoleDefined</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code><a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>account_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>role_name: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>mask: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>previous_mask: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>defined_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp_ms: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_OrgRoleAssigned"></a>
+
+## Struct `OrgRoleAssigned`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_OrgRoleAssigned">OrgRoleAssigned</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code><a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>account_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>group_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>member: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>role_name: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>mask: u64</code>
+</dt>
+<dd>
+ Full mask of the role at assignment time.
+</dd>
+<dt>
+<code>granted_mask: u64</code>
+</dt>
+<dd>
+ Delta actually granted (excludes permissions the member already held).
+</dd>
+<dt>
+<code>assigned_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp_ms: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_OrgRoleRevoked"></a>
+
+## Struct `OrgRoleRevoked`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_OrgRoleRevoked">OrgRoleRevoked</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code><a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>account_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>group_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>member: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>role_name: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>revoked_mask: u64</code>
+</dt>
+<dd>
+ Delta actually revoked (the assignment's recorded granted_mask).
+</dd>
+<dt>
+<code>revoked_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp_ms: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="@Constants_1"></a>
 
 ## Constants
@@ -1802,6 +2467,143 @@ Human root plus on-chain agent auth index (shared [<code><a href="../social_cont
 
 
 <pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_CAP_AI_SPEND">CAP_AI_SPEND</a>: u64 = 16384;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_CAP_BUDGET_MANAGE"></a>
+
+Parent agents holding this capability may manage AI-credit budgets and
+spend allowances for descendants in their subtree (see <code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit">ai_credit</a></code>).
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_CAP_BUDGET_MANAGE">CAP_BUDGET_MANAGE</a>: u64 = 32768;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_ORG_PERM_MEMORY_READ"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_MEMORY_READ">ORG_PERM_MEMORY_READ</a>: u64 = 1;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_ORG_PERM_MEMORY_WRITE"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_MEMORY_WRITE">ORG_PERM_MEMORY_WRITE</a>: u64 = 2;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_ORG_PERM_AGENT_MANAGER"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_AGENT_MANAGER">ORG_PERM_AGENT_MANAGER</a>: u64 = 4;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_ORG_PERM_BUDGET_MANAGER"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_BUDGET_MANAGER">ORG_PERM_BUDGET_MANAGER</a>: u64 = 8;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_ORG_PERM_SPEND_APPROVER"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_SPEND_APPROVER">ORG_PERM_SPEND_APPROVER</a>: u64 = 16;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_ORG_PERM_DASHBOARD_VIEWER"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_DASHBOARD_VIEWER">ORG_PERM_DASHBOARD_VIEWER</a>: u64 = 32;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_ORG_PERM_AUDITOR"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_AUDITOR">ORG_PERM_AUDITOR</a>: u64 = 64;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_ORG_PERM_ALL"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_ALL">ORG_PERM_ALL</a>: u64 = 127;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_ROLE_MASK_OWNER"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ROLE_MASK_OWNER">ROLE_MASK_OWNER</a>: u64 = 127;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_ROLE_MASK_ADMIN"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ROLE_MASK_ADMIN">ROLE_MASK_ADMIN</a>: u64 = 111;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_ROLE_MASK_AGENT_MANAGER"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ROLE_MASK_AGENT_MANAGER">ROLE_MASK_AGENT_MANAGER</a>: u64 = 36;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_ROLE_MASK_FINANCE_APPROVER"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ROLE_MASK_FINANCE_APPROVER">ROLE_MASK_FINANCE_APPROVER</a>: u64 = 24;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_ROLE_MASK_MEMORY_ADMINISTRATOR"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ROLE_MASK_MEMORY_ADMINISTRATOR">ROLE_MASK_MEMORY_ADMINISTRATOR</a>: u64 = 3;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_ROLE_MASK_AUDITOR"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ROLE_MASK_AUDITOR">ROLE_MASK_AUDITOR</a>: u64 = 96;
 </code></pre>
 
 
@@ -2378,6 +3180,87 @@ Human root plus on-chain agent auth index (shared [<code><a href="../social_cont
 
 
 <pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EDescriptionTooLong">EDescriptionTooLong</a>: u64 = 45;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_EOrgGroupMismatch"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EOrgGroupMismatch">EOrgGroupMismatch</a>: u64 = 46;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_EInvalidOrgPermission"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EInvalidOrgPermission">EInvalidOrgPermission</a>: u64 = 47;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_EOrgRoleNotFound"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EOrgRoleNotFound">EOrgRoleNotFound</a>: u64 = 49;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_EOrgRoleAlreadyAssigned"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EOrgRoleAlreadyAssigned">EOrgRoleAlreadyAssigned</a>: u64 = 50;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_EOrgRoleNotAssigned"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EOrgRoleNotAssigned">EOrgRoleNotAssigned</a>: u64 = 51;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_EOrgRoleNameTooLong"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EOrgRoleNameTooLong">EOrgRoleNameTooLong</a>: u64 = 52;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_EOrgRoleMaskEmpty"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EOrgRoleMaskEmpty">EOrgRoleMaskEmpty</a>: u64 = 53;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_EOrgRoleBuiltinRedefine"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EOrgRoleBuiltinRedefine">EOrgRoleBuiltinRedefine</a>: u64 = 54;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_ENotDescendantAgent"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ENotDescendantAgent">ENotDescendantAgent</a>: u64 = 55;
 </code></pre>
 
 
@@ -3180,6 +4063,336 @@ Human root plus on-chain agent auth index (shared [<code><a href="../social_cont
 
 </details>
 
+<a name="social_contracts_memory_cap_budget_manage"></a>
+
+## Function `cap_budget_manage`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_cap_budget_manage">cap_budget_manage</a>(): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_cap_budget_manage">cap_budget_manage</a>(): u64 { <a href="../social_contracts/memory.md#social_contracts_memory_CAP_BUDGET_MANAGE">CAP_BUDGET_MANAGE</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_org_perm_memory_read"></a>
+
+## Function `org_perm_memory_read`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_perm_memory_read">org_perm_memory_read</a>(): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_perm_memory_read">org_perm_memory_read</a>(): u64 { <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_MEMORY_READ">ORG_PERM_MEMORY_READ</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_org_perm_memory_write"></a>
+
+## Function `org_perm_memory_write`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_perm_memory_write">org_perm_memory_write</a>(): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_perm_memory_write">org_perm_memory_write</a>(): u64 { <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_MEMORY_WRITE">ORG_PERM_MEMORY_WRITE</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_org_perm_agent_manager"></a>
+
+## Function `org_perm_agent_manager`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_perm_agent_manager">org_perm_agent_manager</a>(): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_perm_agent_manager">org_perm_agent_manager</a>(): u64 { <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_AGENT_MANAGER">ORG_PERM_AGENT_MANAGER</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_org_perm_budget_manager"></a>
+
+## Function `org_perm_budget_manager`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_perm_budget_manager">org_perm_budget_manager</a>(): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_perm_budget_manager">org_perm_budget_manager</a>(): u64 { <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_BUDGET_MANAGER">ORG_PERM_BUDGET_MANAGER</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_org_perm_spend_approver"></a>
+
+## Function `org_perm_spend_approver`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_perm_spend_approver">org_perm_spend_approver</a>(): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_perm_spend_approver">org_perm_spend_approver</a>(): u64 { <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_SPEND_APPROVER">ORG_PERM_SPEND_APPROVER</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_org_perm_dashboard_viewer"></a>
+
+## Function `org_perm_dashboard_viewer`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_perm_dashboard_viewer">org_perm_dashboard_viewer</a>(): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_perm_dashboard_viewer">org_perm_dashboard_viewer</a>(): u64 { <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_DASHBOARD_VIEWER">ORG_PERM_DASHBOARD_VIEWER</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_org_perm_auditor"></a>
+
+## Function `org_perm_auditor`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_perm_auditor">org_perm_auditor</a>(): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_perm_auditor">org_perm_auditor</a>(): u64 { <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_AUDITOR">ORG_PERM_AUDITOR</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_org_perm_all"></a>
+
+## Function `org_perm_all`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_perm_all">org_perm_all</a>(): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_perm_all">org_perm_all</a>(): u64 { <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_ALL">ORG_PERM_ALL</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_role_mask_owner"></a>
+
+## Function `role_mask_owner`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_role_mask_owner">role_mask_owner</a>(): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_role_mask_owner">role_mask_owner</a>(): u64 { <a href="../social_contracts/memory.md#social_contracts_memory_ROLE_MASK_OWNER">ROLE_MASK_OWNER</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_role_mask_admin"></a>
+
+## Function `role_mask_admin`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_role_mask_admin">role_mask_admin</a>(): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_role_mask_admin">role_mask_admin</a>(): u64 { <a href="../social_contracts/memory.md#social_contracts_memory_ROLE_MASK_ADMIN">ROLE_MASK_ADMIN</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_role_mask_agent_manager"></a>
+
+## Function `role_mask_agent_manager`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_role_mask_agent_manager">role_mask_agent_manager</a>(): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_role_mask_agent_manager">role_mask_agent_manager</a>(): u64 { <a href="../social_contracts/memory.md#social_contracts_memory_ROLE_MASK_AGENT_MANAGER">ROLE_MASK_AGENT_MANAGER</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_role_mask_finance_approver"></a>
+
+## Function `role_mask_finance_approver`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_role_mask_finance_approver">role_mask_finance_approver</a>(): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_role_mask_finance_approver">role_mask_finance_approver</a>(): u64 { <a href="../social_contracts/memory.md#social_contracts_memory_ROLE_MASK_FINANCE_APPROVER">ROLE_MASK_FINANCE_APPROVER</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_role_mask_memory_administrator"></a>
+
+## Function `role_mask_memory_administrator`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_role_mask_memory_administrator">role_mask_memory_administrator</a>(): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_role_mask_memory_administrator">role_mask_memory_administrator</a>(): u64 { <a href="../social_contracts/memory.md#social_contracts_memory_ROLE_MASK_MEMORY_ADMINISTRATOR">ROLE_MASK_MEMORY_ADMINISTRATOR</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_role_mask_auditor"></a>
+
+## Function `role_mask_auditor`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_role_mask_auditor">role_mask_auditor</a>(): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_role_mask_auditor">role_mask_auditor</a>(): u64 { <a href="../social_contracts/memory.md#social_contracts_memory_ROLE_MASK_AUDITOR">ROLE_MASK_AUDITOR</a> }
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_memory_register_child"></a>
 
 ## Function `register_child`
@@ -3289,6 +4502,54 @@ Human root plus on-chain agent auth index (shared [<code><a href="../social_cont
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>(org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>): ID {
     object::id(org)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_organization_memory_account_id"></a>
+
+## Function `organization_memory_account_id`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_organization_memory_account_id">organization_memory_account_id</a>(org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>): <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_organization_memory_account_id">organization_memory_account_id</a>(org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>): ID {
+    org.memory_account_id
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_organization_active"></a>
+
+## Function `organization_active`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_organization_active">organization_active</a>(org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_organization_active">organization_active</a>(org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>): bool {
+    org.active
 }
 </code></pre>
 
@@ -3770,6 +5031,566 @@ Human owner creates a competitive agentic organization (max 8 per account).
         <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>,
         deactivated_at: clock::timestamp_ms(clock),
     });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_ensure_org_memory_group"></a>
+
+## Function `ensure_org_memory_group`
+
+Lazy-create the org's memory share group (a <code>PermissionedGroup&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>&gt;</code>
+derived from the org UID). Owner-only; idempotent. The owner receives
+<code>PermissionsAdmin</code> + <code>ExtensionPermissionsAdmin</code> from group creation, then typically
+grants <code>ExtensionPermissionsAdmin</code> to the org root agent's derived address once so the
+root agent can manage member permissions without further human transactions.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_ensure_org_memory_group">ensure_org_memory_group</a>(account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, org: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_ensure_org_memory_group">ensure_org_memory_group</a>(
+    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    org: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_object_version">assert_object_version</a>(&account.id);
+    <b>assert</b>!(tx_context::sender(ctx) == account.<a href="../social_contracts/memory.md#social_contracts_memory_owner">owner</a>, <a href="../social_contracts/memory.md#social_contracts_memory_ENotOwner">ENotOwner</a>);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_organization_belongs_to_account">assert_organization_belongs_to_account</a>(account, org);
+    <b>assert</b>!(org.active, <a href="../social_contracts/memory.md#social_contracts_memory_EOrganizationNotActive">EOrganizationNotActive</a>);
+    <b>if</b> (derived_object::exists(&org.id, <a href="../social_contracts/memory.md#social_contracts_memory_OrgMemoryGroupTag">OrgMemoryGroupTag</a>())) {
+        <b>return</b>
+    };
+    <b>let</b> group = permissioned_group::new_derived&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgMemoryGroupTag">OrgMemoryGroupTag</a>&gt;(
+        <a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>(),
+        &<b>mut</b> org.id,
+        <a href="../social_contracts/memory.md#social_contracts_memory_OrgMemoryGroupTag">OrgMemoryGroupTag</a>(),
+        ctx,
+    );
+    event::emit(<a href="../social_contracts/memory.md#social_contracts_memory_OrgMemoryGroupCreated">OrgMemoryGroupCreated</a> {
+        group_id: object::id(&group),
+        <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: object::id(org),
+        account_id: object::id(account),
+        principal_owner: account.<a href="../social_contracts/memory.md#social_contracts_memory_owner">owner</a>,
+        created_at: clock::timestamp_ms(clock),
+    });
+    transfer::public_share_object(group);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_org_memory_group_address"></a>
+
+## Function `org_memory_group_address`
+
+Deterministic address of the org's memory share group (whether or not created yet).
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_memory_group_address">org_memory_group_address</a>(org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>): <b>address</b>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_memory_group_address">org_memory_group_address</a>(org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>): <b>address</b> {
+    derived_object::derive_address(object::id(org), <a href="../social_contracts/memory.md#social_contracts_memory_OrgMemoryGroupTag">OrgMemoryGroupTag</a>())
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_org_memory_group_exists"></a>
+
+## Function `org_memory_group_exists`
+
+Whether the org's memory share group has been created.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_memory_group_exists">org_memory_group_exists</a>(org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_memory_group_exists">org_memory_group_exists</a>(org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>): bool {
+    derived_object::exists(&org.id, <a href="../social_contracts/memory.md#social_contracts_memory_OrgMemoryGroupTag">OrgMemoryGroupTag</a>())
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_assert_org_permission"></a>
+
+## Function `assert_org_permission`
+
+Shared authorization helper for org-scoped permissions. Verifies the group is the
+org's derived share group, the org is active, and <code>addr</code> holds witness permission <code>P</code>.
+Used by this module and <code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit">ai_credit</a></code> (role-gated budget/approval entries) so permission
+checks are never duplicated per call site.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_permission">assert_org_permission</a>&lt;P: drop&gt;(org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">social_contracts::memory::MemorySharePackage</a>&gt;, addr: <b>address</b>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_permission">assert_org_permission</a>&lt;P: drop&gt;(
+    org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>,
+    group: &PermissionedGroup&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>&gt;,
+    addr: <b>address</b>,
+) {
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_group">assert_org_group</a>(org, group);
+    <b>assert</b>!(org.active, <a href="../social_contracts/memory.md#social_contracts_memory_EOrganizationNotActive">EOrganizationNotActive</a>);
+    <b>assert</b>!(
+        permissioned_group::has_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, P&gt;(group, addr),
+        <a href="../social_contracts/memory.md#social_contracts_memory_ENoAccess">ENoAccess</a>,
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_has_org_permission"></a>
+
+## Function `has_org_permission`
+
+Non-aborting variant of [<code><a href="../social_contracts/memory.md#social_contracts_memory_assert_org_permission">assert_org_permission</a></code>].
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_has_org_permission">has_org_permission</a>&lt;P: drop&gt;(org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">social_contracts::memory::MemorySharePackage</a>&gt;, addr: <b>address</b>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_has_org_permission">has_org_permission</a>&lt;P: drop&gt;(
+    org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>,
+    group: &PermissionedGroup&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>&gt;,
+    addr: <b>address</b>,
+): bool {
+    <b>if</b> (!<a href="../social_contracts/memory.md#social_contracts_memory_is_org_group">is_org_group</a>(org, group) || !org.active) {
+        <b>return</b> <b>false</b>
+    };
+    permissioned_group::has_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, P&gt;(group, addr)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_grant_org_memory_permission"></a>
+
+## Function `grant_org_memory_permission`
+
+Grant org permissions (mask over the fixed witness set) to a member.
+Caller must hold <code>ExtensionPermissionsAdmin</code> on the group (owner from creation, or a
+delegated manager such as the org root agent). Granting is idempotent per bit.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_grant_org_memory_permission">grant_org_memory_permission</a>(account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, group: &<b>mut</b> <a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">social_contracts::memory::MemorySharePackage</a>&gt;, member: <b>address</b>, permissions_mask: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_grant_org_memory_permission">grant_org_memory_permission</a>(
+    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>,
+    group: &<b>mut</b> PermissionedGroup&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>&gt;,
+    member: <b>address</b>,
+    permissions_mask: u64,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_object_version">assert_object_version</a>(&account.id);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_organization_belongs_to_account">assert_organization_belongs_to_account</a>(account, org);
+    <b>assert</b>!(org.active, <a href="../social_contracts/memory.md#social_contracts_memory_EOrganizationNotActive">EOrganizationNotActive</a>);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_group">assert_org_group</a>(org, group);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_permission_manager">assert_org_permission_manager</a>(group, ctx);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_valid_org_permission_mask">assert_valid_org_permission_mask</a>(permissions_mask);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_member_grantable">assert_member_grantable</a>(account, org, member);
+    <b>let</b> _ = <a href="../social_contracts/memory.md#social_contracts_memory_grant_org_permissions_from_mask">grant_org_permissions_from_mask</a>(group, member, permissions_mask, ctx);
+    event::emit(<a href="../social_contracts/memory.md#social_contracts_memory_OrgMemoryPermissionGranted">OrgMemoryPermissionGranted</a> {
+        <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: object::id(org),
+        account_id: object::id(account),
+        group_id: object::id(group),
+        member,
+        permissions_mask,
+        granted_by: tx_context::sender(ctx),
+        timestamp_ms: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_revoke_org_memory_permission"></a>
+
+## Function `revoke_org_memory_permission`
+
+Revoke org permissions (mask) from a member. Revocation is idempotent per bit.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_revoke_org_memory_permission">revoke_org_memory_permission</a>(account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, group: &<b>mut</b> <a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">social_contracts::memory::MemorySharePackage</a>&gt;, member: <b>address</b>, permissions_mask: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_revoke_org_memory_permission">revoke_org_memory_permission</a>(
+    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>,
+    group: &<b>mut</b> PermissionedGroup&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>&gt;,
+    member: <b>address</b>,
+    permissions_mask: u64,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_object_version">assert_object_version</a>(&account.id);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_organization_belongs_to_account">assert_organization_belongs_to_account</a>(account, org);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_group">assert_org_group</a>(org, group);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_permission_manager">assert_org_permission_manager</a>(group, ctx);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_valid_org_permission_mask">assert_valid_org_permission_mask</a>(permissions_mask);
+    <b>let</b> _ = <a href="../social_contracts/memory.md#social_contracts_memory_revoke_org_permissions_from_mask">revoke_org_permissions_from_mask</a>(group, member, permissions_mask, ctx);
+    event::emit(<a href="../social_contracts/memory.md#social_contracts_memory_OrgMemoryPermissionRevoked">OrgMemoryPermissionRevoked</a> {
+        <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: object::id(org),
+        account_id: object::id(account),
+        group_id: object::id(group),
+        member,
+        permissions_mask,
+        revoked_by: tx_context::sender(ctx),
+        timestamp_ms: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_define_custom_org_role"></a>
+
+## Function `define_custom_org_role`
+
+Define (or redefine) a custom org role as a named mask. Built-in role names are
+reserved. Redefinition is safe: assignments record their exact granted delta.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_define_custom_org_role">define_custom_org_role</a>(account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, org: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">social_contracts::memory::MemorySharePackage</a>&gt;, name: <a href="../std/string.md#std_string_String">std::string::String</a>, mask: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_define_custom_org_role">define_custom_org_role</a>(
+    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    org: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>,
+    group: &PermissionedGroup&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>&gt;,
+    name: String,
+    mask: u64,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_object_version">assert_object_version</a>(&account.id);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_organization_belongs_to_account">assert_organization_belongs_to_account</a>(account, org);
+    <b>assert</b>!(org.active, <a href="../social_contracts/memory.md#social_contracts_memory_EOrganizationNotActive">EOrganizationNotActive</a>);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_group">assert_org_group</a>(org, group);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_permission_manager">assert_org_permission_manager</a>(group, ctx);
+    <b>assert</b>!(string::length(&name) &lt;= <a href="../social_contracts/memory.md#social_contracts_memory_MAX_LABEL_LENGTH">MAX_LABEL_LENGTH</a>, <a href="../social_contracts/memory.md#social_contracts_memory_EOrgRoleNameTooLong">EOrgRoleNameTooLong</a>);
+    <b>assert</b>!(!<a href="../social_contracts/memory.md#social_contracts_memory_is_builtin_role_name">is_builtin_role_name</a>(&name), <a href="../social_contracts/memory.md#social_contracts_memory_EOrgRoleBuiltinRedefine">EOrgRoleBuiltinRedefine</a>);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_valid_org_permission_mask">assert_valid_org_permission_mask</a>(mask);
+    <b>let</b> key = <a href="../social_contracts/memory.md#social_contracts_memory_OrgCustomRoleKey">OrgCustomRoleKey</a> { name };
+    <b>let</b> previous_mask = <b>if</b> (df::exists_with_type&lt;<a href="../social_contracts/memory.md#social_contracts_memory_OrgCustomRoleKey">OrgCustomRoleKey</a>, u64&gt;(&org.id, key)) {
+        <b>let</b> existing = df::borrow_mut&lt;<a href="../social_contracts/memory.md#social_contracts_memory_OrgCustomRoleKey">OrgCustomRoleKey</a>, u64&gt;(&<b>mut</b> org.id, key);
+        <b>let</b> prev = *existing;
+        *existing = mask;
+        option::some(prev)
+    } <b>else</b> {
+        df::add(&<b>mut</b> org.id, key, mask);
+        option::none()
+    };
+    event::emit(<a href="../social_contracts/memory.md#social_contracts_memory_OrgRoleDefined">OrgRoleDefined</a> {
+        <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: object::id(org),
+        account_id: object::id(account),
+        role_name: name,
+        mask,
+        previous_mask,
+        defined_by: tx_context::sender(ctx),
+        timestamp_ms: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_assign_org_role"></a>
+
+## Function `assign_org_role`
+
+Assign a role (built-in or custom) to a member: grants the role's constituent
+witnesses and records the exact granted delta for later revocation.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_assign_org_role">assign_org_role</a>(account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, org: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, group: &<b>mut</b> <a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">social_contracts::memory::MemorySharePackage</a>&gt;, member: <b>address</b>, role_name: <a href="../std/string.md#std_string_String">std::string::String</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_assign_org_role">assign_org_role</a>(
+    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    org: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>,
+    group: &<b>mut</b> PermissionedGroup&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>&gt;,
+    member: <b>address</b>,
+    role_name: String,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_object_version">assert_object_version</a>(&account.id);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_organization_belongs_to_account">assert_organization_belongs_to_account</a>(account, org);
+    <b>assert</b>!(org.active, <a href="../social_contracts/memory.md#social_contracts_memory_EOrganizationNotActive">EOrganizationNotActive</a>);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_group">assert_org_group</a>(org, group);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_permission_manager">assert_org_permission_manager</a>(group, ctx);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_member_grantable">assert_member_grantable</a>(account, org, member);
+    <b>let</b> mask = <a href="../social_contracts/memory.md#social_contracts_memory_resolve_role_mask">resolve_role_mask</a>(org, &role_name);
+    <b>let</b> key = <a href="../social_contracts/memory.md#social_contracts_memory_OrgRoleAssignmentKey">OrgRoleAssignmentKey</a> { member, role_name };
+    <b>assert</b>!(
+        !df::exists_with_type&lt;<a href="../social_contracts/memory.md#social_contracts_memory_OrgRoleAssignmentKey">OrgRoleAssignmentKey</a>, u64&gt;(&org.id, key),
+        <a href="../social_contracts/memory.md#social_contracts_memory_EOrgRoleAlreadyAssigned">EOrgRoleAlreadyAssigned</a>,
+    );
+    <b>let</b> granted_mask = <a href="../social_contracts/memory.md#social_contracts_memory_grant_org_permissions_from_mask">grant_org_permissions_from_mask</a>(group, member, mask, ctx);
+    df::add(&<b>mut</b> org.id, key, granted_mask);
+    event::emit(<a href="../social_contracts/memory.md#social_contracts_memory_OrgRoleAssigned">OrgRoleAssigned</a> {
+        <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: object::id(org),
+        account_id: object::id(account),
+        group_id: object::id(group),
+        member,
+        role_name,
+        mask,
+        granted_mask,
+        assigned_by: tx_context::sender(ctx),
+        timestamp_ms: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_revoke_org_role"></a>
+
+## Function `revoke_org_role`
+
+Revoke a role assignment: removes exactly the delta the assignment granted
+(permissions the member held before the assignment are untouched).
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_revoke_org_role">revoke_org_role</a>(account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, org: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, group: &<b>mut</b> <a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">social_contracts::memory::MemorySharePackage</a>&gt;, member: <b>address</b>, role_name: <a href="../std/string.md#std_string_String">std::string::String</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_revoke_org_role">revoke_org_role</a>(
+    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    org: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>,
+    group: &<b>mut</b> PermissionedGroup&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>&gt;,
+    member: <b>address</b>,
+    role_name: String,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_object_version">assert_object_version</a>(&account.id);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_organization_belongs_to_account">assert_organization_belongs_to_account</a>(account, org);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_group">assert_org_group</a>(org, group);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_permission_manager">assert_org_permission_manager</a>(group, ctx);
+    <b>let</b> key = <a href="../social_contracts/memory.md#social_contracts_memory_OrgRoleAssignmentKey">OrgRoleAssignmentKey</a> { member, role_name };
+    <b>assert</b>!(
+        df::exists_with_type&lt;<a href="../social_contracts/memory.md#social_contracts_memory_OrgRoleAssignmentKey">OrgRoleAssignmentKey</a>, u64&gt;(&org.id, key),
+        <a href="../social_contracts/memory.md#social_contracts_memory_EOrgRoleNotAssigned">EOrgRoleNotAssigned</a>,
+    );
+    <b>let</b> granted_mask: u64 = df::remove(&<b>mut</b> org.id, key);
+    <b>let</b> _ = <a href="../social_contracts/memory.md#social_contracts_memory_revoke_org_permissions_from_mask">revoke_org_permissions_from_mask</a>(group, member, granted_mask, ctx);
+    event::emit(<a href="../social_contracts/memory.md#social_contracts_memory_OrgRoleRevoked">OrgRoleRevoked</a> {
+        <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: object::id(org),
+        account_id: object::id(account),
+        group_id: object::id(group),
+        member,
+        role_name,
+        revoked_mask: granted_mask,
+        revoked_by: tx_context::sender(ctx),
+        timestamp_ms: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_org_role_assignment_mask"></a>
+
+## Function `org_role_assignment_mask`
+
+Assigned-delta mask for a role assignment, if present.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_role_assignment_mask">org_role_assignment_mask</a>(org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, member: <b>address</b>, role_name: <a href="../std/string.md#std_string_String">std::string::String</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_role_assignment_mask">org_role_assignment_mask</a>(
+    org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>,
+    member: <b>address</b>,
+    role_name: String,
+): Option&lt;u64&gt; {
+    <b>let</b> key = <a href="../social_contracts/memory.md#social_contracts_memory_OrgRoleAssignmentKey">OrgRoleAssignmentKey</a> { member, role_name };
+    <b>if</b> (df::exists_with_type&lt;<a href="../social_contracts/memory.md#social_contracts_memory_OrgRoleAssignmentKey">OrgRoleAssignmentKey</a>, u64&gt;(&org.id, key)) {
+        option::some(*df::borrow&lt;<a href="../social_contracts/memory.md#social_contracts_memory_OrgRoleAssignmentKey">OrgRoleAssignmentKey</a>, u64&gt;(&org.id, key))
+    } <b>else</b> {
+        option::none()
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_org_role_mask"></a>
+
+## Function `org_role_mask`
+
+Effective mask for a role name (built-in constant or custom definition).
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_role_mask">org_role_mask</a>(org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, role_name: &<a href="../std/string.md#std_string_String">std::string::String</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_role_mask">org_role_mask</a>(org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>, role_name: &String): Option&lt;u64&gt; {
+    <b>if</b> (<a href="../social_contracts/memory.md#social_contracts_memory_is_builtin_role_name">is_builtin_role_name</a>(role_name)) {
+        <b>return</b> option::some(<a href="../social_contracts/memory.md#social_contracts_memory_builtin_role_mask">builtin_role_mask</a>(role_name))
+    };
+    <b>let</b> key = <a href="../social_contracts/memory.md#social_contracts_memory_OrgCustomRoleKey">OrgCustomRoleKey</a> { name: *role_name };
+    <b>if</b> (df::exists_with_type&lt;<a href="../social_contracts/memory.md#social_contracts_memory_OrgCustomRoleKey">OrgCustomRoleKey</a>, u64&gt;(&org.id, key)) {
+        option::some(*df::borrow&lt;<a href="../social_contracts/memory.md#social_contracts_memory_OrgCustomRoleKey">OrgCustomRoleKey</a>, u64&gt;(&org.id, key))
+    } <b>else</b> {
+        option::none()
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_approve_org_key_policy"></a>
+
+## Function `approve_org_key_policy`
+
+Approve MYDATA key release for org-shared memory: the account owner (own-blob suffix)
+or any holder of <code><a href="../social_contracts/memory.md#social_contracts_memory_OrgMemoryReader">OrgMemoryReader</a></code> on the org's share group. Registered sub-agents
+must additionally have an active ancestor chain.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_approve_org_key_policy">approve_org_key_policy</a>(id: vector&lt;u8&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">social_contracts::memory::MemorySharePackage</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_approve_org_key_policy">approve_org_key_policy</a>(
+    id: vector&lt;u8&gt;,
+    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>,
+    group: &PermissionedGroup&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>&gt;,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_object_version">assert_object_version</a>(&account.id);
+    <b>assert</b>!(account.active, <a href="../social_contracts/memory.md#social_contracts_memory_EAccountDeactivated">EAccountDeactivated</a>);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_organization_belongs_to_account">assert_organization_belongs_to_account</a>(account, org);
+    <b>assert</b>!(org.active, <a href="../social_contracts/memory.md#social_contracts_memory_EOrganizationNotActive">EOrganizationNotActive</a>);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_group">assert_org_group</a>(org, group);
+    <b>let</b> caller = tx_context::sender(ctx);
+    <b>let</b> owner_bytes = bcs::to_bytes(&account.<a href="../social_contracts/memory.md#social_contracts_memory_owner">owner</a>);
+    <b>if</b> ((caller == account.<a href="../social_contracts/memory.md#social_contracts_memory_owner">owner</a>) && <a href="../social_contracts/memory.md#social_contracts_memory_has_suffix">has_suffix</a>(&id, &owner_bytes)) {
+        <b>return</b>
+    };
+    <b>if</b> (table::contains(&account.agents, caller)) {
+        <a href="../social_contracts/memory.md#social_contracts_memory_assert_ancestor_chain_active_from_table">assert_ancestor_chain_active_from_table</a>(account, caller, clock);
+    };
+    <b>assert</b>!(
+        permissioned_group::has_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgMemoryReader">OrgMemoryReader</a>&gt;(group, caller),
+        <a href="../social_contracts/memory.md#social_contracts_memory_ENoAccess">ENoAccess</a>,
+    );
 }
 </code></pre>
 
@@ -5067,6 +6888,59 @@ Per-transaction MYSO (MIST) spend ceiling for sub-agents. Principal owner is exe
 
 </details>
 
+<a name="social_contracts_memory_is_descendant_agent"></a>
+
+## Function `is_descendant_agent`
+
+True when <code>descendant_id</code> sits strictly below <code>ancestor_id</code> in the agent tree
+(walks the registry mirror; bounded by MAX_AGENT_DEPTH). Self is not a descendant.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_is_descendant_agent">is_descendant_agent</a>(account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, ancestor_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, descendant_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_is_descendant_agent">is_descendant_agent</a>(
+    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    ancestor_id: ID,
+    descendant_id: ID,
+): bool {
+    <b>if</b> (!table::contains(&account.agent_ids, descendant_id)) {
+        <b>return</b> <b>false</b>
+    };
+    <b>let</b> derived = *table::borrow(&account.agent_ids, descendant_id);
+    <b>let</b> <b>entry</b> = table::borrow(&account.agents, derived);
+    <b>let</b> <b>mut</b> current_parent = <b>entry</b>.parent_object_id;
+    <b>let</b> <b>mut</b> hops = 0u8;
+    <b>while</b> (option::is_some(&current_parent)) {
+        hops = hops + 1;
+        <b>if</b> (hops &gt; <a href="../social_contracts/memory.md#social_contracts_memory_MAX_AGENT_DEPTH">MAX_AGENT_DEPTH</a>) {
+            <b>return</b> <b>false</b>
+        };
+        <b>let</b> parent_id = *option::borrow(&current_parent);
+        <b>if</b> (parent_id == ancestor_id) {
+            <b>return</b> <b>true</b>
+        };
+        <b>if</b> (!table::contains(&account.agent_ids, parent_id)) {
+            <b>return</b> <b>false</b>
+        };
+        <b>let</b> parent_derived = *table::borrow(&account.agent_ids, parent_id);
+        <b>let</b> parent_entry = table::borrow(&account.agents, parent_derived);
+        current_parent = parent_entry.parent_object_id;
+    };
+    <b>false</b>
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_memory_is_active"></a>
 
 ## Function `is_active`
@@ -6292,6 +8166,388 @@ Per-transaction MYSO (MIST) spend ceiling for sub-agents. Principal owner is exe
     <a href="../social_contracts/memory.md#social_contracts_memory_assert_organization_belongs_to_account">assert_organization_belongs_to_account</a>(account, org);
     <b>assert</b>!(org.active, <a href="../social_contracts/memory.md#social_contracts_memory_EOrganizationNotActive">EOrganizationNotActive</a>);
     <b>assert</b>!(option::is_none(&org.root_agent_id), <a href="../social_contracts/memory.md#social_contracts_memory_EOrganizationHasRoot">EOrganizationHasRoot</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_is_org_group"></a>
+
+## Function `is_org_group`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_is_org_group">is_org_group</a>(org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">social_contracts::memory::MemorySharePackage</a>&gt;): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_is_org_group">is_org_group</a>(
+    org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>,
+    group: &PermissionedGroup&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>&gt;,
+): bool {
+    object::id_to_address(&object::id(group)) == <a href="../social_contracts/memory.md#social_contracts_memory_org_memory_group_address">org_memory_group_address</a>(org)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_assert_org_group"></a>
+
+## Function `assert_org_group`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_group">assert_org_group</a>(org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">social_contracts::memory::MemorySharePackage</a>&gt;)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_group">assert_org_group</a>(
+    org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>,
+    group: &PermissionedGroup&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>&gt;,
+) {
+    <b>assert</b>!(<a href="../social_contracts/memory.md#social_contracts_memory_is_org_group">is_org_group</a>(org, group), <a href="../social_contracts/memory.md#social_contracts_memory_EOrgGroupMismatch">EOrgGroupMismatch</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_assert_org_permission_manager"></a>
+
+## Function `assert_org_permission_manager`
+
+The framework re-checks manager permission per grant/revoke; this explicit check exists
+so wrappers fail fast (and so no-op masks cannot bypass authorization entirely).
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_permission_manager">assert_org_permission_manager</a>(group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">social_contracts::memory::MemorySharePackage</a>&gt;, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_permission_manager">assert_org_permission_manager</a>(
+    group: &PermissionedGroup&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>&gt;,
+    ctx: &TxContext,
+) {
+    <b>assert</b>!(
+        permissioned_group::has_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, ExtensionPermissionsAdmin&gt;(
+            group,
+            tx_context::sender(ctx),
+        ),
+        <a href="../social_contracts/memory.md#social_contracts_memory_ENoAccess">ENoAccess</a>,
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_assert_valid_org_permission_mask"></a>
+
+## Function `assert_valid_org_permission_mask`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_assert_valid_org_permission_mask">assert_valid_org_permission_mask</a>(mask: u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_assert_valid_org_permission_mask">assert_valid_org_permission_mask</a>(mask: u64) {
+    <b>assert</b>!(mask != 0, <a href="../social_contracts/memory.md#social_contracts_memory_EOrgRoleMaskEmpty">EOrgRoleMaskEmpty</a>);
+    <b>assert</b>!((mask & <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_ALL">ORG_PERM_ALL</a>) == mask, <a href="../social_contracts/memory.md#social_contracts_memory_EInvalidOrgPermission">EInvalidOrgPermission</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_assert_member_grantable"></a>
+
+## Function `assert_member_grantable`
+
+Grantable members: human addresses (org staff, not in the agents table) or registered
+sub-agents belonging to this org. Cross-org agent grants are rejected because the
+relayer scopes org recall by the agent's own organization.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_assert_member_grantable">assert_member_grantable</a>(account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, member: <b>address</b>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_assert_member_grantable">assert_member_grantable</a>(
+    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>,
+    member: <b>address</b>,
+) {
+    <b>if</b> (table::contains(&account.agents, member)) {
+        <b>let</b> <b>entry</b> = table::borrow(&account.agents, member);
+        <b>assert</b>!(<b>entry</b>.<a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a> == object::id(org), <a href="../social_contracts/memory.md#social_contracts_memory_EOrganizationOrgMismatch">EOrganizationOrgMismatch</a>);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_grant_org_permissions_from_mask"></a>
+
+## Function `grant_org_permissions_from_mask`
+
+Grant each witness in <code>mask</code> the member does not already hold. Returns the delta
+actually granted. Static per-bit branches (Move cannot grant by runtime TypeName).
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_grant_org_permissions_from_mask">grant_org_permissions_from_mask</a>(group: &<b>mut</b> <a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">social_contracts::memory::MemorySharePackage</a>&gt;, member: <b>address</b>, mask: u64, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_grant_org_permissions_from_mask">grant_org_permissions_from_mask</a>(
+    group: &<b>mut</b> PermissionedGroup&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>&gt;,
+    member: <b>address</b>,
+    mask: u64,
+    ctx: &TxContext,
+): u64 {
+    <b>let</b> <b>mut</b> granted = 0u64;
+    <b>if</b> ((mask & <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_MEMORY_READ">ORG_PERM_MEMORY_READ</a>) != 0
+        && !permissioned_group::has_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgMemoryReader">OrgMemoryReader</a>&gt;(group, member)) {
+        permissioned_group::grant_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgMemoryReader">OrgMemoryReader</a>&gt;(group, member, ctx);
+        granted = granted | <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_MEMORY_READ">ORG_PERM_MEMORY_READ</a>;
+    };
+    <b>if</b> ((mask & <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_MEMORY_WRITE">ORG_PERM_MEMORY_WRITE</a>) != 0
+        && !permissioned_group::has_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgMemoryWriter">OrgMemoryWriter</a>&gt;(group, member)) {
+        permissioned_group::grant_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgMemoryWriter">OrgMemoryWriter</a>&gt;(group, member, ctx);
+        granted = granted | <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_MEMORY_WRITE">ORG_PERM_MEMORY_WRITE</a>;
+    };
+    <b>if</b> ((mask & <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_AGENT_MANAGER">ORG_PERM_AGENT_MANAGER</a>) != 0
+        && !permissioned_group::has_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgAgentManager">OrgAgentManager</a>&gt;(group, member)) {
+        permissioned_group::grant_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgAgentManager">OrgAgentManager</a>&gt;(group, member, ctx);
+        granted = granted | <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_AGENT_MANAGER">ORG_PERM_AGENT_MANAGER</a>;
+    };
+    <b>if</b> ((mask & <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_BUDGET_MANAGER">ORG_PERM_BUDGET_MANAGER</a>) != 0
+        && !permissioned_group::has_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgBudgetManager">OrgBudgetManager</a>&gt;(group, member)) {
+        permissioned_group::grant_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgBudgetManager">OrgBudgetManager</a>&gt;(group, member, ctx);
+        granted = granted | <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_BUDGET_MANAGER">ORG_PERM_BUDGET_MANAGER</a>;
+    };
+    <b>if</b> ((mask & <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_SPEND_APPROVER">ORG_PERM_SPEND_APPROVER</a>) != 0
+        && !permissioned_group::has_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgSpendApprover">OrgSpendApprover</a>&gt;(group, member)) {
+        permissioned_group::grant_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgSpendApprover">OrgSpendApprover</a>&gt;(group, member, ctx);
+        granted = granted | <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_SPEND_APPROVER">ORG_PERM_SPEND_APPROVER</a>;
+    };
+    <b>if</b> ((mask & <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_DASHBOARD_VIEWER">ORG_PERM_DASHBOARD_VIEWER</a>) != 0
+        && !permissioned_group::has_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgDashboardViewer">OrgDashboardViewer</a>&gt;(group, member)) {
+        permissioned_group::grant_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgDashboardViewer">OrgDashboardViewer</a>&gt;(group, member, ctx);
+        granted = granted | <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_DASHBOARD_VIEWER">ORG_PERM_DASHBOARD_VIEWER</a>;
+    };
+    <b>if</b> ((mask & <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_AUDITOR">ORG_PERM_AUDITOR</a>) != 0
+        && !permissioned_group::has_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgAuditor">OrgAuditor</a>&gt;(group, member)) {
+        permissioned_group::grant_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgAuditor">OrgAuditor</a>&gt;(group, member, ctx);
+        granted = granted | <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_AUDITOR">ORG_PERM_AUDITOR</a>;
+    };
+    granted
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_revoke_org_permissions_from_mask"></a>
+
+## Function `revoke_org_permissions_from_mask`
+
+Revoke each witness in <code>mask</code> the member currently holds. Returns the delta revoked.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_revoke_org_permissions_from_mask">revoke_org_permissions_from_mask</a>(group: &<b>mut</b> <a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">social_contracts::memory::MemorySharePackage</a>&gt;, member: <b>address</b>, mask: u64, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_revoke_org_permissions_from_mask">revoke_org_permissions_from_mask</a>(
+    group: &<b>mut</b> PermissionedGroup&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>&gt;,
+    member: <b>address</b>,
+    mask: u64,
+    ctx: &TxContext,
+): u64 {
+    <b>let</b> <b>mut</b> revoked = 0u64;
+    <b>if</b> ((mask & <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_MEMORY_READ">ORG_PERM_MEMORY_READ</a>) != 0
+        && permissioned_group::has_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgMemoryReader">OrgMemoryReader</a>&gt;(group, member)) {
+        permissioned_group::revoke_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgMemoryReader">OrgMemoryReader</a>&gt;(group, member, ctx);
+        revoked = revoked | <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_MEMORY_READ">ORG_PERM_MEMORY_READ</a>;
+    };
+    <b>if</b> ((mask & <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_MEMORY_WRITE">ORG_PERM_MEMORY_WRITE</a>) != 0
+        && permissioned_group::has_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgMemoryWriter">OrgMemoryWriter</a>&gt;(group, member)) {
+        permissioned_group::revoke_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgMemoryWriter">OrgMemoryWriter</a>&gt;(group, member, ctx);
+        revoked = revoked | <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_MEMORY_WRITE">ORG_PERM_MEMORY_WRITE</a>;
+    };
+    <b>if</b> ((mask & <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_AGENT_MANAGER">ORG_PERM_AGENT_MANAGER</a>) != 0
+        && permissioned_group::has_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgAgentManager">OrgAgentManager</a>&gt;(group, member)) {
+        permissioned_group::revoke_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgAgentManager">OrgAgentManager</a>&gt;(group, member, ctx);
+        revoked = revoked | <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_AGENT_MANAGER">ORG_PERM_AGENT_MANAGER</a>;
+    };
+    <b>if</b> ((mask & <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_BUDGET_MANAGER">ORG_PERM_BUDGET_MANAGER</a>) != 0
+        && permissioned_group::has_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgBudgetManager">OrgBudgetManager</a>&gt;(group, member)) {
+        permissioned_group::revoke_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgBudgetManager">OrgBudgetManager</a>&gt;(group, member, ctx);
+        revoked = revoked | <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_BUDGET_MANAGER">ORG_PERM_BUDGET_MANAGER</a>;
+    };
+    <b>if</b> ((mask & <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_SPEND_APPROVER">ORG_PERM_SPEND_APPROVER</a>) != 0
+        && permissioned_group::has_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgSpendApprover">OrgSpendApprover</a>&gt;(group, member)) {
+        permissioned_group::revoke_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgSpendApprover">OrgSpendApprover</a>&gt;(group, member, ctx);
+        revoked = revoked | <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_SPEND_APPROVER">ORG_PERM_SPEND_APPROVER</a>;
+    };
+    <b>if</b> ((mask & <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_DASHBOARD_VIEWER">ORG_PERM_DASHBOARD_VIEWER</a>) != 0
+        && permissioned_group::has_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgDashboardViewer">OrgDashboardViewer</a>&gt;(group, member)) {
+        permissioned_group::revoke_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgDashboardViewer">OrgDashboardViewer</a>&gt;(group, member, ctx);
+        revoked = revoked | <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_DASHBOARD_VIEWER">ORG_PERM_DASHBOARD_VIEWER</a>;
+    };
+    <b>if</b> ((mask & <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_AUDITOR">ORG_PERM_AUDITOR</a>) != 0
+        && permissioned_group::has_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgAuditor">OrgAuditor</a>&gt;(group, member)) {
+        permissioned_group::revoke_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgAuditor">OrgAuditor</a>&gt;(group, member, ctx);
+        revoked = revoked | <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_AUDITOR">ORG_PERM_AUDITOR</a>;
+    };
+    revoked
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_is_builtin_role_name"></a>
+
+## Function `is_builtin_role_name`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_is_builtin_role_name">is_builtin_role_name</a>(name: &<a href="../std/string.md#std_string_String">std::string::String</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_is_builtin_role_name">is_builtin_role_name</a>(name: &String): bool {
+    <b>let</b> bytes = *string::as_bytes(name);
+    bytes == b"<a href="../social_contracts/memory.md#social_contracts_memory_owner">owner</a>"
+        || bytes == b"admin"
+        || bytes == b"agent_manager"
+        || bytes == b"finance_approver"
+        || bytes == b"memory_administrator"
+        || bytes == b"auditor"
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_builtin_role_mask"></a>
+
+## Function `builtin_role_mask`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_builtin_role_mask">builtin_role_mask</a>(name: &<a href="../std/string.md#std_string_String">std::string::String</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_builtin_role_mask">builtin_role_mask</a>(name: &String): u64 {
+    <b>let</b> bytes = *string::as_bytes(name);
+    <b>if</b> (bytes == b"<a href="../social_contracts/memory.md#social_contracts_memory_owner">owner</a>") {
+        <a href="../social_contracts/memory.md#social_contracts_memory_ROLE_MASK_OWNER">ROLE_MASK_OWNER</a>
+    } <b>else</b> <b>if</b> (bytes == b"admin") {
+        <a href="../social_contracts/memory.md#social_contracts_memory_ROLE_MASK_ADMIN">ROLE_MASK_ADMIN</a>
+    } <b>else</b> <b>if</b> (bytes == b"agent_manager") {
+        <a href="../social_contracts/memory.md#social_contracts_memory_ROLE_MASK_AGENT_MANAGER">ROLE_MASK_AGENT_MANAGER</a>
+    } <b>else</b> <b>if</b> (bytes == b"finance_approver") {
+        <a href="../social_contracts/memory.md#social_contracts_memory_ROLE_MASK_FINANCE_APPROVER">ROLE_MASK_FINANCE_APPROVER</a>
+    } <b>else</b> <b>if</b> (bytes == b"memory_administrator") {
+        <a href="../social_contracts/memory.md#social_contracts_memory_ROLE_MASK_MEMORY_ADMINISTRATOR">ROLE_MASK_MEMORY_ADMINISTRATOR</a>
+    } <b>else</b> <b>if</b> (bytes == b"auditor") {
+        <a href="../social_contracts/memory.md#social_contracts_memory_ROLE_MASK_AUDITOR">ROLE_MASK_AUDITOR</a>
+    } <b>else</b> {
+        <b>abort</b> <a href="../social_contracts/memory.md#social_contracts_memory_EOrgRoleNotFound">EOrgRoleNotFound</a>
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_resolve_role_mask"></a>
+
+## Function `resolve_role_mask`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_resolve_role_mask">resolve_role_mask</a>(org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, role_name: &<a href="../std/string.md#std_string_String">std::string::String</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_resolve_role_mask">resolve_role_mask</a>(org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>, role_name: &String): u64 {
+    <b>if</b> (<a href="../social_contracts/memory.md#social_contracts_memory_is_builtin_role_name">is_builtin_role_name</a>(role_name)) {
+        <b>return</b> <a href="../social_contracts/memory.md#social_contracts_memory_builtin_role_mask">builtin_role_mask</a>(role_name)
+    };
+    <b>let</b> key = <a href="../social_contracts/memory.md#social_contracts_memory_OrgCustomRoleKey">OrgCustomRoleKey</a> { name: *role_name };
+    <b>assert</b>!(
+        df::exists_with_type&lt;<a href="../social_contracts/memory.md#social_contracts_memory_OrgCustomRoleKey">OrgCustomRoleKey</a>, u64&gt;(&org.id, key),
+        <a href="../social_contracts/memory.md#social_contracts_memory_EOrgRoleNotFound">EOrgRoleNotFound</a>,
+    );
+    *df::borrow&lt;<a href="../social_contracts/memory.md#social_contracts_memory_OrgCustomRoleKey">OrgCustomRoleKey</a>, u64&gt;(&org.id, key)
 }
 </code></pre>
 

@@ -17,6 +17,10 @@ use myso_indexer_alt_social_schema::models::{
 };
 
 use crate::api::scalars::big_int::BigInt;
+use crate::api::types::enterprise::{
+    AgentSpendBreakdown, AuditLogConnection, AuditLogEntry, AuditLogFilterInput,
+    OrgMemoryPermission, OrgRole, OrgRoleAssignment, SpendApproval, window_from_gql,
+};
 use crate::api::types::memory::SubAgent;
 
 #[derive(Enum, Copy, Clone, Eq, PartialEq, Debug)]
@@ -193,6 +197,124 @@ impl AgenticOrganization {
             .flatten()
             .map(GraphOrganizationStatistics::from_stats)
     }
+
+    async fn agent_spend_breakdown(
+        &self,
+        ctx: &Context<'_>,
+        window: Option<OrganizationStatsWindowGql>,
+        #[graphql(default = 20)] limit: i32,
+    ) -> Option<Vec<AgentSpendBreakdown>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        reader
+            .list_agent_spend_breakdown(
+                &self.inner.organization_id,
+                window_from_gql(window),
+                limit as i64,
+            )
+            .await
+            .ok()
+            .map(|rows| rows.into_iter().map(AgentSpendBreakdown::from_entry).collect())
+    }
+
+    async fn roles(&self, ctx: &Context<'_>) -> Option<Vec<OrgRole>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        reader
+            .list_org_roles(&self.inner.organization_id)
+            .await
+            .ok()
+            .map(|rows| rows.into_iter().map(OrgRole::from_row).collect())
+    }
+
+    async fn role_assignments(
+        &self,
+        ctx: &Context<'_>,
+        member: Option<String>,
+        active_only: Option<bool>,
+    ) -> Option<Vec<OrgRoleAssignment>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        reader
+            .list_org_role_assignments(
+                &self.inner.organization_id,
+                member.as_deref(),
+                active_only.unwrap_or(true),
+            )
+            .await
+            .ok()
+            .map(|rows| rows.into_iter().map(OrgRoleAssignment::from_row).collect())
+    }
+
+    async fn memory_permissions(
+        &self,
+        ctx: &Context<'_>,
+        member: Option<String>,
+        active_only: Option<bool>,
+    ) -> Option<Vec<OrgMemoryPermission>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        reader
+            .list_org_memory_permissions(
+                &self.inner.organization_id,
+                member.as_deref(),
+                active_only.unwrap_or(true),
+            )
+            .await
+            .ok()
+            .map(|rows| rows.into_iter().map(OrgMemoryPermission::from_row).collect())
+    }
+
+    async fn spend_approvals(
+        &self,
+        ctx: &Context<'_>,
+        status: Option<String>,
+        agent: Option<String>,
+        #[graphql(default = 20)] limit: i32,
+    ) -> Option<Vec<SpendApproval>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        reader
+            .list_spend_approvals_by_org(
+                &self.inner.organization_id,
+                status.as_deref(),
+                agent.as_deref(),
+                limit as i64,
+            )
+            .await
+            .ok()
+            .map(|rows| rows.into_iter().map(SpendApproval::from_row).collect())
+    }
+
+    async fn audit_log(
+        &self,
+        ctx: &Context<'_>,
+        filter: Option<AuditLogFilterInput>,
+        #[graphql(default = 20)] limit: i32,
+        #[graphql(default = 0)] offset: i32,
+    ) -> Option<AuditLogConnection> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let filter: AuditLogFilterInput = filter.unwrap_or_default();
+        reader
+            .list_audit_logs_for_org(
+                &self.inner.organization_id,
+                &filter.into(),
+                limit as i64,
+                offset as i64,
+            )
+            .await
+            .ok()
+            .map(|rows| AuditLogConnection {
+                entries: rows.into_iter().map(AuditLogEntry::from_row).collect(),
+            })
+    }
 }
 
 #[derive(Clone)]
@@ -286,6 +408,26 @@ impl GraphOrganizationStatistics {
 
     async fn stats_rollup_at(&self) -> Option<GqlDateTime> {
         self.inner.stats_rollup_at.map(GqlDateTime::from_chrono)
+    }
+
+    async fn ai_credit_spent_mist(&self) -> BigInt {
+        BigInt::from(self.inner.ai_credit_spent_mist)
+    }
+
+    async fn ai_credit_usage_events(&self) -> BigInt {
+        BigInt::from(self.inner.ai_credit_usage_events)
+    }
+
+    async fn memory_entries(&self) -> BigInt {
+        BigInt::from(self.inner.memory_entries)
+    }
+
+    async fn memory_bytes(&self) -> BigInt {
+        BigInt::from(self.inner.memory_bytes)
+    }
+
+    async fn org_shared_memory_entries(&self) -> BigInt {
+        BigInt::from(self.inner.org_shared_memory_entries)
     }
 }
 

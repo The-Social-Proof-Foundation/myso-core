@@ -7294,6 +7294,39 @@ SubAgentKey
 AgentMemoryVaultKey
 	public struct
 	0x50c1::memory
+MemorySharePackage
+	public struct
+	0x50c1::memory
+OrgMemoryGroupTag
+	public struct
+	0x50c1::memory
+OrgMemoryReader
+	public struct
+	0x50c1::memory
+OrgMemoryWriter
+	public struct
+	0x50c1::memory
+OrgAgentManager
+	public struct
+	0x50c1::memory
+OrgBudgetManager
+	public struct
+	0x50c1::memory
+OrgSpendApprover
+	public struct
+	0x50c1::memory
+OrgDashboardViewer
+	public struct
+	0x50c1::memory
+OrgAuditor
+	public struct
+	0x50c1::memory
+OrgCustomRoleKey
+	public struct
+	0x50c1::memory
+OrgRoleAssignmentKey
+	public struct
+	0x50c1::memory
 SubAgentConstraints
 	public struct
 	0x50c1::memory
@@ -7361,6 +7394,24 @@ AgenticOrganizationCategoryUpdated
 	public struct
 	0x50c1::memory
 AgenticOrganizationDeactivated
+	public struct
+	0x50c1::memory
+OrgMemoryGroupCreated
+	public struct
+	0x50c1::memory
+OrgMemoryPermissionGranted
+	public struct
+	0x50c1::memory
+OrgMemoryPermissionRevoked
+	public struct
+	0x50c1::memory
+OrgRoleDefined
+	public struct
+	0x50c1::memory
+OrgRoleAssigned
+	public struct
+	0x50c1::memory
+OrgRoleRevoked
 	public struct
 	0x50c1::memory
 class_human
@@ -7462,6 +7513,51 @@ cap_agent_update
 cap_ai_spend
 	public fun
 	0x50c1::memory
+cap_budget_manage
+	public fun
+	0x50c1::memory
+org_perm_memory_read
+	public fun
+	0x50c1::memory
+org_perm_memory_write
+	public fun
+	0x50c1::memory
+org_perm_agent_manager
+	public fun
+	0x50c1::memory
+org_perm_budget_manager
+	public fun
+	0x50c1::memory
+org_perm_spend_approver
+	public fun
+	0x50c1::memory
+org_perm_dashboard_viewer
+	public fun
+	0x50c1::memory
+org_perm_auditor
+	public fun
+	0x50c1::memory
+org_perm_all
+	public fun
+	0x50c1::memory
+role_mask_owner
+	public fun
+	0x50c1::memory
+role_mask_admin
+	public fun
+	0x50c1::memory
+role_mask_agent_manager
+	public fun
+	0x50c1::memory
+role_mask_finance_approver
+	public fun
+	0x50c1::memory
+role_mask_memory_administrator
+	public fun
+	0x50c1::memory
+role_mask_auditor
+	public fun
+	0x50c1::memory
 register_child
 	public fun
 	0x50c1::memory
@@ -7475,6 +7571,12 @@ agent_object_id
 	public fun
 	0x50c1::memory
 organization_id
+	public fun
+	0x50c1::memory
+organization_memory_account_id
+	public fun
+	0x50c1::memory
+organization_active
 	public fun
 	0x50c1::memory
 sub_agent_organization_id
@@ -7514,6 +7616,45 @@ update_agentic_organization_category
 	public entry fun
 	0x50c1::memory
 deactivate_agentic_organization
+	public entry fun
+	0x50c1::memory
+ensure_org_memory_group
+	public entry fun
+	0x50c1::memory
+org_memory_group_address
+	public fun
+	0x50c1::memory
+org_memory_group_exists
+	public fun
+	0x50c1::memory
+assert_org_permission
+	public fun
+	0x50c1::memory
+has_org_permission
+	public fun
+	0x50c1::memory
+grant_org_memory_permission
+	public entry fun
+	0x50c1::memory
+revoke_org_memory_permission
+	public entry fun
+	0x50c1::memory
+define_custom_org_role
+	public entry fun
+	0x50c1::memory
+assign_org_role
+	public entry fun
+	0x50c1::memory
+revoke_org_role
+	public entry fun
+	0x50c1::memory
+org_role_assignment_mask
+	public fun
+	0x50c1::memory
+org_role_mask
+	public fun
+	0x50c1::memory
+approve_org_key_policy
 	public entry fun
 	0x50c1::memory
 register_sub_agent
@@ -7642,6 +7783,9 @@ account_id_for_owner
 is_registered_agent
 	public fun
 	0x50c1::memory
+is_descendant_agent
+	public fun
+	0x50c1::memory
 is_active
 	public fun
 	0x50c1::memory
@@ -7747,6 +7891,36 @@ assert_organization_belongs_to_account
 assert_organization_ready_for_root
 	fun
 	0x50c1::memory
+is_org_group
+	fun
+	0x50c1::memory
+assert_org_group
+	fun
+	0x50c1::memory
+assert_org_permission_manager
+	fun
+	0x50c1::memory
+assert_valid_org_permission_mask
+	fun
+	0x50c1::memory
+assert_member_grantable
+	fun
+	0x50c1::memory
+grant_org_permissions_from_mask
+	fun
+	0x50c1::memory
+revoke_org_permissions_from_mask
+	fun
+	0x50c1::memory
+is_builtin_role_name
+	fun
+	0x50c1::memory
+builtin_role_mask
+	fun
+	0x50c1::memory
+resolve_role_mask
+	fun
+	0x50c1::memory
 has_cap
 	public(package) fun
 	0x50c1::memory
@@ -7792,6 +7966,15 @@ AiCreditConfig
 AgentBudgetEntry
 	public struct
 	0x50c1::ai_credit
+SpendApprovalKey
+	public struct
+	0x50c1::ai_credit
+SpendApproval
+	public struct
+	0x50c1::ai_credit
+ApprovalNonceKey
+	public struct
+	0x50c1::ai_credit
 AiCreditBalance
 	public struct
 	0x50c1::ai_credit
@@ -7817,6 +8000,18 @@ AiCreditAgentBudgetUpdated
 	public struct
 	0x50c1::ai_credit
 AiCreditAgentBudgetDisabled
+	public struct
+	0x50c1::ai_credit
+AiCreditAgentBudgetChanged
+	public struct
+	0x50c1::ai_credit
+AiCreditSpendApproved
+	public struct
+	0x50c1::ai_credit
+AiCreditSpendApprovalRevoked
+	public struct
+	0x50c1::ai_credit
+AiCreditSpendApprovalConsumed
 	public struct
 	0x50c1::ai_credit
 AiCreditUsageSettled
@@ -7867,7 +8062,28 @@ set_account_caps
 set_agent_budget
 	public entry fun
 	0x50c1::ai_credit
+set_agent_budget_as_manager
+	public entry fun
+	0x50c1::ai_credit
 disable_agent_budget
+	public entry fun
+	0x50c1::ai_credit
+approve_agent_spend
+	public entry fun
+	0x50c1::ai_credit
+approve_agent_spend_as_approver
+	public entry fun
+	0x50c1::ai_credit
+revoke_agent_spend_approval
+	public entry fun
+	0x50c1::ai_credit
+set_child_agent_budget
+	public entry fun
+	0x50c1::ai_credit
+disable_child_agent_budget
+	public entry fun
+	0x50c1::ai_credit
+approve_child_agent_spend
 	public entry fun
 	0x50c1::ai_credit
 pause_balance
@@ -7915,6 +8131,24 @@ credits_from_mist
 mist_from_credits
 	public fun
 	0x50c1::ai_credit
+spend_approval_for
+	public fun
+	0x50c1::ai_credit
+approval_max_amount_mist
+	public fun
+	0x50c1::ai_credit
+approval_expires_at_ms
+	public fun
+	0x50c1::ai_credit
+approval_approved_by
+	public fun
+	0x50c1::ai_credit
+approval_nonce
+	public fun
+	0x50c1::ai_credit
+agent_approval_threshold
+	public fun
+	0x50c1::ai_credit
 agent_remaining_mist
 	public fun
 	0x50c1::ai_credit
@@ -7949,6 +8183,36 @@ assert_active
 	fun
 	0x50c1::ai_credit
 assert_agent_linked
+	fun
+	0x50c1::ai_credit
+assert_org_gate_for_agent
+	fun
+	0x50c1::ai_credit
+assert_parent_manages_child
+	fun
+	0x50c1::ai_credit
+assert_child_budget_within_parent_envelope
+	fun
+	0x50c1::ai_credit
+assert_limit_not_looser
+	fun
+	0x50c1::ai_credit
+assert_within_parent_envelope
+	fun
+	0x50c1::ai_credit
+upsert_agent_budget
+	fun
+	0x50c1::ai_credit
+disable_agent_budget_internal
+	fun
+	0x50c1::ai_credit
+store_spend_approval
+	fun
+	0x50c1::ai_credit
+next_approval_nonce
+	fun
+	0x50c1::ai_credit
+maybe_consume_spend_approval
 	fun
 	0x50c1::ai_credit
 assert_oracle_admin

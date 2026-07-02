@@ -9,6 +9,7 @@ pub mod memory;
 mod metrics;
 pub mod mydata;
 pub mod ai_credit;
+pub mod enterprise;
 pub mod org_leaderboard;
 pub mod org_stats;
 pub mod organization;
@@ -59,6 +60,7 @@ pub use org_leaderboard::{
     OrganizationLeaderboardSort, org_type_from_slug, organization_categories,
 };
 pub use org_stats::{OrganizationStatistics, OrganizationStatsWindow};
+pub use enterprise::{AgentSpendBreakdownEntry, AuditLogFilter};
 pub use organization::AgenticOrganizationListResult;
 pub use pg_reader::SocialPgReader;
 pub use platform::{PlatformBlockedProfileRow, PlatformRow, PlatformUserAccessRow};
@@ -181,6 +183,42 @@ pub async fn get_organization_leaderboard_for_db(
         window,
         limit,
         offset,
+        standalone_reader_metrics(),
+    )
+    .await
+}
+
+pub async fn list_agent_spend_breakdown_for_db(
+    db: &myso_pg_db::Db,
+    organization_id: &str,
+    window: OrganizationStatsWindow,
+    limit: i64,
+) -> anyhow::Result<Vec<AgentSpendBreakdownEntry>> {
+    let mut conn = db.connect().await?;
+    enterprise::list_agent_spend_breakdown(
+        &mut conn,
+        organization_id,
+        window,
+        limit,
+        standalone_reader_metrics(),
+    )
+    .await
+}
+
+pub async fn list_spend_approvals_by_org_for_db(
+    db: &myso_pg_db::Db,
+    organization_id: &str,
+    status: Option<&str>,
+    agent_object_id: Option<&str>,
+    limit: i64,
+) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::AiCreditSpendApprovalRow>> {
+    let mut conn = db.connect().await?;
+    enterprise::list_spend_approvals_by_org(
+        &mut conn,
+        organization_id,
+        status,
+        agent_object_id,
+        limit,
         standalone_reader_metrics(),
     )
     .await

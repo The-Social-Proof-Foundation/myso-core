@@ -77,6 +77,11 @@ pub async fn init_org_stats(
         last_activity_at_ms: Some(activity_at_ms),
         stats_rollup_at: None,
         updated_at: now,
+        ai_credit_spent_mist: 0,
+        ai_credit_usage_events: 0,
+        memory_entries: 0,
+        memory_bytes: 0,
+        org_shared_memory_entries: 0,
     };
     diesel::insert_into(
         myso_indexer_alt_social_schema::schema::sub_agent_organization_stats::table,
@@ -460,6 +465,36 @@ pub async fn apply_org_outbound_spend(
     if let Some(counterparty) = counterparty {
         record_counterparty(conn, organization_id, counterparty, activity_at_ms).await?;
     }
+    Ok(())
+}
+
+/// Tier 1 AI-credit spend attribution: bumps `ai_credit_spent_mist` and
+/// `ai_credit_usage_events` on the org stats row when the settling agent belongs to an org.
+pub async fn apply_org_ai_credit_spend(
+    conn: &mut Connection<'_>,
+    organization_id: Option<&str>,
+    amount_mist: i64,
+    activity_at_ms: i64,
+) -> Result<()> {
+    let Some(organization_id) = organization_id else {
+        return Ok(());
+    };
+    bump_org_bigint_column(
+        conn,
+        organization_id,
+        "ai_credit_spent_mist",
+        amount_mist,
+        activity_at_ms,
+    )
+    .await?;
+    bump_org_bigint_column(
+        conn,
+        organization_id,
+        "ai_credit_usage_events",
+        1,
+        activity_at_ms,
+    )
+    .await?;
     Ok(())
 }
 

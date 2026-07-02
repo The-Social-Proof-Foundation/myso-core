@@ -48,6 +48,7 @@ module social_contracts::memory {
         bcs,
         event,
         derived_object,
+        permissioned_group::{Self, PermissionedGroup, ExtensionPermissionsAdmin},
     };
 
     // ============================================================
@@ -87,6 +88,36 @@ module social_contracts::memory {
     const CAP_AGENT_UPDATE: u64 = 4096;
     const CAP_AGENT_REGISTER: u64 = 8192;
     const CAP_AI_SPEND: u64 = 16384;
+    /// Parent agents holding this capability may manage AI-credit budgets and
+    /// spend allowances for descendants in their subtree (see `ai_credit`).
+    const CAP_BUDGET_MANAGE: u64 = 32768;
+
+    // ============================================================
+    // Org permission bitmap (org memory share group + roles)
+    //
+    // Each bit maps 1:1 to an extension permission witness on the org's
+    // `PermissionedGroup<MemorySharePackage>`. Roles are masks over this
+    // fixed set; enforcement stays atomic per-witness. Bits >= 128 reserved
+    // for future governance permissions.
+    // ============================================================
+
+    const ORG_PERM_MEMORY_READ: u64 = 1;
+    const ORG_PERM_MEMORY_WRITE: u64 = 2;
+    const ORG_PERM_AGENT_MANAGER: u64 = 4;
+    const ORG_PERM_BUDGET_MANAGER: u64 = 8;
+    const ORG_PERM_SPEND_APPROVER: u64 = 16;
+    const ORG_PERM_DASHBOARD_VIEWER: u64 = 32;
+    const ORG_PERM_AUDITOR: u64 = 64;
+    const ORG_PERM_ALL: u64 = 127;
+
+    // Built-in role masks (assignment bundles over the fixed witness set).
+    const ROLE_MASK_OWNER: u64 = 127;
+    // All permissions except spend approval.
+    const ROLE_MASK_ADMIN: u64 = 111;
+    const ROLE_MASK_AGENT_MANAGER: u64 = 36; // agent manager + dashboard viewer
+    const ROLE_MASK_FINANCE_APPROVER: u64 = 24; // budget manager + spend approver
+    const ROLE_MASK_MEMORY_ADMINISTRATOR: u64 = 3; // memory read + write
+    const ROLE_MASK_AUDITOR: u64 = 96; // auditor + dashboard viewer
 
     // Role tag bits (policy hooks / indexer display)
     const ROLE_EDITOR: u64 = 1;
@@ -164,6 +195,15 @@ module social_contracts::memory {
     const EOrgCategoryUpdateCooldown: u64 = 43;
     const ENameTooLong: u64 = 44;
     const EDescriptionTooLong: u64 = 45;
+    const EOrgGroupMismatch: u64 = 46;
+    const EInvalidOrgPermission: u64 = 47;
+    const EOrgRoleNotFound: u64 = 49;
+    const EOrgRoleAlreadyAssigned: u64 = 50;
+    const EOrgRoleNotAssigned: u64 = 51;
+    const EOrgRoleNameTooLong: u64 = 52;
+    const EOrgRoleMaskEmpty: u64 = 53;
+    const EOrgRoleBuiltinRedefine: u64 = 54;
+    const ENotDescendantAgent: u64 = 55;
     const ENoAccess: u64 = 100;
 
     const ED25519_PUBLIC_KEY_LENGTH: u64 = 32;
@@ -189,6 +229,50 @@ module social_contracts::memory {
     }
 
     public struct AgentMemoryVaultKey has copy, drop, store {}
+
+    // ============================================================
+    // Org memory sharing (PermissionedGroup consumer)
+    // ============================================================
+
+    /// Package witness for `PermissionedGroup<MemorySharePackage>` (org memory share groups).
+    public struct MemorySharePackage() has drop;
+
+    /// Derivation key for the per-organization memory share group (derived from the org UID).
+    public struct OrgMemoryGroupTag() has copy, drop, store;
+
+    /// Permission to read org-visible shared memory (relayer recall scope + MYDATA key release).
+    public struct OrgMemoryReader() has drop;
+
+    /// Permission to write org-visible shared memory.
+    public struct OrgMemoryWriter() has drop;
+
+    /// Permission to manage the org's agent fleet (dashboard + future scheduler surfaces).
+    public struct OrgAgentManager() has drop;
+
+    /// Permission to manage AI-credit budgets for the org's agents (`ai_credit::set_agent_budget_as_manager`).
+    public struct OrgBudgetManager() has drop;
+
+    /// Permission to approve over-threshold AI-credit spends (`ai_credit::approve_agent_spend_as_approver`).
+    public struct OrgSpendApprover() has drop;
+
+    /// Permission to view org dashboards (recorded on-chain; server-side read gating is a later phase).
+    public struct OrgDashboardViewer() has drop;
+
+    /// Permission to read org audit logs (recorded on-chain; server-side read gating is a later phase).
+    public struct OrgAuditor() has drop;
+
+    /// Dynamic-field key on the org UID for a custom role definition (`name -> mask`).
+    public struct OrgCustomRoleKey has copy, drop, store {
+        name: String,
+    }
+
+    /// Dynamic-field key on the org UID recording a role assignment's exact granted delta,
+    /// so revocation removes precisely what the assignment added (immune to role redefinition
+    /// and to overlap with direct grants or other roles).
+    public struct OrgRoleAssignmentKey has copy, drop, store {
+        member: address,
+        role_name: String,
+    }
 
     public struct SubAgentConstraints has store, copy, drop {
         approval_required_caps: u64,
@@ -428,6 +512,74 @@ module social_contracts::memory {
         deactivated_at: u64,
     }
 
+    // ==== Org memory sharing + role events (indexed by the social indexer;
+    // raw framework PermissionedGroup events are NOT indexed, so every wrapper
+    // emits a domain event) ====
+
+    public struct OrgMemoryGroupCreated has copy, drop {
+        group_id: ID,
+        organization_id: ID,
+        account_id: ID,
+        principal_owner: address,
+        created_at: u64,
+    }
+
+    public struct OrgMemoryPermissionGranted has copy, drop {
+        organization_id: ID,
+        account_id: ID,
+        group_id: ID,
+        member: address,
+        permissions_mask: u64,
+        granted_by: address,
+        timestamp_ms: u64,
+    }
+
+    public struct OrgMemoryPermissionRevoked has copy, drop {
+        organization_id: ID,
+        account_id: ID,
+        group_id: ID,
+        member: address,
+        permissions_mask: u64,
+        revoked_by: address,
+        timestamp_ms: u64,
+    }
+
+    public struct OrgRoleDefined has copy, drop {
+        organization_id: ID,
+        account_id: ID,
+        role_name: String,
+        mask: u64,
+        previous_mask: Option<u64>,
+        defined_by: address,
+        timestamp_ms: u64,
+    }
+
+    public struct OrgRoleAssigned has copy, drop {
+        organization_id: ID,
+        account_id: ID,
+        group_id: ID,
+        member: address,
+        role_name: String,
+        /// Full mask of the role at assignment time.
+        mask: u64,
+        /// Delta actually granted (excludes permissions the member already held).
+        granted_mask: u64,
+        assigned_by: address,
+        timestamp_ms: u64,
+    }
+
+    public struct OrgRoleRevoked has copy, drop {
+        organization_id: ID,
+        account_id: ID,
+        group_id: ID,
+        member: address,
+        role_name: String,
+        /// Delta actually revoked (the assignment's recorded granted_mask).
+        revoked_mask: u64,
+        revoked_by: address,
+        timestamp_ms: u64,
+    }
+
     // ============================================================
     // Public accessors
     // ============================================================
@@ -467,6 +619,23 @@ module social_contracts::memory {
     public fun cap_agent_revoke(): u64 { CAP_AGENT_REVOKE }
     public fun cap_agent_update(): u64 { CAP_AGENT_UPDATE }
     public fun cap_ai_spend(): u64 { CAP_AI_SPEND }
+    public fun cap_budget_manage(): u64 { CAP_BUDGET_MANAGE }
+
+    public fun org_perm_memory_read(): u64 { ORG_PERM_MEMORY_READ }
+    public fun org_perm_memory_write(): u64 { ORG_PERM_MEMORY_WRITE }
+    public fun org_perm_agent_manager(): u64 { ORG_PERM_AGENT_MANAGER }
+    public fun org_perm_budget_manager(): u64 { ORG_PERM_BUDGET_MANAGER }
+    public fun org_perm_spend_approver(): u64 { ORG_PERM_SPEND_APPROVER }
+    public fun org_perm_dashboard_viewer(): u64 { ORG_PERM_DASHBOARD_VIEWER }
+    public fun org_perm_auditor(): u64 { ORG_PERM_AUDITOR }
+    public fun org_perm_all(): u64 { ORG_PERM_ALL }
+
+    public fun role_mask_owner(): u64 { ROLE_MASK_OWNER }
+    public fun role_mask_admin(): u64 { ROLE_MASK_ADMIN }
+    public fun role_mask_agent_manager(): u64 { ROLE_MASK_AGENT_MANAGER }
+    public fun role_mask_finance_approver(): u64 { ROLE_MASK_FINANCE_APPROVER }
+    public fun role_mask_memory_administrator(): u64 { ROLE_MASK_MEMORY_ADMINISTRATOR }
+    public fun role_mask_auditor(): u64 { ROLE_MASK_AUDITOR }
 
     public fun register_child(): u8 { REGISTER_CHILD }
     public fun register_peer(): u8 { REGISTER_PEER }
@@ -481,6 +650,14 @@ module social_contracts::memory {
 
     public fun organization_id(org: &AgenticOrganization): ID {
         object::id(org)
+    }
+
+    public fun organization_memory_account_id(org: &AgenticOrganization): ID {
+        org.memory_account_id
+    }
+
+    public fun organization_active(org: &AgenticOrganization): bool {
+        org.active
     }
 
     public fun sub_agent_organization_id(agent: &SubAgent): ID {
@@ -719,6 +896,334 @@ module social_contracts::memory {
             organization_id,
             deactivated_at: clock::timestamp_ms(clock),
         });
+    }
+
+    // ============================================================
+    // Org memory sharing: share group + permission wrappers
+    // ============================================================
+
+    /// Lazy-create the org's memory share group (a `PermissionedGroup<MemorySharePackage>`
+    /// derived from the org UID). Owner-only; idempotent. The owner receives
+    /// `PermissionsAdmin` + `ExtensionPermissionsAdmin` from group creation, then typically
+    /// grants `ExtensionPermissionsAdmin` to the org root agent's derived address once so the
+    /// root agent can manage member permissions without further human transactions.
+    public entry fun ensure_org_memory_group(
+        account: &MemoryAccount,
+        org: &mut AgenticOrganization,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert_object_version(&account.id);
+        assert!(tx_context::sender(ctx) == account.owner, ENotOwner);
+        assert_organization_belongs_to_account(account, org);
+        assert!(org.active, EOrganizationNotActive);
+
+        if (derived_object::exists(&org.id, OrgMemoryGroupTag())) {
+            return
+        };
+
+        let group = permissioned_group::new_derived<MemorySharePackage, OrgMemoryGroupTag>(
+            MemorySharePackage(),
+            &mut org.id,
+            OrgMemoryGroupTag(),
+            ctx,
+        );
+        event::emit(OrgMemoryGroupCreated {
+            group_id: object::id(&group),
+            organization_id: object::id(org),
+            account_id: object::id(account),
+            principal_owner: account.owner,
+            created_at: clock::timestamp_ms(clock),
+        });
+        transfer::public_share_object(group);
+    }
+
+    /// Deterministic address of the org's memory share group (whether or not created yet).
+    public fun org_memory_group_address(org: &AgenticOrganization): address {
+        derived_object::derive_address(object::id(org), OrgMemoryGroupTag())
+    }
+
+    /// Whether the org's memory share group has been created.
+    public fun org_memory_group_exists(org: &AgenticOrganization): bool {
+        derived_object::exists(&org.id, OrgMemoryGroupTag())
+    }
+
+    /// Shared authorization helper for org-scoped permissions. Verifies the group is the
+    /// org's derived share group, the org is active, and `addr` holds witness permission `P`.
+    /// Used by this module and `ai_credit` (role-gated budget/approval entries) so permission
+    /// checks are never duplicated per call site.
+    public fun assert_org_permission<P: drop>(
+        org: &AgenticOrganization,
+        group: &PermissionedGroup<MemorySharePackage>,
+        addr: address,
+    ) {
+        assert_org_group(org, group);
+        assert!(org.active, EOrganizationNotActive);
+        assert!(
+            permissioned_group::has_permission<MemorySharePackage, P>(group, addr),
+            ENoAccess,
+        );
+    }
+
+    /// Non-aborting variant of [`assert_org_permission`].
+    public fun has_org_permission<P: drop>(
+        org: &AgenticOrganization,
+        group: &PermissionedGroup<MemorySharePackage>,
+        addr: address,
+    ): bool {
+        if (!is_org_group(org, group) || !org.active) {
+            return false
+        };
+        permissioned_group::has_permission<MemorySharePackage, P>(group, addr)
+    }
+
+    /// Grant org permissions (mask over the fixed witness set) to a member.
+    /// Caller must hold `ExtensionPermissionsAdmin` on the group (owner from creation, or a
+    /// delegated manager such as the org root agent). Granting is idempotent per bit.
+    public entry fun grant_org_memory_permission(
+        account: &MemoryAccount,
+        org: &AgenticOrganization,
+        group: &mut PermissionedGroup<MemorySharePackage>,
+        member: address,
+        permissions_mask: u64,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_object_version(&account.id);
+        assert_organization_belongs_to_account(account, org);
+        assert!(org.active, EOrganizationNotActive);
+        assert_org_group(org, group);
+        assert_org_permission_manager(group, ctx);
+        assert_valid_org_permission_mask(permissions_mask);
+        assert_member_grantable(account, org, member);
+
+        let _ = grant_org_permissions_from_mask(group, member, permissions_mask, ctx);
+
+        event::emit(OrgMemoryPermissionGranted {
+            organization_id: object::id(org),
+            account_id: object::id(account),
+            group_id: object::id(group),
+            member,
+            permissions_mask,
+            granted_by: tx_context::sender(ctx),
+            timestamp_ms: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// Revoke org permissions (mask) from a member. Revocation is idempotent per bit.
+    public entry fun revoke_org_memory_permission(
+        account: &MemoryAccount,
+        org: &AgenticOrganization,
+        group: &mut PermissionedGroup<MemorySharePackage>,
+        member: address,
+        permissions_mask: u64,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_object_version(&account.id);
+        assert_organization_belongs_to_account(account, org);
+        assert_org_group(org, group);
+        assert_org_permission_manager(group, ctx);
+        assert_valid_org_permission_mask(permissions_mask);
+
+        let _ = revoke_org_permissions_from_mask(group, member, permissions_mask, ctx);
+
+        event::emit(OrgMemoryPermissionRevoked {
+            organization_id: object::id(org),
+            account_id: object::id(account),
+            group_id: object::id(group),
+            member,
+            permissions_mask,
+            revoked_by: tx_context::sender(ctx),
+            timestamp_ms: clock::timestamp_ms(clock),
+        });
+    }
+
+    // ============================================================
+    // Org roles (assignment bundles over the fixed witness set)
+    // ============================================================
+
+    /// Define (or redefine) a custom org role as a named mask. Built-in role names are
+    /// reserved. Redefinition is safe: assignments record their exact granted delta.
+    public entry fun define_custom_org_role(
+        account: &MemoryAccount,
+        org: &mut AgenticOrganization,
+        group: &PermissionedGroup<MemorySharePackage>,
+        name: String,
+        mask: u64,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_object_version(&account.id);
+        assert_organization_belongs_to_account(account, org);
+        assert!(org.active, EOrganizationNotActive);
+        assert_org_group(org, group);
+        assert_org_permission_manager(group, ctx);
+        assert!(string::length(&name) <= MAX_LABEL_LENGTH, EOrgRoleNameTooLong);
+        assert!(!is_builtin_role_name(&name), EOrgRoleBuiltinRedefine);
+        assert_valid_org_permission_mask(mask);
+
+        let key = OrgCustomRoleKey { name };
+        let previous_mask = if (df::exists_with_type<OrgCustomRoleKey, u64>(&org.id, key)) {
+            let existing = df::borrow_mut<OrgCustomRoleKey, u64>(&mut org.id, key);
+            let prev = *existing;
+            *existing = mask;
+            option::some(prev)
+        } else {
+            df::add(&mut org.id, key, mask);
+            option::none()
+        };
+
+        event::emit(OrgRoleDefined {
+            organization_id: object::id(org),
+            account_id: object::id(account),
+            role_name: name,
+            mask,
+            previous_mask,
+            defined_by: tx_context::sender(ctx),
+            timestamp_ms: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// Assign a role (built-in or custom) to a member: grants the role's constituent
+    /// witnesses and records the exact granted delta for later revocation.
+    public entry fun assign_org_role(
+        account: &MemoryAccount,
+        org: &mut AgenticOrganization,
+        group: &mut PermissionedGroup<MemorySharePackage>,
+        member: address,
+        role_name: String,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_object_version(&account.id);
+        assert_organization_belongs_to_account(account, org);
+        assert!(org.active, EOrganizationNotActive);
+        assert_org_group(org, group);
+        assert_org_permission_manager(group, ctx);
+        assert_member_grantable(account, org, member);
+
+        let mask = resolve_role_mask(org, &role_name);
+        let key = OrgRoleAssignmentKey { member, role_name };
+        assert!(
+            !df::exists_with_type<OrgRoleAssignmentKey, u64>(&org.id, key),
+            EOrgRoleAlreadyAssigned,
+        );
+
+        let granted_mask = grant_org_permissions_from_mask(group, member, mask, ctx);
+        df::add(&mut org.id, key, granted_mask);
+
+        event::emit(OrgRoleAssigned {
+            organization_id: object::id(org),
+            account_id: object::id(account),
+            group_id: object::id(group),
+            member,
+            role_name,
+            mask,
+            granted_mask,
+            assigned_by: tx_context::sender(ctx),
+            timestamp_ms: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// Revoke a role assignment: removes exactly the delta the assignment granted
+    /// (permissions the member held before the assignment are untouched).
+    public entry fun revoke_org_role(
+        account: &MemoryAccount,
+        org: &mut AgenticOrganization,
+        group: &mut PermissionedGroup<MemorySharePackage>,
+        member: address,
+        role_name: String,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_object_version(&account.id);
+        assert_organization_belongs_to_account(account, org);
+        assert_org_group(org, group);
+        assert_org_permission_manager(group, ctx);
+
+        let key = OrgRoleAssignmentKey { member, role_name };
+        assert!(
+            df::exists_with_type<OrgRoleAssignmentKey, u64>(&org.id, key),
+            EOrgRoleNotAssigned,
+        );
+        let granted_mask: u64 = df::remove(&mut org.id, key);
+        let _ = revoke_org_permissions_from_mask(group, member, granted_mask, ctx);
+
+        event::emit(OrgRoleRevoked {
+            organization_id: object::id(org),
+            account_id: object::id(account),
+            group_id: object::id(group),
+            member,
+            role_name,
+            revoked_mask: granted_mask,
+            revoked_by: tx_context::sender(ctx),
+            timestamp_ms: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// Assigned-delta mask for a role assignment, if present.
+    public fun org_role_assignment_mask(
+        org: &AgenticOrganization,
+        member: address,
+        role_name: String,
+    ): Option<u64> {
+        let key = OrgRoleAssignmentKey { member, role_name };
+        if (df::exists_with_type<OrgRoleAssignmentKey, u64>(&org.id, key)) {
+            option::some(*df::borrow<OrgRoleAssignmentKey, u64>(&org.id, key))
+        } else {
+            option::none()
+        }
+    }
+
+    /// Effective mask for a role name (built-in constant or custom definition).
+    public fun org_role_mask(org: &AgenticOrganization, role_name: &String): Option<u64> {
+        if (is_builtin_role_name(role_name)) {
+            return option::some(builtin_role_mask(role_name))
+        };
+        let key = OrgCustomRoleKey { name: *role_name };
+        if (df::exists_with_type<OrgCustomRoleKey, u64>(&org.id, key)) {
+            option::some(*df::borrow<OrgCustomRoleKey, u64>(&org.id, key))
+        } else {
+            option::none()
+        }
+    }
+
+    // ============================================================
+    // Org key-server access policy (MYDATA bridge)
+    // ============================================================
+
+    /// Approve MYDATA key release for org-shared memory: the account owner (own-blob suffix)
+    /// or any holder of `OrgMemoryReader` on the org's share group. Registered sub-agents
+    /// must additionally have an active ancestor chain.
+    public entry fun approve_org_key_policy(
+        id: vector<u8>,
+        account: &MemoryAccount,
+        org: &AgenticOrganization,
+        group: &PermissionedGroup<MemorySharePackage>,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_object_version(&account.id);
+        assert!(account.active, EAccountDeactivated);
+        assert_organization_belongs_to_account(account, org);
+        assert!(org.active, EOrganizationNotActive);
+        assert_org_group(org, group);
+
+        let caller = tx_context::sender(ctx);
+        let owner_bytes = bcs::to_bytes(&account.owner);
+        if ((caller == account.owner) && has_suffix(&id, &owner_bytes)) {
+            return
+        };
+
+        if (table::contains(&account.agents, caller)) {
+            assert_ancestor_chain_active_from_table(account, caller, clock);
+        };
+
+        assert!(
+            permissioned_group::has_permission<MemorySharePackage, OrgMemoryReader>(group, caller),
+            ENoAccess,
+        );
     }
 
     // ============================================================
@@ -1185,6 +1690,39 @@ module social_contracts::memory {
 
     public fun is_registered_agent(account: &MemoryAccount, derived: address): bool {
         table::contains(&account.agents, derived)
+    }
+
+    /// True when `descendant_id` sits strictly below `ancestor_id` in the agent tree
+    /// (walks the registry mirror; bounded by MAX_AGENT_DEPTH). Self is not a descendant.
+    public fun is_descendant_agent(
+        account: &MemoryAccount,
+        ancestor_id: ID,
+        descendant_id: ID,
+    ): bool {
+        if (!table::contains(&account.agent_ids, descendant_id)) {
+            return false
+        };
+        let derived = *table::borrow(&account.agent_ids, descendant_id);
+        let entry = table::borrow(&account.agents, derived);
+        let mut current_parent = entry.parent_object_id;
+        let mut hops = 0u8;
+        while (option::is_some(&current_parent)) {
+            hops = hops + 1;
+            if (hops > MAX_AGENT_DEPTH) {
+                return false
+            };
+            let parent_id = *option::borrow(&current_parent);
+            if (parent_id == ancestor_id) {
+                return true
+            };
+            if (!table::contains(&account.agent_ids, parent_id)) {
+                return false
+            };
+            let parent_derived = *table::borrow(&account.agent_ids, parent_id);
+            let parent_entry = table::borrow(&account.agents, parent_derived);
+            current_parent = parent_entry.parent_object_id;
+        };
+        false
     }
 
     public fun is_active(account: &MemoryAccount): bool { account.active }
@@ -1737,6 +2275,190 @@ module social_contracts::memory {
         assert!(option::is_none(&org.root_agent_id), EOrganizationHasRoot);
     }
 
+    // ==== Org memory sharing internals ====
+
+    fun is_org_group(
+        org: &AgenticOrganization,
+        group: &PermissionedGroup<MemorySharePackage>,
+    ): bool {
+        object::id_to_address(&object::id(group)) == org_memory_group_address(org)
+    }
+
+    fun assert_org_group(
+        org: &AgenticOrganization,
+        group: &PermissionedGroup<MemorySharePackage>,
+    ) {
+        assert!(is_org_group(org, group), EOrgGroupMismatch);
+    }
+
+    /// The framework re-checks manager permission per grant/revoke; this explicit check exists
+    /// so wrappers fail fast (and so no-op masks cannot bypass authorization entirely).
+    fun assert_org_permission_manager(
+        group: &PermissionedGroup<MemorySharePackage>,
+        ctx: &TxContext,
+    ) {
+        assert!(
+            permissioned_group::has_permission<MemorySharePackage, ExtensionPermissionsAdmin>(
+                group,
+                tx_context::sender(ctx),
+            ),
+            ENoAccess,
+        );
+    }
+
+    fun assert_valid_org_permission_mask(mask: u64) {
+        assert!(mask != 0, EOrgRoleMaskEmpty);
+        assert!((mask & ORG_PERM_ALL) == mask, EInvalidOrgPermission);
+    }
+
+    /// Grantable members: human addresses (org staff, not in the agents table) or registered
+    /// sub-agents belonging to this org. Cross-org agent grants are rejected because the
+    /// relayer scopes org recall by the agent's own organization.
+    fun assert_member_grantable(
+        account: &MemoryAccount,
+        org: &AgenticOrganization,
+        member: address,
+    ) {
+        if (table::contains(&account.agents, member)) {
+            let entry = table::borrow(&account.agents, member);
+            assert!(entry.organization_id == object::id(org), EOrganizationOrgMismatch);
+        };
+    }
+
+    /// Grant each witness in `mask` the member does not already hold. Returns the delta
+    /// actually granted. Static per-bit branches (Move cannot grant by runtime TypeName).
+    fun grant_org_permissions_from_mask(
+        group: &mut PermissionedGroup<MemorySharePackage>,
+        member: address,
+        mask: u64,
+        ctx: &TxContext,
+    ): u64 {
+        let mut granted = 0u64;
+        if ((mask & ORG_PERM_MEMORY_READ) != 0
+            && !permissioned_group::has_permission<MemorySharePackage, OrgMemoryReader>(group, member)) {
+            permissioned_group::grant_permission<MemorySharePackage, OrgMemoryReader>(group, member, ctx);
+            granted = granted | ORG_PERM_MEMORY_READ;
+        };
+        if ((mask & ORG_PERM_MEMORY_WRITE) != 0
+            && !permissioned_group::has_permission<MemorySharePackage, OrgMemoryWriter>(group, member)) {
+            permissioned_group::grant_permission<MemorySharePackage, OrgMemoryWriter>(group, member, ctx);
+            granted = granted | ORG_PERM_MEMORY_WRITE;
+        };
+        if ((mask & ORG_PERM_AGENT_MANAGER) != 0
+            && !permissioned_group::has_permission<MemorySharePackage, OrgAgentManager>(group, member)) {
+            permissioned_group::grant_permission<MemorySharePackage, OrgAgentManager>(group, member, ctx);
+            granted = granted | ORG_PERM_AGENT_MANAGER;
+        };
+        if ((mask & ORG_PERM_BUDGET_MANAGER) != 0
+            && !permissioned_group::has_permission<MemorySharePackage, OrgBudgetManager>(group, member)) {
+            permissioned_group::grant_permission<MemorySharePackage, OrgBudgetManager>(group, member, ctx);
+            granted = granted | ORG_PERM_BUDGET_MANAGER;
+        };
+        if ((mask & ORG_PERM_SPEND_APPROVER) != 0
+            && !permissioned_group::has_permission<MemorySharePackage, OrgSpendApprover>(group, member)) {
+            permissioned_group::grant_permission<MemorySharePackage, OrgSpendApprover>(group, member, ctx);
+            granted = granted | ORG_PERM_SPEND_APPROVER;
+        };
+        if ((mask & ORG_PERM_DASHBOARD_VIEWER) != 0
+            && !permissioned_group::has_permission<MemorySharePackage, OrgDashboardViewer>(group, member)) {
+            permissioned_group::grant_permission<MemorySharePackage, OrgDashboardViewer>(group, member, ctx);
+            granted = granted | ORG_PERM_DASHBOARD_VIEWER;
+        };
+        if ((mask & ORG_PERM_AUDITOR) != 0
+            && !permissioned_group::has_permission<MemorySharePackage, OrgAuditor>(group, member)) {
+            permissioned_group::grant_permission<MemorySharePackage, OrgAuditor>(group, member, ctx);
+            granted = granted | ORG_PERM_AUDITOR;
+        };
+        granted
+    }
+
+    /// Revoke each witness in `mask` the member currently holds. Returns the delta revoked.
+    fun revoke_org_permissions_from_mask(
+        group: &mut PermissionedGroup<MemorySharePackage>,
+        member: address,
+        mask: u64,
+        ctx: &TxContext,
+    ): u64 {
+        let mut revoked = 0u64;
+        if ((mask & ORG_PERM_MEMORY_READ) != 0
+            && permissioned_group::has_permission<MemorySharePackage, OrgMemoryReader>(group, member)) {
+            permissioned_group::revoke_permission<MemorySharePackage, OrgMemoryReader>(group, member, ctx);
+            revoked = revoked | ORG_PERM_MEMORY_READ;
+        };
+        if ((mask & ORG_PERM_MEMORY_WRITE) != 0
+            && permissioned_group::has_permission<MemorySharePackage, OrgMemoryWriter>(group, member)) {
+            permissioned_group::revoke_permission<MemorySharePackage, OrgMemoryWriter>(group, member, ctx);
+            revoked = revoked | ORG_PERM_MEMORY_WRITE;
+        };
+        if ((mask & ORG_PERM_AGENT_MANAGER) != 0
+            && permissioned_group::has_permission<MemorySharePackage, OrgAgentManager>(group, member)) {
+            permissioned_group::revoke_permission<MemorySharePackage, OrgAgentManager>(group, member, ctx);
+            revoked = revoked | ORG_PERM_AGENT_MANAGER;
+        };
+        if ((mask & ORG_PERM_BUDGET_MANAGER) != 0
+            && permissioned_group::has_permission<MemorySharePackage, OrgBudgetManager>(group, member)) {
+            permissioned_group::revoke_permission<MemorySharePackage, OrgBudgetManager>(group, member, ctx);
+            revoked = revoked | ORG_PERM_BUDGET_MANAGER;
+        };
+        if ((mask & ORG_PERM_SPEND_APPROVER) != 0
+            && permissioned_group::has_permission<MemorySharePackage, OrgSpendApprover>(group, member)) {
+            permissioned_group::revoke_permission<MemorySharePackage, OrgSpendApprover>(group, member, ctx);
+            revoked = revoked | ORG_PERM_SPEND_APPROVER;
+        };
+        if ((mask & ORG_PERM_DASHBOARD_VIEWER) != 0
+            && permissioned_group::has_permission<MemorySharePackage, OrgDashboardViewer>(group, member)) {
+            permissioned_group::revoke_permission<MemorySharePackage, OrgDashboardViewer>(group, member, ctx);
+            revoked = revoked | ORG_PERM_DASHBOARD_VIEWER;
+        };
+        if ((mask & ORG_PERM_AUDITOR) != 0
+            && permissioned_group::has_permission<MemorySharePackage, OrgAuditor>(group, member)) {
+            permissioned_group::revoke_permission<MemorySharePackage, OrgAuditor>(group, member, ctx);
+            revoked = revoked | ORG_PERM_AUDITOR;
+        };
+        revoked
+    }
+
+    fun is_builtin_role_name(name: &String): bool {
+        let bytes = *string::as_bytes(name);
+        bytes == b"owner"
+            || bytes == b"admin"
+            || bytes == b"agent_manager"
+            || bytes == b"finance_approver"
+            || bytes == b"memory_administrator"
+            || bytes == b"auditor"
+    }
+
+    fun builtin_role_mask(name: &String): u64 {
+        let bytes = *string::as_bytes(name);
+        if (bytes == b"owner") {
+            ROLE_MASK_OWNER
+        } else if (bytes == b"admin") {
+            ROLE_MASK_ADMIN
+        } else if (bytes == b"agent_manager") {
+            ROLE_MASK_AGENT_MANAGER
+        } else if (bytes == b"finance_approver") {
+            ROLE_MASK_FINANCE_APPROVER
+        } else if (bytes == b"memory_administrator") {
+            ROLE_MASK_MEMORY_ADMINISTRATOR
+        } else if (bytes == b"auditor") {
+            ROLE_MASK_AUDITOR
+        } else {
+            abort EOrgRoleNotFound
+        }
+    }
+
+    fun resolve_role_mask(org: &AgenticOrganization, role_name: &String): u64 {
+        if (is_builtin_role_name(role_name)) {
+            return builtin_role_mask(role_name)
+        };
+        let key = OrgCustomRoleKey { name: *role_name };
+        assert!(
+            df::exists_with_type<OrgCustomRoleKey, u64>(&org.id, key),
+            EOrgRoleNotFound,
+        );
+        *df::borrow<OrgCustomRoleKey, u64>(&org.id, key)
+    }
+
     public(package) fun has_cap(capabilities: u64, required_cap: u64): bool {
         (capabilities & required_cap) == required_cap
     }
@@ -1932,6 +2654,36 @@ module social_contracts::memory {
             let _: u64 = df::remove(&mut registry.id, VERSION_DF_KEY);
         }
     }
+
+    #[test_only]
+    public fun error_org_group_mismatch(): u64 { EOrgGroupMismatch }
+
+    #[test_only]
+    public fun error_invalid_org_permission(): u64 { EInvalidOrgPermission }
+
+    #[test_only]
+    public fun error_org_role_not_found(): u64 { EOrgRoleNotFound }
+
+    #[test_only]
+    public fun error_org_role_already_assigned(): u64 { EOrgRoleAlreadyAssigned }
+
+    #[test_only]
+    public fun error_org_role_not_assigned(): u64 { EOrgRoleNotAssigned }
+
+    #[test_only]
+    public fun error_org_role_builtin_redefine(): u64 { EOrgRoleBuiltinRedefine }
+
+    #[test_only]
+    public fun error_org_role_mask_empty(): u64 { EOrgRoleMaskEmpty }
+
+    #[test_only]
+    public fun error_org_org_mismatch(): u64 { EOrganizationOrgMismatch }
+
+    #[test_only]
+    public fun error_not_descendant_agent(): u64 { ENotDescendantAgent }
+
+    #[test_only]
+    public fun error_no_access(): u64 { ENoAccess }
 
     #[test_only]
     public fun error_sub_agent_inactive_ancestor(): u64 { ESubAgentInactiveAncestor }

@@ -11,6 +11,9 @@ Credits display: <code>credits = <a href="../social_contracts/ai_credit.md#socia
 -  [Struct `AiCreditOracleAdminCap`](#social_contracts_ai_credit_AiCreditOracleAdminCap)
 -  [Struct `AiCreditConfig`](#social_contracts_ai_credit_AiCreditConfig)
 -  [Struct `AgentBudgetEntry`](#social_contracts_ai_credit_AgentBudgetEntry)
+-  [Struct `SpendApprovalKey`](#social_contracts_ai_credit_SpendApprovalKey)
+-  [Struct `SpendApproval`](#social_contracts_ai_credit_SpendApproval)
+-  [Struct `ApprovalNonceKey`](#social_contracts_ai_credit_ApprovalNonceKey)
 -  [Struct `AiCreditBalance`](#social_contracts_ai_credit_AiCreditBalance)
 -  [Struct `IntentMessage`](#social_contracts_ai_credit_IntentMessage)
 -  [Struct `UsageReceipt`](#social_contracts_ai_credit_UsageReceipt)
@@ -20,6 +23,10 @@ Credits display: <code>credits = <a href="../social_contracts/ai_credit.md#socia
 -  [Struct `AiCreditAccountCapsUpdated`](#social_contracts_ai_credit_AiCreditAccountCapsUpdated)
 -  [Struct `AiCreditAgentBudgetUpdated`](#social_contracts_ai_credit_AiCreditAgentBudgetUpdated)
 -  [Struct `AiCreditAgentBudgetDisabled`](#social_contracts_ai_credit_AiCreditAgentBudgetDisabled)
+-  [Struct `AiCreditAgentBudgetChanged`](#social_contracts_ai_credit_AiCreditAgentBudgetChanged)
+-  [Struct `AiCreditSpendApproved`](#social_contracts_ai_credit_AiCreditSpendApproved)
+-  [Struct `AiCreditSpendApprovalRevoked`](#social_contracts_ai_credit_AiCreditSpendApprovalRevoked)
+-  [Struct `AiCreditSpendApprovalConsumed`](#social_contracts_ai_credit_AiCreditSpendApprovalConsumed)
 -  [Struct `AiCreditUsageSettled`](#social_contracts_ai_credit_AiCreditUsageSettled)
 -  [Struct `AiCreditBalanceDepleted`](#social_contracts_ai_credit_AiCreditBalanceDepleted)
 -  [Struct `AiCreditBalancePaused`](#social_contracts_ai_credit_AiCreditBalancePaused)
@@ -37,7 +44,14 @@ Credits display: <code>credits = <a href="../social_contracts/ai_credit.md#socia
 -  [Function `withdraw`](#social_contracts_ai_credit_withdraw)
 -  [Function `set_account_caps`](#social_contracts_ai_credit_set_account_caps)
 -  [Function `set_agent_budget`](#social_contracts_ai_credit_set_agent_budget)
+-  [Function `set_agent_budget_as_manager`](#social_contracts_ai_credit_set_agent_budget_as_manager)
 -  [Function `disable_agent_budget`](#social_contracts_ai_credit_disable_agent_budget)
+-  [Function `approve_agent_spend`](#social_contracts_ai_credit_approve_agent_spend)
+-  [Function `approve_agent_spend_as_approver`](#social_contracts_ai_credit_approve_agent_spend_as_approver)
+-  [Function `revoke_agent_spend_approval`](#social_contracts_ai_credit_revoke_agent_spend_approval)
+-  [Function `set_child_agent_budget`](#social_contracts_ai_credit_set_child_agent_budget)
+-  [Function `disable_child_agent_budget`](#social_contracts_ai_credit_disable_child_agent_budget)
+-  [Function `approve_child_agent_spend`](#social_contracts_ai_credit_approve_child_agent_spend)
 -  [Function `pause_balance`](#social_contracts_ai_credit_pause_balance)
 -  [Function `reactivate_balance`](#social_contracts_ai_credit_reactivate_balance)
 -  [Function `settle_usage`](#social_contracts_ai_credit_settle_usage)
@@ -53,6 +67,12 @@ Credits display: <code>credits = <a href="../social_contracts/ai_credit.md#socia
 -  [Function `available_mist`](#social_contracts_ai_credit_available_mist)
 -  [Function `credits_from_mist`](#social_contracts_ai_credit_credits_from_mist)
 -  [Function `mist_from_credits`](#social_contracts_ai_credit_mist_from_credits)
+-  [Function `spend_approval_for`](#social_contracts_ai_credit_spend_approval_for)
+-  [Function `approval_max_amount_mist`](#social_contracts_ai_credit_approval_max_amount_mist)
+-  [Function `approval_expires_at_ms`](#social_contracts_ai_credit_approval_expires_at_ms)
+-  [Function `approval_approved_by`](#social_contracts_ai_credit_approval_approved_by)
+-  [Function `approval_nonce`](#social_contracts_ai_credit_approval_nonce)
+-  [Function `agent_approval_threshold`](#social_contracts_ai_credit_agent_approval_threshold)
 -  [Function `agent_remaining_mist`](#social_contracts_ai_credit_agent_remaining_mist)
 -  [Function `usage_inference`](#social_contracts_ai_credit_usage_inference)
 -  [Function `usage_tool`](#social_contracts_ai_credit_usage_tool)
@@ -65,6 +85,16 @@ Credits display: <code>credits = <a href="../social_contracts/ai_credit.md#socia
 -  [Function `assert_owner`](#social_contracts_ai_credit_assert_owner)
 -  [Function `assert_active`](#social_contracts_ai_credit_assert_active)
 -  [Function `assert_agent_linked`](#social_contracts_ai_credit_assert_agent_linked)
+-  [Function `assert_org_gate_for_agent`](#social_contracts_ai_credit_assert_org_gate_for_agent)
+-  [Function `assert_parent_manages_child`](#social_contracts_ai_credit_assert_parent_manages_child)
+-  [Function `assert_child_budget_within_parent_envelope`](#social_contracts_ai_credit_assert_child_budget_within_parent_envelope)
+-  [Function `assert_limit_not_looser`](#social_contracts_ai_credit_assert_limit_not_looser)
+-  [Function `assert_within_parent_envelope`](#social_contracts_ai_credit_assert_within_parent_envelope)
+-  [Function `upsert_agent_budget`](#social_contracts_ai_credit_upsert_agent_budget)
+-  [Function `disable_agent_budget_internal`](#social_contracts_ai_credit_disable_agent_budget_internal)
+-  [Function `store_spend_approval`](#social_contracts_ai_credit_store_spend_approval)
+-  [Function `next_approval_nonce`](#social_contracts_ai_credit_next_approval_nonce)
+-  [Function `maybe_consume_spend_approval`](#social_contracts_ai_credit_maybe_consume_spend_approval)
 -  [Function `assert_oracle_admin`](#social_contracts_ai_credit_assert_oracle_admin)
 -  [Function `verify_receipt_signature`](#social_contracts_ai_credit_verify_receipt_signature)
 -  [Function `assert_receipt_fresh`](#social_contracts_ai_credit_assert_receipt_fresh)
@@ -97,11 +127,14 @@ Credits display: <code>credits = <a href="../social_contracts/ai_credit.md#socia
 <b>use</b> <a href="../myso/object.md#myso_object">myso::object</a>;
 <b>use</b> <a href="../myso/package.md#myso_package">myso::package</a>;
 <b>use</b> <a href="../myso/party.md#myso_party">myso::party</a>;
+<b>use</b> <a href="../myso/permissioned_group.md#myso_permissioned_group">myso::permissioned_group</a>;
+<b>use</b> <a href="../myso/permissions_table.md#myso_permissions_table">myso::permissions_table</a>;
 <b>use</b> <a href="../myso/protocol_config.md#myso_protocol_config">myso::protocol_config</a>;
 <b>use</b> <a href="../myso/table.md#myso_table">myso::table</a>;
 <b>use</b> <a href="../myso/transfer.md#myso_transfer">myso::transfer</a>;
 <b>use</b> <a href="../myso/tx_context.md#myso_tx_context">myso::tx_context</a>;
 <b>use</b> <a href="../myso/types.md#myso_types">myso::types</a>;
+<b>use</b> <a href="../myso/unpause_cap.md#myso_unpause_cap">myso::unpause_cap</a>;
 <b>use</b> <a href="../myso/url.md#myso_url">myso::url</a>;
 <b>use</b> <a href="../myso/vec_map.md#myso_vec_map">myso::vec_map</a>;
 <b>use</b> <a href="../myso/vec_set.md#myso_vec_set">myso::vec_set</a>;
@@ -283,6 +316,99 @@ Credits display: <code>credits = <a href="../social_contracts/ai_credit.md#socia
 </dt>
 <dd>
 </dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_ai_credit_SpendApprovalKey"></a>
+
+## Struct `SpendApprovalKey`
+
+Dynamic-field key on <code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>.id</code> for the agent's live spend allowance.
+One allowance per agent; re-approving overwrites. Stored as a dynamic field so the
+<code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a></code> struct layout never changes (upgrade-safe).
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendApprovalKey">SpendApprovalKey</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>agent_object_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_ai_credit_SpendApproval"></a>
+
+## Struct `SpendApproval`
+
+One-shot spend allowance consumed by the first over-threshold settlement it covers.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendApproval">SpendApproval</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>max_amount_mist: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>expires_at_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>approved_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_approval_nonce">approval_nonce</a>: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_ai_credit_ApprovalNonceKey"></a>
+
+## Struct `ApprovalNonceKey`
+
+Dynamic-field key on <code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>.id</code> for the monotonic approval nonce counter.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_ApprovalNonceKey">ApprovalNonceKey</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
 </dl>
 
 
@@ -709,6 +835,281 @@ Credits display: <code>credits = <a href="../social_contracts/ai_credit.md#socia
 </dd>
 <dt>
 <code>agent_object_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_ai_credit_AiCreditAgentBudgetChanged"></a>
+
+## Struct `AiCreditAgentBudgetChanged`
+
+Audit-grade budget change event carrying previous and new values plus the actor.
+Emitted alongside the legacy <code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditAgentBudgetUpdated">AiCreditAgentBudgetUpdated</a></code>/<code>Disabled</code> events.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditAgentBudgetChanged">AiCreditAgentBudgetChanged</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>balance_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>agent_object_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>had_previous_entry: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>prev_budget_mist: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>prev_daily_cap_mist: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>prev_monthly_cap_mist: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>prev_require_approval_above_mist: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>prev_enabled: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>budget_mist: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>daily_cap_mist: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>monthly_cap_mist: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>require_approval_above_mist: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>enabled: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>set_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>set_by_agent_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+ Set when a parent agent changed a descendant's budget.
+</dd>
+<dt>
+<code>organization_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+ Set when the change went through an org role gate.
+</dd>
+<dt>
+<code>timestamp_ms: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_ai_credit_AiCreditSpendApproved"></a>
+
+## Struct `AiCreditSpendApproved`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditSpendApproved">AiCreditSpendApproved</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>balance_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>agent_object_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_approval_nonce">approval_nonce</a>: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_amount_mist: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>expires_at_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>approved_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>approved_by_agent_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+ Set when a parent agent approved a descendant's spend.
+</dd>
+<dt>
+<code>organization_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+ Set when the approval went through an org role gate.
+</dd>
+<dt>
+<code>timestamp_ms: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_ai_credit_AiCreditSpendApprovalRevoked"></a>
+
+## Struct `AiCreditSpendApprovalRevoked`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditSpendApprovalRevoked">AiCreditSpendApprovalRevoked</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>balance_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>agent_object_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_approval_nonce">approval_nonce</a>: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>revoked_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp_ms: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_ai_credit_AiCreditSpendApprovalConsumed"></a>
+
+## Struct `AiCreditSpendApprovalConsumed`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditSpendApprovalConsumed">AiCreditSpendApprovalConsumed</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>balance_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>agent_object_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_approval_nonce">approval_nonce</a>: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>amount_mist: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>approved_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp_ms: u64</code>
 </dt>
 <dd>
 </dd>
@@ -1189,6 +1590,96 @@ Credits display: <code>credits = <a href="../social_contracts/ai_credit.md#socia
 
 
 
+<a name="social_contracts_ai_credit_EApprovalRequired"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EApprovalRequired">EApprovalRequired</a>: u64 = 18;
+</code></pre>
+
+
+
+<a name="social_contracts_ai_credit_EApprovalExpired"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EApprovalExpired">EApprovalExpired</a>: u64 = 19;
+</code></pre>
+
+
+
+<a name="social_contracts_ai_credit_EApprovalInsufficient"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EApprovalInsufficient">EApprovalInsufficient</a>: u64 = 20;
+</code></pre>
+
+
+
+<a name="social_contracts_ai_credit_EApprovalNotFound"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EApprovalNotFound">EApprovalNotFound</a>: u64 = 21;
+</code></pre>
+
+
+
+<a name="social_contracts_ai_credit_ENotDescendant"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_ENotDescendant">ENotDescendant</a>: u64 = 22;
+</code></pre>
+
+
+
+<a name="social_contracts_ai_credit_ENotParentSigner"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_ENotParentSigner">ENotParentSigner</a>: u64 = 23;
+</code></pre>
+
+
+
+<a name="social_contracts_ai_credit_EParentEnvelopeExceeded"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EParentEnvelopeExceeded">EParentEnvelopeExceeded</a>: u64 = 24;
+</code></pre>
+
+
+
+<a name="social_contracts_ai_credit_ECannotManageSelf"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_ECannotManageSelf">ECannotManageSelf</a>: u64 = 25;
+</code></pre>
+
+
+
+<a name="social_contracts_ai_credit_EAgentNotInOrg"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EAgentNotInOrg">EAgentNotInOrg</a>: u64 = 26;
+</code></pre>
+
+
+
+<a name="social_contracts_ai_credit_EInvalidExpiry"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EInvalidExpiry">EInvalidExpiry</a>: u64 = 27;
+</code></pre>
+
+
+
 <a name="social_contracts_ai_credit_bootstrap_init"></a>
 
 ## Function `bootstrap_init`
@@ -1526,42 +2017,74 @@ Called only from [<code><a href="../social_contracts/profile.md#social_contracts
     <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_owner">assert_owner</a>(balance, ctx);
     <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_agent_linked">assert_agent_linked</a>(balance, agent);
     <a href="../social_contracts/memory.md#social_contracts_memory_assert_sub_agent_active">memory::assert_sub_agent_active</a>(agent, clock);
-    <b>let</b> agent_id = <a href="../social_contracts/memory.md#social_contracts_memory_agent_object_id">memory::agent_object_id</a>(agent);
-    <b>let</b> now = clock::timestamp_ms(clock);
-    <b>let</b> <b>entry</b> = <b>if</b> (table::contains(&balance.agent_budgets, agent_id)) {
-        <b>let</b> e = table::borrow_mut(&<b>mut</b> balance.agent_budgets, agent_id);
-        e.budget_mist = budget_mist;
-        e.daily_cap_mist = daily_cap_mist;
-        e.monthly_cap_mist = monthly_cap_mist;
-        e.require_approval_above_mist = require_approval_above_mist;
-        e.enabled = <b>true</b>;
-        *e
-    } <b>else</b> {
-        <b>let</b> e = <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AgentBudgetEntry">AgentBudgetEntry</a> {
-            agent_object_id: agent_id,
-            derived_address: <a href="../social_contracts/memory.md#social_contracts_memory_sub_agent_derived_address">memory::sub_agent_derived_address</a>(agent),
-            enabled: <b>true</b>,
-            budget_mist,
-            spent_mist: 0,
-            daily_cap_mist,
-            monthly_cap_mist,
-            spent_day_mist: 0,
-            spent_month_mist: 0,
-            day_anchor_ms: now,
-            month_anchor_ms: now,
-            require_approval_above_mist,
-        };
-        table::add(&<b>mut</b> balance.agent_budgets, agent_id, e);
-        e
-    };
-    event::emit(<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditAgentBudgetUpdated">AiCreditAgentBudgetUpdated</a> {
-        balance_id: object::id(balance),
-        agent_object_id: <b>entry</b>.agent_object_id,
-        budget_mist: <b>entry</b>.budget_mist,
-        daily_cap_mist: <b>entry</b>.daily_cap_mist,
-        monthly_cap_mist: <b>entry</b>.monthly_cap_mist,
-        require_approval_above_mist: <b>entry</b>.require_approval_above_mist,
-    });
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_upsert_agent_budget">upsert_agent_budget</a>(
+        balance,
+        agent,
+        budget_mist,
+        daily_cap_mist,
+        monthly_cap_mist,
+        require_approval_above_mist,
+        tx_context::sender(ctx),
+        option::none(),
+        option::none(),
+        clock,
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_set_agent_budget_as_manager"></a>
+
+## Function `set_agent_budget_as_manager`
+
+Org role-gated budget management: a holder of <code>OrgBudgetManager</code> on the org's memory
+share group may manage budgets for agents belonging to that org, without the owner key.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_set_agent_budget_as_manager">set_agent_budget_as_manager</a>(config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">social_contracts::ai_credit::AiCreditConfig</a>, balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">social_contracts::memory::MemorySharePackage</a>&gt;, agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, budget_mist: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, daily_cap_mist: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, monthly_cap_mist: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, require_approval_above_mist: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_set_agent_budget_as_manager">set_agent_budget_as_manager</a>(
+    config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">AiCreditConfig</a>,
+    balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>,
+    account: &MemoryAccount,
+    org: &AgenticOrganization,
+    group: &PermissionedGroup&lt;MemorySharePackage&gt;,
+    agent: &SubAgent,
+    budget_mist: Option&lt;u64&gt;,
+    daily_cap_mist: Option&lt;u64&gt;,
+    monthly_cap_mist: Option&lt;u64&gt;,
+    require_approval_above_mist: Option&lt;u64&gt;,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_version">assert_version</a>(config, balance);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_active">assert_active</a>(balance);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_agent_linked">assert_agent_linked</a>(balance, agent);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_org_gate_for_agent">assert_org_gate_for_agent</a>(balance, account, org, agent);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_permission">memory::assert_org_permission</a>&lt;OrgBudgetManager&gt;(org, group, tx_context::sender(ctx));
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_sub_agent_active">memory::assert_sub_agent_active</a>(agent, clock);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_upsert_agent_budget">upsert_agent_budget</a>(
+        balance,
+        agent,
+        budget_mist,
+        daily_cap_mist,
+        monthly_cap_mist,
+        require_approval_above_mist,
+        tx_context::sender(ctx),
+        option::none(),
+        option::some(<a href="../social_contracts/memory.md#social_contracts_memory_organization_id">memory::organization_id</a>(org)),
+        clock,
+    );
 }
 </code></pre>
 
@@ -1575,7 +2098,7 @@ Called only from [<code><a href="../social_contracts/profile.md#social_contracts
 
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_disable_agent_budget">disable_agent_budget</a>(config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">social_contracts::ai_credit::AiCreditConfig</a>, balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, agent_object_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_disable_agent_budget">disable_agent_budget</a>(config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">social_contracts::ai_credit::AiCreditConfig</a>, balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, agent_object_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1588,17 +2111,319 @@ Called only from [<code><a href="../social_contracts/profile.md#social_contracts
     config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">AiCreditConfig</a>,
     balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>,
     agent_object_id: ID,
+    clock: &Clock,
     ctx: &TxContext,
 ) {
     <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_version">assert_version</a>(config, balance);
     <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_owner">assert_owner</a>(balance, ctx);
-    <b>assert</b>!(table::contains(&balance.agent_budgets, agent_object_id), <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EAgentNotFound">EAgentNotFound</a>);
-    <b>let</b> <b>entry</b> = table::borrow_mut(&<b>mut</b> balance.agent_budgets, agent_object_id);
-    <b>entry</b>.enabled = <b>false</b>;
-    event::emit(<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditAgentBudgetDisabled">AiCreditAgentBudgetDisabled</a> {
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_disable_agent_budget_internal">disable_agent_budget_internal</a>(
+        balance,
+        agent_object_id,
+        tx_context::sender(ctx),
+        option::none(),
+        clock,
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_approve_agent_spend"></a>
+
+## Function `approve_agent_spend`
+
+Owner grants a one-shot allowance: the agent may settle a single usage receipt up to
+<code>max_amount_mist</code> above its approval threshold, until <code>expires_at_ms</code>. Re-approving
+overwrites any existing allowance for the agent.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_approve_agent_spend">approve_agent_spend</a>(config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">social_contracts::ai_credit::AiCreditConfig</a>, balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, agent_object_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, max_amount_mist: u64, expires_at_ms: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_approve_agent_spend">approve_agent_spend</a>(
+    config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">AiCreditConfig</a>,
+    balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>,
+    agent_object_id: ID,
+    max_amount_mist: u64,
+    expires_at_ms: u64,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_version">assert_version</a>(config, balance);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_owner">assert_owner</a>(balance, ctx);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_active">assert_active</a>(balance);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_store_spend_approval">store_spend_approval</a>(
+        balance,
+        agent_object_id,
+        max_amount_mist,
+        expires_at_ms,
+        tx_context::sender(ctx),
+        option::none(),
+        option::none(),
+        clock,
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_approve_agent_spend_as_approver"></a>
+
+## Function `approve_agent_spend_as_approver`
+
+Org role-gated approval: a holder of <code>OrgSpendApprover</code> on the org's memory share
+group may approve spends for agents belonging to that org (Finance Approver flow).
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_approve_agent_spend_as_approver">approve_agent_spend_as_approver</a>(config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">social_contracts::ai_credit::AiCreditConfig</a>, balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">social_contracts::memory::MemorySharePackage</a>&gt;, agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, max_amount_mist: u64, expires_at_ms: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_approve_agent_spend_as_approver">approve_agent_spend_as_approver</a>(
+    config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">AiCreditConfig</a>,
+    balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>,
+    account: &MemoryAccount,
+    org: &AgenticOrganization,
+    group: &PermissionedGroup&lt;MemorySharePackage&gt;,
+    agent: &SubAgent,
+    max_amount_mist: u64,
+    expires_at_ms: u64,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_version">assert_version</a>(config, balance);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_active">assert_active</a>(balance);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_agent_linked">assert_agent_linked</a>(balance, agent);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_org_gate_for_agent">assert_org_gate_for_agent</a>(balance, account, org, agent);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_permission">memory::assert_org_permission</a>&lt;OrgSpendApprover&gt;(org, group, tx_context::sender(ctx));
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_store_spend_approval">store_spend_approval</a>(
+        balance,
+        <a href="../social_contracts/memory.md#social_contracts_memory_agent_object_id">memory::agent_object_id</a>(agent),
+        max_amount_mist,
+        expires_at_ms,
+        tx_context::sender(ctx),
+        option::none(),
+        option::some(<a href="../social_contracts/memory.md#social_contracts_memory_organization_id">memory::organization_id</a>(org)),
+        clock,
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_revoke_agent_spend_approval"></a>
+
+## Function `revoke_agent_spend_approval`
+
+Owner revokes an agent's live allowance.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_revoke_agent_spend_approval">revoke_agent_spend_approval</a>(config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">social_contracts::ai_credit::AiCreditConfig</a>, balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, agent_object_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_revoke_agent_spend_approval">revoke_agent_spend_approval</a>(
+    config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">AiCreditConfig</a>,
+    balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>,
+    agent_object_id: ID,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_version">assert_version</a>(config, balance);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_owner">assert_owner</a>(balance, ctx);
+    <b>let</b> key = <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendApprovalKey">SpendApprovalKey</a> { agent_object_id };
+    <b>assert</b>!(
+        df::exists_with_type&lt;<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendApprovalKey">SpendApprovalKey</a>, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendApproval">SpendApproval</a>&gt;(&balance.id, key),
+        <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EApprovalNotFound">EApprovalNotFound</a>,
+    );
+    <b>let</b> approval: <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendApproval">SpendApproval</a> = df::remove(&<b>mut</b> balance.id, key);
+    event::emit(<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditSpendApprovalRevoked">AiCreditSpendApprovalRevoked</a> {
         balance_id: object::id(balance),
         agent_object_id,
+        <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_approval_nonce">approval_nonce</a>: approval.<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_approval_nonce">approval_nonce</a>,
+        revoked_by: tx_context::sender(ctx),
+        timestamp_ms: clock::timestamp_ms(clock),
     });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_set_child_agent_budget"></a>
+
+## Function `set_child_agent_budget`
+
+Parent agent (holding <code>CAP_BUDGET_MANAGE</code>) sets a descendant's budget. Child limits
+must be at least as strict as the parent's own envelope; the human owner remains the
+unconstrained root.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_set_child_agent_budget">set_child_agent_budget</a>(config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">social_contracts::ai_credit::AiCreditConfig</a>, balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, parent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, child: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, budget_mist: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, daily_cap_mist: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, monthly_cap_mist: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, require_approval_above_mist: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_set_child_agent_budget">set_child_agent_budget</a>(
+    config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">AiCreditConfig</a>,
+    balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>,
+    account: &MemoryAccount,
+    parent: &SubAgent,
+    child: &SubAgent,
+    budget_mist: Option&lt;u64&gt;,
+    daily_cap_mist: Option&lt;u64&gt;,
+    monthly_cap_mist: Option&lt;u64&gt;,
+    require_approval_above_mist: Option&lt;u64&gt;,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_version">assert_version</a>(config, balance);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_active">assert_active</a>(balance);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_parent_manages_child">assert_parent_manages_child</a>(balance, account, parent, child, clock, ctx);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_child_budget_within_parent_envelope">assert_child_budget_within_parent_envelope</a>(
+        balance,
+        <a href="../social_contracts/memory.md#social_contracts_memory_agent_object_id">memory::agent_object_id</a>(parent),
+        &budget_mist,
+        &daily_cap_mist,
+        &monthly_cap_mist,
+        &require_approval_above_mist,
+    );
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_sub_agent_active">memory::assert_sub_agent_active</a>(child, clock);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_upsert_agent_budget">upsert_agent_budget</a>(
+        balance,
+        child,
+        budget_mist,
+        daily_cap_mist,
+        monthly_cap_mist,
+        require_approval_above_mist,
+        tx_context::sender(ctx),
+        option::some(<a href="../social_contracts/memory.md#social_contracts_memory_agent_object_id">memory::agent_object_id</a>(parent)),
+        option::none(),
+        clock,
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_disable_child_agent_budget"></a>
+
+## Function `disable_child_agent_budget`
+
+Parent kill switch for a descendant's budget.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_disable_child_agent_budget">disable_child_agent_budget</a>(config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">social_contracts::ai_credit::AiCreditConfig</a>, balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, parent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, child: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_disable_child_agent_budget">disable_child_agent_budget</a>(
+    config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">AiCreditConfig</a>,
+    balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>,
+    account: &MemoryAccount,
+    parent: &SubAgent,
+    child: &SubAgent,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_version">assert_version</a>(config, balance);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_parent_manages_child">assert_parent_manages_child</a>(balance, account, parent, child, clock, ctx);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_disable_agent_budget_internal">disable_agent_budget_internal</a>(
+        balance,
+        <a href="../social_contracts/memory.md#social_contracts_memory_agent_object_id">memory::agent_object_id</a>(child),
+        tx_context::sender(ctx),
+        option::some(<a href="../social_contracts/memory.md#social_contracts_memory_agent_object_id">memory::agent_object_id</a>(parent)),
+        clock,
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_approve_child_agent_spend"></a>
+
+## Function `approve_child_agent_spend`
+
+Parent approves a descendant's over-threshold spend, but only within the parent's own
+envelope (its threshold and remaining caps). Beyond that, approval escalates up the
+tree — ultimately to the human owner via <code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_approve_agent_spend">approve_agent_spend</a></code>.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_approve_child_agent_spend">approve_child_agent_spend</a>(config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">social_contracts::ai_credit::AiCreditConfig</a>, balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, parent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, child: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, max_amount_mist: u64, expires_at_ms: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_approve_child_agent_spend">approve_child_agent_spend</a>(
+    config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">AiCreditConfig</a>,
+    balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>,
+    account: &MemoryAccount,
+    parent: &SubAgent,
+    child: &SubAgent,
+    max_amount_mist: u64,
+    expires_at_ms: u64,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_version">assert_version</a>(config, balance);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_active">assert_active</a>(balance);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_parent_manages_child">assert_parent_manages_child</a>(balance, account, parent, child, clock, ctx);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_within_parent_envelope">assert_within_parent_envelope</a>(
+        balance,
+        <a href="../social_contracts/memory.md#social_contracts_memory_agent_object_id">memory::agent_object_id</a>(parent),
+        max_amount_mist,
+        clock,
+    );
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_store_spend_approval">store_spend_approval</a>(
+        balance,
+        <a href="../social_contracts/memory.md#social_contracts_memory_agent_object_id">memory::agent_object_id</a>(child),
+        max_amount_mist,
+        expires_at_ms,
+        tx_context::sender(ctx),
+        option::some(<a href="../social_contracts/memory.md#social_contracts_memory_agent_object_id">memory::agent_object_id</a>(parent)),
+        option::none(),
+        clock,
+    );
 }
 </code></pre>
 
@@ -1920,6 +2745,9 @@ not <code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_A
         <b>entry</b>.spent_day_mist = <b>entry</b>.spent_day_mist + receipt.amount_mist;
         <b>entry</b>.spent_month_mist = <b>entry</b>.spent_month_mist + receipt.amount_mist;
     };
+    // Over-threshold settlements must consume a live spend allowance (the previously
+    // unenforced `require_approval_above_mist` gate).
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_maybe_consume_spend_approval">maybe_consume_spend_approval</a>(balance, agent_id, receipt.amount_mist, clock);
     <b>assert</b>!(receipt.amount_mist &lt;= <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_available_mist">available_mist</a>(balance), <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EInsufficientBalance">EInsufficientBalance</a>);
     balance.settlement_nonce = receipt.settlement_nonce;
     balance.spent_total_mist = balance.spent_total_mist + receipt.amount_mist;
@@ -2141,6 +2969,167 @@ not <code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_A
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_mist_from_credits">mist_from_credits</a>(credits: u64): u64 {
     credits * <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_MIST_PER_MYSO">MIST_PER_MYSO</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_spend_approval_for"></a>
+
+## Function `spend_approval_for`
+
+Live allowance for an agent, if any (may be expired — check <code>approval_expires_at</code>).
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_spend_approval_for">spend_approval_for</a>(balance: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, agent_object_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendApproval">social_contracts::ai_credit::SpendApproval</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_spend_approval_for">spend_approval_for</a>(
+    balance: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>,
+    agent_object_id: ID,
+): Option&lt;<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendApproval">SpendApproval</a>&gt; {
+    <b>let</b> key = <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendApprovalKey">SpendApprovalKey</a> { agent_object_id };
+    <b>if</b> (df::exists_with_type&lt;<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendApprovalKey">SpendApprovalKey</a>, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendApproval">SpendApproval</a>&gt;(&balance.id, key)) {
+        option::some(*df::borrow&lt;<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendApprovalKey">SpendApprovalKey</a>, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendApproval">SpendApproval</a>&gt;(&balance.id, key))
+    } <b>else</b> {
+        option::none()
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_approval_max_amount_mist"></a>
+
+## Function `approval_max_amount_mist`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_approval_max_amount_mist">approval_max_amount_mist</a>(approval: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendApproval">social_contracts::ai_credit::SpendApproval</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_approval_max_amount_mist">approval_max_amount_mist</a>(approval: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendApproval">SpendApproval</a>): u64 {
+    approval.max_amount_mist
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_approval_expires_at_ms"></a>
+
+## Function `approval_expires_at_ms`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_approval_expires_at_ms">approval_expires_at_ms</a>(approval: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendApproval">social_contracts::ai_credit::SpendApproval</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_approval_expires_at_ms">approval_expires_at_ms</a>(approval: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendApproval">SpendApproval</a>): u64 {
+    approval.expires_at_ms
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_approval_approved_by"></a>
+
+## Function `approval_approved_by`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_approval_approved_by">approval_approved_by</a>(approval: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendApproval">social_contracts::ai_credit::SpendApproval</a>): <b>address</b>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_approval_approved_by">approval_approved_by</a>(approval: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendApproval">SpendApproval</a>): <b>address</b> {
+    approval.approved_by
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_approval_nonce"></a>
+
+## Function `approval_nonce`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_approval_nonce">approval_nonce</a>(approval: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendApproval">social_contracts::ai_credit::SpendApproval</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_approval_nonce">approval_nonce</a>(approval: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendApproval">SpendApproval</a>): u64 {
+    approval.<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_approval_nonce">approval_nonce</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_agent_approval_threshold"></a>
+
+## Function `agent_approval_threshold`
+
+Approval threshold on the agent's budget entry, if configured.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_agent_approval_threshold">agent_approval_threshold</a>(balance: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, agent_object_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_agent_approval_threshold">agent_approval_threshold</a>(
+    balance: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>,
+    agent_object_id: ID,
+): Option&lt;u64&gt; {
+    <b>if</b> (!table::contains(&balance.agent_budgets, agent_object_id)) {
+        <b>return</b> option::none()
+    };
+    <b>let</b> <b>entry</b> = table::borrow(&balance.agent_budgets, agent_object_id);
+    <b>entry</b>.require_approval_above_mist
 }
 </code></pre>
 
@@ -2456,6 +3445,530 @@ not <code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_A
         <a href="../social_contracts/memory.md#social_contracts_memory_sub_agent_memory_account_id">memory::sub_agent_memory_account_id</a>(agent) == balance.memory_account_id,
         <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EAccountMismatch">EAccountMismatch</a>,
     );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_assert_org_gate_for_agent"></a>
+
+## Function `assert_org_gate_for_agent`
+
+Org role gates require: account matches the balance, org belongs to the account,
+and the target agent belongs to that org.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_org_gate_for_agent">assert_org_gate_for_agent</a>(balance: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_org_gate_for_agent">assert_org_gate_for_agent</a>(
+    balance: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>,
+    account: &MemoryAccount,
+    org: &AgenticOrganization,
+    agent: &SubAgent,
+) {
+    <b>assert</b>!(object::id(account) == balance.memory_account_id, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EAccountMismatch">EAccountMismatch</a>);
+    <b>assert</b>!(
+        <a href="../social_contracts/memory.md#social_contracts_memory_organization_memory_account_id">memory::organization_memory_account_id</a>(org) == object::id(account),
+        <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EAccountMismatch">EAccountMismatch</a>,
+    );
+    <b>assert</b>!(
+        <a href="../social_contracts/memory.md#social_contracts_memory_sub_agent_organization_id">memory::sub_agent_organization_id</a>(agent) == <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">memory::organization_id</a>(org),
+        <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EAgentNotInOrg">EAgentNotInOrg</a>,
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_assert_parent_manages_child"></a>
+
+## Function `assert_parent_manages_child`
+
+Common authorization for parent-delegated budget operations: sender is the parent's
+derived address, parent is active with <code>CAP_BUDGET_MANAGE</code>, both agents are linked to
+this balance, and the child sits strictly below the parent in the agent tree.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_parent_manages_child">assert_parent_manages_child</a>(balance: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, parent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, child: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_parent_manages_child">assert_parent_manages_child</a>(
+    balance: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>,
+    account: &MemoryAccount,
+    parent: &SubAgent,
+    child: &SubAgent,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <b>assert</b>!(object::id(account) == balance.memory_account_id, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EAccountMismatch">EAccountMismatch</a>);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_agent_linked">assert_agent_linked</a>(balance, parent);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_agent_linked">assert_agent_linked</a>(balance, child);
+    <b>assert</b>!(
+        tx_context::sender(ctx) == <a href="../social_contracts/memory.md#social_contracts_memory_sub_agent_derived_address">memory::sub_agent_derived_address</a>(parent),
+        <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_ENotParentSigner">ENotParentSigner</a>,
+    );
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_sub_agent_active">memory::assert_sub_agent_active</a>(parent, clock);
+    <b>assert</b>!(
+        <a href="../social_contracts/memory.md#social_contracts_memory_has_cap">memory::has_cap</a>(<a href="../social_contracts/memory.md#social_contracts_memory_sub_agent_capabilities">memory::sub_agent_capabilities</a>(parent), <a href="../social_contracts/memory.md#social_contracts_memory_cap_budget_manage">memory::cap_budget_manage</a>()),
+        <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EAgentMissingCap">EAgentMissingCap</a>,
+    );
+    <b>let</b> parent_id = <a href="../social_contracts/memory.md#social_contracts_memory_agent_object_id">memory::agent_object_id</a>(parent);
+    <b>let</b> child_id = <a href="../social_contracts/memory.md#social_contracts_memory_agent_object_id">memory::agent_object_id</a>(child);
+    <b>assert</b>!(parent_id != child_id, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_ECannotManageSelf">ECannotManageSelf</a>);
+    <b>assert</b>!(<a href="../social_contracts/memory.md#social_contracts_memory_is_descendant_agent">memory::is_descendant_agent</a>(account, parent_id, child_id), <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_ENotDescendant">ENotDescendant</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_assert_child_budget_within_parent_envelope"></a>
+
+## Function `assert_child_budget_within_parent_envelope`
+
+Child budget limits must be at least as strict as the parent's own entry (when the
+parent has one; an unconstrained parent may set anything).
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_child_budget_within_parent_envelope">assert_child_budget_within_parent_envelope</a>(balance: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, parent_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, budget_mist: &<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, daily_cap_mist: &<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, monthly_cap_mist: &<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, require_approval_above_mist: &<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_child_budget_within_parent_envelope">assert_child_budget_within_parent_envelope</a>(
+    balance: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>,
+    parent_id: ID,
+    budget_mist: &Option&lt;u64&gt;,
+    daily_cap_mist: &Option&lt;u64&gt;,
+    monthly_cap_mist: &Option&lt;u64&gt;,
+    require_approval_above_mist: &Option&lt;u64&gt;,
+) {
+    <b>if</b> (!table::contains(&balance.agent_budgets, parent_id)) {
+        <b>return</b>
+    };
+    <b>let</b> parent_entry = table::borrow(&balance.agent_budgets, parent_id);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_limit_not_looser">assert_limit_not_looser</a>(budget_mist, &parent_entry.budget_mist);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_limit_not_looser">assert_limit_not_looser</a>(daily_cap_mist, &parent_entry.daily_cap_mist);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_limit_not_looser">assert_limit_not_looser</a>(monthly_cap_mist, &parent_entry.monthly_cap_mist);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_limit_not_looser">assert_limit_not_looser</a>(
+        require_approval_above_mist,
+        &parent_entry.require_approval_above_mist,
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_assert_limit_not_looser"></a>
+
+## Function `assert_limit_not_looser`
+
+<code>child</code> is not looser than <code>parent</code>: when the parent limit is set, the child limit
+must be set and must not exceed it.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_limit_not_looser">assert_limit_not_looser</a>(child: &<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, parent: &<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_limit_not_looser">assert_limit_not_looser</a>(child: &Option&lt;u64&gt;, parent: &Option&lt;u64&gt;) {
+    <b>if</b> (option::is_none(parent)) {
+        <b>return</b>
+    };
+    <b>assert</b>!(option::is_some(child), <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EParentEnvelopeExceeded">EParentEnvelopeExceeded</a>);
+    <b>assert</b>!(*option::borrow(child) &lt;= *option::borrow(parent), <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EParentEnvelopeExceeded">EParentEnvelopeExceeded</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_assert_within_parent_envelope"></a>
+
+## Function `assert_within_parent_envelope`
+
+Parents may only approve amounts they could spend themselves: within their own
+approval threshold (if set) and remaining budget/day/month caps (if set).
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_within_parent_envelope">assert_within_parent_envelope</a>(balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, parent_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, amount_mist: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_within_parent_envelope">assert_within_parent_envelope</a>(
+    balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>,
+    parent_id: ID,
+    amount_mist: u64,
+    clock: &Clock,
+) {
+    <b>if</b> (!table::contains(&balance.agent_budgets, parent_id)) {
+        <b>return</b>
+    };
+    <b>let</b> <b>entry</b> = table::borrow_mut(&<b>mut</b> balance.agent_budgets, parent_id);
+    <b>assert</b>!(<b>entry</b>.enabled, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EAgentDisabled">EAgentDisabled</a>);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_roll_agent_windows">roll_agent_windows</a>(<b>entry</b>, clock::timestamp_ms(clock));
+    <b>if</b> (option::is_some(&<b>entry</b>.require_approval_above_mist)) {
+        <b>assert</b>!(
+            amount_mist &lt;= *option::borrow(&<b>entry</b>.require_approval_above_mist),
+            <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EParentEnvelopeExceeded">EParentEnvelopeExceeded</a>,
+        );
+    };
+    <b>if</b> (option::is_some(&<b>entry</b>.budget_mist)) {
+        <b>let</b> max = *option::borrow(&<b>entry</b>.budget_mist);
+        <b>assert</b>!(<b>entry</b>.spent_mist + amount_mist &lt;= max, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EParentEnvelopeExceeded">EParentEnvelopeExceeded</a>);
+    };
+    <b>if</b> (option::is_some(&<b>entry</b>.daily_cap_mist)) {
+        <b>let</b> cap = *option::borrow(&<b>entry</b>.daily_cap_mist);
+        <b>assert</b>!(<b>entry</b>.spent_day_mist + amount_mist &lt;= cap, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EParentEnvelopeExceeded">EParentEnvelopeExceeded</a>);
+    };
+    <b>if</b> (option::is_some(&<b>entry</b>.monthly_cap_mist)) {
+        <b>let</b> cap = *option::borrow(&<b>entry</b>.monthly_cap_mist);
+        <b>assert</b>!(<b>entry</b>.spent_month_mist + amount_mist &lt;= cap, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EParentEnvelopeExceeded">EParentEnvelopeExceeded</a>);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_upsert_agent_budget"></a>
+
+## Function `upsert_agent_budget`
+
+Shared budget upsert used by owner, org-manager, and parent paths. Emits the legacy
+<code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditAgentBudgetUpdated">AiCreditAgentBudgetUpdated</a></code> plus the audit-grade <code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditAgentBudgetChanged">AiCreditAgentBudgetChanged</a></code>.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_upsert_agent_budget">upsert_agent_budget</a>(balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, budget_mist: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, daily_cap_mist: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, monthly_cap_mist: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, require_approval_above_mist: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, set_by: <b>address</b>, set_by_agent_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, organization_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_upsert_agent_budget">upsert_agent_budget</a>(
+    balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>,
+    agent: &SubAgent,
+    budget_mist: Option&lt;u64&gt;,
+    daily_cap_mist: Option&lt;u64&gt;,
+    monthly_cap_mist: Option&lt;u64&gt;,
+    require_approval_above_mist: Option&lt;u64&gt;,
+    set_by: <b>address</b>,
+    set_by_agent_id: Option&lt;ID&gt;,
+    organization_id: Option&lt;ID&gt;,
+    clock: &Clock,
+) {
+    <b>let</b> agent_id = <a href="../social_contracts/memory.md#social_contracts_memory_agent_object_id">memory::agent_object_id</a>(agent);
+    <b>let</b> now = clock::timestamp_ms(clock);
+    <b>let</b> had_previous_entry = table::contains(&balance.agent_budgets, agent_id);
+    <b>let</b> (prev_budget, prev_daily, prev_monthly, prev_approval, prev_enabled) =
+        <b>if</b> (had_previous_entry) {
+            <b>let</b> prev = table::borrow(&balance.agent_budgets, agent_id);
+            (
+                prev.budget_mist,
+                prev.daily_cap_mist,
+                prev.monthly_cap_mist,
+                prev.require_approval_above_mist,
+                prev.enabled,
+            )
+        } <b>else</b> {
+            (option::none(), option::none(), option::none(), option::none(), <b>false</b>)
+        };
+    <b>let</b> <b>entry</b> = <b>if</b> (had_previous_entry) {
+        <b>let</b> e = table::borrow_mut(&<b>mut</b> balance.agent_budgets, agent_id);
+        e.budget_mist = budget_mist;
+        e.daily_cap_mist = daily_cap_mist;
+        e.monthly_cap_mist = monthly_cap_mist;
+        e.require_approval_above_mist = require_approval_above_mist;
+        e.enabled = <b>true</b>;
+        *e
+    } <b>else</b> {
+        <b>let</b> e = <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AgentBudgetEntry">AgentBudgetEntry</a> {
+            agent_object_id: agent_id,
+            derived_address: <a href="../social_contracts/memory.md#social_contracts_memory_sub_agent_derived_address">memory::sub_agent_derived_address</a>(agent),
+            enabled: <b>true</b>,
+            budget_mist,
+            spent_mist: 0,
+            daily_cap_mist,
+            monthly_cap_mist,
+            spent_day_mist: 0,
+            spent_month_mist: 0,
+            day_anchor_ms: now,
+            month_anchor_ms: now,
+            require_approval_above_mist,
+        };
+        table::add(&<b>mut</b> balance.agent_budgets, agent_id, e);
+        e
+    };
+    event::emit(<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditAgentBudgetUpdated">AiCreditAgentBudgetUpdated</a> {
+        balance_id: object::id(balance),
+        agent_object_id: <b>entry</b>.agent_object_id,
+        budget_mist: <b>entry</b>.budget_mist,
+        daily_cap_mist: <b>entry</b>.daily_cap_mist,
+        monthly_cap_mist: <b>entry</b>.monthly_cap_mist,
+        require_approval_above_mist: <b>entry</b>.require_approval_above_mist,
+    });
+    event::emit(<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditAgentBudgetChanged">AiCreditAgentBudgetChanged</a> {
+        balance_id: object::id(balance),
+        agent_object_id: agent_id,
+        had_previous_entry,
+        prev_budget_mist: prev_budget,
+        prev_daily_cap_mist: prev_daily,
+        prev_monthly_cap_mist: prev_monthly,
+        prev_require_approval_above_mist: prev_approval,
+        prev_enabled,
+        budget_mist,
+        daily_cap_mist,
+        monthly_cap_mist,
+        require_approval_above_mist,
+        enabled: <b>true</b>,
+        set_by,
+        set_by_agent_id,
+        organization_id,
+        timestamp_ms: now,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_disable_agent_budget_internal"></a>
+
+## Function `disable_agent_budget_internal`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_disable_agent_budget_internal">disable_agent_budget_internal</a>(balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, agent_object_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, set_by: <b>address</b>, set_by_agent_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_disable_agent_budget_internal">disable_agent_budget_internal</a>(
+    balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>,
+    agent_object_id: ID,
+    set_by: <b>address</b>,
+    set_by_agent_id: Option&lt;ID&gt;,
+    clock: &Clock,
+) {
+    <b>assert</b>!(table::contains(&balance.agent_budgets, agent_object_id), <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EAgentNotFound">EAgentNotFound</a>);
+    <b>let</b> <b>entry</b> = table::borrow_mut(&<b>mut</b> balance.agent_budgets, agent_object_id);
+    <b>let</b> prev_enabled = <b>entry</b>.enabled;
+    <b>entry</b>.enabled = <b>false</b>;
+    <b>let</b> snapshot = *<b>entry</b>;
+    event::emit(<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditAgentBudgetDisabled">AiCreditAgentBudgetDisabled</a> {
+        balance_id: object::id(balance),
+        agent_object_id,
+    });
+    event::emit(<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditAgentBudgetChanged">AiCreditAgentBudgetChanged</a> {
+        balance_id: object::id(balance),
+        agent_object_id,
+        had_previous_entry: <b>true</b>,
+        prev_budget_mist: snapshot.budget_mist,
+        prev_daily_cap_mist: snapshot.daily_cap_mist,
+        prev_monthly_cap_mist: snapshot.monthly_cap_mist,
+        prev_require_approval_above_mist: snapshot.require_approval_above_mist,
+        prev_enabled,
+        budget_mist: snapshot.budget_mist,
+        daily_cap_mist: snapshot.daily_cap_mist,
+        monthly_cap_mist: snapshot.monthly_cap_mist,
+        require_approval_above_mist: snapshot.require_approval_above_mist,
+        enabled: <b>false</b>,
+        set_by,
+        set_by_agent_id,
+        organization_id: option::none(),
+        timestamp_ms: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_store_spend_approval"></a>
+
+## Function `store_spend_approval`
+
+Store (or overwrite) the agent's one-shot allowance and emit the approval event.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_store_spend_approval">store_spend_approval</a>(balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, agent_object_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, max_amount_mist: u64, expires_at_ms: u64, approved_by: <b>address</b>, approved_by_agent_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, organization_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_store_spend_approval">store_spend_approval</a>(
+    balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>,
+    agent_object_id: ID,
+    max_amount_mist: u64,
+    expires_at_ms: u64,
+    approved_by: <b>address</b>,
+    approved_by_agent_id: Option&lt;ID&gt;,
+    organization_id: Option&lt;ID&gt;,
+    clock: &Clock,
+) {
+    <b>assert</b>!(max_amount_mist &gt; 0, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EInvalidAmount">EInvalidAmount</a>);
+    <b>let</b> now = clock::timestamp_ms(clock);
+    <b>assert</b>!(expires_at_ms &gt; now, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EInvalidExpiry">EInvalidExpiry</a>);
+    <b>let</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_approval_nonce">approval_nonce</a> = <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_next_approval_nonce">next_approval_nonce</a>(balance);
+    <b>let</b> key = <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendApprovalKey">SpendApprovalKey</a> { agent_object_id };
+    <b>if</b> (df::exists_with_type&lt;<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendApprovalKey">SpendApprovalKey</a>, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendApproval">SpendApproval</a>&gt;(&balance.id, key)) {
+        <b>let</b> _old: <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendApproval">SpendApproval</a> = df::remove(&<b>mut</b> balance.id, key);
+    };
+    df::add(&<b>mut</b> balance.id, key, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendApproval">SpendApproval</a> {
+        max_amount_mist,
+        expires_at_ms,
+        approved_by,
+        <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_approval_nonce">approval_nonce</a>,
+    });
+    event::emit(<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditSpendApproved">AiCreditSpendApproved</a> {
+        balance_id: object::id(balance),
+        agent_object_id,
+        <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_approval_nonce">approval_nonce</a>,
+        max_amount_mist,
+        expires_at_ms,
+        approved_by,
+        approved_by_agent_id,
+        organization_id,
+        timestamp_ms: now,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_next_approval_nonce"></a>
+
+## Function `next_approval_nonce`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_next_approval_nonce">next_approval_nonce</a>(balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_next_approval_nonce">next_approval_nonce</a>(balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>): u64 {
+    <b>if</b> (!df::exists_with_type&lt;<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_ApprovalNonceKey">ApprovalNonceKey</a>, u64&gt;(&balance.id, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_ApprovalNonceKey">ApprovalNonceKey</a> {})) {
+        df::add(&<b>mut</b> balance.id, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_ApprovalNonceKey">ApprovalNonceKey</a> {}, 0u64);
+    };
+    <b>let</b> counter = df::borrow_mut&lt;<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_ApprovalNonceKey">ApprovalNonceKey</a>, u64&gt;(&<b>mut</b> balance.id, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_ApprovalNonceKey">ApprovalNonceKey</a> {});
+    *counter = *counter + 1;
+    *counter
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_maybe_consume_spend_approval"></a>
+
+## Function `maybe_consume_spend_approval`
+
+Consume the agent's allowance when the settlement amount exceeds its approval
+threshold. Aborts when no live, sufficient allowance exists — this is the on-chain
+enforcement of <code>require_approval_above_mist</code>.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_maybe_consume_spend_approval">maybe_consume_spend_approval</a>(balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, agent_object_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, amount_mist: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_maybe_consume_spend_approval">maybe_consume_spend_approval</a>(
+    balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>,
+    agent_object_id: ID,
+    amount_mist: u64,
+    clock: &Clock,
+) {
+    <b>if</b> (!table::contains(&balance.agent_budgets, agent_object_id)) {
+        <b>return</b>
+    };
+    <b>let</b> threshold_opt = {
+        <b>let</b> <b>entry</b> = table::borrow(&balance.agent_budgets, agent_object_id);
+        <b>entry</b>.require_approval_above_mist
+    };
+    <b>if</b> (option::is_none(&threshold_opt)) {
+        <b>return</b>
+    };
+    <b>if</b> (amount_mist &lt;= *option::borrow(&threshold_opt)) {
+        <b>return</b>
+    };
+    <b>let</b> key = <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendApprovalKey">SpendApprovalKey</a> { agent_object_id };
+    <b>assert</b>!(
+        df::exists_with_type&lt;<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendApprovalKey">SpendApprovalKey</a>, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendApproval">SpendApproval</a>&gt;(&balance.id, key),
+        <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EApprovalRequired">EApprovalRequired</a>,
+    );
+    <b>let</b> approval: <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendApproval">SpendApproval</a> = df::remove(&<b>mut</b> balance.id, key);
+    <b>assert</b>!(clock::timestamp_ms(clock) &lt;= approval.expires_at_ms, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EApprovalExpired">EApprovalExpired</a>);
+    <b>assert</b>!(amount_mist &lt;= approval.max_amount_mist, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EApprovalInsufficient">EApprovalInsufficient</a>);
+    event::emit(<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditSpendApprovalConsumed">AiCreditSpendApprovalConsumed</a> {
+        balance_id: object::id(balance),
+        agent_object_id,
+        <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_approval_nonce">approval_nonce</a>: approval.<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_approval_nonce">approval_nonce</a>,
+        amount_mist,
+        approved_by: approval.approved_by,
+        timestamp_ms: clock::timestamp_ms(clock),
+    });
 }
 </code></pre>
 

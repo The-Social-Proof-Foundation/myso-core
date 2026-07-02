@@ -22,11 +22,16 @@ use myso_types::transaction_driver_types::ExecuteTransactionRequestType;
 
 use crate::config::{OracleArgs, SOCIAL_PACKAGE_ID};
 use crate::receipt::{ReceiptStore, UsageLine};
+use crate::signing::{parse_object_id_hex, ReceiptSigner, UsageReceipt};
 
 const CLOCK_OBJECT_ID: &str = "0x0000000000000000000000000000000000000000000000000000000000000006";
 const MAX_BATCH: usize = 16;
 const SETTLE_SIGNED_USAGE: &str = "settle_signed_usage";
 const SETTLE_SIGNED_USAGE_ARG_COUNT: usize = 11;
+
+/// Move abort codes in `social_contracts::ai_credit` that mean "allowance no longer
+/// covers this receipt": EApprovalRequired=18, EApprovalExpired=19, EApprovalInsufficient=20.
+const APPROVAL_ABORT_CODES: [&str; 3] = [", 18)", ", 19)", ", 20)"];
 
 #[derive(Hash, Eq, PartialEq, Clone)]
 struct BatchKey {
@@ -115,6 +120,7 @@ pub async fn run_settlement_cycle(
     }
 
     let mut settled_count = 0usize;
+    let mut store_dirty = false;
     for (key, lines) in groups {
         let mut remaining = lines;
         while !remaining.is_empty() {
@@ -136,6 +142,44 @@ pub async fn run_settlement_cycle(
                     settled_count += receipt_ids.len();
                 }
                 Err(err) => {
+                    let err_str = err.to_string();
+                    // Revocation race recovery: the allowance was revoked or expired
+                    // between signing and settlement. Void the aborting receipt (it can
+                    // never settle) and re-sign the balance's remaining pending lines
+                    // with a contiguous nonce sequence so the queue is unblocked.
+                    if let Some(cmd_idx) = parse_approval_abort_command(&err_str) {
+                        if let Some(failed) = chunk.get(cmd_idx) {
+                            let voided_receipt = failed.receipt_id;
+                            store.mark_void(voided_receipt);
+                            let recovered = resign_pending_for_balance(
+                                args,
+                                store,
+                                &key.balance_id,
+                            )
+                            .await;
+                            match recovered {
+                                Ok(resigned) => {
+                                    store_dirty = true;
+                                    tracing::warn!(
+                                        balance_id = %key.balance_id,
+                                        agent_object_id = %key.agent_object_id,
+                                        voided_receipt = %voided_receipt,
+                                        resigned,
+                                        trigger,
+                                        "voided unapprovable receipt and re-signed pending queue"
+                                    );
+                                }
+                                Err(resign_err) => {
+                                    tracing::warn!(
+                                        balance_id = %key.balance_id,
+                                        error = %resign_err,
+                                        "void succeeded but resign failed; will retry next cycle"
+                                    );
+                                }
+                            }
+                        }
+                        break;
+                    }
                     tracing::warn!(
                         balance_id = %key.balance_id,
                         agent_object_id = %key.agent_object_id,
@@ -149,11 +193,65 @@ pub async fn run_settlement_cycle(
         }
     }
 
-    if settled_count > 0 {
+    if settled_count > 0 || store_dirty {
         store.save(store_path)?;
         tracing::info!(settled = settled_count, trigger, "settlement cycle complete");
     }
     Ok(settled_count)
+}
+
+/// Extracts the failing command index from an execution-failure debug string when the
+/// abort is an ai_credit approval error (codes 18/19/20). Command index maps 1:1 to the
+/// chunk line order in [`build_settlement_ptb`].
+pub(crate) fn parse_approval_abort_command(err: &str) -> Option<usize> {
+    if !err.contains("ai_credit") {
+        return None;
+    }
+    if !APPROVAL_ABORT_CODES.iter().any(|code| err.contains(code)) {
+        return None;
+    }
+    let marker = "command_index: ";
+    let idx_str = if let Some(pos) = err.rfind(marker) {
+        &err[pos + marker.len()..]
+    } else if let Some(pos) = err.rfind(" in command ") {
+        &err[pos + " in command ".len()..]
+    } else {
+        return None;
+    };
+    let digits: String = idx_str.chars().take_while(|c| c.is_ascii_digit()).collect();
+    digits.parse().ok()
+}
+
+/// Re-signs all pending (unsettled, non-void) lines for a balance with a contiguous
+/// nonce sequence anchored to the on-chain settlement nonce, refreshing receipt
+/// timestamps so they stay inside the receipt TTL. Returns the number of re-signed lines.
+async fn resign_pending_for_balance(
+    args: &OracleArgs,
+    store: &mut ReceiptStore,
+    balance_id: &str,
+) -> Result<usize> {
+    let on_chain_nonce =
+        crate::chain_balance::fetch_on_chain_settlement_nonce(&args.myso_rpc, balance_id)
+            .await
+            .unwrap_or(0);
+    let signer = ReceiptSigner::from_hex(&args.private_key_hex)?;
+    let now_ms = chrono::Utc::now().timestamp_millis() as u64;
+    let indices = store.renumber_pending_for_balance(balance_id, on_chain_nonce, now_ms);
+    for i in &indices {
+        let line = &store.lines[*i];
+        let receipt = UsageReceipt {
+            balance_id: parse_object_id_hex(&line.balance_id)?,
+            agent_object_id: parse_object_id_hex(&line.agent_object_id)?,
+            receipt_id: line.receipt_id,
+            amount_mist: line.amount_mist,
+            usage_kind: line.usage_kind,
+            timestamp_ms: line.timestamp_ms,
+            settlement_nonce: line.settlement_nonce,
+        };
+        let signature = signer.sign_receipt(&receipt)?;
+        store.lines[*i].signature_hex = hex::encode(signature);
+    }
+    Ok(indices.len())
 }
 
 async fn submit_batch(
@@ -388,5 +486,22 @@ mod tests {
                 "pure args must not be empty BCS payloads"
             );
         }
+    }
+
+    #[test]
+    fn approval_abort_parser_extracts_command_index() {
+        let err = "settlement tx failed: Failure { error: MoveAbort(MoveLocation { module: ModuleId { address: 50c1, name: Identifier(\"ai_credit\") }, function: 42, instruction: 7, function_name: Some(\"maybe_consume_spend_approval\") }, 18) in command 3 }";
+        assert_eq!(parse_approval_abort_command(err), Some(3));
+
+        let expired = err.replace(", 18)", ", 19)");
+        assert_eq!(parse_approval_abort_command(&expired), Some(3));
+
+        // Non-approval abort code from ai_credit is not recovered.
+        let other = err.replace(", 18)", ", 4)");
+        assert_eq!(parse_approval_abort_command(&other), None);
+
+        // Approval-like code from another module is not recovered.
+        let other_module = err.replace("ai_credit", "post");
+        assert_eq!(parse_approval_abort_command(&other_module), None);
     }
 }
