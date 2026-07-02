@@ -561,6 +561,23 @@ impl SocialPgReader {
             .await
     }
 
+    pub async fn list_org_invitations(
+        &self,
+        organization_id: &str,
+        invitee: Option<&str>,
+        status: Option<&str>,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::OrgInvitationRow>> {
+        let mut conn = self.connect().await?;
+        crate::enterprise::list_org_invitations(
+            &mut conn,
+            organization_id,
+            invitee,
+            status,
+            &self.metrics,
+        )
+        .await
+    }
+
     pub async fn list_org_role_assignments(
         &self,
         organization_id: &str,

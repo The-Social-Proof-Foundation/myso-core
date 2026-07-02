@@ -19,7 +19,7 @@ use myso_indexer_alt_social_schema::models::{
 use crate::api::scalars::big_int::BigInt;
 use crate::api::types::enterprise::{
     AgentSpendBreakdown, AuditLogConnection, AuditLogEntry, AuditLogFilterInput,
-    OrgMemoryPermission, OrgRole, OrgRoleAssignment, SpendApproval, window_from_gql,
+    OrgInvitation, OrgMemoryPermission, OrgRole, OrgRoleAssignment, SpendApproval, window_from_gql,
 };
 use crate::api::types::memory::SubAgent;
 
@@ -267,6 +267,26 @@ impl AgenticOrganization {
             .await
             .ok()
             .map(|rows| rows.into_iter().map(OrgMemoryPermission::from_row).collect())
+    }
+
+    async fn invitations(
+        &self,
+        ctx: &Context<'_>,
+        invitee: Option<String>,
+        status: Option<String>,
+    ) -> Option<Vec<OrgInvitation>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        reader
+            .list_org_invitations(
+                &self.inner.organization_id,
+                invitee.as_deref(),
+                status.as_deref(),
+            )
+            .await
+            .ok()
+            .map(|rows| rows.into_iter().map(OrgInvitation::from_row).collect())
     }
 
     async fn spend_approvals(

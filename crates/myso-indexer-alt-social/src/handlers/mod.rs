@@ -71,7 +71,7 @@ use myso_indexer_alt_social_schema::models::{
     NewSubAgentEvent, NewSubscriptionEvent, NewTip, NewUnifiedRevenue, NewUpgradeEvent,
     NewUsernameRegistry, NewVestingEvent, NewVestingWallet, NewVoteDecryptionFailure,
     NewAiCreditAgentBudget, NewAiCreditBalance, NewAiCreditConfig, NewAiCreditEvent,
-    NewAiCreditSpendApproval, NewAuditLog, NewOrgMemoryPermission, NewOrgRole,
+    NewAiCreditSpendApproval, NewAuditLog, NewOrgMemoryPermission, NewOrgInvitation, NewOrgRole,
     NewOrgRoleAssignment, ProposalUpdateSet,
 };
 
@@ -733,6 +733,10 @@ pub enum SocialEventRow {
         organization_id: String,
         deactivated_at_ms: i64,
     },
+    AgenticOrganizationMemoryGroupSet {
+        organization_id: String,
+        group_id: String,
+    },
     OrganizationEvent(NewOrganizationEvent),
     OrganizationStatsInit {
         organization_id: String,
@@ -828,6 +832,17 @@ pub enum SocialEventRow {
         member_address: String,
         role_name: String,
         revoked_at_ms: i64,
+        event_id: String,
+        transaction_id: String,
+    },
+    OrgInvitationUpsert(NewOrgInvitation),
+    OrgInvitationRespond {
+        organization_id: String,
+        invitee_address: String,
+        status: String,
+        responded_at_ms: i64,
+        responded_by: String,
+        granted_mask: Option<i64>,
         event_id: String,
         transaction_id: String,
     },

@@ -33,6 +33,9 @@ pub enum AuditAction {
     OrgRoleDefine,
     OrgRoleAssign,
     OrgRoleRevoke,
+    OrgInvitationCreate,
+    OrgInvitationAccept,
+    OrgInvitationDecline,
     AgentBudgetChange,
     AgentBudgetDisable,
     SpendApprovalRequest,
@@ -52,6 +55,9 @@ pub enum AuditAction {
     WorkflowItemCreate,
     WorkflowItemAction,
     WorkflowItemExpire,
+    AutomationJobRun,
+    AutomationJobSkip,
+    AutomationTriggerFired,
 }
 
 impl AuditAction {
@@ -63,6 +69,9 @@ impl AuditAction {
             AuditAction::OrgRoleDefine => "org_role_define",
             AuditAction::OrgRoleAssign => "org_role_assign",
             AuditAction::OrgRoleRevoke => "org_role_revoke",
+            AuditAction::OrgInvitationCreate => "org_invitation_create",
+            AuditAction::OrgInvitationAccept => "org_invitation_accept",
+            AuditAction::OrgInvitationDecline => "org_invitation_decline",
             AuditAction::AgentBudgetChange => "agent_budget_change",
             AuditAction::AgentBudgetDisable => "agent_budget_disable",
             AuditAction::SpendApprovalRequest => "spend_approval_request",
@@ -82,6 +91,9 @@ impl AuditAction {
             AuditAction::WorkflowItemCreate => "workflow_item_create",
             AuditAction::WorkflowItemAction => "workflow_item_action",
             AuditAction::WorkflowItemExpire => "workflow_item_expire",
+            AuditAction::AutomationJobRun => "automation_job_run",
+            AuditAction::AutomationJobSkip => "automation_job_skip",
+            AuditAction::AutomationTriggerFired => "automation_trigger_fired",
         }
     }
 }

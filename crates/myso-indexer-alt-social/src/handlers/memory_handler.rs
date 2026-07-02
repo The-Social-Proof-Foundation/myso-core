@@ -20,11 +20,11 @@ use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
     NewAgentMemoryVault, NewAgenticOrganization, NewAuditLog, NewMemoryAccount,
-    NewOrgMemoryPermission, NewOrgRole, NewOrgRoleAssignment, NewOrganizationEvent,
+    NewOrgMemoryPermission, NewOrgInvitation, NewOrgRole, NewOrgRoleAssignment, NewOrganizationEvent,
     NewSubAgentEvent,
 };
 use myso_indexer_alt_social_schema::schema::{
-    audit_log, memory_accounts, org_memory_permissions, org_role_assignments, org_roles, profiles,
+    audit_log, memory_accounts, org_invitations, org_memory_permissions, org_role_assignments, org_roles, profiles,
     sub_agent_events, sub_agent_memory_vaults, sub_agent_organization_events,
     sub_agent_organizations, sub_agents,
 };
@@ -69,6 +69,10 @@ pub enum MemoryRow {
         organization_id: String,
         deactivated_at_ms: i64,
     },
+    AgenticOrganizationMemoryGroupSet {
+        organization_id: String,
+        group_id: String,
+    },
     OrganizationEvent(NewOrganizationEvent),
     OrganizationStatsInit {
         organization_id: String,
@@ -95,6 +99,17 @@ pub enum MemoryRow {
         member_address: String,
         role_name: String,
         revoked_at_ms: i64,
+        event_id: String,
+        transaction_id: String,
+    },
+    OrgInvitationUpsert(NewOrgInvitation),
+    OrgInvitationRespond {
+        organization_id: String,
+        invitee_address: String,
+        status: String,
+        responded_at_ms: i64,
+        responded_by: String,
+        granted_mask: Option<i64>,
         event_id: String,
         transaction_id: String,
     },
@@ -149,6 +164,13 @@ impl MemoryRow {
                 organization_id,
                 deactivated_at_ms,
             }),
+            crate::handlers::SocialEventRow::AgenticOrganizationMemoryGroupSet {
+                organization_id,
+                group_id,
+            } => Some(MemoryRow::AgenticOrganizationMemoryGroupSet {
+                organization_id,
+                group_id,
+            }),
             crate::handlers::SocialEventRow::OrganizationEvent(e) => {
                 Some(MemoryRow::OrganizationEvent(e))
             }
@@ -202,6 +224,28 @@ impl MemoryRow {
                 member_address,
                 role_name,
                 revoked_at_ms,
+                event_id,
+                transaction_id,
+            }),
+            crate::handlers::SocialEventRow::OrgInvitationUpsert(i) => {
+                Some(MemoryRow::OrgInvitationUpsert(i))
+            }
+            crate::handlers::SocialEventRow::OrgInvitationRespond {
+                organization_id,
+                invitee_address,
+                status,
+                responded_at_ms,
+                responded_by,
+                granted_mask,
+                event_id,
+                transaction_id,
+            } => Some(MemoryRow::OrgInvitationRespond {
+                organization_id,
+                invitee_address,
+                status,
+                responded_at_ms,
+                responded_by,
+                granted_mask,
                 event_id,
                 transaction_id,
             }),
@@ -433,6 +477,18 @@ impl Handler for MemoryHandler {
                     .execute(conn)
                     .await?;
                 }
+                MemoryRow::AgenticOrganizationMemoryGroupSet {
+                    organization_id,
+                    group_id,
+                } => {
+                    total += diesel::update(
+                        sub_agent_organizations::table
+                            .filter(sub_agent_organizations::organization_id.eq(organization_id)),
+                    )
+                    .set(sub_agent_organizations::org_memory_group_id.eq(group_id))
+                    .execute(conn)
+                    .await?;
+                }
                 MemoryRow::OrganizationEvent(e) => {
                     total += diesel::insert_into(sub_agent_organization_events::table)
                         .values(e)
@@ -570,6 +626,57 @@ impl Handler for MemoryHandler {
                         org_role_assignments::revoked_at_ms.eq(Some(*revoked_at_ms)),
                         org_role_assignments::event_id.eq(event_id),
                         org_role_assignments::transaction_id.eq(transaction_id),
+                    ))
+                    .execute(conn)
+                    .await?;
+                }
+                MemoryRow::OrgInvitationUpsert(i) => {
+                    total += diesel::insert_into(org_invitations::table)
+                        .values(i)
+                        .on_conflict((
+                            org_invitations::organization_id,
+                            org_invitations::invitee_address,
+                        ))
+                        .do_update()
+                        .set((
+                            org_invitations::role_name.eq(i.role_name.clone()),
+                            org_invitations::permissions_mask.eq(i.permissions_mask),
+                            org_invitations::status.eq(i.status.clone()),
+                            org_invitations::invited_by.eq(i.invited_by.clone()),
+                            org_invitations::created_at_ms.eq(i.created_at_ms),
+                            org_invitations::expires_at_ms.eq(i.expires_at_ms),
+                            org_invitations::responded_at_ms.eq(i.responded_at_ms),
+                            org_invitations::responded_by.eq(i.responded_by.clone()),
+                            org_invitations::granted_mask.eq(i.granted_mask),
+                            org_invitations::event_id.eq(i.event_id.clone()),
+                            org_invitations::transaction_id.eq(i.transaction_id.clone()),
+                            org_invitations::time.eq(i.time),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                MemoryRow::OrgInvitationRespond {
+                    organization_id,
+                    invitee_address,
+                    status,
+                    responded_at_ms,
+                    responded_by,
+                    granted_mask,
+                    event_id,
+                    transaction_id,
+                } => {
+                    total += diesel::update(
+                        org_invitations::table
+                            .filter(org_invitations::organization_id.eq(organization_id))
+                            .filter(org_invitations::invitee_address.eq(invitee_address)),
+                    )
+                    .set((
+                        org_invitations::status.eq(status),
+                        org_invitations::responded_at_ms.eq(Some(*responded_at_ms)),
+                        org_invitations::responded_by.eq(Some(responded_by.clone())),
+                        org_invitations::granted_mask.eq(*granted_mask),
+                        org_invitations::event_id.eq(event_id),
+                        org_invitations::transaction_id.eq(transaction_id),
                     ))
                     .execute(conn)
                     .await?;

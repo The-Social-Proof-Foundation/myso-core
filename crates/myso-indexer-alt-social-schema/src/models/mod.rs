@@ -8,6 +8,7 @@ mod governance;
 mod insurance;
 mod memory;
 mod mydata;
+mod org_invitations;
 mod org_sharing;
 mod organization;
 mod platform;
@@ -72,12 +73,18 @@ pub use memory::{
     AgentMemoryVaultRow, MemoryAccountRow, MemoryUsageStatsRow, NewAgentMemoryVault,
     NewMemoryAccount, NewSubAgent, NewSubAgentEvent, SubAgentRow,
 };
+pub use org_invitations::{
+    NewOrgInvitation, OrgInvitationRow, ORG_INVITATION_STATUS_ACCEPTED,
+    ORG_INVITATION_STATUS_DECLINED, ORG_INVITATION_STATUS_PENDING,
+};
 pub use org_sharing::{
     BUILTIN_ORG_ROLES, NewOrgMemoryPermission, NewOrgRole, NewOrgRoleAssignment,
-    ORG_PERM_AGENT_MANAGER, ORG_PERM_ALL, ORG_PERM_AUDITOR, ORG_PERM_BUDGET_MANAGER,
-    ORG_PERM_DASHBOARD_VIEWER, ORG_PERM_MEMORY_READ, ORG_PERM_MEMORY_WRITE,
-    ORG_PERM_SPEND_APPROVER, OrgMemoryPermissionRow, OrgRoleAssignmentRow, OrgRoleRow,
-    builtin_org_role_mask, expand_org_permission_mask, is_builtin_org_role,
+    ORG_GOVERNANCE_PERM_ALL, ORG_PERM_AGENT_MANAGER, ORG_PERM_ALL, ORG_PERM_AUDITOR,
+    ORG_PERM_BUDGET_MANAGER, ORG_PERM_DASHBOARD_VIEWER, ORG_PERM_FULL,
+    ORG_PERM_GOVERNANCE_PROPOSER, ORG_PERM_GOVERNANCE_VOTER, ORG_PERM_MEMORY_READ,
+    ORG_PERM_MEMORY_WRITE, ORG_PERM_SPEND_APPROVER, OrgMemoryPermissionRow,
+    OrgRoleAssignmentRow, OrgRoleRow, builtin_org_role_mask, expand_org_permission_mask,
+    is_builtin_org_role,
 };
 pub use mydata::{
     ACCESS_TYPE_CONTENT_UPDATE, ACCESS_TYPE_GRANT, ACCESS_TYPE_ONE_TIME, ACCESS_TYPE_PREVIEW,

@@ -6,8 +6,10 @@ use chrono::Utc;
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
     builtin_org_role_mask, expand_org_permission_mask, AuditAction, NewAgentMemoryVault,
-    NewAgenticOrganization, NewAuditLog, NewMemoryAccount, NewOrgMemoryPermission, NewOrgRole,
-    NewOrgRoleAssignment, NewOrganizationEvent, NewSubAgent, NewSubAgentEvent,
+    NewAgenticOrganization, NewAuditLog, NewMemoryAccount, NewOrgInvitation,
+    NewOrgMemoryPermission, NewOrgRole, NewOrgRoleAssignment, NewOrganizationEvent, NewSubAgent,
+    NewSubAgentEvent, ORG_INVITATION_STATUS_ACCEPTED, ORG_INVITATION_STATUS_DECLINED,
+    ORG_INVITATION_STATUS_PENDING,
     AUDIT_ACTOR_HUMAN, AUDIT_SOURCE_CHAIN, BUILTIN_ORG_ROLES, EVENT_TYPE_ORG_CATEGORY_UPDATED,
     EVENT_TYPE_ORG_CREATED, EVENT_TYPE_ORG_DEACTIVATED, EVENT_TYPE_ORG_UPDATED,
 };
@@ -486,19 +488,25 @@ pub(crate) fn handle_memory_event(
             let organization_id = json_str(data, "organization_id")?;
             let account_id = json_str(data, "account_id")?;
             let principal_owner = json_str(data, "principal_owner")?;
-            Some(vec![SocialEventRow::AuditLog(chain_audit_row(
-                AuditAction::OrgMemoryGroupCreate,
-                principal_owner,
-                "org_memory_group",
-                group_id.clone(),
-                Some(organization_id),
-                Some(account_id),
-                None,
-                Some(serde_json::json!({ "group_id": group_id })),
-                event_id,
-                &transaction_id,
-                now,
-            ))])
+            Some(vec![
+                SocialEventRow::AgenticOrganizationMemoryGroupSet {
+                    organization_id: organization_id.clone(),
+                    group_id: group_id.clone(),
+                },
+                SocialEventRow::AuditLog(chain_audit_row(
+                    AuditAction::OrgMemoryGroupCreate,
+                    principal_owner,
+                    "org_memory_group",
+                    group_id.clone(),
+                    Some(organization_id),
+                    Some(account_id),
+                    None,
+                    Some(serde_json::json!({ "group_id": group_id })),
+                    event_id,
+                    &transaction_id,
+                    now,
+                )),
+            ])
         }
         "OrgMemoryPermissionGranted" | "OrgMemoryPermissionRevoked" => {
             let granted = event_name == "OrgMemoryPermissionGranted";
@@ -698,6 +706,137 @@ pub(crate) fn handle_memory_event(
                 now,
             )));
             Some(rows)
+        }
+        "OrgInvitationCreated" => {
+            let organization_id = json_str(data, "organization_id")?;
+            let account_id = json_str(data, "account_id")?;
+            let invitee = json_str(data, "invitee")?;
+            let role_name = json_opt_string(data, "role_name");
+            let permissions_mask = json_u64(data, "permissions_mask");
+            let invited_by = json_str(data, "invited_by")?;
+            let timestamp_ms = json_u64(data, "timestamp_ms");
+            let expires_at_ms = data.get("expires_at_ms").and_then(json_opt_i64);
+            Some(vec![
+                SocialEventRow::OrgInvitationUpsert(NewOrgInvitation {
+                    organization_id: organization_id.clone(),
+                    invitee_address: invitee.clone(),
+                    role_name: role_name.clone(),
+                    permissions_mask,
+                    status: ORG_INVITATION_STATUS_PENDING.to_string(),
+                    invited_by: invited_by.clone(),
+                    created_at_ms: timestamp_ms,
+                    expires_at_ms,
+                    responded_at_ms: None,
+                    responded_by: None,
+                    granted_mask: None,
+                    event_id: event_id.to_string(),
+                    transaction_id: transaction_id.clone(),
+                    time: now,
+                }),
+                SocialEventRow::AuditLog(chain_audit_row(
+                    AuditAction::OrgInvitationCreate,
+                    invited_by,
+                    "org_invitation",
+                    invitee,
+                    Some(organization_id),
+                    Some(account_id),
+                    None,
+                    Some(serde_json::json!({
+                        "role_name": role_name,
+                        "permissions_mask": permissions_mask,
+                        "expires_at_ms": expires_at_ms,
+                    })),
+                    event_id,
+                    &transaction_id,
+                    now,
+                )),
+            ])
+        }
+        "OrgInvitationAccepted" => {
+            let organization_id = json_str(data, "organization_id")?;
+            let account_id = json_str(data, "account_id")?;
+            let group_id = json_str(data, "group_id")?;
+            let invitee = json_str(data, "invitee")?;
+            let role_name = json_opt_string(data, "role_name");
+            let _permissions_mask = json_u64(data, "permissions_mask");
+            let granted_mask = json_u64(data, "granted_mask");
+            let accepted_by = json_str(data, "accepted_by")?;
+            let timestamp_ms = json_u64(data, "timestamp_ms");
+            let mut rows = vec![SocialEventRow::OrgInvitationRespond {
+                organization_id: organization_id.clone(),
+                invitee_address: invitee.clone(),
+                status: ORG_INVITATION_STATUS_ACCEPTED.to_string(),
+                responded_at_ms: timestamp_ms,
+                responded_by: accepted_by.clone(),
+                granted_mask: Some(granted_mask),
+                event_id: event_id.to_string(),
+                transaction_id: transaction_id.clone(),
+            }];
+            for bit in expand_org_permission_mask(granted_mask) {
+                rows.push(SocialEventRow::OrgMemoryPermissionUpsert(
+                    NewOrgMemoryPermission {
+                        organization_id: organization_id.clone(),
+                        member_address: invitee.clone(),
+                        permission_kind: bit,
+                        active: true,
+                        granted_by: accepted_by.clone(),
+                        group_id: Some(group_id.clone()),
+                        event_id: event_id.to_string(),
+                        transaction_id: transaction_id.clone(),
+                        time: now,
+                    },
+                ));
+            }
+            rows.push(SocialEventRow::AuditLog(chain_audit_row(
+                AuditAction::OrgInvitationAccept,
+                accepted_by,
+                "org_invitation",
+                invitee,
+                Some(organization_id),
+                Some(account_id),
+                Some(serde_json::json!({ "status": ORG_INVITATION_STATUS_PENDING })),
+                Some(serde_json::json!({
+                    "status": ORG_INVITATION_STATUS_ACCEPTED,
+                    "role_name": role_name,
+                    "granted_mask": granted_mask,
+                })),
+                event_id,
+                &transaction_id,
+                now,
+            )));
+            Some(rows)
+        }
+        "OrgInvitationDeclined" => {
+            let organization_id = json_str(data, "organization_id")?;
+            let account_id = json_str(data, "account_id")?;
+            let invitee = json_str(data, "invitee")?;
+            let declined_by = json_str(data, "declined_by")?;
+            let timestamp_ms = json_u64(data, "timestamp_ms");
+            Some(vec![
+                SocialEventRow::OrgInvitationRespond {
+                    organization_id: organization_id.clone(),
+                    invitee_address: invitee.clone(),
+                    status: ORG_INVITATION_STATUS_DECLINED.to_string(),
+                    responded_at_ms: timestamp_ms,
+                    responded_by: declined_by.clone(),
+                    granted_mask: None,
+                    event_id: event_id.to_string(),
+                    transaction_id: transaction_id.clone(),
+                },
+                SocialEventRow::AuditLog(chain_audit_row(
+                    AuditAction::OrgInvitationDecline,
+                    declined_by,
+                    "org_invitation",
+                    invitee,
+                    Some(organization_id),
+                    Some(account_id),
+                    Some(serde_json::json!({ "status": ORG_INVITATION_STATUS_PENDING })),
+                    Some(serde_json::json!({ "status": ORG_INVITATION_STATUS_DECLINED })),
+                    event_id,
+                    &transaction_id,
+                    now,
+                )),
+            ])
         }
         _ => None,
     }

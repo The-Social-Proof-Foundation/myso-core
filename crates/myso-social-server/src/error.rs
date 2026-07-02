@@ -15,6 +15,9 @@ pub enum SocialError {
     #[error("Invalid request: {0}")]
     BadRequest(String),
 
+    #[error("Forbidden: {0}")]
+    Forbidden(String),
+
     #[error("Internal error: {0}")]
     Internal(String),
 }
@@ -34,6 +37,10 @@ impl SocialError {
         Self::BadRequest(msg.into())
     }
 
+    pub fn forbidden(msg: impl Into<String>) -> Self {
+        Self::Forbidden(msg.into())
+    }
+
     pub fn internal(msg: impl Into<String>) -> Self {
         Self::Internal(msg.into())
     }
@@ -44,6 +51,7 @@ impl IntoResponse for SocialError {
         let (status, message) = match &self {
             SocialError::NotFound { .. } => (StatusCode::NOT_FOUND, self.to_string()),
             SocialError::BadRequest(_) => (StatusCode::BAD_REQUEST, self.to_string()),
+            SocialError::Forbidden(_) => (StatusCode::FORBIDDEN, self.to_string()),
             SocialError::Database(_) | SocialError::Internal(_) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, self.to_string())
             }

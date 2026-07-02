@@ -76,6 +76,8 @@ pub struct AgenticOrganizationRow {
     pub event_id: String,
     pub transaction_id: String,
     pub time: chrono::DateTime<chrono::Utc>,
+    /// Derived `PermissionedGroup<MemorySharePackage>` object id, set on `OrgMemoryGroupCreated`.
+    pub org_memory_group_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]

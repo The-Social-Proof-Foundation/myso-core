@@ -1483,6 +1483,18 @@ impl Reader {
         enterprise::list_org_role_assignments(&self.db, organization_id, member, active_only).await
     }
 
+    pub async fn list_org_invitations(
+        &self,
+        organization_id: &str,
+        invitee: Option<&str>,
+        status: Option<&str>,
+    ) -> Result<
+        Vec<myso_indexer_alt_social_schema::models::OrgInvitationRow>,
+        crate::error::SocialError,
+    > {
+        enterprise::list_org_invitations(&self.db, organization_id, invitee, status).await
+    }
+
     pub async fn list_spend_approvals_by_owner(
         &self,
         owner: &str,

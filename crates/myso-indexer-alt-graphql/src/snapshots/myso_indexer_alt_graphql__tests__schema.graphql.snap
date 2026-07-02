@@ -229,6 +229,7 @@ type AgenticOrganization {
 	auditLog(filter: AuditLogFilterInput, limit: Int! = 20, offset: Int! = 0): AuditLogConnection
 	createdAt: Int!
 	description: String
+	invitations(invitee: String, status: String): [OrgInvitation!]
 	memoryPermissions(member: String, activeOnly: Boolean): [OrgMemoryPermission!]
 	name: String
 	orgType: OrganizationType!
@@ -4359,6 +4360,19 @@ type OpenMoveTypeSignatureBody =
   | { typeParameter: number }
 """
 scalar OpenMoveTypeSignature
+
+type OrgInvitation {
+	createdAtMs: BigInt!
+	expiresAtMs: BigInt
+	grantedMask: BigInt
+	invitedBy: MySoAddress!
+	inviteeAddress: MySoAddress!
+	permissionsMask: BigInt!
+	respondedAtMs: BigInt
+	respondedBy: MySoAddress
+	roleName: String
+	status: String!
+}
 
 type OrgMemoryPermission {
 	active: Boolean!

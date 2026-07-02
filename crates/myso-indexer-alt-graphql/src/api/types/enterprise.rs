@@ -7,8 +7,8 @@ use myso_indexer_alt_social_reader::{
     AgentSpendBreakdownEntry, AuditLogFilter, OrganizationStatsWindow,
 };
 use myso_indexer_alt_social_schema::models::{
-    AiCreditAgentBudgetRow, AiCreditSpendApprovalRow, AuditLogRow, OrgMemoryPermissionRow,
-    OrgRoleAssignmentRow, OrgRoleRow,
+    AiCreditAgentBudgetRow, AiCreditSpendApprovalRow, AuditLogRow, OrgInvitationRow,
+    OrgMemoryPermissionRow, OrgRoleAssignmentRow, OrgRoleRow,
 };
 
 use crate::api::scalars::big_int::BigInt;
@@ -207,6 +207,65 @@ impl OrgRole {
     async fn defined_by(&self) -> MySoAddress {
         MySoAddress::from_str(&self.inner.defined_by)
             .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct OrgInvitation {
+    inner: OrgInvitationRow,
+}
+
+impl OrgInvitation {
+    pub(crate) fn from_row(inner: OrgInvitationRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl OrgInvitation {
+    async fn invitee_address(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.invitee_address)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    async fn role_name(&self) -> Option<&str> {
+        self.inner.role_name.as_deref()
+    }
+
+    async fn permissions_mask(&self) -> BigInt {
+        BigInt::from(self.inner.permissions_mask)
+    }
+
+    async fn status(&self) -> &str {
+        &self.inner.status
+    }
+
+    async fn invited_by(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.invited_by)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    async fn created_at_ms(&self) -> BigInt {
+        BigInt::from(self.inner.created_at_ms)
+    }
+
+    async fn expires_at_ms(&self) -> Option<BigInt> {
+        self.inner.expires_at_ms.map(BigInt::from)
+    }
+
+    async fn responded_at_ms(&self) -> Option<BigInt> {
+        self.inner.responded_at_ms.map(BigInt::from)
+    }
+
+    async fn responded_by(&self) -> Option<MySoAddress> {
+        self.inner.responded_by.as_ref().map(|addr| {
+            MySoAddress::from_str(addr)
+                .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+        })
+    }
+
+    async fn granted_mask(&self) -> Option<BigInt> {
+        self.inner.granted_mask.map(BigInt::from)
     }
 }
 

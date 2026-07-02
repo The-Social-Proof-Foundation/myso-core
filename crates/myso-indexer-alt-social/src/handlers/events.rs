@@ -1332,6 +1332,40 @@ pub struct BcsOrgRoleRevokedEvent {
     timestamp_ms: u64,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsOrgInvitationCreatedEvent {
+    organization_id: AccountAddress,
+    account_id: AccountAddress,
+    invitee: AccountAddress,
+    role_name: Option<String>,
+    permissions_mask: u64,
+    invited_by: AccountAddress,
+    timestamp_ms: u64,
+    expires_at_ms: Option<u64>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsOrgInvitationAcceptedEvent {
+    organization_id: AccountAddress,
+    account_id: AccountAddress,
+    group_id: AccountAddress,
+    invitee: AccountAddress,
+    role_name: Option<String>,
+    permissions_mask: u64,
+    granted_mask: u64,
+    accepted_by: AccountAddress,
+    timestamp_ms: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsOrgInvitationDeclinedEvent {
+    organization_id: AccountAddress,
+    account_id: AccountAddress,
+    invitee: AccountAddress,
+    declined_by: AccountAddress,
+    timestamp_ms: u64,
+}
+
 #[derive(Debug, Deserialize)]
 struct BcsAiCreditBalanceCreatedEvent {
     balance_id: AccountAddress,
@@ -3623,6 +3657,46 @@ fn parse_memory_event(
                 "role_name": ev.role_name,
                 "revoked_mask": ev.revoked_mask,
                 "revoked_by": addr_to_string(&ev.revoked_by),
+                "timestamp_ms": ev.timestamp_ms,
+            })))
+        }
+        "OrgInvitationCreated" => {
+            let ev = bcs::from_bytes::<BcsOrgInvitationCreatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "organization_id": addr_to_string(&ev.organization_id),
+                "account_id": addr_to_string(&ev.account_id),
+                "invitee": addr_to_string(&ev.invitee),
+                "role_name": ev.role_name,
+                "permissions_mask": ev.permissions_mask,
+                "invited_by": addr_to_string(&ev.invited_by),
+                "timestamp_ms": ev.timestamp_ms,
+                "expires_at_ms": ev.expires_at_ms,
+            })))
+        }
+        "OrgInvitationAccepted" => {
+            let ev = bcs::from_bytes::<BcsOrgInvitationAcceptedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "organization_id": addr_to_string(&ev.organization_id),
+                "account_id": addr_to_string(&ev.account_id),
+                "group_id": addr_to_string(&ev.group_id),
+                "invitee": addr_to_string(&ev.invitee),
+                "role_name": ev.role_name,
+                "permissions_mask": ev.permissions_mask,
+                "granted_mask": ev.granted_mask,
+                "accepted_by": addr_to_string(&ev.accepted_by),
+                "timestamp_ms": ev.timestamp_ms,
+            })))
+        }
+        "OrgInvitationDeclined" => {
+            let ev = bcs::from_bytes::<BcsOrgInvitationDeclinedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "organization_id": addr_to_string(&ev.organization_id),
+                "account_id": addr_to_string(&ev.account_id),
+                "invitee": addr_to_string(&ev.invitee),
+                "declined_by": addr_to_string(&ev.declined_by),
                 "timestamp_ms": ev.timestamp_ms,
             })))
         }

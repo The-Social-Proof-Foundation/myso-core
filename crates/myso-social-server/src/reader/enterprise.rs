@@ -10,12 +10,12 @@ use diesel::SelectableHelper;
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::{
     AiCreditSpendApprovalRow, AuditLogRow, MemoryUsageStatsRow, NewAiCreditSpendApproval,
-    NewAuditLog, OrgMemoryPermissionRow, OrgRoleAssignmentRow, OrgRoleRow,
+    NewAuditLog, OrgInvitationRow, OrgMemoryPermissionRow, OrgRoleAssignmentRow, OrgRoleRow,
     APPROVAL_STATUS_REQUESTED,
 };
 use myso_indexer_alt_social_schema::schema::{
     ai_credit_balances, ai_credit_spend_approvals, audit_log, memory_usage_stats,
-    org_memory_permissions, org_role_assignments, org_roles,
+    org_invitations, org_memory_permissions, org_role_assignments, org_roles,
 };
 use myso_pg_db::Db;
 use serde::{Deserialize, Serialize};
@@ -84,6 +84,30 @@ pub(crate) async fn list_org_role_assignments(
     query
         .order(org_role_assignments::assigned_at_ms.desc())
         .select(OrgRoleAssignmentRow::as_select())
+        .load(&mut conn)
+        .await
+        .map_err(Into::into)
+}
+
+pub(crate) async fn list_org_invitations(
+    db: &Db,
+    organization_id: &str,
+    invitee: Option<&str>,
+    status: Option<&str>,
+) -> Result<Vec<OrgInvitationRow>, SocialError> {
+    let mut conn = db.connect().await?;
+    let mut query = org_invitations::table
+        .filter(org_invitations::organization_id.eq(organization_id))
+        .into_boxed();
+    if let Some(invitee) = invitee {
+        query = query.filter(org_invitations::invitee_address.eq(invitee));
+    }
+    if let Some(status) = status {
+        query = query.filter(org_invitations::status.eq(status));
+    }
+    query
+        .order(org_invitations::created_at_ms.desc())
+        .select(OrgInvitationRow::as_select())
         .load(&mut conn)
         .await
         .map_err(Into::into)

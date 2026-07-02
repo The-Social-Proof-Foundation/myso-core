@@ -9,13 +9,14 @@ use axum::http::HeaderMap;
 use axum::Json;
 use myso_indexer_alt_social_reader::OrganizationStatsWindow;
 use myso_indexer_alt_social_schema::models::{
-    AiCreditSpendApprovalRow, AuditLogRow, OrgMemoryPermissionRow, OrgRoleAssignmentRow,
-    OrgRoleRow,
+    AiCreditSpendApprovalRow, AuditLogRow, OrgInvitationRow, OrgMemoryPermissionRow,
+    OrgRoleAssignmentRow, OrgRoleRow,
 };
 use serde::Deserialize;
 use std::sync::Arc;
 
 use crate::error::SocialError;
+use crate::workflow_client::{memory_access_idempotency_key, WorkflowClient, WorkflowItemIngest};
 use crate::reader::enterprise::{
     AuditLogFilter, IngestApprovalRequest, IngestAuditLogsRequest, IngestMemoryUsageStatsRequest,
 };
@@ -82,6 +83,28 @@ pub async fn list_org_role_assignments(
             &organization_id,
             query.member.as_deref(),
             query.active_only,
+        )
+        .await?;
+    Ok(Json(rows))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct InvitationsQuery {
+    pub invitee: Option<String>,
+    pub status: Option<String>,
+}
+
+pub async fn list_org_invitations(
+    State(state): State<Arc<AppState>>,
+    Path(organization_id): Path<String>,
+    Query(query): Query<InvitationsQuery>,
+) -> Result<Json<Vec<OrgInvitationRow>>, SocialError> {
+    let rows = state
+        .reader
+        .list_org_invitations(
+            &organization_id,
+            query.invitee.as_deref(),
+            query.status.as_deref(),
         )
         .await?;
     Ok(Json(rows))
@@ -225,4 +248,124 @@ pub async fn ingest_audit_logs_internal(
     check_sync_secret(&headers, "x-audit-sync-secret", "AUDIT_SYNC_SECRET")?;
     let inserted = state.reader.ingest_audit_logs(req).await?;
     Ok(Json(serde_json::json!({ "ok": true, "inserted": inserted })))
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct IngestMemoryAccessRequest {
+    /// Org admin / owner inbox recipient.
+    pub recipient_address: String,
+    pub organization_id: String,
+    pub account_id: String,
+    pub org_memory_group_id: String,
+    pub member_address: String,
+    pub permissions_mask: i64,
+    pub agent_object_id: Option<String>,
+    pub title: Option<String>,
+    pub body: Option<String>,
+}
+
+/// Memory relayer (or other producers) surface a memory access approval inbox item.
+pub async fn ingest_memory_access_request_internal(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Json(req): Json<IngestMemoryAccessRequest>,
+) -> Result<Json<serde_json::Value>, SocialError> {
+    check_sync_secret(
+        &headers,
+        "x-memory-access-sync-secret",
+        "MEMORY_ACCESS_SYNC_SECRET",
+    )?;
+
+    if req.recipient_address.is_empty()
+        || req.organization_id.is_empty()
+        || req.account_id.is_empty()
+        || req.org_memory_group_id.is_empty()
+        || req.member_address.is_empty()
+    {
+        return Err(SocialError::bad_request(
+            "recipient_address, organization_id, account_id, org_memory_group_id, and member_address are required",
+        ));
+    }
+
+    let Some(workflow) = state.workflow.clone() else {
+        return Ok(Json(serde_json::json!({ "ok": true, "workflow": "disabled" })));
+    };
+
+    let idempotency_key = memory_access_idempotency_key(
+        &req.organization_id,
+        &req.member_address,
+        req.permissions_mask,
+    );
+    let title = req.title.clone().unwrap_or_else(|| {
+        "Org memory access requested".to_string()
+    });
+    let body = req.body.clone().or_else(|| {
+        Some(format!(
+            "Agent {} requested org memory permissions (mask {})",
+            req.member_address, req.permissions_mask
+        ))
+    });
+    let item = WorkflowItemIngest {
+        idempotency_key,
+        recipient_address: req.recipient_address.clone(),
+        item_type: "memory_access_request".to_string(),
+        title,
+        body,
+        payload: serde_json::json!({
+            "organization_id": req.organization_id,
+            "account_id": req.account_id,
+            "org_memory_group_id": req.org_memory_group_id,
+            "member_address": req.member_address,
+            "permissions_mask": req.permissions_mask,
+            "agent_object_id": req.agent_object_id,
+        }),
+        organization_id: Some(req.organization_id.clone()),
+        account_id: Some(req.account_id.clone()),
+        source_service: "social_server".to_string(),
+        action_deadline_ms: None,
+    };
+
+    spawn_memory_access_workflow_ingest(workflow, item);
+
+    Ok(Json(serde_json::json!({ "ok": true })))
+}
+
+fn spawn_memory_access_workflow_ingest(workflow: WorkflowClient, item: WorkflowItemIngest) {
+    tokio::spawn(async move {
+        if let Err(err) = workflow.ingest_item(&item).await {
+            tracing::warn!(error = %err, "failed to ingest memory access workflow item");
+        }
+    });
+}
+
+/// Canonical org metadata for internal services (sidecar, memory relayer, SDK proxy).
+/// social-server is the single authority for this data — other services must never
+/// re-derive `org_memory_group_id` locally.
+#[derive(Debug, serde::Serialize)]
+pub struct OrgSummaryResponse {
+    pub organization_id: String,
+    pub principal_owner: String,
+    pub account_id: String,
+    pub org_memory_group_id: Option<String>,
+}
+
+pub async fn get_org_summary_internal(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Path(organization_id): Path<String>,
+) -> Result<Json<OrgSummaryResponse>, SocialError> {
+    check_sync_secret(&headers, "x-internal-sync-secret", "INTERNAL_SYNC_SECRET")?;
+
+    let org = state
+        .reader
+        .get_agentic_organization(&organization_id)
+        .await?
+        .ok_or_else(|| SocialError::not_found("organization"))?;
+
+    Ok(Json(OrgSummaryResponse {
+        organization_id: org.organization_id,
+        principal_owner: org.principal_owner,
+        account_id: org.account_id,
+        org_memory_group_id: org.org_memory_group_id,
+    }))
 }

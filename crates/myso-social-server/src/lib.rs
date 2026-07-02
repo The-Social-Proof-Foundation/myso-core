@@ -5,3 +5,4 @@ pub mod error;
 pub mod json_serde;
 pub mod reader;
 pub mod server;
+pub mod workflow_client;

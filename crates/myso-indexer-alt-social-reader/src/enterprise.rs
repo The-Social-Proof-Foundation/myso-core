@@ -11,12 +11,12 @@ use diesel::QueryableByName;
 use diesel::SelectableHelper;
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::{
-    AiCreditAgentBudgetRow, AiCreditSpendApprovalRow, AuditLogRow, OrgMemoryPermissionRow,
-    OrgRoleAssignmentRow, OrgRoleRow,
+    AiCreditAgentBudgetRow, AiCreditSpendApprovalRow, AuditLogRow, OrgInvitationRow,
+    OrgMemoryPermissionRow, OrgRoleAssignmentRow, OrgRoleRow,
 };
 use myso_indexer_alt_social_schema::schema::{
     ai_credit_agent_budgets, ai_credit_balances, ai_credit_spend_approvals, audit_log,
-    org_memory_permissions, org_role_assignments, org_roles,
+    org_invitations, org_memory_permissions, org_role_assignments, org_roles,
 };
 use myso_pg_db::Connection;
 use serde::{Deserialize, Serialize};
@@ -189,6 +189,33 @@ pub async fn list_org_roles(
         .filter(org_roles::active.eq(true))
         .order(org_roles::role_name.asc())
         .select(OrgRoleRow::as_select())
+        .load(conn)
+        .await?;
+    metrics.requests_succeeded.inc();
+    Ok(rows)
+}
+
+pub async fn list_org_invitations(
+    conn: &mut Connection<'_>,
+    organization_id: &str,
+    invitee: Option<&str>,
+    status: Option<&str>,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<OrgInvitationRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    let mut query = org_invitations::table
+        .filter(org_invitations::organization_id.eq(organization_id))
+        .into_boxed();
+    if let Some(invitee) = invitee {
+        query = query.filter(org_invitations::invitee_address.eq(invitee));
+    }
+    if let Some(status) = status {
+        query = query.filter(org_invitations::status.eq(status));
+    }
+    let rows = query
+        .order(org_invitations::created_at_ms.desc())
+        .select(OrgInvitationRow::as_select())
         .load(conn)
         .await?;
     metrics.requests_succeeded.inc();

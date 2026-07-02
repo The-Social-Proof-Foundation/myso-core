@@ -89,6 +89,8 @@ struct LeaderboardOrgRow {
     transaction_id: String,
     #[diesel(sql_type = diesel::sql_types::Timestamptz)]
     time: chrono::DateTime<chrono::Utc>,
+    #[diesel(sql_type = Nullable<Text>)]
+    org_memory_group_id: Option<String>,
     #[diesel(sql_type = BigInt)]
     sort_value: i64,
 }
@@ -263,6 +265,7 @@ pub async fn get_organization_leaderboard(
                 o.event_id,
                 o.transaction_id,
                 o.time,
+                o.org_memory_group_id,
                 ({order_col})::bigint AS sort_value
             FROM sub_agent_organizations o
             JOIN sub_agent_organization_stats s ON s.organization_id = o.organization_id
@@ -297,6 +300,7 @@ pub async fn get_organization_leaderboard(
                 o.event_id,
                 o.transaction_id,
                 o.time,
+                o.org_memory_group_id,
                 ({order_col})::bigint AS sort_value
             FROM sub_agent_organizations o
             JOIN sub_agent_organization_stats s ON s.organization_id = o.organization_id
@@ -381,6 +385,7 @@ pub async fn get_organization_leaderboard(
                 event_id: row.event_id,
                 transaction_id: row.transaction_id,
                 time: row.time,
+                org_memory_group_id: row.org_memory_group_id,
             },
             sort_value: row.sort_value,
             rank: offset + idx as i64 + 1,

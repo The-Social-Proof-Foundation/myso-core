@@ -50,6 +50,10 @@ computed off-chain (indexer/server).
 -  [Struct `OrgSpendApprover`](#social_contracts_memory_OrgSpendApprover)
 -  [Struct `OrgDashboardViewer`](#social_contracts_memory_OrgDashboardViewer)
 -  [Struct `OrgAuditor`](#social_contracts_memory_OrgAuditor)
+-  [Struct `OrgGovernanceProposer`](#social_contracts_memory_OrgGovernanceProposer)
+-  [Struct `OrgGovernanceVoter`](#social_contracts_memory_OrgGovernanceVoter)
+-  [Struct `OrgInvitationKey`](#social_contracts_memory_OrgInvitationKey)
+-  [Struct `OrgInvitation`](#social_contracts_memory_OrgInvitation)
 -  [Struct `OrgCustomRoleKey`](#social_contracts_memory_OrgCustomRoleKey)
 -  [Struct `OrgRoleAssignmentKey`](#social_contracts_memory_OrgRoleAssignmentKey)
 -  [Struct `SubAgentConstraints`](#social_contracts_memory_SubAgentConstraints)
@@ -81,6 +85,9 @@ computed off-chain (indexer/server).
 -  [Struct `OrgRoleDefined`](#social_contracts_memory_OrgRoleDefined)
 -  [Struct `OrgRoleAssigned`](#social_contracts_memory_OrgRoleAssigned)
 -  [Struct `OrgRoleRevoked`](#social_contracts_memory_OrgRoleRevoked)
+-  [Struct `OrgInvitationCreated`](#social_contracts_memory_OrgInvitationCreated)
+-  [Struct `OrgInvitationAccepted`](#social_contracts_memory_OrgInvitationAccepted)
+-  [Struct `OrgInvitationDeclined`](#social_contracts_memory_OrgInvitationDeclined)
 -  [Constants](#@Constants_1)
 -  [Function `class_human`](#social_contracts_memory_class_human)
 -  [Function `class_delegated_ai`](#social_contracts_memory_class_delegated_ai)
@@ -124,6 +131,9 @@ computed off-chain (indexer/server).
 -  [Function `org_perm_dashboard_viewer`](#social_contracts_memory_org_perm_dashboard_viewer)
 -  [Function `org_perm_auditor`](#social_contracts_memory_org_perm_auditor)
 -  [Function `org_perm_all`](#social_contracts_memory_org_perm_all)
+-  [Function `org_perm_governance_proposer`](#social_contracts_memory_org_perm_governance_proposer)
+-  [Function `org_perm_governance_voter`](#social_contracts_memory_org_perm_governance_voter)
+-  [Function `org_governance_perm_all`](#social_contracts_memory_org_governance_perm_all)
 -  [Function `role_mask_owner`](#social_contracts_memory_role_mask_owner)
 -  [Function `role_mask_admin`](#social_contracts_memory_role_mask_admin)
 -  [Function `role_mask_agent_manager`](#social_contracts_memory_role_mask_agent_manager)
@@ -161,6 +171,9 @@ computed off-chain (indexer/server).
 -  [Function `assign_org_role`](#social_contracts_memory_assign_org_role)
 -  [Function `revoke_org_role`](#social_contracts_memory_revoke_org_role)
 -  [Function `org_role_assignment_mask`](#social_contracts_memory_org_role_assignment_mask)
+-  [Function `create_org_invitation`](#social_contracts_memory_create_org_invitation)
+-  [Function `accept_org_invitation`](#social_contracts_memory_accept_org_invitation)
+-  [Function `decline_org_invitation`](#social_contracts_memory_decline_org_invitation)
 -  [Function `org_role_mask`](#social_contracts_memory_org_role_mask)
 -  [Function `approve_org_key_policy`](#social_contracts_memory_approve_org_key_policy)
 -  [Function `register_sub_agent`](#social_contracts_memory_register_sub_agent)
@@ -245,7 +258,11 @@ computed off-chain (indexer/server).
 -  [Function `assert_org_group`](#social_contracts_memory_assert_org_group)
 -  [Function `assert_org_permission_manager`](#social_contracts_memory_assert_org_permission_manager)
 -  [Function `assert_valid_org_permission_mask`](#social_contracts_memory_assert_valid_org_permission_mask)
+-  [Function `assert_valid_org_ops_permission_mask`](#social_contracts_memory_assert_valid_org_ops_permission_mask)
+-  [Function `assert_valid_org_governance_permission_mask`](#social_contracts_memory_assert_valid_org_governance_permission_mask)
 -  [Function `assert_member_grantable`](#social_contracts_memory_assert_member_grantable)
+-  [Function `grant_org_permissions_from_mask_via_org`](#social_contracts_memory_grant_org_permissions_from_mask_via_org)
+-  [Function `ensure_org_group_delegate_admin`](#social_contracts_memory_ensure_org_group_delegate_admin)
 -  [Function `grant_org_permissions_from_mask`](#social_contracts_memory_grant_org_permissions_from_mask)
 -  [Function `revoke_org_permissions_from_mask`](#social_contracts_memory_revoke_org_permissions_from_mask)
 -  [Function `is_builtin_role_name`](#social_contracts_memory_is_builtin_role_name)
@@ -570,6 +587,129 @@ Permission to read org audit logs (recorded on-chain; server-side read gating is
 
 
 <dl>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_OrgGovernanceProposer"></a>
+
+## Struct `OrgGovernanceProposer`
+
+Permission to create governance proposals for the organization.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_OrgGovernanceProposer">OrgGovernanceProposer</a> <b>has</b> drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_OrgGovernanceVoter"></a>
+
+## Struct `OrgGovernanceVoter`
+
+Permission to vote on governance proposals for the organization.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_OrgGovernanceVoter">OrgGovernanceVoter</a> <b>has</b> drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_OrgInvitationKey"></a>
+
+## Struct `OrgInvitationKey`
+
+Dynamic-field key on the org UID for a pending invitation to <code>invitee</code>.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_OrgInvitationKey">OrgInvitationKey</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>invitee: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_OrgInvitation"></a>
+
+## Struct `OrgInvitation`
+
+Pending org membership invitation stored on the org UID.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_OrgInvitation">OrgInvitation</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>invitee: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>role_name: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>permissions_mask: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>invited_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>created_at_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>expires_at_ms: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+</dt>
+<dd>
+</dd>
 </dl>
 
 
@@ -2268,6 +2408,179 @@ Human root plus on-chain agent auth index (shared [<code><a href="../social_cont
 
 </details>
 
+<a name="social_contracts_memory_OrgInvitationCreated"></a>
+
+## Struct `OrgInvitationCreated`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_OrgInvitationCreated">OrgInvitationCreated</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code><a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>account_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>invitee: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>role_name: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>permissions_mask: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>invited_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>expires_at_ms: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_OrgInvitationAccepted"></a>
+
+## Struct `OrgInvitationAccepted`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_OrgInvitationAccepted">OrgInvitationAccepted</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code><a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>account_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>group_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>invitee: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>role_name: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>permissions_mask: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>granted_mask: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>accepted_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp_ms: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_OrgInvitationDeclined"></a>
+
+## Struct `OrgInvitationDeclined`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_OrgInvitationDeclined">OrgInvitationDeclined</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code><a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>account_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>invitee: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>declined_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp_ms: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="@Constants_1"></a>
 
 ## Constants
@@ -2547,9 +2860,38 @@ spend allowances for descendants in their subtree (see <code><a href="../social_
 
 <a name="social_contracts_memory_ORG_PERM_ALL"></a>
 
+Operational permission bits (memory, agents, budgets, dashboards, audit).
 
 
 <pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_ALL">ORG_PERM_ALL</a>: u64 = 127;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_ORG_GOVERNANCE_PROPOSER"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ORG_GOVERNANCE_PROPOSER">ORG_GOVERNANCE_PROPOSER</a>: u64 = 128;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_ORG_GOVERNANCE_VOTER"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ORG_GOVERNANCE_VOTER">ORG_GOVERNANCE_VOTER</a>: u64 = 256;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_ORG_GOVERNANCE_PERM_ALL"></a>
+
+Governance permission bits (proposer + voter).
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ORG_GOVERNANCE_PERM_ALL">ORG_GOVERNANCE_PERM_ALL</a>: u64 = 384;
 </code></pre>
 
 
@@ -3261,6 +3603,51 @@ spend allowances for descendants in their subtree (see <code><a href="../social_
 
 
 <pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ENotDescendantAgent">ENotDescendantAgent</a>: u64 = 55;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_EOrgInvitationExists"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EOrgInvitationExists">EOrgInvitationExists</a>: u64 = 56;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_EOrgInvitationNotFound"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EOrgInvitationNotFound">EOrgInvitationNotFound</a>: u64 = 57;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_EOrgInvitationNotInvitee"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EOrgInvitationNotInvitee">EOrgInvitationNotInvitee</a>: u64 = 58;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_EOrgInvitationExpired"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EOrgInvitationExpired">EOrgInvitationExpired</a>: u64 = 59;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_EOrgInvitationEmpty"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EOrgInvitationEmpty">EOrgInvitationEmpty</a>: u64 = 60;
 </code></pre>
 
 
@@ -4255,6 +4642,72 @@ spend allowances for descendants in their subtree (see <code><a href="../social_
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_perm_all">org_perm_all</a>(): u64 { <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_ALL">ORG_PERM_ALL</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_org_perm_governance_proposer"></a>
+
+## Function `org_perm_governance_proposer`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_perm_governance_proposer">org_perm_governance_proposer</a>(): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_perm_governance_proposer">org_perm_governance_proposer</a>(): u64 { <a href="../social_contracts/memory.md#social_contracts_memory_ORG_GOVERNANCE_PROPOSER">ORG_GOVERNANCE_PROPOSER</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_org_perm_governance_voter"></a>
+
+## Function `org_perm_governance_voter`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_perm_governance_voter">org_perm_governance_voter</a>(): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_perm_governance_voter">org_perm_governance_voter</a>(): u64 { <a href="../social_contracts/memory.md#social_contracts_memory_ORG_GOVERNANCE_VOTER">ORG_GOVERNANCE_VOTER</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_org_governance_perm_all"></a>
+
+## Function `org_governance_perm_all`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_governance_perm_all">org_governance_perm_all</a>(): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_governance_perm_all">org_governance_perm_all</a>(): u64 { <a href="../social_contracts/memory.md#social_contracts_memory_ORG_GOVERNANCE_PERM_ALL">ORG_GOVERNANCE_PERM_ALL</a> }
 </code></pre>
 
 
@@ -5508,6 +5961,225 @@ Assigned-delta mask for a role assignment, if present.
     } <b>else</b> {
         option::none()
     }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_create_org_invitation"></a>
+
+## Function `create_org_invitation`
+
+Create a pending invitation for <code>invitee</code>. At least one of <code>role_name</code> or
+<code>permissions_mask</code> must be set. The invitee accepts or declines via the
+corresponding entry functions.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_create_org_invitation">create_org_invitation</a>(account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, org: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, group: &<b>mut</b> <a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">social_contracts::memory::MemorySharePackage</a>&gt;, invitee: <b>address</b>, role_name: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, permissions_mask: u64, expires_at_ms: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_create_org_invitation">create_org_invitation</a>(
+    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    org: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>,
+    group: &<b>mut</b> PermissionedGroup&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>&gt;,
+    invitee: <b>address</b>,
+    role_name: Option&lt;String&gt;,
+    permissions_mask: u64,
+    expires_at_ms: Option&lt;u64&gt;,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_object_version">assert_object_version</a>(&account.id);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_organization_belongs_to_account">assert_organization_belongs_to_account</a>(account, org);
+    <b>assert</b>!(org.active, <a href="../social_contracts/memory.md#social_contracts_memory_EOrganizationNotActive">EOrganizationNotActive</a>);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_group">assert_org_group</a>(org, group);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_permission_manager">assert_org_permission_manager</a>(group, ctx);
+    <b>assert</b>!(
+        option::is_some(&role_name) || permissions_mask != 0,
+        <a href="../social_contracts/memory.md#social_contracts_memory_EOrgInvitationEmpty">EOrgInvitationEmpty</a>,
+    );
+    <b>if</b> (permissions_mask != 0) {
+        <a href="../social_contracts/memory.md#social_contracts_memory_assert_valid_org_permission_mask">assert_valid_org_permission_mask</a>(permissions_mask);
+    };
+    <b>if</b> (option::is_some(&role_name)) {
+        <b>let</b> name = option::borrow(&role_name);
+        <b>let</b> _ = <a href="../social_contracts/memory.md#social_contracts_memory_resolve_role_mask">resolve_role_mask</a>(org, name);
+    };
+    <b>let</b> key = <a href="../social_contracts/memory.md#social_contracts_memory_OrgInvitationKey">OrgInvitationKey</a> { invitee };
+    <b>assert</b>!(
+        !df::exists_with_type&lt;<a href="../social_contracts/memory.md#social_contracts_memory_OrgInvitationKey">OrgInvitationKey</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgInvitation">OrgInvitation</a>&gt;(&org.id, key),
+        <a href="../social_contracts/memory.md#social_contracts_memory_EOrgInvitationExists">EOrgInvitationExists</a>,
+    );
+    <b>let</b> now = clock::timestamp_ms(clock);
+    <b>if</b> (option::is_some(&expires_at_ms)) {
+        <b>assert</b>!(*option::borrow(&expires_at_ms) &gt; now, <a href="../social_contracts/memory.md#social_contracts_memory_EOrgInvitationExpired">EOrgInvitationExpired</a>);
+    };
+    <a href="../social_contracts/memory.md#social_contracts_memory_ensure_org_group_delegate_admin">ensure_org_group_delegate_admin</a>(org, group, ctx);
+    <b>let</b> invited_by = tx_context::sender(ctx);
+    <b>let</b> invitation = <a href="../social_contracts/memory.md#social_contracts_memory_OrgInvitation">OrgInvitation</a> {
+        invitee,
+        role_name,
+        permissions_mask,
+        invited_by,
+        created_at_ms: now,
+        expires_at_ms,
+    };
+    event::emit(<a href="../social_contracts/memory.md#social_contracts_memory_OrgInvitationCreated">OrgInvitationCreated</a> {
+        <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: object::id(org),
+        account_id: object::id(account),
+        invitee,
+        role_name: invitation.role_name,
+        permissions_mask,
+        invited_by,
+        timestamp_ms: now,
+        expires_at_ms,
+    });
+    df::add(&<b>mut</b> org.id, key, invitation);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_accept_org_invitation"></a>
+
+## Function `accept_org_invitation`
+
+Accept a pending invitation: grants the invited role and/or permissions,
+then removes the invitation dynamic field.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_accept_org_invitation">accept_org_invitation</a>(account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, org: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, group: &<b>mut</b> <a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">social_contracts::memory::MemorySharePackage</a>&gt;, invitee: <b>address</b>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_accept_org_invitation">accept_org_invitation</a>(
+    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    org: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>,
+    group: &<b>mut</b> PermissionedGroup&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>&gt;,
+    invitee: <b>address</b>,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_object_version">assert_object_version</a>(&account.id);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_organization_belongs_to_account">assert_organization_belongs_to_account</a>(account, org);
+    <b>assert</b>!(org.active, <a href="../social_contracts/memory.md#social_contracts_memory_EOrganizationNotActive">EOrganizationNotActive</a>);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_group">assert_org_group</a>(org, group);
+    <b>assert</b>!(tx_context::sender(ctx) == invitee, <a href="../social_contracts/memory.md#social_contracts_memory_EOrgInvitationNotInvitee">EOrgInvitationNotInvitee</a>);
+    <b>let</b> key = <a href="../social_contracts/memory.md#social_contracts_memory_OrgInvitationKey">OrgInvitationKey</a> { invitee };
+    <b>assert</b>!(
+        df::exists_with_type&lt;<a href="../social_contracts/memory.md#social_contracts_memory_OrgInvitationKey">OrgInvitationKey</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgInvitation">OrgInvitation</a>&gt;(&org.id, key),
+        <a href="../social_contracts/memory.md#social_contracts_memory_EOrgInvitationNotFound">EOrgInvitationNotFound</a>,
+    );
+    <b>let</b> <a href="../social_contracts/memory.md#social_contracts_memory_OrgInvitation">OrgInvitation</a> {
+        invitee: _,
+        role_name,
+        permissions_mask,
+        invited_by: _,
+        created_at_ms: _,
+        expires_at_ms,
+    } = df::remove(&<b>mut</b> org.id, key);
+    <b>let</b> now = clock::timestamp_ms(clock);
+    <b>if</b> (option::is_some(&expires_at_ms)) {
+        <b>assert</b>!(*option::borrow(&expires_at_ms) &gt;= now, <a href="../social_contracts/memory.md#social_contracts_memory_EOrgInvitationExpired">EOrgInvitationExpired</a>);
+    };
+    <b>let</b> <b>mut</b> granted_mask = 0u64;
+    <b>if</b> (option::is_some(&role_name)) {
+        <b>let</b> name = option::borrow(&role_name);
+        <b>let</b> mask = <a href="../social_contracts/memory.md#social_contracts_memory_resolve_role_mask">resolve_role_mask</a>(org, name);
+        <b>let</b> assignment_key = <a href="../social_contracts/memory.md#social_contracts_memory_OrgRoleAssignmentKey">OrgRoleAssignmentKey</a> { member: invitee, role_name: *name };
+        <b>if</b> (!df::exists_with_type&lt;<a href="../social_contracts/memory.md#social_contracts_memory_OrgRoleAssignmentKey">OrgRoleAssignmentKey</a>, u64&gt;(&org.id, assignment_key)) {
+            <b>let</b> role_granted =
+                <a href="../social_contracts/memory.md#social_contracts_memory_grant_org_permissions_from_mask_via_org">grant_org_permissions_from_mask_via_org</a>(org, group, invitee, mask);
+            df::add(&<b>mut</b> org.id, assignment_key, role_granted);
+            granted_mask = granted_mask | role_granted;
+        };
+    };
+    <b>if</b> (permissions_mask != 0) {
+        granted_mask =
+            granted_mask
+                | <a href="../social_contracts/memory.md#social_contracts_memory_grant_org_permissions_from_mask_via_org">grant_org_permissions_from_mask_via_org</a>(
+                    org,
+                    group,
+                    invitee,
+                    permissions_mask,
+                );
+    };
+    event::emit(<a href="../social_contracts/memory.md#social_contracts_memory_OrgInvitationAccepted">OrgInvitationAccepted</a> {
+        <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: object::id(org),
+        account_id: object::id(account),
+        group_id: object::id(group),
+        invitee,
+        role_name,
+        permissions_mask,
+        granted_mask,
+        accepted_by: tx_context::sender(ctx),
+        timestamp_ms: now,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_decline_org_invitation"></a>
+
+## Function `decline_org_invitation`
+
+Decline a pending invitation and remove the invitation dynamic field.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_decline_org_invitation">decline_org_invitation</a>(account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, org: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, invitee: <b>address</b>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_decline_org_invitation">decline_org_invitation</a>(
+    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    org: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>,
+    invitee: <b>address</b>,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_object_version">assert_object_version</a>(&account.id);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_organization_belongs_to_account">assert_organization_belongs_to_account</a>(account, org);
+    <b>assert</b>!(tx_context::sender(ctx) == invitee, <a href="../social_contracts/memory.md#social_contracts_memory_EOrgInvitationNotInvitee">EOrgInvitationNotInvitee</a>);
+    <b>let</b> key = <a href="../social_contracts/memory.md#social_contracts_memory_OrgInvitationKey">OrgInvitationKey</a> { invitee };
+    <b>assert</b>!(
+        df::exists_with_type&lt;<a href="../social_contracts/memory.md#social_contracts_memory_OrgInvitationKey">OrgInvitationKey</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgInvitation">OrgInvitation</a>&gt;(&org.id, key),
+        <a href="../social_contracts/memory.md#social_contracts_memory_EOrgInvitationNotFound">EOrgInvitationNotFound</a>,
+    );
+    <b>let</b> invitation: <a href="../social_contracts/memory.md#social_contracts_memory_OrgInvitation">OrgInvitation</a> = df::remove(&<b>mut</b> org.id, key);
+    <b>let</b> now = clock::timestamp_ms(clock);
+    <b>if</b> (option::is_some(&invitation.expires_at_ms)) {
+        <b>assert</b>!(*option::borrow(&invitation.expires_at_ms) &gt;= now, <a href="../social_contracts/memory.md#social_contracts_memory_EOrgInvitationExpired">EOrgInvitationExpired</a>);
+    };
+    event::emit(<a href="../social_contracts/memory.md#social_contracts_memory_OrgInvitationDeclined">OrgInvitationDeclined</a> {
+        <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: object::id(org),
+        account_id: object::id(account),
+        invitee,
+        declined_by: tx_context::sender(ctx),
+        timestamp_ms: now,
+    });
 }
 </code></pre>
 
@@ -8279,7 +8951,65 @@ so wrappers fail fast (and so no-op masks cannot bypass authorization entirely).
 
 <pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_assert_valid_org_permission_mask">assert_valid_org_permission_mask</a>(mask: u64) {
     <b>assert</b>!(mask != 0, <a href="../social_contracts/memory.md#social_contracts_memory_EOrgRoleMaskEmpty">EOrgRoleMaskEmpty</a>);
+    <b>let</b> ops = mask & <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_ALL">ORG_PERM_ALL</a>;
+    <b>let</b> gov = mask & <a href="../social_contracts/memory.md#social_contracts_memory_ORG_GOVERNANCE_PERM_ALL">ORG_GOVERNANCE_PERM_ALL</a>;
+    <b>assert</b>!(ops | gov == mask, <a href="../social_contracts/memory.md#social_contracts_memory_EInvalidOrgPermission">EInvalidOrgPermission</a>);
+    <b>if</b> (ops != 0) {
+        <a href="../social_contracts/memory.md#social_contracts_memory_assert_valid_org_ops_permission_mask">assert_valid_org_ops_permission_mask</a>(ops);
+    };
+    <b>if</b> (gov != 0) {
+        <a href="../social_contracts/memory.md#social_contracts_memory_assert_valid_org_governance_permission_mask">assert_valid_org_governance_permission_mask</a>(gov);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_assert_valid_org_ops_permission_mask"></a>
+
+## Function `assert_valid_org_ops_permission_mask`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_assert_valid_org_ops_permission_mask">assert_valid_org_ops_permission_mask</a>(mask: u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_assert_valid_org_ops_permission_mask">assert_valid_org_ops_permission_mask</a>(mask: u64) {
+    <b>assert</b>!(mask != 0, <a href="../social_contracts/memory.md#social_contracts_memory_EOrgRoleMaskEmpty">EOrgRoleMaskEmpty</a>);
     <b>assert</b>!((mask & <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_ALL">ORG_PERM_ALL</a>) == mask, <a href="../social_contracts/memory.md#social_contracts_memory_EInvalidOrgPermission">EInvalidOrgPermission</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_assert_valid_org_governance_permission_mask"></a>
+
+## Function `assert_valid_org_governance_permission_mask`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_assert_valid_org_governance_permission_mask">assert_valid_org_governance_permission_mask</a>(mask: u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_assert_valid_org_governance_permission_mask">assert_valid_org_governance_permission_mask</a>(mask: u64) {
+    <b>assert</b>!(mask != 0, <a href="../social_contracts/memory.md#social_contracts_memory_EOrgRoleMaskEmpty">EOrgRoleMaskEmpty</a>);
+    <b>assert</b>!((mask & <a href="../social_contracts/memory.md#social_contracts_memory_ORG_GOVERNANCE_PERM_ALL">ORG_GOVERNANCE_PERM_ALL</a>) == mask, <a href="../social_contracts/memory.md#social_contracts_memory_EInvalidOrgPermission">EInvalidOrgPermission</a>);
 }
 </code></pre>
 
@@ -8313,6 +9043,159 @@ relayer scopes org recall by the agent's own organization.
     <b>if</b> (table::contains(&account.agents, member)) {
         <b>let</b> <b>entry</b> = table::borrow(&account.agents, member);
         <b>assert</b>!(<b>entry</b>.<a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a> == object::id(org), <a href="../social_contracts/memory.md#social_contracts_memory_EOrganizationOrgMismatch">EOrganizationOrgMismatch</a>);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_grant_org_permissions_from_mask_via_org"></a>
+
+## Function `grant_org_permissions_from_mask_via_org`
+
+Grant each witness in <code>mask</code> via the org object's delegate admin on the group.
+Used when the transaction sender is the invitee (accept path) rather than a manager.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_grant_org_permissions_from_mask_via_org">grant_org_permissions_from_mask_via_org</a>(org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, group: &<b>mut</b> <a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">social_contracts::memory::MemorySharePackage</a>&gt;, member: <b>address</b>, mask: u64): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_grant_org_permissions_from_mask_via_org">grant_org_permissions_from_mask_via_org</a>(
+    org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>,
+    group: &<b>mut</b> PermissionedGroup&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>&gt;,
+    member: <b>address</b>,
+    mask: u64,
+): u64 {
+    <b>let</b> <b>mut</b> granted = 0u64;
+    <b>if</b> ((mask & <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_MEMORY_READ">ORG_PERM_MEMORY_READ</a>) != 0
+        && !permissioned_group::has_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgMemoryReader">OrgMemoryReader</a>&gt;(group, member)) {
+        permissioned_group::object_grant_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgMemoryReader">OrgMemoryReader</a>&gt;(
+            group,
+            &org.id,
+            member,
+        );
+        granted = granted | <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_MEMORY_READ">ORG_PERM_MEMORY_READ</a>;
+    };
+    <b>if</b> ((mask & <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_MEMORY_WRITE">ORG_PERM_MEMORY_WRITE</a>) != 0
+        && !permissioned_group::has_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgMemoryWriter">OrgMemoryWriter</a>&gt;(group, member)) {
+        permissioned_group::object_grant_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgMemoryWriter">OrgMemoryWriter</a>&gt;(
+            group,
+            &org.id,
+            member,
+        );
+        granted = granted | <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_MEMORY_WRITE">ORG_PERM_MEMORY_WRITE</a>;
+    };
+    <b>if</b> ((mask & <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_AGENT_MANAGER">ORG_PERM_AGENT_MANAGER</a>) != 0
+        && !permissioned_group::has_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgAgentManager">OrgAgentManager</a>&gt;(group, member)) {
+        permissioned_group::object_grant_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgAgentManager">OrgAgentManager</a>&gt;(
+            group,
+            &org.id,
+            member,
+        );
+        granted = granted | <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_AGENT_MANAGER">ORG_PERM_AGENT_MANAGER</a>;
+    };
+    <b>if</b> ((mask & <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_BUDGET_MANAGER">ORG_PERM_BUDGET_MANAGER</a>) != 0
+        && !permissioned_group::has_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgBudgetManager">OrgBudgetManager</a>&gt;(group, member)) {
+        permissioned_group::object_grant_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgBudgetManager">OrgBudgetManager</a>&gt;(
+            group,
+            &org.id,
+            member,
+        );
+        granted = granted | <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_BUDGET_MANAGER">ORG_PERM_BUDGET_MANAGER</a>;
+    };
+    <b>if</b> ((mask & <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_SPEND_APPROVER">ORG_PERM_SPEND_APPROVER</a>) != 0
+        && !permissioned_group::has_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgSpendApprover">OrgSpendApprover</a>&gt;(group, member)) {
+        permissioned_group::object_grant_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgSpendApprover">OrgSpendApprover</a>&gt;(
+            group,
+            &org.id,
+            member,
+        );
+        granted = granted | <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_SPEND_APPROVER">ORG_PERM_SPEND_APPROVER</a>;
+    };
+    <b>if</b> ((mask & <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_DASHBOARD_VIEWER">ORG_PERM_DASHBOARD_VIEWER</a>) != 0
+        && !permissioned_group::has_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgDashboardViewer">OrgDashboardViewer</a>&gt;(group, member)) {
+        permissioned_group::object_grant_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgDashboardViewer">OrgDashboardViewer</a>&gt;(
+            group,
+            &org.id,
+            member,
+        );
+        granted = granted | <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_DASHBOARD_VIEWER">ORG_PERM_DASHBOARD_VIEWER</a>;
+    };
+    <b>if</b> ((mask & <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_AUDITOR">ORG_PERM_AUDITOR</a>) != 0
+        && !permissioned_group::has_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgAuditor">OrgAuditor</a>&gt;(group, member)) {
+        permissioned_group::object_grant_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgAuditor">OrgAuditor</a>&gt;(
+            group,
+            &org.id,
+            member,
+        );
+        granted = granted | <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_AUDITOR">ORG_PERM_AUDITOR</a>;
+    };
+    <b>if</b> ((mask & <a href="../social_contracts/memory.md#social_contracts_memory_ORG_GOVERNANCE_PROPOSER">ORG_GOVERNANCE_PROPOSER</a>) != 0
+        && !permissioned_group::has_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgGovernanceProposer">OrgGovernanceProposer</a>&gt;(group, member)) {
+        permissioned_group::object_grant_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgGovernanceProposer">OrgGovernanceProposer</a>&gt;(
+            group,
+            &org.id,
+            member,
+        );
+        granted = granted | <a href="../social_contracts/memory.md#social_contracts_memory_ORG_GOVERNANCE_PROPOSER">ORG_GOVERNANCE_PROPOSER</a>;
+    };
+    <b>if</b> ((mask & <a href="../social_contracts/memory.md#social_contracts_memory_ORG_GOVERNANCE_VOTER">ORG_GOVERNANCE_VOTER</a>) != 0
+        && !permissioned_group::has_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgGovernanceVoter">OrgGovernanceVoter</a>&gt;(group, member)) {
+        permissioned_group::object_grant_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgGovernanceVoter">OrgGovernanceVoter</a>&gt;(
+            group,
+            &org.id,
+            member,
+        );
+        granted = granted | <a href="../social_contracts/memory.md#social_contracts_memory_ORG_GOVERNANCE_VOTER">ORG_GOVERNANCE_VOTER</a>;
+    };
+    granted
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_ensure_org_group_delegate_admin"></a>
+
+## Function `ensure_org_group_delegate_admin`
+
+One-time bootstrap: grant the org shared object delegate admin on its memory group so
+invitation accept can fulfill grants without the invitee holding manager permission.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_ensure_org_group_delegate_admin">ensure_org_group_delegate_admin</a>(org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, group: &<b>mut</b> <a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">social_contracts::memory::MemorySharePackage</a>&gt;, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_ensure_org_group_delegate_admin">ensure_org_group_delegate_admin</a>(
+    org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>,
+    group: &<b>mut</b> PermissionedGroup&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>&gt;,
+    ctx: &TxContext,
+) {
+    <b>let</b> org_addr = object::id_to_address(&object::id(org));
+    <b>if</b> (!permissioned_group::has_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, ExtensionPermissionsAdmin&gt;(
+        group,
+        org_addr,
+    )) {
+        permissioned_group::grant_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, ExtensionPermissionsAdmin&gt;(
+            group,
+            org_addr,
+            ctx,
+        );
     };
 }
 </code></pre>
@@ -8380,6 +9263,16 @@ actually granted. Static per-bit branches (Move cannot grant by runtime TypeName
         permissioned_group::grant_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgAuditor">OrgAuditor</a>&gt;(group, member, ctx);
         granted = granted | <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_AUDITOR">ORG_PERM_AUDITOR</a>;
     };
+    <b>if</b> ((mask & <a href="../social_contracts/memory.md#social_contracts_memory_ORG_GOVERNANCE_PROPOSER">ORG_GOVERNANCE_PROPOSER</a>) != 0
+        && !permissioned_group::has_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgGovernanceProposer">OrgGovernanceProposer</a>&gt;(group, member)) {
+        permissioned_group::grant_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgGovernanceProposer">OrgGovernanceProposer</a>&gt;(group, member, ctx);
+        granted = granted | <a href="../social_contracts/memory.md#social_contracts_memory_ORG_GOVERNANCE_PROPOSER">ORG_GOVERNANCE_PROPOSER</a>;
+    };
+    <b>if</b> ((mask & <a href="../social_contracts/memory.md#social_contracts_memory_ORG_GOVERNANCE_VOTER">ORG_GOVERNANCE_VOTER</a>) != 0
+        && !permissioned_group::has_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgGovernanceVoter">OrgGovernanceVoter</a>&gt;(group, member)) {
+        permissioned_group::grant_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgGovernanceVoter">OrgGovernanceVoter</a>&gt;(group, member, ctx);
+        granted = granted | <a href="../social_contracts/memory.md#social_contracts_memory_ORG_GOVERNANCE_VOTER">ORG_GOVERNANCE_VOTER</a>;
+    };
     granted
 }
 </code></pre>
@@ -8445,6 +9338,16 @@ Revoke each witness in <code>mask</code> the member currently holds. Returns the
         && permissioned_group::has_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgAuditor">OrgAuditor</a>&gt;(group, member)) {
         permissioned_group::revoke_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgAuditor">OrgAuditor</a>&gt;(group, member, ctx);
         revoked = revoked | <a href="../social_contracts/memory.md#social_contracts_memory_ORG_PERM_AUDITOR">ORG_PERM_AUDITOR</a>;
+    };
+    <b>if</b> ((mask & <a href="../social_contracts/memory.md#social_contracts_memory_ORG_GOVERNANCE_PROPOSER">ORG_GOVERNANCE_PROPOSER</a>) != 0
+        && permissioned_group::has_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgGovernanceProposer">OrgGovernanceProposer</a>&gt;(group, member)) {
+        permissioned_group::revoke_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgGovernanceProposer">OrgGovernanceProposer</a>&gt;(group, member, ctx);
+        revoked = revoked | <a href="../social_contracts/memory.md#social_contracts_memory_ORG_GOVERNANCE_PROPOSER">ORG_GOVERNANCE_PROPOSER</a>;
+    };
+    <b>if</b> ((mask & <a href="../social_contracts/memory.md#social_contracts_memory_ORG_GOVERNANCE_VOTER">ORG_GOVERNANCE_VOTER</a>) != 0
+        && permissioned_group::has_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgGovernanceVoter">OrgGovernanceVoter</a>&gt;(group, member)) {
+        permissioned_group::revoke_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, <a href="../social_contracts/memory.md#social_contracts_memory_OrgGovernanceVoter">OrgGovernanceVoter</a>&gt;(group, member, ctx);
+        revoked = revoked | <a href="../social_contracts/memory.md#social_contracts_memory_ORG_GOVERNANCE_VOTER">ORG_GOVERNANCE_VOTER</a>;
     };
     revoked
 }

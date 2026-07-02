@@ -18,6 +18,10 @@ pub const ORG_PERM_SPEND_APPROVER: i64 = 16;
 pub const ORG_PERM_DASHBOARD_VIEWER: i64 = 32;
 pub const ORG_PERM_AUDITOR: i64 = 64;
 pub const ORG_PERM_ALL: i64 = 127;
+pub const ORG_PERM_GOVERNANCE_PROPOSER: i64 = 128;
+pub const ORG_PERM_GOVERNANCE_VOTER: i64 = 256;
+pub const ORG_GOVERNANCE_PERM_ALL: i64 = 384;
+pub const ORG_PERM_FULL: i64 = 511;
 
 /// Built-in role names (mirror of memory.move built-in role masks).
 pub const BUILTIN_ORG_ROLES: [&str; 6] = [
@@ -46,11 +50,11 @@ pub fn builtin_org_role_mask(name: &str) -> Option<i64> {
     }
 }
 
-/// Expand a permission mask into its individual bits.
+/// Expand a permission mask into its individual bits (ops + governance).
 pub fn expand_org_permission_mask(mask: i64) -> Vec<i64> {
     let mut bits = Vec::new();
     let mut bit = 1i64;
-    while bit <= ORG_PERM_ALL {
+    while bit <= ORG_PERM_FULL {
         if mask & bit != 0 {
             bits.push(bit);
         }

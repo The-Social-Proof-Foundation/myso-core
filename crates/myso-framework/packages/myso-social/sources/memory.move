@@ -97,8 +97,8 @@ module social_contracts::memory {
     //
     // Each bit maps 1:1 to an extension permission witness on the org's
     // `PermissionedGroup<MemorySharePackage>`. Roles are masks over this
-    // fixed set; enforcement stays atomic per-witness. Bits >= 128 reserved
-    // for future governance permissions.
+    // fixed set; enforcement stays atomic per-witness. Ops bits are 1–64;
+    // governance bits are 128+ (see ORG_GOVERNANCE_PERM_ALL).
     // ============================================================
 
     const ORG_PERM_MEMORY_READ: u64 = 1;
@@ -108,7 +108,12 @@ module social_contracts::memory {
     const ORG_PERM_SPEND_APPROVER: u64 = 16;
     const ORG_PERM_DASHBOARD_VIEWER: u64 = 32;
     const ORG_PERM_AUDITOR: u64 = 64;
+    /// Operational permission bits (memory, agents, budgets, dashboards, audit).
     const ORG_PERM_ALL: u64 = 127;
+    const ORG_GOVERNANCE_PROPOSER: u64 = 128;
+    const ORG_GOVERNANCE_VOTER: u64 = 256;
+    /// Governance permission bits (proposer + voter).
+    const ORG_GOVERNANCE_PERM_ALL: u64 = 384;
 
     // Built-in role masks (assignment bundles over the fixed witness set).
     const ROLE_MASK_OWNER: u64 = 127;
@@ -204,6 +209,11 @@ module social_contracts::memory {
     const EOrgRoleMaskEmpty: u64 = 53;
     const EOrgRoleBuiltinRedefine: u64 = 54;
     const ENotDescendantAgent: u64 = 55;
+    const EOrgInvitationExists: u64 = 56;
+    const EOrgInvitationNotFound: u64 = 57;
+    const EOrgInvitationNotInvitee: u64 = 58;
+    const EOrgInvitationExpired: u64 = 59;
+    const EOrgInvitationEmpty: u64 = 60;
     const ENoAccess: u64 = 100;
 
     const ED25519_PUBLIC_KEY_LENGTH: u64 = 32;
@@ -260,6 +270,27 @@ module social_contracts::memory {
 
     /// Permission to read org audit logs (recorded on-chain; server-side read gating is a later phase).
     public struct OrgAuditor() has drop;
+
+    /// Permission to create governance proposals for the organization.
+    public struct OrgGovernanceProposer() has drop;
+
+    /// Permission to vote on governance proposals for the organization.
+    public struct OrgGovernanceVoter() has drop;
+
+    /// Dynamic-field key on the org UID for a pending invitation to `invitee`.
+    public struct OrgInvitationKey has copy, drop, store {
+        invitee: address,
+    }
+
+    /// Pending org membership invitation stored on the org UID.
+    public struct OrgInvitation has store, copy, drop {
+        invitee: address,
+        role_name: Option<String>,
+        permissions_mask: u64,
+        invited_by: address,
+        created_at_ms: u64,
+        expires_at_ms: Option<u64>,
+    }
 
     /// Dynamic-field key on the org UID for a custom role definition (`name -> mask`).
     public struct OrgCustomRoleKey has copy, drop, store {
@@ -580,6 +611,37 @@ module social_contracts::memory {
         timestamp_ms: u64,
     }
 
+    public struct OrgInvitationCreated has copy, drop {
+        organization_id: ID,
+        account_id: ID,
+        invitee: address,
+        role_name: Option<String>,
+        permissions_mask: u64,
+        invited_by: address,
+        timestamp_ms: u64,
+        expires_at_ms: Option<u64>,
+    }
+
+    public struct OrgInvitationAccepted has copy, drop {
+        organization_id: ID,
+        account_id: ID,
+        group_id: ID,
+        invitee: address,
+        role_name: Option<String>,
+        permissions_mask: u64,
+        granted_mask: u64,
+        accepted_by: address,
+        timestamp_ms: u64,
+    }
+
+    public struct OrgInvitationDeclined has copy, drop {
+        organization_id: ID,
+        account_id: ID,
+        invitee: address,
+        declined_by: address,
+        timestamp_ms: u64,
+    }
+
     // ============================================================
     // Public accessors
     // ============================================================
@@ -629,6 +691,9 @@ module social_contracts::memory {
     public fun org_perm_dashboard_viewer(): u64 { ORG_PERM_DASHBOARD_VIEWER }
     public fun org_perm_auditor(): u64 { ORG_PERM_AUDITOR }
     public fun org_perm_all(): u64 { ORG_PERM_ALL }
+    public fun org_perm_governance_proposer(): u64 { ORG_GOVERNANCE_PROPOSER }
+    public fun org_perm_governance_voter(): u64 { ORG_GOVERNANCE_VOTER }
+    public fun org_governance_perm_all(): u64 { ORG_GOVERNANCE_PERM_ALL }
 
     public fun role_mask_owner(): u64 { ROLE_MASK_OWNER }
     public fun role_mask_admin(): u64 { ROLE_MASK_ADMIN }
@@ -1174,6 +1239,175 @@ module social_contracts::memory {
         } else {
             option::none()
         }
+    }
+
+    // ============================================================
+    // Org invitations (on-chain membership flow primitive)
+    // ============================================================
+
+    /// Create a pending invitation for `invitee`. At least one of `role_name` or
+    /// `permissions_mask` must be set. The invitee accepts or declines via the
+    /// corresponding entry functions.
+    public entry fun create_org_invitation(
+        account: &MemoryAccount,
+        org: &mut AgenticOrganization,
+        group: &mut PermissionedGroup<MemorySharePackage>,
+        invitee: address,
+        role_name: Option<String>,
+        permissions_mask: u64,
+        expires_at_ms: Option<u64>,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_object_version(&account.id);
+        assert_organization_belongs_to_account(account, org);
+        assert!(org.active, EOrganizationNotActive);
+        assert_org_group(org, group);
+        assert_org_permission_manager(group, ctx);
+        assert!(
+            option::is_some(&role_name) || permissions_mask != 0,
+            EOrgInvitationEmpty,
+        );
+        if (permissions_mask != 0) {
+            assert_valid_org_permission_mask(permissions_mask);
+        };
+        if (option::is_some(&role_name)) {
+            let name = option::borrow(&role_name);
+            let _ = resolve_role_mask(org, name);
+        };
+        let key = OrgInvitationKey { invitee };
+        assert!(
+            !df::exists_with_type<OrgInvitationKey, OrgInvitation>(&org.id, key),
+            EOrgInvitationExists,
+        );
+        let now = clock::timestamp_ms(clock);
+        if (option::is_some(&expires_at_ms)) {
+            assert!(*option::borrow(&expires_at_ms) > now, EOrgInvitationExpired);
+        };
+        ensure_org_group_delegate_admin(org, group, ctx);
+        let invited_by = tx_context::sender(ctx);
+        let invitation = OrgInvitation {
+            invitee,
+            role_name,
+            permissions_mask,
+            invited_by,
+            created_at_ms: now,
+            expires_at_ms,
+        };
+
+        event::emit(OrgInvitationCreated {
+            organization_id: object::id(org),
+            account_id: object::id(account),
+            invitee,
+            role_name: invitation.role_name,
+            permissions_mask,
+            invited_by,
+            timestamp_ms: now,
+            expires_at_ms,
+        });
+        df::add(&mut org.id, key, invitation);
+    }
+
+    /// Accept a pending invitation: grants the invited role and/or permissions,
+    /// then removes the invitation dynamic field.
+    public entry fun accept_org_invitation(
+        account: &MemoryAccount,
+        org: &mut AgenticOrganization,
+        group: &mut PermissionedGroup<MemorySharePackage>,
+        invitee: address,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_object_version(&account.id);
+        assert_organization_belongs_to_account(account, org);
+        assert!(org.active, EOrganizationNotActive);
+        assert_org_group(org, group);
+        assert!(tx_context::sender(ctx) == invitee, EOrgInvitationNotInvitee);
+
+        let key = OrgInvitationKey { invitee };
+        assert!(
+            df::exists_with_type<OrgInvitationKey, OrgInvitation>(&org.id, key),
+            EOrgInvitationNotFound,
+        );
+        let OrgInvitation {
+            invitee: _,
+            role_name,
+            permissions_mask,
+            invited_by: _,
+            created_at_ms: _,
+            expires_at_ms,
+        } = df::remove(&mut org.id, key);
+        let now = clock::timestamp_ms(clock);
+        if (option::is_some(&expires_at_ms)) {
+            assert!(*option::borrow(&expires_at_ms) >= now, EOrgInvitationExpired);
+        };
+
+        let mut granted_mask = 0u64;
+        if (option::is_some(&role_name)) {
+            let name = option::borrow(&role_name);
+            let mask = resolve_role_mask(org, name);
+            let assignment_key = OrgRoleAssignmentKey { member: invitee, role_name: *name };
+            if (!df::exists_with_type<OrgRoleAssignmentKey, u64>(&org.id, assignment_key)) {
+                let role_granted =
+                    grant_org_permissions_from_mask_via_org(org, group, invitee, mask);
+                df::add(&mut org.id, assignment_key, role_granted);
+                granted_mask = granted_mask | role_granted;
+            };
+        };
+        if (permissions_mask != 0) {
+            granted_mask =
+                granted_mask
+                    | grant_org_permissions_from_mask_via_org(
+                        org,
+                        group,
+                        invitee,
+                        permissions_mask,
+                    );
+        };
+
+        event::emit(OrgInvitationAccepted {
+            organization_id: object::id(org),
+            account_id: object::id(account),
+            group_id: object::id(group),
+            invitee,
+            role_name,
+            permissions_mask,
+            granted_mask,
+            accepted_by: tx_context::sender(ctx),
+            timestamp_ms: now,
+        });
+    }
+
+    /// Decline a pending invitation and remove the invitation dynamic field.
+    public entry fun decline_org_invitation(
+        account: &MemoryAccount,
+        org: &mut AgenticOrganization,
+        invitee: address,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_object_version(&account.id);
+        assert_organization_belongs_to_account(account, org);
+        assert!(tx_context::sender(ctx) == invitee, EOrgInvitationNotInvitee);
+
+        let key = OrgInvitationKey { invitee };
+        assert!(
+            df::exists_with_type<OrgInvitationKey, OrgInvitation>(&org.id, key),
+            EOrgInvitationNotFound,
+        );
+        let invitation: OrgInvitation = df::remove(&mut org.id, key);
+        let now = clock::timestamp_ms(clock);
+        if (option::is_some(&invitation.expires_at_ms)) {
+            assert!(*option::borrow(&invitation.expires_at_ms) >= now, EOrgInvitationExpired);
+        };
+
+        event::emit(OrgInvitationDeclined {
+            organization_id: object::id(org),
+            account_id: object::id(account),
+            invitee,
+            declined_by: tx_context::sender(ctx),
+            timestamp_ms: now,
+        });
     }
 
     /// Effective mask for a role name (built-in constant or custom definition).
@@ -2308,7 +2542,25 @@ module social_contracts::memory {
 
     fun assert_valid_org_permission_mask(mask: u64) {
         assert!(mask != 0, EOrgRoleMaskEmpty);
+        let ops = mask & ORG_PERM_ALL;
+        let gov = mask & ORG_GOVERNANCE_PERM_ALL;
+        assert!(ops | gov == mask, EInvalidOrgPermission);
+        if (ops != 0) {
+            assert_valid_org_ops_permission_mask(ops);
+        };
+        if (gov != 0) {
+            assert_valid_org_governance_permission_mask(gov);
+        };
+    }
+
+    fun assert_valid_org_ops_permission_mask(mask: u64) {
+        assert!(mask != 0, EOrgRoleMaskEmpty);
         assert!((mask & ORG_PERM_ALL) == mask, EInvalidOrgPermission);
+    }
+
+    fun assert_valid_org_governance_permission_mask(mask: u64) {
+        assert!(mask != 0, EOrgRoleMaskEmpty);
+        assert!((mask & ORG_GOVERNANCE_PERM_ALL) == mask, EInvalidOrgPermission);
     }
 
     /// Grantable members: human addresses (org staff, not in the agents table) or registered
@@ -2322,6 +2574,119 @@ module social_contracts::memory {
         if (table::contains(&account.agents, member)) {
             let entry = table::borrow(&account.agents, member);
             assert!(entry.organization_id == object::id(org), EOrganizationOrgMismatch);
+        };
+    }
+
+    /// Grant each witness in `mask` via the org object's delegate admin on the group.
+    /// Used when the transaction sender is the invitee (accept path) rather than a manager.
+    fun grant_org_permissions_from_mask_via_org(
+        org: &AgenticOrganization,
+        group: &mut PermissionedGroup<MemorySharePackage>,
+        member: address,
+        mask: u64,
+    ): u64 {
+        let mut granted = 0u64;
+        if ((mask & ORG_PERM_MEMORY_READ) != 0
+            && !permissioned_group::has_permission<MemorySharePackage, OrgMemoryReader>(group, member)) {
+            permissioned_group::object_grant_permission<MemorySharePackage, OrgMemoryReader>(
+                group,
+                &org.id,
+                member,
+            );
+            granted = granted | ORG_PERM_MEMORY_READ;
+        };
+        if ((mask & ORG_PERM_MEMORY_WRITE) != 0
+            && !permissioned_group::has_permission<MemorySharePackage, OrgMemoryWriter>(group, member)) {
+            permissioned_group::object_grant_permission<MemorySharePackage, OrgMemoryWriter>(
+                group,
+                &org.id,
+                member,
+            );
+            granted = granted | ORG_PERM_MEMORY_WRITE;
+        };
+        if ((mask & ORG_PERM_AGENT_MANAGER) != 0
+            && !permissioned_group::has_permission<MemorySharePackage, OrgAgentManager>(group, member)) {
+            permissioned_group::object_grant_permission<MemorySharePackage, OrgAgentManager>(
+                group,
+                &org.id,
+                member,
+            );
+            granted = granted | ORG_PERM_AGENT_MANAGER;
+        };
+        if ((mask & ORG_PERM_BUDGET_MANAGER) != 0
+            && !permissioned_group::has_permission<MemorySharePackage, OrgBudgetManager>(group, member)) {
+            permissioned_group::object_grant_permission<MemorySharePackage, OrgBudgetManager>(
+                group,
+                &org.id,
+                member,
+            );
+            granted = granted | ORG_PERM_BUDGET_MANAGER;
+        };
+        if ((mask & ORG_PERM_SPEND_APPROVER) != 0
+            && !permissioned_group::has_permission<MemorySharePackage, OrgSpendApprover>(group, member)) {
+            permissioned_group::object_grant_permission<MemorySharePackage, OrgSpendApprover>(
+                group,
+                &org.id,
+                member,
+            );
+            granted = granted | ORG_PERM_SPEND_APPROVER;
+        };
+        if ((mask & ORG_PERM_DASHBOARD_VIEWER) != 0
+            && !permissioned_group::has_permission<MemorySharePackage, OrgDashboardViewer>(group, member)) {
+            permissioned_group::object_grant_permission<MemorySharePackage, OrgDashboardViewer>(
+                group,
+                &org.id,
+                member,
+            );
+            granted = granted | ORG_PERM_DASHBOARD_VIEWER;
+        };
+        if ((mask & ORG_PERM_AUDITOR) != 0
+            && !permissioned_group::has_permission<MemorySharePackage, OrgAuditor>(group, member)) {
+            permissioned_group::object_grant_permission<MemorySharePackage, OrgAuditor>(
+                group,
+                &org.id,
+                member,
+            );
+            granted = granted | ORG_PERM_AUDITOR;
+        };
+        if ((mask & ORG_GOVERNANCE_PROPOSER) != 0
+            && !permissioned_group::has_permission<MemorySharePackage, OrgGovernanceProposer>(group, member)) {
+            permissioned_group::object_grant_permission<MemorySharePackage, OrgGovernanceProposer>(
+                group,
+                &org.id,
+                member,
+            );
+            granted = granted | ORG_GOVERNANCE_PROPOSER;
+        };
+        if ((mask & ORG_GOVERNANCE_VOTER) != 0
+            && !permissioned_group::has_permission<MemorySharePackage, OrgGovernanceVoter>(group, member)) {
+            permissioned_group::object_grant_permission<MemorySharePackage, OrgGovernanceVoter>(
+                group,
+                &org.id,
+                member,
+            );
+            granted = granted | ORG_GOVERNANCE_VOTER;
+        };
+        granted
+    }
+
+    /// One-time bootstrap: grant the org shared object delegate admin on its memory group so
+    /// invitation accept can fulfill grants without the invitee holding manager permission.
+    fun ensure_org_group_delegate_admin(
+        org: &AgenticOrganization,
+        group: &mut PermissionedGroup<MemorySharePackage>,
+        ctx: &TxContext,
+    ) {
+        let org_addr = object::id_to_address(&object::id(org));
+        if (!permissioned_group::has_permission<MemorySharePackage, ExtensionPermissionsAdmin>(
+            group,
+            org_addr,
+        )) {
+            permissioned_group::grant_permission<MemorySharePackage, ExtensionPermissionsAdmin>(
+                group,
+                org_addr,
+                ctx,
+            );
         };
     }
 
@@ -2369,6 +2734,16 @@ module social_contracts::memory {
             permissioned_group::grant_permission<MemorySharePackage, OrgAuditor>(group, member, ctx);
             granted = granted | ORG_PERM_AUDITOR;
         };
+        if ((mask & ORG_GOVERNANCE_PROPOSER) != 0
+            && !permissioned_group::has_permission<MemorySharePackage, OrgGovernanceProposer>(group, member)) {
+            permissioned_group::grant_permission<MemorySharePackage, OrgGovernanceProposer>(group, member, ctx);
+            granted = granted | ORG_GOVERNANCE_PROPOSER;
+        };
+        if ((mask & ORG_GOVERNANCE_VOTER) != 0
+            && !permissioned_group::has_permission<MemorySharePackage, OrgGovernanceVoter>(group, member)) {
+            permissioned_group::grant_permission<MemorySharePackage, OrgGovernanceVoter>(group, member, ctx);
+            granted = granted | ORG_GOVERNANCE_VOTER;
+        };
         granted
     }
 
@@ -2414,6 +2789,16 @@ module social_contracts::memory {
             && permissioned_group::has_permission<MemorySharePackage, OrgAuditor>(group, member)) {
             permissioned_group::revoke_permission<MemorySharePackage, OrgAuditor>(group, member, ctx);
             revoked = revoked | ORG_PERM_AUDITOR;
+        };
+        if ((mask & ORG_GOVERNANCE_PROPOSER) != 0
+            && permissioned_group::has_permission<MemorySharePackage, OrgGovernanceProposer>(group, member)) {
+            permissioned_group::revoke_permission<MemorySharePackage, OrgGovernanceProposer>(group, member, ctx);
+            revoked = revoked | ORG_GOVERNANCE_PROPOSER;
+        };
+        if ((mask & ORG_GOVERNANCE_VOTER) != 0
+            && permissioned_group::has_permission<MemorySharePackage, OrgGovernanceVoter>(group, member)) {
+            permissioned_group::revoke_permission<MemorySharePackage, OrgGovernanceVoter>(group, member, ctx);
+            revoked = revoked | ORG_GOVERNANCE_VOTER;
         };
         revoked
     }
@@ -2675,6 +3060,15 @@ module social_contracts::memory {
 
     #[test_only]
     public fun error_org_role_mask_empty(): u64 { EOrgRoleMaskEmpty }
+
+    #[test_only]
+    public fun error_org_invitation_exists(): u64 { EOrgInvitationExists }
+
+    #[test_only]
+    public fun error_org_invitation_not_found(): u64 { EOrgInvitationNotFound }
+
+    #[test_only]
+    public fun error_org_invitation_not_invitee(): u64 { EOrgInvitationNotInvitee }
 
     #[test_only]
     public fun error_org_org_mismatch(): u64 { EOrganizationOrgMismatch }

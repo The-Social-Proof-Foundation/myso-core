@@ -149,6 +149,9 @@ AgenticOrganization.roleAssignments
 AgenticOrganization.memoryPermissions
   => {}
 
+AgenticOrganization.invitations
+  => {}
+
 AgenticOrganization.spendApprovals
   => {}
 
@@ -2694,6 +2697,36 @@ OpenMoveType.signature
   => {}
 
 OpenMoveType.repr
+  => {}
+
+OrgInvitation.inviteeAddress
+  => {}
+
+OrgInvitation.roleName
+  => {}
+
+OrgInvitation.permissionsMask
+  => {}
+
+OrgInvitation.status
+  => {}
+
+OrgInvitation.invitedBy
+  => {}
+
+OrgInvitation.createdAtMs
+  => {}
+
+OrgInvitation.expiresAtMs
+  => {}
+
+OrgInvitation.respondedAtMs
+  => {}
+
+OrgInvitation.respondedBy
+  => {}
+
+OrgInvitation.grantedMask
   => {}
 
 OrgMemoryPermission.memberAddress

@@ -1,9 +1,11 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+mod auth;
 mod handlers;
 
 use axum::http::Method;
+use axum::middleware;
 use axum::routing::{get, post};
 use axum::Router;
 use myso_indexer_alt_metrics::{MetricsArgs, MetricsService};
@@ -18,11 +20,25 @@ use tower_http::cors::{AllowMethods, Any, CorsLayer};
 use url::Url;
 
 use crate::reader::Reader;
+use crate::workflow_client::WorkflowClient;
+use auth::{
+    org_auditor_access_middleware, org_dashboard_access_middleware, wallet_auth_middleware,
+    DEFAULT_WALLET_AUTH_TTL_SECONDS,
+};
 use myso_futures::service::Service;
 
 #[derive(Clone)]
 pub struct AppState {
     pub(crate) reader: Reader,
+    pub(crate) workflow: Option<WorkflowClient>,
+    pub(crate) wallet_auth_ttl_seconds: i64,
+}
+
+fn wallet_auth_ttl_seconds() -> i64 {
+    std::env::var("WALLET_AUTH_TTL_SECONDS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(DEFAULT_WALLET_AUTH_TTL_SECONDS)
 }
 
 #[derive(Debug, Deserialize)]
@@ -328,7 +344,12 @@ pub async fn start_server(
     let metrics = MetricsService::new(MetricsArgs { metrics_address }, registry.clone());
 
     let reader = Reader::new(database_url, write_database_url, db_args).await?;
-    let state = Arc::new(AppState { reader });
+    let workflow = WorkflowClient::from_env();
+    let state = Arc::new(AppState {
+        reader,
+        workflow,
+        wallet_auth_ttl_seconds: wallet_auth_ttl_seconds(),
+    });
 
     let socket_address = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), server_port);
 
@@ -380,8 +401,61 @@ pub async fn run_server(
     Ok(())
 }
 
+fn enterprise_dashboard_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
+    use handlers::{
+        list_org_invitations, list_org_memory_permissions, list_org_role_assignments,
+        list_org_roles, list_org_spend_approvals, list_org_spend_breakdown,
+    };
+
+    Router::new()
+        .route(
+            "/organizations/:id/memory-permissions",
+            get(list_org_memory_permissions),
+        )
+        .route("/organizations/:id/roles", get(list_org_roles))
+        .route(
+            "/organizations/:id/role-assignments",
+            get(list_org_role_assignments),
+        )
+        .route(
+            "/organizations/:id/invitations",
+            get(list_org_invitations),
+        )
+        .route(
+            "/organizations/:id/spend-breakdown",
+            get(list_org_spend_breakdown),
+        )
+        .route("/organizations/:id/approvals", get(list_org_spend_approvals))
+        .route_layer(middleware::from_fn_with_state(
+            state.clone(),
+            org_dashboard_access_middleware,
+        ))
+        .route_layer(middleware::from_fn_with_state(
+            state,
+            wallet_auth_middleware,
+        ))
+}
+
+fn enterprise_auditor_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
+    use handlers::list_org_audit_logs;
+
+    Router::new()
+        .route("/organizations/:id/audit-logs", get(list_org_audit_logs))
+        .route_layer(middleware::from_fn_with_state(
+            state.clone(),
+            org_auditor_access_middleware,
+        ))
+        .route_layer(middleware::from_fn_with_state(
+            state,
+            wallet_auth_middleware,
+        ))
+}
+
 fn make_router(state: Arc<AppState>) -> Router {
     use handlers::*;
+
+    let enterprise_dashboard = enterprise_dashboard_routes(state.clone());
+    let enterprise_auditor = enterprise_auditor_routes(state.clone());
 
     let cors = CorsLayer::new()
         .allow_methods(AllowMethods::list(vec![
@@ -444,6 +518,14 @@ fn make_router(state: Arc<AppState>) -> Router {
             "/internal/memory/usage-stats",
             post(ingest_memory_usage_stats_internal),
         )
+        .route(
+            "/internal/memory/access-requests",
+            post(ingest_memory_access_request_internal),
+        )
+        .route(
+            "/internal/organizations/:id/summary",
+            get(get_org_summary_internal),
+        )
         .route("/internal/audit/logs", post(ingest_audit_logs_internal))
         .route("/sub-agents/:derivedAddress", get(get_sub_agent))
         .route(
@@ -467,24 +549,8 @@ fn make_router(state: Arc<AppState>) -> Router {
             "/organizations/:id/statistics",
             get(get_organization_statistics),
         )
-        .route(
-            "/organizations/:id/memory-permissions",
-            get(list_org_memory_permissions),
-        )
-        .route("/organizations/:id/roles", get(list_org_roles))
-        .route(
-            "/organizations/:id/role-assignments",
-            get(list_org_role_assignments),
-        )
-        .route("/organizations/:id/audit-logs", get(list_org_audit_logs))
-        .route(
-            "/organizations/:id/spend-breakdown",
-            get(list_org_spend_breakdown),
-        )
-        .route(
-            "/organizations/:id/approvals",
-            get(list_org_spend_approvals),
-        )
+        .merge(enterprise_dashboard)
+        .merge(enterprise_auditor)
         .route(
             "/profiles/:address/organizations",
             get(list_profile_organizations),

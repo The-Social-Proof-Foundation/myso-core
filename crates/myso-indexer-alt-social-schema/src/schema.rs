@@ -1310,6 +1310,25 @@ diesel::table! {
 }
 
 diesel::table! {
+    org_invitations (organization_id, invitee_address) {
+        organization_id -> Text,
+        invitee_address -> Text,
+        role_name -> Nullable<Text>,
+        permissions_mask -> Int8,
+        status -> Text,
+        invited_by -> Text,
+        created_at_ms -> Int8,
+        expires_at_ms -> Nullable<Int8>,
+        responded_at_ms -> Nullable<Int8>,
+        responded_by -> Nullable<Text>,
+        granted_mask -> Nullable<Int8>,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
     org_memory_permissions (organization_id, member_address, permission_kind) {
         organization_id -> Text,
         member_address -> Text,
@@ -1476,6 +1495,7 @@ diesel::table! {
         event_id -> Text,
         transaction_id -> Text,
         time -> Timestamptz,
+        org_memory_group_id -> Nullable<Text>,
     }
 }
 
@@ -2334,6 +2354,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     anonymous_votes,
     audit_log,
     memory_usage_stats,
+    org_invitations,
     org_memory_permissions,
     org_role_assignments,
     org_roles,

@@ -23,12 +23,18 @@ myso-futures.workspace = true
 myso-indexer-alt-metrics.workspace = true
 telemetry-subscribers.workspace = true
 axum = { version = "0.7", features = ["json"] }
+blake2 = { version = "0.10", features = ["std"] }
+hex = "0.4"
+http-body-util = "0.1"
+myso-crypto.workspace = true
 myso-pg-db.workspace = true
+myso-sdk-types.workspace = true
 tower-http = { version = "0.5", features = ["cors"] }
 chrono = "0.4.42"
 bigdecimal = "0.4"
 thiserror = "1.0"
 tracing.workspace = true
+reqwest = { version = "0.12", features = ["json"] }
 
 [dev-dependencies]
 myso-pg-db = { workspace = true }
