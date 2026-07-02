@@ -289,17 +289,23 @@ myso client call --package 0x000000000000000000000000000000000000000000000000000
 ## Economic Model
 
 ### Revenue Streams
-1. **Transaction Fees**: Trading, tipping, subscription fees
-2. **Platform Fees**: Content creation, platform services
-3. **Governance Fees**: Proposal submission, voting costs
-4. **Token Trading**: AMM fees and auction revenues
+1. **Social Proof Tokens (SPT)**: Trading and reservation fees (1.5% of transaction value by default)
+2. **Profile Sales**: 5% fee on accepted profile offers
+3. **Social Proof of Truth (SPoT)**: 1% fee on prediction-market escrow
+4. **Proof of Creativity (PoC)**: Vault claim fee (1%) and dispute submission (5 MYSO flat)
+5. **AI Credit**: Oracle-settled usage debits user balances to the configured treasury
+6. **Governance**: Fixed MYSO costs for proposal submission and quadratic voting
+7. **Creator-Direct (no protocol fee)**: Tips, profile subscriptions, and MyData purchases go to owners
 
 ### Revenue Distribution
-- **Creators**: 60-80% of revenue (varies by activity)
-- **Original Creators**: Automatic redirection via PoC system
-- **Platforms**: 25% of transaction fees
-- **Ecosystem Treasury**: 25% of transaction fees
-- **Governance Participants**: Voting rewards and proposal stakes
+Default fee splits vary by module (all configurable via on-chain admin):
+- **SPT trading/reservations**: 1.0% creator, 0.25% platform, 0.25% ecosystem treasury (150 bps total)
+- **SPoT escrow**: 0.5% platform, 0.5% ecosystem treasury (1% total; remainder to winners)
+- **Profile sales**: 5% ecosystem treasury, 95% seller
+- **PoC vault claims**: 1% ecosystem treasury at claim; optional referrer up to 5% of post-treasury amount
+- **Original Creators**: PoC revenue redirection (0–100%, similarity-scaled) on derivative content — not a protocol fee
+- **Tips / subscriptions / MyData**: 100% to creators (comment/repost tip splits configurable in `PostConfig`)
+- **Governance**: Submission stakes and vote costs fund proposal reward pools; failed proposals forfeit to ecosystem or platform treasury
 
 ## Technical Architecture
 

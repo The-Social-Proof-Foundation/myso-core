@@ -11188,6 +11188,9 @@ borrow_metadata_mut
 EscrowFeeTotals
 	public struct
 	0xe110::paid_escrow_settlement
+no_platform_fee_recipient
+	public fun
+	0xe110::paid_escrow_settlement
 total_amount
 	public fun
 	0xe110::paid_escrow_settlement

@@ -40,6 +40,7 @@ use messaging::version::{Self as version, Version};
 use social_contracts::block_list::{Self, BlockListRegistry};
 use social_contracts::memory::{Self, ActingContext, MemoryAccount};
 use social_contracts::platform::{Self, Platform};
+use social_contracts::profile::{Self, EcosystemTreasury};
 use social_contracts::social_graph::{Self, SocialGraph};
 use myso::permissioned_group::{
     Self,
@@ -299,10 +300,14 @@ fun create_group_inner(
         );
     };
 
-    // Grant MessagingReader permission to initial members (skip creator)
+    // Grant permissions to initial members (skip creator). 1:1 DMs get send+read for the peer.
     initial_members.into_keys().do!(|member| {
         if (member != creator) {
-            group.grant_permission<Messaging, MessagingReader>(member, ctx);
+            if (count_non_creator_peers(&initial_members, creator) == 1) {
+                grant_human_peer_permissions(&mut group, member, ctx);
+            } else {
+                group.grant_permission<Messaging, MessagingReader>(member, ctx);
+            };
         };
     });
 
@@ -923,8 +928,8 @@ public fun reply_to_paid_message_claim_coin(
 }
 
 /// Reply and settle: same validation as [`reply_to_paid_message_claim_coin`], then split escrow per
-/// paid-message BPS to `platform_fee_recipient` and `ecosystem_fee_recipient` (typically addresses
-/// matching `Platform` treasury policy and `EcosystemTreasury`), with net to the paid-message recipient.
+/// paid-message BPS to `platform_fee_recipient` and the ecosystem treasury address from
+/// `ecosystem_treasury` (via [`profile::get_treasury_address`]), with net to the paid-message recipient.
 public fun reply_to_paid_message_claim_settled(
     version: &Version,
     group: &PermissionedGroup<Messaging>,
@@ -936,7 +941,7 @@ public fun reply_to_paid_message_claim_settled(
     nonce: u128,
     clock: &Clock,
     platform_fee_recipient: address,
-    ecosystem_fee_recipient: address,
+    ecosystem_treasury: &EcosystemTreasury,
     ctx: &mut TxContext,
 ) {
     version.validate_version();
@@ -944,6 +949,7 @@ public fun reply_to_paid_message_claim_settled(
     assert_message_log_matches_group(log, group);
     assert!(group.has_permission<Messaging, MessagingSender>(ctx.sender()), ENotPermitted);
     assert_paid_parties_not_blocked(block_list, ctx.sender(), log, paid_msg_seq);
+    let ecosystem_fee_recipient = profile::get_treasury_address(ecosystem_treasury);
     message_log::reply_to_paid_message_claim_settled(
         log,
         ctx.sender(),

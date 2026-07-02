@@ -821,10 +821,14 @@ members list.
             string::utf8(<a href="../messaging/messaging.md#messaging_messaging_CONVERSATION_KIND_DM">CONVERSATION_KIND_DM</a>),
         );
     };
-    // Grant <a href="../messaging/messaging.md#messaging_messaging_MessagingReader">MessagingReader</a> permission to initial members (skip creator)
+    // Grant permissions to initial members (skip creator). 1:1 DMs get send+read <b>for</b> the peer.
     initial_members.into_keys().do!(|member| {
         <b>if</b> (member != creator) {
-            group.grant_permission&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>, <a href="../messaging/messaging.md#messaging_messaging_MessagingReader">MessagingReader</a>&gt;(member, ctx);
+            <b>if</b> (<a href="../messaging/messaging.md#messaging_messaging_count_non_creator_peers">count_non_creator_peers</a>(&initial_members, creator) == 1) {
+                <a href="../messaging/messaging.md#messaging_messaging_grant_human_peer_permissions">grant_human_peer_permissions</a>(&<b>mut</b> group, member, ctx);
+            } <b>else</b> {
+                group.grant_permission&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>, <a href="../messaging/messaging.md#messaging_messaging_MessagingReader">MessagingReader</a>&gt;(member, ctx);
+            };
         };
     });
     <b>let</b> <a href="../messaging/encryption_history.md#messaging_encryption_history">encryption_history</a> = <a href="../messaging/encryption_history.md#messaging_encryption_history_new">encryption_history::new</a>(
@@ -1865,11 +1869,11 @@ Reply to a paid message and take full escrow as coin. Caller may split fees (e.g
 ## Function `reply_to_paid_message_claim_settled`
 
 Reply and settle: same validation as [<code><a href="../messaging/messaging.md#messaging_messaging_reply_to_paid_message_claim_coin">reply_to_paid_message_claim_coin</a></code>], then split escrow per
-paid-message BPS to <code>platform_fee_recipient</code> and <code>ecosystem_fee_recipient</code> (typically addresses
-matching <code>Platform</code> treasury policy and <code>EcosystemTreasury</code>), with net to the paid-message recipient.
+paid-message BPS to <code>platform_fee_recipient</code> and the ecosystem treasury address from
+<code>ecosystem_treasury</code> (via [<code>profile::get_treasury_address</code>]), with net to the paid-message recipient.
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_reply_to_paid_message_claim_settled">reply_to_paid_message_claim_settled</a>(<a href="../messaging/version.md#messaging_version">version</a>: &<a href="../messaging/version.md#messaging_version_Version">messaging::version::Version</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, log: &<b>mut</b> <a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, paid_msg_seq: u64, char_count: u32, dedupe_key: vector&lt;u8&gt;, nonce: u128, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, platform_fee_recipient: <b>address</b>, ecosystem_fee_recipient: <b>address</b>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_reply_to_paid_message_claim_settled">reply_to_paid_message_claim_settled</a>(<a href="../messaging/version.md#messaging_version">version</a>: &<a href="../messaging/version.md#messaging_version_Version">messaging::version::Version</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, log: &<b>mut</b> <a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, paid_msg_seq: u64, char_count: u32, dedupe_key: vector&lt;u8&gt;, nonce: u128, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, platform_fee_recipient: <b>address</b>, ecosystem_treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1889,7 +1893,7 @@ matching <code>Platform</code> treasury policy and <code>EcosystemTreasury</code
     nonce: u128,
     clock: &Clock,
     platform_fee_recipient: <b>address</b>,
-    ecosystem_fee_recipient: <b>address</b>,
+    ecosystem_treasury: &EcosystemTreasury,
     ctx: &<b>mut</b> TxContext,
 ) {
     <a href="../messaging/version.md#messaging_version">version</a>.validate_version();
@@ -1897,6 +1901,7 @@ matching <code>Platform</code> treasury policy and <code>EcosystemTreasury</code
     <a href="../messaging/messaging.md#messaging_messaging_assert_message_log_matches_group">assert_message_log_matches_group</a>(log, group);
     <b>assert</b>!(group.has_permission&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>, <a href="../messaging/messaging.md#messaging_messaging_MessagingSender">MessagingSender</a>&gt;(ctx.sender()), <a href="../messaging/messaging.md#messaging_messaging_ENotPermitted">ENotPermitted</a>);
     <a href="../messaging/messaging.md#messaging_messaging_assert_paid_parties_not_blocked">assert_paid_parties_not_blocked</a>(block_list, ctx.sender(), log, paid_msg_seq);
+    <b>let</b> ecosystem_fee_recipient = profile::get_treasury_address(ecosystem_treasury);
     <a href="../messaging/message_log.md#messaging_message_log_reply_to_paid_message_claim_settled">message_log::reply_to_paid_message_claim_settled</a>(
         log,
         ctx.sender(),

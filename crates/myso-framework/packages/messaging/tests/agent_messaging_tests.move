@@ -32,7 +32,7 @@ use myso::permissioned_group::{PermissionedGroup, PermissionsAdmin};
 
 use social_contracts::block_list::{Self, BlockListRegistry};
 use social_contracts::ai_credit::AiCreditConfig;
-    use social_contracts::memory::{Self, MemoryAccount, MemoryRegistry, SubAgent, AgenticOrganization};
+use social_contracts::memory::{Self, MemoryAccount, MemoryRegistry, SubAgent, AgenticOrganization};
 use social_contracts::memory_test_helpers;
 use social_contracts::platform::{Self, Platform, PlatformRegistry};
 use social_contracts::profile::{Self, UsernameRegistry};
@@ -113,11 +113,12 @@ fun setup(scenario: &mut ts::Scenario) {
     {
         let mut registry = ts::take_shared<UsernameRegistry>(scenario);
         let mut memory_registry = ts::take_shared<MemoryRegistry>(scenario);
+        let mut ai_credit_config = ts::take_shared<AiCreditConfig>(scenario);
         let clock = ts::take_shared<Clock>(scenario);
         profile::create_profile(
-                &mut registry,
-                &mut memory_registry,
-                &mut ai_credit_config,
+            &mut registry,
+            &mut memory_registry,
+            &mut ai_credit_config,
             string::utf8(b"Author"),
             string::utf8(b"author"),
             string::utf8(b"bio"),
@@ -127,6 +128,7 @@ fun setup(scenario: &mut ts::Scenario) {
             ts::ctx(scenario),
         );
         ts::return_shared(clock);
+        ts::return_shared(ai_credit_config);
         ts::return_shared(memory_registry);
         ts::return_shared(registry);
     };
@@ -171,11 +173,12 @@ fun setup_carol_with_agent(scenario: &mut ts::Scenario) {
     {
         let mut registry = ts::take_shared<UsernameRegistry>(scenario);
         let mut memory_registry = ts::take_shared<MemoryRegistry>(scenario);
+        let mut ai_credit_config = ts::take_shared<AiCreditConfig>(scenario);
         let clock = ts::take_shared<Clock>(scenario);
         profile::create_profile(
-                &mut registry,
-                &mut memory_registry,
-                &mut ai_credit_config,
+            &mut registry,
+            &mut memory_registry,
+            &mut ai_credit_config,
             string::utf8(b"Carol"),
             string::utf8(b"carol"),
             string::utf8(b"bio"),
@@ -185,6 +188,7 @@ fun setup_carol_with_agent(scenario: &mut ts::Scenario) {
             ts::ctx(scenario),
         );
         ts::return_shared(clock);
+        ts::return_shared(ai_credit_config);
         ts::return_shared(memory_registry);
         ts::return_shared(registry);
     };

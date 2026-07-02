@@ -6,6 +6,10 @@ Fee distribution for claimed paid-message escrow (<code>MYSO</code>).
 
 **BPS** match <code>social_contracts::message</code> (<code><a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement_PAID_MSG_PLATFORM_FEE_BPS">PAID_MSG_PLATFORM_FEE_BPS</a></code> / <code><a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement_PAID_MSG_TREASURY_FEE_BPS">PAID_MSG_TREASURY_FEE_BPS</a></code>).
 
+When <code>platform_fee_recipient</code> is [<code>NO_PLATFORM_FEE_RECIPIENT</code>] (<code>@0x0</code>), the platform share is
+combined with the ecosystem share and sent to <code>ecosystem_fee_recipient</code> (wallet paid DMs with no
+associated platform).
+
 Uses <code>transfer::public_transfer</code> to fee recipients. Credits to the live <code>Platform</code> treasury balance
 require <code><a href="../social_contracts/platform.md#social_contracts_platform_add_to_treasury">social_contracts::platform::add_to_treasury</a></code> (same-package); see
 <code>ref_social_contract/sources/messaging_paid_fee_bridge.<b>move</b></code> for a foundation-side helper.
@@ -13,6 +17,7 @@ require <code><a href="../social_contracts/platform.md#social_contracts_platform
 
 -  [Struct `EscrowFeeTotals`](#messaging_paid_escrow_settlement_EscrowFeeTotals)
 -  [Constants](#@Constants_0)
+-  [Function `no_platform_fee_recipient`](#messaging_paid_escrow_settlement_no_platform_fee_recipient)
 -  [Function `total_amount`](#messaging_paid_escrow_settlement_total_amount)
 -  [Function `platform_fee`](#messaging_paid_escrow_settlement_platform_fee)
 -  [Function `treasury_fee`](#messaging_paid_escrow_settlement_treasury_fee)
@@ -126,6 +131,31 @@ Must match <code><a href="../messaging/paid_escrow_settlement.md#messaging_paid_
 </code></pre>
 
 
+
+<a name="messaging_paid_escrow_settlement_no_platform_fee_recipient"></a>
+
+## Function `no_platform_fee_recipient`
+
+Sentinel: pass as <code>platform_fee_recipient</code> when no platform is associated with the paid DM.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement_no_platform_fee_recipient">no_platform_fee_recipient</a>(): <b>address</b>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement_no_platform_fee_recipient">no_platform_fee_recipient</a>(): <b>address</b> {
+    @0x0
+}
+</code></pre>
+
+
+
+</details>
 
 <a name="messaging_paid_escrow_settlement_total_amount"></a>
 
@@ -250,14 +280,27 @@ Splits <code>escrow_coin</code> per paid-message BPS: platform, ecosystem, then 
     <b>let</b> <a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement_platform_fee">platform_fee</a> = (((<a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement_total_amount">total_amount</a> <b>as</b> u128) * (<a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement_PAID_MSG_PLATFORM_FEE_BPS">PAID_MSG_PLATFORM_FEE_BPS</a> <b>as</b> u128)) / 10000u128) <b>as</b> u64;
     <b>let</b> <a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement_treasury_fee">treasury_fee</a> = (((<a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement_total_amount">total_amount</a> <b>as</b> u128) * (<a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement_PAID_MSG_TREASURY_FEE_BPS">PAID_MSG_TREASURY_FEE_BPS</a> <b>as</b> u128)) / 10000u128) <b>as</b> u64;
     <b>let</b> <a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement_net_amount">net_amount</a> = <a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement_total_amount">total_amount</a> - <a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement_platform_fee">platform_fee</a> - <a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement_treasury_fee">treasury_fee</a>;
-    <b>if</b> (<a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement_platform_fee">platform_fee</a> &gt; 0) {
-        transfer::public_transfer(coin::split(&<b>mut</b> escrow_coin, <a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement_platform_fee">platform_fee</a>, ctx), platform_fee_recipient);
-    };
-    <b>if</b> (<a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement_treasury_fee">treasury_fee</a> &gt; 0) {
-        transfer::public_transfer(
-            coin::split(&<b>mut</b> escrow_coin, <a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement_treasury_fee">treasury_fee</a>, ctx),
-            ecosystem_fee_recipient,
-        );
+    <b>if</b> (platform_fee_recipient == <a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement_no_platform_fee_recipient">no_platform_fee_recipient</a>()) {
+        <b>let</b> ecosystem_total = <a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement_platform_fee">platform_fee</a> + <a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement_treasury_fee">treasury_fee</a>;
+        <b>if</b> (ecosystem_total &gt; 0) {
+            transfer::public_transfer(
+                coin::split(&<b>mut</b> escrow_coin, ecosystem_total, ctx),
+                ecosystem_fee_recipient,
+            );
+        };
+    } <b>else</b> {
+        <b>if</b> (<a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement_platform_fee">platform_fee</a> &gt; 0) {
+            transfer::public_transfer(
+                coin::split(&<b>mut</b> escrow_coin, <a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement_platform_fee">platform_fee</a>, ctx),
+                platform_fee_recipient,
+            );
+        };
+        <b>if</b> (<a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement_treasury_fee">treasury_fee</a> &gt; 0) {
+            transfer::public_transfer(
+                coin::split(&<b>mut</b> escrow_coin, <a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement_treasury_fee">treasury_fee</a>, ctx),
+                ecosystem_fee_recipient,
+            );
+        };
     };
     transfer::public_transfer(escrow_coin, primary_recipient);
     <a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement_EscrowFeeTotals">EscrowFeeTotals</a> { <a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement_total_amount">total_amount</a>, <a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement_platform_fee">platform_fee</a>, <a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement_treasury_fee">treasury_fee</a>, <a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement_net_amount">net_amount</a> }

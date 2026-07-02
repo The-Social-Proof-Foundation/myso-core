@@ -263,8 +263,8 @@ fun create_group_with_initial_members() {
     assert_eq!(group.has_permission<Messaging, MessagingReader>(BOB), true);
     assert_eq!(group.is_member(BOB), true);
 
-    // Verify Bob does NOT have other permissions
-    assert_eq!(group.has_permission<Messaging, MessagingSender>(BOB), false);
+    // 1:1 DM peer gets send + read (not admin)
+    assert_eq!(group.has_permission<Messaging, MessagingSender>(BOB), true);
     assert_eq!(group.has_permission<Messaging, PermissionsAdmin>(BOB), false);
 
     // Verify creator still has all permissions
