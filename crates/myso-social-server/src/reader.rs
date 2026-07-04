@@ -1,10 +1,10 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-mod governance;
-mod insurance;
 pub mod ai_credit;
 pub mod enterprise;
+mod governance;
+mod insurance;
 pub mod memory;
 mod messaging;
 mod mydata;
@@ -361,7 +361,7 @@ impl Reader {
 
     pub async fn get_insurance_configuration(
         &self,
-    ) -> Result<Option<InsuranceConfigInfo>, crate::error::SocialError> {
+    ) -> Result<Option<InsuranceConfigurationResponse>, crate::error::SocialError> {
         insurance::get_insurance_configuration(&self.db).await
     }
 
@@ -1420,8 +1420,10 @@ impl Reader {
     pub async fn list_ai_credit_agent_budgets(
         &self,
         balance_id: &str,
-    ) -> Result<Vec<myso_indexer_alt_social_schema::models::AiCreditAgentBudgetRow>, crate::error::SocialError>
-    {
+    ) -> Result<
+        Vec<myso_indexer_alt_social_schema::models::AiCreditAgentBudgetRow>,
+        crate::error::SocialError,
+    > {
         ai_credit::list_agent_budgets(&self.db, balance_id).await
     }
 
@@ -1429,15 +1431,19 @@ impl Reader {
         &self,
         balance_id: &str,
         limit: i64,
-    ) -> Result<Vec<myso_indexer_alt_social_schema::models::AiCreditUsageLineRow>, crate::error::SocialError>
-    {
+    ) -> Result<
+        Vec<myso_indexer_alt_social_schema::models::AiCreditUsageLineRow>,
+        crate::error::SocialError,
+    > {
         ai_credit::list_usage_lines(&self.db, balance_id, limit).await
     }
 
     pub async fn get_ai_credit_config(
         &self,
-    ) -> Result<Option<myso_indexer_alt_social_schema::models::AiCreditConfigRow>, crate::error::SocialError>
-    {
+    ) -> Result<
+        Option<myso_indexer_alt_social_schema::models::AiCreditConfigRow>,
+        crate::error::SocialError,
+    > {
         ai_credit::get_ai_credit_config(&self.db).await
     }
 
@@ -1533,8 +1539,10 @@ impl Reader {
         organization_id: &str,
         window: myso_indexer_alt_social_reader::OrganizationStatsWindow,
         limit: i64,
-    ) -> Result<Vec<myso_indexer_alt_social_reader::AgentSpendBreakdownEntry>, crate::error::SocialError>
-    {
+    ) -> Result<
+        Vec<myso_indexer_alt_social_reader::AgentSpendBreakdownEntry>,
+        crate::error::SocialError,
+    > {
         myso_indexer_alt_social_reader::list_agent_spend_breakdown_for_db(
             &self.db,
             organization_id,
@@ -1832,6 +1840,61 @@ impl Reader {
         &self,
     ) -> Result<Option<PocConfigRow>, crate::error::SocialError> {
         poc::get_poc_configuration(&self.db).await
+    }
+
+    pub async fn get_subscription_configuration(
+        &self,
+    ) -> Result<Option<SubscriptionConfigInfo>, crate::error::SocialError> {
+        subscription::get_subscription_configuration(&self.db).await
+    }
+
+    pub async fn get_profile_configuration(
+        &self,
+    ) -> Result<Option<ProfileConfigInfo>, crate::error::SocialError> {
+        profile::get_profile_configuration(&self.db).await
+    }
+
+    pub async fn get_memory_configuration(
+        &self,
+    ) -> Result<Option<MemoryConfigInfo>, crate::error::SocialError> {
+        memory::get_memory_configuration(&self.db).await
+    }
+
+    pub async fn get_platform_configuration(
+        &self,
+    ) -> Result<Option<PlatformConfigInfo>, crate::error::SocialError> {
+        platform::get_platform_configuration(&self.db).await
+    }
+
+    pub async fn get_messaging_configuration(
+        &self,
+    ) -> Result<Option<MessagingConfigInfo>, crate::error::SocialError> {
+        messaging::get_messaging_configuration(&self.db).await
+    }
+
+    pub async fn get_paid_message_escrows(
+        &self,
+        address: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<PaidMessageEscrowInfo>, crate::error::SocialError> {
+        messaging::get_paid_message_escrows(&self.db, address, limit, offset).await
+    }
+
+    pub async fn get_messaging_agent_groups(
+        &self,
+        organization_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<MessagingAgentGroupInfo>, crate::error::SocialError> {
+        messaging::get_messaging_agent_groups(&self.db, organization_id, limit, offset).await
+    }
+
+    pub async fn get_messaging_revenue_summary(
+        &self,
+        address: &str,
+    ) -> Result<MessagingRevenueSummaryInfo, crate::error::SocialError> {
+        messaging::get_messaging_revenue_summary(&self.db, address).await
     }
 
     pub async fn get_poc_beneficiary_vault_by_vault_id(

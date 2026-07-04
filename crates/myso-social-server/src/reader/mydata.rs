@@ -81,7 +81,8 @@ pub(crate) async fn get_mydata_configuration(
     let mut conn = db.connect().await?;
     let query = "
         SELECT updated_by, enable_flag, max_tags, max_subscription_days,
-               max_free_access_grants, timestamp_ms, time, transaction_id
+               max_free_access_grants, max_encryption_id_bytes, version, updated_at, time,
+               transaction_id
         FROM mydata_config
         ORDER BY time DESC
         LIMIT 1

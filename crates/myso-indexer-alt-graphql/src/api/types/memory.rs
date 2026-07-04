@@ -132,13 +132,14 @@ impl SubAgent {
             .list_org_memory_permissions(org_id, Some(&self.inner.derived_address), true)
             .await
             .ok()
-            .map(|rows| rows.into_iter().map(OrgMemoryPermission::from_row).collect())
+            .map(|rows| {
+                rows.into_iter()
+                    .map(OrgMemoryPermission::from_row)
+                    .collect()
+            })
     }
 
-    async fn org_roles(
-        &self,
-        ctx: &async_graphql::Context<'_>,
-    ) -> Option<Vec<OrgRoleAssignment>> {
+    async fn org_roles(&self, ctx: &async_graphql::Context<'_>) -> Option<Vec<OrgRoleAssignment>> {
         let org_id = self.inner.organization_id.as_deref()?;
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;

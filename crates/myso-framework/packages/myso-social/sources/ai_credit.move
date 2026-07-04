@@ -31,6 +31,7 @@ module social_contracts::ai_credit {
         Self,
         AgenticOrganization,
         MemoryAccount,
+        MemoryConfig,
         MemorySharePackage,
         OrgBudgetManager,
         OrgSpendApprover,
@@ -87,6 +88,7 @@ module social_contracts::ai_credit {
         min_deposit_mist: u64,
         max_single_settlement_mist: u64,
         receipt_ttl_ms: u64,
+        oracle_markup_bps: u64,
         balances_by_memory: Table<ID, ID>,
         version: u64,
     }
@@ -279,11 +281,22 @@ module social_contracts::ai_credit {
 
     public struct AiCreditOraclePubkeyUpdated has copy, drop {
         updated_by: address,
+        new_pubkey: vector<u8>,
     }
 
     public struct AiCreditSettlementLimitsUpdated has copy, drop {
         max_single_settlement_mist: u64,
         receipt_ttl_ms: u64,
+    }
+
+    public struct AiCreditMarkupUpdated has copy, drop {
+        updated_by: address,
+        oracle_markup_bps: u64,
+    }
+
+    public struct AiCreditMinDepositUpdated has copy, drop {
+        updated_by: address,
+        min_deposit_mist: u64,
     }
 
     public struct AiCreditConfigInitialized has copy, drop {
@@ -292,6 +305,7 @@ module social_contracts::ai_credit {
         min_deposit_mist: u64,
         max_single_settlement_mist: u64,
         receipt_ttl_ms: u64,
+        oracle_markup_bps: u64,
     }
 
     // ============================================================
@@ -303,12 +317,14 @@ module social_contracts::ai_credit {
         let min_deposit_mist = MIST_PER_MYSO;
         let max_single_settlement_mist = 1000 * MIST_PER_MYSO;
         let receipt_ttl_ms = 300_000;
+        let oracle_markup_bps = 0;
         event::emit(AiCreditConfigInitialized {
             oracle_pubkey,
             treasury,
             min_deposit_mist,
             max_single_settlement_mist,
             receipt_ttl_ms,
+            oracle_markup_bps,
         });
         let config = AiCreditConfig {
             id: object::new(ctx),
@@ -317,6 +333,7 @@ module social_contracts::ai_credit {
             min_deposit_mist,
             max_single_settlement_mist,
             receipt_ttl_ms,
+            oracle_markup_bps,
             balances_by_memory: table::new(ctx),
             version: upgrade::current_version(),
         };
@@ -633,6 +650,7 @@ module social_contracts::ai_credit {
     /// unconstrained root.
     public entry fun set_child_agent_budget(
         config: &AiCreditConfig,
+        memory_config: &MemoryConfig,
         balance: &mut AiCreditBalance,
         account: &MemoryAccount,
         parent: &SubAgent,
@@ -646,7 +664,7 @@ module social_contracts::ai_credit {
     ) {
         assert_version(config, balance);
         assert_active(balance);
-        assert_parent_manages_child(balance, account, parent, child, clock, ctx);
+        assert_parent_manages_child(memory_config, balance, account, parent, child, clock, ctx);
         assert_child_budget_within_parent_envelope(
             balance,
             memory::agent_object_id(parent),
@@ -673,6 +691,7 @@ module social_contracts::ai_credit {
     /// Parent kill switch for a descendant's budget.
     public entry fun disable_child_agent_budget(
         config: &AiCreditConfig,
+        memory_config: &MemoryConfig,
         balance: &mut AiCreditBalance,
         account: &MemoryAccount,
         parent: &SubAgent,
@@ -681,7 +700,7 @@ module social_contracts::ai_credit {
         ctx: &TxContext,
     ) {
         assert_version(config, balance);
-        assert_parent_manages_child(balance, account, parent, child, clock, ctx);
+        assert_parent_manages_child(memory_config, balance, account, parent, child, clock, ctx);
         disable_agent_budget_internal(
             balance,
             memory::agent_object_id(child),
@@ -696,6 +715,7 @@ module social_contracts::ai_credit {
     /// tree — ultimately to the human owner via `approve_agent_spend`.
     public entry fun approve_child_agent_spend(
         config: &AiCreditConfig,
+        memory_config: &MemoryConfig,
         balance: &mut AiCreditBalance,
         account: &MemoryAccount,
         parent: &SubAgent,
@@ -707,7 +727,7 @@ module social_contracts::ai_credit {
     ) {
         assert_version(config, balance);
         assert_active(balance);
-        assert_parent_manages_child(balance, account, parent, child, clock, ctx);
+        assert_parent_manages_child(memory_config, balance, account, parent, child, clock, ctx);
         assert_within_parent_envelope(
             balance,
             memory::agent_object_id(parent),
@@ -940,6 +960,37 @@ module social_contracts::ai_credit {
         config.oracle_pubkey = new_pk;
         event::emit(AiCreditOraclePubkeyUpdated {
             updated_by: tx_context::sender(ctx),
+            new_pubkey: new_pk,
+        });
+    }
+
+    public entry fun update_oracle_markup(
+        cap: &AiCreditOracleAdminCap,
+        config: &mut AiCreditConfig,
+        oracle_markup_bps: u64,
+        ctx: &TxContext,
+    ) {
+        assert_oracle_admin(cap, ctx);
+        assert!(oracle_markup_bps <= 10000, EInvalidAmount);
+        config.oracle_markup_bps = oracle_markup_bps;
+        event::emit(AiCreditMarkupUpdated {
+            updated_by: tx_context::sender(ctx),
+            oracle_markup_bps,
+        });
+    }
+
+    public entry fun update_min_deposit(
+        cap: &AiCreditOracleAdminCap,
+        config: &mut AiCreditConfig,
+        min_deposit_mist: u64,
+        ctx: &TxContext,
+    ) {
+        assert_oracle_admin(cap, ctx);
+        assert!(min_deposit_mist > 0, EInvalidAmount);
+        config.min_deposit_mist = min_deposit_mist;
+        event::emit(AiCreditMinDepositUpdated {
+            updated_by: tx_context::sender(ctx),
+            min_deposit_mist,
         });
     }
 
@@ -989,6 +1040,14 @@ module social_contracts::ai_credit {
 
     public fun mist_from_credits(credits: u64): u64 {
         credits * MIST_PER_MYSO
+    }
+
+    public fun oracle_markup_bps(config: &AiCreditConfig): u64 {
+        config.oracle_markup_bps
+    }
+
+    public fun min_deposit_mist(config: &AiCreditConfig): u64 {
+        config.min_deposit_mist
     }
 
     /// Live allowance for an agent, if any (may be expired — check `approval_expires_at`).
@@ -1129,6 +1188,7 @@ module social_contracts::ai_credit {
     /// derived address, parent is active with `CAP_BUDGET_MANAGE`, both agents are linked to
     /// this balance, and the child sits strictly below the parent in the agent tree.
     fun assert_parent_manages_child(
+        memory_config: &MemoryConfig,
         balance: &AiCreditBalance,
         account: &MemoryAccount,
         parent: &SubAgent,
@@ -1151,7 +1211,7 @@ module social_contracts::ai_credit {
         let parent_id = memory::agent_object_id(parent);
         let child_id = memory::agent_object_id(child);
         assert!(parent_id != child_id, ECannotManageSelf);
-        assert!(memory::is_descendant_agent(account, parent_id, child_id), ENotDescendant);
+        assert!(memory::is_descendant_agent(memory_config, account, parent_id, child_id), ENotDescendant);
     }
 
     /// Child budget limits must be at least as strict as the parent's own entry (when the

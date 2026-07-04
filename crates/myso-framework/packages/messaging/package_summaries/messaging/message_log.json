@@ -7,6 +7,10 @@
   "immediate_dependencies": [
     {
       "address": "messaging",
+      "name": "messaging_config"
+    },
+    {
+      "address": "messaging",
       "name": "paid_escrow_settlement"
     },
     {
@@ -302,6 +306,24 @@
       "type_parameters": [],
       "parameters": [
         {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "messaging_config"
+                  },
+                  "name": "MessagingConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
           "name": "self",
           "type_": {
             "Reference": [
@@ -363,6 +385,24 @@
       "entry": false,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "messaging_config"
+                  },
+                  "name": "MessagingConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "self",
           "type_": {
@@ -479,6 +519,24 @@
       "type_parameters": [],
       "parameters": [
         {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "messaging_config"
+                  },
+                  "name": "MessagingConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
           "name": "self",
           "type_": {
             "Reference": [
@@ -592,6 +650,24 @@
       "type_parameters": [],
       "parameters": [
         {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "messaging_config"
+                  },
+                  "name": "MessagingConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
           "name": "self",
           "type_": {
             "Reference": [
@@ -687,6 +763,24 @@
       "entry": false,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "messaging_config"
+                  },
+                  "name": "MessagingConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "self",
           "type_": {

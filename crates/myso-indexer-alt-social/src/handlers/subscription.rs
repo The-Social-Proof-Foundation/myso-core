@@ -4,7 +4,8 @@
 use super::common;
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
-    NewProfileSubscription, NewProfileSubscriptionService, NewSubscriptionEvent, THIRTY_DAYS_MS,
+    NewProfileSubscription, NewProfileSubscriptionService, NewSubscriptionConfig,
+    NewSubscriptionEvent, THIRTY_DAYS_MS,
 };
 use serde::Deserialize;
 use serde_json::Value;
@@ -97,6 +98,9 @@ pub fn handle_subscription_event(
         }
         "ProfileSubscriptionServiceDeactivatedEvent" => {
             process_subscription_service_deactivated_event(data, event_id, checkpoint_timestamp_ms)
+        }
+        "SubscriptionConfigUpdatedEvent" => {
+            process_subscription_config_updated_event(data, event_id, checkpoint_timestamp_ms)
         }
         _ => None,
     }
@@ -447,6 +451,40 @@ fn process_subscription_service_deactivated_event(
         },
         SocialEventRow::SubscriptionEvent(sub_event),
     ])
+}
+
+#[derive(Debug, Deserialize)]
+struct SubscriptionConfigUpdatedEvent {
+    updated_by: String,
+    billing_period_ms: u64,
+    max_renewal_months: u64,
+    timestamp: u64,
+}
+
+fn process_subscription_config_updated_event(
+    data: &Value,
+    event_id: &str,
+    checkpoint_timestamp_ms: u64,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: SubscriptionConfigUpdatedEvent = common::deserialize_social_event_json(
+        "subscription",
+        "SubscriptionConfigUpdatedEvent",
+        event_id,
+        data,
+        "subscription SubscriptionConfigUpdatedEvent JSON did not match struct",
+    )?;
+    let ms = common::chain_timestamp_ms(Some(ev.timestamp as i64), checkpoint_timestamp_ms);
+    let now = common::chain_time_from_ms(ms);
+    let row = NewSubscriptionConfig {
+        updated_by: ev.updated_by,
+        billing_period_ms: ev.billing_period_ms as i64,
+        max_renewal_months: ev.max_renewal_months as i64,
+        version: 0,
+        updated_at: ms,
+        time: now,
+        transaction_id: event_id.to_string(),
+    };
+    Some(vec![SocialEventRow::SubscriptionConfig(row)])
 }
 
 #[cfg(test)]

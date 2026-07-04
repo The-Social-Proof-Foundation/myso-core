@@ -324,9 +324,7 @@ pub async fn list_pending_spend_approvals_for_balance(
     let _guard = metrics.latency.start_timer();
     let rows = ai_credit_spend_approvals::table
         .filter(ai_credit_spend_approvals::balance_id.eq(balance_id))
-        .filter(
-            ai_credit_spend_approvals::status.eq_any(["requested", "approved"]),
-        )
+        .filter(ai_credit_spend_approvals::status.eq_any(["requested", "approved"]))
         .order(ai_credit_spend_approvals::updated_at.desc())
         .select(AiCreditSpendApprovalRow::as_select())
         .load(conn)

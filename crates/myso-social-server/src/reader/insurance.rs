@@ -8,30 +8,50 @@ use myso_pg_db::Db;
 
 use crate::error::SocialError;
 use crate::reader::types::{
-    InsuranceConfigInfo, InsurancePolicyInfo, InsurancePolicyRow, InsuranceVaultExposureRow,
-    InsuranceVaultInfo, InsuranceVaultRow, InsuranceVaultTransactionRow,
+    InsuranceConfigInfo, InsuranceConfigurationResponse, InsurancePolicyInfo, InsurancePolicyRow,
+    InsuranceRouterConfigInfo, InsuranceVaultExposureRow, InsuranceVaultInfo, InsuranceVaultRow,
+    InsuranceVaultTransactionRow,
 };
 
 pub(crate) async fn get_insurance_configuration(
     db: &Db,
-) -> Result<Option<InsuranceConfigInfo>, SocialError> {
+) -> Result<Option<InsuranceConfigurationResponse>, SocialError> {
     let mut conn = db.connect().await?;
     let query = "
         SELECT updated_by, enable_flag, min_coverage_bps, max_coverage_bps, max_duration_ms,
-               fee_bps, version, timestamp_ms, time, transaction_id,
+               fee_bps, version, updated_at, time, transaction_id,
                min_spot_total_liquidity, max_coverage_fraction_of_option_bps,
                max_risk_multiplier_bps, min_premium_amount, spot_smoothing_per_option,
                implied_prob_floor_bps, odds_floor_1x, odds_cap_bps, liq_cap_bps, liq_ref_amount,
-               exposure_cap_bps, exposure_k_bps
+               exposure_cap_bps, exposure_k_bps, odds_base_bps
         FROM insurance_config
         ORDER BY time DESC
         LIMIT 1
     ";
-    let result = diesel::sql_query(query)
+    let pricing = diesel::sql_query(query)
         .get_result::<InsuranceConfigInfo>(&mut conn)
         .await
         .optional()?;
-    Ok(result)
+
+    let Some(pricing) = pricing else {
+        return Ok(None);
+    };
+
+    let router_query = "
+        SELECT updated_by, router_enabled, router_paused, max_route_reserve_market,
+               max_route_reserve_user, max_route_reserve_option, max_vault_concentration_bps,
+               min_vault_health_factor_bps, max_route_legs, version, updated_at, time,
+               transaction_id
+        FROM insurance_router_config
+        ORDER BY time DESC
+        LIMIT 1
+    ";
+    let router = diesel::sql_query(router_query)
+        .get_result::<InsuranceRouterConfigInfo>(&mut conn)
+        .await
+        .optional()?;
+
+    Ok(Some(InsuranceConfigurationResponse { pricing, router }))
 }
 
 pub(crate) async fn list_insurance_vaults(

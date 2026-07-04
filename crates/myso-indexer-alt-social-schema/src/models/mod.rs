@@ -7,6 +7,7 @@ mod blocked;
 mod governance;
 mod insurance;
 mod memory;
+mod messaging;
 mod mydata;
 mod org_invitations;
 mod org_sharing;
@@ -30,10 +31,10 @@ mod wallet_social_graph;
 
 pub use ai_credit::{
     APPROVAL_STATUS_APPROVED, APPROVAL_STATUS_CONSUMED, APPROVAL_STATUS_EXPIRED,
-    APPROVAL_STATUS_REQUESTED, APPROVAL_STATUS_REVOKED, AiCreditAgentBudgetRow,
-    AiCreditBalanceRow, AiCreditConfigRow, AiCreditSpendApprovalRow, AiCreditUsageLineRow,
-    NewAiCreditAgentBudget, NewAiCreditBalance, NewAiCreditConfig, NewAiCreditEvent,
-    NewAiCreditSpendApproval, NewAiCreditUsageLine,
+    APPROVAL_STATUS_REQUESTED, APPROVAL_STATUS_REVOKED, AiCreditAgentBudgetRow, AiCreditBalanceRow,
+    AiCreditConfigRow, AiCreditSpendApprovalRow, AiCreditUsageLineRow, NewAiCreditAgentBudget,
+    NewAiCreditBalance, NewAiCreditConfig, NewAiCreditEvent, NewAiCreditSpendApproval,
+    NewAiCreditUsageLine,
 };
 pub use audit::{
     AUDIT_ACTOR_AGENT, AUDIT_ACTOR_HUMAN, AUDIT_ACTOR_SERVICE, AUDIT_SOURCE_CHAIN,
@@ -65,26 +66,17 @@ pub use insurance::{
     InsuranceConfig, InsurancePolicy, InsurancePolicyRow, InsuranceVault, InsuranceVaultRow,
     NewInsuranceConfig, NewInsuranceCoverageRoute, NewInsuranceEventLog,
     NewInsuranceMarketExposure, NewInsurancePolicy, NewInsurancePolicyEvent, NewInsuranceRouteFill,
-    NewInsuranceUserExposure, NewInsuranceVault, NewInsuranceVaultTransaction, STATUS_ACTIVE,
-    STATUS_CANCELLED, STATUS_CLAIMED, STATUS_EXPIRED, UpdateInsurancePolicy, UpdateInsuranceVault,
-    UpdateInsuranceVaultStatus,
+    NewInsuranceRouterConfig, NewInsuranceUserExposure, NewInsuranceVault,
+    NewInsuranceVaultTransaction, STATUS_ACTIVE, STATUS_CANCELLED, STATUS_CLAIMED, STATUS_EXPIRED,
+    UpdateInsurancePolicy, UpdateInsuranceVault, UpdateInsuranceVaultStatus,
 };
 pub use memory::{
     AgentMemoryVaultRow, MemoryAccountRow, MemoryUsageStatsRow, NewAgentMemoryVault,
-    NewMemoryAccount, NewSubAgent, NewSubAgentEvent, SubAgentRow,
+    NewMemoryAccount, NewMemoryConfig, NewSubAgent, NewSubAgentEvent, SubAgentRow,
 };
-pub use org_invitations::{
-    NewOrgInvitation, OrgInvitationRow, ORG_INVITATION_STATUS_ACCEPTED,
-    ORG_INVITATION_STATUS_DECLINED, ORG_INVITATION_STATUS_PENDING,
-};
-pub use org_sharing::{
-    BUILTIN_ORG_ROLES, NewOrgMemoryPermission, NewOrgRole, NewOrgRoleAssignment,
-    ORG_GOVERNANCE_PERM_ALL, ORG_PERM_AGENT_MANAGER, ORG_PERM_ALL, ORG_PERM_AUDITOR,
-    ORG_PERM_BUDGET_MANAGER, ORG_PERM_DASHBOARD_VIEWER, ORG_PERM_FULL,
-    ORG_PERM_GOVERNANCE_PROPOSER, ORG_PERM_GOVERNANCE_VOTER, ORG_PERM_MEMORY_READ,
-    ORG_PERM_MEMORY_WRITE, ORG_PERM_SPEND_APPROVER, OrgMemoryPermissionRow,
-    OrgRoleAssignmentRow, OrgRoleRow, builtin_org_role_mask, expand_org_permission_mask,
-    is_builtin_org_role,
+pub use messaging::{
+    NewMessagingAgentGroup, NewMessagingConfig, NewPaidMessageEscrow, PAID_MESSAGE_STATUS_CLAIMED,
+    PAID_MESSAGE_STATUS_ESCROWED, PAID_MESSAGE_STATUS_REFUNDED, PAID_MESSAGE_STATUS_SETTLED,
 };
 pub use mydata::{
     ACCESS_TYPE_CONTENT_UPDATE, ACCESS_TYPE_GRANT, ACCESS_TYPE_ONE_TIME, ACCESS_TYPE_PREVIEW,
@@ -104,6 +96,18 @@ pub use mydata::{
     REVENUE_TYPE_SUBSCRIPTION, UPDATE_FREQUENCY_DAILY, UPDATE_FREQUENCY_HOURLY,
     UPDATE_FREQUENCY_MONTHLY, UPDATE_FREQUENCY_WEEKLY, UPDATE_FREQUENCY_YEARLY,
 };
+pub use org_invitations::{
+    NewOrgInvitation, ORG_INVITATION_STATUS_ACCEPTED, ORG_INVITATION_STATUS_DECLINED,
+    ORG_INVITATION_STATUS_PENDING, OrgInvitationRow,
+};
+pub use org_sharing::{
+    BUILTIN_ORG_ROLES, NewOrgMemoryPermission, NewOrgRole, NewOrgRoleAssignment,
+    ORG_GOVERNANCE_PERM_ALL, ORG_PERM_AGENT_MANAGER, ORG_PERM_ALL, ORG_PERM_AUDITOR,
+    ORG_PERM_BUDGET_MANAGER, ORG_PERM_DASHBOARD_VIEWER, ORG_PERM_FULL,
+    ORG_PERM_GOVERNANCE_PROPOSER, ORG_PERM_GOVERNANCE_VOTER, ORG_PERM_MEMORY_READ,
+    ORG_PERM_MEMORY_WRITE, ORG_PERM_SPEND_APPROVER, OrgMemoryPermissionRow, OrgRoleAssignmentRow,
+    OrgRoleRow, builtin_org_role_mask, expand_org_permission_mask, is_builtin_org_role,
+};
 pub use organization::{
     AUM_LEADERBOARD_MIN_ATTRIBUTION_COVERAGE_BPS, AgenticOrganizationRow,
     EVENT_TYPE_ORG_CATEGORY_UPDATED, EVENT_TYPE_ORG_CREATED, EVENT_TYPE_ORG_DEACTIVATED,
@@ -118,8 +122,8 @@ pub use organization::{
     SPOT_ACCURACY_DISPLAY_MIN_RESOLVED, SPOT_ACCURACY_LEADERBOARD_MIN_RESOLVED,
 };
 pub use platform::{
-    ALLOWED_CATEGORIES, NewPlatform, NewPlatformBlockedProfile, NewPlatformEvent,
-    NewPlatformMembership, NewPlatformModerator, NewPlatformModeratorPermission,
+    ALLOWED_CATEGORIES, NewPlatform, NewPlatformBlockedProfile, NewPlatformConfig,
+    NewPlatformEvent, NewPlatformMembership, NewPlatformModerator, NewPlatformModeratorPermission,
     NewPlatformTokenAirdrop, PLATFORM_STATUS_ALPHA, PLATFORM_STATUS_BETA,
     PLATFORM_STATUS_DEVELOPMENT, PLATFORM_STATUS_LIVE, PLATFORM_STATUS_MAINTENANCE,
     PLATFORM_STATUS_SHUTDOWN, PLATFORM_STATUS_SUNSET, Platform, PlatformBlockedProfile,
@@ -161,8 +165,8 @@ pub use post::{
 pub use profile::{
     CURVE_PRECISION, MAX_BADGE_DESCRIPTION_LENGTH, MAX_BADGE_ICON_URL_LENGTH,
     MAX_BADGE_MEDIA_URL_LENGTH, MAX_BADGE_NAME_LENGTH, NewProfile, NewProfileBadge,
-    NewProfileEvent, NewProfileOffer, NewProfileSaleFee, PROFILE_SALE_FEE_BPS, Profile,
-    ProfileOffer, ProfileSaleFee, ProfileUpdateSet,
+    NewProfileConfig, NewProfileEvent, NewProfileOffer, NewProfileSaleFee, PROFILE_SALE_FEE_BPS,
+    Profile, ProfileOffer, ProfileSaleFee, ProfileUpdateSet,
 };
 pub use promotion::{
     NewPromotedPost, NewPromotionBudgetEvent, NewPromotionStatusEvent, NewPromotionView,
@@ -170,11 +174,13 @@ pub use promotion::{
     PromotionViewRow,
 };
 pub use revenue::{
-    CONTENT_TYPE_COMMENT, CONTENT_TYPE_DATA, CONTENT_TYPE_POST, CONTENT_TYPE_PROFILE,
+    CONTENT_TYPE_COMMENT, CONTENT_TYPE_DATA, CONTENT_TYPE_MESSAGING, CONTENT_TYPE_POST, CONTENT_TYPE_PROFILE,
     CONTENT_TYPE_SERVICE, CONTENT_TYPE_TOKEN, CURRENCY_MYSO, MYSO_DECIMAL_FACTOR,
     MYSO_DECIMAL_PLACES, PlatformRevenueSummaryRow, REVENUE_SOURCE_MYDATA, REVENUE_SOURCE_POSTS,
-    REVENUE_SOURCE_SPT, REVENUE_SOURCE_SUBSCRIPTION, REVENUE_SOURCE_TIPS,
+    REVENUE_SOURCE_SPT, REVENUE_SOURCE_SUBSCRIPTION, REVENUE_SOURCE_TIPS, REVENUE_SOURCE_MESSAGING,
     REVENUE_TYPE_MYDATA_GRANT, REVENUE_TYPE_MYDATA_ONE_TIME, REVENUE_TYPE_MYDATA_SUBSCRIPTION,
+    REVENUE_TYPE_MESSAGING_CLAIM, REVENUE_TYPE_MESSAGING_NET, REVENUE_TYPE_MESSAGING_PLATFORM_FEE,
+    REVENUE_TYPE_MESSAGING_REFUND, REVENUE_TYPE_MESSAGING_TREASURY_FEE,
     REVENUE_TYPE_POSTS_MONETIZATION, REVENUE_TYPE_POSTS_PREMIUM, REVENUE_TYPE_SPT_CREATOR_FEE,
     REVENUE_TYPE_SPT_PLATFORM_FEE, REVENUE_TYPE_SPT_TREASURY_FEE,
     REVENUE_TYPE_SUBSCRIPTION_AUTO_RENEWAL, REVENUE_TYPE_SUBSCRIPTION_MONTHLY,
@@ -200,22 +206,24 @@ pub use spt::{
     DEFAULT_RESERVATION_CREATOR_FEE_BPS, DEFAULT_RESERVATION_PLATFORM_FEE_BPS,
     DEFAULT_RESERVATION_TREASURY_FEE_BPS, DEFAULT_TRADING_CREATOR_FEE_BPS,
     DEFAULT_TRADING_PLATFORM_FEE_BPS, DEFAULT_TRADING_TREASURY_FEE_BPS, EcosystemTreasury,
-    MAX_HOLD_PERCENT_BPS, NewEcosystemTreasury, NewSocialProofTokensConfig,
+    InsertSptExchangeConfig, MAX_HOLD_PERCENT_BPS, NewEcosystemTreasury, NewSocialProofTokensConfig,
     NewSocialProofTokensEvent, NewSptExchangeConfig, NewSptHolding, NewSptPool, NewSptPriceHistory,
     NewSptReservation, NewSptReservationPool, NewSptRevenue, NewSptTransaction, NewUnifiedRevenue,
     RESERVATION_POOL_STATUS_ACTIVE, RESERVATION_POOL_STATUS_THRESHOLD_MET, SPT_AMOUNT_NANO_SCALE,
     SptExchangeConfigChangeset, SptHoldingRow, SptPoolRow, SptPriceHistory,
     SptReservationHoldingRow, SptTransaction, TOKEN_TYPE_POST, TOKEN_TYPE_PROFILE,
     TRANSACTION_TYPE_BUY, TRANSACTION_TYPE_RESERVATION, TRANSACTION_TYPE_RESERVATION_WITHDRAW,
-    TRANSACTION_TYPE_SELL, UnifiedRevenue,
+    TRANSACTION_TYPE_SELL, UnifiedRevenue, merge_social_proof_tokens_config,
+    merge_spt_exchange_config,
 };
 pub use subscription::{
     MAX_RENEWAL_MONTHS, MAX_SUBSCRIPTION_DURATION_DAYS, MILLISECONDS_PER_DAY,
     MIN_SUBSCRIPTION_DURATION_DAYS, NewProfileSubscription, NewProfileSubscriptionService,
-    NewSubscriptionAccessLog, NewSubscriptionEvent, NewSubscriptionRevenue, ProfileSubscription,
-    ProfileSubscriptionService, REVENUE_TYPE_AUTO_RENEWAL, REVENUE_TYPE_REFUND,
-    REVENUE_TYPE_RENEWAL, SubscriptionAccessLog, SubscriptionEvent, SubscriptionRevenue,
-    THIRTY_DAYS_MS, UpdateProfileSubscription, UpdateProfileSubscriptionService,
+    NewSubscriptionAccessLog, NewSubscriptionConfig, NewSubscriptionEvent, NewSubscriptionRevenue,
+    ProfileSubscription, ProfileSubscriptionService, REVENUE_TYPE_AUTO_RENEWAL,
+    REVENUE_TYPE_REFUND, REVENUE_TYPE_RENEWAL, SubscriptionAccessLog, SubscriptionEvent,
+    SubscriptionRevenue, THIRTY_DAYS_MS, UpdateProfileSubscription,
+    UpdateProfileSubscriptionService,
 };
 pub use upgrade::{NewObjectMigratedEvent, NewUpgradeEvent};
 pub use username::{NewUsernameRegistry, UsernameRegistryRow};

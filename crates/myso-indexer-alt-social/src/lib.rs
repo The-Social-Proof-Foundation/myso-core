@@ -8,9 +8,9 @@ pub mod metrics;
 
 pub use handlers::{
     AiCreditHandler, BlockingHandler, GovernanceHandler, InsuranceHandler, MemoryHandler,
-    MyDataHandler, PaidMessagingPolicyHandler, PlatformHandler, PostsHandler, ProfilesHandler,
-    SocialGraphHandler, SpotHandler, SptHandler, SubAgentRegistryHandler, SubscriptionHandler,
-    UpgradeHandler,
+    MessagingHandler, MyDataHandler,
+    PlatformHandler, PostsHandler, ProfilesHandler, SocialGraphHandler, SpotHandler, SptHandler,
+    SubAgentRegistryHandler, SubscriptionHandler, UpgradeHandler,
 };
 
 pub const MAINNET_REMOTE_STORE_URL: &str = "https://checkpoints.mainnet.mysocial.network";
@@ -88,10 +88,6 @@ pub async fn setup_social_indexer(
         .await
         .context("Failed to add BlockingHandler pipeline")?;
     indexer
-        .concurrent_pipeline(PaidMessagingPolicyHandler, Default::default())
-        .await
-        .context("Failed to add PaidMessagingPolicyHandler pipeline")?;
-    indexer
         .concurrent_pipeline(GovernanceHandler, Default::default())
         .await
         .context("Failed to add GovernanceHandler pipeline")?;
@@ -147,10 +143,14 @@ pub async fn setup_social_indexer(
         .concurrent_pipeline(PostsHandler, Default::default())
         .await
         .context("Failed to add PostsHandler pipeline")?;
+    indexer
+        .concurrent_pipeline(MessagingHandler, Default::default())
+        .await
+        .context("Failed to add MessagingHandler pipeline")?;
 
     tracing::info!(
-        "Social indexer pipelines registered — blocking, paid_messaging_policy, governance, upgrade, social_graph, \
-         platform, mydata, insurance, spot, spt, subscription, sub_agent_registry, memory, profiles, posts (includes PoC); \
+        "Social indexer pipelines registered — blocking, governance, upgrade, social_graph, \
+         platform, mydata, insurance, spot, spt, subscription, sub_agent_registry, memory, profiles, posts (includes PoC), messaging; \
          resuming from watermarks or checkpoint 0"
     );
 

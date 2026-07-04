@@ -131,14 +131,14 @@
     "bootstrap_init": {
       "source_index": 0,
       "index": 0,
-      "doc": " Bootstrap initialization function - creates the platform registry",
+      "doc": " Bootstrap initialization function - creates the platform registry and config",
       "attributes": [],
       "visibility": "Package",
       "entry": false,
       "type_parameters": [],
       "parameters": [
         {
-          "name": "_clock",
+          "name": "clock",
           "type_": {
             "Reference": [
               false,
@@ -197,6 +197,24 @@
                     "name": "platform"
                   },
                   "name": "PlatformRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "PlatformConfig",
                   "type_arguments": []
                 }
               }
@@ -614,6 +632,24 @@
                     "name": "platform"
                   },
                   "name": "Platform",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "PlatformConfig",
                   "type_arguments": []
                 }
               }
@@ -2439,6 +2475,24 @@
           }
         },
         {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "PlatformConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
           "name": "platform_id",
           "type_": "address"
         },
@@ -2529,6 +2583,24 @@
                     "name": "platform"
                   },
                   "name": "PlatformRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "PlatformConfig",
                   "type_arguments": []
                 }
               }
@@ -2706,6 +2778,24 @@
       "type_parameters": [],
       "parameters": [
         {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "PlatformConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
           "name": "cover_photo",
           "type_": {
             "Reference": [
@@ -2749,6 +2839,24 @@
       "entry": false,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "PlatformConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "media_previews",
           "type_": {
@@ -5223,6 +5331,24 @@
           }
         },
         {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "PlatformConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
           "name": "platform",
           "type_": {
             "Reference": [
@@ -5700,9 +5826,125 @@
       ],
       "return_": []
     },
-    "create_platform_admin_cap": {
+    "update_platform_config": {
       "source_index": 74,
       "index": 74,
+      "doc": " Update platform configuration (admin only)",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "PlatformAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "PlatformConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "max_reasoning_length",
+          "type_": "u64"
+        },
+        {
+          "name": "max_cover_photo_url_length",
+          "type_": "u64"
+        },
+        {
+          "name": "max_media_previews",
+          "type_": "u64"
+        },
+        {
+          "name": "max_media_preview_url_length",
+          "type_": "u64"
+        },
+        {
+          "name": "max_badge_name_length",
+          "type_": "u64"
+        },
+        {
+          "name": "max_badge_description_length",
+          "type_": "u64"
+        },
+        {
+          "name": "max_badge_media_url_length",
+          "type_": "u64"
+        },
+        {
+          "name": "max_badge_icon_url_length",
+          "type_": "u64"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "create_platform_admin_cap": {
+      "source_index": 75,
+      "index": 75,
       "doc": " Create a PlatformAdminCap for bootstrap (package visibility only)\n This function is only callable by other modules in the same package",
       "attributes": [],
       "visibility": "Package",
@@ -5742,8 +5984,8 @@
       ]
     },
     "migrate_platform": {
-      "source_index": 75,
-      "index": 75,
+      "source_index": 76,
+      "index": 76,
       "doc": " Migration function for Platform",
       "attributes": [],
       "visibility": "Public",
@@ -5808,8 +6050,8 @@
       "return_": []
     },
     "migrate_registry": {
-      "source_index": 76,
-      "index": 76,
+      "source_index": 77,
+      "index": 77,
       "doc": " Migration function for PlatformRegistry",
       "attributes": [],
       "visibility": "Public",
@@ -5875,8 +6117,146 @@
     }
   },
   "structs": {
-    "PlatformStatus": {
+    "PlatformConfig": {
       "index": 0,
+      "doc": " Global platform feature configuration",
+      "attributes": [],
+      "abilities": [
+        "Key"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          },
+          "max_reasoning_length": {
+            "index": 1,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_cover_photo_url_length": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_media_previews": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_media_preview_url_length": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_badge_name_length": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_badge_description_length": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_badge_media_url_length": {
+            "index": 7,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_badge_icon_url_length": {
+            "index": 8,
+            "doc": null,
+            "type_": "u64"
+          },
+          "version": {
+            "index": 9,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "PlatformConfigUpdatedEvent": {
+      "index": 1,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "updated_by": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "max_reasoning_length": {
+            "index": 1,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_cover_photo_url_length": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_media_previews": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_media_preview_url_length": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_badge_name_length": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_badge_description_length": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_badge_media_url_length": {
+            "index": 7,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_badge_icon_url_length": {
+            "index": 8,
+            "doc": null,
+            "type_": "u64"
+          },
+          "timestamp": {
+            "index": 9,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "PlatformStatus": {
+      "index": 2,
       "doc": " Platform status enum",
       "attributes": [],
       "abilities": [
@@ -5897,7 +6277,7 @@
       }
     },
     "PlatformAdminCap": {
-      "index": 1,
+      "index": 3,
       "doc": " Admin capability for Platform system management",
       "attributes": [],
       "abilities": [
@@ -5926,7 +6306,7 @@
       }
     },
     "PlatformPackage": {
-      "index": 2,
+      "index": 4,
       "doc": " Package witness for `PermissionedGroup<PlatformPackage>`",
       "attributes": [],
       "abilities": [
@@ -5944,7 +6324,7 @@
       }
     },
     "ModeratorsGroupTag": {
-      "index": 3,
+      "index": 5,
       "doc": " Derivation key for the per-platform moderators permission group",
       "attributes": [],
       "abilities": [
@@ -5964,7 +6344,7 @@
       }
     },
     "PlatformBlockAdmin": {
-      "index": 4,
+      "index": 6,
       "doc": " Permission to block/unblock wallets on behalf of the platform",
       "attributes": [],
       "abilities": [
@@ -5982,7 +6362,7 @@
       }
     },
     "PlatformBadgeAdmin": {
-      "index": 5,
+      "index": 7,
       "doc": " Permission to assign/revoke platform badges",
       "attributes": [],
       "abilities": [
@@ -6000,7 +6380,7 @@
       }
     },
     "PlatformTreasuryAdmin": {
-      "index": 6,
+      "index": 8,
       "doc": " Permission to airdrop from the platform treasury",
       "attributes": [],
       "abilities": [
@@ -6018,7 +6398,7 @@
       }
     },
     "PlatformContentModerator": {
-      "index": 7,
+      "index": 9,
       "doc": " Permission to moderate posts and comments on the platform",
       "attributes": [],
       "abilities": [
@@ -6036,7 +6416,7 @@
       }
     },
     "PlatformPromotionAdmin": {
-      "index": 8,
+      "index": 10,
       "doc": " Permission to manage promoted posts and view payouts",
       "attributes": [],
       "abilities": [
@@ -6054,7 +6434,7 @@
       }
     },
     "Platform": {
-      "index": 9,
+      "index": 11,
       "doc": " Platform object that contains information about a social media platform",
       "attributes": [],
       "abilities": [
@@ -6563,7 +6943,7 @@
       }
     },
     "PlatformRegistry": {
-      "index": 10,
+      "index": 12,
       "doc": " Platform registry that keeps track of all platforms",
       "attributes": [],
       "abilities": [
@@ -6676,7 +7056,7 @@
       }
     },
     "PlatformCreatedEvent": {
-      "index": 11,
+      "index": 13,
       "doc": " Platform created event",
       "attributes": [],
       "abilities": [
@@ -7125,7 +7505,7 @@
       }
     },
     "PlatformUpdatedEvent": {
-      "index": 12,
+      "index": 14,
       "doc": " Platform updated event",
       "attributes": [],
       "abilities": [
@@ -7422,7 +7802,7 @@
       }
     },
     "ModeratorPermissionsGrantedEvent": {
-      "index": 13,
+      "index": 15,
       "doc": " Emitted when one or more moderator permissions are granted",
       "attributes": [],
       "abilities": [
@@ -7482,7 +7862,7 @@
       }
     },
     "ModeratorPermissionsRevokedEvent": {
-      "index": 14,
+      "index": 16,
       "doc": " Emitted when one or more moderator permissions are revoked",
       "attributes": [],
       "abilities": [
@@ -7542,7 +7922,7 @@
       }
     },
     "ModeratorRemovedEvent": {
-      "index": 15,
+      "index": 17,
       "doc": " Emitted when a member is fully removed from the moderators group",
       "attributes": [],
       "abilities": [
@@ -7586,7 +7966,7 @@
       }
     },
     "PlatformApprovalChangedEvent": {
-      "index": 16,
+      "index": 18,
       "doc": " Platform approval status changed event",
       "attributes": [],
       "abilities": [
@@ -7644,7 +8024,7 @@
       }
     },
     "PlatformDeletedEvent": {
-      "index": 17,
+      "index": 19,
       "doc": " Platform deleted event",
       "attributes": [],
       "abilities": [
@@ -7721,7 +8101,7 @@
       }
     },
     "UserJoinedPlatformEvent": {
-      "index": 18,
+      "index": 20,
       "doc": " Event emitted when a user joins a platform",
       "attributes": [],
       "abilities": [
@@ -7760,7 +8140,7 @@
       }
     },
     "UserLeftPlatformEvent": {
-      "index": 19,
+      "index": 21,
       "doc": " Event emitted when a user leaves a platform",
       "attributes": [],
       "abilities": [
@@ -7799,7 +8179,7 @@
       }
     },
     "TokenAirdropEvent": {
-      "index": 20,
+      "index": 22,
       "doc": " Event emitted when tokens are airdropped from the platform treasury",
       "attributes": [],
       "abilities": [
@@ -7844,7 +8224,7 @@
       }
     },
     "TreasuryFundedEvent": {
-      "index": 21,
+      "index": 23,
       "doc": " Event emitted when tokens are added to platform treasury",
       "attributes": [],
       "abilities": [

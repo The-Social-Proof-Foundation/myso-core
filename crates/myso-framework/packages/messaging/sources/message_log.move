@@ -4,6 +4,7 @@
 /// Authorization is enforced in `messaging`; this module holds escrow state and invariants.
 module messaging::message_log;
 
+use messaging::messaging_config::{Self, MessagingConfig};
 use messaging::paid_escrow_settlement as escrow_fees;
 use std::string::String;
 use myso::balance::{Self, Balance};
@@ -27,14 +28,6 @@ const EPaymentClaimed: u64 = 8;
 const EReplyTooShort: u64 = 9;
 const EDedupeKeyTooLong: u64 = 10;
 const EVaultEmpty: u64 = 11;
-
-// === Paid messaging ===
-
-const MIN_REPLY_CHARS: u32 = 6;
-/// Paid message must be replied to within this wall-clock window (`Clock` ms).
-const PAYMENT_EXPIRATION_MS: u64 = 30 * 86400000;
-
-const MAX_DEDUPE_KEY_BYTES: u64 = 256;
 
 // === Derivation ===
 
@@ -167,13 +160,17 @@ public(package) fun paid_message_parties(self: &MessageLog, paid_msg_seq: u64): 
 // === Dedupe / nonce (replay protection for paid ops) ===
 
 fun consume_dedupe_and_nonce(
+    config: &MessagingConfig,
     self: &mut MessageLog,
     sender: address,
     dedupe_key: vector<u8>,
     nonce: u128,
     ctx: &mut TxContext,
 ) {
-    assert!(dedupe_key.length() <= MAX_DEDUPE_KEY_BYTES, EDedupeKeyTooLong);
+    assert!(
+        dedupe_key.length() <= messaging_config::max_dedupe_key_bytes(config),
+        EDedupeKeyTooLong,
+    );
     assert!(!table::contains(&self.used_dedupe, dedupe_key), EDedupeUsed);
     table::add(&mut self.used_dedupe, dedupe_key, true);
 
@@ -188,6 +185,7 @@ fun consume_dedupe_and_nonce(
 // === Paid send / reply / refund ===
 
 public(package) fun send_paid_message(
+    config: &MessagingConfig,
     self: &mut MessageLog,
     sender: address,
     recipient: address,
@@ -200,7 +198,7 @@ public(package) fun send_paid_message(
 ) {
     assert!(coin::value(&payment) >= escrow_amount, EInsufficientPayment);
 
-    consume_dedupe_and_nonce(self, sender, dedupe_key, nonce, ctx);
+    consume_dedupe_and_nonce(config, self, sender, dedupe_key, nonce, ctx);
 
     let seq = self.next_seq;
     self.next_seq = seq + 1;
@@ -237,6 +235,7 @@ public(package) fun send_paid_message(
 }
 
 public(package) fun reply_to_paid_message_claim_coin(
+    config: &MessagingConfig,
     self: &mut MessageLog,
     sender: address,
     paid_msg_seq: u64,
@@ -252,10 +251,13 @@ public(package) fun reply_to_paid_message_claim_coin(
     assert!(!escrow_ref.claimed, EPaymentClaimed);
 
     let now_ms = clock::timestamp_ms(clock);
-    assert!(now_ms - escrow_ref.created_at_ms <= PAYMENT_EXPIRATION_MS, EPaymentExpired);
-    assert!(char_count >= MIN_REPLY_CHARS, EReplyTooShort);
+    assert!(
+        now_ms - escrow_ref.created_at_ms <= messaging_config::payment_expiration_ms(config),
+        EPaymentExpired,
+    );
+    assert!(char_count >= messaging_config::min_reply_chars(config), EReplyTooShort);
 
-    consume_dedupe_and_nonce(self, sender, dedupe_key, nonce, ctx);
+    consume_dedupe_and_nonce(config, self, sender, dedupe_key, nonce, ctx);
 
     event::emit(PaidMessageReplied {
         group_id: self.group_id,
@@ -285,6 +287,7 @@ public(package) fun reply_to_paid_message_claim_coin(
 /// Same as [`reply_to_paid_message_claim_coin`], then splits escrow per paid-message BPS to
 /// `platform_fee_recipient`, `ecosystem_fee_recipient`, and the original paid-message recipient.
 public(package) fun reply_to_paid_message_claim_settled(
+    config: &MessagingConfig,
     self: &mut MessageLog,
     sender: address,
     paid_msg_seq: u64,
@@ -302,10 +305,13 @@ public(package) fun reply_to_paid_message_claim_settled(
     assert!(!escrow_ref.claimed, EPaymentClaimed);
 
     let now_ms = clock::timestamp_ms(clock);
-    assert!(now_ms - escrow_ref.created_at_ms <= PAYMENT_EXPIRATION_MS, EPaymentExpired);
-    assert!(char_count >= MIN_REPLY_CHARS, EReplyTooShort);
+    assert!(
+        now_ms - escrow_ref.created_at_ms <= messaging_config::payment_expiration_ms(config),
+        EPaymentExpired,
+    );
+    assert!(char_count >= messaging_config::min_reply_chars(config), EReplyTooShort);
 
-    consume_dedupe_and_nonce(self, sender, dedupe_key, nonce, ctx);
+    consume_dedupe_and_nonce(config, self, sender, dedupe_key, nonce, ctx);
 
     event::emit(PaidMessageReplied {
         group_id: self.group_id,
@@ -325,6 +331,7 @@ public(package) fun reply_to_paid_message_claim_settled(
     assert!(coin::value(&coin) > 0, EVaultEmpty);
 
     let totals = escrow_fees::distribute_escrow_to_recipients(
+        config,
         coin,
         platform_fee_recipient,
         ecosystem_fee_recipient,
@@ -347,6 +354,7 @@ public(package) fun reply_to_paid_message_claim_settled(
 }
 
 public(package) fun refund_paid_message(
+    config: &MessagingConfig,
     self: &mut MessageLog,
     sender: address,
     paid_msg_seq: u64,
@@ -359,7 +367,10 @@ public(package) fun refund_paid_message(
     assert!(!escrow.claimed, EPaymentClaimed);
 
     let now_ms = clock::timestamp_ms(clock);
-    assert!(now_ms - escrow.created_at_ms >= PAYMENT_EXPIRATION_MS, EPaymentExpired);
+    assert!(
+        now_ms - escrow.created_at_ms >= messaging_config::payment_expiration_ms(config),
+        EPaymentExpired,
+    );
 
     let refund_amount = escrow.amount;
     let payer = escrow.payer;

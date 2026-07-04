@@ -30,7 +30,7 @@ pub struct InsuranceConfigRow {
     #[diesel(sql_type = BigInt)]
     pub version: i64,
     #[diesel(sql_type = BigInt)]
-    pub timestamp_ms: i64,
+    pub updated_at: i64,
     #[diesel(sql_type = Timestamptz)]
     pub time: chrono::DateTime<chrono::Utc>,
     #[diesel(sql_type = Text)]
@@ -59,6 +59,8 @@ pub struct InsuranceConfigRow {
     pub exposure_cap_bps: i64,
     #[diesel(sql_type = BigInt)]
     pub exposure_k_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub odds_base_bps: i64,
 }
 
 #[derive(Debug, Clone, QueryableByName)]
@@ -342,11 +344,11 @@ pub(crate) async fn get_insurance_config(
 
     let query = "
         SELECT updated_by, enable_flag, min_coverage_bps, max_coverage_bps, max_duration_ms,
-               fee_bps, version, timestamp_ms, time, transaction_id,
+               fee_bps, version, updated_at, time, transaction_id,
                min_spot_total_liquidity, max_coverage_fraction_of_option_bps,
                max_risk_multiplier_bps, min_premium_amount, spot_smoothing_per_option,
                implied_prob_floor_bps, odds_floor_1x, odds_cap_bps, liq_cap_bps, liq_ref_amount,
-               exposure_cap_bps, exposure_k_bps
+               exposure_cap_bps, exposure_k_bps, odds_base_bps
         FROM insurance_config
         ORDER BY time DESC
         LIMIT 1
@@ -361,7 +363,61 @@ pub(crate) async fn get_insurance_config(
     Ok(result)
 }
 
-/// Row from `insurance_events` (module-level audit log).
+#[derive(Debug, Clone, QueryableByName)]
+pub struct InsuranceRouterConfigRow {
+    #[diesel(sql_type = Text)]
+    pub updated_by: String,
+    #[diesel(sql_type = Bool)]
+    pub router_enabled: bool,
+    #[diesel(sql_type = Bool)]
+    pub router_paused: bool,
+    #[diesel(sql_type = BigInt)]
+    pub max_route_reserve_market: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_route_reserve_user: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_route_reserve_option: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_vault_concentration_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub min_vault_health_factor_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_route_legs: i64,
+    #[diesel(sql_type = BigInt)]
+    pub version: i64,
+    #[diesel(sql_type = BigInt)]
+    pub updated_at: i64,
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+}
+
+pub(crate) async fn get_insurance_router_config(
+    conn: &mut Connection<'_>,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Option<InsuranceRouterConfigRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+
+    let query = "
+        SELECT updated_by, router_enabled, router_paused, max_route_reserve_market,
+               max_route_reserve_user, max_route_reserve_option, max_vault_concentration_bps,
+               min_vault_health_factor_bps, max_route_legs, version, updated_at, time,
+               transaction_id
+        FROM insurance_router_config
+        ORDER BY time DESC
+        LIMIT 1
+    ";
+
+    let result = diesel::sql_query(query)
+        .get_result::<InsuranceRouterConfigRow>(conn)
+        .await
+        .optional()?;
+
+    metrics.requests_succeeded.inc();
+    Ok(result)
+}
 #[derive(Debug, Clone, QueryableByName)]
 pub struct InsuranceModuleEventRow {
     #[diesel(sql_type = Integer)]

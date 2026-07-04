@@ -691,6 +691,24 @@
           }
         },
         {
+          "name": "profile_config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "ProfileConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
           "name": "memory_registry",
           "type_": {
             "Reference": [

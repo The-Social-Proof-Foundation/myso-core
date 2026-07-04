@@ -15,11 +15,12 @@ use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
-    NewPlatform, NewPlatformBlockedProfile, NewPlatformEvent, NewPlatformMembership,
-    NewPlatformModerator, NewPlatformModeratorPermission, NewPlatformTokenAirdrop,
+    NewPlatform, NewPlatformBlockedProfile, NewPlatformConfig, NewPlatformEvent,
+    NewPlatformMembership, NewPlatformModerator, NewPlatformModeratorPermission,
+    NewPlatformTokenAirdrop,
 };
 use myso_indexer_alt_social_schema::schema::{
-    platform_blocked_profiles, platform_events, platform_memberships,
+    platform_blocked_profiles, platform_config, platform_events, platform_memberships,
     platform_moderator_permissions, platform_moderators, platform_token_airdrops, platforms,
 };
 
@@ -32,6 +33,7 @@ const PLATFORM_MODULES: &[&str] = &["platform"];
 #[derive(Debug, Clone)]
 pub enum PlatformRow {
     Platform(NewPlatform),
+    PlatformConfig(NewPlatformConfig),
     PlatformUpdate {
         platform_id: String,
         name: String,
@@ -96,6 +98,9 @@ impl PlatformRow {
     fn from_social(row: crate::handlers::SocialEventRow) -> Option<Self> {
         match row {
             crate::handlers::SocialEventRow::Platform(p) => Some(PlatformRow::Platform(p)),
+            crate::handlers::SocialEventRow::PlatformConfig(c) => {
+                Some(PlatformRow::PlatformConfig(c))
+            }
             crate::handlers::SocialEventRow::PlatformUpdate {
                 platform_id,
                 name,
@@ -283,6 +288,12 @@ impl Handler for PlatformHandler {
         let mut total = 0;
         for row in values {
             match row {
+                PlatformRow::PlatformConfig(c) => {
+                    total += diesel::insert_into(platform_config::table)
+                        .values(c)
+                        .execute(conn)
+                        .await?;
+                }
                 PlatformRow::Platform(p) => {
                     total += diesel::insert_into(platforms::table)
                         .values(p)

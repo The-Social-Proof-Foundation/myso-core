@@ -1092,6 +1092,11 @@ impl PlatformRevenueSummary {
         self.inner.total_spt_revenue
     }
 
+    /// Paid messaging revenue (12-month).
+    async fn total_messaging_revenue(&self) -> i64 {
+        self.inner.total_messaging_revenue
+    }
+
     /// Total transactions (12-month).
     async fn total_transactions(&self) -> i64 {
         self.inner.total_transactions

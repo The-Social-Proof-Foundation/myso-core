@@ -84,7 +84,10 @@ impl SocialClient {
         }
     }
 
-    pub async fn get_ai_credit_balance(&self, owner: &str) -> Result<Option<AiCreditBalanceResponse>> {
+    pub async fn get_ai_credit_balance(
+        &self,
+        owner: &str,
+    ) -> Result<Option<AiCreditBalanceResponse>> {
         let url = format!("{}/profiles/{}/ai-credit", self.base_url, owner);
         let resp = self.client.get(&url).send().await?;
         if resp.status() == reqwest::StatusCode::NOT_FOUND {
@@ -96,7 +99,10 @@ impl SocialClient {
         Ok(Some(resp.json().await?))
     }
 
-    pub async fn get_sub_agent_by_object_id(&self, agent_object_id: &str) -> Result<SocialSubAgent> {
+    pub async fn get_sub_agent_by_object_id(
+        &self,
+        agent_object_id: &str,
+    ) -> Result<SocialSubAgent> {
         let url = format!("{}/sub-agents/by-object/{}", self.base_url, agent_object_id);
         let resp = self.client.get(&url).send().await?;
         if !resp.status().is_success() {

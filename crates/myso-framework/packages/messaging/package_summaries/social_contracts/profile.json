@@ -891,6 +891,24 @@
           }
         },
         {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "ProfileConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
           "name": "memory_registry",
           "type_": {
             "Reference": [
@@ -1037,6 +1055,24 @@
                     "name": "profile"
                   },
                   "name": "UsernameRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "ProfileConfig",
                   "type_arguments": []
                 }
               }
@@ -2920,9 +2956,133 @@
       ],
       "return_": []
     },
-    "treasury_version": {
+    "update_ecosystem_treasury_config": {
       "source_index": 46,
       "index": 46,
+      "doc": " Update Ecosystem Treasury config: treasury address and profile sale fee bps (admin only).",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasuryAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "new_address",
+          "type_": "address"
+        },
+        {
+          "name": "profile_sale_fee_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "profile_sale_fee_bps": {
+      "source_index": 47,
+      "index": 47,
+      "doc": " Read the configured profile sale fee (bps).",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "treasury_version": {
+      "source_index": 48,
+      "index": 48,
       "doc": " Get the version of the EcosystemTreasury",
       "attributes": [],
       "visibility": "Public",
@@ -2953,8 +3113,8 @@
       ]
     },
     "migrate_ecosystem_treasury": {
-      "source_index": 47,
-      "index": 47,
+      "source_index": 49,
+      "index": 49,
       "doc": " Migration function for EcosystemTreasury",
       "attributes": [],
       "visibility": "Public",
@@ -3018,9 +3178,162 @@
       ],
       "return_": []
     },
+    "create_profile_admin_cap": {
+      "source_index": 50,
+      "index": 50,
+      "doc": " Create a ProfileAdminCap for bootstrap (package visibility only)",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "social_contracts",
+              "name": "profile"
+            },
+            "name": "ProfileAdminCap",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "update_profile_config": {
+      "source_index": 51,
+      "index": 51,
+      "doc": " Update profile configuration (admin only)",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "ProfileAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "ProfileConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "max_vesting_pieces",
+          "type_": "u64"
+        },
+        {
+          "name": "curve_factor_min",
+          "type_": "u64"
+        },
+        {
+          "name": "curve_factor_max",
+          "type_": "u64"
+        },
+        {
+          "name": "curve_precision",
+          "type_": "u64"
+        },
+        {
+          "name": "min_claim_threshold_divisor",
+          "type_": "u64"
+        },
+        {
+          "name": "min_username_length",
+          "type_": "u64"
+        },
+        {
+          "name": "max_username_length",
+          "type_": "u64"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
     "create_ecosystem_treasury_admin_cap": {
-      "source_index": 48,
-      "index": 48,
+      "source_index": 52,
+      "index": 52,
       "doc": " Create an EcosystemTreasuryAdminCap for bootstrap (package visibility only)\n This function is only callable by other modules in the same package",
       "attributes": [],
       "visibility": "Package",
@@ -3060,8 +3373,8 @@
       ]
     },
     "create_ecosystem_badge_admin_cap": {
-      "source_index": 49,
-      "index": 49,
+      "source_index": 53,
+      "index": 53,
       "doc": " Create an EcosystemBadgeAdminCap for bootstrap (package visibility only)",
       "attributes": [],
       "visibility": "Package",
@@ -3101,8 +3414,8 @@
       ]
     },
     "create_username_admin_cap": {
-      "source_index": 50,
-      "index": 50,
+      "source_index": 54,
+      "index": 54,
       "doc": " Create a UsernameAdminCap for bootstrap (package visibility only)",
       "attributes": [],
       "visibility": "Package",
@@ -3142,8 +3455,8 @@
       ]
     },
     "assign_ecosystem_badge": {
-      "source_index": 51,
-      "index": 51,
+      "source_index": 55,
+      "index": 55,
       "doc": " Assign an ecosystem badge to a profile - called by EcosystemBadgeAdminCap holder",
       "attributes": [],
       "visibility": "Public",
@@ -3282,8 +3595,8 @@
       "return_": []
     },
     "admin_set_profile_x_username": {
-      "source_index": 52,
-      "index": 52,
+      "source_index": 56,
+      "index": 56,
       "doc": " Set or clear a profile X username — only callable by an EcosystemBadgeAdminCap holder.",
       "attributes": [],
       "visibility": "Public",
@@ -3393,8 +3706,8 @@
       "return_": []
     },
     "revoke_ecosystem_badge": {
-      "source_index": 53,
-      "index": 53,
+      "source_index": 57,
+      "index": 57,
       "doc": " Revoke an ecosystem badge from a profile - called by EcosystemBadgeAdminCap holder",
       "attributes": [],
       "visibility": "Public",
@@ -3490,8 +3803,8 @@
       "return_": []
     },
     "admin_revoke_username": {
-      "source_index": 54,
-      "index": 54,
+      "source_index": 58,
+      "index": 58,
       "doc": " Revoke a username — removes claim; username becomes available immediately.",
       "attributes": [],
       "visibility": "Public",
@@ -3573,8 +3886,8 @@
       "return_": []
     },
     "admin_reassign_username": {
-      "source_index": 55,
-      "index": 55,
+      "source_index": 59,
+      "index": 59,
       "doc": " Reassign an existing username to a different profile.",
       "attributes": [],
       "visibility": "Public",
@@ -3660,8 +3973,8 @@
       "return_": []
     },
     "version": {
-      "source_index": 56,
-      "index": 56,
+      "source_index": 60,
+      "index": 60,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3692,8 +4005,8 @@
       ]
     },
     "borrow_version_mut": {
-      "source_index": 57,
-      "index": 57,
+      "source_index": 61,
+      "index": 61,
       "doc": null,
       "attributes": [],
       "visibility": "Package",
@@ -3729,8 +4042,8 @@
       ]
     },
     "migrate_registry": {
-      "source_index": 58,
-      "index": 58,
+      "source_index": 62,
+      "index": 62,
       "doc": " Migration function for the registry",
       "attributes": [],
       "visibility": "Public",
@@ -3795,8 +4108,8 @@
       "return_": []
     },
     "linked_memory_account_id": {
-      "source_index": 59,
-      "index": 59,
+      "source_index": 63,
+      "index": 63,
       "doc": " Linked [`social_contracts::memory::MemoryAccount`] object id (`None` for legacy/shared test profiles).",
       "attributes": [],
       "visibility": "Public",
@@ -3855,8 +4168,8 @@
       ]
     },
     "linked_ai_credit_balance_id": {
-      "source_index": 60,
-      "index": 60,
+      "source_index": 64,
+      "index": 64,
       "doc": " Linked [`social_contracts::ai_credit::AiCreditBalance`] object id (always set for greenfield profiles).",
       "attributes": [],
       "visibility": "Public",
@@ -3915,8 +4228,8 @@
       ]
     },
     "min_offer_amount": {
-      "source_index": 61,
-      "index": 61,
+      "source_index": 65,
+      "index": 65,
       "doc": " Get the minimum offer amount for a profile",
       "attributes": [],
       "visibility": "Public",
@@ -3966,8 +4279,8 @@
       ]
     },
     "x_username": {
-      "source_index": 62,
-      "index": 62,
+      "source_index": 66,
+      "index": 66,
       "doc": " X/Twitter username on the profile (set or cleared only via admin entry).",
       "attributes": [],
       "visibility": "Public",
@@ -4026,8 +4339,8 @@
       ]
     },
     "is_for_sale": {
-      "source_index": 63,
-      "index": 63,
+      "source_index": 67,
+      "index": 67,
       "doc": " Check if a profile is for sale (has a minimum offer amount set)",
       "attributes": [],
       "visibility": "Public",
@@ -4058,8 +4371,8 @@
       ]
     },
     "add_badge_to_profile": {
-      "source_index": 64,
-      "index": 64,
+      "source_index": 68,
+      "index": 68,
       "doc": " Adds a badge to a profile - called by platform module\n This function trusts the caller has done authorization checks",
       "attributes": [],
       "visibility": "Package",
@@ -4169,8 +4482,8 @@
       "return_": []
     },
     "remove_badge_from_profile": {
-      "source_index": 65,
-      "index": 65,
+      "source_index": 69,
+      "index": 69,
       "doc": " Removes a badge from a profile - called by platform module\n This function trusts the caller has done authorization checks",
       "attributes": [],
       "visibility": "Package",
@@ -4229,8 +4542,8 @@
       "return_": []
     },
     "remove_own_badge": {
-      "source_index": 66,
-      "index": 66,
+      "source_index": 70,
+      "index": 70,
       "doc": " Remove a badge from a profile - can be called by profile owner\n Users can delete badges they don't want to display\n Note: Badges are tied to profile identity and cannot be transferred separately",
       "attributes": [],
       "visibility": "Public",
@@ -4308,8 +4621,8 @@
       "return_": []
     },
     "get_profile_badges": {
-      "source_index": 67,
-      "index": 67,
+      "source_index": 71,
+      "index": 71,
       "doc": " Get all badges associated with a profile\n Returns vector of BadgeData for querying badge information\n Note: Badges are tied to this profile and cannot be transferred to other profiles",
       "attributes": [],
       "visibility": "Public",
@@ -4351,8 +4664,8 @@
       ]
     },
     "has_badge": {
-      "source_index": 68,
-      "index": 68,
+      "source_index": 72,
+      "index": 72,
       "doc": " Check if a profile has a specific badge",
       "attributes": [],
       "visibility": "Public",
@@ -4401,8 +4714,8 @@
       ]
     },
     "get_badge": {
-      "source_index": 69,
-      "index": 69,
+      "source_index": 73,
+      "index": 73,
       "doc": " Get a specific badge from a profile by badge ID\n Returns BadgeData for querying badge information",
       "attributes": [],
       "visibility": "Public",
@@ -4474,8 +4787,8 @@
       ]
     },
     "get_platform_badges": {
-      "source_index": 70,
-      "index": 70,
+      "source_index": 74,
+      "index": 74,
       "doc": " Get badges issued by a specific platform\n Returns vector of BadgeData for querying badge information",
       "attributes": [],
       "visibility": "Public",
@@ -4521,8 +4834,8 @@
       ]
     },
     "badge_id": {
-      "source_index": 71,
-      "index": 71,
+      "source_index": 75,
+      "index": 75,
       "doc": " Count the number of badges a profile has\n Get the badge ID from a ProfileBadge",
       "attributes": [],
       "visibility": "Public",
@@ -4562,8 +4875,8 @@
       ]
     },
     "badge_data_id": {
-      "source_index": 72,
-      "index": 72,
+      "source_index": 76,
+      "index": 76,
       "doc": " Get badge_id from BadgeData",
       "attributes": [],
       "visibility": "Public",
@@ -4603,8 +4916,8 @@
       ]
     },
     "badge_data_name": {
-      "source_index": 73,
-      "index": 73,
+      "source_index": 77,
+      "index": 77,
       "doc": " Get name from BadgeData",
       "attributes": [],
       "visibility": "Public",
@@ -4644,8 +4957,8 @@
       ]
     },
     "badge_data_description": {
-      "source_index": 74,
-      "index": 74,
+      "source_index": 78,
+      "index": 78,
       "doc": " Get description from BadgeData",
       "attributes": [],
       "visibility": "Public",
@@ -4685,8 +4998,8 @@
       ]
     },
     "badge_data_media_url": {
-      "source_index": 75,
-      "index": 75,
+      "source_index": 79,
+      "index": 79,
       "doc": " Get media_url from BadgeData",
       "attributes": [],
       "visibility": "Public",
@@ -4726,8 +5039,8 @@
       ]
     },
     "badge_data_icon_url": {
-      "source_index": 76,
-      "index": 76,
+      "source_index": 80,
+      "index": 80,
       "doc": " Get icon_url from BadgeData",
       "attributes": [],
       "visibility": "Public",
@@ -4767,8 +5080,8 @@
       ]
     },
     "badge_data_platform_id": {
-      "source_index": 77,
-      "index": 77,
+      "source_index": 81,
+      "index": 81,
       "doc": " Get platform_id from BadgeData",
       "attributes": [],
       "visibility": "Public",
@@ -4799,8 +5112,8 @@
       ]
     },
     "badge_data_issued_at": {
-      "source_index": 78,
-      "index": 78,
+      "source_index": 82,
+      "index": 82,
       "doc": " Get issued_at from BadgeData",
       "attributes": [],
       "visibility": "Public",
@@ -4831,8 +5144,8 @@
       ]
     },
     "badge_data_issued_by": {
-      "source_index": 79,
-      "index": 79,
+      "source_index": 83,
+      "index": 83,
       "doc": " Get issued_by from BadgeData",
       "attributes": [],
       "visibility": "Public",
@@ -4863,8 +5176,8 @@
       ]
     },
     "badge_data_badge_type": {
-      "source_index": 80,
-      "index": 80,
+      "source_index": 84,
+      "index": 84,
       "doc": " Get badge_type from BadgeData",
       "attributes": [],
       "visibility": "Public",
@@ -4895,8 +5208,8 @@
       ]
     },
     "badge_count": {
-      "source_index": 81,
-      "index": 81,
+      "source_index": 85,
+      "index": 85,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -4927,8 +5240,8 @@
       ]
     },
     "set_selected_badge": {
-      "source_index": 82,
-      "index": 82,
+      "source_index": 86,
+      "index": 86,
       "doc": " Set the selected badge to display for a profile (owner only)\n The badge must exist in the profile's badges collection",
       "attributes": [],
       "visibility": "Public",
@@ -5006,8 +5319,8 @@
       "return_": []
     },
     "get_selected_badge_id": {
-      "source_index": 83,
-      "index": 83,
+      "source_index": 87,
+      "index": 87,
       "doc": " Get the selected badge ID for a profile",
       "attributes": [],
       "visibility": "Public",
@@ -5061,8 +5374,8 @@
       ]
     },
     "get_display_badge": {
-      "source_index": 84,
-      "index": 84,
+      "source_index": 88,
+      "index": 88,
       "doc": " Get the badge that should be displayed for a profile\n Returns the selected badge if one is set, otherwise returns the first badge\n Returns None if the profile has no badges\n Returns BadgeData for querying badge information",
       "attributes": [],
       "visibility": "Public",
@@ -5116,8 +5429,8 @@
       ]
     },
     "clear_selected_badge": {
-      "source_index": 85,
-      "index": 85,
+      "source_index": 89,
+      "index": 89,
       "doc": " Clear the selected badge (owner only). Clears both platform and ecosystem selection overrides;\n display falls back to first badge per [`get_display_badge`] / [`get_display_ecosystem_badge`].",
       "attributes": [],
       "visibility": "Public",
@@ -5182,8 +5495,8 @@
       "return_": []
     },
     "set_selected_ecosystem_badge": {
-      "source_index": 86,
-      "index": 86,
+      "source_index": 90,
+      "index": 90,
       "doc": " Set the selected ecosystem badge to display for a profile (owner only)\n The badge must exist and have the ecosystem_badge_ prefix",
       "attributes": [],
       "visibility": "Public",
@@ -5261,8 +5574,8 @@
       "return_": []
     },
     "get_selected_ecosystem_badge_id": {
-      "source_index": 87,
-      "index": 87,
+      "source_index": 91,
+      "index": 91,
       "doc": " Get the selected ecosystem badge ID for a profile",
       "attributes": [],
       "visibility": "Public",
@@ -5316,8 +5629,8 @@
       ]
     },
     "get_display_ecosystem_badge": {
-      "source_index": 88,
-      "index": 88,
+      "source_index": 92,
+      "index": 92,
       "doc": " Get the ecosystem badge that should be displayed for a profile\n Returns the selected ecosystem badge if one is set, otherwise the first ecosystem badge\n Returns None if the profile has no ecosystem badges",
       "attributes": [],
       "visibility": "Public",
@@ -5371,8 +5684,8 @@
       ]
     },
     "clear_selected_ecosystem_badge": {
-      "source_index": 89,
-      "index": 89,
+      "source_index": 93,
+      "index": 93,
       "doc": " Clear the selected ecosystem badge (owner only)",
       "attributes": [],
       "visibility": "Public",
@@ -5437,14 +5750,32 @@
       "return_": []
     },
     "normalize_curve_factor": {
-      "source_index": 90,
-      "index": 90,
+      "source_index": 94,
+      "index": 94,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
       "entry": false,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "ProfileConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "curve_factor",
           "type_": "u64"
@@ -5455,8 +5786,8 @@
       ]
     },
     "piece_amount": {
-      "source_index": 91,
-      "index": 91,
+      "source_index": 95,
+      "index": 95,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -5477,14 +5808,32 @@
       ]
     },
     "validate_piece": {
-      "source_index": 92,
-      "index": 92,
+      "source_index": 96,
+      "index": 96,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
       "entry": false,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "ProfileConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "piece",
           "type_": {
@@ -5511,14 +5860,32 @@
       "return_": []
     },
     "validate_schedule": {
-      "source_index": 93,
-      "index": 93,
+      "source_index": 97,
+      "index": 97,
       "doc": " Validate schedule pieces and return `schedule_end` (absolute ms timestamp).",
       "attributes": [],
       "visibility": "Private",
       "entry": false,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "ProfileConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "start_time",
           "type_": "u64"
@@ -5553,14 +5920,32 @@
       ]
     },
     "apply_curve": {
-      "source_index": 94,
-      "index": 94,
+      "source_index": 98,
+      "index": 98,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
       "entry": false,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "ProfileConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "progress",
           "type_": "u128"
@@ -5575,14 +5960,32 @@
       ]
     },
     "vested_amount_for_piece": {
-      "source_index": 95,
-      "index": 95,
+      "source_index": 99,
+      "index": 99,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
       "entry": false,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "ProfileConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "total_amount",
           "type_": "u64"
@@ -5619,14 +6022,32 @@
       ]
     },
     "calculate_total_vested": {
-      "source_index": 96,
-      "index": 96,
+      "source_index": 100,
+      "index": 100,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
       "entry": false,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "ProfileConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "wallet",
           "type_": {
@@ -5655,14 +6076,32 @@
       ]
     },
     "finalize_claimable": {
-      "source_index": 97,
-      "index": 97,
+      "source_index": 101,
+      "index": 101,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
       "entry": false,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "ProfileConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "capped",
           "type_": "u64"
@@ -5689,8 +6128,8 @@
       ]
     },
     "continuous_vesting_piece": {
-      "source_index": 98,
-      "index": 98,
+      "source_index": 102,
+      "index": 102,
       "doc": " Build a continuous vesting piece (linear when curve_factor is 0 or 1000).",
       "attributes": [],
       "visibility": "Public",
@@ -5728,8 +6167,8 @@
       ]
     },
     "cliff_lump_piece": {
-      "source_index": 99,
-      "index": 99,
+      "source_index": 103,
+      "index": 103,
       "doc": " Build a cliff lump unlock piece.",
       "attributes": [],
       "visibility": "Public",
@@ -5759,8 +6198,8 @@
       ]
     },
     "pieces_from_vectors": {
-      "source_index": 100,
-      "index": 100,
+      "source_index": 104,
+      "index": 104,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -5814,14 +6253,32 @@
       ]
     },
     "vest_myso": {
-      "source_index": 101,
-      "index": 101,
+      "source_index": 105,
+      "index": 105,
       "doc": " Create a vesting wallet from parallel piece vectors (entry-compatible).\n Cliff lumps unlock instantly at `time_offset`; continuous pieces vest over `duration`.",
       "attributes": [],
       "visibility": "Public",
       "entry": true,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "ProfileConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "coin",
           "type_": {
@@ -5927,14 +6384,32 @@
       "return_": []
     },
     "vest_myso_internal": {
-      "source_index": 102,
-      "index": 102,
+      "source_index": 106,
+      "index": 106,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
       "entry": false,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "ProfileConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "coin",
           "type_": {
@@ -6025,14 +6500,32 @@
       "return_": []
     },
     "claim_vested_tokens": {
-      "source_index": 103,
-      "index": 103,
+      "source_index": 107,
+      "index": 107,
       "doc": " Claim vested tokens. Sub-threshold amounts during active vesting are no-ops.",
       "attributes": [],
       "visibility": "Public",
       "entry": true,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "ProfileConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "wallet",
           "type_": {
@@ -6091,14 +6584,32 @@
       "return_": []
     },
     "claimable": {
-      "source_index": 104,
-      "index": 104,
+      "source_index": 108,
+      "index": 108,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
       "entry": false,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "ProfileConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "wallet",
           "type_": {
@@ -6141,14 +6652,32 @@
       ]
     },
     "calculate_claimable": {
-      "source_index": 105,
-      "index": 105,
+      "source_index": 109,
+      "index": 109,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
       "entry": false,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "ProfileConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "wallet",
           "type_": {
@@ -6191,8 +6720,8 @@
       ]
     },
     "sqrt_approximation": {
-      "source_index": 106,
-      "index": 106,
+      "source_index": 110,
+      "index": 110,
       "doc": " Simple square root approximation using Newton's method",
       "attributes": [],
       "visibility": "Private",
@@ -6209,8 +6738,8 @@
       ]
     },
     "destroy_vesting_pieces": {
-      "source_index": 107,
-      "index": 107,
+      "source_index": 111,
+      "index": 111,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -6236,8 +6765,8 @@
       "return_": []
     },
     "delete_vesting_wallet": {
-      "source_index": 108,
-      "index": 108,
+      "source_index": 112,
+      "index": 112,
       "doc": " Delete an empty vesting wallet",
       "attributes": [],
       "visibility": "Public",
@@ -6297,134 +6826,6 @@
       "return_": []
     },
     "vesting_balance": {
-      "source_index": 109,
-      "index": 109,
-      "doc": null,
-      "attributes": [],
-      "visibility": "Public",
-      "entry": false,
-      "type_parameters": [],
-      "parameters": [
-        {
-          "name": "wallet",
-          "type_": {
-            "Reference": [
-              false,
-              {
-                "Datatype": {
-                  "module": {
-                    "address": "social_contracts",
-                    "name": "profile"
-                  },
-                  "name": "VestingWallet",
-                  "type_arguments": []
-                }
-              }
-            ]
-          }
-        }
-      ],
-      "return_": [
-        "u64"
-      ]
-    },
-    "vesting_owner": {
-      "source_index": 110,
-      "index": 110,
-      "doc": null,
-      "attributes": [],
-      "visibility": "Public",
-      "entry": false,
-      "type_parameters": [],
-      "parameters": [
-        {
-          "name": "wallet",
-          "type_": {
-            "Reference": [
-              false,
-              {
-                "Datatype": {
-                  "module": {
-                    "address": "social_contracts",
-                    "name": "profile"
-                  },
-                  "name": "VestingWallet",
-                  "type_arguments": []
-                }
-              }
-            ]
-          }
-        }
-      ],
-      "return_": [
-        "address"
-      ]
-    },
-    "vesting_start_time": {
-      "source_index": 111,
-      "index": 111,
-      "doc": null,
-      "attributes": [],
-      "visibility": "Public",
-      "entry": false,
-      "type_parameters": [],
-      "parameters": [
-        {
-          "name": "wallet",
-          "type_": {
-            "Reference": [
-              false,
-              {
-                "Datatype": {
-                  "module": {
-                    "address": "social_contracts",
-                    "name": "profile"
-                  },
-                  "name": "VestingWallet",
-                  "type_arguments": []
-                }
-              }
-            ]
-          }
-        }
-      ],
-      "return_": [
-        "u64"
-      ]
-    },
-    "vesting_schedule_end": {
-      "source_index": 112,
-      "index": 112,
-      "doc": null,
-      "attributes": [],
-      "visibility": "Public",
-      "entry": false,
-      "type_parameters": [],
-      "parameters": [
-        {
-          "name": "wallet",
-          "type_": {
-            "Reference": [
-              false,
-              {
-                "Datatype": {
-                  "module": {
-                    "address": "social_contracts",
-                    "name": "profile"
-                  },
-                  "name": "VestingWallet",
-                  "type_arguments": []
-                }
-              }
-            ]
-          }
-        }
-      ],
-      "return_": [
-        "u64"
-      ]
-    },
-    "vesting_total_amount": {
       "source_index": 113,
       "index": 113,
       "doc": null,
@@ -6456,7 +6857,7 @@
         "u64"
       ]
     },
-    "vesting_claimed_amount": {
+    "vesting_owner": {
       "source_index": 114,
       "index": 114,
       "doc": null,
@@ -6485,10 +6886,10 @@
         }
       ],
       "return_": [
-        "u64"
+        "address"
       ]
     },
-    "vesting_piece_count": {
+    "vesting_start_time": {
       "source_index": 115,
       "index": 115,
       "doc": null,
@@ -6520,9 +6921,137 @@
         "u64"
       ]
     },
-    "vesting_pieces": {
+    "vesting_schedule_end": {
       "source_index": 116,
       "index": 116,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "wallet",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "VestingWallet",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "vesting_total_amount": {
+      "source_index": 117,
+      "index": 117,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "wallet",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "VestingWallet",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "vesting_claimed_amount": {
+      "source_index": 118,
+      "index": 118,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "wallet",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "VestingWallet",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "vesting_piece_count": {
+      "source_index": 119,
+      "index": 119,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "wallet",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "VestingWallet",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "vesting_pieces": {
+      "source_index": 120,
+      "index": 120,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -6565,8 +7094,165 @@
     }
   },
   "structs": {
-    "EcosystemTreasuryAdminCap": {
+    "ProfileAdminCap": {
       "index": 0,
+      "doc": " Admin capability for profile configuration",
+      "attributes": [],
+      "abilities": [
+        "Key",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "ProfileConfig": {
+      "index": 1,
+      "doc": " Global profile feature configuration",
+      "attributes": [],
+      "abilities": [
+        "Key"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          },
+          "max_vesting_pieces": {
+            "index": 1,
+            "doc": null,
+            "type_": "u64"
+          },
+          "curve_factor_min": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "curve_factor_max": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "curve_precision": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "min_claim_threshold_divisor": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "min_username_length": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_username_length": {
+            "index": 7,
+            "doc": null,
+            "type_": "u64"
+          },
+          "version": {
+            "index": 8,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "ProfileConfigUpdatedEvent": {
+      "index": 2,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "updated_by": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "max_vesting_pieces": {
+            "index": 1,
+            "doc": null,
+            "type_": "u64"
+          },
+          "curve_factor_min": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "curve_factor_max": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "curve_precision": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "min_claim_threshold_divisor": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "min_username_length": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_username_length": {
+            "index": 7,
+            "doc": null,
+            "type_": "u64"
+          },
+          "timestamp": {
+            "index": 8,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "EcosystemTreasuryAdminCap": {
+      "index": 3,
       "doc": " Admin capability for Ecosystem Treasury management",
       "attributes": [],
       "abilities": [
@@ -6595,7 +7281,7 @@
       }
     },
     "EcosystemBadgeAdminCap": {
-      "index": 1,
+      "index": 4,
       "doc": " Admin capability for assigning ecosystem badges to user profiles",
       "attributes": [],
       "abilities": [
@@ -6624,7 +7310,7 @@
       }
     },
     "UsernameAdminCap": {
-      "index": 2,
+      "index": 5,
       "doc": " Admin capability for username registry management (reserve, revoke, reassign)",
       "attributes": [],
       "abilities": [
@@ -6653,7 +7339,7 @@
       }
     },
     "EcosystemTreasury": {
-      "index": 3,
+      "index": 6,
       "doc": " Social Ecosystem Treasury that receives fees from profile sales",
       "attributes": [],
       "abilities": [
@@ -6682,8 +7368,13 @@
             "doc": " Treasury address that receives fees",
             "type_": "address"
           },
-          "version": {
+          "profile_sale_fee_bps": {
             "index": 2,
+            "doc": " Fee (bps) taken on profile sales (`10_000` = 100%)",
+            "type_": "u64"
+          },
+          "version": {
+            "index": 3,
             "doc": " Version for upgrades",
             "type_": "u64"
           }
@@ -6691,7 +7382,7 @@
       }
     },
     "UsernameRegistry": {
-      "index": 4,
+      "index": 7,
       "doc": " Username Registry — sole on-chain store for username ownership",
       "attributes": [],
       "abilities": [
@@ -6811,7 +7502,7 @@
       }
     },
     "Profile": {
-      "index": 5,
+      "index": 8,
       "doc": " Profile object that contains user information",
       "attributes": [],
       "abilities": [
@@ -7127,7 +7818,7 @@
       }
     },
     "ProfileBadge": {
-      "index": 6,
+      "index": 9,
       "doc": " Profile Badge that can be assigned to profiles by platform admins/moderators\n These badges cannot be transferred, sold, or copied and stay with the profile",
       "attributes": [],
       "abilities": [
@@ -7232,7 +7923,7 @@
       }
     },
     "BadgeData": {
-      "index": 7,
+      "index": 10,
       "doc": " Read-only badge data returned by query functions\n This struct has copy ability to allow returning badge information,\n but the actual ProfileBadge cannot be copied or transferred",
       "attributes": [],
       "abilities": [
@@ -7337,7 +8028,7 @@
       }
     },
     "VestingPiece": {
-      "index": 8,
+      "index": 11,
       "doc": " One schedule piece: lump cliff unlock or continuous curved vesting.",
       "attributes": [],
       "abilities": [
@@ -7378,7 +8069,7 @@
       }
     },
     "VestingWallet": {
-      "index": 9,
+      "index": 12,
       "doc": " Vesting Wallet contains MYSO coins released over a piecewise schedule.",
       "attributes": [],
       "abilities": [
@@ -7476,7 +8167,7 @@
       }
     },
     "BadgeAssignedEvent": {
-      "index": 10,
+      "index": 13,
       "doc": " Event emitted when a badge is assigned to a profile",
       "attributes": [],
       "abilities": [
@@ -7586,7 +8277,7 @@
       }
     },
     "BadgeRevokedEvent": {
-      "index": 11,
+      "index": 14,
       "doc": " Event emitted when a badge is revoked from a profile",
       "attributes": [],
       "abilities": [
@@ -7635,7 +8326,7 @@
       }
     },
     "BadgeSelectedEvent": {
-      "index": 12,
+      "index": 15,
       "doc": " Event emitted when a profile owner selects a badge to display",
       "attributes": [],
       "abilities": [
@@ -7679,7 +8370,7 @@
       }
     },
     "EcosystemBadgeSelectionClearedEvent": {
-      "index": 13,
+      "index": 16,
       "doc": " Emitted when only ecosystem badge selection is cleared (see [`clear_selected_ecosystem_badge`]).",
       "attributes": [],
       "abilities": [
@@ -7709,7 +8400,7 @@
       }
     },
     "BadgeRemovedEvent": {
-      "index": 14,
+      "index": 17,
       "doc": " Event emitted when a profile owner removes their own badge",
       "attributes": [],
       "abilities": [
@@ -7758,7 +8449,7 @@
       }
     },
     "ProfileCreatedEvent": {
-      "index": 15,
+      "index": 18,
       "doc": " Profile created event (username is emitted via [`UsernameClaimedEvent`])",
       "attributes": [],
       "abilities": [
@@ -7872,7 +8563,7 @@
       }
     },
     "ProfileUpdatedEvent": {
-      "index": 16,
+      "index": 19,
       "doc": " Profile updated event with all profile details (username lives in registry)",
       "attributes": [],
       "abilities": [
@@ -8047,7 +8738,7 @@
       }
     },
     "UsernameClaimedEvent": {
-      "index": 17,
+      "index": 20,
       "doc": " Emitted when a username is claimed at profile creation",
       "attributes": [],
       "abilities": [
@@ -8081,7 +8772,7 @@
       }
     },
     "UsernameRevokedEvent": {
-      "index": 18,
+      "index": 21,
       "doc": " Emitted when an admin revokes a username from a profile",
       "attributes": [],
       "abilities": [
@@ -8125,7 +8816,7 @@
       }
     },
     "UsernameReassignedEvent": {
-      "index": 19,
+      "index": 22,
       "doc": " Emitted when an admin reassigns a username to a different profile",
       "attributes": [],
       "abilities": [
@@ -8174,7 +8865,7 @@
       }
     },
     "ProfileXUsernameUpdatedEvent": {
-      "index": 20,
+      "index": 23,
       "doc": " X username set or cleared by an EcosystemBadgeAdminCap holder (audit trail).",
       "attributes": [],
       "abilities": [
@@ -8237,7 +8928,7 @@
       }
     },
     "ProfileOfferCreatedEvent": {
-      "index": 21,
+      "index": 24,
       "doc": " Event emitted when an offer is created for a profile",
       "attributes": [],
       "abilities": [
@@ -8272,7 +8963,7 @@
       }
     },
     "ProfileOfferAcceptedEvent": {
-      "index": 22,
+      "index": 25,
       "doc": " Event emitted when an offer is accepted",
       "attributes": [],
       "abilities": [
@@ -8312,7 +9003,7 @@
       }
     },
     "ProfileOfferRejectedEvent": {
-      "index": 23,
+      "index": 26,
       "doc": " Event emitted when an offer is rejected or revoked",
       "attributes": [],
       "abilities": [
@@ -8357,7 +9048,7 @@
       }
     },
     "ProfileOffer": {
-      "index": 24,
+      "index": 27,
       "doc": " Represents an offer to purchase a profile",
       "attributes": [],
       "abilities": [
@@ -8414,7 +9105,7 @@
       }
     },
     "ProfileSaleFeeEvent": {
-      "index": 25,
+      "index": 28,
       "doc": " Event emitted when a fee is collected from a profile sale",
       "attributes": [],
       "abilities": [
@@ -8464,7 +9155,7 @@
       }
     },
     "VestingPieceEvent": {
-      "index": 26,
+      "index": 29,
       "doc": " Copyable piece snapshot for vesting events",
       "attributes": [],
       "abilities": [
@@ -8504,7 +9195,7 @@
       }
     },
     "TokensVestedEvent": {
-      "index": 27,
+      "index": 30,
       "doc": " Event emitted when MYSO tokens are vested",
       "attributes": [],
       "abilities": [
@@ -8565,7 +9256,7 @@
       }
     },
     "TokensClaimedEvent": {
-      "index": 28,
+      "index": 31,
       "doc": " Event emitted when vested tokens are claimed",
       "attributes": [],
       "abilities": [
@@ -8605,7 +9296,7 @@
       }
     },
     "VestingWalletDeletedEvent": {
-      "index": 29,
+      "index": 32,
       "doc": " Event emitted when a vesting wallet is deleted",
       "attributes": [],
       "abilities": [
@@ -8635,7 +9326,7 @@
       }
     },
     "EcosystemTreasuryUpdatedEvent": {
-      "index": 30,
+      "index": 33,
       "doc": " Event emitted when Ecosystem Treasury address is updated",
       "attributes": [],
       "abilities": [
@@ -8656,8 +9347,13 @@
             "doc": null,
             "type_": "address"
           },
-          "timestamp": {
+          "profile_sale_fee_bps": {
             "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "timestamp": {
+            "index": 3,
             "doc": null,
             "type_": "u64"
           }

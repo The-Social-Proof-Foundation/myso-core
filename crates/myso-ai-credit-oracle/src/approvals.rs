@@ -167,6 +167,11 @@ mod tests {
             now,
             0,
         ));
-        assert!(!approval_covers(&row("approved", None, Some(now + 60_000)), 500, now, 0));
+        assert!(!approval_covers(
+            &row("approved", None, Some(now + 60_000)),
+            500,
+            now,
+            0
+        ));
     }
 }

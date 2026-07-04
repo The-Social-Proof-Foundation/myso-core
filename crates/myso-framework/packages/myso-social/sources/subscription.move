@@ -29,11 +29,32 @@ module social_contracts::subscription {
     const EWrongVersion: u64 = 81;
     const EOverflow: u64 = 82;
     const EInvalidInput: u64 = 83;
+    const EInvalidConfig: u64 = 84;
 
-    /// Constants for validation
-    const MAX_RENEWAL_MONTHS: u64 = 120; // Maximum 10 years of renewal funding
-    const MAX_U64: u64 = 18446744073709551615; // Max u64 value for overflow protection
-    const THIRTY_DAYS_MS: u64 = 2_592_000_000; // 30 days in milliseconds
+    /// Default bootstrap values (used only at init)
+    const MAX_RENEWAL_MONTHS: u64 = 120;
+    const MAX_U64: u64 = 18446744073709551615;
+    const THIRTY_DAYS_MS: u64 = 2_592_000_000;
+
+    /// Admin capability for subscription configuration
+    public struct SubscriptionAdminCap has key, store {
+        id: UID,
+    }
+
+    /// Global subscription feature configuration
+    public struct SubscriptionConfig has key {
+        id: UID,
+        billing_period_ms: u64,
+        max_renewal_months: u64,
+        version: u64,
+    }
+
+    public struct SubscriptionConfigUpdatedEvent has copy, drop {
+        updated_by: address,
+        billing_period_ms: u64,
+        max_renewal_months: u64,
+        timestamp: u64,
+    }
 
     /// Profile subscription service - one per profile
     public struct ProfileSubscriptionService has key {
@@ -173,6 +194,7 @@ module social_contracts::subscription {
 
     /// Subscribe to a profile with optional auto-renewal
     public entry fun subscribe_to_profile(
+        config: &SubscriptionConfig,
         service: &mut ProfileSubscriptionService,
         payment: &mut Coin<MYSO>,
         auto_renew: bool,
@@ -187,7 +209,7 @@ module social_contracts::subscription {
         
         // Validate renewal_months if auto-renew is enabled
         if (auto_renew) {
-            assert!(renewal_months <= MAX_RENEWAL_MONTHS, EInvalidInput);
+            assert!(renewal_months <= config.max_renewal_months, EInvalidInput);
         };
         
         let subscriber = tx_context::sender(ctx);
@@ -216,9 +238,9 @@ module social_contracts::subscription {
             balance::zero<MYSO>()
         };
 
-        // Calculate expiration (30 days from now) with overflow protection
-        assert!(now <= MAX_U64 - THIRTY_DAYS_MS, EOverflow);
-        let expires_at = now + THIRTY_DAYS_MS;
+        let billing_period_ms = config.billing_period_ms;
+        assert!(now <= MAX_U64 - billing_period_ms, EOverflow);
+        let expires_at = now + billing_period_ms;
 
         let subscription = ProfileSubscription {
             id: object::new(ctx),
@@ -248,6 +270,7 @@ module social_contracts::subscription {
 
     /// Manually renew a subscription
     public entry fun renew_subscription(
+        config: &SubscriptionConfig,
         service: &ProfileSubscriptionService,
         subscription: &mut ProfileSubscription,
         payment: Coin<MYSO>,
@@ -264,9 +287,8 @@ module social_contracts::subscription {
 
         transfer::public_transfer(payment, service.profile_owner);
 
-        // Extend expiration by 30 days
         let now = clock::timestamp_ms(clock);
-        let extension = THIRTY_DAYS_MS;
+        let extension = config.billing_period_ms;
         
         // If subscription is expired, start from now, otherwise extend current expiration
         // Overflow protection for timestamp addition
@@ -294,6 +316,7 @@ module social_contracts::subscription {
     /// Gas-optimized auto-renew using pre-funded renewal balance
     /// Now includes protection against fee changes and service deactivation
     public entry fun auto_renew_subscription(
+        config: &SubscriptionConfig,
         service: &ProfileSubscriptionService,
         subscription: &mut ProfileSubscription,
         clock: &Clock,
@@ -335,8 +358,7 @@ module social_contracts::subscription {
         );
         transfer::public_transfer(renewal_payment, service.profile_owner);
         
-        // Pre-calculate extension to avoid repeated calculations
-        let extension = THIRTY_DAYS_MS;
+        let extension = config.billing_period_ms;
         
         // Overflow protection for timestamp addition
         assert!(now <= MAX_U64 - extension, EOverflow);
@@ -525,6 +547,53 @@ module social_contracts::subscription {
 
     public fun subscription_renewal_balance(subscription: &ProfileSubscription): u64 {
         balance::value(&subscription.renewal_balance)
+    }
+
+    public(package) fun bootstrap_init(clock: &Clock, ctx: &mut TxContext) {
+        let admin = tx_context::sender(ctx);
+        let config = SubscriptionConfig {
+            id: object::new(ctx),
+            billing_period_ms: THIRTY_DAYS_MS,
+            max_renewal_months: MAX_RENEWAL_MONTHS,
+            version: upgrade::current_version(),
+        };
+        event::emit(SubscriptionConfigUpdatedEvent {
+            updated_by: admin,
+            billing_period_ms: THIRTY_DAYS_MS,
+            max_renewal_months: MAX_RENEWAL_MONTHS,
+            timestamp: clock::timestamp_ms(clock),
+        });
+        transfer::share_object(config);
+    }
+
+    /// Create a SubscriptionAdminCap for bootstrap (package visibility only)
+    public(package) fun create_subscription_admin_cap(ctx: &mut TxContext): SubscriptionAdminCap {
+        SubscriptionAdminCap {
+            id: object::new(ctx),
+        }
+    }
+
+    /// Update subscription configuration (admin only)
+    public entry fun update_subscription_config(
+        _: &SubscriptionAdminCap,
+        config: &mut SubscriptionConfig,
+        billing_period_ms: u64,
+        max_renewal_months: u64,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(billing_period_ms > 0, EInvalidConfig);
+        assert!(max_renewal_months > 0, EInvalidConfig);
+
+        config.billing_period_ms = billing_period_ms;
+        config.max_renewal_months = max_renewal_months;
+
+        event::emit(SubscriptionConfigUpdatedEvent {
+            updated_by: tx_context::sender(ctx),
+            billing_period_ms,
+            max_renewal_months,
+            timestamp: clock::timestamp_ms(clock),
+        });
     }
 
     #[test_only]

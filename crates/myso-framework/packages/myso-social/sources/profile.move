@@ -67,21 +67,21 @@ module social_contracts::profile {
     const EInvalidPieceKind: u64 = 33;
     const ETooManyPieces: u64 = 34;
     const EScheduleOverflow: u64 = 35;
+    const EInvalidConfig: u64 = 36;
 
     const PROFILE_SALE_FEE_BPS: u64 = 500;
 
-    // Fixed-point precision for curve calculations (1000 = 1.0)
+    /// Default bootstrap values for ProfileConfig
     const CURVE_PRECISION: u64 = 1000;
     const CURVE_FACTOR_MIN: u64 = 100;
     const CURVE_FACTOR_MAX: u64 = 10000;
-
     const MAX_VESTING_PIECES: u64 = 10;
+    const MIN_CLAIM_THRESHOLD_DIVISOR: u64 = 1000;
+    const MIN_USERNAME_LENGTH: u64 = 2;
+    const MAX_USERNAME_LENGTH: u64 = 50;
     const BPS_DENOMINATOR: u64 = 10_000;
     const PIECE_KIND_CLIFF: u8 = 0;
     const PIECE_KIND_CONTINUOUS: u8 = 1;
-
-    // 0.1% of total_amount; claims below this are suppressed during active vesting
-    const MIN_CLAIM_THRESHOLD_DIVISOR: u64 = 1000;
 
     // Maximum u64 value for overflow protection
     const MAX_U64: u64 = 18446744073709551615;
@@ -110,6 +110,36 @@ module social_contracts::profile {
     const MAX_BADGE_ICON_URL_LENGTH: u64 = 2048;
     const ECOSYSTEM_BADGE_PREFIX: vector<u8> = b"ecosystem_badge_";
 
+    /// Admin capability for profile configuration
+    public struct ProfileAdminCap has key, store {
+        id: UID,
+    }
+
+    /// Global profile feature configuration
+    public struct ProfileConfig has key {
+        id: UID,
+        max_vesting_pieces: u64,
+        curve_factor_min: u64,
+        curve_factor_max: u64,
+        curve_precision: u64,
+        min_claim_threshold_divisor: u64,
+        min_username_length: u64,
+        max_username_length: u64,
+        version: u64,
+    }
+
+    public struct ProfileConfigUpdatedEvent has copy, drop {
+        updated_by: address,
+        max_vesting_pieces: u64,
+        curve_factor_min: u64,
+        curve_factor_max: u64,
+        curve_precision: u64,
+        min_claim_threshold_divisor: u64,
+        min_username_length: u64,
+        max_username_length: u64,
+        timestamp: u64,
+    }
+
     /// Admin capability for Ecosystem Treasury management
     public struct EcosystemTreasuryAdminCap has key, store {
         id: UID,
@@ -130,6 +160,8 @@ module social_contracts::profile {
         id: UID,
         /// Treasury address that receives fees
         treasury_address: address,
+        /// Fee (bps) taken on profile sales (`10_000` = 100%)
+        profile_sale_fee_bps: u64,
         /// Version for upgrades
         version: u64,
     }
@@ -460,6 +492,7 @@ module social_contracts::profile {
     public struct EcosystemTreasuryUpdatedEvent has copy, drop {
         updated_by: address,
         new_treasury_address: address,
+        profile_sale_fee_bps: u64,
         timestamp: u64,
     }
     
@@ -481,6 +514,7 @@ module social_contracts::profile {
         let treasury = EcosystemTreasury {
             id: object::new(ctx),
             treasury_address: sender,
+            profile_sale_fee_bps: PROFILE_SALE_FEE_BPS,
             version: current_version,
         };
 
@@ -488,6 +522,7 @@ module social_contracts::profile {
         event::emit(EcosystemTreasuryUpdatedEvent {
             updated_by: sender,
             new_treasury_address: sender,
+            profile_sale_fee_bps: PROFILE_SALE_FEE_BPS,
             timestamp: clock::timestamp_ms(clock),
         });
         
@@ -496,6 +531,30 @@ module social_contracts::profile {
         
         // Share the treasury to make it globally accessible
         transfer::share_object(treasury);
+
+        let config = ProfileConfig {
+            id: object::new(ctx),
+            max_vesting_pieces: MAX_VESTING_PIECES,
+            curve_factor_min: CURVE_FACTOR_MIN,
+            curve_factor_max: CURVE_FACTOR_MAX,
+            curve_precision: CURVE_PRECISION,
+            min_claim_threshold_divisor: MIN_CLAIM_THRESHOLD_DIVISOR,
+            min_username_length: MIN_USERNAME_LENGTH,
+            max_username_length: MAX_USERNAME_LENGTH,
+            version: current_version,
+        };
+        event::emit(ProfileConfigUpdatedEvent {
+            updated_by: sender,
+            max_vesting_pieces: MAX_VESTING_PIECES,
+            curve_factor_min: CURVE_FACTOR_MIN,
+            curve_factor_max: CURVE_FACTOR_MAX,
+            curve_precision: CURVE_PRECISION,
+            min_claim_threshold_divisor: MIN_CLAIM_THRESHOLD_DIVISOR,
+            min_username_length: MIN_USERNAME_LENGTH,
+            max_username_length: MAX_USERNAME_LENGTH,
+            timestamp: clock::timestamp_ms(clock),
+        });
+        transfer::share_object(config);
     }
 
     // === Username Management Functions ===
@@ -700,6 +759,7 @@ module social_contracts::profile {
     /// Main entry: also creates a linked [`memory::MemoryAccount`] shared object.
     public entry fun create_profile(
         registry: &mut UsernameRegistry,
+        config: &ProfileConfig,
         memory_registry: &mut memory::MemoryRegistry,
         ai_credit_config: &mut AiCreditConfig,
         display_name: String,
@@ -725,8 +785,10 @@ module social_contracts::profile {
         let username_bytes = string::as_bytes(&username);
         let username_length = vector::length(username_bytes);
         
-        // Username length validation - between 2 and 50 characters
-        assert!(username_length >= 2 && username_length <= 50, EInvalidUsername);
+        assert!(
+            username_length >= config.min_username_length && username_length <= config.max_username_length,
+            EInvalidUsername,
+        );
         
         // Check if username is reserved in the hard coded list
         assert!(!is_reserved_name(&username), EReservedName);
@@ -814,6 +876,7 @@ module social_contracts::profile {
     /// Create a profile from an oracle-verified PoC username beneficiary claim.
     public(package) fun create_profile_from_beneficiary_claim(
         registry: &mut UsernameRegistry,
+        config: &ProfileConfig,
         memory_registry: &mut memory::MemoryRegistry,
         ai_credit_config: &mut AiCreditConfig,
         display_name: vector<u8>,
@@ -829,7 +892,10 @@ module social_contracts::profile {
 
         let username = canonical_registry_username(&username);
         let username_length = vector::length(string::as_bytes(&username));
-        assert!(username_length >= 2 && username_length <= 50, EInvalidUsername);
+        assert!(
+            username_length >= config.min_username_length && username_length <= config.max_username_length,
+            EInvalidUsername,
+        );
         assert!(!is_reserved_name(&username), EReservedName);
         assert!(!table::contains(&registry.usernames, username), EUsernameNotAvailable);
         assert!(!table::contains(&registry.address_profiles, owner), EProfileAlreadyExists);
@@ -1259,7 +1325,7 @@ module social_contracts::profile {
         let ProfileOffer { offeror: _, amount, created_at: _, locked_myso } = table::remove(offers, offeror);
         
         // Calculate the fee amount (5% of the total)
-        let fee_amount = (amount * PROFILE_SALE_FEE_BPS) / 10000;
+        let fee_amount = (amount * treasury.profile_sale_fee_bps) / 10000;
         
         // Convert the locked balance to a coin
         let mut payment = coin::from_balance(locked_myso, ctx);
@@ -1354,7 +1420,7 @@ module social_contracts::profile {
 
         let ProfileOffer { offeror: _, amount, created_at: _, locked_myso } = table::remove(offers, offeror);
 
-        let fee_amount = (amount * PROFILE_SALE_FEE_BPS) / 10000;
+        let fee_amount = (amount * treasury.profile_sale_fee_bps) / 10000;
         let mut payment = coin::from_balance(locked_myso, ctx);
         let fee_payment = coin::split(&mut payment, fee_amount, ctx);
         transfer::public_transfer(fee_payment, get_treasury_address(treasury));
@@ -1486,13 +1552,40 @@ module social_contracts::profile {
         ctx: &mut TxContext
     ) {
         treasury.treasury_address = new_address;
-        
+
         // Emit event for treasury address update
         event::emit(EcosystemTreasuryUpdatedEvent {
             updated_by: tx_context::sender(ctx),
             new_treasury_address: new_address,
+            profile_sale_fee_bps: treasury.profile_sale_fee_bps,
             timestamp: clock::timestamp_ms(clock),
         });
+    }
+
+    /// Update Ecosystem Treasury config: treasury address and profile sale fee bps (admin only).
+    public entry fun update_ecosystem_treasury_config(
+        _: &EcosystemTreasuryAdminCap,
+        treasury: &mut EcosystemTreasury,
+        new_address: address,
+        profile_sale_fee_bps: u64,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert!(profile_sale_fee_bps <= 10000, EInvalidConfig);
+        treasury.treasury_address = new_address;
+        treasury.profile_sale_fee_bps = profile_sale_fee_bps;
+
+        event::emit(EcosystemTreasuryUpdatedEvent {
+            updated_by: tx_context::sender(ctx),
+            new_treasury_address: new_address,
+            profile_sale_fee_bps,
+            timestamp: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// Read the configured profile sale fee (bps).
+    public fun profile_sale_fee_bps(treasury: &EcosystemTreasury): u64 {
+        treasury.profile_sale_fee_bps
     }
 
     /// Get the version of the EcosystemTreasury
@@ -1523,6 +1616,54 @@ module social_contracts::profile {
             old_version,
             tx_context::sender(ctx)
         );
+    }
+
+    /// Create a ProfileAdminCap for bootstrap (package visibility only)
+    public(package) fun create_profile_admin_cap(ctx: &mut TxContext): ProfileAdminCap {
+        ProfileAdminCap {
+            id: object::new(ctx),
+        }
+    }
+
+    /// Update profile configuration (admin only)
+    public entry fun update_profile_config(
+        _: &ProfileAdminCap,
+        config: &mut ProfileConfig,
+        max_vesting_pieces: u64,
+        curve_factor_min: u64,
+        curve_factor_max: u64,
+        curve_precision: u64,
+        min_claim_threshold_divisor: u64,
+        min_username_length: u64,
+        max_username_length: u64,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(max_vesting_pieces > 0, EInvalidConfig);
+        assert!(curve_precision > 0, EInvalidConfig);
+        assert!(curve_factor_min > 0 && curve_factor_max >= curve_factor_min, EInvalidConfig);
+        assert!(min_claim_threshold_divisor > 0, EInvalidConfig);
+        assert!(min_username_length > 0 && max_username_length >= min_username_length, EInvalidConfig);
+
+        config.max_vesting_pieces = max_vesting_pieces;
+        config.curve_factor_min = curve_factor_min;
+        config.curve_factor_max = curve_factor_max;
+        config.curve_precision = curve_precision;
+        config.min_claim_threshold_divisor = min_claim_threshold_divisor;
+        config.min_username_length = min_username_length;
+        config.max_username_length = max_username_length;
+
+        event::emit(ProfileConfigUpdatedEvent {
+            updated_by: tx_context::sender(ctx),
+            max_vesting_pieces,
+            curve_factor_min,
+            curve_factor_max,
+            curve_precision,
+            min_claim_threshold_divisor,
+            min_username_length,
+            max_username_length,
+            timestamp: clock::timestamp_ms(clock),
+        });
     }
 
     /// Create an EcosystemTreasuryAdminCap for bootstrap (package visibility only)
@@ -2368,11 +2509,14 @@ module social_contracts::profile {
 
     // === Vesting Functions ===
 
-    fun normalize_curve_factor(curve_factor: u64): u64 {
+    fun normalize_curve_factor(config: &ProfileConfig, curve_factor: u64): u64 {
         if (curve_factor == 0) {
-            CURVE_PRECISION
+            config.curve_precision
         } else {
-            assert!(curve_factor >= CURVE_FACTOR_MIN && curve_factor <= CURVE_FACTOR_MAX, EInvalidSchedule);
+            assert!(
+                curve_factor >= config.curve_factor_min && curve_factor <= config.curve_factor_max,
+                EInvalidSchedule,
+            );
             curve_factor
         }
     }
@@ -2381,12 +2525,12 @@ module social_contracts::profile {
         ((total_amount as u128) * (amount_bps as u128) / (BPS_DENOMINATOR as u128)) as u64
     }
 
-    fun validate_piece(piece: &VestingPiece, total_amount: u64) {
+    fun validate_piece(config: &ProfileConfig, piece: &VestingPiece, total_amount: u64) {
         if (piece.kind == PIECE_KIND_CLIFF) {
             assert!(piece.duration == 0, EInvalidPieceDuration);
         } else if (piece.kind == PIECE_KIND_CONTINUOUS) {
             assert!(piece.duration > 0, EInvalidPieceDuration);
-            let _ = normalize_curve_factor(piece.curve_factor);
+            let _ = normalize_curve_factor(config, piece.curve_factor);
         } else {
             abort EInvalidPieceKind
         };
@@ -2396,12 +2540,13 @@ module social_contracts::profile {
 
     /// Validate schedule pieces and return `schedule_end` (absolute ms timestamp).
     fun validate_schedule(
+        config: &ProfileConfig,
         start_time: u64,
         total_amount: u64,
         pieces: &vector<VestingPiece>,
     ): u64 {
         let num_pieces = vector::length(pieces);
-        assert!(num_pieces >= 1 && num_pieces <= MAX_VESTING_PIECES, ETooManyPieces);
+        assert!(num_pieces >= 1 && num_pieces <= config.max_vesting_pieces, ETooManyPieces);
 
         let mut total_bps = 0u64;
         let mut schedule_end = start_time;
@@ -2409,7 +2554,7 @@ module social_contracts::profile {
         let mut i = 0;
         while (i < num_pieces) {
             let piece = vector::borrow(pieces, i);
-            validate_piece(piece, total_amount);
+            validate_piece(config, piece, total_amount);
 
             assert!(piece.time_offset >= prev_offset, EInvalidSchedule);
             prev_offset = piece.time_offset;
@@ -2435,25 +2580,27 @@ module social_contracts::profile {
         schedule_end
     }
 
-    fun apply_curve(progress: u128, curve_factor: u64): u128 {
-        if (curve_factor == CURVE_PRECISION) {
+    fun apply_curve(config: &ProfileConfig, progress: u128, curve_factor: u64): u128 {
+        let precision = config.curve_precision;
+        if (curve_factor == precision) {
             progress
-        } else if (curve_factor > CURVE_PRECISION) {
-            let steepness = (curve_factor - CURVE_PRECISION) as u128;
-            let quadratic = (progress * progress) / (CURVE_PRECISION as u128);
+        } else if (curve_factor > precision) {
+            let steepness = (curve_factor - precision) as u128;
+            let quadratic = (progress * progress) / (precision as u128);
             let linear_part = progress;
-            (linear_part * ((CURVE_PRECISION as u128) - steepness) + quadratic * steepness)
-                / (CURVE_PRECISION as u128)
+            (linear_part * ((precision as u128) - steepness) + quadratic * steepness)
+                / (precision as u128)
         } else {
-            let steepness = (CURVE_PRECISION - curve_factor) as u128;
-            let sqrt_approx = sqrt_approximation(progress * (CURVE_PRECISION as u128));
+            let steepness = (precision - curve_factor) as u128;
+            let sqrt_approx = sqrt_approximation(progress * (precision as u128));
             let linear_part = progress;
-            (sqrt_approx * steepness + linear_part * ((CURVE_PRECISION as u128) - steepness))
-                / (CURVE_PRECISION as u128)
+            (sqrt_approx * steepness + linear_part * ((precision as u128) - steepness))
+                / (precision as u128)
         }
     }
 
     fun vested_amount_for_piece(
+        config: &ProfileConfig,
         total_amount: u64,
         start_time: u64,
         current_time: u64,
@@ -2480,12 +2627,13 @@ module social_contracts::profile {
         };
 
         let elapsed = current_time - activation_time;
-        let progress = ((elapsed as u128) * (CURVE_PRECISION as u128)) / (piece.duration as u128);
-        let curved = apply_curve(progress, piece.curve_factor);
-        ((alloc as u128) * curved / (CURVE_PRECISION as u128)) as u64
+        let precision = config.curve_precision;
+        let progress = ((elapsed as u128) * (precision as u128)) / (piece.duration as u128);
+        let curved = apply_curve(config, progress, piece.curve_factor);
+        ((alloc as u128) * curved / (precision as u128)) as u64
     }
 
-    fun calculate_total_vested(wallet: &VestingWallet, current_time: u64): u64 {
+    fun calculate_total_vested(config: &ProfileConfig, wallet: &VestingWallet, current_time: u64): u64 {
         if (current_time < wallet.start_time) {
             return 0
         };
@@ -2496,6 +2644,7 @@ module social_contracts::profile {
         while (i < num_pieces) {
             let piece = vector::borrow(&wallet.pieces, i);
             let piece_vested = vested_amount_for_piece(
+                config,
                 wallet.total_amount,
                 wallet.start_time,
                 current_time,
@@ -2514,6 +2663,7 @@ module social_contracts::profile {
     }
 
     fun finalize_claimable(
+        config: &ProfileConfig,
         capped: u64,
         remaining_balance: u64,
         total_amount: u64,
@@ -2528,7 +2678,7 @@ module social_contracts::profile {
             return 0
         };
 
-        let mut threshold = total_amount / MIN_CLAIM_THRESHOLD_DIVISOR;
+        let mut threshold = total_amount / config.min_claim_threshold_divisor;
         if (threshold == 0) {
             threshold = 1
         };
@@ -2598,6 +2748,7 @@ module social_contracts::profile {
     /// Create a vesting wallet from parallel piece vectors (entry-compatible).
     /// Cliff lumps unlock instantly at `time_offset`; continuous pieces vest over `duration`.
     public entry fun vest_myso(
+        config: &ProfileConfig,
         coin: Coin<MYSO>,
         recipient: address,
         start_time: u64,
@@ -2616,10 +2767,11 @@ module social_contracts::profile {
             amount_bps_list,
             curve_factors,
         );
-        vest_myso_internal(coin, recipient, start_time, pieces, clock, ctx);
+        vest_myso_internal(config, coin, recipient, start_time, pieces, clock, ctx);
     }
 
     fun vest_myso_internal(
+        config: &ProfileConfig,
         coin: Coin<MYSO>,
         recipient: address,
         start_time: u64,
@@ -2633,7 +2785,7 @@ module social_contracts::profile {
         let total_amount = coin::value(&coin);
         assert!(total_amount > 0, EInsufficientTokens);
 
-        let schedule_end = validate_schedule(start_time, total_amount, &pieces);
+        let schedule_end = validate_schedule(config, start_time, total_amount, &pieces);
 
         let wallet = VestingWallet {
             id: object::new(ctx),
@@ -2678,6 +2830,7 @@ module social_contracts::profile {
 
     /// Claim vested tokens. Sub-threshold amounts during active vesting are no-ops.
     public entry fun claim_vested_tokens(
+        config: &ProfileConfig,
         wallet: &mut VestingWallet,
         clock: &Clock,
         ctx: &mut TxContext
@@ -2685,7 +2838,7 @@ module social_contracts::profile {
         let sender = tx_context::sender(ctx);
         assert!(wallet.owner == sender, ENotVestingWalletOwner);
 
-        let claimable_amount = calculate_claimable(wallet, clock);
+        let claimable_amount = calculate_claimable(config, wallet, clock);
 
         if (claimable_amount > 0) {
             assert!(wallet.claimed_amount <= MAX_U64 - claimable_amount, EOverflow);
@@ -2711,11 +2864,11 @@ module social_contracts::profile {
         };
     }
 
-    public fun claimable(wallet: &VestingWallet, clock: &Clock): u64 {
-        calculate_claimable(wallet, clock)
+    public fun claimable(config: &ProfileConfig, wallet: &VestingWallet, clock: &Clock): u64 {
+        calculate_claimable(config, wallet, clock)
     }
 
-    fun calculate_claimable(wallet: &VestingWallet, clock: &Clock): u64 {
+    fun calculate_claimable(config: &ProfileConfig, wallet: &VestingWallet, clock: &Clock): u64 {
         let current_time = clock::timestamp_ms(clock);
         let remaining_balance = balance::value(&wallet.balance);
 
@@ -2727,7 +2880,7 @@ module social_contracts::profile {
             return remaining_balance
         };
 
-        let total_vested = calculate_total_vested(wallet, current_time);
+        let total_vested = calculate_total_vested(config, wallet, current_time);
         let newly_claimable = if (total_vested >= wallet.claimed_amount) {
             total_vested - wallet.claimed_amount
         } else {
@@ -2741,6 +2894,7 @@ module social_contracts::profile {
         };
 
         finalize_claimable(
+            config,
             capped,
             remaining_balance,
             wallet.total_amount,

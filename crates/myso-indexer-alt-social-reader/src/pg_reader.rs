@@ -15,6 +15,7 @@ use myso_pg_db as db;
 
 use crate::PostDeletionEventRow;
 use crate::PostModerationEventRow;
+use crate::ai_credit::get_ai_credit_config;
 use crate::governance::{
     DelegateRatingViewerTarget, batch_viewer_latest_delegate_rating_vote_kind,
     get_anonymous_voting_trends, get_delegate_by_address, get_delegate_proposals,
@@ -26,14 +27,19 @@ use crate::governance::{
     list_governance_events, list_governance_registries, list_nominated_delegates, list_proposals,
 };
 use crate::insurance::{
-    get_insurance_config, get_insurance_coverage_route, get_insurance_policy, get_insurance_vault,
-    get_insurance_vault_exposures, list_insurance_market_policies, list_insurance_module_events,
-    list_insurance_policies, list_insurance_policies_by_insured,
-    list_insurance_policy_events_for_policy, list_insurance_route_fills_for_route,
-    list_insurance_user_exposure_totals_for_vault, list_insurance_vault_transactions,
-    list_insurance_vaults,
+    get_insurance_config, get_insurance_coverage_route, get_insurance_policy,
+    get_insurance_router_config, get_insurance_vault, get_insurance_vault_exposures,
+    list_insurance_market_policies, list_insurance_module_events, list_insurance_policies,
+    list_insurance_policies_by_insured, list_insurance_policy_events_for_policy,
+    list_insurance_route_fills_for_route, list_insurance_user_exposure_totals_for_vault,
+    list_insurance_vault_transactions, list_insurance_vaults,
 };
 use crate::memory::SubAgentListResult;
+use crate::memory::get_memory_config as fetch_memory_config;
+use crate::messaging::{
+    get_messaging_agent_groups_by_org, get_messaging_config, get_messaging_revenue_summary,
+    get_paid_message_escrows_by_wallet,
+};
 use crate::metrics::DbReaderMetrics;
 use crate::mydata::{
     check_mydata_has_access, get_mydata_access_analytics, get_mydata_access_logs,
@@ -53,8 +59,8 @@ use crate::org_stats::{OrganizationStatistics, OrganizationStatsWindow};
 use crate::organization::AgenticOrganizationListResult;
 use crate::platform::PlatformRow;
 use crate::platform::{
-    get_platform_blocked_profiles, get_platform_members, get_platform_moderators,
-    get_platform_user_access,
+    get_platform_blocked_profiles, get_platform_config, get_platform_members,
+    get_platform_moderators, get_platform_user_access,
 };
 use crate::pnl::{ProfilePnLWindow, ProfilePnLWindowResult, get_profile_pnl_for_windows};
 use crate::poc::{
@@ -65,8 +71,10 @@ use crate::poc::{
     list_poc_vault_coin_balances_for_vault, list_poc_vault_deposits_for_vault,
 };
 use crate::post::PostRow;
+use crate::profile::get_ecosystem_treasury;
 use crate::profile::get_profile_badges;
 use crate::profile::get_profile_by_address;
+use crate::profile::get_profile_config;
 use crate::profile::get_profile_or_wallet_by_address;
 use crate::profile::get_profiles;
 use crate::promotion::{
@@ -96,6 +104,7 @@ use crate::spt::{
     get_spt_reservation_holdings_for_reserver as fetch_spt_reservation_holdings_for_reserver,
     get_spt_reservation_volume_history, get_spt_transactions, list_spt_pools,
 };
+use crate::subscription::get_subscription_config;
 use crate::vesting::{get_vesting_leaderboard, get_vesting_wallet, list_vesting_wallets};
 use myso_indexer_alt_social_schema::models::{
     AgenticOrganizationRow, MemoryAccountRow, SubAgentRow,
@@ -557,8 +566,7 @@ impl SocialPgReader {
         organization_id: &str,
     ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::OrgRoleRow>> {
         let mut conn = self.connect().await?;
-        crate::enterprise::list_org_roles(&mut conn, organization_id, &self.metrics)
-            .await
+        crate::enterprise::list_org_roles(&mut conn, organization_id, &self.metrics).await
     }
 
     pub async fn list_org_invitations(
@@ -647,10 +655,10 @@ impl SocialPgReader {
     pub async fn get_agent_budget(
         &self,
         agent_object_id: &str,
-    ) -> anyhow::Result<Option<myso_indexer_alt_social_schema::models::AiCreditAgentBudgetRow>> {
+    ) -> anyhow::Result<Option<myso_indexer_alt_social_schema::models::AiCreditAgentBudgetRow>>
+    {
         let mut conn = self.connect().await?;
-        crate::enterprise::get_agent_budget(&mut conn, agent_object_id, &self.metrics)
-            .await
+        crate::enterprise::get_agent_budget(&mut conn, agent_object_id, &self.metrics).await
     }
 
     pub async fn list_agent_budgets_for_balance(
@@ -1565,6 +1573,115 @@ impl SocialPgReader {
     ) -> anyhow::Result<Option<crate::insurance::InsuranceConfigRow>> {
         let mut conn = self.connect().await?;
         get_insurance_config(&mut conn, &self.metrics).await
+    }
+
+    /// Get latest insurance router configuration.
+    pub async fn get_insurance_router_config(
+        &self,
+    ) -> anyhow::Result<Option<crate::insurance::InsuranceRouterConfigRow>> {
+        let mut conn = self.connect().await?;
+        get_insurance_router_config(&mut conn, &self.metrics).await
+    }
+
+    /// Get latest AI credit configuration (singleton `id = 1`).
+    pub async fn get_ai_credit_config(
+        &self,
+    ) -> anyhow::Result<Option<crate::ai_credit::AiCreditConfigRow>> {
+        let mut conn = self.connect().await?;
+        get_ai_credit_config(&mut conn, &self.metrics).await
+    }
+
+    /// Get latest profile configuration.
+    pub async fn get_profile_config(
+        &self,
+    ) -> anyhow::Result<Option<crate::profile::ProfileConfigRow>> {
+        let mut conn = self.connect().await?;
+        get_profile_config(&mut conn, &self.metrics).await
+    }
+
+    /// Get latest ecosystem treasury configuration.
+    pub async fn get_ecosystem_treasury(
+        &self,
+    ) -> anyhow::Result<Option<crate::profile::EcosystemTreasuryRow>> {
+        let mut conn = self.connect().await?;
+        get_ecosystem_treasury(&mut conn, &self.metrics).await
+    }
+
+    /// Get latest memory configuration.
+    pub async fn get_memory_config(
+        &self,
+    ) -> anyhow::Result<Option<crate::memory::MemoryConfigRow>> {
+        let mut conn = self.connect().await?;
+        fetch_memory_config(&mut conn, &self.metrics).await
+    }
+
+    /// Get latest platform configuration.
+    pub async fn get_platform_config(
+        &self,
+    ) -> anyhow::Result<Option<crate::platform::PlatformConfigRow>> {
+        let mut conn = self.connect().await?;
+        get_platform_config(&mut conn, &self.metrics).await
+    }
+
+    /// Get latest subscription configuration.
+    pub async fn get_subscription_config(
+        &self,
+    ) -> anyhow::Result<Option<crate::subscription::SubscriptionConfigRow>> {
+        let mut conn = self.connect().await?;
+        get_subscription_config(&mut conn, &self.metrics).await
+    }
+
+    /// Get latest paid-messaging configuration.
+    pub async fn get_messaging_config(
+        &self,
+    ) -> anyhow::Result<Option<crate::messaging::MessagingConfigRow>> {
+        let mut conn = self.connect().await?;
+        get_messaging_config(&mut conn, &self.metrics).await
+    }
+
+    /// Paid message escrow lifecycle rows for a wallet (latest status per message).
+    pub async fn get_paid_message_escrows_by_wallet(
+        &self,
+        address: &str,
+        limit: u64,
+        offset: u64,
+    ) -> anyhow::Result<Vec<crate::messaging::PaidMessageEscrowRow>> {
+        let mut conn = self.connect().await?;
+        get_paid_message_escrows_by_wallet(
+            &mut conn,
+            &self.metrics,
+            address,
+            limit as i64,
+            offset as i64,
+        )
+        .await
+    }
+
+    /// Agent-created messaging groups for an organization.
+    pub async fn get_messaging_agent_groups_by_org(
+        &self,
+        organization_id: &str,
+        limit: u64,
+        offset: u64,
+    ) -> anyhow::Result<Vec<crate::messaging::MessagingAgentGroupRow>> {
+        let mut conn = self.connect().await?;
+        get_messaging_agent_groups_by_org(
+            &mut conn,
+            &self.metrics,
+            organization_id,
+            limit as i64,
+            offset as i64,
+        )
+        .await
+    }
+
+    /// Total inbound paid-messaging revenue for a wallet.
+    pub async fn get_messaging_revenue_summary(
+        &self,
+        address: &str,
+    ) -> anyhow::Result<i64> {
+        let mut conn = self.connect().await?;
+        get_messaging_revenue_summary(&mut conn, &self.metrics, address).await
     }
 
     /// Get spot record for a post (1:1).

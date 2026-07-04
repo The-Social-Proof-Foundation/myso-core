@@ -17,12 +17,12 @@ use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
-    NewProfileSubscription, NewProfileSubscriptionService, NewSubscriptionEvent,
-    NewSubscriptionRevenue,
+    NewProfileSubscription, NewProfileSubscriptionService, NewSubscriptionConfig,
+    NewSubscriptionEvent, NewSubscriptionRevenue,
 };
 use myso_indexer_alt_social_schema::schema::{
-    profile_subscription_services, profile_subscriptions, profiles, subscription_events,
-    subscription_revenue,
+    profile_subscription_services, profile_subscriptions, profiles, subscription_config,
+    subscription_events, subscription_revenue,
 };
 
 use super::common;
@@ -36,6 +36,7 @@ pub enum SubscriptionRow {
     ProfileSubscriptionService(NewProfileSubscriptionService),
     ProfileSubscription(NewProfileSubscription),
     SubscriptionEvent(NewSubscriptionEvent),
+    SubscriptionConfig(NewSubscriptionConfig),
     ProfileSubscriptionServiceSubscriberIncrement {
         service_id: String,
     },
@@ -99,6 +100,9 @@ impl SubscriptionRow {
             }
             crate::handlers::SocialEventRow::SubscriptionEvent(ev) => {
                 Some(SubscriptionRow::SubscriptionEvent(ev))
+            }
+            crate::handlers::SocialEventRow::SubscriptionConfig(c) => {
+                Some(SubscriptionRow::SubscriptionConfig(c))
             }
             crate::handlers::SocialEventRow::ProfileSubscriptionServiceSubscriberIncrement {
                 service_id,
@@ -256,6 +260,12 @@ impl Handler for SubscriptionHandler {
         let mut total = 0;
         for row in values {
             match row {
+                SubscriptionRow::SubscriptionConfig(c) => {
+                    total += diesel::insert_into(subscription_config::table)
+                        .values(c)
+                        .execute(conn)
+                        .await?;
+                }
                 SubscriptionRow::ProfileSubscriptionService(s) => {
                     let profile_id = profiles::table
                         .filter(profiles::owner_address.eq(&s.profile_owner))

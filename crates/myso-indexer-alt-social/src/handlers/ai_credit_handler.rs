@@ -7,7 +7,10 @@ use anyhow::Result;
 use async_trait::async_trait;
 use diesel::BoolExpressionMethods;
 use diesel::ExpressionMethods;
+use diesel::OptionalExtension;
 use diesel::QueryDsl;
+use diesel::QueryableByName;
+use diesel::sql_types::{BigInt, Nullable, Text, Timestamptz};
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_framework::pipeline::Processor;
 use myso_indexer_alt_framework::postgres::handler::Handler;
@@ -93,9 +96,35 @@ pub enum AiCreditRow {
     },
     ConfigUpsert(NewAiCreditConfig),
     ConfigLimitsUpdate {
+        updated_by: String,
         max_single_settlement_mist: i64,
         receipt_ttl_ms: i64,
-        updated_at_ms: i64,
+        updated_at: i64,
+        time: chrono::DateTime<chrono::Utc>,
+        event_id: String,
+        transaction_id: String,
+    },
+    ConfigPubkeyUpdate {
+        updated_by: String,
+        oracle_pubkey_hex: String,
+        updated_at: i64,
+        time: chrono::DateTime<chrono::Utc>,
+        event_id: String,
+        transaction_id: String,
+    },
+    ConfigMarkupUpdate {
+        updated_by: String,
+        oracle_markup_bps: i64,
+        updated_at: i64,
+        time: chrono::DateTime<chrono::Utc>,
+        event_id: String,
+        transaction_id: String,
+    },
+    ConfigMinDepositUpdate {
+        updated_by: String,
+        min_deposit_mist: i64,
+        updated_at: i64,
+        time: chrono::DateTime<chrono::Utc>,
         event_id: String,
         transaction_id: String,
     },
@@ -234,15 +263,64 @@ impl AiCreditRow {
                 Some(AiCreditRow::ConfigUpsert(c))
             }
             crate::handlers::SocialEventRow::AiCreditConfigLimitsUpdate {
+                updated_by,
                 max_single_settlement_mist,
                 receipt_ttl_ms,
-                updated_at_ms,
+                updated_at,
+                time,
                 event_id,
                 transaction_id,
             } => Some(AiCreditRow::ConfigLimitsUpdate {
+                updated_by,
                 max_single_settlement_mist,
                 receipt_ttl_ms,
-                updated_at_ms,
+                updated_at,
+                time,
+                event_id,
+                transaction_id,
+            }),
+            crate::handlers::SocialEventRow::AiCreditConfigPubkeyUpdate {
+                updated_by,
+                oracle_pubkey_hex,
+                updated_at,
+                time,
+                event_id,
+                transaction_id,
+            } => Some(AiCreditRow::ConfigPubkeyUpdate {
+                updated_by,
+                oracle_pubkey_hex,
+                updated_at,
+                time,
+                event_id,
+                transaction_id,
+            }),
+            crate::handlers::SocialEventRow::AiCreditConfigMarkupUpdate {
+                updated_by,
+                oracle_markup_bps,
+                updated_at,
+                time,
+                event_id,
+                transaction_id,
+            } => Some(AiCreditRow::ConfigMarkupUpdate {
+                updated_by,
+                oracle_markup_bps,
+                updated_at,
+                time,
+                event_id,
+                transaction_id,
+            }),
+            crate::handlers::SocialEventRow::AiCreditConfigMinDepositUpdate {
+                updated_by,
+                min_deposit_mist,
+                updated_at,
+                time,
+                event_id,
+                transaction_id,
+            } => Some(AiCreditRow::ConfigMinDepositUpdate {
+                updated_by,
+                min_deposit_mist,
+                updated_at,
+                time,
                 event_id,
                 transaction_id,
             }),
@@ -284,6 +362,153 @@ impl FieldCount for AiCreditRow {
     const FIELD_COUNT: usize = 8;
 }
 
+#[derive(QueryableByName)]
+struct LatestAiCreditConfigRow {
+    #[diesel(sql_type = Text)]
+    updated_by: String,
+    #[diesel(sql_type = Text)]
+    oracle_pubkey_hex: String,
+    #[diesel(sql_type = Text)]
+    treasury_address: String,
+    #[diesel(sql_type = BigInt)]
+    min_deposit_mist: i64,
+    #[diesel(sql_type = BigInt)]
+    max_single_settlement_mist: i64,
+    #[diesel(sql_type = BigInt)]
+    receipt_ttl_ms: i64,
+    #[diesel(sql_type = BigInt)]
+    oracle_markup_bps: i64,
+    #[diesel(sql_type = Nullable<Text>)]
+    catalog_version: Option<String>,
+    #[diesel(sql_type = BigInt)]
+    version: i64,
+    #[diesel(sql_type = BigInt)]
+    updated_at: i64,
+    #[diesel(sql_type = Text)]
+    event_id: String,
+    #[diesel(sql_type = Text)]
+    transaction_id: String,
+    #[diesel(sql_type = Timestamptz)]
+    time: chrono::DateTime<chrono::Utc>,
+}
+
+fn latest_row_to_new(row: LatestAiCreditConfigRow) -> NewAiCreditConfig {
+    NewAiCreditConfig {
+        updated_by: row.updated_by,
+        oracle_pubkey_hex: row.oracle_pubkey_hex,
+        treasury_address: row.treasury_address,
+        min_deposit_mist: row.min_deposit_mist,
+        max_single_settlement_mist: row.max_single_settlement_mist,
+        receipt_ttl_ms: row.receipt_ttl_ms,
+        oracle_markup_bps: row.oracle_markup_bps,
+        catalog_version: row.catalog_version,
+        version: row.version,
+        updated_at: row.updated_at,
+        event_id: row.event_id,
+        transaction_id: row.transaction_id,
+        time: row.time,
+    }
+}
+
+async fn load_latest_ai_credit_config(
+    conn: &mut Connection<'_>,
+) -> Result<Option<NewAiCreditConfig>> {
+    let query = "
+        SELECT updated_by, oracle_pubkey_hex, treasury_address, min_deposit_mist,
+               max_single_settlement_mist, receipt_ttl_ms, oracle_markup_bps, catalog_version,
+               version, updated_at, event_id, transaction_id, time
+        FROM ai_credit_config
+        ORDER BY time DESC
+        LIMIT 1
+    ";
+    let result = diesel::sql_query(query)
+        .get_result::<LatestAiCreditConfigRow>(conn)
+        .await
+        .optional()?;
+    Ok(result.map(latest_row_to_new))
+}
+
+fn next_ai_credit_version(prev: &NewAiCreditConfig, incoming_version: Option<i64>) -> i64 {
+    incoming_version.unwrap_or(prev.version + 1)
+}
+
+fn finalize_ai_credit_config(prev: &NewAiCreditConfig, row: &AiCreditRow) -> Option<NewAiCreditConfig> {
+    match row {
+        AiCreditRow::ConfigUpsert(config) => Some(config.clone()),
+        AiCreditRow::ConfigLimitsUpdate {
+            updated_by,
+            max_single_settlement_mist,
+            receipt_ttl_ms,
+            updated_at,
+            time,
+            event_id,
+            transaction_id,
+        } => Some(NewAiCreditConfig {
+            updated_by: updated_by.clone(),
+            max_single_settlement_mist: *max_single_settlement_mist,
+            receipt_ttl_ms: *receipt_ttl_ms,
+            version: next_ai_credit_version(prev, None),
+            updated_at: *updated_at,
+            event_id: event_id.clone(),
+            transaction_id: transaction_id.clone(),
+            time: *time,
+            ..prev.clone()
+        }),
+        AiCreditRow::ConfigPubkeyUpdate {
+            updated_by,
+            oracle_pubkey_hex,
+            updated_at,
+            time,
+            event_id,
+            transaction_id,
+        } => Some(NewAiCreditConfig {
+            updated_by: updated_by.clone(),
+            oracle_pubkey_hex: oracle_pubkey_hex.clone(),
+            version: next_ai_credit_version(prev, None),
+            updated_at: *updated_at,
+            event_id: event_id.clone(),
+            transaction_id: transaction_id.clone(),
+            time: *time,
+            ..prev.clone()
+        }),
+        AiCreditRow::ConfigMarkupUpdate {
+            updated_by,
+            oracle_markup_bps,
+            updated_at,
+            time,
+            event_id,
+            transaction_id,
+        } => Some(NewAiCreditConfig {
+            updated_by: updated_by.clone(),
+            oracle_markup_bps: *oracle_markup_bps,
+            version: next_ai_credit_version(prev, None),
+            updated_at: *updated_at,
+            event_id: event_id.clone(),
+            transaction_id: transaction_id.clone(),
+            time: *time,
+            ..prev.clone()
+        }),
+        AiCreditRow::ConfigMinDepositUpdate {
+            updated_by,
+            min_deposit_mist,
+            updated_at,
+            time,
+            event_id,
+            transaction_id,
+        } => Some(NewAiCreditConfig {
+            updated_by: updated_by.clone(),
+            min_deposit_mist: *min_deposit_mist,
+            version: next_ai_credit_version(prev, None),
+            updated_at: *updated_at,
+            event_id: event_id.clone(),
+            transaction_id: transaction_id.clone(),
+            time: *time,
+            ..prev.clone()
+        }),
+        _ => None,
+    }
+}
+
 pub struct AiCreditHandler;
 
 #[async_trait]
@@ -308,25 +533,25 @@ impl Processor for AiCreditHandler {
                 }
                 let event_name = ev.type_.name.as_str();
                 let event_id = format!("{}:{}", tx_digest, event_seq);
-                let event_data =
-                    match events::parse_event_contents(AI_CREDIT_MODULE, event_name, &ev.contents) {
-                        Ok(v) => v,
-                        Err(e) => {
-                            tracing::warn!(
-                                tx_digest = %tx_digest,
-                                module = AI_CREDIT_MODULE,
-                                event_name,
-                                error = %e,
-                                hex_preview = %e.contents_hex_preview(48),
-                                "ai_credit pipeline: event contents parse failed; skipping event"
-                            );
-                            SocialMetrics::record_event_bcs_parse_failed(
-                                AI_CREDIT_MODULE,
-                                event_name,
-                            );
-                            continue;
-                        }
-                    };
+                let event_data = match events::parse_event_contents(
+                    AI_CREDIT_MODULE,
+                    event_name,
+                    &ev.contents,
+                ) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        tracing::warn!(
+                            tx_digest = %tx_digest,
+                            module = AI_CREDIT_MODULE,
+                            event_name,
+                            error = %e,
+                            hex_preview = %e.contents_hex_preview(48),
+                            "ai_credit pipeline: event contents parse failed; skipping event"
+                        );
+                        SocialMetrics::record_event_bcs_parse_failed(AI_CREDIT_MODULE, event_name);
+                        continue;
+                    }
+                };
                 if let Some(rows) =
                     ai_credit::handle_ai_credit_event(event_name, &event_data, &event_id)
                 {
@@ -346,7 +571,20 @@ impl Processor for AiCreditHandler {
 impl Handler for AiCreditHandler {
     async fn commit<'a>(values: &[Self::Value], conn: &mut Connection<'a>) -> Result<usize> {
         let mut total = 0;
+        let mut running_latest = load_latest_ai_credit_config(conn)
+            .await?
+            .unwrap_or_else(ai_credit::new_ai_credit_config_with_defaults);
+
         for row in values {
+            if let Some(merged) = finalize_ai_credit_config(&running_latest, row) {
+                total += diesel::insert_into(ai_credit_config::table)
+                    .values(&merged)
+                    .execute(conn)
+                    .await?;
+                running_latest = merged;
+                continue;
+            }
+
             match row {
                 AiCreditRow::BalanceUpsert(b) => {
                     total += diesel::insert_into(ai_credit_balances::table)
@@ -381,7 +619,8 @@ impl Handler for AiCreditHandler {
                     transaction_id,
                 } => {
                     let affected = diesel::update(
-                        ai_credit_balances::table.filter(ai_credit_balances::balance_id.eq(balance_id)),
+                        ai_credit_balances::table
+                            .filter(ai_credit_balances::balance_id.eq(balance_id)),
                     )
                     .set((
                         ai_credit_balances::balance_mist.eq(*balance_mist),
@@ -410,7 +649,8 @@ impl Handler for AiCreditHandler {
                     transaction_id,
                 } => {
                     total += diesel::update(
-                        ai_credit_balances::table.filter(ai_credit_balances::balance_id.eq(balance_id)),
+                        ai_credit_balances::table
+                            .filter(ai_credit_balances::balance_id.eq(balance_id)),
                     )
                     .set((
                         ai_credit_balances::daily_cap_mist.eq(*daily_cap_mist),
@@ -439,15 +679,12 @@ impl Handler for AiCreditHandler {
                     )
                     .set((
                         ai_credit_balances::settlement_nonce.eq(*settlement_nonce),
-                        ai_credit_balances::spent_total_mist.eq(
-                            ai_credit_balances::spent_total_mist + *spent_increment_mist,
-                        ),
-                        ai_credit_balances::spent_day_mist.eq(
-                            ai_credit_balances::spent_day_mist + *spent_increment_mist,
-                        ),
-                        ai_credit_balances::spent_month_mist.eq(
-                            ai_credit_balances::spent_month_mist + *spent_increment_mist,
-                        ),
+                        ai_credit_balances::spent_total_mist
+                            .eq(ai_credit_balances::spent_total_mist + *spent_increment_mist),
+                        ai_credit_balances::spent_day_mist
+                            .eq(ai_credit_balances::spent_day_mist + *spent_increment_mist),
+                        ai_credit_balances::spent_month_mist
+                            .eq(ai_credit_balances::spent_month_mist + *spent_increment_mist),
                         ai_credit_balances::updated_at_ms.eq(*updated_at_ms),
                         ai_credit_balances::event_id.eq(event_id),
                         ai_credit_balances::transaction_id.eq(transaction_id),
@@ -473,7 +710,8 @@ impl Handler for AiCreditHandler {
                     transaction_id,
                 } => {
                     total += diesel::update(
-                        ai_credit_balances::table.filter(ai_credit_balances::balance_id.eq(balance_id)),
+                        ai_credit_balances::table
+                            .filter(ai_credit_balances::balance_id.eq(balance_id)),
                     )
                     .set((
                         ai_credit_balances::active.eq(*active),
@@ -542,9 +780,8 @@ impl Handler for AiCreditHandler {
                             .filter(ai_credit_agent_budgets::agent_object_id.eq(agent_object_id)),
                     )
                     .set((
-                        ai_credit_agent_budgets::spent_mist.eq(
-                            ai_credit_agent_budgets::spent_mist + *spent_increment_mist,
-                        ),
+                        ai_credit_agent_budgets::spent_mist
+                            .eq(ai_credit_agent_budgets::spent_mist + *spent_increment_mist),
                         ai_credit_agent_budgets::updated_at_ms.eq(*updated_at_ms),
                         ai_credit_agent_budgets::event_id.eq(event_id),
                         ai_credit_agent_budgets::transaction_id.eq(transaction_id),
@@ -594,53 +831,17 @@ impl Handler for AiCreditHandler {
                     profile_id,
                     ai_credit_balance_id,
                 } => {
-                    total += diesel::update(
-                        profiles::table.filter(profiles::profile_id.eq(profile_id)),
-                    )
-                    .set(profiles::ai_credit_balance_id.eq(ai_credit_balance_id))
-                    .execute(conn)
-                    .await?;
+                    total +=
+                        diesel::update(profiles::table.filter(profiles::profile_id.eq(profile_id)))
+                            .set(profiles::ai_credit_balance_id.eq(ai_credit_balance_id))
+                            .execute(conn)
+                            .await?;
                 }
-                AiCreditRow::ConfigUpsert(c) => {
-                    let row = c.clone();
-                    total += diesel::insert_into(ai_credit_config::table)
-                        .values(&row)
-                        .on_conflict(ai_credit_config::id)
-                        .do_update()
-                        .set((
-                            ai_credit_config::oracle_pubkey_hex.eq(&row.oracle_pubkey_hex),
-                            ai_credit_config::treasury_address.eq(&row.treasury_address),
-                            ai_credit_config::min_deposit_mist.eq(row.min_deposit_mist),
-                            ai_credit_config::max_single_settlement_mist
-                                .eq(row.max_single_settlement_mist),
-                            ai_credit_config::receipt_ttl_ms.eq(row.receipt_ttl_ms),
-                            ai_credit_config::catalog_version.eq(&row.catalog_version),
-                            ai_credit_config::updated_at_ms.eq(row.updated_at_ms),
-                            ai_credit_config::event_id.eq(&row.event_id),
-                            ai_credit_config::transaction_id.eq(&row.transaction_id),
-                            ai_credit_config::time.eq(row.time),
-                        ))
-                        .execute(conn)
-                        .await?;
-                }
-                AiCreditRow::ConfigLimitsUpdate {
-                    max_single_settlement_mist,
-                    receipt_ttl_ms,
-                    updated_at_ms,
-                    event_id,
-                    transaction_id,
-                } => {
-                    total += diesel::update(ai_credit_config::table.filter(ai_credit_config::id.eq(1i16)))
-                        .set((
-                            ai_credit_config::max_single_settlement_mist.eq(*max_single_settlement_mist),
-                            ai_credit_config::receipt_ttl_ms.eq(*receipt_ttl_ms),
-                            ai_credit_config::updated_at_ms.eq(*updated_at_ms),
-                            ai_credit_config::event_id.eq(event_id),
-                            ai_credit_config::transaction_id.eq(transaction_id),
-                        ))
-                        .execute(conn)
-                        .await?;
-                }
+                AiCreditRow::ConfigUpsert(_)
+                | AiCreditRow::ConfigLimitsUpdate { .. }
+                | AiCreditRow::ConfigPubkeyUpdate { .. }
+                | AiCreditRow::ConfigMarkupUpdate { .. }
+                | AiCreditRow::ConfigMinDepositUpdate { .. } => {}
                 AiCreditRow::Event(e) => {
                     total += diesel::insert_into(ai_credit_events::table)
                         .values(e)
@@ -681,9 +882,7 @@ impl Handler for AiCreditHandler {
                     let affected = diesel::update(
                         ai_credit_spend_approvals::table
                             .filter(ai_credit_spend_approvals::balance_id.eq(balance_id))
-                            .filter(
-                                ai_credit_spend_approvals::agent_object_id.eq(agent_object_id),
-                            ),
+                            .filter(ai_credit_spend_approvals::agent_object_id.eq(agent_object_id)),
                     )
                     .set((
                         ai_credit_spend_approvals::status.eq(status),

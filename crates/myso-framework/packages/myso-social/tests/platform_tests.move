@@ -14,14 +14,15 @@ module social_contracts::platform_tests {
     use myso::clock::{Self, Clock};
     use myso::permissioned_group::PermissionedGroup;
     
-    use social_contracts::profile::{Self, Profile, UsernameRegistry};
+    use social_contracts::profile::{Self, Profile, UsernameRegistry,
+        ProfileConfig};
     use social_contracts::memory::{MemoryRegistry, MemoryAccount};
     use social_contracts::ai_credit::{AiCreditBalance, AiCreditConfig};
     use social_contracts::block_list::{Self, BlockListRegistry};
     use social_contracts::social_graph::{Self, SocialGraph};
     use social_contracts::platform::{
         Self, Platform, PlatformRegistry, PlatformPackage, PlatformBlockAdmin, PlatformBadgeAdmin,
-    };
+        PlatformConfig};
     
     const ADMIN: address = @0xAD;
     const USER1: address = @0x1;
@@ -34,22 +35,20 @@ module social_contracts::platform_tests {
     fun create_test_platform_no_moderator(scenario: &mut test_scenario::Scenario) {
         test_scenario::next_tx(scenario, ADMIN);
         {
-            platform::test_init(test_scenario::ctx(scenario));
-        };
-
-        test_scenario::next_tx(scenario, ADMIN);
-        {
-            let c = clock::create_for_testing(test_scenario::ctx(scenario));
-            clock::share_for_testing(c);
+            let clock = clock::create_for_testing(test_scenario::ctx(scenario));
+            platform::test_init(&clock, test_scenario::ctx(scenario));
+            clock::share_for_testing(clock);
         };
 
         test_scenario::next_tx(scenario, PLATFORM_ADMIN);
         {
+            let platform_config = test_scenario::take_shared<PlatformConfig>(scenario);
             let mut registry = test_scenario::take_shared<PlatformRegistry>(scenario);
             let clock = test_scenario::take_shared<Clock>(scenario);
 
             platform::create_platform(
                 &mut registry,
+                &platform_config,
                 string::utf8(b"Test Platform"),
                 string::utf8(b"A test platform"),
                 string::utf8(b"This is a test platform for badge testing"),
@@ -76,6 +75,7 @@ module social_contracts::platform_tests {
                 test_scenario::ctx(scenario)
             );
 
+            test_scenario::return_shared(platform_config);
             test_scenario::return_shared(clock);
             test_scenario::return_shared(registry);
         };
@@ -96,24 +96,22 @@ module social_contracts::platform_tests {
         // Initialize the platform registry
         test_scenario::next_tx(scenario, ADMIN);
         {
-            platform::test_init(test_scenario::ctx(scenario));
-        };
-
-        test_scenario::next_tx(scenario, ADMIN);
-        {
-            let c = clock::create_for_testing(test_scenario::ctx(scenario));
-            clock::share_for_testing(c);
+            let clock = clock::create_for_testing(test_scenario::ctx(scenario));
+            platform::test_init(&clock, test_scenario::ctx(scenario));
+            clock::share_for_testing(clock);
         };
 
         // Create a new platform in a separate transaction 
         test_scenario::next_tx(scenario, PLATFORM_ADMIN);
         {
+            let platform_config = test_scenario::take_shared<PlatformConfig>(scenario);
             let mut registry = test_scenario::take_shared<PlatformRegistry>(scenario);
             let clock = test_scenario::take_shared<Clock>(scenario);
             
             // Create platform
             platform::create_platform(
                 &mut registry,
+                &platform_config,
                 string::utf8(b"Test Platform"),
                 string::utf8(b"A test platform"),
                 string::utf8(b"This is a test platform for badge testing"),
@@ -142,6 +140,7 @@ module social_contracts::platform_tests {
             
             test_scenario::return_shared(clock);
             test_scenario::return_shared(registry);
+        test_scenario::return_shared(platform_config);
         };
 
         // Add moderator to platform and set approval
@@ -198,11 +197,13 @@ module social_contracts::platform_tests {
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(scenario);
+            let profile_config = test_scenario::take_shared<ProfileConfig>(scenario);
             let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(scenario);
             let clock = test_scenario::take_shared<Clock>(scenario);
 
             profile::create_profile(
                 &mut registry,
+                &profile_config,
                 &mut memory_registry,
                 &mut ai_credit_config,
                 string::utf8(b"Test User"),
@@ -218,6 +219,7 @@ module social_contracts::platform_tests {
             test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(registry);
+            test_scenario::return_shared(profile_config);
         };
     }
 
@@ -241,6 +243,8 @@ module social_contracts::platform_tests {
         test_scenario::next_tx(&mut scenario, PLATFORM_ADMIN);
         {
 
+let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
+
             let clock = test_scenario::take_shared<Clock>(&scenario);
             let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
             let platform = test_scenario::take_shared<Platform>(&scenario);
@@ -252,7 +256,8 @@ module social_contracts::platform_tests {
             // Assign badge
             platform::assign_badge(
                 &registry,
-                &platform,
+                &platform_config,
+                                &platform,
                 &group,
                 &mut user_profile,
                 badge_name,
@@ -285,6 +290,7 @@ module social_contracts::platform_tests {
             test_scenario::return_to_address(PLATFORM_USER, user_profile);
 
             test_scenario::return_shared(clock);
+        test_scenario::return_shared(platform_config);
         };
         
         test_scenario::end(scenario);
@@ -310,6 +316,8 @@ module social_contracts::platform_tests {
         test_scenario::next_tx(&mut scenario, PLATFORM_MOD);
         {
 
+let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
+
             let clock = test_scenario::take_shared<Clock>(&scenario);
             let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
             let platform = test_scenario::take_shared<Platform>(&scenario);
@@ -321,7 +329,8 @@ module social_contracts::platform_tests {
             // Assign badge
             platform::assign_badge(
                 &registry,
-                &platform,
+                &platform_config,
+                                &platform,
                 &group,
                 &mut user_profile,
                 badge_name,
@@ -361,6 +370,7 @@ module social_contracts::platform_tests {
             test_scenario::return_to_address(PLATFORM_USER, user_profile);
 
             test_scenario::return_shared(clock);
+        test_scenario::return_shared(platform_config);
         };
         
         test_scenario::end(scenario);
@@ -386,6 +396,8 @@ module social_contracts::platform_tests {
         test_scenario::next_tx(&mut scenario, PLATFORM_ADMIN);
         {
 
+let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
+
             let clock = test_scenario::take_shared<Clock>(&scenario);
             let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
             let platform = test_scenario::take_shared<Platform>(&scenario);
@@ -398,7 +410,8 @@ module social_contracts::platform_tests {
             // Assign first badge
             platform::assign_badge(
                 &registry,
-                &platform,
+                &platform_config,
+                                &platform,
                 &group,
                 &mut user_profile,
                 string::utf8(b"VIP"),
@@ -413,7 +426,8 @@ module social_contracts::platform_tests {
             // Assign second badge
             platform::assign_badge(
                 &registry,
-                &platform,
+                &platform_config,
+                                &platform,
                 &group,
                 &mut user_profile,
                 string::utf8(b"Moderator"),
@@ -438,6 +452,7 @@ module social_contracts::platform_tests {
             test_scenario::return_to_address(PLATFORM_USER, user_profile);
 
             test_scenario::return_shared(clock);
+        test_scenario::return_shared(platform_config);
         };
         
         test_scenario::end(scenario);
@@ -464,6 +479,8 @@ module social_contracts::platform_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
 
+let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
+
             let clock = test_scenario::take_shared<Clock>(&scenario);
             let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
             let platform = test_scenario::take_shared<Platform>(&scenario);
@@ -473,7 +490,8 @@ module social_contracts::platform_tests {
             // This should fail with EUnauthorized since USER1 is neither platform admin nor moderator
             platform::assign_badge(
                 &registry,
-                &platform,
+                &platform_config,
+                                &platform,
                 &group,
                 &mut user_profile,
                 string::utf8(b"Fake"),
@@ -491,6 +509,7 @@ module social_contracts::platform_tests {
             test_scenario::return_to_address(PLATFORM_USER, user_profile);
 
             test_scenario::return_shared(clock);
+        test_scenario::return_shared(platform_config);
         };
         
         test_scenario::end(scenario);
@@ -517,6 +536,8 @@ module social_contracts::platform_tests {
         test_scenario::next_tx(&mut scenario, PLATFORM_ADMIN);
         {
 
+let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
+
             let clock = test_scenario::take_shared<Clock>(&scenario);
             let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
             let platform = test_scenario::take_shared<Platform>(&scenario);
@@ -528,7 +549,8 @@ module social_contracts::platform_tests {
             // Assign badge first time - should succeed
             platform::assign_badge(
                 &registry,
-                &platform,
+                &platform_config,
+                                &platform,
                 &group,
                 &mut user_profile,
                 badge_name,
@@ -543,7 +565,8 @@ module social_contracts::platform_tests {
             // Try to assign the same badge again - should fail
             platform::assign_badge(
                 &registry,
-                &platform,
+                &platform_config,
+                                &platform,
                 &group,
                 &mut user_profile,
                 badge_name,
@@ -562,6 +585,7 @@ module social_contracts::platform_tests {
             test_scenario::return_to_address(PLATFORM_USER, user_profile);
 
             test_scenario::return_shared(clock);
+        test_scenario::return_shared(platform_config);
         };
         
         test_scenario::end(scenario);
@@ -638,6 +662,8 @@ module social_contracts::platform_tests {
         test_scenario::next_tx(&mut scenario, PLATFORM_ADMIN);
         {
 
+let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
+
             let clock = test_scenario::take_shared<Clock>(&scenario);
             let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
             let platform = test_scenario::take_shared<Platform>(&scenario);
@@ -647,7 +673,8 @@ module social_contracts::platform_tests {
             // Assign badge
             platform::assign_badge(
                 &registry,
-                &platform,
+                &platform_config,
+                                &platform,
                 &group,
                 &mut user_profile,
                 string::utf8(b"VIP"),
@@ -668,6 +695,7 @@ module social_contracts::platform_tests {
             test_scenario::return_to_address(PLATFORM_USER, user_profile);
 
             test_scenario::return_shared(clock);
+        test_scenario::return_shared(platform_config);
         };
         
         // PLATFORM_USER transfers profile to USER2
@@ -728,10 +756,12 @@ module social_contracts::platform_tests {
         test_scenario::next_tx(&mut scenario, PLATFORM_ADMIN);
         {
             let mut registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
+            let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
 
             platform::create_platform(
                 &mut registry,
+                &platform_config,
                 string::utf8(b"Media Platform"),
                 string::utf8(b"Tagline"),
                 string::utf8(b"Description"),
@@ -757,6 +787,7 @@ module social_contracts::platform_tests {
             );
 
             test_scenario::return_shared(clock);
+            test_scenario::return_shared(platform_config);
             test_scenario::return_shared(registry);
         };
 
@@ -788,8 +819,10 @@ module social_contracts::platform_tests {
 
             let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut platform = test_scenario::take_shared<Platform>(&scenario);
+            let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
             platform::update_platform(
                 &mut platform,
+                &platform_config,
                 string::utf8(b"Test Platform"),
                 string::utf8(b"A test platform"),
                 string::utf8(b"This is a test platform for badge testing"),
@@ -817,7 +850,7 @@ module social_contracts::platform_tests {
             let previews = platform::media_previews(&platform);
             assert!(option::is_some(previews), 2);
             test_scenario::return_shared(platform);
-
+            test_scenario::return_shared(platform_config);
             test_scenario::return_shared(clock);
         };
 
@@ -833,6 +866,7 @@ module social_contracts::platform_tests {
         {
             let mut registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
+            let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
             let mut previews = vector::empty<string::String>();
             let mut i = 0u64;
             while (i < 11) {
@@ -842,6 +876,7 @@ module social_contracts::platform_tests {
 
             platform::create_platform(
                 &mut registry,
+                &platform_config,
                 string::utf8(b"Too Many Previews"),
                 string::utf8(b"Tag"),
                 string::utf8(b"Desc"),
@@ -864,6 +899,7 @@ module social_contracts::platform_tests {
             );
 
             test_scenario::return_shared(clock);
+            test_scenario::return_shared(platform_config);
             test_scenario::return_shared(registry);
         };
 
@@ -902,6 +938,8 @@ module social_contracts::platform_tests {
         test_scenario::next_tx(&mut scenario, PLATFORM_MOD);
         {
 
+let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
+
             let clock = test_scenario::take_shared<Clock>(&scenario);
             let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
             let platform = test_scenario::take_shared<Platform>(&scenario);
@@ -910,7 +948,8 @@ module social_contracts::platform_tests {
 
             platform::assign_badge(
                 &registry,
-                &platform,
+                &platform_config,
+                                &platform,
                 &group,
                 &mut user_profile,
                 string::utf8(b"ModBadge"),
@@ -929,6 +968,7 @@ module social_contracts::platform_tests {
             test_scenario::return_to_address(PLATFORM_USER, user_profile);
 
             test_scenario::return_shared(clock);
+        test_scenario::return_shared(platform_config);
         };
 
         test_scenario::end(scenario);
@@ -958,6 +998,8 @@ module social_contracts::platform_tests {
         test_scenario::next_tx(&mut scenario, PLATFORM_MOD);
         {
 
+let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
+
             let clock = test_scenario::take_shared<Clock>(&scenario);
             let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
             let platform = test_scenario::take_shared<Platform>(&scenario);
@@ -966,7 +1008,8 @@ module social_contracts::platform_tests {
 
             platform::assign_badge(
                 &registry,
-                &platform,
+                &platform_config,
+                                &platform,
                 &group,
                 &mut user_profile,
                 string::utf8(b"BadgeOnly"),
@@ -985,6 +1028,7 @@ module social_contracts::platform_tests {
             test_scenario::return_to_address(PLATFORM_USER, user_profile);
 
             test_scenario::return_shared(clock);
+        test_scenario::return_shared(platform_config);
         };
 
         test_scenario::end(scenario);

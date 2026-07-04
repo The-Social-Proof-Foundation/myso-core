@@ -11,7 +11,7 @@ use super::super::{AppState, InsurancePolicyFilters, PageParams};
 
 pub async fn get_insurance_config(
     State(state): State<Arc<AppState>>,
-) -> Result<Json<crate::reader::InsuranceConfigInfo>, SocialError> {
+) -> Result<Json<crate::reader::InsuranceConfigurationResponse>, SocialError> {
     let config = state
         .reader
         .get_insurance_configuration()

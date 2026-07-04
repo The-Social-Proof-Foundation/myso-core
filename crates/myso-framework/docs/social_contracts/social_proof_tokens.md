@@ -347,6 +347,18 @@ Global social proof tokens configuration
 <dd>
  Emergency kill switch - when false, all trading is halted
 </dd>
+<dt>
+<code>non_platform_platform_to_creator_bps: u64</code>
+</dt>
+<dd>
+ Non-platform path: share of the platform-fee bucket routed to the creator (bps of that bucket).
+</dd>
+<dt>
+<code>non_platform_platform_to_treasury_bps: u64</code>
+</dt>
+<dd>
+ Non-platform path: share of the platform-fee bucket routed to the ecosystem treasury (bps of that bucket).
+</dd>
 </dl>
 
 
@@ -1269,6 +1281,18 @@ Event emitted when social proof tokens config is updated
 </dt>
 <dd>
 </dd>
+<dt>
+<code>non_platform_platform_to_creator_bps: u64</code>
+</dt>
+<dd>
+ Non-platform split: creator share of platform-fee bucket (bps)
+</dd>
+<dt>
+<code>non_platform_platform_to_treasury_bps: u64</code>
+</dt>
+<dd>
+ Non-platform split: ecosystem treasury share of platform-fee bucket (bps)
+</dd>
 </dl>
 
 
@@ -1809,6 +1833,24 @@ Post token pools in on-post PoC escrow mode require an entrypoint that supplies 
 
 
 
+<a name="social_contracts_social_proof_tokens_DEFAULT_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS">DEFAULT_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS</a>: u64 = 5000;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_tokens_DEFAULT_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS">DEFAULT_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS</a>: u64 = 5000;
+</code></pre>
+
+
+
 <a name="social_contracts_social_proof_tokens_MAX_HOLD_PERCENT_BPS"></a>
 
 
@@ -2124,6 +2166,8 @@ Bootstrap initialization function - creates the social proof tokens configuratio
         max_individual_reservation_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS">DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS</a>,
         max_reservers_per_pool: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_MAX_RESERVERS_PER_POOL">DEFAULT_MAX_RESERVERS_PER_POOL</a>,
         trading_enabled: <b>false</b>, // Trading disabled by default during <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">bootstrap</a>
+        non_platform_platform_to_creator_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS">DEFAULT_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS</a>,
+        non_platform_platform_to_treasury_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS">DEFAULT_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS</a>,
     };
     // Emit event so indexer can populate spt_exchange_config table
     <b>let</b> total_fee_bps = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_TRADING_CREATOR_FEE_BPS">DEFAULT_TRADING_CREATOR_FEE_BPS</a> + <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_TRADING_PLATFORM_FEE_BPS">DEFAULT_TRADING_PLATFORM_FEE_BPS</a> + <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_TRADING_TREASURY_FEE_BPS">DEFAULT_TRADING_TREASURY_FEE_BPS</a>;
@@ -2146,6 +2190,8 @@ Bootstrap initialization function - creates the social proof tokens configuratio
         profile_threshold: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_PROFILE_THRESHOLD">DEFAULT_PROFILE_THRESHOLD</a>,
         max_individual_reservation_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS">DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS</a>,
         max_reservers_per_pool: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_MAX_RESERVERS_PER_POOL">DEFAULT_MAX_RESERVERS_PER_POOL</a>,
+        non_platform_platform_to_creator_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS">DEFAULT_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS</a>,
+        non_platform_platform_to_treasury_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS">DEFAULT_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS</a>,
     });
     // Create and share social proof tokens config with proper treasury
     transfer::share_object(config);
@@ -2172,7 +2218,7 @@ Bootstrap initialization function - creates the social proof tokens configuratio
 Update social proof tokens configuration
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_update_social_proof_tokens_config">update_social_proof_tokens_config</a>(_admin_cap: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensAdminCap">social_contracts::social_proof_tokens::SocialProofTokensAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, trading_creator_fee_bps: u64, trading_platform_fee_bps: u64, trading_treasury_fee_bps: u64, reservation_creator_fee_bps: u64, reservation_platform_fee_bps: u64, reservation_treasury_fee_bps: u64, base_price: u64, quadratic_coefficient: u64, max_hold_percent_bps: u64, post_threshold: u64, profile_threshold: u64, max_individual_reservation_bps: u64, max_reservers_per_pool: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_update_social_proof_tokens_config">update_social_proof_tokens_config</a>(_admin_cap: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensAdminCap">social_contracts::social_proof_tokens::SocialProofTokensAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, trading_creator_fee_bps: u64, trading_platform_fee_bps: u64, trading_treasury_fee_bps: u64, reservation_creator_fee_bps: u64, reservation_platform_fee_bps: u64, reservation_treasury_fee_bps: u64, base_price: u64, quadratic_coefficient: u64, max_hold_percent_bps: u64, post_threshold: u64, profile_threshold: u64, max_individual_reservation_bps: u64, max_reservers_per_pool: u64, non_platform_platform_to_creator_bps: u64, non_platform_platform_to_treasury_bps: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2197,6 +2243,8 @@ Update social proof tokens configuration
     profile_threshold: u64,
     max_individual_reservation_bps: u64,
     max_reservers_per_pool: u64,
+    non_platform_platform_to_creator_bps: u64,
+    non_platform_platform_to_treasury_bps: u64,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
@@ -2237,6 +2285,13 @@ Update social proof tokens configuration
     <b>assert</b>!(reservation_creator_fee_bps &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
     <b>assert</b>!(reservation_platform_fee_bps &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
     <b>assert</b>!(reservation_treasury_fee_bps &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
+    // Non-<a href="../social_contracts/platform.md#social_contracts_platform">platform</a> split must partition the <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>-fee bucket exactly (sum == <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>).
+    <b>assert</b>!(non_platform_platform_to_creator_bps &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
+    <b>assert</b>!(non_platform_platform_to_treasury_bps &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
+    <b>assert</b>!(
+        non_platform_platform_to_creator_bps + non_platform_platform_to_treasury_bps == <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>,
+        <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>,
+    );
     // Update trading fee config
     config.trading_creator_fee_bps = trading_creator_fee_bps;
     config.trading_platform_fee_bps = trading_platform_fee_bps;
@@ -2255,6 +2310,8 @@ Update social proof tokens configuration
     config.profile_threshold = profile_threshold;
     config.max_individual_reservation_bps = max_individual_reservation_bps;
     config.max_reservers_per_pool = max_reservers_per_pool;
+    config.non_platform_platform_to_creator_bps = non_platform_platform_to_creator_bps;
+    config.non_platform_platform_to_treasury_bps = non_platform_platform_to_treasury_bps;
     // Calculate totals <b>for</b> event emission
     <b>let</b> total_fee_bps = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_total_fee_bps">calculate_total_fee_bps</a>(config);
     <b>let</b> reservation_total_fee_bps = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_reservation_total_fee_bps">calculate_reservation_total_fee_bps</a>(config);
@@ -2277,6 +2334,8 @@ Update social proof tokens configuration
         profile_threshold,
         max_individual_reservation_bps,
         max_reservers_per_pool,
+        non_platform_platform_to_creator_bps,
+        non_platform_platform_to_treasury_bps,
     });
 }
 </code></pre>
@@ -2526,7 +2585,7 @@ Reserve MYSO tokens towards a post to support social proof token creation
 Non-platform version: platform fees go to ecosystem treasury
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_reserve_towards_post">reserve_towards_post</a>(registry: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>, config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, reservation_pool_object: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">social_contracts::social_proof_tokens::ReservationPoolObject</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, beneficiary_vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, amount: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_reserve_towards_post">reserve_towards_post</a>(registry: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>, config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, min_vault_deposit_amount: u64, reservation_pool_object: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">social_contracts::social_proof_tokens::ReservationPoolObject</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, beneficiary_vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, amount: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2538,6 +2597,7 @@ Non-platform version: platform fees go to ecosystem treasury
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_reserve_towards_post">reserve_towards_post</a>(
     registry: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">TokenRegistry</a>,
     config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a>,
+    min_vault_deposit_amount: u64,
     reservation_pool_object: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">ReservationPoolObject</a>,
     treasury: &EcosystemTreasury,
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &Post,
@@ -2582,6 +2642,7 @@ Non-platform version: platform fees go to ecosystem treasury
     // When fees deducted: payment <b>has</b> amount, after distribution: remaining = amount - fees (correct!)
     <b>let</b> (<b>mut</b> remaining_payment, fee_amount, creator_fee, platform_fee, treasury_fee) = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_fees_with_post">distribute_reservation_fees_with_post</a>(
         config,
+        min_vault_deposit_amount,
         reservation_pool_object,
         <a href="../social_contracts/post.md#social_contracts_post">post</a>,
         beneficiary_vault,
@@ -2684,7 +2745,7 @@ Reserve MYSO tokens towards a post to support social proof token creation
 Platform version: platform fees go to platform treasury, includes platform validation
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_reserve_towards_post_with_platform">reserve_towards_post_with_platform</a>(registry: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>, config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, reservation_pool_object: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">social_contracts::social_proof_tokens::ReservationPoolObject</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, beneficiary_vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, amount: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_reserve_towards_post_with_platform">reserve_towards_post_with_platform</a>(registry: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>, config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, min_vault_deposit_amount: u64, reservation_pool_object: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">social_contracts::social_proof_tokens::ReservationPoolObject</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, beneficiary_vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, amount: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2696,6 +2757,7 @@ Platform version: platform fees go to platform treasury, includes platform valid
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_reserve_towards_post_with_platform">reserve_towards_post_with_platform</a>(
     registry: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">TokenRegistry</a>,
     config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a>,
+    min_vault_deposit_amount: u64,
     reservation_pool_object: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">ReservationPoolObject</a>,
     treasury: &EcosystemTreasury,
     platform_registry: &PlatformRegistry,
@@ -2748,6 +2810,7 @@ Platform version: platform fees go to platform treasury, includes platform valid
     // When fees deducted: payment <b>has</b> amount, after distribution: remaining = amount - fees (correct!)
     <b>let</b> (<b>mut</b> remaining_payment, fee_amount, creator_fee, platform_fee, treasury_fee) = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_fees_with_post_and_platform">distribute_reservation_fees_with_post_and_platform</a>(
         config,
+        min_vault_deposit_amount,
         reservation_pool_object,
         <a href="../social_contracts/post.md#social_contracts_post">post</a>,
         beneficiary_vault,
@@ -3255,11 +3318,11 @@ Deduct gross withdrawal from reservation ledger and registry mirror.
 
 ## Function `distribute_reservation_withdraw_fees_non_platform_post`
 
-Non-platform post withdrawal: split configured platform fee 50/50 between PoC-aware creator
-routing and ecosystem (same convention as <code><a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_fees_with_post">distribute_reservation_fees_with_post</a></code>).
+Non-platform post withdrawal: split configured platform fee between PoC-aware creator
+routing and ecosystem per <code>config.non_platform_platform_to_*_bps</code> (defaults 50/50).
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_withdraw_fees_non_platform_post">distribute_reservation_withdraw_fees_non_platform_post</a>(pool_owner: <b>address</b>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, beneficiary_vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, creator_fee: u64, platform_fee: u64, treasury_fee: u64, pool_balance: &<b>mut</b> <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (u64, u64, u64)
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_withdraw_fees_non_platform_post">distribute_reservation_withdraw_fees_non_platform_post</a>(config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, min_vault_deposit_amount: u64, pool_owner: <b>address</b>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, beneficiary_vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, creator_fee: u64, platform_fee: u64, treasury_fee: u64, pool_balance: &<b>mut</b> <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (u64, u64, u64)
 </code></pre>
 
 
@@ -3269,6 +3332,8 @@ routing and ecosystem (same convention as <code><a href="../social_contracts/soc
 
 
 <pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_withdraw_fees_non_platform_post">distribute_reservation_withdraw_fees_non_platform_post</a>(
+    config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a>,
+    min_vault_deposit_amount: u64,
     pool_owner: <b>address</b>,
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &Post,
     beneficiary_vault: &<b>mut</b> PoCBeneficiaryVault,
@@ -3280,10 +3345,10 @@ routing and ecosystem (same convention as <code><a href="../social_contracts/soc
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ): (u64, u64, u64) {
-    <b>let</b> platform_fee_half_to_creator = platform_fee / 2;
-    <b>let</b> platform_fee_half_to_treasury = platform_fee - platform_fee_half_to_creator;
-    <b>let</b> creator_total = creator_fee + platform_fee_half_to_creator;
-    <b>let</b> treasury_total = treasury_fee + platform_fee_half_to_treasury;
+    <b>let</b> platform_fee_to_creator = (platform_fee * config.non_platform_platform_to_creator_bps) / <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>;
+    <b>let</b> platform_fee_to_treasury = platform_fee - platform_fee_to_creator;
+    <b>let</b> creator_total = creator_fee + platform_fee_to_creator;
+    <b>let</b> treasury_total = treasury_fee + platform_fee_to_treasury;
     <b>if</b> (creator_total &gt; 0) {
         <b>let</b> <b>mut</b> creator_coin = coin::from_balance(balance::split(pool_balance, creator_total), ctx);
         <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_creator_fee_with_owner">distribute_reservation_creator_fee_with_owner</a>(
@@ -3292,6 +3357,7 @@ routing and ecosystem (same convention as <code><a href="../social_contracts/soc
             beneficiary_vault,
             creator_total,
             &<b>mut</b> creator_coin,
+            min_vault_deposit_amount,
             clock,
             ctx
         );
@@ -3317,7 +3383,7 @@ Non-platform profile withdrawal: same 50/50 platform-fee convention as
 <code><a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_fees_no_poc">distribute_reservation_fees_no_poc</a></code>.
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_withdraw_fees_non_platform_profile">distribute_reservation_withdraw_fees_non_platform_profile</a>(pool_owner: <b>address</b>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, creator_fee: u64, platform_fee: u64, treasury_fee: u64, pool_balance: &<b>mut</b> <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (u64, u64, u64)
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_withdraw_fees_non_platform_profile">distribute_reservation_withdraw_fees_non_platform_profile</a>(config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, pool_owner: <b>address</b>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, creator_fee: u64, platform_fee: u64, treasury_fee: u64, pool_balance: &<b>mut</b> <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (u64, u64, u64)
 </code></pre>
 
 
@@ -3327,6 +3393,7 @@ Non-platform profile withdrawal: same 50/50 platform-fee convention as
 
 
 <pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_withdraw_fees_non_platform_profile">distribute_reservation_withdraw_fees_non_platform_profile</a>(
+    config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a>,
     pool_owner: <b>address</b>,
     treasury: &EcosystemTreasury,
     creator_fee: u64,
@@ -3335,10 +3402,10 @@ Non-platform profile withdrawal: same 50/50 platform-fee convention as
     pool_balance: &<b>mut</b> Balance&lt;MYSO&gt;,
     ctx: &<b>mut</b> TxContext
 ): (u64, u64, u64) {
-    <b>let</b> platform_fee_half_to_creator = platform_fee / 2;
-    <b>let</b> platform_fee_half_to_treasury = platform_fee - platform_fee_half_to_creator;
-    <b>let</b> creator_total = creator_fee + platform_fee_half_to_creator;
-    <b>let</b> treasury_total = treasury_fee + platform_fee_half_to_treasury;
+    <b>let</b> platform_fee_to_creator = (platform_fee * config.non_platform_platform_to_creator_bps) / <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>;
+    <b>let</b> platform_fee_to_treasury = platform_fee - platform_fee_to_creator;
+    <b>let</b> creator_total = creator_fee + platform_fee_to_creator;
+    <b>let</b> treasury_total = treasury_fee + platform_fee_to_treasury;
     <b>if</b> (creator_total &gt; 0) {
         <b>let</b> <b>mut</b> creator_coin = coin::from_balance(balance::split(pool_balance, creator_total), ctx);
         <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_creator_fee_no_poc_with_owner">distribute_reservation_creator_fee_no_poc_with_owner</a>(
@@ -3367,7 +3434,7 @@ Non-platform profile withdrawal: same 50/50 platform-fee convention as
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_withdraw_fees_platform_post">distribute_reservation_withdraw_fees_platform_post</a>(pool_owner: <b>address</b>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, beneficiary_vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, creator_fee: u64, platform_fee: u64, treasury_fee: u64, pool_balance: &<b>mut</b> <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_withdraw_fees_platform_post">distribute_reservation_withdraw_fees_platform_post</a>(pool_owner: <b>address</b>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, beneficiary_vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, creator_fee: u64, platform_fee: u64, treasury_fee: u64, pool_balance: &<b>mut</b> <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, min_vault_deposit_amount: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3386,6 +3453,7 @@ Non-platform profile withdrawal: same 50/50 platform-fee convention as
     platform_fee: u64,
     treasury_fee: u64,
     pool_balance: &<b>mut</b> Balance&lt;MYSO&gt;,
+    min_vault_deposit_amount: u64,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
@@ -3397,6 +3465,7 @@ Non-platform profile withdrawal: same 50/50 platform-fee convention as
             beneficiary_vault,
             creator_fee,
             &<b>mut</b> creator_coin,
+            min_vault_deposit_amount,
             clock,
             ctx
         );
@@ -3479,7 +3548,7 @@ Withdraw MYSO reservation for a **post** pool (non-platform).
 Matches non-platform reserve fee routing (50/50 platform share; PoC on creator path).
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_withdraw_reservation_for_post">withdraw_reservation_for_post</a>(registry: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>, config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, reservation_pool_object: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">social_contracts::social_proof_tokens::ReservationPoolObject</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, beneficiary_vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, amount: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_withdraw_reservation_for_post">withdraw_reservation_for_post</a>(registry: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>, config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, min_vault_deposit_amount: u64, reservation_pool_object: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">social_contracts::social_proof_tokens::ReservationPoolObject</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, beneficiary_vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, amount: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3491,6 +3560,7 @@ Matches non-platform reserve fee routing (50/50 platform share; PoC on creator p
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_withdraw_reservation_for_post">withdraw_reservation_for_post</a>(
     registry: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">TokenRegistry</a>,
     config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a>,
+    min_vault_deposit_amount: u64,
     reservation_pool_object: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">ReservationPoolObject</a>,
     treasury: &EcosystemTreasury,
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &Post,
@@ -3516,6 +3586,8 @@ Matches non-platform reserve fee routing (50/50 platform share; PoC on creator p
     <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_apply_reservation_withdrawal_ledger">apply_reservation_withdrawal_ledger</a>(registry, reservation_pool_object, reserver, associated_id, amount);
     <b>let</b> (ev_creator, ev_platform, ev_treasury) = <b>if</b> (fee_amount &gt; 0) {
         <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_withdraw_fees_non_platform_post">distribute_reservation_withdraw_fees_non_platform_post</a>(
+            config,
+            min_vault_deposit_amount,
             pool_owner,
             <a href="../social_contracts/post.md#social_contracts_post">post</a>,
             beneficiary_vault,
@@ -3593,6 +3665,7 @@ Withdraw MYSO reservation for a **profile** pool (non-platform).
     <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_apply_reservation_withdrawal_ledger">apply_reservation_withdrawal_ledger</a>(registry, reservation_pool_object, reserver, associated_id, amount);
     <b>let</b> (ev_creator, ev_platform, ev_treasury) = <b>if</b> (fee_amount &gt; 0) {
         <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_withdraw_fees_non_platform_profile">distribute_reservation_withdraw_fees_non_platform_profile</a>(
+            config,
             pool_owner,
             treasury,
             creator_fee,
@@ -3633,7 +3706,7 @@ Withdraw MYSO reservation for a **profile** pool (non-platform).
 Withdraw from a **post** reservation pool via an approved platform (PoC-aware creator fees).
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_withdraw_reservation_with_platform_for_post">withdraw_reservation_with_platform_for_post</a>(registry: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>, config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, reservation_pool_object: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">social_contracts::social_proof_tokens::ReservationPoolObject</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, beneficiary_vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, amount: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_withdraw_reservation_with_platform_for_post">withdraw_reservation_with_platform_for_post</a>(registry: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>, config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, min_vault_deposit_amount: u64, reservation_pool_object: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">social_contracts::social_proof_tokens::ReservationPoolObject</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, beneficiary_vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, amount: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3645,6 +3718,7 @@ Withdraw from a **post** reservation pool via an approved platform (PoC-aware cr
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_withdraw_reservation_with_platform_for_post">withdraw_reservation_with_platform_for_post</a>(
     registry: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">TokenRegistry</a>,
     config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a>,
+    min_vault_deposit_amount: u64,
     reservation_pool_object: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">ReservationPoolObject</a>,
     treasury: &EcosystemTreasury,
     platform_registry: &PlatformRegistry,
@@ -3686,6 +3760,7 @@ Withdraw from a **post** reservation pool via an approved platform (PoC-aware cr
             platform_fee,
             treasury_fee,
             &<b>mut</b> reservation_pool_object.myso_balance,
+            min_vault_deposit_amount,
             clock,
             ctx
         );
@@ -4476,7 +4551,7 @@ PoC-aware post reservation creator fee using an explicit pool owner (avoids borr
 when paying from <code>&<b>mut</b> reservation_pool_object.myso_balance</code> during withdrawal).
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_creator_fee_with_owner">distribute_reservation_creator_fee_with_owner</a>(pool_owner: <b>address</b>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, beneficiary_vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, creator_fee_amount: u64, creator_fee_coin: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_creator_fee_with_owner">distribute_reservation_creator_fee_with_owner</a>(pool_owner: <b>address</b>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, beneficiary_vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, creator_fee_amount: u64, creator_fee_coin: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, min_vault_deposit_amount: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4491,6 +4566,7 @@ when paying from <code>&<b>mut</b> reservation_pool_object.myso_balance</code> d
     beneficiary_vault: &<b>mut</b> PoCBeneficiaryVault,
     creator_fee_amount: u64,
     creator_fee_coin: &<b>mut</b> Coin&lt;MYSO&gt;,
+    min_vault_deposit_amount: u64,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
@@ -4503,7 +4579,7 @@ when paying from <code>&<b>mut</b> reservation_pool_object.myso_balance</code> d
         <b>let</b> redirected_fee = coin::split(&<b>mut</b> fee_coin, redirected_amount, ctx);
         <b>let</b> k = <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">post::poc_redirection_kind</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
         <b>if</b> (k == 2) {
-            <a href="../social_contracts/post.md#social_contracts_post_deposit_coin_to_beneficiary_vault">post::deposit_coin_to_beneficiary_vault</a>&lt;MYSO&gt;(<a href="../social_contracts/post.md#social_contracts_post">post</a>, beneficiary_vault, redirected_fee, clock, ctx);
+            <a href="../social_contracts/post.md#social_contracts_post_deposit_coin_to_beneficiary_vault">post::deposit_coin_to_beneficiary_vault</a>&lt;MYSO&gt;(<a href="../social_contracts/post.md#social_contracts_post">post</a>, beneficiary_vault, redirected_fee, min_vault_deposit_amount, clock, ctx);
         } <b>else</b> {
             <b>let</b> redirect_to = *option::borrow(<a href="../social_contracts/post.md#social_contracts_post_get_revenue_redirect_to">post::get_revenue_redirect_to</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>));
             transfer::public_transfer(redirected_fee, redirect_to);
@@ -4531,7 +4607,7 @@ Distribute creator fees with PoC redirection from post (reuses existing pattern)
 This follows the same logic as distribute_creator_fee but works with Post instead of TokenPool
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_creator_fee">distribute_reservation_creator_fee</a>(reservation_pool: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">social_contracts::social_proof_tokens::ReservationPoolObject</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, beneficiary_vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, creator_fee_amount: u64, creator_fee_coin: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_creator_fee">distribute_reservation_creator_fee</a>(reservation_pool: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">social_contracts::social_proof_tokens::ReservationPoolObject</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, beneficiary_vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, creator_fee_amount: u64, creator_fee_coin: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, min_vault_deposit_amount: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4546,6 +4622,7 @@ This follows the same logic as distribute_creator_fee but works with Post instea
     beneficiary_vault: &<b>mut</b> PoCBeneficiaryVault,
     creator_fee_amount: u64,
     creator_fee_coin: &<b>mut</b> Coin&lt;MYSO&gt;,
+    min_vault_deposit_amount: u64,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
@@ -4555,6 +4632,7 @@ This follows the same logic as distribute_creator_fee but works with Post instea
         beneficiary_vault,
         creator_fee_amount,
         creator_fee_coin,
+        min_vault_deposit_amount,
         clock,
         ctx
     );
@@ -4641,7 +4719,7 @@ Calculate and distribute all reservation fees (for post reservations with PoC)
 Non-platform version: split platform fee 50/50 between creator and treasury; emit platform_fee 0
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_fees_with_post">distribute_reservation_fees_with_post</a>(config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, reservation_pool: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">social_contracts::social_proof_tokens::ReservationPoolObject</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, beneficiary_vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, amount: u64, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (<a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, u64, u64, u64, u64)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_fees_with_post">distribute_reservation_fees_with_post</a>(config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, min_vault_deposit_amount: u64, reservation_pool: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">social_contracts::social_proof_tokens::ReservationPoolObject</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, beneficiary_vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, amount: u64, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (<a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, u64, u64, u64, u64)
 </code></pre>
 
 
@@ -4652,6 +4730,7 @@ Non-platform version: split platform fee 50/50 between creator and treasury; emi
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_fees_with_post">distribute_reservation_fees_with_post</a>(
     config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a>,
+    min_vault_deposit_amount: u64,
     reservation_pool: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">ReservationPoolObject</a>,
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &Post,
     beneficiary_vault: &<b>mut</b> PoCBeneficiaryVault,
@@ -4668,20 +4747,29 @@ Non-platform version: split platform fee 50/50 between creator and treasury; emi
     <b>let</b> creator_fee = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_component_fee_safe">calculate_component_fee_safe</a>(fee_amount, config.reservation_creator_fee_bps, reservation_total_fee_bps);
     <b>let</b> platform_fee = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_component_fee_safe">calculate_component_fee_safe</a>(fee_amount, config.reservation_platform_fee_bps, reservation_total_fee_bps);
     <b>let</b> treasury_fee = fee_amount - creator_fee - platform_fee;
-    <b>let</b> platform_fee_half_to_creator = platform_fee / 2;
-    <b>let</b> platform_fee_half_to_treasury = platform_fee - platform_fee_half_to_creator;
+    <b>let</b> platform_fee_to_creator = (platform_fee * config.non_platform_platform_to_creator_bps) / <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>;
+    <b>let</b> platform_fee_to_treasury = platform_fee - platform_fee_to_creator;
     <b>if</b> (fee_amount &gt; 0) {
-        <b>let</b> creator_total = creator_fee + platform_fee_half_to_creator;
+        <b>let</b> creator_total = creator_fee + platform_fee_to_creator;
         <b>if</b> (creator_total &gt; 0) {
-            <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_creator_fee">distribute_reservation_creator_fee</a>(reservation_pool, <a href="../social_contracts/post.md#social_contracts_post">post</a>, beneficiary_vault, creator_total, &<b>mut</b> payment, clock, ctx);
+            <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_creator_fee">distribute_reservation_creator_fee</a>(
+                reservation_pool,
+                <a href="../social_contracts/post.md#social_contracts_post">post</a>,
+                beneficiary_vault,
+                creator_total,
+                &<b>mut</b> payment,
+                min_vault_deposit_amount,
+                clock,
+                ctx
+            );
         };
-        <b>let</b> treasury_total = treasury_fee + platform_fee_half_to_treasury;
+        <b>let</b> treasury_total = treasury_fee + platform_fee_to_treasury;
         <b>if</b> (treasury_total &gt; 0) {
             <b>let</b> treasury_fee_coin = coin::split(&<b>mut</b> payment, treasury_total, ctx);
             transfer::public_transfer(treasury_fee_coin, <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">profile::get_treasury_address</a>(treasury));
         };
     };
-    (payment, fee_amount, creator_fee + platform_fee_half_to_creator, 0, treasury_fee + platform_fee_half_to_treasury)
+    (payment, fee_amount, creator_fee + platform_fee_to_creator, 0, treasury_fee + platform_fee_to_treasury)
 }
 </code></pre>
 
@@ -4697,7 +4785,7 @@ Calculate and distribute all reservation fees (for post reservations with PoC)
 Platform version: routes platform fees to platform treasury
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_fees_with_post_and_platform">distribute_reservation_fees_with_post_and_platform</a>(config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, reservation_pool: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">social_contracts::social_proof_tokens::ReservationPoolObject</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, beneficiary_vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, amount: u64, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (<a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, u64, u64, u64, u64)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_fees_with_post_and_platform">distribute_reservation_fees_with_post_and_platform</a>(config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, min_vault_deposit_amount: u64, reservation_pool: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">social_contracts::social_proof_tokens::ReservationPoolObject</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, beneficiary_vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, amount: u64, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (<a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, u64, u64, u64, u64)
 </code></pre>
 
 
@@ -4708,6 +4796,7 @@ Platform version: routes platform fees to platform treasury
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_fees_with_post_and_platform">distribute_reservation_fees_with_post_and_platform</a>(
     config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a>,
+    min_vault_deposit_amount: u64,
     reservation_pool: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">ReservationPoolObject</a>,
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &Post,
     beneficiary_vault: &<b>mut</b> PoCBeneficiaryVault,
@@ -4729,7 +4818,16 @@ Platform version: routes platform fees to platform treasury
     <b>if</b> (fee_amount &gt; 0) {
         // Send creator fee with PoC redirection support
         <b>if</b> (creator_fee &gt; 0) {
-            <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_creator_fee">distribute_reservation_creator_fee</a>(reservation_pool, <a href="../social_contracts/post.md#social_contracts_post">post</a>, beneficiary_vault, creator_fee, &<b>mut</b> payment, clock, ctx);
+            <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_creator_fee">distribute_reservation_creator_fee</a>(
+                reservation_pool,
+                <a href="../social_contracts/post.md#social_contracts_post">post</a>,
+                beneficiary_vault,
+                creator_fee,
+                &<b>mut</b> payment,
+                min_vault_deposit_amount,
+                clock,
+                ctx
+            );
         };
         // Send <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> fee to <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> treasury
         <b>if</b> (platform_fee &gt; 0) {
@@ -4757,7 +4855,7 @@ Platform version: routes platform fees to platform treasury
 ## Function `distribute_reservation_fees_no_poc`
 
 Calculate and distribute all reservation fees (for profile reservations without PoC)
-Non-platform version: split platform fee 50/50 between creator and treasury; emit platform_fee 0
+Non-platform version: split platform fee between creator and treasury per config; emit platform_fee 0
 
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_fees_no_poc">distribute_reservation_fees_no_poc</a>(config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, reservation_pool: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">social_contracts::social_proof_tokens::ReservationPoolObject</a>, amount: u64, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (<a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, u64, u64, u64, u64)
@@ -4784,20 +4882,20 @@ Non-platform version: split platform fee 50/50 between creator and treasury; emi
     <b>let</b> creator_fee = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_component_fee_safe">calculate_component_fee_safe</a>(fee_amount, config.reservation_creator_fee_bps, reservation_total_fee_bps);
     <b>let</b> platform_fee = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_component_fee_safe">calculate_component_fee_safe</a>(fee_amount, config.reservation_platform_fee_bps, reservation_total_fee_bps);
     <b>let</b> treasury_fee = fee_amount - creator_fee - platform_fee;
-    <b>let</b> platform_fee_half_to_creator = platform_fee / 2;
-    <b>let</b> platform_fee_half_to_treasury = platform_fee - platform_fee_half_to_creator;
+    <b>let</b> platform_fee_to_creator = (platform_fee * config.non_platform_platform_to_creator_bps) / <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>;
+    <b>let</b> platform_fee_to_treasury = platform_fee - platform_fee_to_creator;
     <b>if</b> (fee_amount &gt; 0) {
-        <b>let</b> creator_total = creator_fee + platform_fee_half_to_creator;
+        <b>let</b> creator_total = creator_fee + platform_fee_to_creator;
         <b>if</b> (creator_total &gt; 0) {
             <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_creator_fee_no_poc">distribute_reservation_creator_fee_no_poc</a>(reservation_pool, creator_total, &<b>mut</b> payment, ctx);
         };
-        <b>let</b> treasury_total = treasury_fee + platform_fee_half_to_treasury;
+        <b>let</b> treasury_total = treasury_fee + platform_fee_to_treasury;
         <b>if</b> (treasury_total &gt; 0) {
             <b>let</b> treasury_fee_coin = coin::split(&<b>mut</b> payment, treasury_total, ctx);
             transfer::public_transfer(treasury_fee_coin, <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">profile::get_treasury_address</a>(treasury));
         };
     };
-    (payment, fee_amount, creator_fee + platform_fee_half_to_creator, 0, treasury_fee + platform_fee_half_to_treasury)
+    (payment, fee_amount, creator_fee + platform_fee_to_creator, 0, treasury_fee + platform_fee_to_treasury)
 }
 </code></pre>
 

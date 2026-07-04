@@ -70,6 +70,7 @@ use crate::api::types::organization::{
     OrganizationLeaderboardSortGql, OrganizationStatsWindowGql, OrganizationType,
 };
 use crate::api::types::platform::{Platform, PlatformUserAccess};
+use crate::api::types::messaging::{MessagingAgentGroup, PaidMessageEscrow};
 use crate::api::types::poc::PocBeneficiaryVault;
 use crate::api::types::poc_username_beneficiary::PocUsernameBeneficiary;
 use crate::api::types::post::{CommentSummary, Post, ReactionSummary, RepostSummary, TipSummary};
@@ -79,7 +80,9 @@ use crate::api::types::protocol_configs::ProtocolConfigs;
 use crate::api::types::service_config::ServiceConfig;
 use crate::api::types::simulation_result::SimulationResult;
 use crate::api::types::social_config::{
-    InsuranceConfig, MyDataConfig, PocConfig, PostConfig, SpotConfig, SptExchangeConfig,
+    AiCreditConfig, EcosystemTreasury, InsuranceConfig, InsuranceConfiguration,
+    InsuranceRouterConfig, MemoryConfig, MessagingConfig, MyDataConfig, PlatformConfig, PocConfig,
+    PostConfig, ProfileConfig, SpotConfig, SptExchangeConfig, SubscriptionConfig,
 };
 use crate::api::types::spot::{
     SpotBet, SpotBetWithdrawal, SpotPayout, SpotRecord, SpotRefund, SpotResolution,
@@ -2199,20 +2202,195 @@ impl Query {
         )
     }
 
-    /// Insurance configuration. Returns null when social DB not configured or no config.
+    /// Insurance configuration (unified view: pricing + router limits). Returns null when social
+    /// DB not configured or neither side has been indexed.
     async fn insurance_configuration(
         &self,
         ctx: &Context<'_>,
-    ) -> Option<Result<Option<InsuranceConfig>, RpcError>> {
+    ) -> Option<Result<Option<InsuranceConfiguration>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let pricing = reader
+            .get_insurance_config()
+            .await
+            .map_err::<RpcError, _>(Into::into);
+        let router = reader
+            .get_insurance_router_config()
+            .await
+            .map_err::<RpcError, _>(Into::into);
+        Some(match (pricing, router) {
+            (Err(e), _) | (_, Err(e)) => Err(e),
+            (Ok(None), Ok(None)) => Ok(None),
+            (Ok(pricing), Ok(router)) => Ok(Some(InsuranceConfiguration::new(
+                pricing.map(InsuranceConfig::from_row),
+                router.map(InsuranceRouterConfig::from_row),
+            ))),
+        })
+    }
+
+    /// AI credit configuration. Returns null when social DB not configured or no config.
+    async fn ai_credit_configuration(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Option<Result<Option<AiCreditConfig>, RpcError>> {
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
         Some(
             reader
-                .get_insurance_config()
+                .get_ai_credit_config()
                 .await
                 .map_err(Into::into)
-                .map(|opt| opt.map(InsuranceConfig::from_row)),
+                .map(|opt| opt.map(AiCreditConfig::from_row)),
+        )
+    }
+
+    /// Paid-messaging configuration. Returns null when social DB not configured or no config.
+    async fn messaging_configuration(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Option<Result<Option<MessagingConfig>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_messaging_config()
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(MessagingConfig::from_row)),
+        )
+    }
+
+    /// Paid message escrow lifecycle rows for a wallet (latest status per message).
+    async fn paid_message_escrows(
+        &self,
+        ctx: &Context<'_>,
+        address: MySoAddress,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<PaidMessageEscrow>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let address = address.to_string();
+        let limit = limit.unwrap_or(50).min(200);
+        let offset = offset.unwrap_or(0);
+        Some(
+            reader
+                .get_paid_message_escrows_by_wallet(&address, limit, offset)
+                .await
+                .map_err(Into::into)
+                .map(|rows| rows.into_iter().map(PaidMessageEscrow::from_row).collect()),
+        )
+    }
+
+    /// Agent-created messaging groups for an organization.
+    async fn messaging_agent_groups(
+        &self,
+        ctx: &Context<'_>,
+        organization_id: String,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<MessagingAgentGroup>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(50).min(200);
+        let offset = offset.unwrap_or(0);
+        Some(
+            reader
+                .get_messaging_agent_groups_by_org(&organization_id, limit, offset)
+                .await
+                .map_err(Into::into)
+                .map(|rows| rows.into_iter().map(MessagingAgentGroup::from_row).collect()),
+        )
+    }
+
+    /// Subscription configuration. Returns null when social DB not configured or no config.
+    async fn subscription_configuration(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Option<Result<Option<SubscriptionConfig>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_subscription_config()
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(SubscriptionConfig::from_row)),
+        )
+    }
+
+    /// Profile configuration. Returns null when social DB not configured or no config.
+    async fn profile_configuration(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Option<Result<Option<ProfileConfig>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_profile_config()
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(ProfileConfig::from_row)),
+        )
+    }
+
+    /// Memory configuration. Returns null when social DB not configured or no config.
+    async fn memory_configuration(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Option<Result<Option<MemoryConfig>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_memory_config()
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(MemoryConfig::from_row)),
+        )
+    }
+
+    /// Platform configuration. Returns null when social DB not configured or no config.
+    async fn platform_configuration(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Option<Result<Option<PlatformConfig>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_platform_config()
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(PlatformConfig::from_row)),
+        )
+    }
+
+    /// Ecosystem treasury (treasury address + profile sale fee bps). Returns null when social DB
+    /// not configured or no treasury row indexed.
+    async fn ecosystem_treasury(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Option<Result<Option<EcosystemTreasury>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_ecosystem_treasury()
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(EcosystemTreasury::from_row)),
         )
     }
 

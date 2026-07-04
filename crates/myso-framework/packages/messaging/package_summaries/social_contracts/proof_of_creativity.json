@@ -351,6 +351,14 @@
           "type_": "u64"
         },
         {
+          "name": "max_disputes_per_post",
+          "type_": "u8"
+        },
+        {
+          "name": "min_vault_deposit_amount",
+          "type_": "u64"
+        },
+        {
           "name": "clock",
           "type_": {
             "Reference": [
@@ -389,9 +397,73 @@
       ],
       "return_": []
     },
-    "create_username_beneficiary": {
+    "max_disputes_per_post": {
       "source_index": 4,
       "index": 4,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u8"
+      ]
+    },
+    "min_vault_deposit_amount": {
+      "source_index": 5,
+      "index": 5,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "create_username_beneficiary": {
+      "source_index": 6,
+      "index": 6,
       "doc": " Provision a username beneficiary vault for an off-platform creator (admin only).",
       "attributes": [],
       "visibility": "Public",
@@ -550,8 +622,8 @@
       "return_": []
     },
     "end_username_beneficiary": {
-      "source_index": 5,
-      "index": 5,
+      "source_index": 7,
+      "index": 7,
       "doc": " End an active username beneficiary provision (admin only).",
       "attributes": [],
       "visibility": "Public",
@@ -724,8 +796,8 @@
       "return_": []
     },
     "claim_username_beneficiary": {
-      "source_index": 6,
-      "index": 6,
+      "source_index": 8,
+      "index": 8,
       "doc": " Oracle-verified claim of a provisioned username beneficiary.",
       "attributes": [],
       "visibility": "Public",
@@ -744,6 +816,24 @@
                     "name": "proof_of_creativity"
                   },
                   "name": "PoCConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "profile_config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "ProfileConfig",
                   "type_arguments": []
                 }
               }
@@ -938,8 +1028,8 @@
       "return_": []
     },
     "claim_username_beneficiary_vault_balance": {
-      "source_index": 7,
-      "index": 7,
+      "source_index": 9,
+      "index": 9,
       "doc": " Claim vault balance for a username-beneficiary-linked creator wallet (one-time join referral on first claim).",
       "attributes": [],
       "visibility": "Public",
@@ -1099,8 +1189,8 @@
       "return_": []
     },
     "mint_shared_poc_badge_object": {
-      "source_index": 8,
-      "index": 8,
+      "source_index": 10,
+      "index": 10,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -1196,8 +1286,8 @@
       ]
     },
     "run_analyze_and_update_post": {
-      "source_index": 9,
-      "index": 9,
+      "source_index": 11,
+      "index": 11,
       "doc": " Oracle analyzes content and updates post PoC status. Does not require a social token pool.\n `derivative_redirection_target`: wallet (0) or beneficiary vault (1) when similarity is detected.\n `embedded_audio_only_derivative`: VIDEO only — oracle detected match on embedded audio track; uses `audio_threshold` and `video_embedded_audio_redirect_bps` ceiling with the same delta ramp.\n `apply_explicit_outcome` + `explicit_poc_outcome == 4`: royalty-free — accumulation via beneficiary vault (same as escrow redirect mode).",
       "attributes": [],
       "visibility": "Private",
@@ -1414,8 +1504,8 @@
       "return_": []
     },
     "analyze_and_update_post": {
-      "source_index": 10,
-      "index": 10,
+      "source_index": 12,
+      "index": 12,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -1632,8 +1722,8 @@
       "return_": []
     },
     "analyze_and_update_post_sync_token_pool": {
-      "source_index": 11,
-      "index": 11,
+      "source_index": 13,
+      "index": 13,
       "doc": " Same as `analyze_and_update_post`, then mirrors PoC redirect fields onto `TokenPool` when the post has an SPT registry entry.",
       "attributes": [],
       "visibility": "Public",
@@ -1886,8 +1976,8 @@
       "return_": []
     },
     "claim_beneficiary_vault_balance": {
-      "source_index": 12,
-      "index": 12,
+      "source_index": 14,
+      "index": 14,
       "doc": " Claim accumulated balance for coin type `T` from a beneficiary vault (splits per config bps + optional referrer).",
       "attributes": [],
       "visibility": "Public",
@@ -2011,8 +2101,8 @@
       "return_": []
     },
     "submit_poc_dispute": {
-      "source_index": 13,
-      "index": 13,
+      "source_index": 15,
+      "index": 15,
       "doc": " Submit a PoC dispute with community voting",
       "attributes": [],
       "visibility": "Public",
@@ -2171,8 +2261,8 @@
       "return_": []
     },
     "vote_on_dispute": {
-      "source_index": 14,
-      "index": 14,
+      "source_index": 16,
+      "index": 16,
       "doc": " Cast a vote on a PoC dispute (community voting)",
       "attributes": [],
       "visibility": "Public",
@@ -2304,8 +2394,8 @@
       "return_": []
     },
     "finalize_dispute_voting_resolution": {
-      "source_index": 15,
-      "index": 15,
+      "source_index": 17,
+      "index": 17,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -2388,8 +2478,8 @@
       "return_": []
     },
     "resolve_dispute_voting": {
-      "source_index": 16,
-      "index": 16,
+      "source_index": 18,
+      "index": 18,
       "doc": " Resolve PoC dispute after voting period ends",
       "attributes": [],
       "visibility": "Public",
@@ -2472,8 +2562,8 @@
       "return_": []
     },
     "resolve_dispute_voting_sync_token_pool": {
-      "source_index": 17,
-      "index": 17,
+      "source_index": 19,
+      "index": 19,
       "doc": " Same as `resolve_dispute_voting`, then mirrors post PoC state onto `TokenPool` when the post has an SPT registry entry.",
       "attributes": [],
       "visibility": "Public",
@@ -2592,8 +2682,8 @@
       "return_": []
     },
     "claim_voting_reward": {
-      "source_index": 18,
-      "index": 18,
+      "source_index": 20,
+      "index": 20,
       "doc": " Claim voting rewards after dispute resolution",
       "attributes": [],
       "visibility": "Public",
@@ -2658,8 +2748,8 @@
       "return_": []
     },
     "assert_embed_audio_derivative_media_type": {
-      "source_index": 19,
-      "index": 19,
+      "source_index": 21,
+      "index": 21,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -2678,8 +2768,8 @@
       "return_": []
     },
     "similarity_redirect_percentage": {
-      "source_index": 20,
-      "index": 20,
+      "source_index": 22,
+      "index": 22,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -2704,8 +2794,8 @@
       ]
     },
     "bps_to_redirect_percent": {
-      "source_index": 21,
-      "index": 21,
+      "source_index": 23,
+      "index": 23,
       "doc": " Converts basis points (0-10000) to redirect percent 0-100 for `post::revenue_redirect_percentage` (nearest integer percent).",
       "attributes": [],
       "visibility": "Private",
@@ -2722,8 +2812,8 @@
       ]
     },
     "get_threshold_for_media_type": {
-      "source_index": 22,
-      "index": 22,
+      "source_index": 24,
+      "index": 24,
       "doc": " Get similarity threshold for a media type",
       "attributes": [],
       "visibility": "Private",
@@ -2758,8 +2848,8 @@
       ]
     },
     "is_authorized_oracle": {
-      "source_index": 23,
-      "index": 23,
+      "source_index": 25,
+      "index": 25,
       "doc": " Check if an address is the authorized oracle",
       "attributes": [],
       "visibility": "Public",
@@ -2794,8 +2884,8 @@
       ]
     },
     "get_registry_stats": {
-      "source_index": 24,
-      "index": 24,
+      "source_index": 26,
+      "index": 26,
       "doc": " Get registry statistics",
       "attributes": [],
       "visibility": "Public",
@@ -2829,8 +2919,8 @@
       ]
     },
     "has_poc_data": {
-      "source_index": 25,
-      "index": 25,
+      "source_index": 27,
+      "index": 27,
       "doc": " Check if a post has PoC data that can be disputed",
       "attributes": [],
       "visibility": "Public",
@@ -2861,8 +2951,8 @@
       ]
     },
     "get_dispute_voting_status": {
-      "source_index": 26,
-      "index": 26,
+      "source_index": 28,
+      "index": 28,
       "doc": " Get dispute voting status; `current_time_ms` should be `clock::timestamp_ms(clock)`.",
       "attributes": [],
       "visibility": "Public",
@@ -2899,8 +2989,8 @@
       ]
     },
     "get_dispute_stakes": {
-      "source_index": 27,
-      "index": 27,
+      "source_index": 29,
+      "index": 29,
       "doc": " Get dispute stake totals",
       "attributes": [],
       "visibility": "Public",
@@ -2933,8 +3023,8 @@
       ]
     },
     "has_user_voted": {
-      "source_index": 28,
-      "index": 28,
+      "source_index": 30,
+      "index": 30,
       "doc": " Check if user has already voted on dispute",
       "attributes": [],
       "visibility": "Public",
@@ -2969,8 +3059,8 @@
       ]
     },
     "config_version": {
-      "source_index": 29,
-      "index": 29,
+      "source_index": 31,
+      "index": 31,
       "doc": " Get the version of the PoC config",
       "attributes": [],
       "visibility": "Public",
@@ -3001,8 +3091,8 @@
       ]
     },
     "dispute_version": {
-      "source_index": 30,
-      "index": 30,
+      "source_index": 32,
+      "index": 32,
       "doc": " Get the version of a PoC dispute",
       "attributes": [],
       "visibility": "Public",
@@ -3033,8 +3123,8 @@
       ]
     },
     "registry_version": {
-      "source_index": 31,
-      "index": 31,
+      "source_index": 33,
+      "index": 33,
       "doc": " Get the version of the PoC registry",
       "attributes": [],
       "visibility": "Public",
@@ -3065,8 +3155,8 @@
       ]
     },
     "migrate_poc_config": {
-      "source_index": 32,
-      "index": 32,
+      "source_index": 34,
+      "index": 34,
       "doc": " Migration function for PoCConfig",
       "attributes": [],
       "visibility": "Public",
@@ -3131,8 +3221,8 @@
       "return_": []
     },
     "migrate_poc_dispute": {
-      "source_index": 33,
-      "index": 33,
+      "source_index": 35,
+      "index": 35,
       "doc": " Migration function for PoCDispute",
       "attributes": [],
       "visibility": "Public",
@@ -3197,8 +3287,8 @@
       "return_": []
     },
     "migrate_poc_registry": {
-      "source_index": 34,
-      "index": 34,
+      "source_index": 36,
+      "index": 36,
       "doc": " Migration function for PoCRegistry",
       "attributes": [],
       "visibility": "Public",
@@ -3263,8 +3353,8 @@
       "return_": []
     },
     "create_poc_admin_cap": {
-      "source_index": 35,
-      "index": 35,
+      "source_index": 37,
+      "index": 37,
       "doc": " Create a PoCAdminCap for bootstrap (package visibility only)\n This function is only callable by other modules in the same package",
       "attributes": [],
       "visibility": "Package",
@@ -3468,8 +3558,18 @@
             "doc": " One-time join-referral fee (bps of post-treasury gross) on first username-beneficiary vault claim.",
             "type_": "u64"
           },
-          "version": {
+          "max_disputes_per_post": {
             "index": 21,
+            "doc": " Max successful dispute submissions per post (lifetime).",
+            "type_": "u8"
+          },
+          "min_vault_deposit_amount": {
+            "index": 22,
+            "doc": " Minimum amount (per asset) accepted into a beneficiary vault deposit.",
+            "type_": "u64"
+          },
+          "version": {
+            "index": 23,
             "doc": " Version for upgrades",
             "type_": "u64"
           }
@@ -4399,8 +4499,18 @@
             "doc": null,
             "type_": "u64"
           },
-          "timestamp": {
+          "max_disputes_per_post": {
             "index": 20,
+            "doc": null,
+            "type_": "u8"
+          },
+          "min_vault_deposit_amount": {
+            "index": 21,
+            "doc": null,
+            "type_": "u64"
+          },
+          "timestamp": {
+            "index": 22,
             "doc": null,
             "type_": "u64"
           }

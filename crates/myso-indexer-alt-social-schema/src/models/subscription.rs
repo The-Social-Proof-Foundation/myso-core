@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::schema::{
     profile_subscription_services, profile_subscriptions, subscription_access_logs,
-    subscription_events, subscription_revenue,
+    subscription_config, subscription_events, subscription_revenue,
 };
 
 pub const MIN_SUBSCRIPTION_DURATION_DAYS: i64 = 1;
@@ -194,4 +194,39 @@ pub struct NewSubscriptionAccessLog {
     pub transaction_id: String,
     pub processing_success: bool,
     pub processing_error: Option<String>,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = subscription_config)]
+pub struct NewSubscriptionConfig {
+    pub updated_by: String,
+    pub billing_period_ms: i64,
+    pub max_renewal_months: i64,
+    pub version: i64,
+    pub updated_at: i64,
+    pub time: chrono::DateTime<chrono::Utc>,
+    pub transaction_id: String,
+}
+
+impl NewSubscriptionConfig {
+    pub fn from_event(
+        updated_by: String,
+        billing_period_ms: u64,
+        max_renewal_months: u64,
+        version: u64,
+        updated_at: u64,
+        transaction_id: String,
+    ) -> Self {
+        let time = chrono::DateTime::<chrono::Utc>::from_timestamp((updated_at / 1000) as i64, 0)
+            .unwrap_or_else(chrono::Utc::now);
+        Self {
+            updated_by,
+            billing_period_ms: billing_period_ms as i64,
+            max_renewal_months: max_renewal_months as i64,
+            version: version as i64,
+            updated_at: updated_at as i64,
+            time,
+            transaction_id,
+        }
+    }
 }

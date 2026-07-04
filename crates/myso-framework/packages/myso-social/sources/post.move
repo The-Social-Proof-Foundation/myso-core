@@ -33,7 +33,7 @@ module social_contracts::post {
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
     use social_contracts::profile::{Self, EcosystemTreasury};
     use social_contracts::poc_vault::{Self as poc_vault, PoCBeneficiaryVault};
-    use social_contracts::memory::{Self, MemoryAccount, ActingContext};
+    use social_contracts::memory::{Self, MemoryAccount, MemoryConfig, ActingContext};
 
     /// Error codes
     const EUnauthorized: u64 = 0;
@@ -620,6 +620,12 @@ module social_contracts::post {
         commenter_tip_percentage: u64,
         /// Percentage of tip that goes to reposter (remainder to original post owner)
         repost_tip_percentage: u64,
+        /// Minimum payment per view for promoted posts (MIST)
+        min_promotion_amount: u64,
+        /// Maximum payment per view for promoted posts (MIST)
+        max_promotion_amount: u64,
+        /// Minimum view duration for a promoted post view to count (ms)
+        min_view_duration_ms: u64,
         /// Version for upgrades
         version: u64,
     }
@@ -646,6 +652,12 @@ module social_contracts::post {
         commenter_tip_percentage: u64,
         /// New repost tip percentage value
         repost_tip_percentage: u64,
+        /// New min promotion amount value (MIST per view)
+        min_promotion_amount: u64,
+        /// New max promotion amount value (MIST per view)
+        max_promotion_amount: u64,
+        /// New min view duration value (ms)
+        min_view_duration_ms: u64,
     }
 
     /// Post created event
@@ -875,6 +887,9 @@ module social_contracts::post {
             max_reaction_length: MAX_REACTION_LENGTH,
             commenter_tip_percentage: COMMENTER_TIP_PERCENTAGE,
             repost_tip_percentage: REPOST_TIP_PERCENTAGE,
+            min_promotion_amount: MIN_PROMOTION_AMOUNT,
+            max_promotion_amount: MAX_PROMOTION_AMOUNT,
+            min_view_duration_ms: MIN_VIEW_DURATION,
             version: upgrade::current_version(),
         };
 
@@ -890,6 +905,9 @@ module social_contracts::post {
             max_reaction_length: MAX_REACTION_LENGTH,
             commenter_tip_percentage: COMMENTER_TIP_PERCENTAGE,
             repost_tip_percentage: REPOST_TIP_PERCENTAGE,
+            min_promotion_amount: MIN_PROMOTION_AMOUNT,
+            max_promotion_amount: MAX_PROMOTION_AMOUNT,
+            min_view_duration_ms: MIN_VIEW_DURATION,
         });
 
         // Create and share post configuration
@@ -917,6 +935,7 @@ module social_contracts::post {
 
     /// Resolve social actor: capability, principal platform join, block list, and approval gate.
     fun resolve_social_actor(
+        memory_config: &MemoryConfig,
         registry: &UsernameRegistry,
         platform: &platform::Platform,
         block_list_registry: &BlockListRegistry,
@@ -928,6 +947,7 @@ module social_contracts::post {
     ): ActingContext {
         let platform_id = object::uid_to_address(platform::id(platform));
         let acting = memory::resolve_actor_with_cap(
+            memory_config,
             memory_account,
             required_cap,
             option::some(platform_id),
@@ -1085,6 +1105,7 @@ module social_contracts::post {
         platform: &platform::Platform,
         block_list_registry: &block_list::BlockListRegistry,
         config: &PostConfig,
+        memory_config: &MemoryConfig,
         content: String,
         mut media_urls: Option<vector<String>>,
         mentions: Option<vector<address>>,
@@ -1104,6 +1125,7 @@ module social_contracts::post {
         ctx: &mut TxContext
     ) {
         let acting = resolve_social_actor(
+            memory_config,
             registry,
             platform,
             block_list_registry,
@@ -1289,6 +1311,7 @@ module social_contracts::post {
         platform: &platform::Platform,
         block_list_registry: &BlockListRegistry,
         config: &PostConfig,
+        memory_config: &MemoryConfig,
         memory_account: &MemoryAccount,
         parent_post: &mut Post,
         parent_comment_id: Option<address>,
@@ -1300,6 +1323,7 @@ module social_contracts::post {
         ctx: &mut TxContext
     ): address {
         let acting = resolve_social_actor(
+            memory_config,
             registry,
             platform,
             block_list_registry,
@@ -1437,6 +1461,7 @@ module social_contracts::post {
         platform: &platform::Platform,
         block_list_registry: &block_list::BlockListRegistry,
         config: &PostConfig,
+        memory_config: &MemoryConfig,
         original_post: &mut Post,
         mut content: Option<String>,
         mut media_urls: Option<vector<String>>,
@@ -1455,6 +1480,7 @@ module social_contracts::post {
         ctx: &mut TxContext
     ) {
         let acting = resolve_social_actor(
+            memory_config,
             registry,
             platform,
             block_list_registry,
@@ -1825,12 +1851,14 @@ module social_contracts::post {
         platform: &platform::Platform,
         block_list_registry: &block_list::BlockListRegistry,
         config: &PostConfig,
+        memory_config: &MemoryConfig,
         memory_account: &MemoryAccount,
         reaction: String,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
         let acting = resolve_social_actor(
+            memory_config,
             registry,
             platform,
             block_list_registry,
@@ -1946,6 +1974,7 @@ module social_contracts::post {
         beneficiary_vault: &mut PoCBeneficiaryVault,
         coins: &mut Coin<T>,
         amount: u64,
+        min_vault_deposit_amount: u64,
         memory_account: &MemoryAccount,
         clock: &Clock,
         ctx: &mut TxContext
@@ -1971,6 +2000,7 @@ module social_contracts::post {
             tipper,
             post_oid,
             true,
+            min_vault_deposit_amount,
             clock,
             ctx
         );
@@ -2049,6 +2079,7 @@ module social_contracts::post {
         tipper: address,
         object_id: address,
         is_post_event: bool,
+        min_vault_deposit_amount: u64,
         clock: &Clock,
         ctx: &mut TxContext
     ): u64 {
@@ -2092,6 +2123,7 @@ module social_contracts::post {
                     ben,
                     redirected_coins,
                     option::some(object_id),
+                    min_vault_deposit_amount,
                     clock,
                     ctx
                 );
@@ -2240,9 +2272,9 @@ module social_contracts::post {
         post.poc_redirection_kind = POC_REDIRECT_NONE;
     }
 
-    /// Increment after each successful `submit_poc_dispute` (max 2).
-    public(package) fun increment_poc_disputes_submitted(post: &mut Post) {
-        assert!(post.poc_disputes_submitted < 2, EDisputeCapReached);
+    /// Increment after each successful `submit_poc_dispute`.
+    public(package) fun increment_poc_disputes_submitted(post: &mut Post, max_disputes: u8) {
+        assert!(post.poc_disputes_submitted < max_disputes, EDisputeCapReached);
         post.poc_disputes_submitted = post.poc_disputes_submitted + 1;
     }
 
@@ -2251,6 +2283,7 @@ module social_contracts::post {
         post: &Post,
         beneficiary_vault: &mut PoCBeneficiaryVault,
         fee_coin: Coin<T>,
+        min_vault_deposit_amount: u64,
         clock: &Clock,
         ctx: &TxContext
     ) {
@@ -2265,6 +2298,7 @@ module social_contracts::post {
             ben,
             fee_coin,
             option::some(get_id_address(post)),
+            min_vault_deposit_amount,
             clock,
             ctx
         );
@@ -2280,6 +2314,7 @@ module social_contracts::post {
         vault_for_original: &mut PoCBeneficiaryVault,
         coin: &mut Coin<T>,
         amount: u64,
+        min_vault_deposit_amount: u64,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
@@ -2311,6 +2346,7 @@ module social_contracts::post {
                 tipper,
                 poid,
                 true,
+                min_vault_deposit_amount,
                 clock,
                 ctx
             );
@@ -2342,6 +2378,7 @@ module social_contracts::post {
                 tipper,
                 poid,
                 true,
+                min_vault_deposit_amount,
                 clock,
                 ctx
             );
@@ -2354,6 +2391,7 @@ module social_contracts::post {
                 tipper,
                 opoid,
                 true,
+                min_vault_deposit_amount,
                 clock,
                 ctx
             );
@@ -2392,6 +2430,7 @@ module social_contracts::post {
         beneficiary_vault: &mut PoCBeneficiaryVault,
         coin: &mut Coin<T>,
         amount: u64,
+        min_vault_deposit_amount: u64,
         memory_account: &MemoryAccount,
         clock: &Clock,
         ctx: &mut TxContext
@@ -2417,6 +2456,7 @@ module social_contracts::post {
             tipper,
             poid,
             true,
+            min_vault_deposit_amount,
             clock,
             ctx
         );
@@ -2767,12 +2807,14 @@ module social_contracts::post {
         platform: &platform::Platform,
         block_list_registry: &block_list::BlockListRegistry,
         config: &PostConfig,
+        memory_config: &MemoryConfig,
         memory_account: &MemoryAccount,
         reaction: String,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
         let acting = resolve_social_actor(
+            memory_config,
             registry,
             platform,
             block_list_registry,
@@ -2960,6 +3002,9 @@ module social_contracts::post {
                 max_reaction_length: MAX_REACTION_LENGTH,
                 commenter_tip_percentage: COMMENTER_TIP_PERCENTAGE,
                 repost_tip_percentage: REPOST_TIP_PERCENTAGE,
+                min_promotion_amount: MIN_PROMOTION_AMOUNT,
+                max_promotion_amount: MAX_PROMOTION_AMOUNT,
+                min_view_duration_ms: MIN_VIEW_DURATION,
                 version: upgrade::current_version(),
             }
         );
@@ -3481,6 +3526,9 @@ module social_contracts::post {
         max_reaction_length: u64,
         commenter_tip_percentage: u64,
         repost_tip_percentage: u64,
+        min_promotion_amount: u64,
+        max_promotion_amount: u64,
+        min_view_duration_ms: u64,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
@@ -3490,7 +3538,9 @@ module social_contracts::post {
         assert!(max_content_length > 0, EInvalidConfig);
         assert!(max_media_urls > 0, EInvalidConfig);
         assert!(max_mentions > 0, EInvalidConfig);
-        
+        assert!(min_promotion_amount > 0, EInvalidConfig);
+        assert!(max_promotion_amount >= min_promotion_amount, EInvalidConfig);
+
         // Update config
         config.max_content_length = max_content_length;
         config.max_media_urls = max_media_urls;
@@ -3500,7 +3550,10 @@ module social_contracts::post {
         config.max_reaction_length = max_reaction_length;
         config.commenter_tip_percentage = commenter_tip_percentage;
         config.repost_tip_percentage = repost_tip_percentage;
-        
+        config.min_promotion_amount = min_promotion_amount;
+        config.max_promotion_amount = max_promotion_amount;
+        config.min_view_duration_ms = min_view_duration_ms;
+
         // Emit update event
         event::emit(PostParametersUpdatedEvent {
             updated_by: tx_context::sender(ctx),
@@ -3513,6 +3566,9 @@ module social_contracts::post {
             max_reaction_length,
             commenter_tip_percentage,
             repost_tip_percentage,
+            min_promotion_amount,
+            max_promotion_amount,
+            min_view_duration_ms,
         });
     }
 
@@ -3523,6 +3579,7 @@ module social_contracts::post {
         platform: &platform::Platform,
         block_list_registry: &block_list::BlockListRegistry,
         config: &PostConfig,
+        memory_config: &MemoryConfig,
         content: String,
         mut media_urls: Option<vector<String>>,
         mentions: Option<vector<address>>,
@@ -3539,6 +3596,7 @@ module social_contracts::post {
         ctx: &mut TxContext
     ) {
         let acting = resolve_social_actor(
+            memory_config,
             registry,
             platform,
             block_list_registry,
@@ -3556,8 +3614,8 @@ module social_contracts::post {
         let action_identity_class = memory::acting_identity_class(&acting);
         
         // Validate promotion parameters
-        assert!(payment_per_view >= MIN_PROMOTION_AMOUNT, EPromotionAmountTooLow);
-        assert!(payment_per_view <= MAX_PROMOTION_AMOUNT, EPromotionAmountTooHigh);
+        assert!(payment_per_view >= config.min_promotion_amount, EPromotionAmountTooLow);
+        assert!(payment_per_view <= config.max_promotion_amount, EPromotionAmountTooHigh);
         assert!(coin::value(&promotion_budget) >= payment_per_view, EInsufficientPromotionFunds);
         
         assert_mydata_id_allowed_for_owner(owner, mydata_id, mydata_registry);
@@ -3721,6 +3779,7 @@ module social_contracts::post {
     public fun confirm_promoted_post_view(
         post: &Post,
         promotion_data: &mut PromotionData,
+        config: &PostConfig,
         platform_obj: &platform::Platform,
         group: &PermissionedGroup<platform::PlatformPackage>,
         viewer_address: address,
@@ -3754,7 +3813,7 @@ module social_contracts::post {
         assert!(promotion_data.active, EPromotionInactive);
         
         // Verify view duration meets minimum requirement
-        assert!(view_duration >= MIN_VIEW_DURATION, EInvalidViewDuration);
+        assert!(view_duration >= config.min_view_duration_ms, EInvalidViewDuration);
         
         // Verify user hasn't already been paid for viewing this post
         assert!(!table::contains(&promotion_data.paid_viewers, viewer_address), EUserAlreadyViewed);
@@ -3995,6 +4054,9 @@ module social_contracts::post {
                 max_reaction_length: MAX_REACTION_LENGTH,
                 commenter_tip_percentage: COMMENTER_TIP_PERCENTAGE,
                 repost_tip_percentage: REPOST_TIP_PERCENTAGE,
+                min_promotion_amount: MIN_PROMOTION_AMOUNT,
+                max_promotion_amount: MAX_PROMOTION_AMOUNT,
+                min_view_duration_ms: MIN_VIEW_DURATION,
                 version: upgrade::current_version(),
             }
         );

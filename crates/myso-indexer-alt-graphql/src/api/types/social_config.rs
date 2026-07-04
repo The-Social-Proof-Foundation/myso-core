@@ -4,11 +4,17 @@
 use async_graphql::Object;
 
 use crate::api::scalars::date_time::DateTime;
-use myso_indexer_alt_social_reader::insurance::InsuranceConfigRow;
+use myso_indexer_alt_social_reader::ai_credit::AiCreditConfigRow;
+use myso_indexer_alt_social_reader::insurance::{InsuranceConfigRow, InsuranceRouterConfigRow};
+use myso_indexer_alt_social_reader::memory::MemoryConfigRow;
+use myso_indexer_alt_social_reader::messaging::MessagingConfigRow;
 use myso_indexer_alt_social_reader::mydata::MyDataConfigRow;
+use myso_indexer_alt_social_reader::platform::PlatformConfigRow;
 use myso_indexer_alt_social_reader::post::PostConfigRow;
+use myso_indexer_alt_social_reader::profile::{EcosystemTreasuryRow, ProfileConfigRow};
 use myso_indexer_alt_social_reader::spot::SpotConfigRow;
 use myso_indexer_alt_social_reader::spt::SptExchangeConfigRow;
+use myso_indexer_alt_social_reader::subscription::SubscriptionConfigRow;
 use myso_indexer_alt_social_schema::models::PocConfigRow;
 
 #[derive(Clone)]
@@ -131,9 +137,29 @@ impl SptExchangeConfig {
         self.inner.trading_enabled
     }
 
+    /// Share of the non-platform platform fee routed to the creator, in basis points (10000 = 100%).
+    async fn non_platform_platform_to_creator_bps(&self) -> i64 {
+        self.inner.non_platform_platform_to_creator_bps
+    }
+
+    /// Share of the non-platform platform fee routed to the ecosystem treasury, in basis points (10000 = 100%).
+    async fn non_platform_platform_to_treasury_bps(&self) -> i64 {
+        self.inner.non_platform_platform_to_treasury_bps
+    }
+
     /// Last updated timestamp (epoch milliseconds).
     async fn updated_at(&self) -> i64 {
         self.inner.updated_at
+    }
+
+    /// Configuration version.
+    async fn version(&self) -> i64 {
+        self.inner.version
+    }
+
+    /// When the configuration was last updated.
+    async fn time(&self) -> DateTime {
+        DateTime::from_chrono(self.inner.time)
     }
 
     /// Transaction ID of last update.
@@ -200,6 +226,21 @@ impl PostConfig {
         self.inner.repost_tip_percentage
     }
 
+    /// Minimum promotion amount a post owner must deposit to start a promoted post campaign (MYSO base units).
+    async fn min_promotion_amount(&self) -> i64 {
+        self.inner.min_promotion_amount
+    }
+
+    /// Maximum promotion amount a post owner may deposit for a single promoted post campaign (MYSO base units).
+    async fn max_promotion_amount(&self) -> i64 {
+        self.inner.max_promotion_amount
+    }
+
+    /// Minimum view duration (ms) required for a promoted-post view to count toward the campaign.
+    async fn min_view_duration_ms(&self) -> i64 {
+        self.inner.min_view_duration_ms
+    }
+
     /// Configuration version.
     async fn version(&self) -> i64 {
         self.inner.version
@@ -208,6 +249,16 @@ impl PostConfig {
     /// Last updated timestamp (epoch milliseconds).
     async fn updated_at(&self) -> i64 {
         self.inner.updated_at
+    }
+
+    /// When the configuration was last updated.
+    async fn time(&self) -> DateTime {
+        DateTime::from_chrono(self.inner.time)
+    }
+
+    /// Transaction ID of the last config update.
+    async fn transaction_id(&self) -> &str {
+        &self.inner.transaction_id
     }
 }
 
@@ -317,6 +368,16 @@ impl PocConfig {
         self.inner.username_beneficiary_join_referral_bps
     }
 
+    /// Maximum number of disputes allowed per post.
+    async fn max_disputes_per_post(&self) -> i64 {
+        self.inner.max_disputes_per_post.into()
+    }
+
+    /// Minimum vault deposit amount required to submit a dispute (MYSO base units).
+    async fn min_vault_deposit_amount(&self) -> i64 {
+        self.inner.min_vault_deposit_amount
+    }
+
     /// Address that last updated PoC configuration.
     async fn updated_by(&self) -> &str {
         &self.inner.updated_by
@@ -327,7 +388,12 @@ impl PocConfig {
         self.inner.updated_at
     }
 
-    /// Transaction digest for the indexer row for this PoC configuration update.
+    /// When the configuration was last updated.
+    async fn time(&self) -> DateTime {
+        DateTime::from_chrono(self.inner.time)
+    }
+
+    /// Transaction ID of the last config update.
     async fn transaction_id(&self) -> &str {
         &self.inner.transaction_id
     }
@@ -376,14 +442,14 @@ impl SpotConfig {
         self.inner.payout_delay_ms
     }
 
-    /// Fee in basis points.
-    async fn fee_bps(&self) -> i64 {
-        self.inner.fee_bps
+    /// Platform fee as a direct percentage of gross bet amount, in basis points (10000 = 100%).
+    async fn platform_fee_bps(&self) -> i64 {
+        self.inner.platform_fee_bps
     }
 
-    /// Fee split to platform in basis points.
-    async fn fee_split_bps_platform(&self) -> i64 {
-        self.inner.fee_split_bps_platform
+    /// Ecosystem treasury fee as a direct percentage of gross bet amount, in basis points (10000 = 100%).
+    async fn ecosystem_fee_bps(&self) -> i64 {
+        self.inner.ecosystem_fee_bps
     }
 
     /// Oracle address for resolution.
@@ -396,14 +462,39 @@ impl SpotConfig {
         self.inner.max_single_bet
     }
 
+    /// Minimum number of betting options required on a SPoT record.
+    async fn min_betting_options(&self) -> i64 {
+        self.inner.min_betting_options
+    }
+
+    /// Maximum number of betting options allowed on a SPoT record.
+    async fn max_betting_options(&self) -> i64 {
+        self.inner.max_betting_options
+    }
+
+    /// Minimum reasoning text length required when creating a SPoT record.
+    async fn min_reasoning_length(&self) -> i64 {
+        self.inner.min_reasoning_length
+    }
+
+    /// Maximum reasoning text length allowed when creating a SPoT record.
+    async fn max_reasoning_length(&self) -> i64 {
+        self.inner.max_reasoning_length
+    }
+
+    /// Maximum number of evidence URLs allowed on a SPoT record.
+    async fn max_evidence_urls(&self) -> i64 {
+        self.inner.max_evidence_urls
+    }
+
     /// Configuration version.
     async fn version(&self) -> i64 {
         self.inner.version
     }
 
     /// Last updated timestamp (epoch milliseconds).
-    async fn timestamp_ms(&self) -> i64 {
-        self.inner.timestamp_ms
+    async fn updated_at(&self) -> i64 {
+        self.inner.updated_at
     }
 
     /// When the configuration was last updated.
@@ -455,9 +546,29 @@ impl MyDataConfig {
         self.inner.max_free_access_grants
     }
 
+    /// Maximum encryption id byte length accepted when creating a MyData record.
+    async fn max_encryption_id_bytes(&self) -> i64 {
+        self.inner.max_encryption_id_bytes
+    }
+
+    /// Configuration version.
+    async fn version(&self) -> i64 {
+        self.inner.version
+    }
+
     /// Last updated timestamp (epoch milliseconds).
-    async fn timestamp_ms(&self) -> i64 {
-        self.inner.timestamp_ms
+    async fn updated_at(&self) -> i64 {
+        self.inner.updated_at
+    }
+
+    /// When the configuration was last updated.
+    async fn time(&self) -> DateTime {
+        DateTime::from_chrono(self.inner.time)
+    }
+
+    /// Transaction ID of the last config update.
+    async fn transaction_id(&self) -> &str {
+        &self.inner.transaction_id
     }
 }
 
@@ -510,8 +621,8 @@ impl InsuranceConfig {
     }
 
     /// Last updated timestamp (epoch milliseconds).
-    async fn timestamp_ms(&self) -> i64 {
-        self.inner.timestamp_ms
+    async fn updated_at(&self) -> i64 {
+        self.inner.updated_at
     }
 
     /// When the configuration was last updated.
@@ -582,5 +693,580 @@ impl InsuranceConfig {
     /// Exposure curve parameter K, in basis points.
     async fn exposure_k_bps(&self) -> i64 {
         self.inner.exposure_k_bps
+    }
+
+    /// Base odds multiplier in basis points applied in `compute_spot_risk_quote` (replaces the prior hardcoded 5000 bps).
+    async fn odds_base_bps(&self) -> i64 {
+        self.inner.odds_base_bps
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct AiCreditConfig {
+    inner: AiCreditConfigRow,
+}
+
+impl AiCreditConfig {
+    pub(crate) fn from_row(inner: AiCreditConfigRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl AiCreditConfig {
+    /// Address that last updated the configuration.
+    async fn updated_by(&self) -> &str {
+        &self.inner.updated_by
+    }
+
+    /// Hex-encoded ed25519 public key the AI credit oracle uses to sign usage receipts.
+    async fn oracle_pubkey_hex(&self) -> &str {
+        &self.inner.oracle_pubkey_hex
+    }
+
+    /// Treasury address that receives AI credit fees.
+    async fn treasury_address(&self) -> &str {
+        &self.inner.treasury_address
+    }
+
+    /// Minimum deposit (in MYSO base units) required to open an AI credit balance.
+    async fn min_deposit_mist(&self) -> i64 {
+        self.inner.min_deposit_mist
+    }
+
+    /// Maximum single settlement amount (in MYSO base units) permitted per usage receipt.
+    async fn max_single_settlement_mist(&self) -> i64 {
+        self.inner.max_single_settlement_mist
+    }
+
+    /// Time-to-live (ms) for a usage receipt before it is considered stale.
+    async fn receipt_ttl_ms(&self) -> i64 {
+        self.inner.receipt_ttl_ms
+    }
+
+    /// Markup in basis points applied on top of oracle AI credit pricing (10000 = 100%).
+    async fn oracle_markup_bps(&self) -> i64 {
+        self.inner.oracle_markup_bps
+    }
+
+    /// Catalog version label carried by the AI credit pricing catalog, when set.
+    async fn catalog_version(&self) -> Option<&str> {
+        self.inner.catalog_version.as_deref()
+    }
+
+    /// Configuration version.
+    async fn version(&self) -> i64 {
+        self.inner.version
+    }
+
+    /// Last updated timestamp (epoch milliseconds).
+    async fn updated_at(&self) -> i64 {
+        self.inner.updated_at
+    }
+
+    /// When the configuration was last updated.
+    async fn time(&self) -> DateTime {
+        DateTime::from_chrono(self.inner.time)
+    }
+
+    /// Transaction ID of the last config update.
+    async fn transaction_id(&self) -> &str {
+        &self.inner.transaction_id
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct MessagingConfig {
+    inner: MessagingConfigRow,
+}
+
+impl MessagingConfig {
+    pub(crate) fn from_row(inner: MessagingConfigRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl MessagingConfig {
+    /// Address that last updated the configuration.
+    async fn updated_by(&self) -> &str {
+        &self.inner.updated_by
+    }
+
+    /// Platform fee in basis points charged on paid messages (10000 = 100%).
+    async fn paid_msg_platform_fee_bps(&self) -> i64 {
+        self.inner.paid_msg_platform_fee_bps
+    }
+
+    /// Ecosystem treasury fee in basis points charged on paid messages (10000 = 100%).
+    async fn paid_msg_treasury_fee_bps(&self) -> i64 {
+        self.inner.paid_msg_treasury_fee_bps
+    }
+
+    /// Payment expiration window in milliseconds for paid-message escrow claims.
+    async fn payment_expiration_ms(&self) -> i64 {
+        self.inner.payment_expiration_ms
+    }
+
+    /// Minimum character count required for a paid-message reply.
+    async fn min_reply_chars(&self) -> i64 {
+        self.inner.min_reply_chars
+    }
+
+    /// Maximum byte length accepted for a paid-message dedupe key.
+    async fn max_dedupe_key_bytes(&self) -> i64 {
+        self.inner.max_dedupe_key_bytes
+    }
+
+    /// Configuration version.
+    async fn version(&self) -> i64 {
+        self.inner.version
+    }
+
+    /// Last updated timestamp (epoch milliseconds).
+    async fn updated_at(&self) -> i64 {
+        self.inner.updated_at
+    }
+
+    /// When the configuration was last updated.
+    async fn time(&self) -> DateTime {
+        DateTime::from_chrono(self.inner.time)
+    }
+
+    /// Transaction ID of the last config update.
+    async fn transaction_id(&self) -> &str {
+        &self.inner.transaction_id
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct SubscriptionConfig {
+    inner: SubscriptionConfigRow,
+}
+
+impl SubscriptionConfig {
+    pub(crate) fn from_row(inner: SubscriptionConfigRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl SubscriptionConfig {
+    /// Address that last updated the configuration.
+    async fn updated_by(&self) -> &str {
+        &self.inner.updated_by
+    }
+
+    /// Billing period duration in milliseconds.
+    async fn billing_period_ms(&self) -> i64 {
+        self.inner.billing_period_ms
+    }
+
+    /// Maximum number of renewal months permitted per subscription.
+    async fn max_renewal_months(&self) -> i64 {
+        self.inner.max_renewal_months
+    }
+
+    /// Configuration version.
+    async fn version(&self) -> i64 {
+        self.inner.version
+    }
+
+    /// Last updated timestamp (epoch milliseconds).
+    async fn updated_at(&self) -> i64 {
+        self.inner.updated_at
+    }
+
+    /// When the configuration was last updated.
+    async fn time(&self) -> DateTime {
+        DateTime::from_chrono(self.inner.time)
+    }
+
+    /// Transaction ID of the last config update.
+    async fn transaction_id(&self) -> &str {
+        &self.inner.transaction_id
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct ProfileConfig {
+    inner: ProfileConfigRow,
+}
+
+impl ProfileConfig {
+    pub(crate) fn from_row(inner: ProfileConfigRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl ProfileConfig {
+    /// Address that last updated the configuration.
+    async fn updated_by(&self) -> &str {
+        &self.inner.updated_by
+    }
+
+    /// Maximum number of vesting pieces allowed on a profile vesting schedule.
+    async fn max_vesting_pieces(&self) -> i64 {
+        self.inner.max_vesting_pieces
+    }
+
+    /// Minimum curve factor accepted for profile vesting curves.
+    async fn curve_factor_min(&self) -> i64 {
+        self.inner.curve_factor_min
+    }
+
+    /// Maximum curve factor accepted for profile vesting curves.
+    async fn curve_factor_max(&self) -> i64 {
+        self.inner.curve_factor_max
+    }
+
+    /// Precision divisor used when interpreting curve factors.
+    async fn curve_precision(&self) -> i64 {
+        self.inner.curve_precision
+    }
+
+    /// Minimum divisor accepted for the claim threshold on profile vesting.
+    async fn min_claim_threshold_divisor(&self) -> i64 {
+        self.inner.min_claim_threshold_divisor
+    }
+
+    /// Minimum username length enforced at profile creation.
+    async fn min_username_length(&self) -> i64 {
+        self.inner.min_username_length
+    }
+
+    /// Maximum username length enforced at profile creation.
+    async fn max_username_length(&self) -> i64 {
+        self.inner.max_username_length
+    }
+
+    /// Configuration version.
+    async fn version(&self) -> i64 {
+        self.inner.version
+    }
+
+    /// Last updated timestamp (epoch milliseconds).
+    async fn updated_at(&self) -> i64 {
+        self.inner.updated_at
+    }
+
+    /// When the configuration was last updated.
+    async fn time(&self) -> DateTime {
+        DateTime::from_chrono(self.inner.time)
+    }
+
+    /// Transaction ID of the last config update.
+    async fn transaction_id(&self) -> &str {
+        &self.inner.transaction_id
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct MemoryConfig {
+    inner: MemoryConfigRow,
+}
+
+impl MemoryConfig {
+    pub(crate) fn from_row(inner: MemoryConfigRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl MemoryConfig {
+    /// Address that last updated the configuration.
+    async fn updated_by(&self) -> &str {
+        &self.inner.updated_by
+    }
+
+    /// Maximum number of agentic organizations a single user may own.
+    async fn max_organizations_per_user(&self) -> i64 {
+        self.inner.max_organizations_per_user.into()
+    }
+
+    /// Cooldown (ms) between organization category updates.
+    async fn org_category_update_cooldown_ms(&self) -> i64 {
+        self.inner.org_category_update_cooldown_ms
+    }
+
+    /// Maximum agent nesting depth allowed in a memory hierarchy.
+    async fn max_agent_depth(&self) -> i64 {
+        self.inner.max_agent_depth.into()
+    }
+
+    /// Maximum byte length accepted for a memory label.
+    async fn max_label_length(&self) -> i64 {
+        self.inner.max_label_length
+    }
+
+    /// Maximum byte length accepted for an organization name.
+    async fn max_org_name_length(&self) -> i64 {
+        self.inner.max_org_name_length
+    }
+
+    /// Maximum byte length accepted for an organization description.
+    async fn max_org_description_length(&self) -> i64 {
+        self.inner.max_org_description_length
+    }
+
+    /// Configuration version.
+    async fn version(&self) -> i64 {
+        self.inner.version
+    }
+
+    /// Last updated timestamp (epoch milliseconds).
+    async fn updated_at(&self) -> i64 {
+        self.inner.updated_at
+    }
+
+    /// When the configuration was last updated.
+    async fn time(&self) -> DateTime {
+        DateTime::from_chrono(self.inner.time)
+    }
+
+    /// Transaction ID of the last config update.
+    async fn transaction_id(&self) -> &str {
+        &self.inner.transaction_id
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct PlatformConfig {
+    inner: PlatformConfigRow,
+}
+
+impl PlatformConfig {
+    pub(crate) fn from_row(inner: PlatformConfigRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl PlatformConfig {
+    /// Address that last updated the configuration.
+    async fn updated_by(&self) -> &str {
+        &self.inner.updated_by
+    }
+
+    /// Maximum reasoning text length accepted for platform-level submissions.
+    async fn max_reasoning_length(&self) -> i64 {
+        self.inner.max_reasoning_length
+    }
+
+    /// Maximum byte length accepted for a platform cover photo URL.
+    async fn max_cover_photo_url_length(&self) -> i64 {
+        self.inner.max_cover_photo_url_length
+    }
+
+    /// Maximum number of media previews allowed on a platform.
+    async fn max_media_previews(&self) -> i64 {
+        self.inner.max_media_previews
+    }
+
+    /// Maximum byte length accepted for a single media preview URL.
+    async fn max_media_preview_url_length(&self) -> i64 {
+        self.inner.max_media_preview_url_length
+    }
+
+    /// Maximum byte length accepted for a platform badge name.
+    async fn max_badge_name_length(&self) -> i64 {
+        self.inner.max_badge_name_length
+    }
+
+    /// Maximum byte length accepted for a platform badge description.
+    async fn max_badge_description_length(&self) -> i64 {
+        self.inner.max_badge_description_length
+    }
+
+    /// Maximum byte length accepted for a platform badge media URL.
+    async fn max_badge_media_url_length(&self) -> i64 {
+        self.inner.max_badge_media_url_length
+    }
+
+    /// Maximum byte length accepted for a platform badge icon URL.
+    async fn max_badge_icon_url_length(&self) -> i64 {
+        self.inner.max_badge_icon_url_length
+    }
+
+    /// Configuration version.
+    async fn version(&self) -> i64 {
+        self.inner.version
+    }
+
+    /// Last updated timestamp (epoch milliseconds).
+    async fn updated_at(&self) -> i64 {
+        self.inner.updated_at
+    }
+
+    /// When the configuration was last updated.
+    async fn time(&self) -> DateTime {
+        DateTime::from_chrono(self.inner.time)
+    }
+
+    /// Transaction ID of the last config update.
+    async fn transaction_id(&self) -> &str {
+        &self.inner.transaction_id
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct EcosystemTreasury {
+    inner: EcosystemTreasuryRow,
+}
+
+impl EcosystemTreasury {
+    pub(crate) fn from_row(inner: EcosystemTreasuryRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl EcosystemTreasury {
+    /// Treasury address that receives ecosystem fees (e.g. profile sale fees).
+    async fn treasury_address(&self) -> &str {
+        &self.inner.treasury_address
+    }
+
+    /// Fee in basis points taken on profile sales (10000 = 100%).
+    async fn profile_sale_fee_bps(&self) -> i64 {
+        self.inner.profile_sale_fee_bps
+    }
+
+    /// Address that last updated the configuration.
+    async fn updated_by(&self) -> &str {
+        &self.inner.updated_by
+    }
+
+    /// Configuration version.
+    async fn version(&self) -> i64 {
+        self.inner.version
+    }
+
+    /// Last updated timestamp (epoch milliseconds).
+    async fn updated_at(&self) -> i64 {
+        self.inner.updated_at
+    }
+
+    /// When the configuration was last updated.
+    async fn time(&self) -> DateTime {
+        DateTime::from_chrono(self.inner.time)
+    }
+
+    /// Transaction ID of the last config update.
+    async fn transaction_id(&self) -> &str {
+        &self.inner.transaction_id
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct InsuranceRouterConfig {
+    inner: InsuranceRouterConfigRow,
+}
+
+impl InsuranceRouterConfig {
+    pub(crate) fn from_row(inner: InsuranceRouterConfigRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl InsuranceRouterConfig {
+    /// Address that last updated the configuration.
+    async fn updated_by(&self) -> &str {
+        &self.inner.updated_by
+    }
+
+    /// Whether the coverage router is enabled.
+    async fn router_enabled(&self) -> bool {
+        self.inner.router_enabled
+    }
+
+    /// Whether the coverage router is paused.
+    async fn router_paused(&self) -> bool {
+        self.inner.router_paused
+    }
+
+    /// Maximum route reserve that may be locked across a single market.
+    async fn max_route_reserve_market(&self) -> i64 {
+        self.inner.max_route_reserve_market
+    }
+
+    /// Maximum route reserve that may be locked for a single user across routes.
+    async fn max_route_reserve_user(&self) -> i64 {
+        self.inner.max_route_reserve_user
+    }
+
+    /// Maximum route reserve that may be locked against a single SPoT option.
+    async fn max_route_reserve_option(&self) -> i64 {
+        self.inner.max_route_reserve_option
+    }
+
+    /// Maximum vault concentration allowed, in basis points (10000 = 100%).
+    async fn max_vault_concentration_bps(&self) -> i64 {
+        self.inner.max_vault_concentration_bps
+    }
+
+    /// Minimum vault health factor required, in basis points (10000 = 100%).
+    async fn min_vault_health_factor_bps(&self) -> i64 {
+        self.inner.min_vault_health_factor_bps
+    }
+
+    /// Maximum number of legs permitted in a single coverage route (enforced at runtime).
+    async fn max_route_legs(&self) -> i64 {
+        self.inner.max_route_legs
+    }
+
+    /// Configuration version.
+    async fn version(&self) -> i64 {
+        self.inner.version
+    }
+
+    /// Last updated timestamp (epoch milliseconds).
+    async fn updated_at(&self) -> i64 {
+        self.inner.updated_at
+    }
+
+    /// When the configuration was last updated.
+    async fn time(&self) -> DateTime {
+        DateTime::from_chrono(self.inner.time)
+    }
+
+    /// Transaction ID of the last config update.
+    async fn transaction_id(&self) -> &str {
+        &self.inner.transaction_id
+    }
+}
+
+/// Unified GraphQL view over the three on-chain insurance configuration objects
+/// (`InsuranceConfig` pricing, `InsuranceRouterConfig` router limits). The underlying
+/// objects remain separate on-chain and in the indexer; this type only aggregates them
+/// for read convenience. `pricing` or `router` may be `null` independently when one side
+/// has not yet been indexed.
+#[derive(Clone)]
+pub(crate) struct InsuranceConfiguration {
+    pub(crate) pricing: Option<InsuranceConfig>,
+    pub(crate) router: Option<InsuranceRouterConfig>,
+}
+
+impl InsuranceConfiguration {
+    pub(crate) fn new(
+        pricing: Option<InsuranceConfig>,
+        router: Option<InsuranceRouterConfig>,
+    ) -> Self {
+        Self { pricing, router }
+    }
+}
+
+#[Object]
+impl InsuranceConfiguration {
+    /// Insurance pricing config (risk pricing, odds, exposure, fee bps).
+    async fn pricing(&self) -> Option<&InsuranceConfig> {
+        self.pricing.as_ref()
+    }
+
+    /// Insurance router config (reserve limits, vault health, max route legs).
+    async fn router(&self) -> Option<&InsuranceRouterConfig> {
+        self.router.as_ref()
     }
 }

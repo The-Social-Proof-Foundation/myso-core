@@ -12,6 +12,7 @@ use myso_pg_db::Db;
 use serde::Serialize;
 
 use crate::error::SocialError;
+use crate::reader::types::MemoryConfigInfo;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct SubAgentListResponse {
@@ -118,4 +119,23 @@ pub(crate) async fn list_sub_agents(
         sub_agents,
         total_count,
     })
+}
+
+pub(crate) async fn get_memory_configuration(
+    db: &Db,
+) -> Result<Option<MemoryConfigInfo>, SocialError> {
+    let mut conn = db.connect().await?;
+    let query = "
+        SELECT updated_by, max_organizations_per_user, org_category_update_cooldown_ms,
+               max_agent_depth, max_label_length, max_org_name_length, max_org_description_length,
+               version, updated_at
+        FROM memory_config
+        ORDER BY time DESC
+        LIMIT 1
+    ";
+    let result = diesel::sql_query(query)
+        .get_result::<MemoryConfigInfo>(&mut conn)
+        .await
+        .optional()?;
+    Ok(result)
 }

@@ -329,6 +329,12 @@ struct PostParametersUpdatedEvent {
     commenter_tip_percentage: u64,
     #[serde(default, deserialize_with = "de_u64")]
     repost_tip_percentage: u64,
+    #[serde(default, deserialize_with = "de_u64")]
+    min_promotion_amount: u64,
+    #[serde(default, deserialize_with = "de_u64")]
+    max_promotion_amount: u64,
+    #[serde(default, deserialize_with = "de_u64")]
+    min_view_duration_ms: u64,
     #[serde(default, deserialize_with = "de_opt_u64")]
     version: Option<u64>,
 }
@@ -868,6 +874,9 @@ fn process_post_parameters_updated_event(
         max_reaction_length: ev.max_reaction_length as i64,
         commenter_tip_percentage: ev.commenter_tip_percentage as i64,
         repost_tip_percentage: ev.repost_tip_percentage as i64,
+        min_promotion_amount: ev.min_promotion_amount as i64,
+        max_promotion_amount: ev.max_promotion_amount as i64,
+        min_view_duration_ms: ev.min_view_duration_ms as i64,
         version: ev.version.map(|v| v as i64),
         updated_at: ev.timestamp as i64,
         transaction_id: event_id.to_string(),

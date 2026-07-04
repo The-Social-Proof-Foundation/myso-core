@@ -4,7 +4,9 @@
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
 use diesel::QueryDsl;
+use diesel::QueryableByName;
 use diesel::SelectableHelper;
+use diesel::sql_types::{BigInt, SmallInt, Text};
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::{MemoryAccountRow, SubAgentRow};
 use myso_indexer_alt_social_schema::schema::{
@@ -235,6 +237,58 @@ impl SocialAttributionRow {
             organization_id,
         }
     }
+}
+
+#[derive(Debug, Clone, QueryableByName)]
+pub struct MemoryConfigRow {
+    #[diesel(sql_type = Text)]
+    pub updated_by: String,
+    #[diesel(sql_type = SmallInt)]
+    pub max_organizations_per_user: i16,
+    #[diesel(sql_type = BigInt)]
+    pub org_category_update_cooldown_ms: i64,
+    #[diesel(sql_type = SmallInt)]
+    pub max_agent_depth: i16,
+    #[diesel(sql_type = BigInt)]
+    pub max_label_length: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_org_name_length: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_org_description_length: i64,
+    #[diesel(sql_type = BigInt)]
+    pub version: i64,
+    #[diesel(sql_type = BigInt)]
+    pub updated_at: i64,
+    #[diesel(sql_type = diesel::sql_types::Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+}
+
+/// Latest memory configuration.
+pub(crate) async fn get_memory_config(
+    conn: &mut Connection<'_>,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Option<MemoryConfigRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+
+    let query = "
+        SELECT updated_by, max_organizations_per_user, org_category_update_cooldown_ms,
+               max_agent_depth, max_label_length, max_org_name_length, max_org_description_length,
+               version, updated_at, time, transaction_id
+        FROM memory_config
+        ORDER BY time DESC
+        LIMIT 1
+    ";
+
+    let result = diesel::sql_query(query)
+        .get_result::<MemoryConfigRow>(conn)
+        .await
+        .optional()?;
+
+    metrics.requests_succeeded.inc();
+    Ok(result)
 }
 
 #[cfg(test)]

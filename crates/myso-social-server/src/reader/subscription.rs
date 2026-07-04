@@ -269,3 +269,20 @@ pub(crate) async fn get_subscriber_summary(
         total_revenue: row.revenue,
     })
 }
+
+pub(crate) async fn get_subscription_configuration(
+    db: &Db,
+) -> Result<Option<SubscriptionConfigInfo>, SocialError> {
+    let mut conn = db.connect().await?;
+    let query = "
+        SELECT updated_by, billing_period_ms, max_renewal_months, version, updated_at
+        FROM subscription_config
+        ORDER BY time DESC
+        LIMIT 1
+    ";
+    let result = diesel::sql_query(query)
+        .get_result::<SubscriptionConfigInfo>(&mut conn)
+        .await
+        .optional()?;
+    Ok(result)
+}

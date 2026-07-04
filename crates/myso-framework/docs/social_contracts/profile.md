@@ -6,6 +6,9 @@ Profile module for the MySocial network
 Handles user identity, profile creation, management, and username registration
 
 
+-  [Struct `ProfileAdminCap`](#social_contracts_profile_ProfileAdminCap)
+-  [Struct `ProfileConfig`](#social_contracts_profile_ProfileConfig)
+-  [Struct `ProfileConfigUpdatedEvent`](#social_contracts_profile_ProfileConfigUpdatedEvent)
 -  [Struct `EcosystemTreasuryAdminCap`](#social_contracts_profile_EcosystemTreasuryAdminCap)
 -  [Struct `EcosystemBadgeAdminCap`](#social_contracts_profile_EcosystemBadgeAdminCap)
 -  [Struct `UsernameAdminCap`](#social_contracts_profile_UsernameAdminCap)
@@ -84,8 +87,12 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `has_offers`](#social_contracts_profile_has_offers)
 -  [Function `get_treasury_address`](#social_contracts_profile_get_treasury_address)
 -  [Function `update_treasury_address`](#social_contracts_profile_update_treasury_address)
+-  [Function `update_ecosystem_treasury_config`](#social_contracts_profile_update_ecosystem_treasury_config)
+-  [Function `profile_sale_fee_bps`](#social_contracts_profile_profile_sale_fee_bps)
 -  [Function `treasury_version`](#social_contracts_profile_treasury_version)
 -  [Function `migrate_ecosystem_treasury`](#social_contracts_profile_migrate_ecosystem_treasury)
+-  [Function `create_profile_admin_cap`](#social_contracts_profile_create_profile_admin_cap)
+-  [Function `update_profile_config`](#social_contracts_profile_update_profile_config)
 -  [Function `create_ecosystem_treasury_admin_cap`](#social_contracts_profile_create_ecosystem_treasury_admin_cap)
 -  [Function `create_ecosystem_badge_admin_cap`](#social_contracts_profile_create_ecosystem_badge_admin_cap)
 -  [Function `create_username_admin_cap`](#social_contracts_profile_create_username_admin_cap)
@@ -208,6 +215,166 @@ Handles user identity, profile creation, management, and username registration
 
 
 
+<a name="social_contracts_profile_ProfileAdminCap"></a>
+
+## Struct `ProfileAdminCap`
+
+Admin capability for profile configuration
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_ProfileAdminCap">ProfileAdminCap</a> <b>has</b> key, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code><a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>: <a href="../myso/object.md#myso_object_UID">myso::object::UID</a></code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_profile_ProfileConfig"></a>
+
+## Struct `ProfileConfig`
+
+Global profile feature configuration
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">ProfileConfig</a> <b>has</b> key
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code><a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>: <a href="../myso/object.md#myso_object_UID">myso::object::UID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_vesting_pieces: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>curve_factor_min: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>curve_factor_max: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>curve_precision: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>min_claim_threshold_divisor: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>min_username_length: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_username_length: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/profile.md#social_contracts_profile_version">version</a>: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_profile_ProfileConfigUpdatedEvent"></a>
+
+## Struct `ProfileConfigUpdatedEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfigUpdatedEvent">ProfileConfigUpdatedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>updated_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_vesting_pieces: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>curve_factor_min: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>curve_factor_max: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>curve_precision: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>min_claim_threshold_divisor: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>min_username_length: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_username_length: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="social_contracts_profile_EcosystemTreasuryAdminCap"></a>
 
 ## Struct `EcosystemTreasuryAdminCap`
@@ -316,6 +483,12 @@ Social Ecosystem Treasury that receives fees from profile sales
 </dt>
 <dd>
  Treasury address that receives fees
+</dd>
+<dt>
+<code><a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>: u64</code>
+</dt>
+<dd>
+ Fee (bps) taken on profile sales (<code>10_000</code> = 100%)
 </dd>
 <dt>
 <code><a href="../social_contracts/profile.md#social_contracts_profile_version">version</a>: u64</code>
@@ -1768,6 +1941,11 @@ Event emitted when Ecosystem Treasury address is updated
 <dd>
 </dd>
 <dt>
+<code><a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
 <code>timestamp: u64</code>
 </dt>
 <dd>
@@ -2098,6 +2276,15 @@ Error codes
 
 
 
+<a name="social_contracts_profile_EInvalidConfig"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidConfig">EInvalidConfig</a>: u64 = 36;
+</code></pre>
+
+
+
 <a name="social_contracts_profile_PROFILE_SALE_FEE_BPS"></a>
 
 
@@ -2109,6 +2296,7 @@ Error codes
 
 <a name="social_contracts_profile_CURVE_PRECISION"></a>
 
+Default bootstrap values for ProfileConfig
 
 
 <pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a>: u64 = 1000;
@@ -2143,6 +2331,33 @@ Error codes
 
 
 
+<a name="social_contracts_profile_MIN_CLAIM_THRESHOLD_DIVISOR"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_MIN_CLAIM_THRESHOLD_DIVISOR">MIN_CLAIM_THRESHOLD_DIVISOR</a>: u64 = 1000;
+</code></pre>
+
+
+
+<a name="social_contracts_profile_MIN_USERNAME_LENGTH"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_MIN_USERNAME_LENGTH">MIN_USERNAME_LENGTH</a>: u64 = 2;
+</code></pre>
+
+
+
+<a name="social_contracts_profile_MAX_USERNAME_LENGTH"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_MAX_USERNAME_LENGTH">MAX_USERNAME_LENGTH</a>: u64 = 50;
+</code></pre>
+
+
+
 <a name="social_contracts_profile_BPS_DENOMINATOR"></a>
 
 
@@ -2166,15 +2381,6 @@ Error codes
 
 
 <pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_PIECE_KIND_CONTINUOUS">PIECE_KIND_CONTINUOUS</a>: u8 = 1;
-</code></pre>
-
-
-
-<a name="social_contracts_profile_MIN_CLAIM_THRESHOLD_DIVISOR"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_MIN_CLAIM_THRESHOLD_DIVISOR">MIN_CLAIM_THRESHOLD_DIVISOR</a>: u64 = 1000;
 </code></pre>
 
 
@@ -2283,18 +2489,43 @@ Bootstrap initialization function - creates the username registry and treasury
     <b>let</b> treasury = <a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">EcosystemTreasury</a> {
         <a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>: object::new(ctx),
         treasury_address: sender,
+        <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>: <a href="../social_contracts/profile.md#social_contracts_profile_PROFILE_SALE_FEE_BPS">PROFILE_SALE_FEE_BPS</a>,
         <a href="../social_contracts/profile.md#social_contracts_profile_version">version</a>: current_version,
     };
     // Emit event so indexer can populate ecosystem_treasury table
     event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasuryUpdatedEvent">EcosystemTreasuryUpdatedEvent</a> {
         updated_by: sender,
         new_treasury_address: sender,
+        <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>: <a href="../social_contracts/profile.md#social_contracts_profile_PROFILE_SALE_FEE_BPS">PROFILE_SALE_FEE_BPS</a>,
         timestamp: clock::timestamp_ms(clock),
     });
     // Share the registry to make it globally accessible
     transfer::share_object(registry);
     // Share the treasury to make it globally accessible
     transfer::share_object(treasury);
+    <b>let</b> config = <a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">ProfileConfig</a> {
+        <a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>: object::new(ctx),
+        max_vesting_pieces: <a href="../social_contracts/profile.md#social_contracts_profile_MAX_VESTING_PIECES">MAX_VESTING_PIECES</a>,
+        curve_factor_min: <a href="../social_contracts/profile.md#social_contracts_profile_CURVE_FACTOR_MIN">CURVE_FACTOR_MIN</a>,
+        curve_factor_max: <a href="../social_contracts/profile.md#social_contracts_profile_CURVE_FACTOR_MAX">CURVE_FACTOR_MAX</a>,
+        curve_precision: <a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a>,
+        min_claim_threshold_divisor: <a href="../social_contracts/profile.md#social_contracts_profile_MIN_CLAIM_THRESHOLD_DIVISOR">MIN_CLAIM_THRESHOLD_DIVISOR</a>,
+        min_username_length: <a href="../social_contracts/profile.md#social_contracts_profile_MIN_USERNAME_LENGTH">MIN_USERNAME_LENGTH</a>,
+        max_username_length: <a href="../social_contracts/profile.md#social_contracts_profile_MAX_USERNAME_LENGTH">MAX_USERNAME_LENGTH</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_version">version</a>: current_version,
+    };
+    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfigUpdatedEvent">ProfileConfigUpdatedEvent</a> {
+        updated_by: sender,
+        max_vesting_pieces: <a href="../social_contracts/profile.md#social_contracts_profile_MAX_VESTING_PIECES">MAX_VESTING_PIECES</a>,
+        curve_factor_min: <a href="../social_contracts/profile.md#social_contracts_profile_CURVE_FACTOR_MIN">CURVE_FACTOR_MIN</a>,
+        curve_factor_max: <a href="../social_contracts/profile.md#social_contracts_profile_CURVE_FACTOR_MAX">CURVE_FACTOR_MAX</a>,
+        curve_precision: <a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a>,
+        min_claim_threshold_divisor: <a href="../social_contracts/profile.md#social_contracts_profile_MIN_CLAIM_THRESHOLD_DIVISOR">MIN_CLAIM_THRESHOLD_DIVISOR</a>,
+        min_username_length: <a href="../social_contracts/profile.md#social_contracts_profile_MIN_USERNAME_LENGTH">MIN_USERNAME_LENGTH</a>,
+        max_username_length: <a href="../social_contracts/profile.md#social_contracts_profile_MAX_USERNAME_LENGTH">MAX_USERNAME_LENGTH</a>,
+        timestamp: clock::timestamp_ms(clock),
+    });
+    transfer::share_object(config);
 }
 </code></pre>
 
@@ -2836,7 +3067,7 @@ Create a new profile with a required username
 Main entry: also creates a linked [<code><a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">memory::MemoryAccount</a></code>] shared object.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_create_profile">create_profile</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, memory_registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">social_contracts::memory::MemoryRegistry</a>, ai_credit_config: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">social_contracts::ai_credit::AiCreditConfig</a>, <a href="../social_contracts/profile.md#social_contracts_profile_display_name">display_name</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, username: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/profile.md#social_contracts_profile_bio">bio</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, profile_picture_url: vector&lt;u8&gt;, cover_photo_url: vector&lt;u8&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_create_profile">create_profile</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, memory_registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">social_contracts::memory::MemoryRegistry</a>, ai_credit_config: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">social_contracts::ai_credit::AiCreditConfig</a>, <a href="../social_contracts/profile.md#social_contracts_profile_display_name">display_name</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, username: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/profile.md#social_contracts_profile_bio">bio</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, profile_picture_url: vector&lt;u8&gt;, cover_photo_url: vector&lt;u8&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2847,6 +3078,7 @@ Main entry: also creates a linked [<code><a href="../social_contracts/memory.md#
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_create_profile">create_profile</a>(
     registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>,
+    config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">ProfileConfig</a>,
     memory_registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">memory::MemoryRegistry</a>,
     ai_credit_config: &<b>mut</b> AiCreditConfig,
     <a href="../social_contracts/profile.md#social_contracts_profile_display_name">display_name</a>: String,
@@ -2867,8 +3099,10 @@ Main entry: also creates a linked [<code><a href="../social_contracts/memory.md#
     // Validate the username
     <b>let</b> username_bytes = string::as_bytes(&username);
     <b>let</b> username_length = vector::length(username_bytes);
-    // Username length validation - between 2 and 50 characters
-    <b>assert</b>!(username_length &gt;= 2 && username_length &lt;= 50, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidUsername">EInvalidUsername</a>);
+    <b>assert</b>!(
+        username_length &gt;= config.min_username_length && username_length &lt;= config.max_username_length,
+        <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidUsername">EInvalidUsername</a>,
+    );
     // Check <b>if</b> username is reserved in the hard coded list
     <b>assert</b>!(!<a href="../social_contracts/profile.md#social_contracts_profile_is_reserved_name">is_reserved_name</a>(&username), <a href="../social_contracts/profile.md#social_contracts_profile_EReservedName">EReservedName</a>);
     // Check that the username isn't already registered
@@ -2954,7 +3188,7 @@ Main entry: also creates a linked [<code><a href="../social_contracts/memory.md#
 Create a profile from an oracle-verified PoC username beneficiary claim.
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_create_profile_from_beneficiary_claim">create_profile_from_beneficiary_claim</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, memory_registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">social_contracts::memory::MemoryRegistry</a>, ai_credit_config: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">social_contracts::ai_credit::AiCreditConfig</a>, <a href="../social_contracts/profile.md#social_contracts_profile_display_name">display_name</a>: vector&lt;u8&gt;, username: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/profile.md#social_contracts_profile_bio">bio</a>: vector&lt;u8&gt;, profile_picture_url: vector&lt;u8&gt;, cover_photo_url: vector&lt;u8&gt;, <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: <b>address</b>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <b>address</b>
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_create_profile_from_beneficiary_claim">create_profile_from_beneficiary_claim</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, memory_registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">social_contracts::memory::MemoryRegistry</a>, ai_credit_config: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">social_contracts::ai_credit::AiCreditConfig</a>, <a href="../social_contracts/profile.md#social_contracts_profile_display_name">display_name</a>: vector&lt;u8&gt;, username: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/profile.md#social_contracts_profile_bio">bio</a>: vector&lt;u8&gt;, profile_picture_url: vector&lt;u8&gt;, cover_photo_url: vector&lt;u8&gt;, <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: <b>address</b>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <b>address</b>
 </code></pre>
 
 
@@ -2965,6 +3199,7 @@ Create a profile from an oracle-verified PoC username beneficiary claim.
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_create_profile_from_beneficiary_claim">create_profile_from_beneficiary_claim</a>(
     registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>,
+    config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">ProfileConfig</a>,
     memory_registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">memory::MemoryRegistry</a>,
     ai_credit_config: &<b>mut</b> AiCreditConfig,
     <a href="../social_contracts/profile.md#social_contracts_profile_display_name">display_name</a>: vector&lt;u8&gt;,
@@ -2979,7 +3214,10 @@ Create a profile from an oracle-verified PoC username beneficiary claim.
     <b>assert</b>!(registry.<a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), 1);
     <b>let</b> username = <a href="../social_contracts/profile.md#social_contracts_profile_canonical_registry_username">canonical_registry_username</a>(&username);
     <b>let</b> username_length = vector::length(string::as_bytes(&username));
-    <b>assert</b>!(username_length &gt;= 2 && username_length &lt;= 50, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidUsername">EInvalidUsername</a>);
+    <b>assert</b>!(
+        username_length &gt;= config.min_username_length && username_length &lt;= config.max_username_length,
+        <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidUsername">EInvalidUsername</a>,
+    );
     <b>assert</b>!(!<a href="../social_contracts/profile.md#social_contracts_profile_is_reserved_name">is_reserved_name</a>(&username), <a href="../social_contracts/profile.md#social_contracts_profile_EReservedName">EReservedName</a>);
     <b>assert</b>!(!table::contains(&registry.usernames, username), <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameNotAvailable">EUsernameNotAvailable</a>);
     <b>assert</b>!(!table::contains(&registry.address_profiles, <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>), <a href="../social_contracts/profile.md#social_contracts_profile_EProfileAlreadyExists">EProfileAlreadyExists</a>);
@@ -3755,7 +3993,7 @@ Accept an offer when there is **no** linked Memory account. Use [<code><a href="
     // Remove the offer from the table and get the locked tokens
     <b>let</b> <a href="../social_contracts/profile.md#social_contracts_profile_ProfileOffer">ProfileOffer</a> { offeror: _, amount, created_at: _, locked_myso } = table::remove(offers, offeror);
     // Calculate the fee amount (5% of the total)
-    <b>let</b> fee_amount = (amount * <a href="../social_contracts/profile.md#social_contracts_profile_PROFILE_SALE_FEE_BPS">PROFILE_SALE_FEE_BPS</a>) / 10000;
+    <b>let</b> fee_amount = (amount * treasury.<a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>) / 10000;
     // Convert the locked balance to a coin
     <b>let</b> <b>mut</b> payment = coin::from_balance(locked_myso, ctx);
     // Split the fee amount to send to the treasury
@@ -3851,7 +4089,7 @@ Same as [<code><a href="../social_contracts/profile.md#social_contracts_profile_
     <b>let</b> offers = dynamic_field::borrow_mut&lt;vector&lt;u8&gt;, Table&lt;<b>address</b>, <a href="../social_contracts/profile.md#social_contracts_profile_ProfileOffer">ProfileOffer</a>&gt;&gt;(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_OFFERS_FIELD">OFFERS_FIELD</a>);
     <b>assert</b>!(table::contains(offers, offeror), <a href="../social_contracts/profile.md#social_contracts_profile_EOfferDoesNotExist">EOfferDoesNotExist</a>);
     <b>let</b> <a href="../social_contracts/profile.md#social_contracts_profile_ProfileOffer">ProfileOffer</a> { offeror: _, amount, created_at: _, locked_myso } = table::remove(offers, offeror);
-    <b>let</b> fee_amount = (amount * <a href="../social_contracts/profile.md#social_contracts_profile_PROFILE_SALE_FEE_BPS">PROFILE_SALE_FEE_BPS</a>) / 10000;
+    <b>let</b> fee_amount = (amount * treasury.<a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>) / 10000;
     <b>let</b> <b>mut</b> payment = coin::from_balance(locked_myso, ctx);
     <b>let</b> fee_payment = coin::split(&<b>mut</b> payment, fee_amount, ctx);
     transfer::public_transfer(fee_payment, <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">get_treasury_address</a>(treasury));
@@ -4069,8 +4307,74 @@ Update Ecosystem Treasury address (admin only)
     event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasuryUpdatedEvent">EcosystemTreasuryUpdatedEvent</a> {
         updated_by: tx_context::sender(ctx),
         new_treasury_address: new_address,
+        <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>: treasury.<a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>,
         timestamp: clock::timestamp_ms(clock),
     });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_update_ecosystem_treasury_config"></a>
+
+## Function `update_ecosystem_treasury_config`
+
+Update Ecosystem Treasury config: treasury address and profile sale fee bps (admin only).
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_update_ecosystem_treasury_config">update_ecosystem_treasury_config</a>(_: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasuryAdminCap">social_contracts::profile::EcosystemTreasuryAdminCap</a>, treasury: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, new_address: <b>address</b>, <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_update_ecosystem_treasury_config">update_ecosystem_treasury_config</a>(
+    _: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasuryAdminCap">EcosystemTreasuryAdminCap</a>,
+    treasury: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">EcosystemTreasury</a>,
+    new_address: <b>address</b>,
+    <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>: u64,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a> &lt;= 10000, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidConfig">EInvalidConfig</a>);
+    treasury.treasury_address = new_address;
+    treasury.<a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a> = <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>;
+    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasuryUpdatedEvent">EcosystemTreasuryUpdatedEvent</a> {
+        updated_by: tx_context::sender(ctx),
+        new_treasury_address: new_address,
+        <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>,
+        timestamp: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_profile_sale_fee_bps"></a>
+
+## Function `profile_sale_fee_bps`
+
+Read the configured profile sale fee (bps).
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>(treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>(treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">EcosystemTreasury</a>): u64 {
+    treasury.<a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>
 }
 </code></pre>
 
@@ -4138,6 +4442,92 @@ Migration function for EcosystemTreasury
         old_version,
         tx_context::sender(ctx)
     );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_create_profile_admin_cap"></a>
+
+## Function `create_profile_admin_cap`
+
+Create a ProfileAdminCap for bootstrap (package visibility only)
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_create_profile_admin_cap">create_profile_admin_cap</a>(ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../social_contracts/profile.md#social_contracts_profile_ProfileAdminCap">social_contracts::profile::ProfileAdminCap</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_create_profile_admin_cap">create_profile_admin_cap</a>(ctx: &<b>mut</b> TxContext): <a href="../social_contracts/profile.md#social_contracts_profile_ProfileAdminCap">ProfileAdminCap</a> {
+    <a href="../social_contracts/profile.md#social_contracts_profile_ProfileAdminCap">ProfileAdminCap</a> {
+        <a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>: object::new(ctx),
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_update_profile_config"></a>
+
+## Function `update_profile_config`
+
+Update profile configuration (admin only)
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_update_profile_config">update_profile_config</a>(_: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileAdminCap">social_contracts::profile::ProfileAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, max_vesting_pieces: u64, curve_factor_min: u64, curve_factor_max: u64, curve_precision: u64, min_claim_threshold_divisor: u64, min_username_length: u64, max_username_length: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_update_profile_config">update_profile_config</a>(
+    _: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileAdminCap">ProfileAdminCap</a>,
+    config: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">ProfileConfig</a>,
+    max_vesting_pieces: u64,
+    curve_factor_min: u64,
+    curve_factor_max: u64,
+    curve_precision: u64,
+    min_claim_threshold_divisor: u64,
+    min_username_length: u64,
+    max_username_length: u64,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(max_vesting_pieces &gt; 0, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidConfig">EInvalidConfig</a>);
+    <b>assert</b>!(curve_precision &gt; 0, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidConfig">EInvalidConfig</a>);
+    <b>assert</b>!(curve_factor_min &gt; 0 && curve_factor_max &gt;= curve_factor_min, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidConfig">EInvalidConfig</a>);
+    <b>assert</b>!(min_claim_threshold_divisor &gt; 0, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidConfig">EInvalidConfig</a>);
+    <b>assert</b>!(min_username_length &gt; 0 && max_username_length &gt;= min_username_length, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidConfig">EInvalidConfig</a>);
+    config.max_vesting_pieces = max_vesting_pieces;
+    config.curve_factor_min = curve_factor_min;
+    config.curve_factor_max = curve_factor_max;
+    config.curve_precision = curve_precision;
+    config.min_claim_threshold_divisor = min_claim_threshold_divisor;
+    config.min_username_length = min_username_length;
+    config.max_username_length = max_username_length;
+    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfigUpdatedEvent">ProfileConfigUpdatedEvent</a> {
+        updated_by: tx_context::sender(ctx),
+        max_vesting_pieces,
+        curve_factor_min,
+        curve_factor_max,
+        curve_precision,
+        min_claim_threshold_divisor,
+        min_username_length,
+        max_username_length,
+        timestamp: clock::timestamp_ms(clock),
+    });
 }
 </code></pre>
 
@@ -5701,7 +6091,7 @@ Clear the selected ecosystem badge (owner only)
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_normalize_curve_factor">normalize_curve_factor</a>(curve_factor: u64): u64
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_normalize_curve_factor">normalize_curve_factor</a>(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, curve_factor: u64): u64
 </code></pre>
 
 
@@ -5710,11 +6100,14 @@ Clear the selected ecosystem badge (owner only)
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_normalize_curve_factor">normalize_curve_factor</a>(curve_factor: u64): u64 {
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_normalize_curve_factor">normalize_curve_factor</a>(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">ProfileConfig</a>, curve_factor: u64): u64 {
     <b>if</b> (curve_factor == 0) {
-        <a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a>
+        config.curve_precision
     } <b>else</b> {
-        <b>assert</b>!(curve_factor &gt;= <a href="../social_contracts/profile.md#social_contracts_profile_CURVE_FACTOR_MIN">CURVE_FACTOR_MIN</a> && curve_factor &lt;= <a href="../social_contracts/profile.md#social_contracts_profile_CURVE_FACTOR_MAX">CURVE_FACTOR_MAX</a>, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidSchedule">EInvalidSchedule</a>);
+        <b>assert</b>!(
+            curve_factor &gt;= config.curve_factor_min && curve_factor &lt;= config.curve_factor_max,
+            <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidSchedule">EInvalidSchedule</a>,
+        );
         curve_factor
     }
 }
@@ -5754,7 +6147,7 @@ Clear the selected ecosystem badge (owner only)
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_validate_piece">validate_piece</a>(piece: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">social_contracts::profile::VestingPiece</a>, total_amount: u64)
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_validate_piece">validate_piece</a>(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, piece: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">social_contracts::profile::VestingPiece</a>, total_amount: u64)
 </code></pre>
 
 
@@ -5763,12 +6156,12 @@ Clear the selected ecosystem badge (owner only)
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_validate_piece">validate_piece</a>(piece: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">VestingPiece</a>, total_amount: u64) {
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_validate_piece">validate_piece</a>(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">ProfileConfig</a>, piece: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">VestingPiece</a>, total_amount: u64) {
     <b>if</b> (piece.kind == <a href="../social_contracts/profile.md#social_contracts_profile_PIECE_KIND_CLIFF">PIECE_KIND_CLIFF</a>) {
         <b>assert</b>!(piece.duration == 0, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidPieceDuration">EInvalidPieceDuration</a>);
     } <b>else</b> <b>if</b> (piece.kind == <a href="../social_contracts/profile.md#social_contracts_profile_PIECE_KIND_CONTINUOUS">PIECE_KIND_CONTINUOUS</a>) {
         <b>assert</b>!(piece.duration &gt; 0, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidPieceDuration">EInvalidPieceDuration</a>);
-        <b>let</b> _ = <a href="../social_contracts/profile.md#social_contracts_profile_normalize_curve_factor">normalize_curve_factor</a>(piece.curve_factor);
+        <b>let</b> _ = <a href="../social_contracts/profile.md#social_contracts_profile_normalize_curve_factor">normalize_curve_factor</a>(config, piece.curve_factor);
     } <b>else</b> {
         <b>abort</b> <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidPieceKind">EInvalidPieceKind</a>
     };
@@ -5788,7 +6181,7 @@ Clear the selected ecosystem badge (owner only)
 Validate schedule pieces and return <code>schedule_end</code> (absolute ms timestamp).
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_validate_schedule">validate_schedule</a>(start_time: u64, total_amount: u64, pieces: &vector&lt;<a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">social_contracts::profile::VestingPiece</a>&gt;): u64
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_validate_schedule">validate_schedule</a>(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, start_time: u64, total_amount: u64, pieces: &vector&lt;<a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">social_contracts::profile::VestingPiece</a>&gt;): u64
 </code></pre>
 
 
@@ -5798,19 +6191,20 @@ Validate schedule pieces and return <code>schedule_end</code> (absolute ms times
 
 
 <pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_validate_schedule">validate_schedule</a>(
+    config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">ProfileConfig</a>,
     start_time: u64,
     total_amount: u64,
     pieces: &vector&lt;<a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">VestingPiece</a>&gt;,
 ): u64 {
     <b>let</b> num_pieces = vector::length(pieces);
-    <b>assert</b>!(num_pieces &gt;= 1 && num_pieces &lt;= <a href="../social_contracts/profile.md#social_contracts_profile_MAX_VESTING_PIECES">MAX_VESTING_PIECES</a>, <a href="../social_contracts/profile.md#social_contracts_profile_ETooManyPieces">ETooManyPieces</a>);
+    <b>assert</b>!(num_pieces &gt;= 1 && num_pieces &lt;= config.max_vesting_pieces, <a href="../social_contracts/profile.md#social_contracts_profile_ETooManyPieces">ETooManyPieces</a>);
     <b>let</b> <b>mut</b> total_bps = 0u64;
     <b>let</b> <b>mut</b> schedule_end = start_time;
     <b>let</b> <b>mut</b> prev_offset = 0u64;
     <b>let</b> <b>mut</b> i = 0;
     <b>while</b> (i &lt; num_pieces) {
         <b>let</b> piece = vector::borrow(pieces, i);
-        <a href="../social_contracts/profile.md#social_contracts_profile_validate_piece">validate_piece</a>(piece, total_amount);
+        <a href="../social_contracts/profile.md#social_contracts_profile_validate_piece">validate_piece</a>(config, piece, total_amount);
         <b>assert</b>!(piece.time_offset &gt;= prev_offset, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidSchedule">EInvalidSchedule</a>);
         prev_offset = piece.time_offset;
         total_bps = total_bps + piece.amount_bps;
@@ -5841,7 +6235,7 @@ Validate schedule pieces and return <code>schedule_end</code> (absolute ms times
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_apply_curve">apply_curve</a>(progress: u128, curve_factor: u64): u128
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_apply_curve">apply_curve</a>(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, progress: u128, curve_factor: u64): u128
 </code></pre>
 
 
@@ -5850,21 +6244,22 @@ Validate schedule pieces and return <code>schedule_end</code> (absolute ms times
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_apply_curve">apply_curve</a>(progress: u128, curve_factor: u64): u128 {
-    <b>if</b> (curve_factor == <a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a>) {
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_apply_curve">apply_curve</a>(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">ProfileConfig</a>, progress: u128, curve_factor: u64): u128 {
+    <b>let</b> precision = config.curve_precision;
+    <b>if</b> (curve_factor == precision) {
         progress
-    } <b>else</b> <b>if</b> (curve_factor &gt; <a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a>) {
-        <b>let</b> steepness = (curve_factor - <a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a>) <b>as</b> u128;
-        <b>let</b> quadratic = (progress * progress) / (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128);
+    } <b>else</b> <b>if</b> (curve_factor &gt; precision) {
+        <b>let</b> steepness = (curve_factor - precision) <b>as</b> u128;
+        <b>let</b> quadratic = (progress * progress) / (precision <b>as</b> u128);
         <b>let</b> linear_part = progress;
-        (linear_part * ((<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128) - steepness) + quadratic * steepness)
-            / (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128)
+        (linear_part * ((precision <b>as</b> u128) - steepness) + quadratic * steepness)
+            / (precision <b>as</b> u128)
     } <b>else</b> {
-        <b>let</b> steepness = (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> - curve_factor) <b>as</b> u128;
-        <b>let</b> sqrt_approx = <a href="../social_contracts/profile.md#social_contracts_profile_sqrt_approximation">sqrt_approximation</a>(progress * (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128));
+        <b>let</b> steepness = (precision - curve_factor) <b>as</b> u128;
+        <b>let</b> sqrt_approx = <a href="../social_contracts/profile.md#social_contracts_profile_sqrt_approximation">sqrt_approximation</a>(progress * (precision <b>as</b> u128));
         <b>let</b> linear_part = progress;
-        (sqrt_approx * steepness + linear_part * ((<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128) - steepness))
-            / (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128)
+        (sqrt_approx * steepness + linear_part * ((precision <b>as</b> u128) - steepness))
+            / (precision <b>as</b> u128)
     }
 }
 </code></pre>
@@ -5879,7 +6274,7 @@ Validate schedule pieces and return <code>schedule_end</code> (absolute ms times
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vested_amount_for_piece">vested_amount_for_piece</a>(total_amount: u64, start_time: u64, current_time: u64, piece: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">social_contracts::profile::VestingPiece</a>): u64
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vested_amount_for_piece">vested_amount_for_piece</a>(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, total_amount: u64, start_time: u64, current_time: u64, piece: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">social_contracts::profile::VestingPiece</a>): u64
 </code></pre>
 
 
@@ -5889,6 +6284,7 @@ Validate schedule pieces and return <code>schedule_end</code> (absolute ms times
 
 
 <pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vested_amount_for_piece">vested_amount_for_piece</a>(
+    config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">ProfileConfig</a>,
     total_amount: u64,
     start_time: u64,
     current_time: u64,
@@ -5910,9 +6306,10 @@ Validate schedule pieces and return <code>schedule_end</code> (absolute ms times
         <b>return</b> alloc
     };
     <b>let</b> elapsed = current_time - activation_time;
-    <b>let</b> progress = ((elapsed <b>as</b> u128) * (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128)) / (piece.duration <b>as</b> u128);
-    <b>let</b> curved = <a href="../social_contracts/profile.md#social_contracts_profile_apply_curve">apply_curve</a>(progress, piece.curve_factor);
-    ((alloc <b>as</b> u128) * curved / (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128)) <b>as</b> u64
+    <b>let</b> precision = config.curve_precision;
+    <b>let</b> progress = ((elapsed <b>as</b> u128) * (precision <b>as</b> u128)) / (piece.duration <b>as</b> u128);
+    <b>let</b> curved = <a href="../social_contracts/profile.md#social_contracts_profile_apply_curve">apply_curve</a>(config, progress, piece.curve_factor);
+    ((alloc <b>as</b> u128) * curved / (precision <b>as</b> u128)) <b>as</b> u64
 }
 </code></pre>
 
@@ -5926,7 +6323,7 @@ Validate schedule pieces and return <code>schedule_end</code> (absolute ms times
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_calculate_total_vested">calculate_total_vested</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>, current_time: u64): u64
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_calculate_total_vested">calculate_total_vested</a>(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>, current_time: u64): u64
 </code></pre>
 
 
@@ -5935,7 +6332,7 @@ Validate schedule pieces and return <code>schedule_end</code> (absolute ms times
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_calculate_total_vested">calculate_total_vested</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>, current_time: u64): u64 {
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_calculate_total_vested">calculate_total_vested</a>(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">ProfileConfig</a>, wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>, current_time: u64): u64 {
     <b>if</b> (current_time &lt; wallet.start_time) {
         <b>return</b> 0
     };
@@ -5945,6 +6342,7 @@ Validate schedule pieces and return <code>schedule_end</code> (absolute ms times
     <b>while</b> (i &lt; num_pieces) {
         <b>let</b> piece = vector::borrow(&wallet.pieces, i);
         <b>let</b> piece_vested = <a href="../social_contracts/profile.md#social_contracts_profile_vested_amount_for_piece">vested_amount_for_piece</a>(
+            config,
             wallet.total_amount,
             wallet.start_time,
             current_time,
@@ -5972,7 +6370,7 @@ Validate schedule pieces and return <code>schedule_end</code> (absolute ms times
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_finalize_claimable">finalize_claimable</a>(capped: u64, remaining_balance: u64, total_amount: u64, current_time: u64, schedule_end: u64): u64
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_finalize_claimable">finalize_claimable</a>(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, capped: u64, remaining_balance: u64, total_amount: u64, current_time: u64, schedule_end: u64): u64
 </code></pre>
 
 
@@ -5982,6 +6380,7 @@ Validate schedule pieces and return <code>schedule_end</code> (absolute ms times
 
 
 <pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_finalize_claimable">finalize_claimable</a>(
+    config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">ProfileConfig</a>,
     capped: u64,
     remaining_balance: u64,
     total_amount: u64,
@@ -5994,7 +6393,7 @@ Validate schedule pieces and return <code>schedule_end</code> (absolute ms times
     <b>if</b> (capped == 0) {
         <b>return</b> 0
     };
-    <b>let</b> <b>mut</b> threshold = total_amount / <a href="../social_contracts/profile.md#social_contracts_profile_MIN_CLAIM_THRESHOLD_DIVISOR">MIN_CLAIM_THRESHOLD_DIVISOR</a>;
+    <b>let</b> <b>mut</b> threshold = total_amount / config.min_claim_threshold_divisor;
     <b>if</b> (threshold == 0) {
         threshold = 1
     };
@@ -6132,7 +6531,7 @@ Create a vesting wallet from parallel piece vectors (entry-compatible).
 Cliff lumps unlock instantly at <code>time_offset</code>; continuous pieces vest over <code>duration</code>.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vest_myso">vest_myso</a>(coin: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, recipient: <b>address</b>, start_time: u64, kinds: vector&lt;u8&gt;, time_offsets: vector&lt;u64&gt;, durations: vector&lt;u64&gt;, amount_bps_list: vector&lt;u64&gt;, curve_factors: vector&lt;u64&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vest_myso">vest_myso</a>(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, coin: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, recipient: <b>address</b>, start_time: u64, kinds: vector&lt;u8&gt;, time_offsets: vector&lt;u64&gt;, durations: vector&lt;u64&gt;, amount_bps_list: vector&lt;u64&gt;, curve_factors: vector&lt;u64&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -6142,6 +6541,7 @@ Cliff lumps unlock instantly at <code>time_offset</code>; continuous pieces vest
 
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vest_myso">vest_myso</a>(
+    config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">ProfileConfig</a>,
     coin: Coin&lt;MYSO&gt;,
     recipient: <b>address</b>,
     start_time: u64,
@@ -6160,7 +6560,7 @@ Cliff lumps unlock instantly at <code>time_offset</code>; continuous pieces vest
         amount_bps_list,
         curve_factors,
     );
-    <a href="../social_contracts/profile.md#social_contracts_profile_vest_myso_internal">vest_myso_internal</a>(coin, recipient, start_time, pieces, clock, ctx);
+    <a href="../social_contracts/profile.md#social_contracts_profile_vest_myso_internal">vest_myso_internal</a>(config, coin, recipient, start_time, pieces, clock, ctx);
 }
 </code></pre>
 
@@ -6174,7 +6574,7 @@ Cliff lumps unlock instantly at <code>time_offset</code>; continuous pieces vest
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vest_myso_internal">vest_myso_internal</a>(coin: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, recipient: <b>address</b>, start_time: u64, pieces: vector&lt;<a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">social_contracts::profile::VestingPiece</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vest_myso_internal">vest_myso_internal</a>(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, coin: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, recipient: <b>address</b>, start_time: u64, pieces: vector&lt;<a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">social_contracts::profile::VestingPiece</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -6184,6 +6584,7 @@ Cliff lumps unlock instantly at <code>time_offset</code>; continuous pieces vest
 
 
 <pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vest_myso_internal">vest_myso_internal</a>(
+    config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">ProfileConfig</a>,
     coin: Coin&lt;MYSO&gt;,
     recipient: <b>address</b>,
     start_time: u64,
@@ -6195,7 +6596,7 @@ Cliff lumps unlock instantly at <code>time_offset</code>; continuous pieces vest
     <b>assert</b>!(start_time &gt; current_time, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidStartTime">EInvalidStartTime</a>);
     <b>let</b> total_amount = coin::value(&coin);
     <b>assert</b>!(total_amount &gt; 0, <a href="../social_contracts/profile.md#social_contracts_profile_EInsufficientTokens">EInsufficientTokens</a>);
-    <b>let</b> schedule_end = <a href="../social_contracts/profile.md#social_contracts_profile_validate_schedule">validate_schedule</a>(start_time, total_amount, &pieces);
+    <b>let</b> schedule_end = <a href="../social_contracts/profile.md#social_contracts_profile_validate_schedule">validate_schedule</a>(config, start_time, total_amount, &pieces);
     <b>let</b> wallet = <a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a> {
         <a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>: object::new(ctx),
         balance: coin::into_balance(coin),
@@ -6245,7 +6646,7 @@ Cliff lumps unlock instantly at <code>time_offset</code>; continuous pieces vest
 Claim vested tokens. Sub-threshold amounts during active vesting are no-ops.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_claim_vested_tokens">claim_vested_tokens</a>(wallet: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_claim_vested_tokens">claim_vested_tokens</a>(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, wallet: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -6255,13 +6656,14 @@ Claim vested tokens. Sub-threshold amounts during active vesting are no-ops.
 
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_claim_vested_tokens">claim_vested_tokens</a>(
+    config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">ProfileConfig</a>,
     wallet: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>let</b> sender = tx_context::sender(ctx);
     <b>assert</b>!(wallet.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == sender, <a href="../social_contracts/profile.md#social_contracts_profile_ENotVestingWalletOwner">ENotVestingWalletOwner</a>);
-    <b>let</b> claimable_amount = <a href="../social_contracts/profile.md#social_contracts_profile_calculate_claimable">calculate_claimable</a>(wallet, clock);
+    <b>let</b> claimable_amount = <a href="../social_contracts/profile.md#social_contracts_profile_calculate_claimable">calculate_claimable</a>(config, wallet, clock);
     <b>if</b> (claimable_amount &gt; 0) {
         <b>assert</b>!(wallet.claimed_amount &lt;= <a href="../social_contracts/profile.md#social_contracts_profile_MAX_U64">MAX_U64</a> - claimable_amount, <a href="../social_contracts/profile.md#social_contracts_profile_EOverflow">EOverflow</a>);
         wallet.claimed_amount = wallet.claimed_amount + claimable_amount;
@@ -6293,7 +6695,7 @@ Claim vested tokens. Sub-threshold amounts during active vesting are no-ops.
 
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_claimable">claimable</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>): u64
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_claimable">claimable</a>(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>): u64
 </code></pre>
 
 
@@ -6302,8 +6704,8 @@ Claim vested tokens. Sub-threshold amounts during active vesting are no-ops.
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_claimable">claimable</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>, clock: &Clock): u64 {
-    <a href="../social_contracts/profile.md#social_contracts_profile_calculate_claimable">calculate_claimable</a>(wallet, clock)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_claimable">claimable</a>(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">ProfileConfig</a>, wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>, clock: &Clock): u64 {
+    <a href="../social_contracts/profile.md#social_contracts_profile_calculate_claimable">calculate_claimable</a>(config, wallet, clock)
 }
 </code></pre>
 
@@ -6317,7 +6719,7 @@ Claim vested tokens. Sub-threshold amounts during active vesting are no-ops.
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_calculate_claimable">calculate_claimable</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>): u64
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_calculate_claimable">calculate_claimable</a>(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>): u64
 </code></pre>
 
 
@@ -6326,7 +6728,7 @@ Claim vested tokens. Sub-threshold amounts during active vesting are no-ops.
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_calculate_claimable">calculate_claimable</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>, clock: &Clock): u64 {
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_calculate_claimable">calculate_claimable</a>(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">ProfileConfig</a>, wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>, clock: &Clock): u64 {
     <b>let</b> current_time = clock::timestamp_ms(clock);
     <b>let</b> remaining_balance = balance::value(&wallet.balance);
     <b>if</b> (current_time &lt; wallet.start_time) {
@@ -6335,7 +6737,7 @@ Claim vested tokens. Sub-threshold amounts during active vesting are no-ops.
     <b>if</b> (current_time &gt;= wallet.schedule_end) {
         <b>return</b> remaining_balance
     };
-    <b>let</b> total_vested = <a href="../social_contracts/profile.md#social_contracts_profile_calculate_total_vested">calculate_total_vested</a>(wallet, current_time);
+    <b>let</b> total_vested = <a href="../social_contracts/profile.md#social_contracts_profile_calculate_total_vested">calculate_total_vested</a>(config, wallet, current_time);
     <b>let</b> newly_claimable = <b>if</b> (total_vested &gt;= wallet.claimed_amount) {
         total_vested - wallet.claimed_amount
     } <b>else</b> {
@@ -6347,6 +6749,7 @@ Claim vested tokens. Sub-threshold amounts during active vesting are no-ops.
         newly_claimable
     };
     <a href="../social_contracts/profile.md#social_contracts_profile_finalize_claimable">finalize_claimable</a>(
+        config,
         capped,
         remaining_balance,
         wallet.total_amount,

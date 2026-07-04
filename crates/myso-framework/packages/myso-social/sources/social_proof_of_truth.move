@@ -80,20 +80,18 @@ module social_contracts::social_proof_of_truth {
     const DEFAULT_RESOLUTION_WINDOW_MS: u64 = 72 * MS_PER_DAY;
     const DEFAULT_MAX_RESOLUTION_WINDOW_MS: u64 = 144 * MS_PER_DAY;
     const DEFAULT_PAYOUT_DELAY_MS: u64 = 0;
-    const DEFAULT_FEE_BPS: u64 = 100; // 1%
-    const DEFAULT_FEE_SPLIT_PLATFORM_BPS: u64 = 5000; // 50% of fee to platform
+    const DEFAULT_PLATFORM_FEE_BPS: u64 = 50;
+    const DEFAULT_ECOSYSTEM_FEE_BPS: u64 = 50;
+    const DEFAULT_MIN_BETTING_OPTIONS: u64 = 2;
+    const DEFAULT_MAX_BETTING_OPTIONS: u64 = 10;
+    const DEFAULT_MIN_REASONING_LENGTH: u64 = 10;
+    const DEFAULT_MAX_REASONING_LENGTH: u64 = 5000;
+    const DEFAULT_MAX_EVIDENCE_URLS: u64 = 10;
     /// Default cap on `SpotRecord.bets` length at init; admins may set `0` for no limit via `update_spot_config`.
     const DEFAULT_MAX_BETS_PER_RECORD: u64 = 10000;
 
     /// Maximum u64 value for overflow protection
     const MAX_U64: u64 = 18446744073709551615;
-    
-    /// Validation constants
-    const MAX_REASONING_LENGTH: u64 = 5000; // Max characters for reasoning
-    const MAX_EVIDENCE_URLS: u64 = 10; // Max number of evidence URLs
-    const MIN_REASONING_LENGTH: u64 = 10; // Minimum characters for reasoning
-    const MAX_BETTING_OPTIONS: u64 = 10; // Maximum number of betting options per record
-    const MIN_BETTING_OPTIONS: u64 = 2; // Minimum number of betting options per record
 
     /// Admin capability for SPoT (controls SpotConfig updates)
     public struct SpotAdminCap has key, store { id: UID }
@@ -109,8 +107,13 @@ module social_contracts::social_proof_of_truth {
         resolution_window_ms: u64,
         max_resolution_window_ms: u64,
         payout_delay_ms: u64,
-        fee_bps: u64,
-        fee_split_bps_platform: u64,
+        platform_fee_bps: u64,
+        ecosystem_fee_bps: u64,
+        min_betting_options: u64,
+        max_betting_options: u64,
+        min_reasoning_length: u64,
+        max_reasoning_length: u64,
+        max_evidence_urls: u64,
         oracle_address: address,
         max_single_bet: u64,
         max_bets_per_record: u64,
@@ -210,8 +213,13 @@ module social_contracts::social_proof_of_truth {
         resolution_window_ms: u64,
         max_resolution_window_ms: u64,
         payout_delay_ms: u64,
-        fee_bps: u64,
-        fee_split_bps_platform: u64,
+        platform_fee_bps: u64,
+        ecosystem_fee_bps: u64,
+        min_betting_options: u64,
+        max_betting_options: u64,
+        min_reasoning_length: u64,
+        max_reasoning_length: u64,
+        max_evidence_urls: u64,
         oracle_address: address,
         max_single_bet: u64,
         max_bets_per_record: u64,
@@ -328,8 +336,13 @@ module social_contracts::social_proof_of_truth {
             resolution_window_ms: DEFAULT_RESOLUTION_WINDOW_MS,
             max_resolution_window_ms: DEFAULT_MAX_RESOLUTION_WINDOW_MS,
             payout_delay_ms: DEFAULT_PAYOUT_DELAY_MS,
-            fee_bps: DEFAULT_FEE_BPS,
-            fee_split_bps_platform: DEFAULT_FEE_SPLIT_PLATFORM_BPS,
+            platform_fee_bps: DEFAULT_PLATFORM_FEE_BPS,
+            ecosystem_fee_bps: DEFAULT_ECOSYSTEM_FEE_BPS,
+            min_betting_options: DEFAULT_MIN_BETTING_OPTIONS,
+            max_betting_options: DEFAULT_MAX_BETTING_OPTIONS,
+            min_reasoning_length: DEFAULT_MIN_REASONING_LENGTH,
+            max_reasoning_length: DEFAULT_MAX_REASONING_LENGTH,
+            max_evidence_urls: DEFAULT_MAX_EVIDENCE_URLS,
             oracle_address: admin,
             max_single_bet: 0,
             max_bets_per_record: DEFAULT_MAX_BETS_PER_RECORD,
@@ -345,8 +358,13 @@ module social_contracts::social_proof_of_truth {
             resolution_window_ms: DEFAULT_RESOLUTION_WINDOW_MS,
             max_resolution_window_ms: DEFAULT_MAX_RESOLUTION_WINDOW_MS,
             payout_delay_ms: DEFAULT_PAYOUT_DELAY_MS,
-            fee_bps: DEFAULT_FEE_BPS,
-            fee_split_bps_platform: DEFAULT_FEE_SPLIT_PLATFORM_BPS,
+            platform_fee_bps: DEFAULT_PLATFORM_FEE_BPS,
+            ecosystem_fee_bps: DEFAULT_ECOSYSTEM_FEE_BPS,
+            min_betting_options: DEFAULT_MIN_BETTING_OPTIONS,
+            max_betting_options: DEFAULT_MAX_BETTING_OPTIONS,
+            min_reasoning_length: DEFAULT_MIN_REASONING_LENGTH,
+            max_reasoning_length: DEFAULT_MAX_REASONING_LENGTH,
+            max_evidence_urls: DEFAULT_MAX_EVIDENCE_URLS,
             oracle_address: admin,
             max_single_bet: 0,
             max_bets_per_record: DEFAULT_MAX_BETS_PER_RECORD,
@@ -383,8 +401,13 @@ module social_contracts::social_proof_of_truth {
             resolution_window_ms: DEFAULT_RESOLUTION_WINDOW_MS,
             max_resolution_window_ms: DEFAULT_MAX_RESOLUTION_WINDOW_MS,
             payout_delay_ms: DEFAULT_PAYOUT_DELAY_MS,
-            fee_bps: DEFAULT_FEE_BPS,
-            fee_split_bps_platform: DEFAULT_FEE_SPLIT_PLATFORM_BPS,
+            platform_fee_bps: DEFAULT_PLATFORM_FEE_BPS,
+            ecosystem_fee_bps: DEFAULT_ECOSYSTEM_FEE_BPS,
+            min_betting_options: DEFAULT_MIN_BETTING_OPTIONS,
+            max_betting_options: DEFAULT_MAX_BETTING_OPTIONS,
+            min_reasoning_length: DEFAULT_MIN_REASONING_LENGTH,
+            max_reasoning_length: DEFAULT_MAX_REASONING_LENGTH,
+            max_evidence_urls: DEFAULT_MAX_EVIDENCE_URLS,
             oracle_address: sender,
             max_single_bet: 0,
             max_bets_per_record: DEFAULT_MAX_BETS_PER_RECORD,
@@ -407,8 +430,13 @@ module social_contracts::social_proof_of_truth {
         resolution_window_ms: u64,
         max_resolution_window_ms: u64,
         payout_delay_ms: u64,
-        fee_bps: u64,
-        fee_split_bps_platform: u64,
+        platform_fee_bps: u64,
+        ecosystem_fee_bps: u64,
+        min_betting_options: u64,
+        max_betting_options: u64,
+        min_reasoning_length: u64,
+        max_reasoning_length: u64,
+        max_evidence_urls: u64,
         oracle_address: address,
         max_single_bet: u64,
         max_bets_per_record: u64,
@@ -418,6 +446,14 @@ module social_contracts::social_proof_of_truth {
     ) {
         // Basic bounds
         assert!(confidence_threshold_bps <= 10000, EInvalidAmount);
+        assert!(platform_fee_bps <= 10000, EInvalidAmount);
+        assert!(ecosystem_fee_bps <= 10000, EInvalidAmount);
+        assert!(platform_fee_bps + ecosystem_fee_bps <= 10000, EInvalidAmount);
+        assert!(min_betting_options > 0, EInvalidAmount);
+        assert!(min_betting_options <= max_betting_options, EInvalidAmount);
+        assert!(min_reasoning_length > 0, EInvalidReasoning);
+        assert!(min_reasoning_length <= max_reasoning_length, EInvalidReasoning);
+        assert!(max_evidence_urls > 0, EInvalidAmount);
         // windows may be zero in tests to resolve immediately
 
         config.enable_flag = enable_flag;
@@ -425,8 +461,13 @@ module social_contracts::social_proof_of_truth {
         config.resolution_window_ms = resolution_window_ms;
         config.max_resolution_window_ms = max_resolution_window_ms;
         config.payout_delay_ms = payout_delay_ms;
-        config.fee_bps = fee_bps;
-        config.fee_split_bps_platform = fee_split_bps_platform;
+        config.platform_fee_bps = platform_fee_bps;
+        config.ecosystem_fee_bps = ecosystem_fee_bps;
+        config.min_betting_options = min_betting_options;
+        config.max_betting_options = max_betting_options;
+        config.min_reasoning_length = min_reasoning_length;
+        config.max_reasoning_length = max_reasoning_length;
+        config.max_evidence_urls = max_evidence_urls;
         config.oracle_address = oracle_address;
         config.max_single_bet = max_single_bet;
         config.max_bets_per_record = max_bets_per_record;
@@ -440,8 +481,13 @@ module social_contracts::social_proof_of_truth {
             resolution_window_ms,
             max_resolution_window_ms,
             payout_delay_ms,
-            fee_bps,
-            fee_split_bps_platform,
+            platform_fee_bps,
+            ecosystem_fee_bps,
+            min_betting_options,
+            max_betting_options,
+            min_reasoning_length,
+            max_reasoning_length,
+            max_evidence_urls,
             oracle_address,
             max_single_bet,
             max_bets_per_record,
@@ -493,8 +539,8 @@ module social_contracts::social_proof_of_truth {
         
         // Validate betting options
         let options_len = vector::length(&betting_options);
-        assert!(options_len >= MIN_BETTING_OPTIONS, EInvalidAmount);
-        assert!(options_len <= MAX_BETTING_OPTIONS, EInvalidAmount);
+        assert!(options_len >= config.min_betting_options, EInvalidAmount);
+        assert!(options_len <= config.max_betting_options, EInvalidAmount);
         
         // Check for duplicate options (case-sensitive comparison)
         let mut i = 0;
@@ -580,27 +626,24 @@ module social_contracts::social_proof_of_truth {
         assert!(bet.amount > 0, EInvalidAmount);
         
         // Calculate fee (same as payout fee structure)
-        let mut fee = 0;
-        if (spot_config.fee_bps > 0) {
-            fee = (bet.amount * spot_config.fee_bps) / 10000;
-        };
-        let refund_amount = bet.amount - fee;
+        let platform_fee = (bet.amount * spot_config.platform_fee_bps) / 10000;
+        let ecosystem_fee = (bet.amount * spot_config.ecosystem_fee_bps) / 10000;
+        let fee = platform_fee + ecosystem_fee;
+        let refund_amount = bet.amount - platform_fee - ecosystem_fee;
         
         // Split fee between platform and ecosystem treasury
         if (fee > 0) {
-            let platform_part = (fee * spot_config.fee_split_bps_platform) / 10000;
-            let treasury_part = fee - platform_part;
             let mut fee_coin = coin::from_balance(balance::split(&mut record.escrow, fee), ctx);
             
             // Send platform fee to platform treasury
-            if (platform_part > 0) {
-                let mut platform_coin = coin::split(&mut fee_coin, platform_part, ctx);
-                platform::add_to_treasury(platform, &mut platform_coin, platform_part, clock, ctx);
+            if (platform_fee > 0) {
+                let mut platform_coin = coin::split(&mut fee_coin, platform_fee, ctx);
+                platform::add_to_treasury(platform, &mut platform_coin, platform_fee, clock, ctx);
                 coin::destroy_zero(platform_coin);
             };
             
             // Send ecosystem treasury fee
-            if (treasury_part > 0) {
+            if (ecosystem_fee > 0) {
                 transfer::public_transfer(fee_coin, profile::get_treasury_address(treasury));
             } else {
                 coin::destroy_zero(fee_coin);
@@ -775,13 +818,13 @@ module social_contracts::social_proof_of_truth {
 
         // Validate reasoning is required and within limits
         let reasoning_len = string::length(&reasoning);
-        assert!(reasoning_len >= MIN_REASONING_LENGTH, EInvalidReasoning);
-        assert!(reasoning_len <= MAX_REASONING_LENGTH, EInvalidReasoning);
+        assert!(reasoning_len >= spot_config.min_reasoning_length, EInvalidReasoning);
+        assert!(reasoning_len <= spot_config.max_reasoning_length, EInvalidReasoning);
         
         // Validate evidence URLs - at least one required
         let evidence_urls_len = vector::length(&evidence_urls);
         assert!(evidence_urls_len > 0, EInvalidAmount); // At least one evidence URL required
-        assert!(evidence_urls_len <= MAX_EVIDENCE_URLS, EInvalidAmount);
+        assert!(evidence_urls_len <= spot_config.max_evidence_urls, EInvalidAmount);
 
         if (confidence_bps < spot_config.confidence_threshold_bps) {
             assert!(option::is_none(&record.active_proposal_id), EActiveProposalExists);
@@ -875,11 +918,11 @@ module social_contracts::social_proof_of_truth {
         validate_proposed_outcome(record, outcome);
 
         let reasoning_len = string::length(&reasoning);
-        assert!(reasoning_len >= MIN_REASONING_LENGTH, EInvalidReasoning);
-        assert!(reasoning_len <= MAX_REASONING_LENGTH, EInvalidReasoning);
+        assert!(reasoning_len >= spot_config.min_reasoning_length, EInvalidReasoning);
+        assert!(reasoning_len <= spot_config.max_reasoning_length, EInvalidReasoning);
         if (option::is_some(&evidence_urls)) {
             let urls = option::borrow(&evidence_urls);
-            assert!(vector::length(urls) <= MAX_EVIDENCE_URLS, EInvalidAmount);
+            assert!(vector::length(urls) <= spot_config.max_evidence_urls, EInvalidAmount);
         };
 
         let submitter = governance::proposal_submitter(proposal);
@@ -1133,25 +1176,24 @@ module social_contracts::social_proof_of_truth {
         };
 
         // Fees on payouts (apply to total escrow)
-        let mut fee = 0;
-        if (spot_config.fee_bps > 0) { fee = (total_escrow * spot_config.fee_bps) / 10000; };
-        let distributable = total_escrow - fee;
+        let platform_fee = (total_escrow * spot_config.platform_fee_bps) / 10000;
+        let ecosystem_fee = (total_escrow * spot_config.ecosystem_fee_bps) / 10000;
+        let fee = platform_fee + ecosystem_fee;
+        let distributable = total_escrow - platform_fee - ecosystem_fee;
 
         // Split fee between platform and ecosystem treasury (configurable)
         if (fee > 0) {
-            let platform_part = (fee * spot_config.fee_split_bps_platform) / 10000;
-            let treasury_part = fee - platform_part;
             let mut fee_coin = coin::from_balance(balance::split(&mut record.escrow, fee), ctx);
             
             // Send platform fee to platform treasury
-            if (platform_part > 0) {
-                let mut platform_coin = coin::split(&mut fee_coin, platform_part, ctx);
-                platform::add_to_treasury(platform, &mut platform_coin, platform_part, clock, ctx);
+            if (platform_fee > 0) {
+                let mut platform_coin = coin::split(&mut fee_coin, platform_fee, ctx);
+                platform::add_to_treasury(platform, &mut platform_coin, platform_fee, clock, ctx);
                 coin::destroy_zero(platform_coin);
             };
             
             // Send ecosystem treasury fee
-            if (treasury_part > 0) {
+            if (ecosystem_fee > 0) {
                 transfer::public_transfer(fee_coin, profile::get_treasury_address(treasury));
             } else {
                 coin::destroy_zero(fee_coin);

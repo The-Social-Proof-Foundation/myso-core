@@ -328,6 +328,10 @@
           }
         },
         {
+          "name": "min_vault_deposit_amount",
+          "type_": "u64"
+        },
+        {
           "name": "clock",
           "type_": {
             "Reference": [
@@ -988,7 +992,7 @@
   "structs": {
     "VaultBalanceKey": {
       "index": 0,
-      "doc": " Bag key for `Balance<T>` buckets (same phantom-key pattern as orderbook `BalanceKey`).",
+      "doc": " Minimum amount (per asset) accepted into the vault; configurable via `PoCConfig`.\n Bag key for `Balance<T>` buckets (same phantom-key pattern as orderbook `BalanceKey`).",
       "attributes": [],
       "abilities": [
         "Copy",

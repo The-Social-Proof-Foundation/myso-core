@@ -95,6 +95,10 @@
     },
     {
       "address": "social_contracts",
+      "name": "subscription"
+    },
+    {
+      "address": "social_contracts",
       "name": "upgrade"
     }
   ],

@@ -18,12 +18,13 @@ mod insurance;
 mod insurance_handler;
 mod memory;
 mod memory_handler;
+mod messaging;
+mod messaging_handler;
 mod mydata;
 mod mydata_handler;
 mod mydata_object;
 mod organization_stats;
 pub mod organization_stats_rollup;
-mod paid_messaging_policy_handler;
 mod platform;
 mod platform_handler;
 mod poc;
@@ -47,32 +48,34 @@ mod upgrade_handler;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
     GovernanceRegistryPanelBoundaryUpdate, GovernanceRegistryUpdate, NewAgentMemoryVault,
-    NewAgenticOrganization, NewAnonymousVote, NewBlockedEvent, NewBlockedProfile, NewComment,
-    NewCommunityVote, NewDelegate, NewDelegateRating, NewDelegateVote, NewDeletionEvent,
-    NewEcosystemTreasury, NewGovernanceEvent, NewGovernanceRegistry, NewInsuranceCoverageRoute,
-    NewInsuranceEventLog, NewInsuranceMarketExposure, NewInsurancePolicy, NewInsurancePolicyEvent,
-    NewInsuranceRouteFill, NewInsuranceUserExposure, NewInsuranceVault,
-    NewInsuranceVaultTransaction, NewMemoryAccount, NewModerationEvent, NewMyDataAccessLog,
-    NewMyDataBroadPool, NewMyDataClaim, NewMyDataConfig, NewMyDataData, NewMyDataDistributionRound,
-    NewMyDataListingSubPool, NewMyDataMerkleRoot, NewMyDataPurchase, NewMyDataRegistry,
-    NewMyDataRevenue, NewMyDataSnapshotAnchor, NewMyDataSubPool, NewMyDataSubscription,
-    NewNominatedDelegate, NewObjectMigratedEvent, NewOrganizationEvent, NewPlatform,
-    NewPlatformBlockedProfile, NewPlatformEvent, NewPlatformMembership, NewPlatformModerator,
-    NewPlatformModeratorPermission, NewPlatformTokenAirdrop, NewPocAnalysisResult, NewPocBadge,
-    NewPocConfiguration, NewPocCreatorIdentityLink, NewPocDispute, NewPocDisputeVote,
-    NewPocRevenueRedirection, NewPocUsernameBeneficiary, NewPocUsernameBeneficiaryEvent, NewPost,
-    NewPostTransfer, NewProfile, NewProfileBadge, NewProfileEvent, NewProfileOffer,
+    NewAgenticOrganization, NewAiCreditAgentBudget, NewAiCreditBalance, NewAiCreditConfig,
+    NewAiCreditEvent, NewAiCreditSpendApproval, NewAnonymousVote, NewAuditLog, NewBlockedEvent,
+    NewBlockedProfile, NewComment, NewCommunityVote, NewDelegate, NewDelegateRating,
+    NewDelegateVote, NewDeletionEvent, NewEcosystemTreasury, NewGovernanceEvent,
+    NewGovernanceRegistry, NewInsuranceCoverageRoute, NewInsuranceEventLog,
+    NewInsuranceMarketExposure, NewInsurancePolicy, NewInsurancePolicyEvent, NewInsuranceRouteFill,
+    NewInsuranceRouterConfig, NewInsuranceUserExposure, NewInsuranceVault,
+    NewInsuranceVaultTransaction, NewMemoryAccount, NewMemoryConfig, NewMessagingAgentGroup,
+    NewMessagingConfig, NewModerationEvent, NewMyDataAccessLog, NewMyDataBroadPool, NewMyDataClaim,
+    NewMyDataConfig, NewMyDataData, NewMyDataDistributionRound, NewMyDataListingSubPool,
+    NewMyDataMerkleRoot, NewMyDataPurchase, NewMyDataRegistry, NewMyDataRevenue,
+    NewMyDataSnapshotAnchor, NewMyDataSubPool, NewMyDataSubscription, NewNominatedDelegate,
+    NewObjectMigratedEvent, NewOrgInvitation, NewOrgMemoryPermission, NewOrgRole,
+    NewOrgRoleAssignment, NewOrganizationEvent, NewPaidMessageEscrow, NewPlatform, NewPlatformBlockedProfile, NewPlatformConfig,
+    NewPlatformEvent, NewPlatformMembership, NewPlatformModerator, NewPlatformModeratorPermission,
+    NewPlatformTokenAirdrop, NewPocAnalysisResult, NewPocBadge, NewPocConfiguration,
+    NewPocCreatorIdentityLink, NewPocDispute, NewPocDisputeVote, NewPocRevenueRedirection,
+    NewPocUsernameBeneficiary, NewPocUsernameBeneficiaryEvent, NewPost, NewPostTransfer,
+    NewProfile, NewProfileBadge, NewProfileConfig, NewProfileEvent, NewProfileOffer,
     NewProfileSaleFee, NewProfileSubscription, NewProfileSubscriptionService, NewProposal,
     NewReaction, NewReport, NewRepost, NewRewardDistribution, NewSocialGraphEvent,
     NewSocialGraphRelationship, NewSocialProofTokensConfig, NewSocialProofTokensEvent, NewSpotBet,
     NewSpotBetWithdrawal, NewSpotConfig, NewSpotEventLog, NewSpotPayout, NewSpotRecord,
     NewSpotRefund, NewSpotResolution, NewSptExchangeConfig, NewSptHolding, NewSptPool,
     NewSptPriceHistory, NewSptReservation, NewSptReservationPool, NewSptTransaction,
-    NewSubAgentEvent, NewSubscriptionEvent, NewTip, NewUnifiedRevenue, NewUpgradeEvent,
-    NewUsernameRegistry, NewVestingEvent, NewVestingWallet, NewVoteDecryptionFailure,
-    NewAiCreditAgentBudget, NewAiCreditBalance, NewAiCreditConfig, NewAiCreditEvent,
-    NewAiCreditSpendApproval, NewAuditLog, NewOrgMemoryPermission, NewOrgInvitation, NewOrgRole,
-    NewOrgRoleAssignment, ProposalUpdateSet,
+    NewSubAgentEvent, NewSubscriptionConfig, NewSubscriptionEvent, NewTip, NewUnifiedRevenue,
+    NewUpgradeEvent, NewUsernameRegistry, NewVestingEvent, NewVestingWallet,
+    NewVoteDecryptionFailure, ProposalUpdateSet,
 };
 
 pub use ai_credit_handler::AiCreditHandler;
@@ -80,8 +83,8 @@ pub use blocking_handler::BlockingHandler;
 pub use governance_handler::GovernanceHandler;
 pub use insurance_handler::InsuranceHandler;
 pub use memory_handler::MemoryHandler;
+pub use messaging_handler::MessagingHandler;
 pub use mydata_handler::MyDataHandler;
-pub use paid_messaging_policy_handler::PaidMessagingPolicyHandler;
 pub use platform_handler::PlatformHandler;
 pub use posts_handler::PostsHandler;
 pub use profiles_handler::ProfilesHandler;
@@ -118,6 +121,7 @@ pub enum SocialEventRow {
         profile_id: String,
     },
     EcosystemTreasury(NewEcosystemTreasury),
+    ProfileConfig(NewProfileConfig),
     SocialGraphRelationship(NewSocialGraphRelationship),
     SocialGraphEvent(NewSocialGraphEvent),
     SocialGraphUnfollow {
@@ -254,6 +258,9 @@ pub enum SocialEventRow {
         max_reaction_length: i64,
         commenter_tip_percentage: i64,
         repost_tip_percentage: i64,
+        min_promotion_amount: i64,
+        max_promotion_amount: i64,
+        min_view_duration_ms: i64,
         version: Option<i64>,
         updated_at: i64,
         transaction_id: String,
@@ -291,6 +298,7 @@ pub enum SocialEventRow {
         transaction_id: String,
     },
     Platform(NewPlatform),
+    PlatformConfig(NewPlatformConfig),
     PlatformUpdate {
         platform_id: String,
         name: String,
@@ -489,6 +497,7 @@ pub enum SocialEventRow {
     MyDataMerkleRoot(NewMyDataMerkleRoot),
     MyDataClaim(NewMyDataClaim),
     InsuranceConfig(insurance::InsuranceConfigSnapshot),
+    InsuranceRouterConfig(NewInsuranceRouterConfig),
     InsuranceVault(NewInsuranceVault),
     InsuranceVaultTransaction(NewInsuranceVaultTransaction),
     InsuranceVaultBalanceUpdate {
@@ -656,6 +665,7 @@ pub enum SocialEventRow {
     ProfileSubscriptionService(NewProfileSubscriptionService),
     ProfileSubscription(NewProfileSubscription),
     SubscriptionEvent(NewSubscriptionEvent),
+    SubscriptionConfig(NewSubscriptionConfig),
     ProfileSubscriptionServiceSubscriberIncrement {
         service_id: String,
     },
@@ -707,6 +717,7 @@ pub enum SocialEventRow {
         transaction_id: String,
     },
     MemoryAccount(NewMemoryAccount),
+    MemoryConfig(NewMemoryConfig),
     ProfileMemoryAccountLink {
         profile_id: String,
         memory_account_id: String,
@@ -815,9 +826,35 @@ pub enum SocialEventRow {
     },
     AiCreditConfigUpsert(NewAiCreditConfig),
     AiCreditConfigLimitsUpdate {
+        updated_by: String,
         max_single_settlement_mist: i64,
         receipt_ttl_ms: i64,
-        updated_at_ms: i64,
+        updated_at: i64,
+        time: chrono::DateTime<chrono::Utc>,
+        event_id: String,
+        transaction_id: String,
+    },
+    AiCreditConfigPubkeyUpdate {
+        updated_by: String,
+        oracle_pubkey_hex: String,
+        updated_at: i64,
+        time: chrono::DateTime<chrono::Utc>,
+        event_id: String,
+        transaction_id: String,
+    },
+    AiCreditConfigMarkupUpdate {
+        updated_by: String,
+        oracle_markup_bps: i64,
+        updated_at: i64,
+        time: chrono::DateTime<chrono::Utc>,
+        event_id: String,
+        transaction_id: String,
+    },
+    AiCreditConfigMinDepositUpdate {
+        updated_by: String,
+        min_deposit_mist: i64,
+        updated_at: i64,
+        time: chrono::DateTime<chrono::Utc>,
         event_id: String,
         transaction_id: String,
     },
@@ -866,6 +903,25 @@ pub enum SocialEventRow {
         receipt_id: Option<String>,
         activity_at_ms: i64,
     },
+    MessagingConfig(NewMessagingConfig),
+    PaidMessageEscrow(NewPaidMessageEscrow),
+    MessagingAgentGroup(NewMessagingAgentGroup),
+    MessagingOrgOutboundSpend {
+        payer: String,
+        amount: i64,
+        counterparty: Option<String>,
+        activity_at_ms: i64,
+    },
+    MessagingOrgInboundRevenue {
+        recipient: String,
+        amount: i64,
+        counterparty: Option<String>,
+        activity_at_ms: i64,
+    },
+    MessagingAgentGroupOrgActivity {
+        organization_id: Option<String>,
+        activity_at_ms: i64,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -897,7 +953,7 @@ pub struct ProfileUpdate {
 }
 
 impl FieldCount for SocialEventRow {
-    const FIELD_COUNT: usize = 147;
+    const FIELD_COUNT: usize = 162;
 }
 
 // SocialEvents pipeline removed: profile and post events now handled by ProfilesHandler and PostsHandler.

@@ -99,18 +99,48 @@ CREATE INDEX IF NOT EXISTS idx_ai_credit_usage_lines_unsettled
     WHERE settled = FALSE;
 
 CREATE TABLE IF NOT EXISTS ai_credit_config (
-    id SMALLINT NOT NULL PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+    id SERIAL NOT NULL,
+    updated_by TEXT NOT NULL DEFAULT '',
     oracle_pubkey_hex TEXT NOT NULL,
     treasury_address TEXT NOT NULL,
     min_deposit_mist BIGINT NOT NULL,
     max_single_settlement_mist BIGINT NOT NULL,
     receipt_ttl_ms BIGINT NOT NULL,
     catalog_version TEXT,
-    updated_at_ms BIGINT NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    updated_at BIGINT NOT NULL,
     event_id TEXT NOT NULL,
     transaction_id TEXT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+UPDATE ai_credit_config SET time = to_timestamp(updated_at / 1000) WHERE time = NOW();
+CREATE OR REPLACE FUNCTION update_ai_credit_config_time()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.time = to_timestamp(NEW.updated_at / 1000);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS set_ai_credit_config_time ON ai_credit_config;
+CREATE TRIGGER set_ai_credit_config_time
+BEFORE INSERT ON ai_credit_config
+FOR EACH ROW
+EXECUTE FUNCTION update_ai_credit_config_time();
+SELECT create_hypertable('ai_credit_config', 'time', if_not_exists => TRUE,
+                          create_default_indexes => FALSE,
+                          chunk_time_interval => INTERVAL '1 month');
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'ai_credit_config_pkey'
+    ) THEN
+        ALTER TABLE ai_credit_config ADD PRIMARY KEY (id, time);
+    END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS idx_ai_credit_config_time ON ai_credit_config(time DESC);
+CREATE INDEX IF NOT EXISTS idx_ai_credit_config_transaction_id ON ai_credit_config(transaction_id);
+COMMENT ON TABLE ai_credit_config IS 'Append-only AI credit configuration history. Latest row is current config.';
 
 ALTER TABLE profiles ADD CONSTRAINT fk_profiles_ai_credit_balance
     FOREIGN KEY (ai_credit_balance_id) REFERENCES ai_credit_balances(balance_id);

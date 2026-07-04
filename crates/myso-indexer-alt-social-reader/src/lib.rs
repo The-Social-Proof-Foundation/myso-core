@@ -4,12 +4,13 @@
 pub mod governance;
 
 pub use governance::{DelegateRatingViewerTarget, delegate_rating_viewer_lookup_key};
-pub mod insurance;
-pub mod memory;
-mod metrics;
-pub mod mydata;
 pub mod ai_credit;
 pub mod enterprise;
+pub mod insurance;
+pub mod memory;
+pub mod messaging;
+mod metrics;
+pub mod mydata;
 pub mod org_leaderboard;
 pub mod org_stats;
 pub mod organization;
@@ -25,15 +26,20 @@ pub mod revenue;
 pub mod social_graph;
 pub mod spot;
 pub mod spt;
+pub mod subscription;
 pub mod username;
 pub mod vesting;
 
+pub use ai_credit::AiCreditConfigRow;
+pub use enterprise::{AgentSpendBreakdownEntry, AuditLogFilter};
 pub use insurance::{
     InsuranceCoverageRouteRow, InsuranceModuleEventRow, InsurancePolicyEventHistoryRow,
-    InsuranceRouteFillRow, InsuranceUserExposureAggRow, InsuranceVaultExposureRow,
-    InsuranceVaultTransactionRow,
+    InsuranceRouteFillRow, InsuranceRouterConfigRow, InsuranceUserExposureAggRow,
+    InsuranceVaultExposureRow, InsuranceVaultTransactionRow,
 };
+pub use memory::MemoryConfigRow;
 pub use memory::{SocialAttributionRow, SubAgentListResult};
+pub use messaging::{MessagingAgentGroupRow, MessagingConfigRow, PaidMessageEscrowRow};
 pub use metrics::standalone_reader_metrics;
 pub use myso_indexer_alt_social_schema::models::{
     AgenticOrganizationRow, MemoryAccountRow, SubAgentRow,
@@ -60,10 +66,11 @@ pub use org_leaderboard::{
     OrganizationLeaderboardSort, org_type_from_slug, organization_categories,
 };
 pub use org_stats::{OrganizationStatistics, OrganizationStatsWindow};
-pub use enterprise::{AgentSpendBreakdownEntry, AuditLogFilter};
 pub use organization::AgenticOrganizationListResult;
 pub use pg_reader::SocialPgReader;
-pub use platform::{PlatformBlockedProfileRow, PlatformRow, PlatformUserAccessRow};
+pub use platform::{
+    PlatformBlockedProfileRow, PlatformConfigRow, PlatformRow, PlatformUserAccessRow,
+};
 pub use pnl::{ProfilePnLWindow, ProfilePnLWindowResult, get_profile_pnl_for_windows};
 pub use poc::{
     get_poc_beneficiary_vault_by_beneficiary_address_for_conn,
@@ -84,8 +91,8 @@ pub use post::{
     CommentRow, PostReportRow, PostRow, PostTransferRow, ReactionRow, RepostRow, TipRow,
 };
 pub use profile::{
-    ProfileBadgeRow, ProfileByAddressResponse, ReservationStatus, SelectedBadgeInfo,
-    SocialProofTokenInfo, UniversalUserResult,
+    ProfileBadgeRow, ProfileByAddressResponse, ProfileConfigRow, ReservationStatus,
+    SelectedBadgeInfo, SocialProofTokenInfo, UniversalUserResult,
 };
 pub use social_graph::{
     BlockedPlatformRow, BlockedProfileRow, DEFAULT_MUTUAL_CONNECTIONS_LIMIT,
@@ -95,6 +102,7 @@ pub use social_graph::{
 pub use spt::{
     SptReservationVolumeBucket, SptReservationVolumeInterval, SptSortBy, SptTransactionsWithViewer,
 };
+pub use subscription::SubscriptionConfigRow;
 pub use username::{UsernameAvailabilityDetail, UsernameRegistryEntry};
 
 /// Combined username registry + PoC beneficiary availability for REST services.

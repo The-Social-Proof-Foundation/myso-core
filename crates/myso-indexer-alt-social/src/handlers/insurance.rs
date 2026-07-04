@@ -6,14 +6,16 @@ use chrono::Utc;
 use myso_indexer_alt_social_schema::models::{
     NewInsuranceConfig, NewInsuranceCoverageRoute, NewInsuranceEventLog,
     NewInsuranceMarketExposure, NewInsurancePolicy, NewInsurancePolicyEvent, NewInsuranceRouteFill,
-    NewInsuranceUserExposure, NewInsuranceVault, NewInsuranceVaultTransaction,
-    DEFAULT_EXPOSURE_CAP_BPS, DEFAULT_EXPOSURE_K_BPS, DEFAULT_IMPLIED_PROB_FLOOR_BPS,
-    DEFAULT_LIQ_CAP_BPS, DEFAULT_LIQ_REF_AMOUNT, DEFAULT_MAX_COVERAGE_BPS,
-    DEFAULT_MAX_COVERAGE_FRACTION_OF_OPTION_BPS, DEFAULT_MAX_DURATION_MS,
+    NewInsuranceRouterConfig, NewInsuranceUserExposure, NewInsuranceVault,
+    NewInsuranceVaultTransaction, DEFAULT_EXPOSURE_CAP_BPS, DEFAULT_EXPOSURE_K_BPS,
+    DEFAULT_IMPLIED_PROB_FLOOR_BPS, DEFAULT_LIQ_CAP_BPS, DEFAULT_LIQ_REF_AMOUNT,
+    DEFAULT_MAX_COVERAGE_BPS, DEFAULT_MAX_COVERAGE_FRACTION_OF_OPTION_BPS, DEFAULT_MAX_DURATION_MS,
     DEFAULT_MAX_RISK_MULTIPLIER_BPS, DEFAULT_MIN_COVERAGE_BPS, DEFAULT_MIN_PREMIUM_AMOUNT,
     DEFAULT_MIN_SPOT_TOTAL_LIQUIDITY, DEFAULT_ODDS_CAP_BPS, DEFAULT_SPOT_SMOOTHING_PER_OPTION,
     INSURANCE_DEFAULT_FEE_BPS, STATUS_ACTIVE, STATUS_CANCELLED, STATUS_CLAIMED, STATUS_EXPIRED,
 };
+
+const DEFAULT_ODDS_BASE_BPS: i64 = 5000;
 
 #[derive(Debug, Clone)]
 pub enum InsuranceConfigSnapshot {
@@ -31,7 +33,7 @@ pub(crate) fn new_insurance_config_with_defaults() -> NewInsuranceConfig {
         max_duration_ms: DEFAULT_MAX_DURATION_MS,
         fee_bps: INSURANCE_DEFAULT_FEE_BPS,
         version: 1,
-        timestamp_ms: 0,
+        updated_at: 0,
         time: Utc::now(),
         transaction_id: String::new(),
         min_spot_total_liquidity: DEFAULT_MIN_SPOT_TOTAL_LIQUIDITY,
@@ -46,6 +48,7 @@ pub(crate) fn new_insurance_config_with_defaults() -> NewInsuranceConfig {
         liq_ref_amount: DEFAULT_LIQ_REF_AMOUNT,
         exposure_cap_bps: DEFAULT_EXPOSURE_CAP_BPS,
         exposure_k_bps: DEFAULT_EXPOSURE_K_BPS,
+        odds_base_bps: DEFAULT_ODDS_BASE_BPS,
     }
 }
 
@@ -89,6 +92,9 @@ pub fn handle_insurance_event(
             process_config_initialized_event(data, &tx, event_id, timestamp_ms_i64)
         }
         "ConfigUpdatedEvent" => process_config_updated_event(data, &tx, event_id, timestamp_ms_i64),
+        "RouterLimitsUpdatedEvent" => {
+            process_router_limits_updated_event(data, &tx, event_id, timestamp_ms_i64)
+        }
         "UnderwriterVaultCreatedEvent" => process_vault_created_event(data, &tx, event_id),
         "UnderwriterVaultDepositedEvent" => {
             process_vault_deposited_event(data, &tx, event_id, timestamp_ms_i64)
@@ -144,7 +150,7 @@ fn process_config_initialized_event(
     config.max_duration_ms = max_duration_ms;
     config.fee_bps = fee_bps;
     config.version = 1;
-    config.timestamp_ms = timestamp_ms;
+    config.updated_at = timestamp_ms;
     config.time = Utc::now();
     config.transaction_id = tx.to_string();
 
@@ -170,6 +176,7 @@ fn process_config_updated_event(
     let max_coverage_bps = json_to_i64(data.get("max_coverage_bps")?);
     let max_duration_ms = json_to_i64(data.get("max_duration_ms")?);
     let fee_bps = json_to_i64(data.get("fee_bps")?);
+    let odds_base_bps = json_to_i64(data.get("odds_base_bps")?);
     let timestamp_ms = data
         .get("timestamp")
         .map(json_to_i64)
@@ -183,8 +190,9 @@ fn process_config_updated_event(
     config.max_coverage_bps = max_coverage_bps;
     config.max_duration_ms = max_duration_ms;
     config.fee_bps = fee_bps;
+    config.odds_base_bps = odds_base_bps;
     config.version = 1;
-    config.timestamp_ms = timestamp_ms;
+    config.updated_at = timestamp_ms;
     config.time = Utc::now();
     config.transaction_id = tx.to_string();
 
@@ -192,6 +200,51 @@ fn process_config_updated_event(
         SocialEventRow::InsuranceConfig(InsuranceConfigSnapshot::Updated(config)),
         SocialEventRow::InsuranceEventLog(new_insurance_event_log(
             "ConfigUpdatedEvent",
+            data,
+            event_id,
+        )),
+    ])
+}
+
+fn process_router_limits_updated_event(
+    data: &serde_json::Value,
+    tx: &str,
+    event_id: &str,
+    default_timestamp_ms: i64,
+) -> Option<Vec<SocialEventRow>> {
+    let updated_by = json_str(data.get("updated_by")?);
+    let max_route_reserve_market = json_to_i64(data.get("max_route_reserve_market")?);
+    let max_route_reserve_user = json_to_i64(data.get("max_route_reserve_user")?);
+    let max_route_reserve_option = json_to_i64(data.get("max_route_reserve_option")?);
+    let max_vault_concentration_bps = json_to_i64(data.get("max_vault_concentration_bps")?);
+    let min_vault_health_factor_bps = json_to_i64(data.get("min_vault_health_factor_bps")?);
+    let max_route_legs = json_to_i64(data.get("max_route_legs")?);
+    let timestamp_ms = data
+        .get("timestamp")
+        .map(json_to_i64)
+        .filter(|t| *t > 0)
+        .unwrap_or(default_timestamp_ms);
+
+    let config = NewInsuranceRouterConfig {
+        updated_by,
+        router_enabled: true,
+        router_paused: false,
+        max_route_reserve_market,
+        max_route_reserve_user,
+        max_route_reserve_option,
+        max_vault_concentration_bps,
+        min_vault_health_factor_bps,
+        max_route_legs,
+        version: 1,
+        updated_at: timestamp_ms,
+        time: Utc::now(),
+        transaction_id: tx.to_string(),
+    };
+
+    Some(vec![
+        SocialEventRow::InsuranceRouterConfig(config),
+        SocialEventRow::InsuranceEventLog(new_insurance_event_log(
+            "RouterLimitsUpdatedEvent",
             data,
             event_id,
         )),
@@ -213,7 +266,7 @@ fn process_risk_pricing_config_updated_event(
 
     let mut config = new_insurance_config_with_defaults();
     config.updated_by = updated_by;
-    config.timestamp_ms = timestamp_ms;
+    config.updated_at = timestamp_ms;
     config.time = Utc::now();
     config.transaction_id = tx.to_string();
     config.min_spot_total_liquidity = json_to_i64(data.get("min_spot_total_liquidity")?);

@@ -175,9 +175,19 @@ pub struct PostConfigRow {
     #[diesel(sql_type = BigInt)]
     pub repost_tip_percentage: i64,
     #[diesel(sql_type = BigInt)]
+    pub min_promotion_amount: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_promotion_amount: i64,
+    #[diesel(sql_type = BigInt)]
+    pub min_view_duration_ms: i64,
+    #[diesel(sql_type = BigInt)]
     pub version: i64,
     #[diesel(sql_type = BigInt)]
     pub updated_at: i64,
+    #[diesel(sql_type = diesel::sql_types::Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
 }
 
 pub(crate) async fn get_post_by_id(
@@ -915,7 +925,8 @@ pub(crate) async fn get_post_config(
     let query = "
         SELECT updated_by, max_content_length, max_media_urls, max_mentions, max_metadata_size,
                max_description_length, max_reaction_length, commenter_tip_percentage,
-               repost_tip_percentage, version, updated_at
+               repost_tip_percentage, min_promotion_amount, max_promotion_amount,
+               min_view_duration_ms, version, updated_at, time, transaction_id
         FROM post_config
         ORDER BY time DESC
         LIMIT 1

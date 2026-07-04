@@ -414,7 +414,9 @@ pub struct MyDataConfig {
     pub max_tags: i64,
     pub max_subscription_days: i64,
     pub max_free_access_grants: i64,
-    pub timestamp_ms: i64,
+    pub max_encryption_id_bytes: i64,
+    pub version: i64,
+    pub updated_at: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
 }
@@ -427,7 +429,9 @@ pub struct NewMyDataConfig {
     pub max_tags: i64,
     pub max_subscription_days: i64,
     pub max_free_access_grants: i64,
-    pub timestamp_ms: i64,
+    pub max_encryption_id_bytes: i64,
+    pub version: i64,
+    pub updated_at: i64,
     pub transaction_id: String,
 }
 

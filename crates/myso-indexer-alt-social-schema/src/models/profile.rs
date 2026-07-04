@@ -5,7 +5,9 @@ use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::schema::{profile_badges, profile_events, profile_offers, profile_sale_fees, profiles};
+use crate::schema::{
+    profile_badges, profile_config, profile_events, profile_offers, profile_sale_fees, profiles,
+};
 
 pub const PROFILE_SALE_FEE_BPS: i32 = 500;
 pub const CURVE_PRECISION: i64 = 1000;
@@ -204,4 +206,54 @@ pub struct ProfileSaleFee {
     pub timestamp: i64,
     pub transaction_id: String,
     pub time: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = profile_config)]
+pub struct NewProfileConfig {
+    pub updated_by: String,
+    pub max_vesting_pieces: i64,
+    pub curve_factor_min: i64,
+    pub curve_factor_max: i64,
+    pub curve_precision: i64,
+    pub min_claim_threshold_divisor: i64,
+    pub min_username_length: i64,
+    pub max_username_length: i64,
+    pub version: i64,
+    pub updated_at: i64,
+    pub time: chrono::DateTime<chrono::Utc>,
+    pub transaction_id: String,
+}
+
+impl NewProfileConfig {
+    pub fn from_event(
+        updated_by: String,
+        max_vesting_pieces: u64,
+        curve_factor_min: u64,
+        curve_factor_max: u64,
+        curve_precision: u64,
+        min_claim_threshold_divisor: u64,
+        min_username_length: u64,
+        max_username_length: u64,
+        version: u64,
+        updated_at: u64,
+        transaction_id: String,
+    ) -> Self {
+        let time = chrono::DateTime::<chrono::Utc>::from_timestamp((updated_at / 1000) as i64, 0)
+            .unwrap_or_else(chrono::Utc::now);
+        Self {
+            updated_by,
+            max_vesting_pieces: max_vesting_pieces as i64,
+            curve_factor_min: curve_factor_min as i64,
+            curve_factor_max: curve_factor_max as i64,
+            curve_precision: curve_precision as i64,
+            min_claim_threshold_divisor: min_claim_threshold_divisor as i64,
+            min_username_length: min_username_length as i64,
+            max_username_length: max_username_length as i64,
+            version: version as i64,
+            updated_at: updated_at as i64,
+            time,
+            transaction_id,
+        }
+    }
 }

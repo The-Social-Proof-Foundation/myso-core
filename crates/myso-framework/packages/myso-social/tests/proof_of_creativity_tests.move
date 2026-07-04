@@ -54,6 +54,8 @@ module social_contracts::proof_of_creativity_tests {
                 10000, // dispute_second_round_fee_multiplier_bps (1x)
                 10000, // dispute_second_round_quorum_multiplier_bps (1x)
                 500,   // username_beneficiary_join_referral_bps (5%)
+                3,     // max_disputes_per_post
+                1,     // min_vault_deposit_amount
                 &clock,
                 test_scenario::ctx(&mut scen)
             );

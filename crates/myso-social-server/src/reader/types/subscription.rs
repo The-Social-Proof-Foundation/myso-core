@@ -88,3 +88,18 @@ pub struct SubscriberSummaryRow {
     pub active_subscriptions: i64,
     pub total_revenue: i64,
 }
+
+#[derive(Debug, Serialize, QueryableByName)]
+#[serde(rename_all = "camelCase")]
+pub struct SubscriptionConfigInfo {
+    #[diesel(sql_type = Text)]
+    pub updated_by: String,
+    #[diesel(sql_type = BigInt)]
+    pub billing_period_ms: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_renewal_months: i64,
+    #[diesel(sql_type = BigInt)]
+    pub version: i64,
+    #[diesel(sql_type = BigInt)]
+    pub updated_at: i64,
+}

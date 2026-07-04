@@ -72,7 +72,7 @@ module social_contracts::mydata {
     const MILLISECONDS_PER_DAY: u64 = 86_400_000;
     const MAX_FREE_ACCESS_GRANTS: u64 = 100_000; // Limit free access to 100k users
     const MAX_U64: u64 = 18446744073709551615; // Max u64 value for overflow protection
-    const MAX_ENCRYPTION_ID_BYTES: u64 = 1024;
+    const DEFAULT_MAX_ENCRYPTION_ID_BYTES: u64 = 1024;
 
     const EPqInvalidInput: u64 = 1;
     const EPqPoolNotFound: u64 = 2;
@@ -139,6 +139,7 @@ module social_contracts::mydata {
         max_tags: u64,
         max_subscription_days: u64,
         max_free_access_grants: u64,
+        max_encryption_id_bytes: u64,
         version: u64,
     }
 
@@ -330,6 +331,7 @@ module social_contracts::mydata {
         max_tags: u64,
         max_subscription_days: u64,
         max_free_access_grants: u64,
+        max_encryption_id_bytes: u64,
         timestamp: u64,
     }
 
@@ -350,6 +352,7 @@ module social_contracts::mydata {
         max_tags: u64,
         max_subscription_days: u64,
         max_free_access_grants: u64,
+        max_encryption_id_bytes: u64,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
@@ -357,11 +360,13 @@ module social_contracts::mydata {
         assert!(max_subscription_days > 0, EInvalidInput);
         assert!(max_tags > 0, EInvalidInput);
         assert!(max_free_access_grants > 0, EInvalidInput);
+        assert!(max_encryption_id_bytes > 0, EInvalidInput);
 
         config.enable_flag = enable_flag;
         config.max_tags = max_tags;
         config.max_subscription_days = max_subscription_days;
         config.max_free_access_grants = max_free_access_grants;
+        config.max_encryption_id_bytes = max_encryption_id_bytes;
         
         // Emit config updated event
         event::emit(MyDataConfigUpdatedEvent {
@@ -370,6 +375,7 @@ module social_contracts::mydata {
             max_tags,
             max_subscription_days,
             max_free_access_grants,
+            max_encryption_id_bytes,
             timestamp: clock::timestamp_ms(clock),
         });
     }
@@ -385,6 +391,7 @@ module social_contracts::mydata {
             max_tags: MAX_TAGS,
             max_subscription_days: MAX_SUBSCRIPTION_DAYS,
             max_free_access_grants: MAX_FREE_ACCESS_GRANTS,
+            max_encryption_id_bytes: DEFAULT_MAX_ENCRYPTION_ID_BYTES,
             version: ver,
         };
         event::emit(MyDataConfigUpdatedEvent {
@@ -393,6 +400,7 @@ module social_contracts::mydata {
             max_tags: MAX_TAGS,
             max_subscription_days: MAX_SUBSCRIPTION_DAYS,
             max_free_access_grants: MAX_FREE_ACCESS_GRANTS,
+            max_encryption_id_bytes: DEFAULT_MAX_ENCRYPTION_ID_BYTES,
             timestamp: clock::timestamp_ms(clock),
         });
         transfer::share_object(config);
@@ -806,7 +814,7 @@ module social_contracts::mydata {
         // Input validation
         assert!(vector::length(&tags) <= config.max_tags, EInvalidInput);
         assert!(!vector::is_empty(&encryption_id), EInvalidInput);
-        assert!(vector::length(&encryption_id) <= MAX_ENCRYPTION_ID_BYTES, EInvalidInput);
+        assert!(vector::length(&encryption_id) <= config.max_encryption_id_bytes, EInvalidInput);
         
         // Validate prices with overflow protection
         if (option::is_some(&one_time_price)) {
@@ -935,6 +943,7 @@ module social_contracts::mydata {
     /// Sub-agent buyers must satisfy `max_action_spend` for `price` on `account`.
     public entry fun purchase_one_time(
         config: &MyDataConfig,
+        memory_config: &social_contracts::memory::MemoryConfig,
         mydata: &mut MyData,
         payment: Coin<MYSO>,
         account: &social_contracts::memory::MemoryAccount,
@@ -956,6 +965,7 @@ module social_contracts::mydata {
         let mut organization_id = option::none();
         if (social_contracts::memory::is_registered_agent(account, buyer)) {
             let acting = social_contracts::memory::resolve_actor_with_cap(
+                memory_config,
                 account,
                 0,
                 mydata.platform_id,
@@ -1003,6 +1013,7 @@ module social_contracts::mydata {
     /// Sub-agent buyers must satisfy `max_action_spend` for `price` on `account`.
     public entry fun purchase_subscription(
         config: &MyDataConfig,
+        memory_config: &social_contracts::memory::MemoryConfig,
         mydata: &mut MyData,
         payment: Coin<MYSO>,
         account: &social_contracts::memory::MemoryAccount,
@@ -1024,6 +1035,7 @@ module social_contracts::mydata {
         let mut organization_id = option::none();
         if (social_contracts::memory::is_registered_agent(account, buyer)) {
             let acting = social_contracts::memory::resolve_actor_with_cap(
+                memory_config,
                 account,
                 0,
                 mydata.platform_id,
@@ -1221,6 +1233,7 @@ module social_contracts::mydata {
     /// owner with `CAP_MYDATA_READ`. Register this package on the key server when using permissioned
     /// mode; `EncryptedObject.package_id` at encrypt time must match this package.
     public entry fun mydata_approve(
+        memory_config: &social_contracts::memory::MemoryConfig,
         id: vector<u8>,
         mydata: &MyData,
         account: &social_contracts::memory::MemoryAccount,
@@ -1244,6 +1257,7 @@ module social_contracts::mydata {
         };
 
         let acting = social_contracts::memory::resolve_actor_with_cap(
+            memory_config,
             account,
             social_contracts::memory::cap_mydata_read(),
             mydata.platform_id,

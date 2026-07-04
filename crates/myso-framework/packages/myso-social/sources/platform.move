@@ -65,6 +65,33 @@ module social_contracts::platform {
     /// Maximum length for approval reasoning
     const MAX_REASONING_LENGTH: u64 = 2000; // Max characters for approval reasoning
 
+    /// Global platform feature configuration
+    public struct PlatformConfig has key {
+        id: UID,
+        max_reasoning_length: u64,
+        max_cover_photo_url_length: u64,
+        max_media_previews: u64,
+        max_media_preview_url_length: u64,
+        max_badge_name_length: u64,
+        max_badge_description_length: u64,
+        max_badge_media_url_length: u64,
+        max_badge_icon_url_length: u64,
+        version: u64,
+    }
+
+    public struct PlatformConfigUpdatedEvent has copy, drop {
+        updated_by: address,
+        max_reasoning_length: u64,
+        max_cover_photo_url_length: u64,
+        max_media_previews: u64,
+        max_media_preview_url_length: u64,
+        max_badge_name_length: u64,
+        max_badge_description_length: u64,
+        max_badge_media_url_length: u64,
+        max_badge_icon_url_length: u64,
+        timestamp: u64,
+    }
+
     /// Platform category constants
     const CATEGORY_SOCIAL_NETWORK: vector<u8> = b"Social Network";
     const CATEGORY_MESSAGING: vector<u8> = b"Messaging";
@@ -340,14 +367,43 @@ module social_contracts::platform {
         timestamp: u64,
     }
 
-    /// Bootstrap initialization function - creates the platform registry
-    public(package) fun bootstrap_init(_clock: &Clock, ctx: &mut TxContext) {
+    /// Bootstrap initialization function - creates the platform registry and config
+    public(package) fun bootstrap_init(clock: &Clock, ctx: &mut TxContext) {
+        let admin = tx_context::sender(ctx);
+        let ver = upgrade::current_version();
+
+        let config = PlatformConfig {
+            id: object::new(ctx),
+            max_reasoning_length: MAX_REASONING_LENGTH,
+            max_cover_photo_url_length: MAX_COVER_PHOTO_URL_LENGTH,
+            max_media_previews: MAX_MEDIA_PREVIEWS,
+            max_media_preview_url_length: MAX_MEDIA_PREVIEW_URL_LENGTH,
+            max_badge_name_length: MAX_BADGE_NAME_LENGTH,
+            max_badge_description_length: MAX_BADGE_DESCRIPTION_LENGTH,
+            max_badge_media_url_length: MAX_BADGE_MEDIA_URL_LENGTH,
+            max_badge_icon_url_length: MAX_BADGE_ICON_URL_LENGTH,
+            version: ver,
+        };
+        event::emit(PlatformConfigUpdatedEvent {
+            updated_by: admin,
+            max_reasoning_length: MAX_REASONING_LENGTH,
+            max_cover_photo_url_length: MAX_COVER_PHOTO_URL_LENGTH,
+            max_media_previews: MAX_MEDIA_PREVIEWS,
+            max_media_preview_url_length: MAX_MEDIA_PREVIEW_URL_LENGTH,
+            max_badge_name_length: MAX_BADGE_NAME_LENGTH,
+            max_badge_description_length: MAX_BADGE_DESCRIPTION_LENGTH,
+            max_badge_media_url_length: MAX_BADGE_MEDIA_URL_LENGTH,
+            max_badge_icon_url_length: MAX_BADGE_ICON_URL_LENGTH,
+            timestamp: clock::timestamp_ms(clock),
+        });
+        transfer::share_object(config);
+
         let registry = PlatformRegistry {
             id: object::new(ctx),
             platforms_by_name: table::new(ctx),
             platforms_by_developer: table::new(ctx),
             platform_approvals: table::new(ctx),
-            version: upgrade::current_version(),
+            version: ver,
         };
 
         transfer::share_object(registry);
@@ -356,6 +412,7 @@ module social_contracts::platform {
     /// Create a new platform and transfer to developer
     public fun create_platform(
         registry: &mut PlatformRegistry,
+        config: &PlatformConfig,
         name: String,
         tagline: String,
         description: String,
@@ -388,8 +445,8 @@ module social_contracts::platform {
         let developer = tx_context::sender(ctx);
         let now = clock::timestamp_ms(clock);
 
-        validate_cover_photo(&cover_photo);
-        validate_media_previews(&media_previews);
+        validate_cover_photo(config, &cover_photo);
+        validate_media_previews(config, &media_previews);
 
         // Check if platform name is already taken
         assert!(!table::contains(&registry.platforms_by_name, name), EPlatformAlreadyExists);
@@ -593,6 +650,7 @@ module social_contracts::platform {
     /// Update platform information
     public fun update_platform(
         platform: &mut Platform,
+        config: &PlatformConfig,
         new_name: String,
         new_tagline: String,
         new_description: String,
@@ -616,8 +674,8 @@ module social_contracts::platform {
         
         let now = clock::timestamp_ms(clock);
 
-        validate_cover_photo(&new_cover_photo);
-        validate_media_previews(&new_media_previews);
+        validate_cover_photo(config, &new_cover_photo);
+        validate_media_previews(config, &new_media_previews);
 
         // Verify caller is platform developer
         assert!(platform.developer == tx_context::sender(ctx), EUnauthorized);
@@ -1116,6 +1174,7 @@ module social_contracts::platform {
     /// Optional reasoning can be provided to explain the decision
     public fun toggle_platform_approval(
         registry: &mut PlatformRegistry,
+        config: &PlatformConfig,
         platform_id: address,
         _: &PlatformAdminCap,
         reasoning: Option<String>,
@@ -1131,7 +1190,7 @@ module social_contracts::platform {
         // Validate reasoning length if provided
         if (option::is_some(&reasoning)) {
             let reasoning_val = option::borrow(&reasoning);
-            assert!(string::length(reasoning_val) <= MAX_REASONING_LENGTH, EInvalidReasoning);
+            assert!(string::length(reasoning_val) <= config.max_reasoning_length, EInvalidReasoning);
         };
         
         // Get current approval status and toggle it
@@ -1155,6 +1214,7 @@ module social_contracts::platform {
     /// Optional reasoning can be provided to explain the deletion
     public fun delete_platform(
         registry: &mut PlatformRegistry,
+        config: &PlatformConfig,
         platform: &Platform,
         _: &PlatformAdminCap,
         reasoning: Option<String>,
@@ -1180,7 +1240,7 @@ module social_contracts::platform {
         // Validate reasoning length if provided
         if (option::is_some(&reasoning)) {
             let reasoning_val = option::borrow(&reasoning);
-            assert!(string::length(reasoning_val) <= MAX_REASONING_LENGTH, EInvalidReasoning);
+            assert!(string::length(reasoning_val) <= config.max_reasoning_length, EInvalidReasoning);
         };
         
         // Remove from platforms_by_name table
@@ -1242,26 +1302,26 @@ module social_contracts::platform {
         status.status
     }
 
-    fun validate_cover_photo(cover_photo: &Option<String>) {
+    fun validate_cover_photo(config: &PlatformConfig, cover_photo: &Option<String>) {
         if (option::is_some(cover_photo)) {
             let url = option::borrow(cover_photo);
             assert!(
-                string::length(url) > 0 && string::length(url) <= MAX_COVER_PHOTO_URL_LENGTH,
+                string::length(url) > 0 && string::length(url) <= config.max_cover_photo_url_length,
                 EInvalidCoverPhotoUrl
             );
         };
     }
 
-    fun validate_media_previews(media_previews: &Option<vector<String>>) {
+    fun validate_media_previews(config: &PlatformConfig, media_previews: &Option<vector<String>>) {
         if (option::is_some(media_previews)) {
             let previews = option::borrow(media_previews);
-            assert!(vector::length(previews) <= MAX_MEDIA_PREVIEWS, ETooManyMediaPreviews);
+            assert!(vector::length(previews) <= config.max_media_previews, ETooManyMediaPreviews);
             let mut i = 0;
             let len = vector::length(previews);
             while (i < len) {
                 let url = vector::borrow(previews, i);
                 assert!(
-                    string::length(url) > 0 && string::length(url) <= MAX_MEDIA_PREVIEW_URL_LENGTH,
+                    string::length(url) > 0 && string::length(url) <= config.max_media_preview_url_length,
                     EInvalidMediaPreviewUrl
                 );
                 i = i + 1;
@@ -1782,6 +1842,7 @@ module social_contracts::platform {
     /// This is the primary entry point for badge assignment
     public fun assign_badge(
         platform_registry: &PlatformRegistry,
+        config: &PlatformConfig,
         platform: &Platform,
         group: &PermissionedGroup<PlatformPackage>,
         profile: &mut profile::Profile,
@@ -1807,10 +1868,10 @@ module social_contracts::platform {
         assert!(badge_type >= 1 && badge_type <= 100, EInvalidBadgeType);
         
         // Validate badge field lengths
-        assert!(string::length(&badge_name) > 0 && string::length(&badge_name) <= MAX_BADGE_NAME_LENGTH, EBadgeNameTooLong);
-        assert!(string::length(&badge_description) <= MAX_BADGE_DESCRIPTION_LENGTH, EBadgeDescriptionTooLong);
-        assert!(string::length(&badge_media_url) > 0 && string::length(&badge_media_url) <= MAX_BADGE_MEDIA_URL_LENGTH, EBadgeMediaUrlTooLong);
-        assert!(string::length(&badge_icon_url) > 0 && string::length(&badge_icon_url) <= MAX_BADGE_ICON_URL_LENGTH, EBadgeIconUrlTooLong);
+        assert!(string::length(&badge_name) > 0 && string::length(&badge_name) <= config.max_badge_name_length, EBadgeNameTooLong);
+        assert!(string::length(&badge_description) <= config.max_badge_description_length, EBadgeDescriptionTooLong);
+        assert!(string::length(&badge_media_url) > 0 && string::length(&badge_media_url) <= config.max_badge_media_url_length, EBadgeMediaUrlTooLong);
+        assert!(string::length(&badge_icon_url) > 0 && string::length(&badge_icon_url) <= config.max_badge_icon_url_length, EBadgeIconUrlTooLong);
         
         // Get current time
         let now = clock::timestamp_ms(clock);
@@ -1895,16 +1956,8 @@ module social_contracts::platform {
 
     #[test_only]
     /// Initialize test environment for platform module
-    public fun test_init(ctx: &mut TxContext) {
-        let registry = PlatformRegistry {
-            id: object::new(ctx),
-            platforms_by_name: table::new(ctx),
-            platforms_by_developer: table::new(ctx),
-            platform_approvals: table::new(ctx),
-            version: upgrade::current_version(),
-        };
-
-        transfer::share_object(registry);
+    public fun test_init(clock: &Clock, ctx: &mut TxContext) {
+        bootstrap_init(clock, ctx);
     }
     
     #[test_only]
@@ -1924,6 +1977,52 @@ module social_contracts::platform {
         if (!vec_set::contains(joined_wallets, &wallet_address)) {
             vec_set::insert(joined_wallets, wallet_address);
         };
+    }
+
+    /// Update platform configuration (admin only)
+    public entry fun update_platform_config(
+        _: &PlatformAdminCap,
+        config: &mut PlatformConfig,
+        max_reasoning_length: u64,
+        max_cover_photo_url_length: u64,
+        max_media_previews: u64,
+        max_media_preview_url_length: u64,
+        max_badge_name_length: u64,
+        max_badge_description_length: u64,
+        max_badge_media_url_length: u64,
+        max_badge_icon_url_length: u64,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(max_reasoning_length > 0, EUnauthorized);
+        assert!(max_cover_photo_url_length > 0, EUnauthorized);
+        assert!(max_media_previews > 0, EUnauthorized);
+        assert!(max_media_preview_url_length > 0, EUnauthorized);
+        assert!(max_badge_name_length > 0, EUnauthorized);
+        assert!(max_badge_media_url_length > 0, EUnauthorized);
+        assert!(max_badge_icon_url_length > 0, EUnauthorized);
+
+        config.max_reasoning_length = max_reasoning_length;
+        config.max_cover_photo_url_length = max_cover_photo_url_length;
+        config.max_media_previews = max_media_previews;
+        config.max_media_preview_url_length = max_media_preview_url_length;
+        config.max_badge_name_length = max_badge_name_length;
+        config.max_badge_description_length = max_badge_description_length;
+        config.max_badge_media_url_length = max_badge_media_url_length;
+        config.max_badge_icon_url_length = max_badge_icon_url_length;
+
+        event::emit(PlatformConfigUpdatedEvent {
+            updated_by: tx_context::sender(ctx),
+            max_reasoning_length,
+            max_cover_photo_url_length,
+            max_media_previews,
+            max_media_preview_url_length,
+            max_badge_name_length,
+            max_badge_description_length,
+            max_badge_media_url_length,
+            max_badge_icon_url_length,
+            timestamp: clock::timestamp_ms(clock),
+        });
     }
 
     /// Create a PlatformAdminCap for bootstrap (package visibility only)

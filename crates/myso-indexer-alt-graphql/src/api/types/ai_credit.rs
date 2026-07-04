@@ -129,6 +129,10 @@ impl AiCreditBalance {
             .list_agent_budgets_for_balance(&self.inner.balance_id)
             .await
             .ok()
-            .map(|rows| rows.into_iter().map(AiCreditAgentBudget::from_row).collect())
+            .map(|rows| {
+                rows.into_iter()
+                    .map(AiCreditAgentBudget::from_row)
+                    .collect()
+            })
     }
 }

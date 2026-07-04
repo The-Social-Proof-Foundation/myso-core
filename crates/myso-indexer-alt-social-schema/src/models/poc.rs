@@ -4,7 +4,7 @@
 use diesel::QueryableByName;
 use diesel::prelude::*;
 use diesel::sql_types::Jsonb;
-use diesel::sql_types::{BigInt, Bool, Nullable, SmallInt, Text};
+use diesel::sql_types::{BigInt, Bool, Nullable, SmallInt, Text, Timestamptz};
 use serde::{Deserialize, Serialize};
 
 use crate::schema::{
@@ -189,12 +189,20 @@ pub struct PocConfigRow {
     pub dispute_second_round_quorum_multiplier_bps: i64,
     #[diesel(sql_type = BigInt)]
     pub username_beneficiary_join_referral_bps: i64,
+    #[diesel(sql_type = SmallInt)]
+    pub max_disputes_per_post: i16,
+    #[diesel(sql_type = BigInt)]
+    pub min_vault_deposit_amount: i64,
     #[diesel(sql_type = Text)]
     pub updated_by: String,
     #[diesel(sql_type = BigInt)]
     pub updated_at: i64,
     #[diesel(sql_type = Text)]
     pub transaction_id: String,
+    #[diesel(sql_type = BigInt)]
+    pub version: i64,
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -302,9 +310,12 @@ pub struct NewPocConfiguration {
     pub dispute_second_round_fee_multiplier_bps: i64,
     pub dispute_second_round_quorum_multiplier_bps: i64,
     pub username_beneficiary_join_referral_bps: i64,
+    pub max_disputes_per_post: i16,
+    pub min_vault_deposit_amount: i64,
     pub updated_by: String,
     pub updated_at: i64,
     pub transaction_id: String,
+    pub version: i64,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]

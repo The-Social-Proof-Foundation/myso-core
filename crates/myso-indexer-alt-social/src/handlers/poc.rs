@@ -184,6 +184,10 @@ struct PocConfigUpdatedEvent {
     dispute_second_round_quorum_multiplier_bps: u64,
     #[serde(default = "default_username_beneficiary_join_referral_bps")]
     username_beneficiary_join_referral_bps: u64,
+    #[serde(default, deserialize_with = "deserialize_u64")]
+    max_disputes_per_post: u64,
+    #[serde(default, deserialize_with = "deserialize_u64")]
+    min_vault_deposit_amount: u64,
     #[serde(deserialize_with = "deserialize_u64")]
     timestamp: u64,
 }
@@ -659,9 +663,12 @@ fn process_poc_config_updated_event(
         dispute_second_round_quorum_multiplier_bps: ev.dispute_second_round_quorum_multiplier_bps
             as i64,
         username_beneficiary_join_referral_bps: ev.username_beneficiary_join_referral_bps as i64,
+        max_disputes_per_post: ev.max_disputes_per_post as i16,
+        min_vault_deposit_amount: ev.min_vault_deposit_amount as i64,
         updated_by: ev.updated_by,
         updated_at: ev.timestamp as i64,
         transaction_id: tx_id.to_string(),
+        version: 0,
     };
     Some(vec![SocialEventRow::PocConfiguration(config)])
 }

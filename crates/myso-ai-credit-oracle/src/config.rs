@@ -19,10 +19,18 @@ pub struct OracleArgs {
     #[arg(long, env = "AI_CREDIT_SETTLEMENT_SECRET")]
     pub settlement_secret: Option<String>,
 
-    #[arg(long, env = "AI_CREDIT_MYSO_RPC", default_value = "http://127.0.0.1:9001")]
+    #[arg(
+        long,
+        env = "AI_CREDIT_MYSO_RPC",
+        default_value = "http://127.0.0.1:9001"
+    )]
     pub myso_rpc: String,
 
-    #[arg(long, env = "AI_CREDIT_RECEIPT_STORE", default_value = "ai_credit_receipts.json")]
+    #[arg(
+        long,
+        env = "AI_CREDIT_RECEIPT_STORE",
+        default_value = "ai_credit_receipts.json"
+    )]
     pub receipt_store_path: PathBuf,
 
     #[arg(long, env = "AI_CREDIT_CONFIG_OBJECT_ID")]
@@ -35,7 +43,11 @@ pub struct OracleArgs {
     pub settlement_interval_secs: u64,
 
     /// Per-balance unsettled MIST that triggers settlement (default 10 MYSO).
-    #[arg(long, env = "AI_CREDIT_SETTLE_THRESHOLD_MIST", default_value = "10000000000")]
+    #[arg(
+        long,
+        env = "AI_CREDIT_SETTLE_THRESHOLD_MIST",
+        default_value = "10000000000"
+    )]
     pub settle_threshold_mist: u64,
 
     /// Max age of oldest unsettled receipt before settlement (seconds).
@@ -50,7 +62,11 @@ pub struct OracleArgs {
     #[arg(long, env = "AI_CREDIT_SETTLE_WARN_AGE_SECS", default_value = "240")]
     pub settle_warn_age_secs: u64,
 
-    #[arg(long, env = "AI_CREDIT_SOCIAL_SERVER_URL", default_value = "http://127.0.0.1:9126")]
+    #[arg(
+        long,
+        env = "AI_CREDIT_SOCIAL_SERVER_URL",
+        default_value = "http://127.0.0.1:9126"
+    )]
     pub social_server_url: String,
 
     #[arg(
@@ -77,10 +93,18 @@ pub struct OracleArgs {
     )]
     pub myso_price_oracle_url: String,
 
-    #[arg(long, env = "AI_CREDIT_PRICE_REFRESH_INTERVAL_SECS", default_value = "60")]
+    #[arg(
+        long,
+        env = "AI_CREDIT_PRICE_REFRESH_INTERVAL_SECS",
+        default_value = "60"
+    )]
     pub price_refresh_interval_secs: u64,
 
-    #[arg(long, env = "AI_CREDIT_MYSO_PRICE_MAX_STALE_SECS", default_value = "300")]
+    #[arg(
+        long,
+        env = "AI_CREDIT_MYSO_PRICE_MAX_STALE_SECS",
+        default_value = "300"
+    )]
     pub myso_price_max_stale_secs: u64,
 
     #[arg(long, env = "AI_CREDIT_MYSO_PRICE_ENABLED", default_value = "true")]
@@ -92,10 +116,18 @@ pub struct OracleArgs {
     #[arg(long, env = "AI_CREDIT_CATALOG_SYNC_ENABLED", default_value = "false")]
     pub catalog_sync_enabled: bool,
 
-    #[arg(long, env = "AI_CREDIT_CATALOG_SYNC_INTERVAL_SECS", default_value = "86400")]
+    #[arg(
+        long,
+        env = "AI_CREDIT_CATALOG_SYNC_INTERVAL_SECS",
+        default_value = "86400"
+    )]
     pub catalog_sync_interval_secs: u64,
 
-    #[arg(long, env = "AI_CREDIT_CATALOG_SYNC_ON_STARTUP", default_value = "true")]
+    #[arg(
+        long,
+        env = "AI_CREDIT_CATALOG_SYNC_ON_STARTUP",
+        default_value = "true"
+    )]
     pub catalog_sync_on_startup: bool,
 
     #[arg(
@@ -118,7 +150,11 @@ pub struct OracleArgs {
 
     /// Don't accept an allowance that expires sooner than this (must outlive the
     /// settlement window, `settle_max_age_secs`).
-    #[arg(long, env = "AI_CREDIT_APPROVAL_MIN_REMAINING_SECS", default_value = "180")]
+    #[arg(
+        long,
+        env = "AI_CREDIT_APPROVAL_MIN_REMAINING_SECS",
+        default_value = "180"
+    )]
     pub approval_min_remaining_secs: u64,
 
     /// Workflow relayer base URL for ApprovalRequest inbox items (unset = disabled).

@@ -7,9 +7,9 @@ use diesel::sql_types::{BigInt, Bool, Nullable, SmallInt, Text, Timestamptz};
 use serde::{Deserialize, Serialize};
 
 use super::revenue::{
-    CONTENT_TYPE_DATA, CONTENT_TYPE_POST, CONTENT_TYPE_SERVICE, CONTENT_TYPE_TOKEN, CURRENCY_MYSO,
-    REVENUE_SOURCE_MYDATA, REVENUE_SOURCE_POSTS, REVENUE_SOURCE_SPT, REVENUE_SOURCE_SUBSCRIPTION,
-    REVENUE_SOURCE_TIPS,
+    CONTENT_TYPE_DATA, CONTENT_TYPE_MESSAGING, CONTENT_TYPE_POST, CONTENT_TYPE_SERVICE,
+    CONTENT_TYPE_TOKEN, CURRENCY_MYSO, REVENUE_SOURCE_MESSAGING, REVENUE_SOURCE_MYDATA,
+    REVENUE_SOURCE_POSTS, REVENUE_SOURCE_SPT, REVENUE_SOURCE_SUBSCRIPTION, REVENUE_SOURCE_TIPS,
 };
 use crate::schema::{
     ecosystem_treasury, spt_config, spt_events, spt_holdings, spt_pools, spt_price_history,
@@ -275,9 +275,11 @@ pub struct EcosystemTreasury {
     pub id: i32,
     pub treasury_address: String,
     pub updated_by: String,
-    pub timestamp_ms: i64,
+    pub updated_at: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
+    pub profile_sale_fee_bps: i64,
+    pub version: i64,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -285,28 +287,33 @@ pub struct EcosystemTreasury {
 pub struct NewEcosystemTreasury {
     pub treasury_address: String,
     pub updated_by: String,
-    pub timestamp_ms: i64,
+    pub updated_at: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
+    pub profile_sale_fee_bps: i64,
+    pub version: i64,
 }
 
 impl NewEcosystemTreasury {
     pub fn from_event(
         treasury_address: String,
         updated_by: String,
-        timestamp_ms: u64,
+        updated_at: u64,
+        profile_sale_fee_bps: u64,
         transaction_id: String,
     ) -> Self {
-        let timestamp_secs = (timestamp_ms / 1000) as i64;
+        let timestamp_secs = (updated_at / 1000) as i64;
         let time = chrono::DateTime::<chrono::Utc>::from_timestamp(timestamp_secs, 0)
             .unwrap_or_else(chrono::Utc::now);
 
         Self {
             treasury_address,
             updated_by,
-            timestamp_ms: timestamp_ms as i64,
+            updated_at: updated_at as i64,
             time,
+            profile_sale_fee_bps: profile_sale_fee_bps as i64,
             transaction_id,
+            version: 0,
         }
     }
 }
@@ -335,6 +342,8 @@ pub struct NewSptExchangeConfig {
     pub base_price: i64,
     pub quadratic_coefficient: i64,
     pub max_hold_percent_bps: i64,
+    pub non_platform_platform_to_creator_bps: i64,
+    pub non_platform_platform_to_treasury_bps: i64,
     pub trading_enabled: Option<bool>,
     /// Kill-switch path: apply only `updated_by`, `trading_enabled`, `updated_at`, `transaction_id`.
     #[serde(default)]
@@ -342,6 +351,102 @@ pub struct NewSptExchangeConfig {
     pub updated_at: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
+    pub version: i64,
+}
+
+#[derive(Debug, Clone, Insertable, Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = crate::schema::spt_exchange_config)]
+pub struct InsertSptExchangeConfig {
+    pub updated_by: String,
+    pub post_threshold: i64,
+    pub profile_threshold: i64,
+    pub max_individual_reservation_bps: i64,
+    pub total_fee_bps: i64,
+    pub creator_fee_bps: i64,
+    pub platform_fee_bps: i64,
+    pub treasury_fee_bps: i64,
+    pub trading_creator_fee_bps: i64,
+    pub trading_platform_fee_bps: i64,
+    pub trading_treasury_fee_bps: i64,
+    pub reservation_creator_fee_bps: i64,
+    pub reservation_platform_fee_bps: i64,
+    pub reservation_treasury_fee_bps: i64,
+    pub max_reservers_per_pool: i64,
+    pub base_price: i64,
+    pub quadratic_coefficient: i64,
+    pub max_hold_percent_bps: i64,
+    pub non_platform_platform_to_creator_bps: i64,
+    pub non_platform_platform_to_treasury_bps: i64,
+    pub trading_enabled: bool,
+    pub version: i64,
+    pub updated_at: i64,
+    pub time: chrono::DateTime<chrono::Utc>,
+    pub transaction_id: String,
+}
+
+impl InsertSptExchangeConfig {
+    pub fn from_row(row: &NewSptExchangeConfig, trading_enabled: bool) -> Self {
+        Self {
+            updated_by: row.updated_by.clone(),
+            post_threshold: row.post_threshold,
+            profile_threshold: row.profile_threshold,
+            max_individual_reservation_bps: row.max_individual_reservation_bps,
+            total_fee_bps: row.total_fee_bps,
+            creator_fee_bps: row.creator_fee_bps,
+            platform_fee_bps: row.platform_fee_bps,
+            treasury_fee_bps: row.treasury_fee_bps,
+            trading_creator_fee_bps: row.trading_creator_fee_bps,
+            trading_platform_fee_bps: row.trading_platform_fee_bps,
+            trading_treasury_fee_bps: row.trading_treasury_fee_bps,
+            reservation_creator_fee_bps: row.reservation_creator_fee_bps,
+            reservation_platform_fee_bps: row.reservation_platform_fee_bps,
+            reservation_treasury_fee_bps: row.reservation_treasury_fee_bps,
+            max_reservers_per_pool: row.max_reservers_per_pool,
+            base_price: row.base_price,
+            quadratic_coefficient: row.quadratic_coefficient,
+            max_hold_percent_bps: row.max_hold_percent_bps,
+            non_platform_platform_to_creator_bps: row.non_platform_platform_to_creator_bps,
+            non_platform_platform_to_treasury_bps: row.non_platform_platform_to_treasury_bps,
+            trading_enabled,
+            version: row.version,
+            updated_at: row.updated_at,
+            time: row.time,
+            transaction_id: row.transaction_id.clone(),
+        }
+    }
+
+    fn with_version(mut self, version: i64) -> Self {
+        self.version = version;
+        self
+    }
+}
+
+pub fn merge_spt_exchange_config(
+    prev: &InsertSptExchangeConfig,
+    incoming: &NewSptExchangeConfig,
+) -> InsertSptExchangeConfig {
+    let trading_enabled = incoming
+        .trading_enabled
+        .unwrap_or(prev.trading_enabled);
+    let version = if incoming.version > 0 {
+        incoming.version
+    } else {
+        prev.version + 1
+    };
+
+    if incoming.apply_trading_enabled_only {
+        return InsertSptExchangeConfig {
+            updated_by: incoming.updated_by.clone(),
+            trading_enabled,
+            version,
+            updated_at: incoming.updated_at,
+            time: incoming.time,
+            transaction_id: incoming.transaction_id.clone(),
+            ..prev.clone()
+        };
+    }
+
+    InsertSptExchangeConfig::from_row(incoming, trading_enabled).with_version(version)
 }
 
 #[derive(Debug, Clone, AsChangeset)]
@@ -366,6 +471,8 @@ pub struct SptExchangeConfigChangeset {
     pub base_price: i64,
     pub quadratic_coefficient: i64,
     pub max_hold_percent_bps: i64,
+    pub non_platform_platform_to_creator_bps: i64,
+    pub non_platform_platform_to_treasury_bps: i64,
     pub trading_enabled: Option<bool>,
     pub updated_at: i64,
     pub transaction_id: String,
@@ -392,6 +499,8 @@ impl From<&NewSptExchangeConfig> for SptExchangeConfigChangeset {
             base_price: c.base_price,
             quadratic_coefficient: c.quadratic_coefficient,
             max_hold_percent_bps: c.max_hold_percent_bps,
+            non_platform_platform_to_creator_bps: c.non_platform_platform_to_creator_bps,
+            non_platform_platform_to_treasury_bps: c.non_platform_platform_to_treasury_bps,
             trading_enabled: c.trading_enabled,
             updated_at: c.updated_at,
             transaction_id: c.transaction_id.clone(),
@@ -769,17 +878,83 @@ impl NewUnifiedRevenue {
             organization_id: None,
         }
     }
+
+    pub fn from_messaging_at_time(
+        revenue_type: String,
+        creator_address: String,
+        platform_address: Option<String>,
+        amount: i64,
+        content_id: String,
+        payer_address: String,
+        recipient_address: String,
+        revenue_time: i64,
+        transaction_id: String,
+        time: chrono::DateTime<chrono::Utc>,
+        organization_id: Option<String>,
+    ) -> Self {
+        Self {
+            revenue_source: REVENUE_SOURCE_MESSAGING.to_string(),
+            revenue_type,
+            creator_address,
+            platform_address,
+            amount,
+            currency: CURRENCY_MYSO.to_string(),
+            content_id: Some(content_id),
+            content_type: Some(CONTENT_TYPE_MESSAGING.to_string()),
+            payer_address,
+            recipient_address,
+            revenue_time,
+            time,
+            transaction_id,
+            organization_id,
+        }
+    }
 }
 
-#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[derive(Debug, Clone, Insertable, Queryable, Selectable, Serialize, Deserialize)]
 #[diesel(table_name = spt_config)]
 pub struct NewSocialProofTokensConfig {
     pub trading_enabled: bool,
     pub admin_address: String,
     pub reason: String,
-    pub timestamp_ms: i64,
-    pub updated_at: chrono::DateTime<chrono::Utc>,
+    pub updated_by: String,
+    pub version: i64,
+    pub updated_at: i64,
+    pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
+}
+
+pub fn merge_social_proof_tokens_config(
+    prev: &NewSocialProofTokensConfig,
+    incoming: &NewSocialProofTokensConfig,
+) -> NewSocialProofTokensConfig {
+    let version = if incoming.version > 0 {
+        incoming.version
+    } else {
+        prev.version + 1
+    };
+    NewSocialProofTokensConfig {
+        trading_enabled: incoming.trading_enabled,
+        admin_address: if incoming.admin_address.is_empty() {
+            prev.admin_address.clone()
+        } else {
+            incoming.admin_address.clone()
+        },
+        reason: if incoming.reason.is_empty() {
+            prev.reason.clone()
+        } else {
+            incoming.reason.clone()
+        },
+        updated_by: if incoming.updated_by.is_empty() {
+            prev.updated_by.clone()
+        } else {
+            incoming.updated_by.clone()
+        },
+        version,
+        updated_at: incoming.updated_at,
+        time: incoming.time,
+        transaction_id: incoming.transaction_id.clone(),
+    }
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -818,8 +993,11 @@ mod spt_exchange_config_changeset_tests {
             base_price: 1,
             quadratic_coefficient: 1,
             max_hold_percent_bps: 1,
+            non_platform_platform_to_creator_bps: 1,
+            non_platform_platform_to_treasury_bps: 1,
             trading_enabled,
             apply_trading_enabled_only: false,
+            version: 1,
             updated_at: 0,
             time: chrono::DateTime::UNIX_EPOCH,
             transaction_id: "tx".to_string(),

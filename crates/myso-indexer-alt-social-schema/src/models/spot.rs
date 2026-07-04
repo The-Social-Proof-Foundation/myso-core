@@ -261,10 +261,17 @@ pub struct NewSpotConfig {
     pub oracle_address: String,
     pub max_single_bet: i64,
     pub version: i64,
-    pub timestamp_ms: i64,
+    pub updated_at: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
     pub spot_governance_registry_id: Option<String>,
+    pub min_betting_options: i64,
+    pub max_betting_options: i64,
+    pub min_reasoning_length: i64,
+    pub max_reasoning_length: i64,
+    pub max_evidence_urls: i64,
+    pub platform_fee_bps: i64,
+    pub ecosystem_fee_bps: i64,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]

@@ -23,7 +23,7 @@ module social_contracts::proof_of_creativity {
     };
     use myso::myso::MYSO;
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
-    use social_contracts::profile::{Self, UsernameRegistry, EcosystemTreasury};
+    use social_contracts::profile::{Self, ProfileConfig, UsernameRegistry, EcosystemTreasury};
     use social_contracts::poc_vault::{Self as poc_vault, PoCBeneficiaryVault, PoCVaultDirectory};
     use social_contracts::poc_username_beneficiary::{
         Self as poc_username_beneficiary,
@@ -106,8 +106,8 @@ module social_contracts::proof_of_creativity {
     const DEFAULT_SECOND_ROUND_QUORUM_MULTIPLIER_BPS: u64 = 10000;
     /// Default one-time join-referral fee on first username-beneficiary vault claim (5%).
     const DEFAULT_USERNAME_BENEFICIARY_JOIN_REFERRAL_BPS: u64 = 500;
-    /// Max successful dispute submissions per post (lifetime).
-    const MAX_POC_DISPUTES_PER_POST: u8 = 2;
+    const DEFAULT_MAX_POC_DISPUTES_PER_POST: u8 = 2;
+    const DEFAULT_MIN_VAULT_DEPOSIT_AMOUNT: u64 = 1;
     const DISPUTE_ROUND_FIRST: u8 = 1;
     const DISPUTE_ROUND_SECOND: u8 = 2;
     /// Validation constants
@@ -160,6 +160,10 @@ module social_contracts::proof_of_creativity {
         dispute_second_round_quorum_multiplier_bps: u64,
         /// One-time join-referral fee (bps of post-treasury gross) on first username-beneficiary vault claim.
         username_beneficiary_join_referral_bps: u64,
+        /// Max successful dispute submissions per post (lifetime).
+        max_disputes_per_post: u8,
+        /// Minimum amount (per asset) accepted into a beneficiary vault deposit.
+        min_vault_deposit_amount: u64,
         /// Version for upgrades
         version: u64,
     }
@@ -353,6 +357,8 @@ module social_contracts::proof_of_creativity {
         dispute_second_round_fee_multiplier_bps: u64,
         dispute_second_round_quorum_multiplier_bps: u64,
         username_beneficiary_join_referral_bps: u64,
+        max_disputes_per_post: u8,
+        min_vault_deposit_amount: u64,
         timestamp: u64,
     }
 
@@ -394,6 +400,8 @@ module social_contracts::proof_of_creativity {
             dispute_second_round_fee_multiplier_bps: DEFAULT_SECOND_ROUND_FEE_MULTIPLIER_BPS,
             dispute_second_round_quorum_multiplier_bps: DEFAULT_SECOND_ROUND_QUORUM_MULTIPLIER_BPS,
             username_beneficiary_join_referral_bps: DEFAULT_USERNAME_BENEFICIARY_JOIN_REFERRAL_BPS,
+            max_disputes_per_post: DEFAULT_MAX_POC_DISPUTES_PER_POST,
+            min_vault_deposit_amount: DEFAULT_MIN_VAULT_DEPOSIT_AMOUNT,
             version: upgrade::current_version(),
         };
 
@@ -419,6 +427,8 @@ module social_contracts::proof_of_creativity {
             dispute_second_round_fee_multiplier_bps: DEFAULT_SECOND_ROUND_FEE_MULTIPLIER_BPS,
             dispute_second_round_quorum_multiplier_bps: DEFAULT_SECOND_ROUND_QUORUM_MULTIPLIER_BPS,
             username_beneficiary_join_referral_bps: DEFAULT_USERNAME_BENEFICIARY_JOIN_REFERRAL_BPS,
+            max_disputes_per_post: DEFAULT_MAX_POC_DISPUTES_PER_POST,
+            min_vault_deposit_amount: DEFAULT_MIN_VAULT_DEPOSIT_AMOUNT,
             timestamp: clock::timestamp_ms(clock),
         });
 
@@ -463,6 +473,8 @@ module social_contracts::proof_of_creativity {
         dispute_second_round_fee_multiplier_bps: u64,
         dispute_second_round_quorum_multiplier_bps: u64,
         username_beneficiary_join_referral_bps: u64,
+        max_disputes_per_post: u8,
+        min_vault_deposit_amount: u64,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
@@ -491,6 +503,8 @@ module social_contracts::proof_of_creativity {
         assert!(max_votes_per_dispute > 0, EInvalidThreshold);
         assert!(dispute_second_round_fee_multiplier_bps >= 10000, EInvalidThreshold);
         assert!(dispute_second_round_quorum_multiplier_bps >= 10000, EInvalidThreshold);
+        assert!(max_disputes_per_post > 0, EInvalidThreshold);
+        assert!(min_vault_deposit_amount > 0, EInvalidThreshold);
 
         // Update configuration
         config.oracle_address = oracle_address;
@@ -512,6 +526,8 @@ module social_contracts::proof_of_creativity {
         config.dispute_second_round_fee_multiplier_bps = dispute_second_round_fee_multiplier_bps;
         config.dispute_second_round_quorum_multiplier_bps = dispute_second_round_quorum_multiplier_bps;
         config.username_beneficiary_join_referral_bps = username_beneficiary_join_referral_bps;
+        config.max_disputes_per_post = max_disputes_per_post;
+        config.min_vault_deposit_amount = min_vault_deposit_amount;
 
         // Emit configuration update event
         event::emit(PoCConfigUpdatedEvent {
@@ -535,8 +551,18 @@ module social_contracts::proof_of_creativity {
             dispute_second_round_fee_multiplier_bps,
             dispute_second_round_quorum_multiplier_bps,
             username_beneficiary_join_referral_bps,
+            max_disputes_per_post,
+            min_vault_deposit_amount,
             timestamp: clock::timestamp_ms(clock),
         });
+    }
+
+    public(package) fun max_disputes_per_post(config: &PoCConfig): u8 {
+        config.max_disputes_per_post
+    }
+
+    public(package) fun min_vault_deposit_amount(config: &PoCConfig): u64 {
+        config.min_vault_deposit_amount
     }
 
     /// Provision a username beneficiary vault for an off-platform creator (admin only).
@@ -594,6 +620,7 @@ module social_contracts::proof_of_creativity {
     /// Oracle-verified claim of a provisioned username beneficiary.
     public entry fun claim_username_beneficiary(
         config: &PoCConfig,
+        profile_config: &ProfileConfig,
         directory: &mut PoCUsernameBeneficiaryDirectory,
         shard: &mut PoCUsernameBeneficiaryShard,
         username_registry: &mut UsernameRegistry,
@@ -615,6 +642,7 @@ module social_contracts::proof_of_creativity {
             directory,
             shard,
             username_registry,
+            profile_config,
             memory_registry,
             ai_credit_config,
             beneficiary,
@@ -1055,7 +1083,7 @@ module social_contracts::proof_of_creativity {
         let post_id = social_contracts::post::get_id_address(post);
 
         let submitted_before = social_contracts::post::poc_disputes_submitted(post);
-        assert!(submitted_before < MAX_POC_DISPUTES_PER_POST, EDisputeCapReached);
+        assert!(submitted_before < max_disputes_per_post(config), EDisputeCapReached);
         let dispute_round = submitted_before + 1;
 
         let fee = if (dispute_round == DISPUTE_ROUND_FIRST) {
@@ -1103,7 +1131,7 @@ module social_contracts::proof_of_creativity {
             coin::destroy_zero(payment);
         };
 
-        social_contracts::post::increment_poc_disputes_submitted(post);
+        social_contracts::post::increment_poc_disputes_submitted(post, max_disputes_per_post(config));
         let post_poc_disputes_submitted_after = social_contracts::post::poc_disputes_submitted(post);
 
         let voting_start_ms = now;
@@ -1687,9 +1715,7 @@ module social_contracts::poc_vault {
     const EDEPOSIT_BELOW_MINIMUM: u64 = 6;
     const EClaimInvariant: u64 = 7;
 
-    /// Minimum amount (per asset) accepted into the vault; configurable later via governance if needed.
-    const MIN_VAULT_DEPOSIT_AMOUNT: u64 = 1;
-
+    /// Minimum amount (per asset) accepted into the vault; configurable via `PoCConfig`.
     /// Bag key for `Balance<T>` buckets (same phantom-key pattern as orderbook `BalanceKey`).
     public struct VaultBalanceKey<phantom T> has copy, drop, store {}
 
@@ -1794,6 +1820,7 @@ module social_contracts::poc_vault {
         expected_beneficiary: address,
         fee_coin: Coin<T>,
         source_post_id: Option<address>,
+        min_vault_deposit_amount: u64,
         clock: &Clock,
         _ctx: &TxContext
     ) {
@@ -1803,7 +1830,7 @@ module social_contracts::poc_vault {
             coin::destroy_zero(fee_coin);
             return
         };
-        assert!(amount >= MIN_VAULT_DEPOSIT_AMOUNT, EDEPOSIT_BELOW_MINIMUM);
+        assert!(amount >= min_vault_deposit_amount, EDEPOSIT_BELOW_MINIMUM);
         let vault_id = object::uid_to_address(&vault.id);
         let coin_type = type_name::with_defining_ids<T>();
         let key = VaultBalanceKey<T> {};
@@ -2046,7 +2073,7 @@ module social_contracts::poc_vault {
     ) {
         let beneficiary = vault.beneficiary;
         let c = coin::mint_for_testing(amount, ctx);
-        deposit_coin<MYSO>(vault, beneficiary, c, option::none(), clock, ctx);
+        deposit_coin<MYSO>(vault, beneficiary, c, option::none(), 1, clock, ctx);
     }
 
     #[test_only]
@@ -2078,7 +2105,7 @@ module social_contracts::poc_username_beneficiary {
     };
     use myso::myso::MYSO;
     use social_contracts::upgrade;
-    use social_contracts::profile::{Self, UsernameRegistry, EcosystemTreasury};
+    use social_contracts::profile::{Self, ProfileConfig, UsernameRegistry, EcosystemTreasury};
     use social_contracts::poc_vault::{Self as poc_vault, PoCBeneficiaryVault, PoCVaultDirectory};
     use social_contracts::memory;
     use social_contracts::ai_credit;
@@ -2376,6 +2403,7 @@ module social_contracts::poc_username_beneficiary {
         directory: &mut PoCUsernameBeneficiaryDirectory,
         shard: &mut PoCUsernameBeneficiaryShard,
         username_registry: &mut UsernameRegistry,
+        profile_config: &ProfileConfig,
         memory_registry: &mut memory::MemoryRegistry,
         ai_credit_config: &mut ai_credit::AiCreditConfig,
         beneficiary: &mut PoCUsernameBeneficiary,
@@ -2403,6 +2431,7 @@ module social_contracts::poc_username_beneficiary {
 
         let profile_id = profile::create_profile_from_beneficiary_claim(
             username_registry,
+            profile_config,
             memory_registry,
             ai_credit_config,
             display_name,

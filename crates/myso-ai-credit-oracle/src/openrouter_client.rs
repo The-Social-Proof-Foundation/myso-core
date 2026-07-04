@@ -105,7 +105,10 @@ fn parse_usd_per_token(value: Option<&serde_json::Value>) -> Result<f64> {
         serde_json::Value::Number(n) => n.as_f64().context("invalid pricing number")?,
         other => anyhow::bail!("unexpected pricing type: {other}"),
     };
-    anyhow::ensure!(raw.is_finite() && raw >= 0.0, "pricing must be non-negative finite");
+    anyhow::ensure!(
+        raw.is_finite() && raw >= 0.0,
+        "pricing must be non-negative finite"
+    );
     Ok(raw)
 }
 

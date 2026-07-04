@@ -66,7 +66,7 @@ pub(crate) async fn get_ai_credit_config(
 ) -> Result<Option<AiCreditConfigRow>, SocialError> {
     let mut conn = db.connect().await?;
     ai_credit_config::table
-        .filter(ai_credit_config::id.eq(1i16))
+        .order(ai_credit_config::time.desc())
         .select(AiCreditConfigRow::as_select())
         .first(&mut conn)
         .await
@@ -153,13 +153,9 @@ mod ingest_tests {
     async fn ingest_usage_line_requires_write_pool() {
         let temp_db = TempDb::new().unwrap();
         let url = temp_db.database().url();
-        let write_db = Db::for_write(url.clone(), DbArgs::default())
-            .await
-            .unwrap();
+        let write_db = Db::for_write(url.clone(), DbArgs::default()).await.unwrap();
         setup_usage_lines_table(&write_db).await;
-        let read_db = Db::for_read(url.clone(), DbArgs::default())
-            .await
-            .unwrap();
+        let read_db = Db::for_read(url.clone(), DbArgs::default()).await.unwrap();
 
         let req = IngestUsageLineRequest {
             receipt_id: "1".to_string(),

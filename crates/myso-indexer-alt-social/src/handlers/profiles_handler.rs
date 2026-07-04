@@ -24,12 +24,12 @@ use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
     NewAiCreditBalance, NewEcosystemTreasury, NewMemoryAccount, NewProfile, NewProfileBadge,
-    NewProfileEvent, NewProfileOffer, NewProfileSaleFee, NewUsernameRegistry, NewVestingEvent,
-    NewVestingWallet, ProfileUpdateSet,
+    NewProfileConfig, NewProfileEvent, NewProfileOffer, NewProfileSaleFee, NewUsernameRegistry,
+    NewVestingEvent, NewVestingWallet, ProfileUpdateSet,
 };
 use myso_indexer_alt_social_schema::schema::{
-    ai_credit_balances, ecosystem_treasury, memory_accounts, profile_badges, profile_events,
-    profile_offers, profile_sale_fees, profiles, username_registry, vesting_events,
+    ai_credit_balances, ecosystem_treasury, memory_accounts, profile_badges, profile_config,
+    profile_events, profile_offers, profile_sale_fees, profiles, username_registry, vesting_events,
     vesting_wallets,
 };
 
@@ -87,6 +87,7 @@ pub enum ProfileRow {
         revoked_by: String,
     },
     EcosystemTreasury(NewEcosystemTreasury),
+    ProfileConfig(NewProfileConfig),
     VestingWallet(NewVestingWallet),
     VestingEvent(NewVestingEvent),
     VestingWalletClaimUpdate {
@@ -175,6 +176,7 @@ impl ProfileRow {
             crate::handlers::SocialEventRow::EcosystemTreasury(c) => {
                 Some(ProfileRow::EcosystemTreasury(c))
             }
+            crate::handlers::SocialEventRow::ProfileConfig(c) => Some(ProfileRow::ProfileConfig(c)),
             crate::handlers::SocialEventRow::VestingWallet(w) => Some(ProfileRow::VestingWallet(w)),
             crate::handlers::SocialEventRow::VestingEvent(e) => Some(ProfileRow::VestingEvent(e)),
             crate::handlers::SocialEventRow::VestingWalletClaimUpdate {
@@ -435,6 +437,91 @@ async fn commit_profile_insert<'a>(
     Ok(total)
 }
 
+fn default_ecosystem_treasury() -> NewEcosystemTreasury {
+    NewEcosystemTreasury {
+        treasury_address: String::new(),
+        updated_by: String::new(),
+        updated_at: 0,
+        time: chrono::Utc::now(),
+        transaction_id: String::new(),
+        profile_sale_fee_bps: 0,
+        version: 0,
+    }
+}
+
+fn merge_ecosystem_treasury(
+    prev: &NewEcosystemTreasury,
+    incoming: &NewEcosystemTreasury,
+) -> NewEcosystemTreasury {
+    let version = if incoming.version > 0 {
+        incoming.version
+    } else {
+        prev.version + 1
+    };
+    NewEcosystemTreasury {
+        treasury_address: if incoming.treasury_address.is_empty() {
+            prev.treasury_address.clone()
+        } else {
+            incoming.treasury_address.clone()
+        },
+        updated_by: incoming.updated_by.clone(),
+        profile_sale_fee_bps: incoming.profile_sale_fee_bps,
+        updated_at: incoming.updated_at,
+        time: incoming.time,
+        transaction_id: incoming.transaction_id.clone(),
+        version,
+    }
+}
+
+async fn load_latest_ecosystem_treasury(
+    conn: &mut Connection<'_>,
+) -> Result<Option<NewEcosystemTreasury>> {
+    ecosystem_treasury::table
+        .order(ecosystem_treasury::time.desc())
+        .select((
+            ecosystem_treasury::treasury_address,
+            ecosystem_treasury::updated_by,
+            ecosystem_treasury::updated_at,
+            ecosystem_treasury::time,
+            ecosystem_treasury::transaction_id,
+            ecosystem_treasury::profile_sale_fee_bps,
+            ecosystem_treasury::version,
+        ))
+        .first::<(
+            String,
+            String,
+            i64,
+            chrono::DateTime<chrono::Utc>,
+            String,
+            i64,
+            i64,
+        )>(conn)
+        .await
+        .optional()
+        .map(|opt| {
+            opt.map(
+                |(
+                    treasury_address,
+                    updated_by,
+                    updated_at,
+                    time,
+                    transaction_id,
+                    profile_sale_fee_bps,
+                    version,
+                )| NewEcosystemTreasury {
+                    treasury_address,
+                    updated_by,
+                    updated_at,
+                    time,
+                    transaction_id,
+                    profile_sale_fee_bps,
+                    version,
+                },
+            )
+        })
+        .map_err(Into::into)
+}
+
 async fn commit_profile_row<'a>(row: &ProfileRow, conn: &mut Connection<'a>) -> Result<usize> {
     let mut total = 0;
     match row {
@@ -596,30 +683,20 @@ async fn commit_profile_row<'a>(row: &ProfileRow, conn: &mut Connection<'a>) -> 
                 .await?;
         }
         ProfileRow::EcosystemTreasury(c) => {
-            let latest: Option<(i32, chrono::NaiveDateTime)> = ecosystem_treasury::table
-                .order(ecosystem_treasury::time.desc())
-                .select((ecosystem_treasury::id, ecosystem_treasury::time))
-                .first(conn)
-                .await
-                .ok();
-            if let Some((id, time)) = latest {
-                total += diesel::update(ecosystem_treasury::table)
-                    .filter(ecosystem_treasury::id.eq(id))
-                    .filter(ecosystem_treasury::time.eq(time))
-                    .set((
-                        ecosystem_treasury::treasury_address.eq(&c.treasury_address),
-                        ecosystem_treasury::updated_by.eq(&c.updated_by),
-                        ecosystem_treasury::timestamp_ms.eq(c.timestamp_ms),
-                        ecosystem_treasury::transaction_id.eq(&c.transaction_id),
-                    ))
-                    .execute(conn)
-                    .await?;
-            } else {
-                total += diesel::insert_into(ecosystem_treasury::table)
-                    .values(c)
-                    .execute(conn)
-                    .await?;
-            }
+            let prev = load_latest_ecosystem_treasury(conn)
+                .await?
+                .unwrap_or_else(default_ecosystem_treasury);
+            let merged = merge_ecosystem_treasury(&prev, c);
+            total += diesel::insert_into(ecosystem_treasury::table)
+                .values(&merged)
+                .execute(conn)
+                .await?;
+        }
+        ProfileRow::ProfileConfig(c) => {
+            total += diesel::insert_into(profile_config::table)
+                .values(c)
+                .execute(conn)
+                .await?;
         }
         ProfileRow::ProfileBadge(badge) => {
             total += diesel::insert_into(profile_badges::table)

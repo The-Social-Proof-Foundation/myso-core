@@ -240,6 +240,10 @@
           "type_": "u64"
         },
         {
+          "name": "odds_base_bps",
+          "type_": "u64"
+        },
+        {
           "name": "clock",
           "type_": {
             "Reference": [
@@ -867,6 +871,28 @@
         {
           "name": "min_vault_health_factor_bps",
           "type_": "u64"
+        },
+        {
+          "name": "max_route_legs",
+          "type_": "u64"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
         },
         {
           "name": "ctx",
@@ -4332,8 +4358,13 @@
             "doc": null,
             "type_": "u64"
           },
-          "version": {
+          "odds_base_bps": {
             "index": 18,
+            "doc": null,
+            "type_": "u64"
+          },
+          "version": {
+            "index": 19,
             "doc": null,
             "type_": "u64"
           }
@@ -4400,8 +4431,13 @@
             "doc": null,
             "type_": "u64"
           },
-          "market_pause": {
+          "max_route_legs": {
             "index": 8,
+            "doc": null,
+            "type_": "u64"
+          },
+          "market_pause": {
+            "index": 9,
             "doc": null,
             "type_": {
               "Datatype": {
@@ -4424,7 +4460,7 @@
             }
           },
           "version": {
-            "index": 9,
+            "index": 10,
             "doc": null,
             "type_": "u64"
           }
@@ -5993,8 +6029,68 @@
             "doc": null,
             "type_": "u64"
           },
-          "timestamp": {
+          "odds_base_bps": {
             "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "timestamp": {
+            "index": 7,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "RouterLimitsUpdatedEvent": {
+      "index": 24,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "updated_by": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "max_route_reserve_market": {
+            "index": 1,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_route_reserve_user": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_route_reserve_option": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_vault_concentration_bps": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "min_vault_health_factor_bps": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_route_legs": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "timestamp": {
+            "index": 7,
             "doc": null,
             "type_": "u64"
           }
@@ -6002,7 +6098,7 @@
       }
     },
     "PolicyExpiredEvent": {
-      "index": 24,
+      "index": 25,
       "doc": null,
       "attributes": [],
       "abilities": [

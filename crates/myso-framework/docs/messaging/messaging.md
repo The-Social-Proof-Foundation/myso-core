@@ -119,6 +119,7 @@ Messaging-specific:
 <b>use</b> <a href="../messaging/group_leaver.md#messaging_group_leaver">messaging::group_leaver</a>;
 <b>use</b> <a href="../messaging/group_manager.md#messaging_group_manager">messaging::group_manager</a>;
 <b>use</b> <a href="../messaging/message_log.md#messaging_message_log">messaging::message_log</a>;
+<b>use</b> <a href="../messaging/messaging_config.md#messaging_messaging_config">messaging::messaging_config</a>;
 <b>use</b> <a href="../messaging/metadata.md#messaging_metadata">messaging::metadata</a>;
 <b>use</b> <a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement">messaging::paid_escrow_settlement</a>;
 <b>use</b> <a href="../messaging/paid_messaging_policy.md#messaging_paid_messaging_policy">messaging::paid_messaging_policy</a>;
@@ -127,6 +128,7 @@ Messaging-specific:
 <b>use</b> <a href="../mydata/gf256.md#mydata_gf256">mydata::gf256</a>;
 <b>use</b> <a href="../mydata/hmac256ctr.md#mydata_hmac256ctr">mydata::hmac256ctr</a>;
 <b>use</b> <a href="../mydata/kdf.md#mydata_kdf">mydata::kdf</a>;
+<b>use</b> <a href="../mydata/merkle.md#mydata_merkle">mydata::merkle</a>;
 <b>use</b> <a href="../mydata/polynomial.md#mydata_polynomial">mydata::polynomial</a>;
 <b>use</b> <a href="../myso/accumulator.md#myso_accumulator">myso::accumulator</a>;
 <b>use</b> <a href="../myso/accumulator_settlement.md#myso_accumulator_settlement">myso::accumulator_settlement</a>;
@@ -166,13 +168,25 @@ Messaging-specific:
 <b>use</b> <a href="../myso/url.md#myso_url">myso::url</a>;
 <b>use</b> <a href="../myso/vec_map.md#myso_vec_map">myso::vec_map</a>;
 <b>use</b> <a href="../myso/vec_set.md#myso_vec_set">myso::vec_set</a>;
+<b>use</b> <a href="../myso/versioned.md#myso_versioned">myso::versioned</a>;
+<b>use</b> <a href="../orderbook/constants.md#orderbook_constants">orderbook::constants</a>;
+<b>use</b> <a href="../orderbook/registry.md#orderbook_registry">orderbook::registry</a>;
 <b>use</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit">social_contracts::ai_credit</a>;
 <b>use</b> <a href="../social_contracts/block_list.md#social_contracts_block_list">social_contracts::block_list</a>;
+<b>use</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">social_contracts::bootstrap</a>;
 <b>use</b> <a href="../social_contracts/governance.md#social_contracts_governance">social_contracts::governance</a>;
+<b>use</b> <a href="../social_contracts/insurance.md#social_contracts_insurance">social_contracts::insurance</a>;
 <b>use</b> <a href="../social_contracts/memory.md#social_contracts_memory">social_contracts::memory</a>;
+<b>use</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">social_contracts::mydata</a>;
 <b>use</b> <a href="../social_contracts/platform.md#social_contracts_platform">social_contracts::platform</a>;
+<b>use</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary">social_contracts::poc_username_beneficiary</a>;
+<b>use</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault">social_contracts::poc_vault</a>;
+<b>use</b> <a href="../social_contracts/post.md#social_contracts_post">social_contracts::post</a>;
 <b>use</b> <a href="../social_contracts/profile.md#social_contracts_profile">social_contracts::profile</a>;
+<b>use</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity">social_contracts::proof_of_creativity</a>;
 <b>use</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_contracts::social_graph</a>;
+<b>use</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth">social_contracts::social_proof_of_truth</a>;
+<b>use</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens">social_contracts::social_proof_tokens</a>;
 <b>use</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">social_contracts::subscription</a>;
 <b>use</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade">social_contracts::upgrade</a>;
 <b>use</b> <a href="../std/address.md#std_address">std::address</a>;
@@ -184,6 +198,7 @@ Messaging-specific:
 <b>use</b> <a href="../std/string.md#std_string">std::string</a>;
 <b>use</b> <a href="../std/type_name.md#std_type_name">std::type_name</a>;
 <b>use</b> <a href="../std/u128.md#std_u128">std::u128</a>;
+<b>use</b> <a href="../std/u256.md#std_u256">std::u256</a>;
 <b>use</b> <a href="../std/u64.md#std_u64">std::u64</a>;
 <b>use</b> <a href="../std/vector.md#std_vector">std::vector</a>;
 </code></pre>
@@ -664,6 +679,7 @@ Registered sub-agents must use <code><a href="../messaging/messaging.md#messagin
     <a href="../messaging/group_handle_registry.md#messaging_group_handle_registry">group_handle_registry</a>.share();
     paid_messaging_registry.share();
     <a href="../messaging/version.md#messaging_version_share_initial">version::share_initial</a>(ctx);
+    <a href="../messaging/messaging_config.md#messaging_messaging_config_share_initial">messaging_config::share_initial</a>(ctx);
 }
 </code></pre>
 
@@ -1030,7 +1046,7 @@ For cross-principal agent peers in <code>initial_members</code>, pass their
 humans or agents under the same principal, pass the creator account again.
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_create_agent_group">create_agent_group</a>(<a href="../messaging/version.md#messaging_version">version</a>: &<a href="../messaging/version.md#messaging_version_Version">messaging::version::Version</a>, namespace: &<b>mut</b> <a href="../messaging/messaging.md#messaging_messaging_MessagingNamespace">messaging::messaging::MessagingNamespace</a>, <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &<a href="../messaging/group_manager.md#messaging_group_manager_GroupManager">messaging::group_manager::GroupManager</a>, <a href="../messaging/group_leaver.md#messaging_group_leaver">group_leaver</a>: &<a href="../messaging/group_leaver.md#messaging_group_leaver_GroupLeaver">messaging::group_leaver::GroupLeaver</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, platform: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, creator_memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, cross_principal_peer_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, name: <a href="../std/string.md#std_string_String">std::string::String</a>, uuid: <a href="../std/string.md#std_string_String">std::string::String</a>, initial_encrypted_dek: vector&lt;u8&gt;, initial_members: <a href="../myso/vec_set.md#myso_vec_set_VecSet">myso::vec_set::VecSet</a>&lt;<b>address</b>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, <a href="../messaging/encryption_history.md#messaging_encryption_history_EncryptionHistory">messaging::encryption_history::EncryptionHistory</a>, <a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_create_agent_group">create_agent_group</a>(<a href="../messaging/version.md#messaging_version">version</a>: &<a href="../messaging/version.md#messaging_version_Version">messaging::version::Version</a>, namespace: &<b>mut</b> <a href="../messaging/messaging.md#messaging_messaging_MessagingNamespace">messaging::messaging::MessagingNamespace</a>, <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &<a href="../messaging/group_manager.md#messaging_group_manager_GroupManager">messaging::group_manager::GroupManager</a>, <a href="../messaging/group_leaver.md#messaging_group_leaver">group_leaver</a>: &<a href="../messaging/group_leaver.md#messaging_group_leaver_GroupLeaver">messaging::group_leaver::GroupLeaver</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, platform: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, creator_memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, cross_principal_peer_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, name: <a href="../std/string.md#std_string_String">std::string::String</a>, uuid: <a href="../std/string.md#std_string_String">std::string::String</a>, initial_encrypted_dek: vector&lt;u8&gt;, initial_members: <a href="../myso/vec_set.md#myso_vec_set_VecSet">myso::vec_set::VecSet</a>&lt;<b>address</b>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, <a href="../messaging/encryption_history.md#messaging_encryption_history_EncryptionHistory">messaging::encryption_history::EncryptionHistory</a>, <a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>)
 </code></pre>
 
 
@@ -1046,6 +1062,7 @@ humans or agents under the same principal, pass the creator account again.
     <a href="../messaging/group_leaver.md#messaging_group_leaver">group_leaver</a>: &GroupLeaver,
     block_list: &BlockListRegistry,
     platform: &Platform,
+    memory_config: &MemoryConfig,
     creator_memory_account: &MemoryAccount,
     cross_principal_peer_account: &MemoryAccount,
     name: String,
@@ -1057,6 +1074,7 @@ humans or agents under the same principal, pass the creator account again.
 ): (PermissionedGroup&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>&gt;, EncryptionHistory, MessageLog) {
     <a href="../messaging/version.md#messaging_version">version</a>.validate_version();
     <b>let</b> acting = <a href="../messaging/messaging.md#messaging_messaging_resolve_messaging_actor">resolve_messaging_actor</a>(
+        memory_config,
         creator_memory_account,
         platform,
         block_list,
@@ -1150,7 +1168,7 @@ humans or agents under the same principal, pass the creator account again.
 Entry point: create and share an agent-associated messaging group.
 
 
-<pre><code><b>entry</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_create_agent_and_share_group">create_agent_and_share_group</a>(<a href="../messaging/version.md#messaging_version">version</a>: &<a href="../messaging/version.md#messaging_version_Version">messaging::version::Version</a>, namespace: &<b>mut</b> <a href="../messaging/messaging.md#messaging_messaging_MessagingNamespace">messaging::messaging::MessagingNamespace</a>, <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &<a href="../messaging/group_manager.md#messaging_group_manager_GroupManager">messaging::group_manager::GroupManager</a>, <a href="../messaging/group_leaver.md#messaging_group_leaver">group_leaver</a>: &<a href="../messaging/group_leaver.md#messaging_group_leaver_GroupLeaver">messaging::group_leaver::GroupLeaver</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, platform: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, creator_memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, cross_principal_peer_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, name: <a href="../std/string.md#std_string_String">std::string::String</a>, uuid: <a href="../std/string.md#std_string_String">std::string::String</a>, initial_encrypted_dek: vector&lt;u8&gt;, initial_members: vector&lt;<b>address</b>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>entry</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_create_agent_and_share_group">create_agent_and_share_group</a>(<a href="../messaging/version.md#messaging_version">version</a>: &<a href="../messaging/version.md#messaging_version_Version">messaging::version::Version</a>, namespace: &<b>mut</b> <a href="../messaging/messaging.md#messaging_messaging_MessagingNamespace">messaging::messaging::MessagingNamespace</a>, <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &<a href="../messaging/group_manager.md#messaging_group_manager_GroupManager">messaging::group_manager::GroupManager</a>, <a href="../messaging/group_leaver.md#messaging_group_leaver">group_leaver</a>: &<a href="../messaging/group_leaver.md#messaging_group_leaver_GroupLeaver">messaging::group_leaver::GroupLeaver</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, platform: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, creator_memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, cross_principal_peer_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, name: <a href="../std/string.md#std_string_String">std::string::String</a>, uuid: <a href="../std/string.md#std_string_String">std::string::String</a>, initial_encrypted_dek: vector&lt;u8&gt;, initial_members: vector&lt;<b>address</b>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1166,6 +1184,7 @@ Entry point: create and share an agent-associated messaging group.
     <a href="../messaging/group_leaver.md#messaging_group_leaver">group_leaver</a>: &GroupLeaver,
     block_list: &BlockListRegistry,
     platform: &Platform,
+    memory_config: &MemoryConfig,
     creator_memory_account: &MemoryAccount,
     cross_principal_peer_account: &MemoryAccount,
     name: String,
@@ -1182,6 +1201,7 @@ Entry point: create and share an agent-associated messaging group.
         <a href="../messaging/group_leaver.md#messaging_group_leaver">group_leaver</a>,
         block_list,
         platform,
+        memory_config,
         creator_memory_account,
         cross_principal_peer_account,
         name,
@@ -1672,7 +1692,7 @@ Escrow <code>escrow_amount</code> from <code>payment</code> for a paid message. 
 Excess coin returns to the sender.
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_send_paid_message_digest">send_paid_message_digest</a>(<a href="../messaging/version.md#messaging_version">version</a>: &<a href="../messaging/version.md#messaging_version_Version">messaging::version::Version</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, log: &<b>mut</b> <a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>, paid_registry: &<a href="../messaging/paid_messaging_policy.md#messaging_paid_messaging_policy_PaidMessagingRegistry">messaging::paid_messaging_policy::PaidMessagingRegistry</a>, social_graph: &<a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_contracts::social_graph::SocialGraph</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &<a href="../messaging/group_manager.md#messaging_group_manager_GroupManager">messaging::group_manager::GroupManager</a>, recipient: <b>address</b>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, escrow_amount: u64, dedupe_key: vector&lt;u8&gt;, nonce: u128, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_send_paid_message_digest">send_paid_message_digest</a>(<a href="../messaging/version.md#messaging_version">version</a>: &<a href="../messaging/version.md#messaging_version_Version">messaging::version::Version</a>, config: &<a href="../messaging/messaging_config.md#messaging_messaging_config_MessagingConfig">messaging::messaging_config::MessagingConfig</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, log: &<b>mut</b> <a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>, paid_registry: &<a href="../messaging/paid_messaging_policy.md#messaging_paid_messaging_policy_PaidMessagingRegistry">messaging::paid_messaging_policy::PaidMessagingRegistry</a>, social_graph: &<a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_contracts::social_graph::SocialGraph</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &<a href="../messaging/group_manager.md#messaging_group_manager_GroupManager">messaging::group_manager::GroupManager</a>, recipient: <b>address</b>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, escrow_amount: u64, dedupe_key: vector&lt;u8&gt;, nonce: u128, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1683,6 +1703,7 @@ Excess coin returns to the sender.
 
 <pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_send_paid_message_digest">send_paid_message_digest</a>(
     <a href="../messaging/version.md#messaging_version">version</a>: &Version,
+    config: &MessagingConfig,
     group: &PermissionedGroup&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>&gt;,
     log: &<b>mut</b> MessageLog,
     paid_registry: &PaidMessagingRegistry,
@@ -1715,6 +1736,7 @@ Excess coin returns to the sender.
         escrow_amount,
     );
     <a href="../messaging/message_log.md#messaging_message_log_send_paid_message">message_log::send_paid_message</a>(
+        config,
         log,
         sender,
         recipient,
@@ -1740,7 +1762,7 @@ Agent variant of [<code><a href="../messaging/messaging.md#messaging_messaging_s
 evaluates paid-DM / social-graph rules against the human <code>principal_owner</code>.
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_send_agent_paid_message_digest">send_agent_paid_message_digest</a>(<a href="../messaging/version.md#messaging_version">version</a>: &<a href="../messaging/version.md#messaging_version_Version">messaging::version::Version</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, log: &<b>mut</b> <a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>, paid_registry: &<a href="../messaging/paid_messaging_policy.md#messaging_paid_messaging_policy_PaidMessagingRegistry">messaging::paid_messaging_policy::PaidMessagingRegistry</a>, social_graph: &<a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_contracts::social_graph::SocialGraph</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &<a href="../messaging/group_manager.md#messaging_group_manager_GroupManager">messaging::group_manager::GroupManager</a>, platform: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, recipient: <b>address</b>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, escrow_amount: u64, dedupe_key: vector&lt;u8&gt;, nonce: u128, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_send_agent_paid_message_digest">send_agent_paid_message_digest</a>(<a href="../messaging/version.md#messaging_version">version</a>: &<a href="../messaging/version.md#messaging_version_Version">messaging::version::Version</a>, config: &<a href="../messaging/messaging_config.md#messaging_messaging_config_MessagingConfig">messaging::messaging_config::MessagingConfig</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, log: &<b>mut</b> <a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>, paid_registry: &<a href="../messaging/paid_messaging_policy.md#messaging_paid_messaging_policy_PaidMessagingRegistry">messaging::paid_messaging_policy::PaidMessagingRegistry</a>, social_graph: &<a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_contracts::social_graph::SocialGraph</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &<a href="../messaging/group_manager.md#messaging_group_manager_GroupManager">messaging::group_manager::GroupManager</a>, platform: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, recipient: <b>address</b>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, escrow_amount: u64, dedupe_key: vector&lt;u8&gt;, nonce: u128, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1751,6 +1773,7 @@ evaluates paid-DM / social-graph rules against the human <code>principal_owner</
 
 <pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_send_agent_paid_message_digest">send_agent_paid_message_digest</a>(
     <a href="../messaging/version.md#messaging_version">version</a>: &Version,
+    config: &MessagingConfig,
     group: &PermissionedGroup&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>&gt;,
     log: &<b>mut</b> MessageLog,
     paid_registry: &PaidMessagingRegistry,
@@ -1758,6 +1781,7 @@ evaluates paid-DM / social-graph rules against the human <code>principal_owner</
     block_list: &BlockListRegistry,
     <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &GroupManager,
     platform: &Platform,
+    memory_config: &MemoryConfig,
     memory_account: &MemoryAccount,
     recipient: <b>address</b>,
     payment: Coin&lt;MYSO&gt;,
@@ -1771,6 +1795,7 @@ evaluates paid-DM / social-graph rules against the human <code>principal_owner</
     <a href="../messaging/messaging.md#messaging_messaging_assert_group_not_archived">assert_group_not_archived</a>(group);
     <a href="../messaging/messaging.md#messaging_messaging_assert_message_log_matches_group">assert_message_log_matches_group</a>(log, group);
     <b>let</b> acting = <a href="../messaging/messaging.md#messaging_messaging_resolve_messaging_actor">resolve_messaging_actor</a>(
+        memory_config,
         memory_account,
         platform,
         block_list,
@@ -1796,6 +1821,7 @@ evaluates paid-DM / social-graph rules against the human <code>principal_owner</
         escrow_amount,
     );
     <a href="../messaging/message_log.md#messaging_message_log_send_paid_message">message_log::send_paid_message</a>(
+        config,
         log,
         actor_address,
         recipient,
@@ -1821,7 +1847,7 @@ Reply to a paid message and take full escrow as coin. Caller may split fees (e.g
 [<code><a href="../messaging/messaging.md#messaging_messaging_reply_to_paid_message_claim_settled">reply_to_paid_message_claim_settled</a></code>]) or use this entry for custom routing.
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_reply_to_paid_message_claim_coin">reply_to_paid_message_claim_coin</a>(<a href="../messaging/version.md#messaging_version">version</a>: &<a href="../messaging/version.md#messaging_version_Version">messaging::version::Version</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, log: &<b>mut</b> <a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, paid_msg_seq: u64, char_count: u32, dedupe_key: vector&lt;u8&gt;, nonce: u128, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;
+<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_reply_to_paid_message_claim_coin">reply_to_paid_message_claim_coin</a>(<a href="../messaging/version.md#messaging_version">version</a>: &<a href="../messaging/version.md#messaging_version_Version">messaging::version::Version</a>, config: &<a href="../messaging/messaging_config.md#messaging_messaging_config_MessagingConfig">messaging::messaging_config::MessagingConfig</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, log: &<b>mut</b> <a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, paid_msg_seq: u64, char_count: u32, dedupe_key: vector&lt;u8&gt;, nonce: u128, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;
 </code></pre>
 
 
@@ -1832,6 +1858,7 @@ Reply to a paid message and take full escrow as coin. Caller may split fees (e.g
 
 <pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_reply_to_paid_message_claim_coin">reply_to_paid_message_claim_coin</a>(
     <a href="../messaging/version.md#messaging_version">version</a>: &Version,
+    config: &MessagingConfig,
     group: &PermissionedGroup&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>&gt;,
     log: &<b>mut</b> MessageLog,
     block_list: &BlockListRegistry,
@@ -1848,6 +1875,7 @@ Reply to a paid message and take full escrow as coin. Caller may split fees (e.g
     <b>assert</b>!(group.has_permission&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>, <a href="../messaging/messaging.md#messaging_messaging_MessagingSender">MessagingSender</a>&gt;(ctx.sender()), <a href="../messaging/messaging.md#messaging_messaging_ENotPermitted">ENotPermitted</a>);
     <a href="../messaging/messaging.md#messaging_messaging_assert_paid_parties_not_blocked">assert_paid_parties_not_blocked</a>(block_list, ctx.sender(), log, paid_msg_seq);
     <a href="../messaging/message_log.md#messaging_message_log_reply_to_paid_message_claim_coin">message_log::reply_to_paid_message_claim_coin</a>(
+        config,
         log,
         ctx.sender(),
         paid_msg_seq,
@@ -1873,7 +1901,7 @@ paid-message BPS to <code>platform_fee_recipient</code> and the ecosystem treasu
 <code>ecosystem_treasury</code> (via [<code>profile::get_treasury_address</code>]), with net to the paid-message recipient.
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_reply_to_paid_message_claim_settled">reply_to_paid_message_claim_settled</a>(<a href="../messaging/version.md#messaging_version">version</a>: &<a href="../messaging/version.md#messaging_version_Version">messaging::version::Version</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, log: &<b>mut</b> <a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, paid_msg_seq: u64, char_count: u32, dedupe_key: vector&lt;u8&gt;, nonce: u128, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, platform_fee_recipient: <b>address</b>, ecosystem_treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_reply_to_paid_message_claim_settled">reply_to_paid_message_claim_settled</a>(<a href="../messaging/version.md#messaging_version">version</a>: &<a href="../messaging/version.md#messaging_version_Version">messaging::version::Version</a>, config: &<a href="../messaging/messaging_config.md#messaging_messaging_config_MessagingConfig">messaging::messaging_config::MessagingConfig</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, log: &<b>mut</b> <a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, paid_msg_seq: u64, char_count: u32, dedupe_key: vector&lt;u8&gt;, nonce: u128, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, platform_fee_recipient: <b>address</b>, ecosystem_treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1884,6 +1912,7 @@ paid-message BPS to <code>platform_fee_recipient</code> and the ecosystem treasu
 
 <pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_reply_to_paid_message_claim_settled">reply_to_paid_message_claim_settled</a>(
     <a href="../messaging/version.md#messaging_version">version</a>: &Version,
+    config: &MessagingConfig,
     group: &PermissionedGroup&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>&gt;,
     log: &<b>mut</b> MessageLog,
     block_list: &BlockListRegistry,
@@ -1903,6 +1932,7 @@ paid-message BPS to <code>platform_fee_recipient</code> and the ecosystem treasu
     <a href="../messaging/messaging.md#messaging_messaging_assert_paid_parties_not_blocked">assert_paid_parties_not_blocked</a>(block_list, ctx.sender(), log, paid_msg_seq);
     <b>let</b> ecosystem_fee_recipient = profile::get_treasury_address(ecosystem_treasury);
     <a href="../messaging/message_log.md#messaging_message_log_reply_to_paid_message_claim_settled">message_log::reply_to_paid_message_claim_settled</a>(
+        config,
         log,
         ctx.sender(),
         paid_msg_seq,
@@ -1928,7 +1958,7 @@ paid-message BPS to <code>platform_fee_recipient</code> and the ecosystem treasu
 Refund expired paid escrow to the payer. Requires <code><a href="../messaging/messaging.md#messaging_messaging_MessagingSender">MessagingSender</a></code> (payer must be a member).
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_refund_paid_escrow">refund_paid_escrow</a>(<a href="../messaging/version.md#messaging_version">version</a>: &<a href="../messaging/version.md#messaging_version_Version">messaging::version::Version</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, log: &<b>mut</b> <a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, paid_msg_seq: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_refund_paid_escrow">refund_paid_escrow</a>(<a href="../messaging/version.md#messaging_version">version</a>: &<a href="../messaging/version.md#messaging_version_Version">messaging::version::Version</a>, config: &<a href="../messaging/messaging_config.md#messaging_messaging_config_MessagingConfig">messaging::messaging_config::MessagingConfig</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, log: &<b>mut</b> <a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, paid_msg_seq: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1939,6 +1969,7 @@ Refund expired paid escrow to the payer. Requires <code><a href="../messaging/me
 
 <pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_refund_paid_escrow">refund_paid_escrow</a>(
     <a href="../messaging/version.md#messaging_version">version</a>: &Version,
+    config: &MessagingConfig,
     group: &PermissionedGroup&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>&gt;,
     log: &<b>mut</b> MessageLog,
     block_list: &BlockListRegistry,
@@ -1952,7 +1983,7 @@ Refund expired paid escrow to the payer. Requires <code><a href="../messaging/me
     <b>assert</b>!(group.has_permission&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>, <a href="../messaging/messaging.md#messaging_messaging_MessagingSender">MessagingSender</a>&gt;(ctx.sender()), <a href="../messaging/messaging.md#messaging_messaging_ENotPermitted">ENotPermitted</a>);
     <b>let</b> (payer, recipient) = <a href="../messaging/message_log.md#messaging_message_log_paid_message_parties">message_log::paid_message_parties</a>(log, paid_msg_seq);
     block_list::assert_not_blocked(block_list, payer, recipient);
-    <a href="../messaging/message_log.md#messaging_message_log_refund_paid_message">message_log::refund_paid_message</a>(log, ctx.sender(), paid_msg_seq, clock, ctx);
+    <a href="../messaging/message_log.md#messaging_message_log_refund_paid_message">message_log::refund_paid_message</a>(config, log, ctx.sender(), paid_msg_seq, clock, ctx);
 }
 </code></pre>
 
@@ -2121,7 +2152,7 @@ Default permissions for human peers joining an agent-created group.
 
 
 
-<pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_resolve_messaging_actor">resolve_messaging_actor</a>(memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, platform: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, required_cap: u64, spend_amount: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../social_contracts/memory.md#social_contracts_memory_ActingContext">social_contracts::memory::ActingContext</a>
+<pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_resolve_messaging_actor">resolve_messaging_actor</a>(memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, platform: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, required_cap: u64, spend_amount: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../social_contracts/memory.md#social_contracts_memory_ActingContext">social_contracts::memory::ActingContext</a>
 </code></pre>
 
 
@@ -2131,6 +2162,7 @@ Default permissions for human peers joining an agent-created group.
 
 
 <pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_resolve_messaging_actor">resolve_messaging_actor</a>(
+    memory_config: &MemoryConfig,
     memory_account: &MemoryAccount,
     platform: &Platform,
     block_list: &BlockListRegistry,
@@ -2141,6 +2173,7 @@ Default permissions for human peers joining an agent-created group.
 ): ActingContext {
     <b>let</b> platform_id = object::uid_to_address(platform::id(platform));
     <b>let</b> acting = memory::resolve_actor_with_cap(
+        memory_config,
         memory_account,
         required_cap,
         option::some(platform_id),

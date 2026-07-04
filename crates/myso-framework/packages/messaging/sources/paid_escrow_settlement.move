@@ -1,6 +1,6 @@
 /// Fee distribution for claimed paid-message escrow (`MYSO`).
 ///
-/// **BPS** match `social_contracts::message` (`PAID_MSG_PLATFORM_FEE_BPS` / `PAID_MSG_TREASURY_FEE_BPS`).
+/// Fee BPS are read from [`messaging_config::MessagingConfig`].
 ///
 /// When `platform_fee_recipient` is [`NO_PLATFORM_FEE_RECIPIENT`] (`@0x0`), the platform share is
 /// combined with the ecosystem share and sent to `ecosystem_fee_recipient` (wallet paid DMs with no
@@ -11,13 +11,9 @@
 /// `ref_social_contract/sources/messaging_paid_fee_bridge.move` for a foundation-side helper.
 module messaging::paid_escrow_settlement;
 
+use messaging::messaging_config::{Self, MessagingConfig};
 use myso::coin::{Self, Coin};
 use myso::myso::MYSO;
-
-/// Must match `social_contracts::message::PAID_MSG_PLATFORM_FEE_BPS`.
-const PAID_MSG_PLATFORM_FEE_BPS: u64 = 250;
-/// Must match `social_contracts::message::PAID_MSG_TREASURY_FEE_BPS`.
-const PAID_MSG_TREASURY_FEE_BPS: u64 = 250;
 
 /// Sentinel: pass as `platform_fee_recipient` when no platform is associated with the paid DM.
 public fun no_platform_fee_recipient(): address {
@@ -50,6 +46,7 @@ public fun net_amount(t: &EscrowFeeTotals): u64 {
 
 /// Splits `escrow_coin` per paid-message BPS: platform, ecosystem, then `primary_recipient`.
 public fun distribute_escrow_to_recipients(
+    config: &MessagingConfig,
     mut escrow_coin: Coin<MYSO>,
     platform_fee_recipient: address,
     ecosystem_fee_recipient: address,
@@ -57,8 +54,10 @@ public fun distribute_escrow_to_recipients(
     ctx: &mut TxContext,
 ): EscrowFeeTotals {
     let total_amount = coin::value(&escrow_coin);
-    let platform_fee = (((total_amount as u128) * (PAID_MSG_PLATFORM_FEE_BPS as u128)) / 10000u128) as u64;
-    let treasury_fee = (((total_amount as u128) * (PAID_MSG_TREASURY_FEE_BPS as u128)) / 10000u128) as u64;
+    let platform_fee_bps = messaging_config::paid_msg_platform_fee_bps(config);
+    let treasury_fee_bps = messaging_config::paid_msg_treasury_fee_bps(config);
+    let platform_fee = (((total_amount as u128) * (platform_fee_bps as u128)) / 10000u128) as u64;
+    let treasury_fee = (((total_amount as u128) * (treasury_fee_bps as u128)) / 10000u128) as u64;
     let net_amount = total_amount - platform_fee - treasury_fee;
 
     if (platform_fee_recipient == no_platform_fee_recipient()) {

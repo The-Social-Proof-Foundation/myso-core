@@ -68,7 +68,8 @@ pub async fn run_settlement_cycle(
         .as_ref()
         .context("AI_CREDIT_SETTLEMENT_KEY_HEX required for settlement")?;
 
-    let balance_filter: HashMap<String, ()> = balance_ids.iter().map(|id| (id.clone(), ())).collect();
+    let balance_filter: HashMap<String, ()> =
+        balance_ids.iter().map(|id| (id.clone(), ())).collect();
     let pending: Vec<UsageLine> = store
         .lines
         .iter()
@@ -151,12 +152,8 @@ pub async fn run_settlement_cycle(
                         if let Some(failed) = chunk.get(cmd_idx) {
                             let voided_receipt = failed.receipt_id;
                             store.mark_void(voided_receipt);
-                            let recovered = resign_pending_for_balance(
-                                args,
-                                store,
-                                &key.balance_id,
-                            )
-                            .await;
+                            let recovered =
+                                resign_pending_for_balance(args, store, &key.balance_id).await;
                             match recovered {
                                 Ok(resigned) => {
                                     store_dirty = true;
@@ -195,7 +192,11 @@ pub async fn run_settlement_cycle(
 
     if settled_count > 0 || store_dirty {
         store.save(store_path)?;
-        tracing::info!(settled = settled_count, trigger, "settlement cycle complete");
+        tracing::info!(
+            settled = settled_count,
+            trigger,
+            "settlement cycle complete"
+        );
     }
     Ok(settled_count)
 }
@@ -267,8 +268,10 @@ async fn submit_batch(
     let memory_account_id = ObjectID::from_hex_literal(&lines[0].memory_account_id)?;
     let agent_object_id = ObjectID::from_hex_literal(&lines[0].agent_object_id)?;
 
-    let config_arg = shared_object_arg(client, config_object, SharedObjectMutability::Immutable).await?;
-    let balance_arg = shared_object_arg(client, balance_id, SharedObjectMutability::Mutable).await?;
+    let config_arg =
+        shared_object_arg(client, config_object, SharedObjectMutability::Immutable).await?;
+    let balance_arg =
+        shared_object_arg(client, balance_id, SharedObjectMutability::Mutable).await?;
     let account_arg =
         shared_object_arg(client, memory_account_id, SharedObjectMutability::Immutable).await?;
     let agent_arg =

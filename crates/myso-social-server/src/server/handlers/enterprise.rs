@@ -16,10 +16,10 @@ use serde::Deserialize;
 use std::sync::Arc;
 
 use crate::error::SocialError;
-use crate::workflow_client::{memory_access_idempotency_key, WorkflowClient, WorkflowItemIngest};
 use crate::reader::enterprise::{
     AuditLogFilter, IngestApprovalRequest, IngestAuditLogsRequest, IngestMemoryUsageStatsRequest,
 };
+use crate::workflow_client::{memory_access_idempotency_key, WorkflowClient, WorkflowItemIngest};
 
 use super::super::{AppState, PageParams};
 
@@ -55,11 +55,7 @@ pub async fn list_org_memory_permissions(
 ) -> Result<Json<Vec<OrgMemoryPermissionRow>>, SocialError> {
     let rows = state
         .reader
-        .list_org_memory_permissions(
-            &organization_id,
-            query.member.as_deref(),
-            query.active_only,
-        )
+        .list_org_memory_permissions(&organization_id, query.member.as_deref(), query.active_only)
         .await?;
     Ok(Json(rows))
 }
@@ -79,11 +75,7 @@ pub async fn list_org_role_assignments(
 ) -> Result<Json<Vec<OrgRoleAssignmentRow>>, SocialError> {
     let rows = state
         .reader
-        .list_org_role_assignments(
-            &organization_id,
-            query.member.as_deref(),
-            query.active_only,
-        )
+        .list_org_role_assignments(&organization_id, query.member.as_deref(), query.active_only)
         .await?;
     Ok(Json(rows))
 }
@@ -219,7 +211,11 @@ pub async fn ingest_approval_internal(
     headers: HeaderMap,
     Json(req): Json<IngestApprovalRequest>,
 ) -> Result<Json<serde_json::Value>, SocialError> {
-    check_sync_secret(&headers, "x-ai-credit-sync-secret", "AI_CREDIT_USAGE_SYNC_SECRET")?;
+    check_sync_secret(
+        &headers,
+        "x-ai-credit-sync-secret",
+        "AI_CREDIT_USAGE_SYNC_SECRET",
+    )?;
     state.reader.ingest_requested_approval(req).await?;
     Ok(Json(serde_json::json!({ "ok": true })))
 }
@@ -236,7 +232,9 @@ pub async fn ingest_memory_usage_stats_internal(
         "MEMORY_USAGE_SYNC_SECRET",
     )?;
     let upserted = state.reader.ingest_memory_usage_stats(req).await?;
-    Ok(Json(serde_json::json!({ "ok": true, "upserted": upserted })))
+    Ok(Json(
+        serde_json::json!({ "ok": true, "upserted": upserted }),
+    ))
 }
 
 /// Off-chain services push audit entries (idempotent per `idempotency_key`).
@@ -247,7 +245,9 @@ pub async fn ingest_audit_logs_internal(
 ) -> Result<Json<serde_json::Value>, SocialError> {
     check_sync_secret(&headers, "x-audit-sync-secret", "AUDIT_SYNC_SECRET")?;
     let inserted = state.reader.ingest_audit_logs(req).await?;
-    Ok(Json(serde_json::json!({ "ok": true, "inserted": inserted })))
+    Ok(Json(
+        serde_json::json!({ "ok": true, "inserted": inserted }),
+    ))
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -288,7 +288,9 @@ pub async fn ingest_memory_access_request_internal(
     }
 
     let Some(workflow) = state.workflow.clone() else {
-        return Ok(Json(serde_json::json!({ "ok": true, "workflow": "disabled" })));
+        return Ok(Json(
+            serde_json::json!({ "ok": true, "workflow": "disabled" }),
+        ));
     };
 
     let idempotency_key = memory_access_idempotency_key(
@@ -296,9 +298,10 @@ pub async fn ingest_memory_access_request_internal(
         &req.member_address,
         req.permissions_mask,
     );
-    let title = req.title.clone().unwrap_or_else(|| {
-        "Org memory access requested".to_string()
-    });
+    let title = req
+        .title
+        .clone()
+        .unwrap_or_else(|| "Org memory access requested".to_string());
     let body = req.body.clone().or_else(|| {
         Some(format!(
             "Agent {} requested org memory permissions (mask {})",

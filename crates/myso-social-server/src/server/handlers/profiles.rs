@@ -290,6 +290,17 @@ pub async fn get_profile_pnl(
     Ok(Json(rows))
 }
 
+pub async fn get_profile_config(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<crate::reader::ProfileConfigInfo>, SocialError> {
+    state
+        .reader
+        .get_profile_configuration()
+        .await?
+        .ok_or_else(|| SocialError::not_found("Profile configuration"))
+        .map(Json)
+}
+
 fn parse_profile_pnl_windows(raw: Option<&str>) -> Result<Vec<ProfilePnLWindow>, SocialError> {
     let Some(raw) = raw.map(str::trim).filter(|s| !s.is_empty()) else {
         return Ok(vec![

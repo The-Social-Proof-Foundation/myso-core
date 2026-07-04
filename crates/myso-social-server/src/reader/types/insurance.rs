@@ -22,7 +22,7 @@ pub struct InsuranceConfigInfo {
     #[diesel(sql_type = BigInt)]
     pub version: i64,
     #[diesel(sql_type = BigInt)]
-    pub timestamp_ms: i64,
+    pub updated_at: i64,
     #[diesel(sql_type = Timestamptz)]
     pub time: chrono::DateTime<chrono::Utc>,
     #[diesel(sql_type = Text)]
@@ -51,6 +51,46 @@ pub struct InsuranceConfigInfo {
     pub exposure_cap_bps: i64,
     #[diesel(sql_type = BigInt)]
     pub exposure_k_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub odds_base_bps: i64,
+}
+
+#[derive(Debug, Serialize, QueryableByName)]
+pub struct InsuranceRouterConfigInfo {
+    #[diesel(sql_type = Text)]
+    pub updated_by: String,
+    #[diesel(sql_type = Bool)]
+    pub router_enabled: bool,
+    #[diesel(sql_type = Bool)]
+    pub router_paused: bool,
+    #[diesel(sql_type = BigInt)]
+    pub max_route_reserve_market: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_route_reserve_user: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_route_reserve_option: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_vault_concentration_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub min_vault_health_factor_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_route_legs: i64,
+    #[diesel(sql_type = BigInt)]
+    pub version: i64,
+    #[diesel(sql_type = BigInt)]
+    pub updated_at: i64,
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+}
+
+/// Combined insurance configuration: flat pricing fields plus a nested `router` section.
+#[derive(Debug, Serialize)]
+pub struct InsuranceConfigurationResponse {
+    #[serde(flatten)]
+    pub pricing: InsuranceConfigInfo,
+    pub router: Option<InsuranceRouterConfigInfo>,
 }
 
 #[derive(Debug, Serialize, QueryableByName)]

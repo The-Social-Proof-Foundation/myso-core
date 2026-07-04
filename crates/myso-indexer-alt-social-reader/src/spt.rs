@@ -138,9 +138,17 @@ pub struct SptExchangeConfigRow {
     #[diesel(sql_type = Bool)]
     pub trading_enabled: bool,
     #[diesel(sql_type = BigInt)]
+    pub non_platform_platform_to_creator_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub non_platform_platform_to_treasury_bps: i64,
+    #[diesel(sql_type = BigInt)]
     pub updated_at: i64,
     #[diesel(sql_type = Text)]
     pub transaction_id: String,
+    #[diesel(sql_type = BigInt)]
+    pub version: i64,
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -944,7 +952,8 @@ pub(crate) async fn get_spt_exchange_config(
                trading_creator_fee_bps, trading_platform_fee_bps, trading_treasury_fee_bps,
                reservation_creator_fee_bps, reservation_platform_fee_bps, reservation_treasury_fee_bps,
                max_reservers_per_pool, base_price, quadratic_coefficient, max_hold_percent_bps,
-               trading_enabled, updated_at, transaction_id
+               trading_enabled, non_platform_platform_to_creator_bps,
+               non_platform_platform_to_treasury_bps, updated_at, transaction_id, version, time
         FROM spt_exchange_config
         ORDER BY time DESC
         LIMIT 1

@@ -452,6 +452,24 @@
           }
         },
         {
+          "name": "memory_config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
           "name": "memory_account",
           "type_": {
             "Reference": [

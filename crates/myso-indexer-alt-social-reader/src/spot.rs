@@ -29,9 +29,19 @@ pub struct SpotConfigRow {
     #[diesel(sql_type = BigInt)]
     pub payout_delay_ms: i64,
     #[diesel(sql_type = BigInt)]
-    pub fee_bps: i64,
+    pub platform_fee_bps: i64,
     #[diesel(sql_type = BigInt)]
-    pub fee_split_bps_platform: i64,
+    pub ecosystem_fee_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub min_betting_options: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_betting_options: i64,
+    #[diesel(sql_type = BigInt)]
+    pub min_reasoning_length: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_reasoning_length: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_evidence_urls: i64,
     #[diesel(sql_type = Text)]
     pub oracle_address: String,
     #[diesel(sql_type = BigInt)]
@@ -39,7 +49,7 @@ pub struct SpotConfigRow {
     #[diesel(sql_type = BigInt)]
     pub version: i64,
     #[diesel(sql_type = BigInt)]
-    pub timestamp_ms: i64,
+    pub updated_at: i64,
     #[diesel(sql_type = Timestamptz)]
     pub time: chrono::DateTime<chrono::Utc>,
     #[diesel(sql_type = Text)]
@@ -118,8 +128,10 @@ pub(crate) async fn get_spot_config(
 
     let query = "
         SELECT updated_by, enable_flag, confidence_threshold_bps, resolution_window_ms,
-               max_resolution_window_ms, payout_delay_ms, fee_bps, fee_split_bps_platform,
-               oracle_address, max_single_bet, version, timestamp_ms, time, transaction_id
+               max_resolution_window_ms, payout_delay_ms, platform_fee_bps, ecosystem_fee_bps,
+               min_betting_options, max_betting_options, min_reasoning_length, max_reasoning_length,
+               max_evidence_urls, oracle_address, max_single_bet, version, updated_at, time,
+               transaction_id
         FROM spot_config
         ORDER BY time DESC
         LIMIT 1

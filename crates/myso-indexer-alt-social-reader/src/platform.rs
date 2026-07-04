@@ -443,3 +443,60 @@ pub(crate) async fn get_platform_user_access(
     metrics.requests_succeeded.inc();
     Ok(row)
 }
+
+#[derive(Debug, Clone, QueryableByName)]
+pub struct PlatformConfigRow {
+    #[diesel(sql_type = Text)]
+    pub updated_by: String,
+    #[diesel(sql_type = BigInt)]
+    pub max_reasoning_length: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_cover_photo_url_length: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_media_previews: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_media_preview_url_length: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_badge_name_length: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_badge_description_length: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_badge_media_url_length: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_badge_icon_url_length: i64,
+    #[diesel(sql_type = BigInt)]
+    pub version: i64,
+    #[diesel(sql_type = BigInt)]
+    pub updated_at: i64,
+    #[diesel(sql_type = diesel::sql_types::Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+}
+
+/// Latest platform configuration.
+pub(crate) async fn get_platform_config(
+    conn: &mut Connection<'_>,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Option<PlatformConfigRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+
+    let query = "
+        SELECT updated_by, max_reasoning_length, max_cover_photo_url_length, max_media_previews,
+               max_media_preview_url_length, max_badge_name_length, max_badge_description_length,
+               max_badge_media_url_length, max_badge_icon_url_length, version, updated_at, time,
+               transaction_id
+        FROM platform_config
+        ORDER BY time DESC
+        LIMIT 1
+    ";
+
+    let result = diesel::sql_query(query)
+        .get_result::<PlatformConfigRow>(conn)
+        .await
+        .optional()?;
+
+    metrics.requests_succeeded.inc();
+    Ok(result)
+}

@@ -5,7 +5,8 @@ use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::schema::{
-    memory_accounts, memory_usage_stats, sub_agent_events, sub_agent_memory_vaults, sub_agents,
+    memory_accounts, memory_config, memory_usage_stats, sub_agent_events, sub_agent_memory_vaults,
+    sub_agents,
 };
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -165,4 +166,51 @@ pub struct SubAgentRow {
     pub event_id: String,
     pub transaction_id: String,
     pub time: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = memory_config)]
+pub struct NewMemoryConfig {
+    pub updated_by: String,
+    pub max_organizations_per_user: i16,
+    pub org_category_update_cooldown_ms: i64,
+    pub max_agent_depth: i16,
+    pub max_label_length: i64,
+    pub max_org_name_length: i64,
+    pub max_org_description_length: i64,
+    pub version: i64,
+    pub updated_at: i64,
+    pub time: chrono::DateTime<chrono::Utc>,
+    pub transaction_id: String,
+}
+
+impl NewMemoryConfig {
+    pub fn from_event(
+        updated_by: String,
+        max_organizations_per_user: u8,
+        org_category_update_cooldown_ms: u64,
+        max_agent_depth: u8,
+        max_label_length: u64,
+        max_org_name_length: u64,
+        max_org_description_length: u64,
+        version: u64,
+        updated_at: u64,
+        transaction_id: String,
+    ) -> Self {
+        let time = chrono::DateTime::<chrono::Utc>::from_timestamp((updated_at / 1000) as i64, 0)
+            .unwrap_or_else(chrono::Utc::now);
+        Self {
+            updated_by,
+            max_organizations_per_user: max_organizations_per_user as i16,
+            org_category_update_cooldown_ms: org_category_update_cooldown_ms as i64,
+            max_agent_depth: max_agent_depth as i16,
+            max_label_length: max_label_length as i64,
+            max_org_name_length: max_org_name_length as i64,
+            max_org_description_length: max_org_description_length as i64,
+            version: version as i64,
+            updated_at: updated_at as i64,
+            time,
+            transaction_id,
+        }
+    }
 }

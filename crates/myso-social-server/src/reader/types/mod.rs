@@ -4,6 +4,8 @@
 mod common;
 mod governance;
 mod insurance;
+mod memory;
+mod messaging;
 mod mydata;
 mod platform;
 mod poc;
@@ -24,8 +26,13 @@ pub use governance::{
     NominatedDelegateRow, ProposalRow, RewardDistributionRow, VoteDecryptionFailureRow,
 };
 pub use insurance::{
-    InsuranceConfigInfo, InsurancePolicyInfo, InsurancePolicyRow, InsuranceVaultExposureRow,
-    InsuranceVaultInfo, InsuranceVaultRow, InsuranceVaultTransactionRow,
+    InsuranceConfigInfo, InsuranceConfigurationResponse, InsurancePolicyInfo, InsurancePolicyRow,
+    InsuranceRouterConfigInfo, InsuranceVaultExposureRow, InsuranceVaultInfo, InsuranceVaultRow,
+    InsuranceVaultTransactionRow,
+};
+pub use memory::MemoryConfigInfo;
+pub use messaging::{
+    MessagingAgentGroupInfo, MessagingConfigInfo, MessagingRevenueSummaryInfo, PaidMessageEscrowInfo,
 };
 pub use mydata::{
     AccessAnalytics, AccessLogInfo, DailyRevenue, MyDataBasic, MyDataBroadPoolInfo,
@@ -38,8 +45,8 @@ pub use myso_indexer_alt_social_schema::models::{
     ProfilePlatformMembershipRow, ProfileSaleFee,
 };
 pub use platform::{
-    PlatformApprovalRow, PlatformBlockedProfileRow, PlatformEventRow, PlatformMemberRow,
-    PlatformModeratorRow, PlatformRow, PlatformUserAccessRow,
+    PlatformApprovalRow, PlatformBlockedProfileRow, PlatformConfigInfo, PlatformEventRow,
+    PlatformMemberRow, PlatformModeratorRow, PlatformRow, PlatformUserAccessRow,
 };
 pub use poc::{
     PocAnalysisResultRow, PocBadgeRow, PocBeneficiaryVaultRow, PocConfigRow, PocDisputeRow,
@@ -51,8 +58,8 @@ pub use post::{
     PromotionStatsRow, PromotionTimeSeriesRow, PromotionViewRow, ReactionRow, RepostRow,
 };
 pub use profile::{
-    ProfileBadgeRow, ProfileDailyStatsChartData, ProfileDailyStatsSummary, ProfileEventRow,
-    ProfilePlatformEventRow,
+    ProfileBadgeRow, ProfileConfigInfo, ProfileDailyStatsChartData, ProfileDailyStatsSummary,
+    ProfileEventRow, ProfilePlatformEventRow,
 };
 pub use revenue::UnifiedRevenue;
 pub use social_graph::{
@@ -71,7 +78,7 @@ pub use spt::{
 };
 pub use subscription::{
     ProfileSubscriptionInfo, ProfileSubscriptionRevenueRow, ProfileSubscriptionServiceInfo,
-    SubscriberSummaryRow,
+    SubscriberSummaryRow, SubscriptionConfigInfo,
 };
 pub use upgrade::{ObjectMigratedEventRow, UpgradeEventRow};
 pub use vesting::{

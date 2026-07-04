@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 pub(crate) mod address;
+pub(crate) mod ai_credit;
 pub(crate) mod available_range;
 pub(crate) mod balance;
 pub(crate) mod balance_change;
@@ -12,6 +13,7 @@ pub(crate) mod coin_metadata;
 pub(crate) mod command_result;
 pub(crate) mod display;
 pub(crate) mod dynamic_field;
+pub(crate) mod enterprise;
 pub(crate) mod epoch;
 pub(crate) mod event;
 pub(crate) mod execution_error;
@@ -24,6 +26,7 @@ pub(crate) mod insurance;
 mod linkage;
 pub(crate) mod lookups;
 pub(crate) mod memory;
+pub(crate) mod messaging;
 pub(crate) mod move_datatype;
 pub(crate) mod move_function;
 pub(crate) mod move_module;
@@ -31,8 +34,6 @@ pub(crate) mod move_object;
 pub(crate) mod move_package;
 pub(crate) mod move_type;
 pub(crate) mod move_value;
-pub(crate) mod ai_credit;
-pub(crate) mod enterprise;
 pub(crate) mod mydata;
 pub(crate) mod node;
 pub(crate) mod object;

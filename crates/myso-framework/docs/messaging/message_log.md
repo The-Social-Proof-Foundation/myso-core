@@ -30,13 +30,21 @@ Authorization is enforced in <code><a href="../messaging/messaging.md#messaging_
 -  [Function `refund_paid_message`](#messaging_message_log_refund_paid_message)
 
 
-<pre><code><b>use</b> <a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement">messaging::paid_escrow_settlement</a>;
+<pre><code><b>use</b> <a href="../messaging/messaging_config.md#messaging_messaging_config">messaging::messaging_config</a>;
+<b>use</b> <a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement">messaging::paid_escrow_settlement</a>;
+<b>use</b> <a href="../mydata/bf_hmac_encryption.md#mydata_bf_hmac_encryption">mydata::bf_hmac_encryption</a>;
+<b>use</b> <a href="../mydata/gf256.md#mydata_gf256">mydata::gf256</a>;
+<b>use</b> <a href="../mydata/hmac256ctr.md#mydata_hmac256ctr">mydata::hmac256ctr</a>;
+<b>use</b> <a href="../mydata/kdf.md#mydata_kdf">mydata::kdf</a>;
+<b>use</b> <a href="../mydata/merkle.md#mydata_merkle">mydata::merkle</a>;
+<b>use</b> <a href="../mydata/polynomial.md#mydata_polynomial">mydata::polynomial</a>;
 <b>use</b> <a href="../myso/accumulator.md#myso_accumulator">myso::accumulator</a>;
 <b>use</b> <a href="../myso/accumulator_settlement.md#myso_accumulator_settlement">myso::accumulator_settlement</a>;
 <b>use</b> <a href="../myso/address.md#myso_address">myso::address</a>;
 <b>use</b> <a href="../myso/bag.md#myso_bag">myso::bag</a>;
 <b>use</b> <a href="../myso/balance.md#myso_balance">myso::balance</a>;
 <b>use</b> <a href="../myso/bcs.md#myso_bcs">myso::bcs</a>;
+<b>use</b> <a href="../myso/bls12381.md#myso_bls12381">myso::bls12381</a>;
 <b>use</b> <a href="../myso/bootstrap_key.md#myso_bootstrap_key">myso::bootstrap_key</a>;
 <b>use</b> <a href="../myso/clock.md#myso_clock">myso::clock</a>;
 <b>use</b> <a href="../myso/coin.md#myso_coin">myso::coin</a>;
@@ -45,29 +53,59 @@ Authorization is enforced in <code><a href="../messaging/messaging.md#messaging_
 <b>use</b> <a href="../myso/derived_object.md#myso_derived_object">myso::derived_object</a>;
 <b>use</b> <a href="../myso/dynamic_field.md#myso_dynamic_field">myso::dynamic_field</a>;
 <b>use</b> <a href="../myso/dynamic_object_field.md#myso_dynamic_object_field">myso::dynamic_object_field</a>;
+<b>use</b> <a href="../myso/ed25519.md#myso_ed25519">myso::ed25519</a>;
 <b>use</b> <a href="../myso/event.md#myso_event">myso::event</a>;
 <b>use</b> <a href="../myso/funds_accumulator.md#myso_funds_accumulator">myso::funds_accumulator</a>;
+<b>use</b> <a href="../myso/group_ops.md#myso_group_ops">myso::group_ops</a>;
 <b>use</b> <a href="../myso/hash.md#myso_hash">myso::hash</a>;
 <b>use</b> <a href="../myso/hex.md#myso_hex">myso::hex</a>;
+<b>use</b> <a href="../myso/hmac.md#myso_hmac">myso::hmac</a>;
 <b>use</b> <a href="../myso/myso.md#myso_myso">myso::myso</a>;
 <b>use</b> <a href="../myso/object.md#myso_object">myso::object</a>;
+<b>use</b> <a href="../myso/package.md#myso_package">myso::package</a>;
 <b>use</b> <a href="../myso/party.md#myso_party">myso::party</a>;
+<b>use</b> <a href="../myso/permissioned_group.md#myso_permissioned_group">myso::permissioned_group</a>;
+<b>use</b> <a href="../myso/permissions_table.md#myso_permissions_table">myso::permissions_table</a>;
 <b>use</b> <a href="../myso/protocol_config.md#myso_protocol_config">myso::protocol_config</a>;
 <b>use</b> <a href="../myso/table.md#myso_table">myso::table</a>;
 <b>use</b> <a href="../myso/transfer.md#myso_transfer">myso::transfer</a>;
 <b>use</b> <a href="../myso/tx_context.md#myso_tx_context">myso::tx_context</a>;
 <b>use</b> <a href="../myso/types.md#myso_types">myso::types</a>;
+<b>use</b> <a href="../myso/unpause_cap.md#myso_unpause_cap">myso::unpause_cap</a>;
 <b>use</b> <a href="../myso/url.md#myso_url">myso::url</a>;
 <b>use</b> <a href="../myso/vec_map.md#myso_vec_map">myso::vec_map</a>;
 <b>use</b> <a href="../myso/vec_set.md#myso_vec_set">myso::vec_set</a>;
+<b>use</b> <a href="../myso/versioned.md#myso_versioned">myso::versioned</a>;
+<b>use</b> <a href="../orderbook/constants.md#orderbook_constants">orderbook::constants</a>;
+<b>use</b> <a href="../orderbook/registry.md#orderbook_registry">orderbook::registry</a>;
+<b>use</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit">social_contracts::ai_credit</a>;
+<b>use</b> <a href="../social_contracts/block_list.md#social_contracts_block_list">social_contracts::block_list</a>;
+<b>use</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">social_contracts::bootstrap</a>;
+<b>use</b> <a href="../social_contracts/governance.md#social_contracts_governance">social_contracts::governance</a>;
+<b>use</b> <a href="../social_contracts/insurance.md#social_contracts_insurance">social_contracts::insurance</a>;
+<b>use</b> <a href="../social_contracts/memory.md#social_contracts_memory">social_contracts::memory</a>;
+<b>use</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">social_contracts::mydata</a>;
+<b>use</b> <a href="../social_contracts/platform.md#social_contracts_platform">social_contracts::platform</a>;
+<b>use</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary">social_contracts::poc_username_beneficiary</a>;
+<b>use</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault">social_contracts::poc_vault</a>;
+<b>use</b> <a href="../social_contracts/post.md#social_contracts_post">social_contracts::post</a>;
+<b>use</b> <a href="../social_contracts/profile.md#social_contracts_profile">social_contracts::profile</a>;
+<b>use</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity">social_contracts::proof_of_creativity</a>;
+<b>use</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_contracts::social_graph</a>;
+<b>use</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth">social_contracts::social_proof_of_truth</a>;
+<b>use</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens">social_contracts::social_proof_tokens</a>;
+<b>use</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">social_contracts::subscription</a>;
+<b>use</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade">social_contracts::upgrade</a>;
 <b>use</b> <a href="../std/address.md#std_address">std::address</a>;
 <b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
 <b>use</b> <a href="../std/bcs.md#std_bcs">std::bcs</a>;
+<b>use</b> <a href="../std/hash.md#std_hash">std::hash</a>;
 <b>use</b> <a href="../std/internal.md#std_internal">std::internal</a>;
 <b>use</b> <a href="../std/option.md#std_option">std::option</a>;
 <b>use</b> <a href="../std/string.md#std_string">std::string</a>;
 <b>use</b> <a href="../std/type_name.md#std_type_name">std::type_name</a>;
 <b>use</b> <a href="../std/u128.md#std_u128">std::u128</a>;
+<b>use</b> <a href="../std/u256.md#std_u256">std::u256</a>;
 <b>use</b> <a href="../std/vector.md#std_vector">std::vector</a>;
 </code></pre>
 
@@ -602,34 +640,6 @@ Authorization is enforced in <code><a href="../messaging/messaging.md#messaging_
 
 
 
-<a name="messaging_message_log_MIN_REPLY_CHARS"></a>
-
-
-
-<pre><code><b>const</b> <a href="../messaging/message_log.md#messaging_message_log_MIN_REPLY_CHARS">MIN_REPLY_CHARS</a>: u32 = 6;
-</code></pre>
-
-
-
-<a name="messaging_message_log_PAYMENT_EXPIRATION_MS"></a>
-
-Paid message must be replied to within this wall-clock window (<code>Clock</code> ms).
-
-
-<pre><code><b>const</b> <a href="../messaging/message_log.md#messaging_message_log_PAYMENT_EXPIRATION_MS">PAYMENT_EXPIRATION_MS</a>: u64 = 2592000000;
-</code></pre>
-
-
-
-<a name="messaging_message_log_MAX_DEDUPE_KEY_BYTES"></a>
-
-
-
-<pre><code><b>const</b> <a href="../messaging/message_log.md#messaging_message_log_MAX_DEDUPE_KEY_BYTES">MAX_DEDUPE_KEY_BYTES</a>: u64 = 256;
-</code></pre>
-
-
-
 <a name="messaging_message_log_new"></a>
 
 ## Function `new`
@@ -781,7 +791,7 @@ Returns <code>(payer, recipient)</code> for a paid message escrow entry.
 
 
 
-<pre><code><b>fun</b> <a href="../messaging/message_log.md#messaging_message_log_consume_dedupe_and_nonce">consume_dedupe_and_nonce</a>(self: &<b>mut</b> <a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>, sender: <b>address</b>, dedupe_key: vector&lt;u8&gt;, nonce: u128, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../messaging/message_log.md#messaging_message_log_consume_dedupe_and_nonce">consume_dedupe_and_nonce</a>(config: &<a href="../messaging/messaging_config.md#messaging_messaging_config_MessagingConfig">messaging::messaging_config::MessagingConfig</a>, self: &<b>mut</b> <a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>, sender: <b>address</b>, dedupe_key: vector&lt;u8&gt;, nonce: u128, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -791,13 +801,17 @@ Returns <code>(payer, recipient)</code> for a paid message escrow entry.
 
 
 <pre><code><b>fun</b> <a href="../messaging/message_log.md#messaging_message_log_consume_dedupe_and_nonce">consume_dedupe_and_nonce</a>(
+    config: &MessagingConfig,
     self: &<b>mut</b> <a href="../messaging/message_log.md#messaging_message_log_MessageLog">MessageLog</a>,
     sender: <b>address</b>,
     dedupe_key: vector&lt;u8&gt;,
     nonce: u128,
     ctx: &<b>mut</b> TxContext,
 ) {
-    <b>assert</b>!(dedupe_key.length() &lt;= <a href="../messaging/message_log.md#messaging_message_log_MAX_DEDUPE_KEY_BYTES">MAX_DEDUPE_KEY_BYTES</a>, <a href="../messaging/message_log.md#messaging_message_log_EDedupeKeyTooLong">EDedupeKeyTooLong</a>);
+    <b>assert</b>!(
+        dedupe_key.length() &lt;= <a href="../messaging/messaging_config.md#messaging_messaging_config_max_dedupe_key_bytes">messaging_config::max_dedupe_key_bytes</a>(config),
+        <a href="../messaging/message_log.md#messaging_message_log_EDedupeKeyTooLong">EDedupeKeyTooLong</a>,
+    );
     <b>assert</b>!(!table::contains(&self.used_dedupe, dedupe_key), <a href="../messaging/message_log.md#messaging_message_log_EDedupeUsed">EDedupeUsed</a>);
     table::add(&<b>mut</b> self.used_dedupe, dedupe_key, <b>true</b>);
     <b>if</b> (!table::contains(&self.nonces, sender)) {
@@ -819,7 +833,7 @@ Returns <code>(payer, recipient)</code> for a paid message escrow entry.
 
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../messaging/message_log.md#messaging_message_log_send_paid_message">send_paid_message</a>(self: &<b>mut</b> <a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>, sender: <b>address</b>, recipient: <b>address</b>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, escrow_amount: u64, dedupe_key: vector&lt;u8&gt;, nonce: u128, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../messaging/message_log.md#messaging_message_log_send_paid_message">send_paid_message</a>(config: &<a href="../messaging/messaging_config.md#messaging_messaging_config_MessagingConfig">messaging::messaging_config::MessagingConfig</a>, self: &<b>mut</b> <a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>, sender: <b>address</b>, recipient: <b>address</b>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, escrow_amount: u64, dedupe_key: vector&lt;u8&gt;, nonce: u128, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -829,6 +843,7 @@ Returns <code>(payer, recipient)</code> for a paid message escrow entry.
 
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../messaging/message_log.md#messaging_message_log_send_paid_message">send_paid_message</a>(
+    config: &MessagingConfig,
     self: &<b>mut</b> <a href="../messaging/message_log.md#messaging_message_log_MessageLog">MessageLog</a>,
     sender: <b>address</b>,
     recipient: <b>address</b>,
@@ -840,7 +855,7 @@ Returns <code>(payer, recipient)</code> for a paid message escrow entry.
     ctx: &<b>mut</b> TxContext,
 ) {
     <b>assert</b>!(coin::value(&payment) &gt;= escrow_amount, <a href="../messaging/message_log.md#messaging_message_log_EInsufficientPayment">EInsufficientPayment</a>);
-    <a href="../messaging/message_log.md#messaging_message_log_consume_dedupe_and_nonce">consume_dedupe_and_nonce</a>(self, sender, dedupe_key, nonce, ctx);
+    <a href="../messaging/message_log.md#messaging_message_log_consume_dedupe_and_nonce">consume_dedupe_and_nonce</a>(config, self, sender, dedupe_key, nonce, ctx);
     <b>let</b> seq = self.<a href="../messaging/message_log.md#messaging_message_log_next_seq">next_seq</a>;
     self.<a href="../messaging/message_log.md#messaging_message_log_next_seq">next_seq</a> = seq + 1;
     <b>let</b> escrow_payment = coin::split(&<b>mut</b> payment, escrow_amount, ctx);
@@ -882,7 +897,7 @@ Returns <code>(payer, recipient)</code> for a paid message escrow entry.
 
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../messaging/message_log.md#messaging_message_log_reply_to_paid_message_claim_coin">reply_to_paid_message_claim_coin</a>(self: &<b>mut</b> <a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>, sender: <b>address</b>, paid_msg_seq: u64, char_count: u32, dedupe_key: vector&lt;u8&gt;, nonce: u128, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../messaging/message_log.md#messaging_message_log_reply_to_paid_message_claim_coin">reply_to_paid_message_claim_coin</a>(config: &<a href="../messaging/messaging_config.md#messaging_messaging_config_MessagingConfig">messaging::messaging_config::MessagingConfig</a>, self: &<b>mut</b> <a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>, sender: <b>address</b>, paid_msg_seq: u64, char_count: u32, dedupe_key: vector&lt;u8&gt;, nonce: u128, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;
 </code></pre>
 
 
@@ -892,6 +907,7 @@ Returns <code>(payer, recipient)</code> for a paid message escrow entry.
 
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../messaging/message_log.md#messaging_message_log_reply_to_paid_message_claim_coin">reply_to_paid_message_claim_coin</a>(
+    config: &MessagingConfig,
     self: &<b>mut</b> <a href="../messaging/message_log.md#messaging_message_log_MessageLog">MessageLog</a>,
     sender: <b>address</b>,
     paid_msg_seq: u64,
@@ -906,9 +922,12 @@ Returns <code>(payer, recipient)</code> for a paid message escrow entry.
     <b>assert</b>!(sender == escrow_ref.recipient, <a href="../messaging/message_log.md#messaging_message_log_EForbidden">EForbidden</a>);
     <b>assert</b>!(!escrow_ref.claimed, <a href="../messaging/message_log.md#messaging_message_log_EPaymentClaimed">EPaymentClaimed</a>);
     <b>let</b> now_ms = clock::timestamp_ms(clock);
-    <b>assert</b>!(now_ms - escrow_ref.created_at_ms &lt;= <a href="../messaging/message_log.md#messaging_message_log_PAYMENT_EXPIRATION_MS">PAYMENT_EXPIRATION_MS</a>, <a href="../messaging/message_log.md#messaging_message_log_EPaymentExpired">EPaymentExpired</a>);
-    <b>assert</b>!(char_count &gt;= <a href="../messaging/message_log.md#messaging_message_log_MIN_REPLY_CHARS">MIN_REPLY_CHARS</a>, <a href="../messaging/message_log.md#messaging_message_log_EReplyTooShort">EReplyTooShort</a>);
-    <a href="../messaging/message_log.md#messaging_message_log_consume_dedupe_and_nonce">consume_dedupe_and_nonce</a>(self, sender, dedupe_key, nonce, ctx);
+    <b>assert</b>!(
+        now_ms - escrow_ref.created_at_ms &lt;= <a href="../messaging/messaging_config.md#messaging_messaging_config_payment_expiration_ms">messaging_config::payment_expiration_ms</a>(config),
+        <a href="../messaging/message_log.md#messaging_message_log_EPaymentExpired">EPaymentExpired</a>,
+    );
+    <b>assert</b>!(char_count &gt;= <a href="../messaging/messaging_config.md#messaging_messaging_config_min_reply_chars">messaging_config::min_reply_chars</a>(config), <a href="../messaging/message_log.md#messaging_message_log_EReplyTooShort">EReplyTooShort</a>);
+    <a href="../messaging/message_log.md#messaging_message_log_consume_dedupe_and_nonce">consume_dedupe_and_nonce</a>(config, self, sender, dedupe_key, nonce, ctx);
     event::emit(<a href="../messaging/message_log.md#messaging_message_log_PaidMessageReplied">PaidMessageReplied</a> {
         <a href="../messaging/message_log.md#messaging_message_log_group_id">group_id</a>: self.<a href="../messaging/message_log.md#messaging_message_log_group_id">group_id</a>,
         paid_msg_seq,
@@ -944,7 +963,7 @@ Same as [<code><a href="../messaging/message_log.md#messaging_message_log_reply_
 <code>platform_fee_recipient</code>, <code>ecosystem_fee_recipient</code>, and the original paid-message recipient.
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../messaging/message_log.md#messaging_message_log_reply_to_paid_message_claim_settled">reply_to_paid_message_claim_settled</a>(self: &<b>mut</b> <a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>, sender: <b>address</b>, paid_msg_seq: u64, char_count: u32, dedupe_key: vector&lt;u8&gt;, nonce: u128, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, platform_fee_recipient: <b>address</b>, ecosystem_fee_recipient: <b>address</b>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../messaging/message_log.md#messaging_message_log_reply_to_paid_message_claim_settled">reply_to_paid_message_claim_settled</a>(config: &<a href="../messaging/messaging_config.md#messaging_messaging_config_MessagingConfig">messaging::messaging_config::MessagingConfig</a>, self: &<b>mut</b> <a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>, sender: <b>address</b>, paid_msg_seq: u64, char_count: u32, dedupe_key: vector&lt;u8&gt;, nonce: u128, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, platform_fee_recipient: <b>address</b>, ecosystem_fee_recipient: <b>address</b>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -954,6 +973,7 @@ Same as [<code><a href="../messaging/message_log.md#messaging_message_log_reply_
 
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../messaging/message_log.md#messaging_message_log_reply_to_paid_message_claim_settled">reply_to_paid_message_claim_settled</a>(
+    config: &MessagingConfig,
     self: &<b>mut</b> <a href="../messaging/message_log.md#messaging_message_log_MessageLog">MessageLog</a>,
     sender: <b>address</b>,
     paid_msg_seq: u64,
@@ -970,9 +990,12 @@ Same as [<code><a href="../messaging/message_log.md#messaging_message_log_reply_
     <b>assert</b>!(sender == escrow_ref.recipient, <a href="../messaging/message_log.md#messaging_message_log_EForbidden">EForbidden</a>);
     <b>assert</b>!(!escrow_ref.claimed, <a href="../messaging/message_log.md#messaging_message_log_EPaymentClaimed">EPaymentClaimed</a>);
     <b>let</b> now_ms = clock::timestamp_ms(clock);
-    <b>assert</b>!(now_ms - escrow_ref.created_at_ms &lt;= <a href="../messaging/message_log.md#messaging_message_log_PAYMENT_EXPIRATION_MS">PAYMENT_EXPIRATION_MS</a>, <a href="../messaging/message_log.md#messaging_message_log_EPaymentExpired">EPaymentExpired</a>);
-    <b>assert</b>!(char_count &gt;= <a href="../messaging/message_log.md#messaging_message_log_MIN_REPLY_CHARS">MIN_REPLY_CHARS</a>, <a href="../messaging/message_log.md#messaging_message_log_EReplyTooShort">EReplyTooShort</a>);
-    <a href="../messaging/message_log.md#messaging_message_log_consume_dedupe_and_nonce">consume_dedupe_and_nonce</a>(self, sender, dedupe_key, nonce, ctx);
+    <b>assert</b>!(
+        now_ms - escrow_ref.created_at_ms &lt;= <a href="../messaging/messaging_config.md#messaging_messaging_config_payment_expiration_ms">messaging_config::payment_expiration_ms</a>(config),
+        <a href="../messaging/message_log.md#messaging_message_log_EPaymentExpired">EPaymentExpired</a>,
+    );
+    <b>assert</b>!(char_count &gt;= <a href="../messaging/messaging_config.md#messaging_messaging_config_min_reply_chars">messaging_config::min_reply_chars</a>(config), <a href="../messaging/message_log.md#messaging_message_log_EReplyTooShort">EReplyTooShort</a>);
+    <a href="../messaging/message_log.md#messaging_message_log_consume_dedupe_and_nonce">consume_dedupe_and_nonce</a>(config, self, sender, dedupe_key, nonce, ctx);
     event::emit(<a href="../messaging/message_log.md#messaging_message_log_PaidMessageReplied">PaidMessageReplied</a> {
         <a href="../messaging/message_log.md#messaging_message_log_group_id">group_id</a>: self.<a href="../messaging/message_log.md#messaging_message_log_group_id">group_id</a>,
         paid_msg_seq,
@@ -987,6 +1010,7 @@ Same as [<code><a href="../messaging/message_log.md#messaging_message_log_reply_
     <b>let</b> coin = coin::from_balance(balance::withdraw_all(&<b>mut</b> escrow.escrowed_balance), ctx);
     <b>assert</b>!(coin::value(&coin) &gt; 0, <a href="../messaging/message_log.md#messaging_message_log_EVaultEmpty">EVaultEmpty</a>);
     <b>let</b> totals = escrow_fees::distribute_escrow_to_recipients(
+        config,
         coin,
         platform_fee_recipient,
         ecosystem_fee_recipient,
@@ -1018,7 +1042,7 @@ Same as [<code><a href="../messaging/message_log.md#messaging_message_log_reply_
 
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../messaging/message_log.md#messaging_message_log_refund_paid_message">refund_paid_message</a>(self: &<b>mut</b> <a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>, sender: <b>address</b>, paid_msg_seq: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../messaging/message_log.md#messaging_message_log_refund_paid_message">refund_paid_message</a>(config: &<a href="../messaging/messaging_config.md#messaging_messaging_config_MessagingConfig">messaging::messaging_config::MessagingConfig</a>, self: &<b>mut</b> <a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>, sender: <b>address</b>, paid_msg_seq: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1028,6 +1052,7 @@ Same as [<code><a href="../messaging/message_log.md#messaging_message_log_reply_
 
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../messaging/message_log.md#messaging_message_log_refund_paid_message">refund_paid_message</a>(
+    config: &MessagingConfig,
     self: &<b>mut</b> <a href="../messaging/message_log.md#messaging_message_log_MessageLog">MessageLog</a>,
     sender: <b>address</b>,
     paid_msg_seq: u64,
@@ -1039,7 +1064,10 @@ Same as [<code><a href="../messaging/message_log.md#messaging_message_log_reply_
     <b>assert</b>!(sender == escrow.payer, <a href="../messaging/message_log.md#messaging_message_log_EForbidden">EForbidden</a>);
     <b>assert</b>!(!escrow.claimed, <a href="../messaging/message_log.md#messaging_message_log_EPaymentClaimed">EPaymentClaimed</a>);
     <b>let</b> now_ms = clock::timestamp_ms(clock);
-    <b>assert</b>!(now_ms - escrow.created_at_ms &gt;= <a href="../messaging/message_log.md#messaging_message_log_PAYMENT_EXPIRATION_MS">PAYMENT_EXPIRATION_MS</a>, <a href="../messaging/message_log.md#messaging_message_log_EPaymentExpired">EPaymentExpired</a>);
+    <b>assert</b>!(
+        now_ms - escrow.created_at_ms &gt;= <a href="../messaging/messaging_config.md#messaging_messaging_config_payment_expiration_ms">messaging_config::payment_expiration_ms</a>(config),
+        <a href="../messaging/message_log.md#messaging_message_log_EPaymentExpired">EPaymentExpired</a>,
+    );
     <b>let</b> refund_amount = escrow.amount;
     <b>let</b> payer = escrow.payer;
     escrow.claimed = <b>true</b>;

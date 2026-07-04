@@ -673,6 +673,10 @@ fn process_spt_config_updated_event(
     let profile_threshold = json_to_i64(data.get("profile_threshold")?);
     let max_individual_reservation_bps = json_to_i64(data.get("max_individual_reservation_bps")?);
     let max_reservers_per_pool = json_to_i64(data.get("max_reservers_per_pool")?);
+    let non_platform_platform_to_creator_bps =
+        json_to_i64(data.get("non_platform_platform_to_creator_bps")?);
+    let non_platform_platform_to_treasury_bps =
+        json_to_i64(data.get("non_platform_platform_to_treasury_bps")?);
 
     let config = NewSptExchangeConfig {
         updated_by,
@@ -693,11 +697,14 @@ fn process_spt_config_updated_event(
         base_price,
         quadratic_coefficient,
         max_hold_percent_bps,
+        non_platform_platform_to_creator_bps,
+        non_platform_platform_to_treasury_bps,
         trading_enabled: None,
         apply_trading_enabled_only: false,
         updated_at: ts,
         time: now,
         transaction_id: transaction_id.to_string(),
+        version: 0,
     };
 
     Some(vec![SocialEventRow::SptExchangeConfig(config)])
@@ -718,8 +725,10 @@ fn process_emergency_kill_switch_event(
         trading_enabled,
         admin_address: admin.clone(),
         reason: reason.clone(),
-        timestamp_ms: ts,
-        updated_at: now,
+        updated_by: admin.clone(),
+        version: 0,
+        updated_at: ts,
+        time: now,
         transaction_id: transaction_id.to_string(),
     };
 
@@ -749,11 +758,14 @@ fn process_emergency_kill_switch_event(
         base_price: 0,
         quadratic_coefficient: 0,
         max_hold_percent_bps: 0,
+        non_platform_platform_to_creator_bps: 0,
+        non_platform_platform_to_treasury_bps: 0,
         trading_enabled: Some(trading_enabled),
         apply_trading_enabled_only: true,
         updated_at: ts,
         time: now,
         transaction_id: transaction_id.to_string(),
+        version: 0,
     };
 
     Some(vec![
@@ -1202,6 +1214,8 @@ mod tests {
             "profile_threshold": 1i64,
             "max_individual_reservation_bps": 100i64,
             "max_reservers_per_pool": 100i64,
+            "non_platform_platform_to_creator_bps": 50i64,
+            "non_platform_platform_to_treasury_bps": 50i64,
         });
         let rows = handle_spt_event("ConfigUpdatedEvent", &data, "tx:0", 0, 1000).expect("rows");
         let cfg = rows.iter().find_map(|r| {

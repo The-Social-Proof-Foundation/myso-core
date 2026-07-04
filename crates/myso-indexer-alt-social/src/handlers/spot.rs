@@ -321,8 +321,13 @@ fn process_spot_config_updated_event(
     let resolution_window_ms = json_to_i64(data.get("resolution_window_ms")?);
     let max_resolution_window_ms = json_to_i64(data.get("max_resolution_window_ms")?);
     let payout_delay_ms = json_to_i64(data.get("payout_delay_ms")?);
-    let fee_bps = json_to_i64(data.get("fee_bps")?);
-    let fee_split_bps_platform = json_to_i64(data.get("fee_split_bps_platform")?);
+    let platform_fee_bps = json_to_i64(data.get("platform_fee_bps")?);
+    let ecosystem_fee_bps = json_to_i64(data.get("ecosystem_fee_bps")?);
+    let min_betting_options = json_to_i64(data.get("min_betting_options")?);
+    let max_betting_options = json_to_i64(data.get("max_betting_options")?);
+    let min_reasoning_length = json_to_i64(data.get("min_reasoning_length")?);
+    let max_reasoning_length = json_to_i64(data.get("max_reasoning_length")?);
+    let max_evidence_urls = json_to_i64(data.get("max_evidence_urls")?);
     let oracle_address = data
         .get("oracle_address")
         .and_then(|v| v.as_str())
@@ -345,12 +350,22 @@ fn process_spot_config_updated_event(
         resolution_window_ms,
         max_resolution_window_ms,
         payout_delay_ms,
-        fee_bps,
-        fee_split_bps_platform,
+        // Legacy fee columns retained on spot_config for rollback safety; the
+        // Move event no longer carries them and the new platform/ecosystem bps
+        // fields below are the source of truth.
+        fee_bps: 0,
+        fee_split_bps_platform: 0,
+        platform_fee_bps,
+        ecosystem_fee_bps,
+        min_betting_options,
+        max_betting_options,
+        min_reasoning_length,
+        max_reasoning_length,
+        max_evidence_urls,
         oracle_address,
         max_single_bet,
         version,
-        timestamp_ms: event_timestamp_ms,
+        updated_at: event_timestamp_ms,
         time: now,
         transaction_id: transaction_id.to_string(),
         spot_governance_registry_id: data
@@ -447,4 +462,53 @@ fn process_spot_bet_withdrawn_event(
         SocialEventRow::SpotBetWithdrawal(withdrawal),
         SocialEventRow::SpotEventLog(log),
     ])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::handlers::SocialEventRow;
+
+    /// SpotConfig fee redo: the handler maps `platform_fee_bps` / `ecosystem_fee_bps`
+    /// of gross onto the new config columns and zeroes the legacy `fee_bps` /
+    /// `fee_split_bps_platform` columns (retained on the table for rollback safety).
+    #[test]
+    fn spot_config_fee_breakout_maps_to_row() {
+        let data = serde_json::json!({
+            "updated_by": "0x9cc886f94db2b2a41b1f8d7c20c7fc0960e1f9eb34ce2c0c7f309",
+            "enable_flag": true,
+            "confidence_threshold_bps": 6500,
+            "resolution_window_ms": 86400000,
+            "max_resolution_window_ms": 604800000,
+            "payout_delay_ms": 12000,
+            "platform_fee_bps": 50,
+            "ecosystem_fee_bps": 50,
+            "min_betting_options": 2,
+            "max_betting_options": 10,
+            "min_reasoning_length": 10,
+            "max_reasoning_length": 5000,
+            "max_evidence_urls": 10,
+            "oracle_address": "0x2f41b4f43f505d427e8777c511461de8e50eac26558a996627dded27dce50918",
+            "max_single_bet": 1000000000,
+            "max_bets_per_record": 100,
+            "timestamp": 1700000000,
+        });
+        let rows = handle_spot_event("SpotConfigUpdatedEvent", &data, "tx:0", 0, 0)
+            .expect("handler should produce rows");
+        let cfg = rows
+            .iter()
+            .find_map(|r| match r {
+                SocialEventRow::SpotConfig(cfg) => Some(cfg),
+                _ => None,
+            })
+            .expect("SpotConfig row should be emitted");
+        assert_eq!(cfg.platform_fee_bps, 50);
+        assert_eq!(cfg.ecosystem_fee_bps, 50);
+        assert_eq!(cfg.fee_bps, 0);
+        assert_eq!(cfg.fee_split_bps_platform, 0);
+        assert_eq!(cfg.min_betting_options, 2);
+        assert_eq!(cfg.max_betting_options, 10);
+        assert_eq!(cfg.max_reasoning_length, 5000);
+        assert_eq!(cfg.max_evidence_urls, 10);
+    }
 }

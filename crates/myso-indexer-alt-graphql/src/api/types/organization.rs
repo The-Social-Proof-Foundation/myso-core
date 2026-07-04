@@ -18,8 +18,8 @@ use myso_indexer_alt_social_schema::models::{
 
 use crate::api::scalars::big_int::BigInt;
 use crate::api::types::enterprise::{
-    AgentSpendBreakdown, AuditLogConnection, AuditLogEntry, AuditLogFilterInput,
-    OrgInvitation, OrgMemoryPermission, OrgRole, OrgRoleAssignment, SpendApproval, window_from_gql,
+    AgentSpendBreakdown, AuditLogConnection, AuditLogEntry, AuditLogFilterInput, OrgInvitation,
+    OrgMemoryPermission, OrgRole, OrgRoleAssignment, SpendApproval, window_from_gql,
 };
 use crate::api::types::memory::SubAgent;
 
@@ -215,7 +215,11 @@ impl AgenticOrganization {
             )
             .await
             .ok()
-            .map(|rows| rows.into_iter().map(AgentSpendBreakdown::from_entry).collect())
+            .map(|rows| {
+                rows.into_iter()
+                    .map(AgentSpendBreakdown::from_entry)
+                    .collect()
+            })
     }
 
     async fn roles(&self, ctx: &Context<'_>) -> Option<Vec<OrgRole>> {
@@ -266,7 +270,11 @@ impl AgenticOrganization {
             )
             .await
             .ok()
-            .map(|rows| rows.into_iter().map(OrgMemoryPermission::from_row).collect())
+            .map(|rows| {
+                rows.into_iter()
+                    .map(OrgMemoryPermission::from_row)
+                    .collect()
+            })
     }
 
     async fn invitations(

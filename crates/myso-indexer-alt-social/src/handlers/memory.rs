@@ -6,12 +6,12 @@ use chrono::Utc;
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
     builtin_org_role_mask, expand_org_permission_mask, AuditAction, NewAgentMemoryVault,
-    NewAgenticOrganization, NewAuditLog, NewMemoryAccount, NewOrgInvitation,
+    NewAgenticOrganization, NewAuditLog, NewMemoryAccount, NewMemoryConfig, NewOrgInvitation,
     NewOrgMemoryPermission, NewOrgRole, NewOrgRoleAssignment, NewOrganizationEvent, NewSubAgent,
-    NewSubAgentEvent, ORG_INVITATION_STATUS_ACCEPTED, ORG_INVITATION_STATUS_DECLINED,
+    NewSubAgentEvent, AUDIT_ACTOR_HUMAN, AUDIT_SOURCE_CHAIN, BUILTIN_ORG_ROLES,
+    EVENT_TYPE_ORG_CATEGORY_UPDATED, EVENT_TYPE_ORG_CREATED, EVENT_TYPE_ORG_DEACTIVATED,
+    EVENT_TYPE_ORG_UPDATED, ORG_INVITATION_STATUS_ACCEPTED, ORG_INVITATION_STATUS_DECLINED,
     ORG_INVITATION_STATUS_PENDING,
-    AUDIT_ACTOR_HUMAN, AUDIT_SOURCE_CHAIN, BUILTIN_ORG_ROLES, EVENT_TYPE_ORG_CATEGORY_UPDATED,
-    EVENT_TYPE_ORG_CREATED, EVENT_TYPE_ORG_DEACTIVATED, EVENT_TYPE_ORG_UPDATED,
 };
 
 pub(crate) fn json_to_i64(v: &serde_json::Value) -> i64 {
@@ -837,6 +837,31 @@ pub(crate) fn handle_memory_event(
                     now,
                 )),
             ])
+        }
+        "MemoryConfigUpdatedEvent" => {
+            let updated_by = json_str(data, "updated_by")?;
+            let max_organizations_per_user =
+                json_to_i64(data.get("max_organizations_per_user")?) as i16;
+            let org_category_update_cooldown_ms =
+                json_to_i64(data.get("org_category_update_cooldown_ms")?);
+            let max_agent_depth = json_to_i64(data.get("max_agent_depth")?) as i16;
+            let max_label_length = json_to_i64(data.get("max_label_length")?);
+            let max_org_name_length = json_to_i64(data.get("max_org_name_length")?);
+            let max_org_description_length = json_to_i64(data.get("max_org_description_length")?);
+            let updated_at = json_to_i64(data.get("timestamp")?);
+            Some(vec![SocialEventRow::MemoryConfig(NewMemoryConfig {
+                updated_by,
+                max_organizations_per_user,
+                org_category_update_cooldown_ms,
+                max_agent_depth,
+                max_label_length,
+                max_org_name_length,
+                max_org_description_length,
+                version: 1,
+                updated_at,
+                time: now,
+                transaction_id,
+            })])
         }
         _ => None,
     }

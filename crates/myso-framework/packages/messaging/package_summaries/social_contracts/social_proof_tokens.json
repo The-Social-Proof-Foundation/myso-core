@@ -482,6 +482,14 @@
           "type_": "u64"
         },
         {
+          "name": "non_platform_platform_to_creator_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "non_platform_platform_to_treasury_bps",
+          "type_": "u64"
+        },
+        {
           "name": "clock",
           "type_": {
             "Reference": [
@@ -882,6 +890,10 @@
           }
         },
         {
+          "name": "min_vault_deposit_amount",
+          "type_": "u64"
+        },
+        {
           "name": "reservation_pool_object",
           "type_": {
             "Reference": [
@@ -1085,6 +1097,10 @@
               }
             ]
           }
+        },
+        {
+          "name": "min_vault_deposit_amount",
+          "type_": "u64"
         },
         {
           "name": "reservation_pool_object",
@@ -1777,12 +1793,34 @@
     "distribute_reservation_withdraw_fees_non_platform_post": {
       "source_index": 20,
       "index": 20,
-      "doc": " Non-platform post withdrawal: split configured platform fee 50/50 between PoC-aware creator\n routing and ecosystem (same convention as `distribute_reservation_fees_with_post`).",
+      "doc": " Non-platform post withdrawal: split configured platform fee between PoC-aware creator\n routing and ecosystem per `config.non_platform_platform_to_*_bps` (defaults 50/50).",
       "attributes": [],
       "visibility": "Private",
       "entry": false,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_tokens"
+                  },
+                  "name": "SocialProofTokensConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "min_vault_deposit_amount",
+          "type_": "u64"
+        },
         {
           "name": "pool_owner",
           "type_": "address"
@@ -1937,6 +1975,24 @@
       "entry": false,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_tokens"
+                  },
+                  "name": "SocialProofTokensConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "pool_owner",
           "type_": "address"
@@ -2156,6 +2212,10 @@
               }
             ]
           }
+        },
+        {
+          "name": "min_vault_deposit_amount",
+          "type_": "u64"
         },
         {
           "name": "clock",
@@ -2390,6 +2450,10 @@
               }
             ]
           }
+        },
+        {
+          "name": "min_vault_deposit_amount",
+          "type_": "u64"
         },
         {
           "name": "reservation_pool_object",
@@ -2710,6 +2774,10 @@
               }
             ]
           }
+        },
+        {
+          "name": "min_vault_deposit_amount",
+          "type_": "u64"
         },
         {
           "name": "reservation_pool_object",
@@ -3981,6 +4049,10 @@
           }
         },
         {
+          "name": "min_vault_deposit_amount",
+          "type_": "u64"
+        },
+        {
           "name": "clock",
           "type_": {
             "Reference": [
@@ -4117,6 +4189,10 @@
               }
             ]
           }
+        },
+        {
+          "name": "min_vault_deposit_amount",
+          "type_": "u64"
         },
         {
           "name": "clock",
@@ -4339,6 +4415,10 @@
           }
         },
         {
+          "name": "min_vault_deposit_amount",
+          "type_": "u64"
+        },
+        {
           "name": "reservation_pool",
           "type_": {
             "Reference": [
@@ -4537,6 +4617,10 @@
           }
         },
         {
+          "name": "min_vault_deposit_amount",
+          "type_": "u64"
+        },
+        {
           "name": "reservation_pool",
           "type_": {
             "Reference": [
@@ -4728,7 +4812,7 @@
     "distribute_reservation_fees_no_poc": {
       "source_index": 45,
       "index": 45,
-      "doc": " Calculate and distribute all reservation fees (for profile reservations without PoC)\n Non-platform version: split platform fee 50/50 between creator and treasury; emit platform_fee 0",
+      "doc": " Calculate and distribute all reservation fees (for profile reservations without PoC)\n Non-platform version: split platform fee between creator and treasury per config; emit platform_fee 0",
       "attributes": [],
       "visibility": "Package",
       "entry": false,
@@ -8230,6 +8314,16 @@
             "index": 15,
             "doc": " Emergency kill switch - when false, all trading is halted",
             "type_": "bool"
+          },
+          "non_platform_platform_to_creator_bps": {
+            "index": 16,
+            "doc": " Non-platform path: share of the platform-fee bucket routed to the creator (bps of that bucket).",
+            "type_": "u64"
+          },
+          "non_platform_platform_to_treasury_bps": {
+            "index": 17,
+            "doc": " Non-platform path: share of the platform-fee bucket routed to the ecosystem treasury (bps of that bucket).",
+            "type_": "u64"
           }
         }
       }
@@ -9220,6 +9314,16 @@
           "max_reservers_per_pool": {
             "index": 16,
             "doc": null,
+            "type_": "u64"
+          },
+          "non_platform_platform_to_creator_bps": {
+            "index": 17,
+            "doc": " Non-platform split: creator share of platform-fee bucket (bps)",
+            "type_": "u64"
+          },
+          "non_platform_platform_to_treasury_bps": {
+            "index": 18,
+            "doc": " Non-platform split: ecosystem treasury share of platform-fee bucket (bps)",
             "type_": "u64"
           }
         }

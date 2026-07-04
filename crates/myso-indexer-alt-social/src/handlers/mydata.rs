@@ -327,7 +327,12 @@ fn process_mydata_config_updated_event(
     let max_tags = json_to_i64(data.get("max_tags")?);
     let max_subscription_days = json_to_i64(data.get("max_subscription_days")?);
     let max_free_access_grants = json_to_i64(data.get("max_free_access_grants")?);
-    let timestamp = json_to_i64(data.get("timestamp")?);
+    let max_encryption_id_bytes = json_to_i64(data.get("max_encryption_id_bytes")?);
+    let version = data
+        .get("version")
+        .and_then(|v| json_opt_i64(v))
+        .unwrap_or(0);
+    let updated_at = json_to_i64(data.get("timestamp")?);
 
     let config = NewMyDataConfig {
         updated_by,
@@ -335,7 +340,9 @@ fn process_mydata_config_updated_event(
         max_tags,
         max_subscription_days,
         max_free_access_grants,
-        timestamp_ms: timestamp,
+        max_encryption_id_bytes,
+        version,
+        updated_at,
         transaction_id: transaction_id.to_string(),
     };
 

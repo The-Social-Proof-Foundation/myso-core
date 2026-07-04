@@ -8,22 +8,23 @@ use tokio::sync::RwLock;
 
 use crate::config::OracleArgs;
 use crate::myso_price_client::MysoPriceClient;
-use crate::pricing::{DEFAULT_MYSO_USD_FALLBACK, PricingEngine};
+use crate::pricing::{PricingEngine, DEFAULT_MYSO_USD_FALLBACK};
 
 pub async fn refresh_pricing_once(
     pricing: &Arc<RwLock<PricingEngine>>,
     client: &MysoPriceClient,
 ) -> Result<f64, String> {
-    let snapshot = client
-        .fetch_latest()
-        .await
-        .map_err(|e| e.to_string())?;
+    let snapshot = client.fetch_latest().await.map_err(|e| e.to_string())?;
     let mut engine = pricing.write().await;
     engine.set_myso_usd(snapshot.usd, snapshot.fetched_at);
     Ok(snapshot.usd)
 }
 
-async fn handle_price_refresh_failure(pricing: &Arc<RwLock<PricingEngine>>, err: &str, phase: &str) {
+async fn handle_price_refresh_failure(
+    pricing: &Arc<RwLock<PricingEngine>>,
+    err: &str,
+    phase: &str,
+) {
     let mut engine = pricing.write().await;
     if engine.price_ever_fetched() {
         tracing::warn!(

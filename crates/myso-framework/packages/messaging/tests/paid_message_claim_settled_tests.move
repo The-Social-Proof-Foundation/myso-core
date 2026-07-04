@@ -4,6 +4,7 @@ module messaging::paid_message_claim_settled_tests;
 use messaging::group_manager::GroupManager;
 use messaging::message_log::{Self, MessageLog};
 use messaging::paid_messaging_policy::PaidMessagingRegistry;
+use messaging::messaging_config::MessagingConfig;
 use messaging::messaging::{
     Self,
     Messaging,
@@ -76,9 +77,11 @@ fun reply_claim_settled_resolves_ecosystem_treasury_on_chain() {
     let group_manager = s.take_shared<GroupManager>();
     let block_list = s.take_shared<BlockListRegistry>();
     let clock = s.take_shared<clock::Clock>();
+    let config = s.take_shared<MessagingConfig>();
     let payment = coin::mint_for_testing<MYSO>(10_000, s.ctx());
     messaging::send_paid_message_digest(
         &version,
+        &config,
         &group,
         &mut msg_log,
         &paid_registry,
@@ -101,6 +104,7 @@ fun reply_claim_settled_resolves_ecosystem_treasury_on_chain() {
     ts::return_shared(group_manager);
     ts::return_shared(block_list);
     ts::return_shared(clock);
+    ts::return_shared(config);
 
     s.next_tx(BOB);
     let version = s.take_shared<Version>();
@@ -110,8 +114,10 @@ fun reply_claim_settled_resolves_ecosystem_treasury_on_chain() {
     let ecosystem_treasury = s.take_shared<EcosystemTreasury>();
     let eco_addr = profile::get_treasury_address(&ecosystem_treasury);
     let clock = s.take_shared<clock::Clock>();
+    let config = s.take_shared<MessagingConfig>();
     messaging::reply_to_paid_message_claim_settled(
         &version,
+        &config,
         &group,
         &mut msg_log,
         &block_list,
@@ -130,6 +136,7 @@ fun reply_claim_settled_resolves_ecosystem_treasury_on_chain() {
     ts::return_shared(block_list);
     ts::return_shared(ecosystem_treasury);
     ts::return_shared(clock);
+    ts::return_shared(config);
 
     s.next_tx(PLATFORM_ADDR);
     let platform_coin = s.take_from_sender<Coin<MYSO>>();

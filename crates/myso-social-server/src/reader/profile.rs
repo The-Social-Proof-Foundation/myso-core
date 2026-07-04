@@ -17,8 +17,9 @@ use myso_indexer_alt_social_schema::schema::{
 use crate::error::SocialError;
 use crate::reader::social_graph::enrich_users_with_universal_data;
 use crate::reader::types::{
-    DailyStatsPoint, DateRange, ProfileByAddressResponse, ProfileDailyStatsChartData,
-    ProfileDailyStatsSummary, SocialGraphChartQuery, UniversalUserResult,
+    DailyStatsPoint, DateRange, ProfileByAddressResponse, ProfileConfigInfo,
+    ProfileDailyStatsChartData, ProfileDailyStatsSummary, SocialGraphChartQuery,
+    UniversalUserResult,
 };
 use crate::reader::WalletOnlyProfile;
 use myso_indexer_alt_social_schema::models::{ProfileOffer, ProfileSaleFee};
@@ -297,4 +298,23 @@ pub(crate) async fn get_profile_daily_stats_chart(
             total_profile_updated,
         },
     })
+}
+
+pub(crate) async fn get_profile_configuration(
+    db: &Db,
+) -> Result<Option<ProfileConfigInfo>, SocialError> {
+    let mut conn = db.connect().await?;
+    let query = "
+        SELECT updated_by, max_vesting_pieces, curve_factor_min, curve_factor_max, curve_precision,
+               min_claim_threshold_divisor, min_username_length, max_username_length, version,
+               updated_at
+        FROM profile_config
+        ORDER BY time DESC
+        LIMIT 1
+    ";
+    let result = diesel::sql_query(query)
+        .get_result::<ProfileConfigInfo>(&mut conn)
+        .await
+        .optional()?;
+    Ok(result)
 }

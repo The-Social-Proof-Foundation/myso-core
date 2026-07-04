@@ -49,6 +49,7 @@ Apps can implement custom <code>mydata_approve</code> with different logic:
 <b>use</b> <a href="../messaging/group_manager.md#messaging_group_manager">messaging::group_manager</a>;
 <b>use</b> <a href="../messaging/message_log.md#messaging_message_log">messaging::message_log</a>;
 <b>use</b> <a href="../messaging/messaging.md#messaging_messaging">messaging::messaging</a>;
+<b>use</b> <a href="../messaging/messaging_config.md#messaging_messaging_config">messaging::messaging_config</a>;
 <b>use</b> <a href="../messaging/metadata.md#messaging_metadata">messaging::metadata</a>;
 <b>use</b> <a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement">messaging::paid_escrow_settlement</a>;
 <b>use</b> <a href="../messaging/paid_messaging_policy.md#messaging_paid_messaging_policy">messaging::paid_messaging_policy</a>;
@@ -57,6 +58,7 @@ Apps can implement custom <code>mydata_approve</code> with different logic:
 <b>use</b> <a href="../mydata/gf256.md#mydata_gf256">mydata::gf256</a>;
 <b>use</b> <a href="../mydata/hmac256ctr.md#mydata_hmac256ctr">mydata::hmac256ctr</a>;
 <b>use</b> <a href="../mydata/kdf.md#mydata_kdf">mydata::kdf</a>;
+<b>use</b> <a href="../mydata/merkle.md#mydata_merkle">mydata::merkle</a>;
 <b>use</b> <a href="../mydata/polynomial.md#mydata_polynomial">mydata::polynomial</a>;
 <b>use</b> <a href="../myso/accumulator.md#myso_accumulator">myso::accumulator</a>;
 <b>use</b> <a href="../myso/accumulator_settlement.md#myso_accumulator_settlement">myso::accumulator_settlement</a>;
@@ -96,13 +98,25 @@ Apps can implement custom <code>mydata_approve</code> with different logic:
 <b>use</b> <a href="../myso/url.md#myso_url">myso::url</a>;
 <b>use</b> <a href="../myso/vec_map.md#myso_vec_map">myso::vec_map</a>;
 <b>use</b> <a href="../myso/vec_set.md#myso_vec_set">myso::vec_set</a>;
+<b>use</b> <a href="../myso/versioned.md#myso_versioned">myso::versioned</a>;
+<b>use</b> <a href="../orderbook/constants.md#orderbook_constants">orderbook::constants</a>;
+<b>use</b> <a href="../orderbook/registry.md#orderbook_registry">orderbook::registry</a>;
 <b>use</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit">social_contracts::ai_credit</a>;
 <b>use</b> <a href="../social_contracts/block_list.md#social_contracts_block_list">social_contracts::block_list</a>;
+<b>use</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">social_contracts::bootstrap</a>;
 <b>use</b> <a href="../social_contracts/governance.md#social_contracts_governance">social_contracts::governance</a>;
+<b>use</b> <a href="../social_contracts/insurance.md#social_contracts_insurance">social_contracts::insurance</a>;
 <b>use</b> <a href="../social_contracts/memory.md#social_contracts_memory">social_contracts::memory</a>;
+<b>use</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">social_contracts::mydata</a>;
 <b>use</b> <a href="../social_contracts/platform.md#social_contracts_platform">social_contracts::platform</a>;
+<b>use</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary">social_contracts::poc_username_beneficiary</a>;
+<b>use</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault">social_contracts::poc_vault</a>;
+<b>use</b> <a href="../social_contracts/post.md#social_contracts_post">social_contracts::post</a>;
 <b>use</b> <a href="../social_contracts/profile.md#social_contracts_profile">social_contracts::profile</a>;
+<b>use</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity">social_contracts::proof_of_creativity</a>;
 <b>use</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_contracts::social_graph</a>;
+<b>use</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth">social_contracts::social_proof_of_truth</a>;
+<b>use</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens">social_contracts::social_proof_tokens</a>;
 <b>use</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">social_contracts::subscription</a>;
 <b>use</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade">social_contracts::upgrade</a>;
 <b>use</b> <a href="../std/address.md#std_address">std::address</a>;
@@ -114,6 +128,7 @@ Apps can implement custom <code>mydata_approve</code> with different logic:
 <b>use</b> <a href="../std/string.md#std_string">std::string</a>;
 <b>use</b> <a href="../std/type_name.md#std_type_name">std::type_name</a>;
 <b>use</b> <a href="../std/u128.md#std_u128">std::u128</a>;
+<b>use</b> <a href="../std/u256.md#std_u256">std::u256</a>;
 <b>use</b> <a href="../std/u64.md#std_u64">std::u64</a>;
 <b>use</b> <a href="../std/vector.md#std_vector">std::vector</a>;
 </code></pre>
@@ -346,7 +361,7 @@ no direct <code>MessagingReader</code> but a registered sub-agent on the same
 Sub-agent MyData reader approval via <code>CAP_MESSAGE_READ</code> on the [<code>MemoryAccount</code>].
 
 
-<pre><code><b>entry</b> <b>fun</b> <a href="../messaging/mydata_policies.md#messaging_mydata_policies_mydata_approve_agent_reader">mydata_approve_agent_reader</a>(id: vector&lt;u8&gt;, <a href="../messaging/version.md#messaging_version">version</a>: &<a href="../messaging/version.md#messaging_version_Version">messaging::version::Version</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, <a href="../messaging/encryption_history.md#messaging_encryption_history">encryption_history</a>: &<a href="../messaging/encryption_history.md#messaging_encryption_history_EncryptionHistory">messaging::encryption_history::EncryptionHistory</a>, platform: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>entry</b> <b>fun</b> <a href="../messaging/mydata_policies.md#messaging_mydata_policies_mydata_approve_agent_reader">mydata_approve_agent_reader</a>(id: vector&lt;u8&gt;, <a href="../messaging/version.md#messaging_version">version</a>: &<a href="../messaging/version.md#messaging_version_Version">messaging::version::Version</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, <a href="../messaging/encryption_history.md#messaging_encryption_history">encryption_history</a>: &<a href="../messaging/encryption_history.md#messaging_encryption_history_EncryptionHistory">messaging::encryption_history::EncryptionHistory</a>, platform: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -361,6 +376,7 @@ Sub-agent MyData reader approval via <code>CAP_MESSAGE_READ</code> on the [<code
     group: &PermissionedGroup&lt;Messaging&gt;,
     <a href="../messaging/encryption_history.md#messaging_encryption_history">encryption_history</a>: &EncryptionHistory,
     platform: &Platform,
+    memory_config: &MemoryConfig,
     memory_account: &MemoryAccount,
     clock: &Clock,
     ctx: &TxContext,
@@ -369,6 +385,7 @@ Sub-agent MyData reader approval via <code>CAP_MESSAGE_READ</code> on the [<code
     <a href="../messaging/mydata_policies.md#messaging_mydata_policies_validate_identity">validate_identity</a>(group, <a href="../messaging/encryption_history.md#messaging_encryption_history">encryption_history</a>, id);
     <b>let</b> platform_id = object::uid_to_address(platform::id(platform));
     <b>let</b> acting = memory::resolve_actor_with_cap(
+        memory_config,
         memory_account,
         memory::cap_message_read(),
         option::some(platform_id),

@@ -122,6 +122,11 @@ module social_contracts::social_proof_tokens {
     const DEFAULT_RESERVATION_PLATFORM_FEE_BPS: u64 = 25; // 0.25% to platform
     const DEFAULT_RESERVATION_TREASURY_FEE_BPS: u64 = 25; // 0.25% to ecosystem treasury
 
+    // Default non-platform fee split: when no platform is associated, the configured platform-fee
+    // bucket is split between creator and ecosystem treasury by these bps (must sum to `BPS_DENOM`).
+    const DEFAULT_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS: u64 = 5000; // 50% of platform-fee bucket to creator
+    const DEFAULT_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS: u64 = 5000; // 50% of platform-fee bucket to ecosystem treasury
+
     // Maximum single-wallet hold of circulating supply after launch (default **5%** = `500` bps of supply; admin may raise up to `MAX_SPT_ADMIN_PERCENT_BPS`).
     const MAX_HOLD_PERCENT_BPS: u64 = 500;
 
@@ -201,6 +206,10 @@ module social_contracts::social_proof_tokens {
         max_reservers_per_pool: u64,
         /// Emergency kill switch - when false, all trading is halted
         trading_enabled: bool,
+        /// Non-platform path: share of the platform-fee bucket routed to the creator (bps of that bucket).
+        non_platform_platform_to_creator_bps: u64,
+        /// Non-platform path: share of the platform-fee bucket routed to the ecosystem treasury (bps of that bucket).
+        non_platform_platform_to_treasury_bps: u64,
     }
 
     /// Registry of all tokens in the exchange
@@ -421,6 +430,10 @@ module social_contracts::social_proof_tokens {
         profile_threshold: u64,
         max_individual_reservation_bps: u64,
         max_reservers_per_pool: u64,
+        /// Non-platform split: creator share of platform-fee bucket (bps)
+        non_platform_platform_to_creator_bps: u64,
+        /// Non-platform split: ecosystem treasury share of platform-fee bucket (bps)
+        non_platform_platform_to_treasury_bps: u64,
     }
 
     /// Event emitted when tokens are purchased by someone who already has a social token
@@ -598,6 +611,8 @@ module social_contracts::social_proof_tokens {
             max_individual_reservation_bps: DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS,
             max_reservers_per_pool: DEFAULT_MAX_RESERVERS_PER_POOL,
             trading_enabled: false, // Trading disabled by default during bootstrap
+            non_platform_platform_to_creator_bps: DEFAULT_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS,
+            non_platform_platform_to_treasury_bps: DEFAULT_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS,
         };
 
         // Emit event so indexer can populate spt_exchange_config table
@@ -621,6 +636,8 @@ module social_contracts::social_proof_tokens {
             profile_threshold: DEFAULT_PROFILE_THRESHOLD,
             max_individual_reservation_bps: DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS,
             max_reservers_per_pool: DEFAULT_MAX_RESERVERS_PER_POOL,
+            non_platform_platform_to_creator_bps: DEFAULT_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS,
+            non_platform_platform_to_treasury_bps: DEFAULT_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS,
         });
 
         // Create and share social proof tokens config with proper treasury
@@ -656,6 +673,8 @@ module social_contracts::social_proof_tokens {
         profile_threshold: u64,
         max_individual_reservation_bps: u64,
         max_reservers_per_pool: u64,
+        non_platform_platform_to_creator_bps: u64,
+        non_platform_platform_to_treasury_bps: u64,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
@@ -705,6 +724,14 @@ module social_contracts::social_proof_tokens {
         assert!(reservation_creator_fee_bps <= BPS_DENOM, EInvalidFeeConfig);
         assert!(reservation_platform_fee_bps <= BPS_DENOM, EInvalidFeeConfig);
         assert!(reservation_treasury_fee_bps <= BPS_DENOM, EInvalidFeeConfig);
+
+        // Non-platform split must partition the platform-fee bucket exactly (sum == BPS_DENOM).
+        assert!(non_platform_platform_to_creator_bps <= BPS_DENOM, EInvalidFeeConfig);
+        assert!(non_platform_platform_to_treasury_bps <= BPS_DENOM, EInvalidFeeConfig);
+        assert!(
+            non_platform_platform_to_creator_bps + non_platform_platform_to_treasury_bps == BPS_DENOM,
+            EInvalidFeeConfig,
+        );
         
         // Update trading fee config
         config.trading_creator_fee_bps = trading_creator_fee_bps;
@@ -728,6 +755,8 @@ module social_contracts::social_proof_tokens {
         config.profile_threshold = profile_threshold;
         config.max_individual_reservation_bps = max_individual_reservation_bps;
         config.max_reservers_per_pool = max_reservers_per_pool;
+        config.non_platform_platform_to_creator_bps = non_platform_platform_to_creator_bps;
+        config.non_platform_platform_to_treasury_bps = non_platform_platform_to_treasury_bps;
         
         // Calculate totals for event emission
         let total_fee_bps = calculate_total_fee_bps(config);
@@ -752,6 +781,8 @@ module social_contracts::social_proof_tokens {
             profile_threshold,
             max_individual_reservation_bps,
             max_reservers_per_pool,
+            non_platform_platform_to_creator_bps,
+            non_platform_platform_to_treasury_bps,
         });
     }
 
@@ -837,6 +868,7 @@ module social_contracts::social_proof_tokens {
     public fun reserve_towards_post(
         registry: &mut TokenRegistry,
         config: &SocialProofTokensConfig,
+        min_vault_deposit_amount: u64,
         reservation_pool_object: &mut ReservationPoolObject,
         treasury: &EcosystemTreasury,
         post: &Post,
@@ -889,6 +921,7 @@ module social_contracts::social_proof_tokens {
         // When fees deducted: payment has amount, after distribution: remaining = amount - fees (correct!)
         let (mut remaining_payment, fee_amount, creator_fee, platform_fee, treasury_fee) = distribute_reservation_fees_with_post(
             config,
+            min_vault_deposit_amount,
             reservation_pool_object,
             post,
             beneficiary_vault,
@@ -995,6 +1028,7 @@ module social_contracts::social_proof_tokens {
     public fun reserve_towards_post_with_platform(
         registry: &mut TokenRegistry,
         config: &SocialProofTokensConfig,
+        min_vault_deposit_amount: u64,
         reservation_pool_object: &mut ReservationPoolObject,
         treasury: &EcosystemTreasury,
         platform_registry: &PlatformRegistry,
@@ -1056,6 +1090,7 @@ module social_contracts::social_proof_tokens {
         // When fees deducted: payment has amount, after distribution: remaining = amount - fees (correct!)
         let (mut remaining_payment, fee_amount, creator_fee, platform_fee, treasury_fee) = distribute_reservation_fees_with_post_and_platform(
             config,
+            min_vault_deposit_amount,
             reservation_pool_object,
             post,
             beneficiary_vault,
@@ -1522,9 +1557,11 @@ module social_contracts::social_proof_tokens {
         (fee_amount, creator_fee, platform_fee, treasury_fee, net_refund)
     }
 
-    /// Non-platform post withdrawal: split configured platform fee 50/50 between PoC-aware creator
-    /// routing and ecosystem (same convention as `distribute_reservation_fees_with_post`).
+    /// Non-platform post withdrawal: split configured platform fee between PoC-aware creator
+    /// routing and ecosystem per `config.non_platform_platform_to_*_bps` (defaults 50/50).
     fun distribute_reservation_withdraw_fees_non_platform_post(
+        config: &SocialProofTokensConfig,
+        min_vault_deposit_amount: u64,
         pool_owner: address,
         post: &Post,
         beneficiary_vault: &mut PoCBeneficiaryVault,
@@ -1536,10 +1573,10 @@ module social_contracts::social_proof_tokens {
         clock: &Clock,
         ctx: &mut TxContext
     ): (u64, u64, u64) {
-        let platform_fee_half_to_creator = platform_fee / 2;
-        let platform_fee_half_to_treasury = platform_fee - platform_fee_half_to_creator;
-        let creator_total = creator_fee + platform_fee_half_to_creator;
-        let treasury_total = treasury_fee + platform_fee_half_to_treasury;
+        let platform_fee_to_creator = (platform_fee * config.non_platform_platform_to_creator_bps) / BPS_DENOM;
+        let platform_fee_to_treasury = platform_fee - platform_fee_to_creator;
+        let creator_total = creator_fee + platform_fee_to_creator;
+        let treasury_total = treasury_fee + platform_fee_to_treasury;
         if (creator_total > 0) {
             let mut creator_coin = coin::from_balance(balance::split(pool_balance, creator_total), ctx);
             distribute_reservation_creator_fee_with_owner(
@@ -1548,6 +1585,7 @@ module social_contracts::social_proof_tokens {
                 beneficiary_vault,
                 creator_total,
                 &mut creator_coin,
+                min_vault_deposit_amount,
                 clock,
                 ctx
             );
@@ -1563,6 +1601,7 @@ module social_contracts::social_proof_tokens {
     /// Non-platform profile withdrawal: same 50/50 platform-fee convention as
     /// `distribute_reservation_fees_no_poc`.
     fun distribute_reservation_withdraw_fees_non_platform_profile(
+        config: &SocialProofTokensConfig,
         pool_owner: address,
         treasury: &EcosystemTreasury,
         creator_fee: u64,
@@ -1571,10 +1610,10 @@ module social_contracts::social_proof_tokens {
         pool_balance: &mut Balance<MYSO>,
         ctx: &mut TxContext
     ): (u64, u64, u64) {
-        let platform_fee_half_to_creator = platform_fee / 2;
-        let platform_fee_half_to_treasury = platform_fee - platform_fee_half_to_creator;
-        let creator_total = creator_fee + platform_fee_half_to_creator;
-        let treasury_total = treasury_fee + platform_fee_half_to_treasury;
+        let platform_fee_to_creator = (platform_fee * config.non_platform_platform_to_creator_bps) / BPS_DENOM;
+        let platform_fee_to_treasury = platform_fee - platform_fee_to_creator;
+        let creator_total = creator_fee + platform_fee_to_creator;
+        let treasury_total = treasury_fee + platform_fee_to_treasury;
         if (creator_total > 0) {
             let mut creator_coin = coin::from_balance(balance::split(pool_balance, creator_total), ctx);
             distribute_reservation_creator_fee_no_poc_with_owner(
@@ -1602,6 +1641,7 @@ module social_contracts::social_proof_tokens {
         platform_fee: u64,
         treasury_fee: u64,
         pool_balance: &mut Balance<MYSO>,
+        min_vault_deposit_amount: u64,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
@@ -1613,6 +1653,7 @@ module social_contracts::social_proof_tokens {
                 beneficiary_vault,
                 creator_fee,
                 &mut creator_coin,
+                min_vault_deposit_amount,
                 clock,
                 ctx
             );
@@ -1668,6 +1709,7 @@ module social_contracts::social_proof_tokens {
     public fun withdraw_reservation_for_post(
         registry: &mut TokenRegistry,
         config: &SocialProofTokensConfig,
+        min_vault_deposit_amount: u64,
         reservation_pool_object: &mut ReservationPoolObject,
         treasury: &EcosystemTreasury,
         post: &Post,
@@ -1699,6 +1741,8 @@ module social_contracts::social_proof_tokens {
 
         let (ev_creator, ev_platform, ev_treasury) = if (fee_amount > 0) {
             distribute_reservation_withdraw_fees_non_platform_post(
+                config,
+                min_vault_deposit_amount,
                 pool_owner,
                 post,
                 beneficiary_vault,
@@ -1765,6 +1809,7 @@ module social_contracts::social_proof_tokens {
 
         let (ev_creator, ev_platform, ev_treasury) = if (fee_amount > 0) {
             distribute_reservation_withdraw_fees_non_platform_profile(
+                config,
                 pool_owner,
                 treasury,
                 creator_fee,
@@ -1800,6 +1845,7 @@ module social_contracts::social_proof_tokens {
     public fun withdraw_reservation_with_platform_for_post(
         registry: &mut TokenRegistry,
         config: &SocialProofTokensConfig,
+        min_vault_deposit_amount: u64,
         reservation_pool_object: &mut ReservationPoolObject,
         treasury: &EcosystemTreasury,
         platform_registry: &PlatformRegistry,
@@ -1848,6 +1894,7 @@ module social_contracts::social_proof_tokens {
                 platform_fee,
                 treasury_fee,
                 &mut reservation_pool_object.myso_balance,
+                min_vault_deposit_amount,
                 clock,
                 ctx
             );
@@ -2471,6 +2518,7 @@ module social_contracts::social_proof_tokens {
         beneficiary_vault: &mut PoCBeneficiaryVault,
         creator_fee_amount: u64,
         creator_fee_coin: &mut Coin<MYSO>,
+        min_vault_deposit_amount: u64,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
@@ -2485,7 +2533,7 @@ module social_contracts::social_proof_tokens {
             let redirected_fee = coin::split(&mut fee_coin, redirected_amount, ctx);
             let k = post::poc_redirection_kind(post);
             if (k == 2) {
-                post::deposit_coin_to_beneficiary_vault<MYSO>(post, beneficiary_vault, redirected_fee, clock, ctx);
+                post::deposit_coin_to_beneficiary_vault<MYSO>(post, beneficiary_vault, redirected_fee, min_vault_deposit_amount, clock, ctx);
             } else {
                 let redirect_to = *option::borrow(post::get_revenue_redirect_to(post));
                 transfer::public_transfer(redirected_fee, redirect_to);
@@ -2509,6 +2557,7 @@ module social_contracts::social_proof_tokens {
         beneficiary_vault: &mut PoCBeneficiaryVault,
         creator_fee_amount: u64,
         creator_fee_coin: &mut Coin<MYSO>,
+        min_vault_deposit_amount: u64,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
@@ -2518,6 +2567,7 @@ module social_contracts::social_proof_tokens {
             beneficiary_vault,
             creator_fee_amount,
             creator_fee_coin,
+            min_vault_deposit_amount,
             clock,
             ctx
         );
@@ -2556,6 +2606,7 @@ module social_contracts::social_proof_tokens {
     /// Non-platform version: split platform fee 50/50 between creator and treasury; emit platform_fee 0
     public(package) fun distribute_reservation_fees_with_post(
         config: &SocialProofTokensConfig,
+        min_vault_deposit_amount: u64,
         reservation_pool: &ReservationPoolObject,
         post: &Post,
         beneficiary_vault: &mut PoCBeneficiaryVault,
@@ -2572,29 +2623,39 @@ module social_contracts::social_proof_tokens {
         let creator_fee = calculate_component_fee_safe(fee_amount, config.reservation_creator_fee_bps, reservation_total_fee_bps);
         let platform_fee = calculate_component_fee_safe(fee_amount, config.reservation_platform_fee_bps, reservation_total_fee_bps);
         let treasury_fee = fee_amount - creator_fee - platform_fee;
-        
-        let platform_fee_half_to_creator = platform_fee / 2;
-        let platform_fee_half_to_treasury = platform_fee - platform_fee_half_to_creator;
-        
+
+        let platform_fee_to_creator = (platform_fee * config.non_platform_platform_to_creator_bps) / BPS_DENOM;
+        let platform_fee_to_treasury = platform_fee - platform_fee_to_creator;
+
         if (fee_amount > 0) {
-            let creator_total = creator_fee + platform_fee_half_to_creator;
+            let creator_total = creator_fee + platform_fee_to_creator;
             if (creator_total > 0) {
-                distribute_reservation_creator_fee(reservation_pool, post, beneficiary_vault, creator_total, &mut payment, clock, ctx);
+                distribute_reservation_creator_fee(
+                    reservation_pool,
+                    post,
+                    beneficiary_vault,
+                    creator_total,
+                    &mut payment,
+                    min_vault_deposit_amount,
+                    clock,
+                    ctx
+                );
             };
-            let treasury_total = treasury_fee + platform_fee_half_to_treasury;
+            let treasury_total = treasury_fee + platform_fee_to_treasury;
             if (treasury_total > 0) {
                 let treasury_fee_coin = coin::split(&mut payment, treasury_total, ctx);
                 transfer::public_transfer(treasury_fee_coin, profile::get_treasury_address(treasury));
             };
         };
-        
-        (payment, fee_amount, creator_fee + platform_fee_half_to_creator, 0, treasury_fee + platform_fee_half_to_treasury)
+
+        (payment, fee_amount, creator_fee + platform_fee_to_creator, 0, treasury_fee + platform_fee_to_treasury)
     }
 
     /// Calculate and distribute all reservation fees (for post reservations with PoC)
     /// Platform version: routes platform fees to platform treasury
     public(package) fun distribute_reservation_fees_with_post_and_platform(
         config: &SocialProofTokensConfig,
+        min_vault_deposit_amount: u64,
         reservation_pool: &ReservationPoolObject,
         post: &Post,
         beneficiary_vault: &mut PoCBeneficiaryVault,
@@ -2617,7 +2678,16 @@ module social_contracts::social_proof_tokens {
         if (fee_amount > 0) {
             // Send creator fee with PoC redirection support
             if (creator_fee > 0) {
-                distribute_reservation_creator_fee(reservation_pool, post, beneficiary_vault, creator_fee, &mut payment, clock, ctx);
+                distribute_reservation_creator_fee(
+                    reservation_pool,
+                    post,
+                    beneficiary_vault,
+                    creator_fee,
+                    &mut payment,
+                    min_vault_deposit_amount,
+                    clock,
+                    ctx
+                );
             };
             
             // Send platform fee to platform treasury
@@ -2639,7 +2709,7 @@ module social_contracts::social_proof_tokens {
     }
 
     /// Calculate and distribute all reservation fees (for profile reservations without PoC)
-    /// Non-platform version: split platform fee 50/50 between creator and treasury; emit platform_fee 0
+    /// Non-platform version: split platform fee between creator and treasury per config; emit platform_fee 0
     public(package) fun distribute_reservation_fees_no_poc(
         config: &SocialProofTokensConfig,
         reservation_pool: &ReservationPoolObject,
@@ -2655,23 +2725,23 @@ module social_contracts::social_proof_tokens {
         let creator_fee = calculate_component_fee_safe(fee_amount, config.reservation_creator_fee_bps, reservation_total_fee_bps);
         let platform_fee = calculate_component_fee_safe(fee_amount, config.reservation_platform_fee_bps, reservation_total_fee_bps);
         let treasury_fee = fee_amount - creator_fee - platform_fee;
-        
-        let platform_fee_half_to_creator = platform_fee / 2;
-        let platform_fee_half_to_treasury = platform_fee - platform_fee_half_to_creator;
-        
+
+        let platform_fee_to_creator = (platform_fee * config.non_platform_platform_to_creator_bps) / BPS_DENOM;
+        let platform_fee_to_treasury = platform_fee - platform_fee_to_creator;
+
         if (fee_amount > 0) {
-            let creator_total = creator_fee + platform_fee_half_to_creator;
+            let creator_total = creator_fee + platform_fee_to_creator;
             if (creator_total > 0) {
                 distribute_reservation_creator_fee_no_poc(reservation_pool, creator_total, &mut payment, ctx);
             };
-            let treasury_total = treasury_fee + platform_fee_half_to_treasury;
+            let treasury_total = treasury_fee + platform_fee_to_treasury;
             if (treasury_total > 0) {
                 let treasury_fee_coin = coin::split(&mut payment, treasury_total, ctx);
                 transfer::public_transfer(treasury_fee_coin, profile::get_treasury_address(treasury));
             };
         };
-        
-        (payment, fee_amount, creator_fee + platform_fee_half_to_creator, 0, treasury_fee + platform_fee_half_to_treasury)
+
+        (payment, fee_amount, creator_fee + platform_fee_to_creator, 0, treasury_fee + platform_fee_to_treasury)
     }
 
     /// Calculate and distribute all reservation fees (for profile reservations without PoC)
@@ -4021,6 +4091,8 @@ module social_contracts::social_proof_tokens {
                 max_individual_reservation_bps: DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS,
                 max_reservers_per_pool: DEFAULT_MAX_RESERVERS_PER_POOL,
                 trading_enabled: true,
+                non_platform_platform_to_creator_bps: DEFAULT_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS,
+                non_platform_platform_to_treasury_bps: DEFAULT_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS,
             }
         );
         

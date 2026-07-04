@@ -417,15 +417,15 @@ fn enterprise_dashboard_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/organizations/:id/role-assignments",
             get(list_org_role_assignments),
         )
-        .route(
-            "/organizations/:id/invitations",
-            get(list_org_invitations),
-        )
+        .route("/organizations/:id/invitations", get(list_org_invitations))
         .route(
             "/organizations/:id/spend-breakdown",
             get(list_org_spend_breakdown),
         )
-        .route("/organizations/:id/approvals", get(list_org_spend_approvals))
+        .route(
+            "/organizations/:id/approvals",
+            get(list_org_spend_approvals),
+        )
         .route_layer(middleware::from_fn_with_state(
             state.clone(),
             org_dashboard_access_middleware,
@@ -492,7 +492,10 @@ fn make_router(state: Arc<AppState>) -> Router {
             "/profiles/:address/memory-account",
             get(get_profile_memory_account),
         )
-        .route("/profiles/:address/ai-credit", get(get_profile_ai_credit_balance))
+        .route(
+            "/profiles/:address/ai-credit",
+            get(get_profile_ai_credit_balance),
+        )
         .route(
             "/profiles/:address/ai-credit/approvals",
             get(list_profile_spend_approvals),
@@ -888,6 +891,23 @@ fn make_router(state: Arc<AppState>) -> Router {
         )
         .route("/spt/pools/:id/revenue", get(get_spt_pool_revenue))
         .route("/spt/configuration", get(get_spt_config))
+        .route("/subscription/configuration", get(get_subscription_config))
+        .route("/profile/configuration", get(get_profile_config))
+        .route("/memory/configuration", get(get_memory_config))
+        .route("/platform/configuration", get(get_platform_config))
+        .route("/messaging/configuration", get(get_messaging_config))
+        .route(
+            "/wallets/:address/paid-messages",
+            get(get_paid_message_history),
+        )
+        .route(
+            "/wallets/:address/messaging-revenue",
+            get(get_messaging_revenue_summary),
+        )
+        .route(
+            "/organizations/:organization_id/messaging-groups",
+            get(get_agent_groups),
+        )
         .route("/spt/reservation-pools", get(list_spt_reservation_pools))
         .route("/spt/reservation-pools/:id", get(get_spt_reservation_pool))
         .route(

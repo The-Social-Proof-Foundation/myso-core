@@ -180,6 +180,24 @@
       "type_parameters": [],
       "parameters": [
         {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "SubscriptionConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
           "name": "service",
           "type_": {
             "Reference": [
@@ -285,6 +303,24 @@
       "entry": true,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "SubscriptionConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "service",
           "type_": {
@@ -396,6 +432,24 @@
       "entry": true,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "SubscriptionConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "service",
           "type_": {
@@ -1039,9 +1093,190 @@
         "u64"
       ]
     },
-    "migrate_service": {
+    "bootstrap_init": {
       "source_index": 16,
       "index": 16,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "create_subscription_admin_cap": {
+      "source_index": 17,
+      "index": 17,
+      "doc": " Create a SubscriptionAdminCap for bootstrap (package visibility only)",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "social_contracts",
+              "name": "subscription"
+            },
+            "name": "SubscriptionAdminCap",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "update_subscription_config": {
+      "source_index": 18,
+      "index": 18,
+      "doc": " Update subscription configuration (admin only)",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "SubscriptionAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "SubscriptionConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "billing_period_ms",
+          "type_": "u64"
+        },
+        {
+          "name": "max_renewal_months",
+          "type_": "u64"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "migrate_service": {
+      "source_index": 19,
+      "index": 19,
       "doc": " Migration function for ProfileSubscriptionService",
       "attributes": [],
       "visibility": "Public",
@@ -1107,8 +1342,115 @@
     }
   },
   "structs": {
-    "ProfileSubscriptionService": {
+    "SubscriptionAdminCap": {
       "index": 0,
+      "doc": " Admin capability for subscription configuration",
+      "attributes": [],
+      "abilities": [
+        "Key",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "SubscriptionConfig": {
+      "index": 1,
+      "doc": " Global subscription feature configuration",
+      "attributes": [],
+      "abilities": [
+        "Key"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          },
+          "billing_period_ms": {
+            "index": 1,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_renewal_months": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "version": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "SubscriptionConfigUpdatedEvent": {
+      "index": 2,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "updated_by": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "billing_period_ms": {
+            "index": 1,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_renewal_months": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "timestamp": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "ProfileSubscriptionService": {
+      "index": 3,
       "doc": " Profile subscription service - one per profile",
       "attributes": [],
       "abilities": [
@@ -1161,7 +1503,7 @@
       }
     },
     "ProfileSubscription": {
-      "index": 1,
+      "index": 4,
       "doc": " Individual subscription to a profile",
       "attributes": [],
       "abilities": [
@@ -1256,7 +1598,7 @@
       }
     },
     "ProfileSubscriptionCreatedEvent": {
-      "index": 2,
+      "index": 5,
       "doc": " Events",
       "attributes": [],
       "abilities": [
@@ -1305,7 +1647,7 @@
       }
     },
     "ProfileSubscriptionRenewedEvent": {
-      "index": 3,
+      "index": 6,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -1354,7 +1696,7 @@
       }
     },
     "ProfileSubscriptionCancelledEvent": {
-      "index": 4,
+      "index": 7,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -1393,7 +1735,7 @@
       }
     },
     "ProfileSubscriptionUpdatedEvent": {
-      "index": 5,
+      "index": 8,
       "doc": " Additional event for fee updates",
       "attributes": [],
       "abilities": [
@@ -1437,7 +1779,7 @@
       }
     },
     "ProfileSubscriptionServiceCreatedEvent": {
-      "index": 6,
+      "index": 9,
       "doc": " Event emitted when a subscription service is created",
       "attributes": [],
       "abilities": [
@@ -1481,7 +1823,7 @@
       }
     },
     "RenewalBalanceFundedEvent": {
-      "index": 7,
+      "index": 10,
       "doc": " Event emitted when renewal balance is funded",
       "attributes": [],
       "abilities": [
@@ -1530,7 +1872,7 @@
       }
     },
     "ProfileSubscriptionServiceDeactivatedEvent": {
-      "index": 8,
+      "index": 11,
       "doc": " Event emitted when a subscription service is deactivated",
       "attributes": [],
       "abilities": [

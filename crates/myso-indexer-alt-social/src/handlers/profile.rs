@@ -9,8 +9,8 @@ use std::str::FromStr;
 use super::common;
 use super::{ProfileUpdate, SocialEventRow};
 use myso_indexer_alt_social_schema::models::{
-    NewEcosystemTreasury, NewProfile, NewProfileEvent, NewProfileOffer, NewProfileSaleFee,
-    NewUsernameRegistry, NewVestingEvent, NewVestingWallet,
+    NewEcosystemTreasury, NewProfile, NewProfileConfig, NewProfileEvent, NewProfileOffer,
+    NewProfileSaleFee, NewUsernameRegistry, NewVestingEvent, NewVestingWallet,
 };
 
 fn deserialize_number_from_string<'de, T, D>(deserializer: D) -> Result<T, D::Error>
@@ -296,6 +296,9 @@ pub fn handle_profile_event(
         "EcosystemTreasuryUpdatedEvent" => {
             process_ecosystem_treasury_updated_event(data, event_id, checkpoint_timestamp_ms)
         }
+        "ProfileConfigUpdatedEvent" => {
+            process_profile_config_updated_event(data, event_id, checkpoint_timestamp_ms)
+        }
         "ProfileOfferCreatedEvent" => process_profile_offer_created_event(data, event_id),
         "ProfileOfferAcceptedEvent" => process_profile_offer_accepted_event(data, event_id),
         "ProfileOfferRejectedEvent" => process_profile_offer_rejected_event(data, event_id),
@@ -476,17 +479,74 @@ fn process_ecosystem_treasury_updated_event(
 ) -> Option<Vec<SocialEventRow>> {
     let updated_by = data.get("updated_by")?.as_str()?.to_string();
     let new_treasury_address = data.get("new_treasury_address")?.as_str()?.to_string();
+    let profile_sale_fee_bps =
+        common::json_field_as_i64(data.get("profile_sale_fee_bps")).unwrap_or(0);
     let event_ms = common::json_field_as_i64(data.get("timestamp"));
     let timestamp_ms = common::chain_timestamp_ms(event_ms, checkpoint_timestamp_ms);
     let time = common::chain_time_from_ms(timestamp_ms);
     let row = NewEcosystemTreasury {
         treasury_address: new_treasury_address,
         updated_by,
-        timestamp_ms,
+        profile_sale_fee_bps,
+        updated_at: timestamp_ms,
+        time,
+        transaction_id: event_id.to_string(),
+        version: common::json_field_as_i64(data.get("version")).unwrap_or(0),
+    };
+    Some(vec![SocialEventRow::EcosystemTreasury(row)])
+}
+
+#[derive(Debug, Deserialize)]
+struct ProfileConfigUpdatedEvent {
+    updated_by: String,
+    #[serde(default, deserialize_with = "deserialize_number_from_string")]
+    max_vesting_pieces: u64,
+    #[serde(default, deserialize_with = "deserialize_number_from_string")]
+    curve_factor_min: u64,
+    #[serde(default, deserialize_with = "deserialize_number_from_string")]
+    curve_factor_max: u64,
+    #[serde(default, deserialize_with = "deserialize_number_from_string")]
+    curve_precision: u64,
+    #[serde(default, deserialize_with = "deserialize_number_from_string")]
+    min_claim_threshold_divisor: u64,
+    #[serde(default, deserialize_with = "deserialize_number_from_string")]
+    min_username_length: u64,
+    #[serde(default, deserialize_with = "deserialize_number_from_string")]
+    max_username_length: u64,
+    #[serde(default, deserialize_with = "deserialize_number_from_string")]
+    timestamp: u64,
+}
+
+fn process_profile_config_updated_event(
+    data: &serde_json::Value,
+    event_id: &str,
+    checkpoint_timestamp_ms: u64,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: ProfileConfigUpdatedEvent = common::deserialize_social_event_json(
+        "profile",
+        "ProfileConfigUpdatedEvent",
+        event_id,
+        data,
+        "profile ProfileConfigUpdatedEvent JSON did not match ProfileConfigUpdatedEvent",
+    )?;
+    let event_ms = Some(ev.timestamp as i64);
+    let timestamp_ms = common::chain_timestamp_ms(event_ms, checkpoint_timestamp_ms);
+    let time = common::chain_time_from_ms(timestamp_ms);
+    let row = NewProfileConfig {
+        updated_by: ev.updated_by,
+        max_vesting_pieces: ev.max_vesting_pieces as i64,
+        curve_factor_min: ev.curve_factor_min as i64,
+        curve_factor_max: ev.curve_factor_max as i64,
+        curve_precision: ev.curve_precision as i64,
+        min_claim_threshold_divisor: ev.min_claim_threshold_divisor as i64,
+        min_username_length: ev.min_username_length as i64,
+        max_username_length: ev.max_username_length as i64,
+        version: 0,
+        updated_at: timestamp_ms,
         time,
         transaction_id: event_id.to_string(),
     };
-    Some(vec![SocialEventRow::EcosystemTreasury(row)])
+    Some(vec![SocialEventRow::ProfileConfig(row)])
 }
 
 /// Emitted when a username is claimed at profile creation.
@@ -1593,7 +1653,9 @@ mod tests {
         let mut memory_by_profile: HashMap<String, String> = HashMap::new();
         let mut balance_by_profile: HashMap<String, String> = HashMap::new();
 
-        if let Some(rows) = memory::handle_memory_event("MemoryAccountCreated", &memory_data, "tx:0") {
+        if let Some(rows) =
+            memory::handle_memory_event("MemoryAccountCreated", &memory_data, "tx:0")
+        {
             for row in rows {
                 if let SocialEventRow::MemoryAccount(a) = row {
                     memory_by_profile.insert(a.profile_id.clone(), a.account_id.clone());

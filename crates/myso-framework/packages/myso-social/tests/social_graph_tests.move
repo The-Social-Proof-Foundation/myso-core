@@ -13,7 +13,8 @@ module social_contracts::social_graph_tests {
     use myso::myso::MYSO;
     use myso::clock::{Self, Clock};
     
-    use social_contracts::profile::{Self, Profile, UsernameRegistry};
+    use social_contracts::profile::{Self, Profile, UsernameRegistry,
+        ProfileConfig};
     use social_contracts::ai_credit::AiCreditConfig;
     use social_contracts::memory::MemoryRegistry;
     use social_contracts::social_graph::{Self, SocialGraph};
@@ -60,10 +61,12 @@ module social_contracts::social_graph_tests {
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(scenario);
+            let profile_config = test_scenario::take_shared<ProfileConfig>(scenario);
             let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(scenario);
             let clock = test_scenario::take_shared<Clock>(scenario);
             profile::create_profile(
                 &mut registry,
+                &profile_config,
                 &mut memory_registry,
                 &mut ai_credit_config,
                 string::utf8(b"User One"),
@@ -74,6 +77,7 @@ module social_contracts::social_graph_tests {
                 &clock,
                 test_scenario::ctx(scenario)
             );
+            test_scenario::return_shared(profile_config);
             test_scenario::return_shared(clock);
             test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(memory_registry);
@@ -83,12 +87,14 @@ module social_contracts::social_graph_tests {
         // User2 creates profile
         test_scenario::next_tx(scenario, USER2);
         {
+            let profile_config = test_scenario::take_shared<ProfileConfig>(scenario);
             let mut registry = test_scenario::take_shared<UsernameRegistry>(scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(scenario);
             let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(scenario);
             let clock = test_scenario::take_shared<Clock>(scenario);
             profile::create_profile(
                 &mut registry,
+                &profile_config,
                 &mut memory_registry,
                 &mut ai_credit_config,
                 string::utf8(b"User Two"),
@@ -103,17 +109,20 @@ module social_contracts::social_graph_tests {
             test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_config);
         };
         
         // User3 creates profile
         test_scenario::next_tx(scenario, USER3);
         {
+            let profile_config = test_scenario::take_shared<ProfileConfig>(scenario);
             let mut registry = test_scenario::take_shared<UsernameRegistry>(scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(scenario);
             let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(scenario);
             let clock = test_scenario::take_shared<Clock>(scenario);
             profile::create_profile(
                 &mut registry,
+                &profile_config,
                 &mut memory_registry,
                 &mut ai_credit_config,
                 string::utf8(b"User Three"),
@@ -128,6 +137,7 @@ module social_contracts::social_graph_tests {
             test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_config);
         };
     }
     

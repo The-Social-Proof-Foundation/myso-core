@@ -1052,11 +1052,31 @@
           "type_": "u64"
         },
         {
-          "name": "fee_bps",
+          "name": "platform_fee_bps",
           "type_": "u64"
         },
         {
-          "name": "fee_split_bps_platform",
+          "name": "ecosystem_fee_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "min_betting_options",
+          "type_": "u64"
+        },
+        {
+          "name": "max_betting_options",
+          "type_": "u64"
+        },
+        {
+          "name": "min_reasoning_length",
+          "type_": "u64"
+        },
+        {
+          "name": "max_reasoning_length",
+          "type_": "u64"
+        },
+        {
+          "name": "max_evidence_urls",
           "type_": "u64"
         },
         {
@@ -3534,33 +3554,58 @@
             "doc": null,
             "type_": "u64"
           },
-          "fee_bps": {
+          "platform_fee_bps": {
             "index": 6,
             "doc": null,
             "type_": "u64"
           },
-          "fee_split_bps_platform": {
+          "ecosystem_fee_bps": {
             "index": 7,
             "doc": null,
             "type_": "u64"
           },
-          "oracle_address": {
+          "min_betting_options": {
             "index": 8,
             "doc": null,
-            "type_": "address"
+            "type_": "u64"
           },
-          "max_single_bet": {
+          "max_betting_options": {
             "index": 9,
             "doc": null,
             "type_": "u64"
           },
-          "max_bets_per_record": {
+          "min_reasoning_length": {
             "index": 10,
             "doc": null,
             "type_": "u64"
           },
-          "spot_governance_registry_id": {
+          "max_reasoning_length": {
             "index": 11,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_evidence_urls": {
+            "index": 12,
+            "doc": null,
+            "type_": "u64"
+          },
+          "oracle_address": {
+            "index": 13,
+            "doc": null,
+            "type_": "address"
+          },
+          "max_single_bet": {
+            "index": 14,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_bets_per_record": {
+            "index": 15,
+            "doc": null,
+            "type_": "u64"
+          },
+          "spot_governance_registry_id": {
+            "index": 16,
             "doc": null,
             "type_": {
               "Datatype": {
@@ -3574,7 +3619,7 @@
             }
           },
           "version": {
-            "index": 12,
+            "index": 17,
             "doc": null,
             "type_": "u64"
           }
@@ -4278,33 +4323,58 @@
             "doc": null,
             "type_": "u64"
           },
-          "fee_bps": {
+          "platform_fee_bps": {
             "index": 6,
             "doc": null,
             "type_": "u64"
           },
-          "fee_split_bps_platform": {
+          "ecosystem_fee_bps": {
             "index": 7,
             "doc": null,
             "type_": "u64"
           },
-          "oracle_address": {
+          "min_betting_options": {
             "index": 8,
             "doc": null,
-            "type_": "address"
+            "type_": "u64"
           },
-          "max_single_bet": {
+          "max_betting_options": {
             "index": 9,
             "doc": null,
             "type_": "u64"
           },
-          "max_bets_per_record": {
+          "min_reasoning_length": {
             "index": 10,
             "doc": null,
             "type_": "u64"
           },
-          "timestamp": {
+          "max_reasoning_length": {
             "index": 11,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_evidence_urls": {
+            "index": 12,
+            "doc": null,
+            "type_": "u64"
+          },
+          "oracle_address": {
+            "index": 13,
+            "doc": null,
+            "type_": "address"
+          },
+          "max_single_bet": {
+            "index": 14,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_bets_per_record": {
+            "index": 15,
+            "doc": null,
+            "type_": "u64"
+          },
+          "timestamp": {
+            "index": 16,
             "doc": null,
             "type_": "u64"
           }

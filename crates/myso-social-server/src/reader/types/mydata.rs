@@ -58,7 +58,11 @@ pub struct MyDataConfigInfo {
     #[diesel(sql_type = BigInt)]
     pub max_free_access_grants: i64,
     #[diesel(sql_type = BigInt)]
-    pub timestamp_ms: i64,
+    pub max_encryption_id_bytes: i64,
+    #[diesel(sql_type = BigInt)]
+    pub version: i64,
+    #[diesel(sql_type = BigInt)]
+    pub updated_at: i64,
     #[diesel(sql_type = Timestamptz)]
     pub time: chrono::DateTime<chrono::Utc>,
     #[diesel(sql_type = Text)]

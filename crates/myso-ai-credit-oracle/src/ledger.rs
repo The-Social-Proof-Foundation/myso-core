@@ -71,13 +71,14 @@ impl BalanceLedger {
             .count() as u64
     }
 
-    pub fn effective_available_mist(balance: &AiCreditBalanceResponse, store: &ReceiptStore) -> u64 {
+    pub fn effective_available_mist(
+        balance: &AiCreditBalanceResponse,
+        store: &ReceiptStore,
+    ) -> u64 {
         let on_chain = balance.balance.balance_mist.max(0) as u64;
         let reserved = balance.balance.reserved_mist.max(0) as u64;
         let pending = Self::pending_mist(store, &balance.balance.balance_id);
-        on_chain
-            .saturating_sub(reserved)
-            .saturating_sub(pending)
+        on_chain.saturating_sub(reserved).saturating_sub(pending)
     }
 
     pub fn next_settlement_nonce(

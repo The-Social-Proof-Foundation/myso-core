@@ -76,6 +76,8 @@ module social_contracts::insurance {
     const DEFAULT_MAX_COVERAGE_BPS: u64 = 9000;
     const DEFAULT_MAX_DURATION_MS: u64 = 30 * DAY_MS;
     const DEFAULT_FEE_BPS: u64 = 50;
+    const DEFAULT_ODDS_BASE_BPS: u64 = 5000;
+    const DEFAULT_MAX_ROUTE_LEGS: u64 = 4;
 
     /// Default SPoT risk pricing (baseline pool size ~1000 MYSO at 10^9 scaling).
     const DEFAULT_MIN_SPOT_TOTAL_LIQUIDITY: u64 = 1;
@@ -114,6 +116,7 @@ module social_contracts::insurance {
         liq_ref_amount: u64,
         exposure_cap_bps: u64,
         exposure_k_bps: u64,
+        odds_base_bps: u64,
         version: u64,
     }
 
@@ -126,6 +129,7 @@ module social_contracts::insurance {
         max_route_reserve_option: u64,
         max_vault_concentration_bps: u64,
         min_vault_health_factor_bps: u64,
+        max_route_legs: u64,
         market_pause: Table<address, bool>,
         version: u64,
     }
@@ -233,8 +237,6 @@ module social_contracts::insurance {
     const SKIPPED_RISK_MULTIPLIER: u8 = 6;
     const SKIPPED_ZERO_CAPACITY: u8 = 7;
     const SKIPPED_THIN_OR_POOL: u8 = 8;
-
-    const MAX_ROUTE_LEGS: u64 = 4;
 
     /// Events
     public struct RiskPricingConfigUpdatedEvent has copy, drop {
@@ -382,6 +384,18 @@ module social_contracts::insurance {
         max_coverage_bps: u64,
         max_duration_ms: u64,
         fee_bps: u64,
+        odds_base_bps: u64,
+        timestamp: u64,
+    }
+
+    public struct RouterLimitsUpdatedEvent has copy, drop {
+        updated_by: address,
+        max_route_reserve_market: u64,
+        max_route_reserve_user: u64,
+        max_route_reserve_option: u64,
+        max_vault_concentration_bps: u64,
+        min_vault_health_factor_bps: u64,
+        max_route_legs: u64,
         timestamp: u64,
     }
 
@@ -431,6 +445,7 @@ module social_contracts::insurance {
             liq_ref_amount: DEFAULT_LIQ_REF_AMOUNT,
             exposure_cap_bps: DEFAULT_EXPOSURE_CAP_BPS,
             exposure_k_bps: DEFAULT_EXPOSURE_K_BPS,
+            odds_base_bps: DEFAULT_ODDS_BASE_BPS,
             version: DEFAULT_VERSION,
         });
         transfer::share_object(new_router_config_defaults(ctx));
@@ -470,6 +485,7 @@ module social_contracts::insurance {
         max_coverage_bps: u64,
         max_duration_ms: u64,
         fee_bps: u64,
+        odds_base_bps: u64,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
@@ -478,11 +494,13 @@ module social_contracts::insurance {
         assert!(max_coverage_bps <= BPS_DENOM, EInvalidCoverage);
         assert!(max_duration_ms > 0, EInvalidDuration);
         assert!(fee_bps <= BPS_DENOM, EInvalidCoverage);
+        assert!(odds_base_bps > 0, EInvalidCoverage);
 
         config.min_coverage_bps = min_coverage_bps;
         config.max_coverage_bps = max_coverage_bps;
         config.max_duration_ms = max_duration_ms;
         config.fee_bps = fee_bps;
+        config.odds_base_bps = odds_base_bps;
 
         let updated_by = tx_context::sender(ctx);
         let timestamp = clock::timestamp_ms(clock);
@@ -493,6 +511,7 @@ module social_contracts::insurance {
             max_coverage_bps,
             max_duration_ms,
             fee_bps,
+            odds_base_bps,
             timestamp,
         });
     }
@@ -581,6 +600,7 @@ module social_contracts::insurance {
             max_coverage_bps: config.max_coverage_bps,
             max_duration_ms: config.max_duration_ms,
             fee_bps: config.fee_bps,
+            odds_base_bps: config.odds_base_bps,
             timestamp,
         });
     }
@@ -611,6 +631,7 @@ module social_contracts::insurance {
             liq_ref_amount: DEFAULT_LIQ_REF_AMOUNT,
             exposure_cap_bps: DEFAULT_EXPOSURE_CAP_BPS,
             exposure_k_bps: DEFAULT_EXPOSURE_K_BPS,
+            odds_base_bps: DEFAULT_ODDS_BASE_BPS,
             version: DEFAULT_VERSION,
         };
 
@@ -624,6 +645,7 @@ module social_contracts::insurance {
             max_coverage_bps: DEFAULT_MAX_COVERAGE_BPS,
             max_duration_ms: DEFAULT_MAX_DURATION_MS,
             fee_bps: DEFAULT_FEE_BPS,
+            odds_base_bps: DEFAULT_ODDS_BASE_BPS,
             timestamp: ts,
         });
         event::emit(RiskPricingConfigUpdatedEvent {
@@ -740,6 +762,8 @@ module social_contracts::insurance {
         max_route_reserve_option: u64,
         max_vault_concentration_bps: u64,
         min_vault_health_factor_bps: u64,
+        max_route_legs: u64,
+        clock: &Clock,
         ctx: &mut TxContext,
     ) {
         assert!(
@@ -747,12 +771,23 @@ module social_contracts::insurance {
             EInvalidCoverage
         );
         assert!(min_vault_health_factor_bps > 0, EInvalidAmount);
+        assert!(max_route_legs > 0, EInvalidAmount);
         router_cfg.max_route_reserve_market = max_route_reserve_market;
         router_cfg.max_route_reserve_user = max_route_reserve_user;
         router_cfg.max_route_reserve_option = max_route_reserve_option;
         router_cfg.max_vault_concentration_bps = max_vault_concentration_bps;
         router_cfg.min_vault_health_factor_bps = min_vault_health_factor_bps;
-        let _ = ctx;
+        router_cfg.max_route_legs = max_route_legs;
+        event::emit(RouterLimitsUpdatedEvent {
+            updated_by: tx_context::sender(ctx),
+            max_route_reserve_market,
+            max_route_reserve_user,
+            max_route_reserve_option,
+            max_vault_concentration_bps,
+            min_vault_health_factor_bps,
+            max_route_legs,
+            timestamp: clock::timestamp_ms(clock),
+        });
     }
 
     public entry fun set_market_pause(
@@ -923,6 +958,7 @@ module social_contracts::insurance {
             max_route_reserve_option: 0,
             max_vault_concentration_bps: BPS_DENOM,
             min_vault_health_factor_bps: BPS_DENOM,
+            max_route_legs: DEFAULT_MAX_ROUTE_LEGS,
             market_pause: table::new(ctx),
             version: DEFAULT_VERSION,
         }
@@ -1117,7 +1153,7 @@ module social_contracts::insurance {
         let p_floor = config.implied_prob_floor_bps;
         let denom_p = if (p_win_bps > p_floor) { p_win_bps } else { p_floor };
 
-        let odds_core_u128 = (5000u128) * (BPS_DENOM as u128) / (denom_p as u128);
+        let odds_core_u128 = (config.odds_base_bps as u128) * (BPS_DENOM as u128) / (denom_p as u128);
         assert!(odds_core_u128 <= (MAX_U64 as u128), EOverflow);
         let odds_core = odds_core_u128 as u64;
         let mut odds_mult_bps = if (config.odds_cap_bps < odds_core) {
@@ -1653,6 +1689,13 @@ module social_contracts::insurance {
         assert!(total_covered > 0, EInvalidAmount);
         assert!(total_covered >= min_total_covered, ESlippageCovered);
         assert!(total_covered <= position_amount, EInvalidAmount);
+
+        let mut route_leg_count = 0;
+        if (fill_0 > 0) { route_leg_count = route_leg_count + 1; };
+        if (fill_1 > 0) { route_leg_count = route_leg_count + 1; };
+        if (fill_2 > 0) { route_leg_count = route_leg_count + 1; };
+        if (fill_3 > 0) { route_leg_count = route_leg_count + 1; };
+        assert!(route_leg_count <= router_cfg.max_route_legs, EInvalidCoverage);
 
         if (fill_0 > 0 && fill_1 > 0) {
             assert!(object::id(v0) != object::id(v1), EDuplicateVaultInRoute);

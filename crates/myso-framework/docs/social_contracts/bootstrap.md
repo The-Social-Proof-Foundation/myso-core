@@ -6,6 +6,8 @@ Bootstrap service for MySocial - claims all admin capabilities in one call.
 Uses the framework's centralized BootstrapKey for one-time initialization.
 
 
+-  [Struct `MessagingAdminCap`](#social_contracts_bootstrap_MessagingAdminCap)
+-  [Function `create_messaging_admin_cap`](#social_contracts_bootstrap_create_messaging_admin_cap)
 -  [Function `claim_all_admin_capabilities`](#social_contracts_bootstrap_claim_all_admin_capabilities)
 -  [Function `is_bootstrap_used`](#social_contracts_bootstrap_is_bootstrap_used)
 -  [Function `bootstrap_version`](#social_contracts_bootstrap_bootstrap_version)
@@ -89,6 +91,60 @@ Uses the framework's centralized BootstrapKey for one-time initialization.
 
 
 
+<a name="social_contracts_bootstrap_MessagingAdminCap"></a>
+
+## Struct `MessagingAdminCap`
+
+Admin capability for updating <code>messaging::messaging_config::MessagingConfig</code>.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_MessagingAdminCap">MessagingAdminCap</a> <b>has</b> key, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>id: <a href="../myso/object.md#myso_object_UID">myso::object::UID</a></code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_bootstrap_create_messaging_admin_cap"></a>
+
+## Function `create_messaging_admin_cap`
+
+Create a [<code><a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_MessagingAdminCap">MessagingAdminCap</a></code>] for genesis bootstrap.
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_create_messaging_admin_cap">create_messaging_admin_cap</a>(ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_MessagingAdminCap">social_contracts::bootstrap::MessagingAdminCap</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_create_messaging_admin_cap">create_messaging_admin_cap</a>(ctx: &<b>mut</b> TxContext): <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_MessagingAdminCap">MessagingAdminCap</a> {
+    <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_MessagingAdminCap">MessagingAdminCap</a> {
+        id: object::new(ctx),
+    }
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_bootstrap_claim_all_admin_capabilities"></a>
 
 ## Function `claim_all_admin_capabilities`
@@ -123,6 +179,7 @@ Creates and transfers all admin capabilities to caller, then seals the bootstrap
     <a href="../social_contracts/memory.md#social_contracts_memory_bootstrap_init">social_contracts::memory::bootstrap_init</a>(clock, ctx);
     <b>let</b> spot_governance_registry_id = <a href="../social_contracts/governance.md#social_contracts_governance_bootstrap_init">social_contracts::governance::bootstrap_init</a>(clock, ctx);
     <a href="../social_contracts/post.md#social_contracts_post_bootstrap_init">social_contracts::post::bootstrap_init</a>(clock, ctx);
+    <a href="../social_contracts/subscription.md#social_contracts_subscription_bootstrap_init">social_contracts::subscription::bootstrap_init</a>(clock, ctx);
     <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_bootstrap_init">social_contracts::social_proof_tokens::bootstrap_init</a>(clock, ctx);
     <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_bootstrap_init">social_contracts::proof_of_creativity::bootstrap_init</a>(clock, ctx);
     <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_bootstrap_init">social_contracts::social_proof_of_truth::bootstrap_init</a>(clock, spot_governance_registry_id, ctx);
@@ -147,8 +204,12 @@ Creates and transfers all admin capabilities to caller, then seals the bootstrap
     transfer::public_transfer(<a href="../social_contracts/profile.md#social_contracts_profile_create_ecosystem_treasury_admin_cap">profile::create_ecosystem_treasury_admin_cap</a>(ctx), admin);
     transfer::public_transfer(<a href="../social_contracts/profile.md#social_contracts_profile_create_ecosystem_badge_admin_cap">profile::create_ecosystem_badge_admin_cap</a>(ctx), admin);
     transfer::public_transfer(<a href="../social_contracts/profile.md#social_contracts_profile_create_username_admin_cap">profile::create_username_admin_cap</a>(ctx), admin);
+    transfer::public_transfer(<a href="../social_contracts/profile.md#social_contracts_profile_create_profile_admin_cap">profile::create_profile_admin_cap</a>(ctx), admin);
+    transfer::public_transfer(<a href="../social_contracts/subscription.md#social_contracts_subscription_create_subscription_admin_cap">subscription::create_subscription_admin_cap</a>(ctx), admin);
+    transfer::public_transfer(memory_module::create_memory_admin_cap(ctx), admin);
     transfer::public_transfer(<a href="../social_contracts/insurance.md#social_contracts_insurance_create_insurance_admin_cap">insurance::create_insurance_admin_cap</a>(ctx), admin);
     transfer::public_transfer(<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_create_oracle_admin_cap">ai_credit::create_oracle_admin_cap</a>(ctx), admin);
+    transfer::public_transfer(<a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_create_messaging_admin_cap">create_messaging_admin_cap</a>(ctx), admin);
     transfer::public_transfer(coin::create_coin_creation_admin_cap_for_bootstrap(bootstrap_key, ctx), admin);
     transfer::public_transfer(package::create_package_publishing_admin_cap_for_bootstrap(bootstrap_key, ctx), admin);
     <b>let</b> orderbook_admin_cap =

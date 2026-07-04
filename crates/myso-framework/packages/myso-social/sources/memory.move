@@ -149,9 +149,6 @@ module social_contracts::memory {
     const ORG_TYPE_OTHER: u8 = 13;
     const ORG_TYPE_COUNT: u8 = 14;
 
-    const MAX_ORGANIZATIONS_PER_USER: u8 = 8;
-    const ORG_CATEGORY_UPDATE_COOLDOWN_MS: u64 = 7 * 24 * 60 * 60 * 1000;
-
     // ============================================================
     // Error codes
     // ============================================================
@@ -215,8 +212,12 @@ module social_contracts::memory {
     const EOrgInvitationExpired: u64 = 59;
     const EOrgInvitationEmpty: u64 = 60;
     const ENoAccess: u64 = 100;
+    const EInvalidConfig: u64 = 101;
 
     const ED25519_PUBLIC_KEY_LENGTH: u64 = 32;
+    /// Default bootstrap values for MemoryConfig
+    const MAX_ORGANIZATIONS_PER_USER: u8 = 8;
+    const ORG_CATEGORY_UPDATE_COOLDOWN_MS: u64 = 604800000;
     const MAX_LABEL_LENGTH: u64 = 64;
     const MAX_ORG_NAME_LENGTH: u64 = 100;
     const MAX_ORG_DESCRIPTION_LENGTH: u64 = 1200;
@@ -228,6 +229,34 @@ module social_contracts::memory {
     // ============================================================
     // Structs
     // ============================================================
+
+    /// Admin capability for memory configuration
+    public struct MemoryAdminCap has key, store {
+        id: UID,
+    }
+
+    /// Global memory feature configuration
+    public struct MemoryConfig has key {
+        id: UID,
+        max_organizations_per_user: u8,
+        org_category_update_cooldown_ms: u64,
+        max_agent_depth: u8,
+        max_label_length: u64,
+        max_org_name_length: u64,
+        max_org_description_length: u64,
+        version: u64,
+    }
+
+    public struct MemoryConfigUpdatedEvent has copy, drop {
+        updated_by: address,
+        max_organizations_per_user: u8,
+        org_category_update_cooldown_ms: u64,
+        max_agent_depth: u8,
+        max_label_length: u64,
+        max_org_name_length: u64,
+        max_org_description_length: u64,
+        timestamp: u64,
+    }
 
     public struct MemoryRegistry has key {
         id: UID,
@@ -665,7 +694,7 @@ module social_contracts::memory {
     public fun org_type_healthcare(): u8 { ORG_TYPE_HEALTHCARE }
     public fun org_type_other(): u8 { ORG_TYPE_OTHER }
     public fun org_type_count(): u8 { ORG_TYPE_COUNT }
-    public fun max_organizations_per_user(): u8 { MAX_ORGANIZATIONS_PER_USER }
+    public fun max_organizations_per_user(config: &MemoryConfig): u8 { config.max_organizations_per_user }
 
     public fun cap_memory_read(): u64 { CAP_MEMORY_READ }
     public fun cap_memory_write(): u64 { CAP_MEMORY_WRITE }
@@ -749,13 +778,79 @@ module social_contracts::memory {
     // Bootstrap
     // ============================================================
 
-    public(package) fun bootstrap_init(_clock: &Clock, ctx: &mut TxContext) {
+    public(package) fun bootstrap_init(clock: &Clock, ctx: &mut TxContext) {
+        let admin = tx_context::sender(ctx);
+        let config = MemoryConfig {
+            id: object::new(ctx),
+            max_organizations_per_user: MAX_ORGANIZATIONS_PER_USER,
+            org_category_update_cooldown_ms: ORG_CATEGORY_UPDATE_COOLDOWN_MS,
+            max_agent_depth: MAX_AGENT_DEPTH,
+            max_label_length: MAX_LABEL_LENGTH,
+            max_org_name_length: MAX_ORG_NAME_LENGTH,
+            max_org_description_length: MAX_ORG_DESCRIPTION_LENGTH,
+            version: VERSION,
+        };
+        event::emit(MemoryConfigUpdatedEvent {
+            updated_by: admin,
+            max_organizations_per_user: MAX_ORGANIZATIONS_PER_USER,
+            org_category_update_cooldown_ms: ORG_CATEGORY_UPDATE_COOLDOWN_MS,
+            max_agent_depth: MAX_AGENT_DEPTH,
+            max_label_length: MAX_LABEL_LENGTH,
+            max_org_name_length: MAX_ORG_NAME_LENGTH,
+            max_org_description_length: MAX_ORG_DESCRIPTION_LENGTH,
+            timestamp: clock::timestamp_ms(clock),
+        });
+        transfer::share_object(config);
+
         let mut registry = MemoryRegistry {
             id: object::new(ctx),
             accounts: table::new(ctx),
         };
         set_version(&mut registry.id, VERSION);
         transfer::share_object(registry);
+    }
+
+    /// Create a [`MemoryAdminCap`] for bootstrap (package visibility only).
+    public(package) fun create_memory_admin_cap(ctx: &mut TxContext): MemoryAdminCap {
+        MemoryAdminCap { id: object::new(ctx) }
+    }
+
+    /// Update global memory configuration (admin only).
+    public entry fun update_memory_config(
+        _: &MemoryAdminCap,
+        config: &mut MemoryConfig,
+        max_organizations_per_user: u8,
+        org_category_update_cooldown_ms: u64,
+        max_agent_depth: u8,
+        max_label_length: u64,
+        max_org_name_length: u64,
+        max_org_description_length: u64,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert!(max_organizations_per_user > 0, EInvalidConfig);
+        assert!(max_agent_depth > 0, EInvalidConfig);
+        assert!(max_label_length > 0, EInvalidConfig);
+        assert!(max_org_name_length > 0, EInvalidConfig);
+        assert!(max_org_description_length > 0, EInvalidConfig);
+
+        config.max_organizations_per_user = max_organizations_per_user;
+        config.org_category_update_cooldown_ms = org_category_update_cooldown_ms;
+        config.max_agent_depth = max_agent_depth;
+        config.max_label_length = max_label_length;
+        config.max_org_name_length = max_org_name_length;
+        config.max_org_description_length = max_org_description_length;
+
+        event::emit(MemoryConfigUpdatedEvent {
+            updated_by: tx_context::sender(ctx),
+            max_organizations_per_user,
+            org_category_update_cooldown_ms,
+            max_agent_depth,
+            max_label_length,
+            max_org_name_length,
+            max_org_description_length,
+            timestamp: clock::timestamp_ms(clock),
+        });
     }
 
     public(package) fun create_account_for_profile(
@@ -823,6 +918,7 @@ module social_contracts::memory {
 
     /// Human owner creates a competitive agentic organization (max 8 per account).
     public entry fun create_agentic_organization(
+        config: &MemoryConfig,
         account: &mut MemoryAccount,
         org_type: u8,
         name: Option<String>,
@@ -831,10 +927,11 @@ module social_contracts::memory {
         ctx: &mut TxContext,
     ) {
         assert!(tx_context::sender(ctx) == account.owner, ENotOwner);
-        let _ = create_agentic_organization_internal(account, org_type, name, description, clock, ctx);
+        let _ = create_agentic_organization_internal(config, account, org_type, name, description, clock, ctx);
     }
 
     public(package) fun create_agentic_organization_internal(
+        config: &MemoryConfig,
         account: &mut MemoryAccount,
         org_type: u8,
         name: Option<String>,
@@ -845,9 +942,9 @@ module social_contracts::memory {
         assert_object_version(&account.id);
         assert!(account.active, EAccountDeactivated);
         assert_valid_org_type(org_type);
-        assert_org_name_within_limit(&name);
-        assert_org_description_within_limit(&description);
-        assert!(account.org_count < MAX_ORGANIZATIONS_PER_USER, EOrganizationLimitExceeded);
+        assert_org_name_within_limit(config, &name);
+        assert_org_description_within_limit(config, &description);
+        assert!(account.org_count < config.max_organizations_per_user, EOrganizationLimitExceeded);
 
         let org = AgenticOrganization {
             id: object::new(ctx),
@@ -887,6 +984,7 @@ module social_contracts::memory {
     }
 
     public entry fun update_agentic_organization_metadata(
+        config: &MemoryConfig,
         account: &MemoryAccount,
         org: &mut AgenticOrganization,
         name: Option<String>,
@@ -897,8 +995,8 @@ module social_contracts::memory {
         assert!(tx_context::sender(ctx) == account.owner, ENotOwner);
         assert_organization_belongs_to_account(account, org);
         assert!(org.active, EOrganizationNotActive);
-        assert_org_name_within_limit(&name);
-        assert_org_description_within_limit(&description);
+        assert_org_name_within_limit(config, &name);
+        assert_org_description_within_limit(config, &description);
         org.name = name;
         org.description = description;
         event::emit(AgenticOrganizationUpdated {
@@ -909,6 +1007,7 @@ module social_contracts::memory {
     }
 
     public entry fun update_agentic_organization_category(
+        config: &MemoryConfig,
         account: &MemoryAccount,
         org: &mut AgenticOrganization,
         org_type: u8,
@@ -923,7 +1022,7 @@ module social_contracts::memory {
         if (option::is_some(&org.category_updated_at)) {
             let last = *option::borrow(&org.category_updated_at);
             assert!(
-                clock::timestamp_ms(clock) >= last + ORG_CATEGORY_UPDATE_COOLDOWN_MS,
+                clock::timestamp_ms(clock) >= last + config.org_category_update_cooldown_ms,
                 EOrgCategoryUpdateCooldown,
             );
         };
@@ -1111,6 +1210,7 @@ module social_contracts::memory {
     /// Define (or redefine) a custom org role as a named mask. Built-in role names are
     /// reserved. Redefinition is safe: assignments record their exact granted delta.
     public entry fun define_custom_org_role(
+        config: &MemoryConfig,
         account: &MemoryAccount,
         org: &mut AgenticOrganization,
         group: &PermissionedGroup<MemorySharePackage>,
@@ -1124,7 +1224,7 @@ module social_contracts::memory {
         assert!(org.active, EOrganizationNotActive);
         assert_org_group(org, group);
         assert_org_permission_manager(group, ctx);
-        assert!(string::length(&name) <= MAX_LABEL_LENGTH, EOrgRoleNameTooLong);
+        assert!(string::length(&name) <= config.max_label_length, EOrgRoleNameTooLong);
         assert!(!is_builtin_role_name(&name), EOrgRoleBuiltinRedefine);
         assert_valid_org_permission_mask(mask);
 
@@ -1431,6 +1531,7 @@ module social_contracts::memory {
     /// or any holder of `OrgMemoryReader` on the org's share group. Registered sub-agents
     /// must additionally have an active ancestor chain.
     public entry fun approve_org_key_policy(
+        config: &MemoryConfig,
         id: vector<u8>,
         account: &MemoryAccount,
         org: &AgenticOrganization,
@@ -1451,7 +1552,7 @@ module social_contracts::memory {
         };
 
         if (table::contains(&account.agents, caller)) {
-            assert_ancestor_chain_active_from_table(account, caller, clock);
+            assert_ancestor_chain_active_from_table(config, account, caller, clock);
         };
 
         assert!(
@@ -1466,6 +1567,7 @@ module social_contracts::memory {
 
     /// Human owner registers a root-level sub-agent bound to an organization.
     public entry fun register_sub_agent(
+        config: &MemoryConfig,
         account: &mut MemoryAccount,
         organization: &mut AgenticOrganization,
         public_key: vector<u8>,
@@ -1486,6 +1588,7 @@ module social_contracts::memory {
         assert!(tx_context::sender(ctx) == account.owner, ENotOwner);
         assert_organization_ready_for_root(account, organization);
         register_sub_agent_internal(
+            config,
             account,
             organization,
             public_key,
@@ -1507,6 +1610,7 @@ module social_contracts::memory {
 
     /// Delegated agent registers a child or peer sub-agent.
     public entry fun register_sub_agent_delegated(
+        config: &MemoryConfig,
         account: &mut MemoryAccount,
         parent_agent: &SubAgent,
         public_key: vector<u8>,
@@ -1527,6 +1631,7 @@ module social_contracts::memory {
     ) {
         assert!(tx_context::sender(ctx) == parent_agent.derived_address, EInvalidRegistrar);
         register_sub_agent_delegated_internal(
+            config,
             account,
             parent_agent,
             public_key,
@@ -1586,6 +1691,7 @@ module social_contracts::memory {
     }
 
     public entry fun update_sub_agent_label(
+        config: &MemoryConfig,
         account: &mut MemoryAccount,
         agent: &mut SubAgent,
         label: String,
@@ -1594,7 +1700,7 @@ module social_contracts::memory {
     ) {
         assert_object_version(&account.id);
         assert_agent_belongs_to_account(account, agent);
-        assert!(string::length(&label) <= MAX_LABEL_LENGTH, ELabelTooLong);
+        assert!(string::length(&label) <= config.max_label_length, ELabelTooLong);
         assert_may_manage(account, agent, CAP_AGENT_UPDATE, clock, ctx);
         agent.label = label;
         emit_sub_agent_updated(account, agent);
@@ -1778,6 +1884,7 @@ module social_contracts::memory {
     }
 
     public fun resolve_actor_from_account(
+        config: &MemoryConfig,
         root: &MemoryAccount,
         clock: &Clock,
         ctx: &TxContext,
@@ -1789,7 +1896,7 @@ module social_contracts::memory {
             return resolve_human_actor(root, ctx)
         };
         assert!(table::contains(&root.agents, sender), ESubAgentNotFound);
-        assert_ancestor_chain_active_from_table(root, sender, clock);
+        assert_ancestor_chain_active_from_table(config, root, sender, clock);
         let entry = table::borrow(&root.agents, sender);
         ActingContext {
             principal_owner: root.owner,
@@ -1804,6 +1911,7 @@ module social_contracts::memory {
     }
 
     public fun resolve_actor_with_cap(
+        config: &MemoryConfig,
         root: &MemoryAccount,
         required_cap: u64,
         action_platform_id: Option<address>,
@@ -1815,7 +1923,7 @@ module social_contracts::memory {
         if (sender == root.owner) {
             return resolve_human_actor(root, ctx)
         };
-        let acting = resolve_actor_from_account(root, clock, ctx);
+        let acting = resolve_actor_from_account(config, root, clock, ctx);
         let entry = table::borrow(&root.agents, sender);
         assert!(has_cap(entry.capabilities, required_cap), ESubAgentMissingCap);
         assert_platform_scope_entry(entry, action_platform_id);
@@ -1929,6 +2037,7 @@ module social_contracts::memory {
     /// True when `descendant_id` sits strictly below `ancestor_id` in the agent tree
     /// (walks the registry mirror; bounded by MAX_AGENT_DEPTH). Self is not a descendant.
     public fun is_descendant_agent(
+        config: &MemoryConfig,
         account: &MemoryAccount,
         ancestor_id: ID,
         descendant_id: ID,
@@ -1942,7 +2051,7 @@ module social_contracts::memory {
         let mut hops = 0u8;
         while (option::is_some(&current_parent)) {
             hops = hops + 1;
-            if (hops > MAX_AGENT_DEPTH) {
+            if (hops > config.max_agent_depth) {
                 return false
             };
             let parent_id = *option::borrow(&current_parent);
@@ -1970,6 +2079,7 @@ module social_contracts::memory {
     // ============================================================
 
     public entry fun approve_key_policy(
+        config: &MemoryConfig,
         id: vector<u8>,
         account: &MemoryAccount,
         clock: &Clock,
@@ -1990,6 +2100,7 @@ module social_contracts::memory {
         };
 
         let acting = resolve_actor_with_cap(
+            config,
             account,
             CAP_MEMORY_READ,
             option::none(),
@@ -2001,6 +2112,7 @@ module social_contracts::memory {
     }
 
     public entry fun approve_key_write_policy(
+        config: &MemoryConfig,
         id: vector<u8>,
         account: &MemoryAccount,
         clock: &Clock,
@@ -2021,6 +2133,7 @@ module social_contracts::memory {
         };
 
         let acting = resolve_actor_with_cap(
+            config,
             account,
             CAP_MEMORY_WRITE,
             option::none(),
@@ -2040,6 +2153,7 @@ module social_contracts::memory {
     // ============================================================
 
     fun register_sub_agent_internal(
+        config: &MemoryConfig,
         account: &mut MemoryAccount,
         organization: &mut AgenticOrganization,
         public_key: vector<u8>,
@@ -2059,6 +2173,7 @@ module social_contracts::memory {
     ) {
         let organization_id = object::id(organization);
         let agent_id = finish_register_sub_agent(
+            config,
             account,
             organization_id,
             public_key,
@@ -2082,6 +2197,7 @@ module social_contracts::memory {
     }
 
     fun register_sub_agent_delegated_internal(
+        config: &MemoryConfig,
         account: &mut MemoryAccount,
         parent_agent: &SubAgent,
         public_key: vector<u8>,
@@ -2100,6 +2216,7 @@ module social_contracts::memory {
         clock: &Clock,
     ) {
         let (depth, parent_object_id, registered_by) = resolve_delegated_registration_placement(
+            config,
             account,
             parent_agent,
             register_relation,
@@ -2109,6 +2226,7 @@ module social_contracts::memory {
             clock,
         );
         finish_register_sub_agent(
+            config,
             account,
             parent_agent.organization_id,
             public_key,
@@ -2131,6 +2249,7 @@ module social_contracts::memory {
     }
 
     fun finish_register_sub_agent(
+        config: &MemoryConfig,
         account: &mut MemoryAccount,
         organization_id: ID,
         public_key: vector<u8>,
@@ -2156,7 +2275,7 @@ module social_contracts::memory {
         assert_valid_register_scope(register_scope);
         assert!(table::contains(&account.organizations, organization_id), EOrganizationNotFound);
         assert!(vector::length(&public_key) == ED25519_PUBLIC_KEY_LENGTH, EInvalidPublicKeyLength);
-        assert!(string::length(&label) <= MAX_LABEL_LENGTH, ELabelTooLong);
+        assert!(string::length(&label) <= config.max_label_length, ELabelTooLong);
         assert_scope_allowed_for_delegate(option::none(), platform_scope);
 
         let key = SubAgentKey { derived_address };
@@ -2294,6 +2413,7 @@ module social_contracts::memory {
     }
 
     fun assert_ancestor_chain_active_from_table(
+        config: &MemoryConfig,
         account: &MemoryAccount,
         derived_address: address,
         clock: &Clock,
@@ -2306,7 +2426,7 @@ module social_contracts::memory {
         let mut hops = 0u8;
         while (option::is_some(&current_parent)) {
             hops = hops + 1;
-            assert!(hops <= MAX_AGENT_DEPTH, EInvalidAncestorChain);
+            assert!(hops <= config.max_agent_depth, EInvalidAncestorChain);
             let parent_id = *option::borrow(&current_parent);
             assert!(table::contains(&account.agent_ids, parent_id), ESubAgentInactiveAncestor);
             let parent_derived = *table::borrow(&account.agent_ids, parent_id);
@@ -2317,6 +2437,7 @@ module social_contracts::memory {
     }
 
     fun resolve_delegated_registration_placement(
+        config: &MemoryConfig,
         account: &MemoryAccount,
         parent: &SubAgent,
         register_relation: u8,
@@ -2340,7 +2461,7 @@ module social_contracts::memory {
                 EInvalidRegisterRelation,
             );
             let depth = parent.depth + 1;
-            assert!(depth <= MAX_AGENT_DEPTH, EAgentDepthExceeded);
+            assert!(depth <= config.max_agent_depth, EAgentDepthExceeded);
             (depth, option::some(object::id(parent)), sender)
         } else if (register_relation == REGISTER_PEER) {
             assert!(
@@ -2465,19 +2586,19 @@ module social_contracts::memory {
         );
     }
 
-    fun assert_org_name_within_limit(name: &Option<String>) {
+    fun assert_org_name_within_limit(config: &MemoryConfig, name: &Option<String>) {
         if (option::is_some(name)) {
             assert!(
-                string::length(option::borrow(name)) <= MAX_ORG_NAME_LENGTH,
+                string::length(option::borrow(name)) <= config.max_org_name_length,
                 ENameTooLong,
             );
         };
     }
 
-    fun assert_org_description_within_limit(description: &Option<String>) {
+    fun assert_org_description_within_limit(config: &MemoryConfig, description: &Option<String>) {
         if (option::is_some(description)) {
             assert!(
-                string::length(option::borrow(description)) <= MAX_ORG_DESCRIPTION_LENGTH,
+                string::length(option::borrow(description)) <= config.max_org_description_length,
                 EDescriptionTooLong,
             );
         };
@@ -2973,6 +3094,7 @@ module social_contracts::memory {
 
     #[test_only]
     public fun test_create_agentic_organization(
+        config: &MemoryConfig,
         account: &mut MemoryAccount,
         org_type: u8,
         name: Option<String>,
@@ -2980,7 +3102,7 @@ module social_contracts::memory {
         clock: &Clock,
         ctx: &mut TxContext,
     ): ID {
-        create_agentic_organization_internal(account, org_type, name, description, clock, ctx)
+        create_agentic_organization_internal(config, account, org_type, name, description, clock, ctx)
     }
 
     #[test_only]

@@ -19,6 +19,7 @@ module social_contracts::memory_org_roles_tests {
         Self,
         MemoryRegistry,
         MemoryAccount,
+        MemoryConfig,
         AgenticOrganization,
         MemorySharePackage,
         OrgMemoryReader,
@@ -29,7 +30,8 @@ module social_contracts::memory_org_roles_tests {
         OrgAuditor,
     };
     use social_contracts::memory_test_helpers;
-    use social_contracts::profile::{Self, Profile, UsernameRegistry};
+    use social_contracts::profile::{Self, Profile, UsernameRegistry,
+        ProfileConfig};
     use social_contracts::ai_credit::AiCreditConfig;
 
     const ADMIN: address = @0xAD;
@@ -51,11 +53,14 @@ module social_contracts::memory_org_roles_tests {
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(scenario);
+            let memory_config = test_scenario::take_shared<MemoryConfig>(scenario);
+            let profile_config = test_scenario::take_shared<ProfileConfig>(scenario);
             let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(scenario);
             let clock = test_scenario::take_shared<Clock>(scenario);
 
             profile::create_profile(
                 &mut registry,
+                &profile_config,
                 &mut memory_registry,
                 &mut ai_credit_config,
                 string::utf8(b"User One"),
@@ -67,6 +72,8 @@ module social_contracts::memory_org_roles_tests {
                 test_scenario::ctx(scenario),
             );
 
+            test_scenario::return_shared(profile_config);
+            test_scenario::return_shared(memory_config);
             test_scenario::return_shared(clock);
             test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(memory_registry);
@@ -242,12 +249,14 @@ module social_contracts::memory_org_roles_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
+            let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
             let mut org = test_scenario::take_shared_by_id<AgenticOrganization>(&scenario, org_id);
             let mut group = take_group(&scenario, &org);
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
 
             memory::define_custom_org_role(
+                &memory_config,
                 &memory_account,
                 &mut org,
                 &group,
@@ -278,6 +287,7 @@ module social_contracts::memory_org_roles_tests {
             // Redefine the role to a wider mask — the existing assignment's recorded delta
             // must be unchanged, so revoke removes only what was originally granted.
             memory::define_custom_org_role(
+                &memory_config,
                 &memory_account,
                 &mut org,
                 &group,
@@ -303,6 +313,7 @@ module social_contracts::memory_org_roles_tests {
             test_scenario::return_shared(group);
             test_scenario::return_shared(org);
             test_scenario::return_shared(memory_account);
+            test_scenario::return_shared(memory_config);
             test_scenario::return_shared(clock);
         };
 
@@ -318,12 +329,14 @@ module social_contracts::memory_org_roles_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
+            let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
             let mut org = test_scenario::take_shared_by_id<AgenticOrganization>(&scenario, org_id);
             let group = take_group(&scenario, &org);
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
 
             memory::define_custom_org_role(
+                &memory_config,
                 &memory_account,
                 &mut org,
                 &group,
@@ -336,6 +349,7 @@ module social_contracts::memory_org_roles_tests {
             test_scenario::return_shared(group);
             test_scenario::return_shared(org);
             test_scenario::return_shared(memory_account);
+            test_scenario::return_shared(memory_config);
             test_scenario::return_shared(clock);
         };
 

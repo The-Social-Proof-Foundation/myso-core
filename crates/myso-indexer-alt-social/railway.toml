@@ -27,7 +27,7 @@ PGUSER = "${{Postgres.PGUSER}}"
 # Server Configuration
 SERVER_HOST = "0.0.0.0"
 
-# Logging configuration - framework=warn to avoid Railway 500 logs/sec rate limit at startup (13 pipelines)
+# Logging configuration - framework=warn to avoid Railway 500 logs/sec rate limit at startup (11 pipelines)
 RUST_LOG = "info,myso_indexer_alt_social=debug,myso_indexer_alt_framework=warn"
 RUST_BACKTRACE = "1"
 
@@ -39,9 +39,28 @@ STREAMING_URL = "http://fullnode.testnet.mysocial.network:9000"
 # Set near chain head to catch up (e.g. current_head - 10000). Update as chain grows.
 # If Grafana shows 0 checkpoints: 1) Set FIRST_CHECKPOINT near head (uncomment below).
 # 2) If resuming from too far back, reset watermarks for affected pipelines, e.g.:
-#    DELETE FROM watermarks WHERE pipeline = 'profiles';
+#    DELETE FROM watermarks WHERE pipeline = 'messaging';
 #    Or reset all: DELETE FROM watermarks;
 # 3) Restart the indexer.
+#
+# Dev DBs that indexed with the old split pipelines (paid_messaging_policy, messaging_config,
+# messaging_payment) before consolidation: optionally seed the unified watermark from the max
+# progress of the old rows, then delete the stale pipeline names:
+#
+# INSERT INTO watermarks (pipeline, epoch_hi_inclusive, checkpoint_hi_inclusive, tx_hi, timestamp_ms_hi_inclusive, reader_lo, pruner_timestamp, pruner_hi)
+# SELECT 'messaging', MAX(epoch_hi_inclusive), MAX(checkpoint_hi_inclusive), MAX(tx_hi), MAX(timestamp_ms_hi_inclusive), MAX(reader_lo), MAX(pruner_timestamp), MAX(pruner_hi)
+# FROM watermarks
+# WHERE pipeline IN ('paid_messaging_policy', 'messaging_config', 'messaging_payment')
+# ON CONFLICT (pipeline) DO UPDATE SET
+#   epoch_hi_inclusive = EXCLUDED.epoch_hi_inclusive,
+#   checkpoint_hi_inclusive = EXCLUDED.checkpoint_hi_inclusive,
+#   tx_hi = EXCLUDED.tx_hi,
+#   timestamp_ms_hi_inclusive = EXCLUDED.timestamp_ms_hi_inclusive,
+#   reader_lo = EXCLUDED.reader_lo,
+#   pruner_timestamp = EXCLUDED.pruner_timestamp,
+#   pruner_hi = EXCLUDED.pruner_hi;
+# DELETE FROM watermarks WHERE pipeline IN ('paid_messaging_policy', 'messaging_config', 'messaging_payment');
+#
 # FIRST_CHECKPOINT = "2000000"
 
 # Force migrations on startup

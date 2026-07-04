@@ -7,6 +7,7 @@
 #[allow(duplicate_alias, unused_use, lint(public_entry))]
 module social_contracts::bootstrap {
     use myso::{
+        object::{Self, UID},
         tx_context::{Self, TxContext},
         clock::{Self, Clock},
         transfer,
@@ -24,13 +25,27 @@ module social_contracts::bootstrap {
     use social_contracts::mydata::{Self, MyDataAdminCap, MyDataPoolAdminCap};
     use social_contracts::social_proof_of_truth::{Self, SpotAdminCap, SpotOracleAdminCap};
     use social_contracts::insurance::{Self, InsuranceAdminCap};
-    use social_contracts::profile::{Self, EcosystemTreasuryAdminCap, EcosystemBadgeAdminCap, UsernameAdminCap};
+    use social_contracts::profile::{Self, EcosystemTreasuryAdminCap, EcosystemBadgeAdminCap, UsernameAdminCap, ProfileAdminCap};
     use social_contracts::ai_credit::{Self, AiCreditOracleAdminCap};
+    use social_contracts::subscription::{Self, SubscriptionAdminCap};
+    use social_contracts::memory::{Self as memory_module, MemoryAdminCap};
     // Import framework coin module for coin creation admin cap
     use myso::coin::{Self, CoinCreationAdminCap};
     // Import framework package module for package publishing admin cap
     use myso::package::{Self, PackagePublishingAdminCap};
     use orderbook::registry::{Self as ob_registry};
+
+    /// Admin capability for updating `messaging::messaging_config::MessagingConfig`.
+    public struct MessagingAdminCap has key, store {
+        id: UID,
+    }
+
+    /// Create a [`MessagingAdminCap`] for genesis bootstrap.
+    public(package) fun create_messaging_admin_cap(ctx: &mut TxContext): MessagingAdminCap {
+        MessagingAdminCap {
+            id: object::new(ctx),
+        }
+    }
 
     /// Claim all admin capabilities (one-time only)
     /// Creates and transfers all admin capabilities to caller, then seals the bootstrap key.
@@ -52,6 +67,7 @@ module social_contracts::bootstrap {
         social_contracts::memory::bootstrap_init(clock, ctx);
         let spot_governance_registry_id = social_contracts::governance::bootstrap_init(clock, ctx);
         social_contracts::post::bootstrap_init(clock, ctx);
+        social_contracts::subscription::bootstrap_init(clock, ctx);
         social_contracts::social_proof_tokens::bootstrap_init(clock, ctx);
         social_contracts::proof_of_creativity::bootstrap_init(clock, ctx);
         social_contracts::social_proof_of_truth::bootstrap_init(clock, spot_governance_registry_id, ctx);
@@ -77,8 +93,12 @@ module social_contracts::bootstrap {
         transfer::public_transfer(profile::create_ecosystem_treasury_admin_cap(ctx), admin);
         transfer::public_transfer(profile::create_ecosystem_badge_admin_cap(ctx), admin);
         transfer::public_transfer(profile::create_username_admin_cap(ctx), admin);
+        transfer::public_transfer(profile::create_profile_admin_cap(ctx), admin);
+        transfer::public_transfer(subscription::create_subscription_admin_cap(ctx), admin);
+        transfer::public_transfer(memory_module::create_memory_admin_cap(ctx), admin);
         transfer::public_transfer(insurance::create_insurance_admin_cap(ctx), admin);
         transfer::public_transfer(ai_credit::create_oracle_admin_cap(ctx), admin);
+        transfer::public_transfer(create_messaging_admin_cap(ctx), admin);
         transfer::public_transfer(coin::create_coin_creation_admin_cap_for_bootstrap(bootstrap_key, ctx), admin);
         transfer::public_transfer(package::create_package_publishing_admin_cap_for_bootstrap(bootstrap_key, ctx), admin);
 
@@ -97,5 +117,10 @@ module social_contracts::bootstrap {
     
     public fun bootstrap_version(key: &BootstrapKey): u64 {
         bootstrap_key::version(key)
+    }
+
+    #[test_only]
+    public fun create_messaging_admin_cap_for_testing(ctx: &mut TxContext): MessagingAdminCap {
+        create_messaging_admin_cap(ctx)
     }
 }

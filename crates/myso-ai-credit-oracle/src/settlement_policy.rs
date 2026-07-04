@@ -78,8 +78,8 @@ pub fn log_pending_age_warnings(store: &ReceiptStore, args: &OracleArgs, now_ms:
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashSet;
     use crate::receipt::UsageLine;
+    use std::collections::HashSet;
 
     fn test_args() -> OracleArgs {
         OracleArgs {
@@ -189,7 +189,10 @@ mod tests {
         };
         assert_eq!(store.total_pending_mist(), 0);
         assert!(store.pending_for_balance("0xbal").is_empty());
-        assert_eq!(should_settle_balance("0xbal", &store, &args, 2_000_000), None);
+        assert_eq!(
+            should_settle_balance("0xbal", &store, &args, 2_000_000),
+            None
+        );
     }
 
     #[test]

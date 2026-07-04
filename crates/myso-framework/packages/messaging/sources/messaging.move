@@ -34,11 +34,12 @@ use messaging::group_leaver::{Self, GroupLeaver};
 use messaging::group_handle_registry::{Self, GroupHandleRegistry};
 use messaging::group_manager::{Self, GroupManager};
 use messaging::message_log::{Self, MessageLog};
+use messaging::messaging_config::{Self as messaging_config, MessagingConfig};
 use messaging::metadata;
 use messaging::paid_messaging_policy::{Self, PaidMessagingRegistry};
 use messaging::version::{Self as version, Version};
 use social_contracts::block_list::{Self, BlockListRegistry};
-use social_contracts::memory::{Self, ActingContext, MemoryAccount};
+use social_contracts::memory::{Self, ActingContext, MemoryAccount, MemoryConfig};
 use social_contracts::platform::{Self, Platform};
 use social_contracts::profile::{Self, EcosystemTreasury};
 use social_contracts::social_graph::{Self, SocialGraph};
@@ -163,6 +164,7 @@ fun init(otw: MESSAGING, ctx: &mut TxContext) {
     group_handle_registry.share();
     paid_messaging_registry.share();
     version::share_initial(ctx);
+    messaging_config::share_initial(ctx);
 }
 
 // === Public Functions ===
@@ -442,6 +444,7 @@ public fun create_agent_group(
     group_leaver: &GroupLeaver,
     block_list: &BlockListRegistry,
     platform: &Platform,
+    memory_config: &MemoryConfig,
     creator_memory_account: &MemoryAccount,
     cross_principal_peer_account: &MemoryAccount,
     name: String,
@@ -453,6 +456,7 @@ public fun create_agent_group(
 ): (PermissionedGroup<Messaging>, EncryptionHistory, MessageLog) {
     version.validate_version();
     let acting = resolve_messaging_actor(
+        memory_config,
         creator_memory_account,
         platform,
         block_list,
@@ -554,6 +558,7 @@ entry fun create_agent_and_share_group(
     group_leaver: &GroupLeaver,
     block_list: &BlockListRegistry,
     platform: &Platform,
+    memory_config: &MemoryConfig,
     creator_memory_account: &MemoryAccount,
     cross_principal_peer_account: &MemoryAccount,
     name: String,
@@ -570,6 +575,7 @@ entry fun create_agent_and_share_group(
         group_leaver,
         block_list,
         platform,
+        memory_config,
         creator_memory_account,
         cross_principal_peer_account,
         name,
@@ -791,6 +797,7 @@ fun assert_group_not_archived(group: &PermissionedGroup<Messaging>) {
 /// Excess coin returns to the sender.
 public fun send_paid_message_digest(
     version: &Version,
+    config: &MessagingConfig,
     group: &PermissionedGroup<Messaging>,
     log: &mut MessageLog,
     paid_registry: &PaidMessagingRegistry,
@@ -823,6 +830,7 @@ public fun send_paid_message_digest(
         escrow_amount,
     );
     message_log::send_paid_message(
+        config,
         log,
         sender,
         recipient,
@@ -839,6 +847,7 @@ public fun send_paid_message_digest(
 /// evaluates paid-DM / social-graph rules against the human `principal_owner`.
 public fun send_agent_paid_message_digest(
     version: &Version,
+    config: &MessagingConfig,
     group: &PermissionedGroup<Messaging>,
     log: &mut MessageLog,
     paid_registry: &PaidMessagingRegistry,
@@ -846,6 +855,7 @@ public fun send_agent_paid_message_digest(
     block_list: &BlockListRegistry,
     group_manager: &GroupManager,
     platform: &Platform,
+    memory_config: &MemoryConfig,
     memory_account: &MemoryAccount,
     recipient: address,
     payment: Coin<MYSO>,
@@ -859,6 +869,7 @@ public fun send_agent_paid_message_digest(
     assert_group_not_archived(group);
     assert_message_log_matches_group(log, group);
     let acting = resolve_messaging_actor(
+        memory_config,
         memory_account,
         platform,
         block_list,
@@ -884,6 +895,7 @@ public fun send_agent_paid_message_digest(
         escrow_amount,
     );
     message_log::send_paid_message(
+        config,
         log,
         actor_address,
         recipient,
@@ -900,6 +912,7 @@ public fun send_agent_paid_message_digest(
 /// [`reply_to_paid_message_claim_settled`]) or use this entry for custom routing.
 public fun reply_to_paid_message_claim_coin(
     version: &Version,
+    config: &MessagingConfig,
     group: &PermissionedGroup<Messaging>,
     log: &mut MessageLog,
     block_list: &BlockListRegistry,
@@ -916,6 +929,7 @@ public fun reply_to_paid_message_claim_coin(
     assert!(group.has_permission<Messaging, MessagingSender>(ctx.sender()), ENotPermitted);
     assert_paid_parties_not_blocked(block_list, ctx.sender(), log, paid_msg_seq);
     message_log::reply_to_paid_message_claim_coin(
+        config,
         log,
         ctx.sender(),
         paid_msg_seq,
@@ -932,6 +946,7 @@ public fun reply_to_paid_message_claim_coin(
 /// `ecosystem_treasury` (via [`profile::get_treasury_address`]), with net to the paid-message recipient.
 public fun reply_to_paid_message_claim_settled(
     version: &Version,
+    config: &MessagingConfig,
     group: &PermissionedGroup<Messaging>,
     log: &mut MessageLog,
     block_list: &BlockListRegistry,
@@ -951,6 +966,7 @@ public fun reply_to_paid_message_claim_settled(
     assert_paid_parties_not_blocked(block_list, ctx.sender(), log, paid_msg_seq);
     let ecosystem_fee_recipient = profile::get_treasury_address(ecosystem_treasury);
     message_log::reply_to_paid_message_claim_settled(
+        config,
         log,
         ctx.sender(),
         paid_msg_seq,
@@ -967,6 +983,7 @@ public fun reply_to_paid_message_claim_settled(
 /// Refund expired paid escrow to the payer. Requires `MessagingSender` (payer must be a member).
 public fun refund_paid_escrow(
     version: &Version,
+    config: &MessagingConfig,
     group: &PermissionedGroup<Messaging>,
     log: &mut MessageLog,
     block_list: &BlockListRegistry,
@@ -980,7 +997,7 @@ public fun refund_paid_escrow(
     assert!(group.has_permission<Messaging, MessagingSender>(ctx.sender()), ENotPermitted);
     let (payer, recipient) = message_log::paid_message_parties(log, paid_msg_seq);
     block_list::assert_not_blocked(block_list, payer, recipient);
-    message_log::refund_paid_message(log, ctx.sender(), paid_msg_seq, clock, ctx);
+    message_log::refund_paid_message(config, log, ctx.sender(), paid_msg_seq, clock, ctx);
 }
 
 /// Grants all messaging permissions to a member.
@@ -1039,6 +1056,7 @@ fun assert_human_group_creator(memory_account: &MemoryAccount, ctx: &TxContext) 
 }
 
 fun resolve_messaging_actor(
+    memory_config: &MemoryConfig,
     memory_account: &MemoryAccount,
     platform: &Platform,
     block_list: &BlockListRegistry,
@@ -1049,6 +1067,7 @@ fun resolve_messaging_actor(
 ): ActingContext {
     let platform_id = object::uid_to_address(platform::id(platform));
     let acting = memory::resolve_actor_with_cap(
+        memory_config,
         memory_account,
         required_cap,
         option::some(platform_id),

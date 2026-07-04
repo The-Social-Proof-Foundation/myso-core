@@ -129,6 +129,10 @@ pub struct SptExchangeConfigRow {
     #[diesel(sql_type = Bool)]
     pub trading_enabled: bool,
     #[diesel(sql_type = BigInt)]
+    pub non_platform_platform_to_creator_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub non_platform_platform_to_treasury_bps: i64,
+    #[diesel(sql_type = BigInt)]
     pub updated_at: i64,
     #[diesel(sql_type = Timestamptz)]
     pub time: chrono::DateTime<chrono::Utc>,

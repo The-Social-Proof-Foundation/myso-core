@@ -98,7 +98,8 @@ fn relative_drift_pct(old: u64, new: u64) -> f64 {
 
 impl PricingCatalog {
     pub fn load(path: &Path) -> Result<Self> {
-        let text = std::fs::read_to_string(path).with_context(|| format!("read catalog {}", path.display()))?;
+        let text = std::fs::read_to_string(path)
+            .with_context(|| format!("read catalog {}", path.display()))?;
         let file: CatalogFile = toml::from_str(&text).context("parse pricing catalog")?;
         Ok(Self::from_file(file))
     }
@@ -160,8 +161,14 @@ impl PricingCatalog {
             };
         }
         let n = models.len() as u128;
-        let input_sum = models.iter().map(|m| m.input_mist_per_1m as u128).sum::<u128>();
-        let output_sum = models.iter().map(|m| m.output_mist_per_1m as u128).sum::<u128>();
+        let input_sum = models
+            .iter()
+            .map(|m| m.input_mist_per_1m as u128)
+            .sum::<u128>();
+        let output_sum = models
+            .iter()
+            .map(|m| m.output_mist_per_1m as u128)
+            .sum::<u128>();
         ReferenceRates {
             input_mist_per_1m: (input_sum / n) as u64,
             output_mist_per_1m: (output_sum / n) as u64,
@@ -321,7 +328,13 @@ impl PricingCatalog {
     }
 
     pub fn to_response(&self) -> CatalogResponse {
-        self.to_response_with_fx(crate::pricing::CATALOG_USD_PEG, 1.0, String::new(), None, true)
+        self.to_response_with_fx(
+            crate::pricing::CATALOG_USD_PEG,
+            1.0,
+            String::new(),
+            None,
+            true,
+        )
     }
 
     pub fn to_response_with_fx(
@@ -447,8 +460,14 @@ min_charge_mist = 1_000_000
         let report = catalog.apply_openrouter_rates(&remote, 50.0);
         assert_eq!(report.checked, 1);
         assert_eq!(report.updated, 1);
-        assert_eq!(catalog.model_rates("gpt-4o-mini").input_mist_per_1m, 200_000_000);
-        assert_eq!(catalog.model_rates("gpt-4o-mini").output_mist_per_1m, 800_000_000);
+        assert_eq!(
+            catalog.model_rates("gpt-4o-mini").input_mist_per_1m,
+            200_000_000
+        );
+        assert_eq!(
+            catalog.model_rates("gpt-4o-mini").output_mist_per_1m,
+            800_000_000
+        );
     }
 
     #[test]
@@ -486,7 +505,10 @@ min_charge_mist = 1_000_000
         assert_eq!(report.checked, 1);
         assert_eq!(report.skipped_drift, 1);
         assert_eq!(report.updated, 0);
-        assert_eq!(catalog.model_rates("gpt-4o-mini").input_mist_per_1m, 150_000_000);
+        assert_eq!(
+            catalog.model_rates("gpt-4o-mini").input_mist_per_1m,
+            150_000_000
+        );
     }
 
     #[test]

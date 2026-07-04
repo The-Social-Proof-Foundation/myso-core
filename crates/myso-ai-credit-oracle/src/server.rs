@@ -10,7 +10,7 @@ use axum::{Json, Router};
 use tokio::sync::{Mutex, RwLock};
 
 use crate::approvals::{approval_covers, ApprovalsCache};
-use crate::catalog::{CAP_AI_SPEND, PricingCatalog};
+use crate::catalog::{PricingCatalog, CAP_AI_SPEND};
 use crate::catalog_sync::{spawn_catalog_sync_worker, startup_catalog_sync};
 use crate::chain_balance;
 use crate::config::OracleArgs;
@@ -18,9 +18,13 @@ use crate::ledger::BalanceLedger;
 use crate::myso_price_client::MysoPriceClient;
 use crate::openrouter_client::OpenRouterClient;
 use crate::price_refresh::{spawn_price_refresh_worker, startup_price_refresh};
-use crate::pricing::{PriceBreakdown, PricingEngine, CATALOG_USD_PEG, USAGE_EMBED, USAGE_INFERENCE, USAGE_TOOL};
+use crate::pricing::{
+    PriceBreakdown, PricingEngine, CATALOG_USD_PEG, USAGE_EMBED, USAGE_INFERENCE, USAGE_TOOL,
+};
 use crate::receipt::{ReceiptStore, UsageLine};
-use crate::settlement_coordinator::{spawn_settlement_worker, SettlementCoordinator, SettlementMode};
+use crate::settlement_coordinator::{
+    spawn_settlement_worker, SettlementCoordinator, SettlementMode,
+};
 use crate::signing::{parse_object_id_hex, ReceiptSigner, UsageReceipt};
 use crate::social_client::{
     IngestApprovalRequest, IngestAuditLogEntry, IngestUsageLineRequest, SocialClient,
@@ -170,11 +174,7 @@ pub async fn serve(args: OracleArgs) -> anyhow::Result<()> {
     )));
     let myso_price_client = MysoPriceClient::new(args.myso_price_oracle_url.clone());
     startup_price_refresh(&args, &pricing, &myso_price_client).await;
-    spawn_price_refresh_worker(
-        Arc::new(args.clone()),
-        pricing.clone(),
-        myso_price_client,
-    );
+    spawn_price_refresh_worker(Arc::new(args.clone()), pricing.clone(), myso_price_client);
 
     let store = ReceiptStore::load(&args.receipt_store_path)?;
     let store_arc = Arc::new(Mutex::new(store));
@@ -183,7 +183,9 @@ pub async fn serve(args: OracleArgs) -> anyhow::Result<()> {
     if args.catalog_sync_active() {
         let openrouter = OpenRouterClient::new(
             args.openrouter_api_url.clone(),
-            args.openrouter_api_key.clone().expect("catalog_sync_active implies key"),
+            args.openrouter_api_key
+                .clone()
+                .expect("catalog_sync_active implies key"),
         );
         startup_catalog_sync(
             &args,
@@ -453,11 +455,7 @@ async fn validate_spend_policy(
                 if threshold >= 0 && amount_mist > threshold as u64 {
                     let approval = state
                         .approvals
-                        .fetch_approved(
-                            owner,
-                            &balance_resp.balance.balance_id,
-                            agent_object_id,
-                        )
+                        .fetch_approved(owner, &balance_resp.balance.balance_id, agent_object_id)
                         .await
                         .map_err(|e| denied(format!("approval_lookup_failed: {e}")))?;
                     let now_ms = chrono::Utc::now().timestamp_millis();
@@ -777,7 +775,8 @@ async fn record_usage(
         let receipt_id = uuid::Uuid::new_v4().as_u128();
         let timestamp_ms = chrono::Utc::now().timestamp_millis() as u64;
         let receipt = UsageReceipt {
-            balance_id: parse_object_id_hex(&req.balance_id).map_err(|_| StatusCode::BAD_REQUEST)?,
+            balance_id: parse_object_id_hex(&req.balance_id)
+                .map_err(|_| StatusCode::BAD_REQUEST)?,
             agent_object_id: parse_object_id_hex(&req.agent_object_id)
                 .map_err(|_| StatusCode::BAD_REQUEST)?,
             receipt_id,

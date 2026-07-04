@@ -173,9 +173,11 @@ diesel::table! {
         id -> Int4,
         treasury_address -> Varchar,
         updated_by -> Varchar,
-        timestamp_ms -> Int8,
+        updated_at -> Int8,
         time -> Timestamptz,
         transaction_id -> Varchar,
+        profile_sale_fee_bps -> Int8,
+        version -> Int8,
     }
 }
 
@@ -221,7 +223,7 @@ diesel::table! {
         max_duration_ms -> Int8,
         fee_bps -> Int8,
         version -> Int8,
-        timestamp_ms -> Int8,
+        updated_at -> Int8,
         time -> Timestamptz,
         transaction_id -> Text,
         enable_flag -> Bool,
@@ -237,6 +239,7 @@ diesel::table! {
         liq_ref_amount -> Int8,
         exposure_cap_bps -> Int8,
         exposure_k_bps -> Int8,
+        odds_base_bps -> Int8,
     }
 }
 
@@ -421,7 +424,9 @@ diesel::table! {
         max_tags -> Int8,
         max_subscription_days -> Int8,
         max_free_access_grants -> Int8,
-        timestamp_ms -> Int8,
+        max_encryption_id_bytes -> Int8,
+        version -> Int8,
+        updated_at -> Int8,
         time -> Timestamptz,
         transaction_id -> Text,
     }
@@ -776,7 +781,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    poc_configuration (id) {
+    poc_configuration (id, time) {
         id -> Int4,
         image_threshold -> Int8,
         video_threshold -> Int8,
@@ -801,6 +806,9 @@ diesel::table! {
         dispute_second_round_fee_multiplier_bps -> Int8,
         dispute_second_round_quorum_multiplier_bps -> Int8,
         username_beneficiary_join_referral_bps -> Int8,
+        max_disputes_per_post -> Int2,
+        min_vault_deposit_amount -> Int8,
+        version -> Int8,
     }
 }
 
@@ -976,6 +984,9 @@ diesel::table! {
         max_reaction_length -> Int8,
         commenter_tip_percentage -> Int8,
         repost_tip_percentage -> Int8,
+        min_promotion_amount -> Int8,
+        max_promotion_amount -> Int8,
+        min_view_duration_ms -> Int8,
         updated_at -> Int8,
         time -> Timestamptz,
         transaction_id -> Text,
@@ -1229,15 +1240,18 @@ diesel::table! {
 }
 
 diesel::table! {
-    ai_credit_config (id) {
-        id -> Int2,
+    ai_credit_config (id, time) {
+        id -> Int4,
+        updated_by -> Text,
         oracle_pubkey_hex -> Text,
         treasury_address -> Text,
         min_deposit_mist -> Int8,
         max_single_settlement_mist -> Int8,
         receipt_ttl_ms -> Int8,
+        oracle_markup_bps -> Int8,
         catalog_version -> Nullable<Text>,
-        updated_at_ms -> Int8,
+        version -> Int8,
+        updated_at -> Int8,
         event_id -> Text,
         transaction_id -> Text,
         time -> Timestamptz,
@@ -1886,13 +1900,15 @@ diesel::table! {
 }
 
 diesel::table! {
-    spt_config (id) {
+    spt_config (id, time) {
         id -> Int4,
         trading_enabled -> Bool,
         admin_address -> Text,
         reason -> Text,
-        timestamp_ms -> Int8,
-        updated_at -> Timestamptz,
+        updated_by -> Text,
+        version -> Int8,
+        updated_at -> Int8,
+        time -> Timestamptz,
         transaction_id -> Text,
     }
 }
@@ -1948,12 +1964,19 @@ diesel::table! {
         fee_split_bps_platform -> Int8,
         oracle_address -> Text,
         max_single_bet -> Int8,
-        timestamp_ms -> Int8,
+        updated_at -> Int8,
         time -> Timestamptz,
         transaction_id -> Text,
         payout_delay_ms -> Int8,
         version -> Int8,
         spot_governance_registry_id -> Nullable<Text>,
+        min_betting_options -> Int8,
+        max_betting_options -> Int8,
+        min_reasoning_length -> Int8,
+        max_reasoning_length -> Int8,
+        max_evidence_urls -> Int8,
+        platform_fee_bps -> Int8,
+        ecosystem_fee_bps -> Int8,
     }
 }
 
@@ -2057,6 +2080,9 @@ diesel::table! {
         reservation_platform_fee_bps -> Int8,
         reservation_treasury_fee_bps -> Int8,
         max_reservers_per_pool -> Int8,
+        non_platform_platform_to_creator_bps -> Int8,
+        non_platform_platform_to_treasury_bps -> Int8,
+        version -> Int8,
     }
 }
 
@@ -2338,6 +2364,148 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    insurance_router_config (id, time) {
+        id -> Int4,
+        updated_by -> Text,
+        router_enabled -> Bool,
+        router_paused -> Bool,
+        max_route_reserve_market -> Int8,
+        max_route_reserve_user -> Int8,
+        max_route_reserve_option -> Int8,
+        max_vault_concentration_bps -> Int8,
+        min_vault_health_factor_bps -> Int8,
+        max_route_legs -> Int8,
+        version -> Int8,
+        updated_at -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Text,
+    }
+}
+
+diesel::table! {
+    messaging_config (id, time) {
+        id -> Int4,
+        updated_by -> Text,
+        paid_msg_platform_fee_bps -> Int8,
+        paid_msg_treasury_fee_bps -> Int8,
+        payment_expiration_ms -> Int8,
+        min_reply_chars -> Int8,
+        max_dedupe_key_bytes -> Int8,
+        version -> Int8,
+        updated_at -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Text,
+    }
+}
+
+diesel::table! {
+    paid_message_escrows (id, time) {
+        id -> Int4,
+        group_id -> Text,
+        seq -> Int8,
+        payer -> Text,
+        recipient -> Text,
+        amount -> Int8,
+        status -> Text,
+        platform_fee -> Nullable<Int8>,
+        treasury_fee -> Nullable<Int8>,
+        net_amount -> Nullable<Int8>,
+        platform_fee_recipient -> Nullable<Text>,
+        ecosystem_fee_recipient -> Nullable<Text>,
+        reply_char_count -> Nullable<Int8>,
+        created_at_ms -> Int8,
+        claimed_at_ms -> Nullable<Int8>,
+        refunded_at_ms -> Nullable<Int8>,
+        time -> Timestamptz,
+        transaction_id -> Text,
+    }
+}
+
+diesel::table! {
+    messaging_agent_groups (id, time) {
+        id -> Int4,
+        group_id -> Text,
+        creator_actor -> Text,
+        creator_principal -> Text,
+        creator_sub_agent_id -> Nullable<Text>,
+        creator_identity_class -> Int8,
+        organization_id -> Nullable<Text>,
+        group_name -> Text,
+        group_uuid -> Text,
+        created_at_ms -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Text,
+    }
+}
+
+diesel::table! {
+    memory_config (id, time) {
+        id -> Int4,
+        updated_by -> Text,
+        max_organizations_per_user -> Int2,
+        org_category_update_cooldown_ms -> Int8,
+        max_agent_depth -> Int2,
+        max_label_length -> Int8,
+        max_org_name_length -> Int8,
+        max_org_description_length -> Int8,
+        version -> Int8,
+        updated_at -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Text,
+    }
+}
+
+diesel::table! {
+    platform_config (id, time) {
+        id -> Int4,
+        updated_by -> Text,
+        max_reasoning_length -> Int8,
+        max_cover_photo_url_length -> Int8,
+        max_media_previews -> Int8,
+        max_media_preview_url_length -> Int8,
+        max_badge_name_length -> Int8,
+        max_badge_description_length -> Int8,
+        max_badge_media_url_length -> Int8,
+        max_badge_icon_url_length -> Int8,
+        version -> Int8,
+        updated_at -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Text,
+    }
+}
+
+diesel::table! {
+    profile_config (id, time) {
+        id -> Int4,
+        updated_by -> Text,
+        max_vesting_pieces -> Int8,
+        curve_factor_min -> Int8,
+        curve_factor_max -> Int8,
+        curve_precision -> Int8,
+        min_claim_threshold_divisor -> Int8,
+        min_username_length -> Int8,
+        max_username_length -> Int8,
+        version -> Int8,
+        updated_at -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Text,
+    }
+}
+
+diesel::table! {
+    subscription_config (id, time) {
+        id -> Int4,
+        updated_by -> Text,
+        billing_period_ms -> Int8,
+        max_renewal_months -> Int8,
+        version -> Int8,
+        updated_at -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Text,
+    }
+}
+
 diesel::joinable!(profile_subscriptions -> profile_subscription_services (service_id));
 diesel::joinable!(ai_credit_agent_budgets -> ai_credit_balances (balance_id));
 diesel::joinable!(ai_credit_balances -> memory_accounts (memory_account_id));
@@ -2482,4 +2650,12 @@ diesel::allow_tables_to_appear_in_same_query!(
     wallet_messaging_policies,
     wallet_social_graph,
     watermarks,
+    insurance_router_config,
+    messaging_config,
+    paid_message_escrows,
+    messaging_agent_groups,
+    memory_config,
+    platform_config,
+    profile_config,
+    subscription_config,
 );

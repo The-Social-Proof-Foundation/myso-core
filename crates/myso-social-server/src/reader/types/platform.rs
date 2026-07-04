@@ -4,6 +4,9 @@
 use serde::Serialize;
 use serde_json::Value as JsonValue;
 
+use diesel::sql_types::{BigInt, Text};
+use diesel::QueryableByName;
+
 // API-layer type: subset of Platform for list/detail responses.
 // DB-table type: myso_indexer_alt_social_schema::models::Platform.
 
@@ -189,4 +192,31 @@ pub struct PlatformEventRow {
     pub created_at: chrono::NaiveDateTime,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reasoning: Option<String>,
+}
+
+#[derive(Debug, Serialize, QueryableByName)]
+#[serde(rename_all = "camelCase")]
+pub struct PlatformConfigInfo {
+    #[diesel(sql_type = Text)]
+    pub updated_by: String,
+    #[diesel(sql_type = BigInt)]
+    pub max_reasoning_length: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_cover_photo_url_length: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_media_previews: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_media_preview_url_length: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_badge_name_length: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_badge_description_length: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_badge_media_url_length: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_badge_icon_url_length: i64,
+    #[diesel(sql_type = BigInt)]
+    pub version: i64,
+    #[diesel(sql_type = BigInt)]
+    pub updated_at: i64,
 }

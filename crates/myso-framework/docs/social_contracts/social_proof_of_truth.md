@@ -240,12 +240,37 @@ Global configuration for SPoT
 <dd>
 </dd>
 <dt>
-<code>fee_bps: u64</code>
+<code>platform_fee_bps: u64</code>
 </dt>
 <dd>
 </dd>
 <dt>
-<code>fee_split_bps_platform: u64</code>
+<code>ecosystem_fee_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>min_betting_options: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_betting_options: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>min_reasoning_length: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_reasoning_length: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_evidence_urls: u64</code>
 </dt>
 <dd>
 </dd>
@@ -789,12 +814,37 @@ Events
 <dd>
 </dd>
 <dt>
-<code>fee_bps: u64</code>
+<code>platform_fee_bps: u64</code>
 </dt>
 <dd>
 </dd>
 <dt>
-<code>fee_split_bps_platform: u64</code>
+<code>ecosystem_fee_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>min_betting_options: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_betting_options: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>min_reasoning_length: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_reasoning_length: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_evidence_urls: u64</code>
 </dt>
 <dd>
 </dd>
@@ -1257,20 +1307,65 @@ Config defaults
 
 
 
-<a name="social_contracts_social_proof_of_truth_DEFAULT_FEE_BPS"></a>
+<a name="social_contracts_social_proof_of_truth_DEFAULT_PLATFORM_FEE_BPS"></a>
 
 
 
-<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_FEE_BPS">DEFAULT_FEE_BPS</a>: u64 = 100;
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_PLATFORM_FEE_BPS">DEFAULT_PLATFORM_FEE_BPS</a>: u64 = 50;
 </code></pre>
 
 
 
-<a name="social_contracts_social_proof_of_truth_DEFAULT_FEE_SPLIT_PLATFORM_BPS"></a>
+<a name="social_contracts_social_proof_of_truth_DEFAULT_ECOSYSTEM_FEE_BPS"></a>
 
 
 
-<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_FEE_SPLIT_PLATFORM_BPS">DEFAULT_FEE_SPLIT_PLATFORM_BPS</a>: u64 = 5000;
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_ECOSYSTEM_FEE_BPS">DEFAULT_ECOSYSTEM_FEE_BPS</a>: u64 = 50;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_of_truth_DEFAULT_MIN_BETTING_OPTIONS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MIN_BETTING_OPTIONS">DEFAULT_MIN_BETTING_OPTIONS</a>: u64 = 2;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_of_truth_DEFAULT_MAX_BETTING_OPTIONS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MAX_BETTING_OPTIONS">DEFAULT_MAX_BETTING_OPTIONS</a>: u64 = 10;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_of_truth_DEFAULT_MIN_REASONING_LENGTH"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MIN_REASONING_LENGTH">DEFAULT_MIN_REASONING_LENGTH</a>: u64 = 10;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_of_truth_DEFAULT_MAX_REASONING_LENGTH"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MAX_REASONING_LENGTH">DEFAULT_MAX_REASONING_LENGTH</a>: u64 = 5000;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_of_truth_DEFAULT_MAX_EVIDENCE_URLS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MAX_EVIDENCE_URLS">DEFAULT_MAX_EVIDENCE_URLS</a>: u64 = 10;
 </code></pre>
 
 
@@ -1291,52 +1386,6 @@ Maximum u64 value for overflow protection
 
 
 <pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MAX_U64">MAX_U64</a>: u64 = 18446744073709551615;
-</code></pre>
-
-
-
-<a name="social_contracts_social_proof_of_truth_MAX_REASONING_LENGTH"></a>
-
-Validation constants
-
-
-<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MAX_REASONING_LENGTH">MAX_REASONING_LENGTH</a>: u64 = 5000;
-</code></pre>
-
-
-
-<a name="social_contracts_social_proof_of_truth_MAX_EVIDENCE_URLS"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MAX_EVIDENCE_URLS">MAX_EVIDENCE_URLS</a>: u64 = 10;
-</code></pre>
-
-
-
-<a name="social_contracts_social_proof_of_truth_MIN_REASONING_LENGTH"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MIN_REASONING_LENGTH">MIN_REASONING_LENGTH</a>: u64 = 10;
-</code></pre>
-
-
-
-<a name="social_contracts_social_proof_of_truth_MAX_BETTING_OPTIONS"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MAX_BETTING_OPTIONS">MAX_BETTING_OPTIONS</a>: u64 = 10;
-</code></pre>
-
-
-
-<a name="social_contracts_social_proof_of_truth_MIN_BETTING_OPTIONS"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MIN_BETTING_OPTIONS">MIN_BETTING_OPTIONS</a>: u64 = 2;
 </code></pre>
 
 
@@ -1856,8 +1905,13 @@ Sum of per-option escrow (same aggregation as resolve).
         resolution_window_ms: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_RESOLUTION_WINDOW_MS">DEFAULT_RESOLUTION_WINDOW_MS</a>,
         max_resolution_window_ms: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MAX_RESOLUTION_WINDOW_MS">DEFAULT_MAX_RESOLUTION_WINDOW_MS</a>,
         payout_delay_ms: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_PAYOUT_DELAY_MS">DEFAULT_PAYOUT_DELAY_MS</a>,
-        fee_bps: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_FEE_BPS">DEFAULT_FEE_BPS</a>,
-        fee_split_bps_platform: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_FEE_SPLIT_PLATFORM_BPS">DEFAULT_FEE_SPLIT_PLATFORM_BPS</a>,
+        platform_fee_bps: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_PLATFORM_FEE_BPS">DEFAULT_PLATFORM_FEE_BPS</a>,
+        ecosystem_fee_bps: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_ECOSYSTEM_FEE_BPS">DEFAULT_ECOSYSTEM_FEE_BPS</a>,
+        min_betting_options: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MIN_BETTING_OPTIONS">DEFAULT_MIN_BETTING_OPTIONS</a>,
+        max_betting_options: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MAX_BETTING_OPTIONS">DEFAULT_MAX_BETTING_OPTIONS</a>,
+        min_reasoning_length: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MIN_REASONING_LENGTH">DEFAULT_MIN_REASONING_LENGTH</a>,
+        max_reasoning_length: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MAX_REASONING_LENGTH">DEFAULT_MAX_REASONING_LENGTH</a>,
+        max_evidence_urls: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MAX_EVIDENCE_URLS">DEFAULT_MAX_EVIDENCE_URLS</a>,
         oracle_address: admin,
         max_single_bet: 0,
         max_bets_per_record: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MAX_BETS_PER_RECORD">DEFAULT_MAX_BETS_PER_RECORD</a>,
@@ -1872,8 +1926,13 @@ Sum of per-option escrow (same aggregation as resolve).
         resolution_window_ms: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_RESOLUTION_WINDOW_MS">DEFAULT_RESOLUTION_WINDOW_MS</a>,
         max_resolution_window_ms: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MAX_RESOLUTION_WINDOW_MS">DEFAULT_MAX_RESOLUTION_WINDOW_MS</a>,
         payout_delay_ms: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_PAYOUT_DELAY_MS">DEFAULT_PAYOUT_DELAY_MS</a>,
-        fee_bps: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_FEE_BPS">DEFAULT_FEE_BPS</a>,
-        fee_split_bps_platform: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_FEE_SPLIT_PLATFORM_BPS">DEFAULT_FEE_SPLIT_PLATFORM_BPS</a>,
+        platform_fee_bps: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_PLATFORM_FEE_BPS">DEFAULT_PLATFORM_FEE_BPS</a>,
+        ecosystem_fee_bps: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_ECOSYSTEM_FEE_BPS">DEFAULT_ECOSYSTEM_FEE_BPS</a>,
+        min_betting_options: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MIN_BETTING_OPTIONS">DEFAULT_MIN_BETTING_OPTIONS</a>,
+        max_betting_options: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MAX_BETTING_OPTIONS">DEFAULT_MAX_BETTING_OPTIONS</a>,
+        min_reasoning_length: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MIN_REASONING_LENGTH">DEFAULT_MIN_REASONING_LENGTH</a>,
+        max_reasoning_length: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MAX_REASONING_LENGTH">DEFAULT_MAX_REASONING_LENGTH</a>,
+        max_evidence_urls: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MAX_EVIDENCE_URLS">DEFAULT_MAX_EVIDENCE_URLS</a>,
         oracle_address: admin,
         max_single_bet: 0,
         max_bets_per_record: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MAX_BETS_PER_RECORD">DEFAULT_MAX_BETS_PER_RECORD</a>,
@@ -1949,7 +2008,7 @@ Update SPoT configuration (admin only).
 <code>max_single_bet</code> and <code>max_bets_per_record</code> use <code>0</code> for no limit; positive values enforce caps.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_update_spot_config">update_spot_config</a>(_: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotAdminCap">social_contracts::social_proof_of_truth::SpotAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, enable_flag: bool, confidence_threshold_bps: u64, resolution_window_ms: u64, max_resolution_window_ms: u64, payout_delay_ms: u64, fee_bps: u64, fee_split_bps_platform: u64, oracle_address: <b>address</b>, max_single_bet: u64, max_bets_per_record: u64, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_spot_governance_registry_id">spot_governance_registry_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_update_spot_config">update_spot_config</a>(_: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotAdminCap">social_contracts::social_proof_of_truth::SpotAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, enable_flag: bool, confidence_threshold_bps: u64, resolution_window_ms: u64, max_resolution_window_ms: u64, payout_delay_ms: u64, platform_fee_bps: u64, ecosystem_fee_bps: u64, min_betting_options: u64, max_betting_options: u64, min_reasoning_length: u64, max_reasoning_length: u64, max_evidence_urls: u64, oracle_address: <b>address</b>, max_single_bet: u64, max_bets_per_record: u64, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_spot_governance_registry_id">spot_governance_registry_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1966,8 +2025,13 @@ Update SPoT configuration (admin only).
     resolution_window_ms: u64,
     max_resolution_window_ms: u64,
     payout_delay_ms: u64,
-    fee_bps: u64,
-    fee_split_bps_platform: u64,
+    platform_fee_bps: u64,
+    ecosystem_fee_bps: u64,
+    min_betting_options: u64,
+    max_betting_options: u64,
+    min_reasoning_length: u64,
+    max_reasoning_length: u64,
+    max_evidence_urls: u64,
     oracle_address: <b>address</b>,
     max_single_bet: u64,
     max_bets_per_record: u64,
@@ -1977,14 +2041,27 @@ Update SPoT configuration (admin only).
 ) {
     // Basic bounds
     <b>assert</b>!(confidence_threshold_bps &lt;= 10000, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
+    <b>assert</b>!(platform_fee_bps &lt;= 10000, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
+    <b>assert</b>!(ecosystem_fee_bps &lt;= 10000, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
+    <b>assert</b>!(platform_fee_bps + ecosystem_fee_bps &lt;= 10000, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
+    <b>assert</b>!(min_betting_options &gt; 0, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
+    <b>assert</b>!(min_betting_options &lt;= max_betting_options, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
+    <b>assert</b>!(min_reasoning_length &gt; 0, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidReasoning">EInvalidReasoning</a>);
+    <b>assert</b>!(min_reasoning_length &lt;= max_reasoning_length, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidReasoning">EInvalidReasoning</a>);
+    <b>assert</b>!(max_evidence_urls &gt; 0, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
     // windows may be zero in tests to resolve immediately
     config.enable_flag = enable_flag;
     config.confidence_threshold_bps = confidence_threshold_bps;
     config.resolution_window_ms = resolution_window_ms;
     config.max_resolution_window_ms = max_resolution_window_ms;
     config.payout_delay_ms = payout_delay_ms;
-    config.fee_bps = fee_bps;
-    config.fee_split_bps_platform = fee_split_bps_platform;
+    config.platform_fee_bps = platform_fee_bps;
+    config.ecosystem_fee_bps = ecosystem_fee_bps;
+    config.min_betting_options = min_betting_options;
+    config.max_betting_options = max_betting_options;
+    config.min_reasoning_length = min_reasoning_length;
+    config.max_reasoning_length = max_reasoning_length;
+    config.max_evidence_urls = max_evidence_urls;
     config.oracle_address = oracle_address;
     config.max_single_bet = max_single_bet;
     config.max_bets_per_record = max_bets_per_record;
@@ -1997,8 +2074,13 @@ Update SPoT configuration (admin only).
         resolution_window_ms,
         max_resolution_window_ms,
         payout_delay_ms,
-        fee_bps,
-        fee_split_bps_platform,
+        platform_fee_bps,
+        ecosystem_fee_bps,
+        min_betting_options,
+        max_betting_options,
+        min_reasoning_length,
+        max_reasoning_length,
+        max_evidence_urls,
         oracle_address,
         max_single_bet,
         max_bets_per_record,
@@ -2107,8 +2189,8 @@ Oracle-only: fix record timestamps/window fields after upgrade (off-chain suppli
     <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post_is_spot_enabled">social_contracts::post::is_spot_enabled</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EDisabled">EDisabled</a>);
     // Validate betting options
     <b>let</b> options_len = vector::length(&betting_options);
-    <b>assert</b>!(options_len &gt;= <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MIN_BETTING_OPTIONS">MIN_BETTING_OPTIONS</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
-    <b>assert</b>!(options_len &lt;= <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MAX_BETTING_OPTIONS">MAX_BETTING_OPTIONS</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
+    <b>assert</b>!(options_len &gt;= config.min_betting_options, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
+    <b>assert</b>!(options_len &lt;= config.max_betting_options, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
     // Check <b>for</b> duplicate options (case-sensitive comparison)
     <b>let</b> <b>mut</b> i = 0;
     <b>while</b> (i &lt; options_len) {
@@ -2206,24 +2288,21 @@ Only allowed when status is OPEN (not DAO_REQUIRED, not RESOLVED, not REFUNDABLE
     <b>assert</b>!(bet.user == tx_context::sender(ctx), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>); // User must own the bet
     <b>assert</b>!(bet.amount &gt; 0, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
     // Calculate fee (same <b>as</b> payout fee structure)
-    <b>let</b> <b>mut</b> fee = 0;
-    <b>if</b> (spot_config.fee_bps &gt; 0) {
-        fee = (bet.amount * spot_config.fee_bps) / 10000;
-    };
-    <b>let</b> refund_amount = bet.amount - fee;
+    <b>let</b> platform_fee = (bet.amount * spot_config.platform_fee_bps) / 10000;
+    <b>let</b> ecosystem_fee = (bet.amount * spot_config.ecosystem_fee_bps) / 10000;
+    <b>let</b> fee = platform_fee + ecosystem_fee;
+    <b>let</b> refund_amount = bet.amount - platform_fee - ecosystem_fee;
     // Split fee between <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> and ecosystem treasury
     <b>if</b> (fee &gt; 0) {
-        <b>let</b> platform_part = (fee * spot_config.fee_split_bps_platform) / 10000;
-        <b>let</b> treasury_part = fee - platform_part;
         <b>let</b> <b>mut</b> fee_coin = coin::from_balance(balance::split(&<b>mut</b> record.escrow, fee), ctx);
         // Send <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> fee to <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> treasury
-        <b>if</b> (platform_part &gt; 0) {
-            <b>let</b> <b>mut</b> platform_coin = coin::split(&<b>mut</b> fee_coin, platform_part, ctx);
-            <a href="../social_contracts/platform.md#social_contracts_platform_add_to_treasury">platform::add_to_treasury</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, &<b>mut</b> platform_coin, platform_part, clock, ctx);
+        <b>if</b> (platform_fee &gt; 0) {
+            <b>let</b> <b>mut</b> platform_coin = coin::split(&<b>mut</b> fee_coin, platform_fee, ctx);
+            <a href="../social_contracts/platform.md#social_contracts_platform_add_to_treasury">platform::add_to_treasury</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, &<b>mut</b> platform_coin, platform_fee, clock, ctx);
             coin::destroy_zero(platform_coin);
         };
         // Send ecosystem treasury fee
-        <b>if</b> (treasury_part &gt; 0) {
+        <b>if</b> (ecosystem_fee &gt; 0) {
             transfer::public_transfer(fee_coin, <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">profile::get_treasury_address</a>(treasury));
         } <b>else</b> {
             coin::destroy_zero(fee_coin);
@@ -2422,12 +2501,12 @@ Requires reasoning and at least one evidence URL for transparency and accountabi
     <b>assert</b>!((outcome_option_id <b>as</b> u64) &lt; options_len, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidOptionId">EInvalidOptionId</a>);
     // Validate reasoning is required and within limits
     <b>let</b> reasoning_len = string::length(&reasoning);
-    <b>assert</b>!(reasoning_len &gt;= <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MIN_REASONING_LENGTH">MIN_REASONING_LENGTH</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidReasoning">EInvalidReasoning</a>);
-    <b>assert</b>!(reasoning_len &lt;= <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MAX_REASONING_LENGTH">MAX_REASONING_LENGTH</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidReasoning">EInvalidReasoning</a>);
+    <b>assert</b>!(reasoning_len &gt;= spot_config.min_reasoning_length, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidReasoning">EInvalidReasoning</a>);
+    <b>assert</b>!(reasoning_len &lt;= spot_config.max_reasoning_length, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidReasoning">EInvalidReasoning</a>);
     // Validate evidence URLs - at least one required
     <b>let</b> evidence_urls_len = vector::length(&evidence_urls);
     <b>assert</b>!(evidence_urls_len &gt; 0, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>); // At least one evidence URL required
-    <b>assert</b>!(evidence_urls_len &lt;= <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MAX_EVIDENCE_URLS">MAX_EVIDENCE_URLS</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
+    <b>assert</b>!(evidence_urls_len &lt;= spot_config.max_evidence_urls, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
     <b>if</b> (confidence_bps &lt; spot_config.confidence_threshold_bps) {
         <b>assert</b>!(option::is_none(&record.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_active_proposal_id">active_proposal_id</a>), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EActiveProposalExists">EActiveProposalExists</a>);
         record.status = <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_DAO_REQUIRED">STATUS_DAO_REQUIRED</a>;
@@ -2554,11 +2633,11 @@ After community voting approves a linked proposal, resolve the market and pay wi
     <b>let</b> outcome = *option::borrow(&record.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_proposed_outcome">proposed_outcome</a>);
     <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_validate_proposed_outcome">validate_proposed_outcome</a>(record, outcome);
     <b>let</b> reasoning_len = string::length(&reasoning);
-    <b>assert</b>!(reasoning_len &gt;= <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MIN_REASONING_LENGTH">MIN_REASONING_LENGTH</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidReasoning">EInvalidReasoning</a>);
-    <b>assert</b>!(reasoning_len &lt;= <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MAX_REASONING_LENGTH">MAX_REASONING_LENGTH</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidReasoning">EInvalidReasoning</a>);
+    <b>assert</b>!(reasoning_len &gt;= spot_config.min_reasoning_length, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidReasoning">EInvalidReasoning</a>);
+    <b>assert</b>!(reasoning_len &lt;= spot_config.max_reasoning_length, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidReasoning">EInvalidReasoning</a>);
     <b>if</b> (option::is_some(&evidence_urls)) {
         <b>let</b> urls = option::borrow(&evidence_urls);
-        <b>assert</b>!(vector::length(urls) &lt;= <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MAX_EVIDENCE_URLS">MAX_EVIDENCE_URLS</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
+        <b>assert</b>!(vector::length(urls) &lt;= spot_config.max_evidence_urls, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
     };
     <b>let</b> submitter = <a href="../social_contracts/governance.md#social_contracts_governance_proposal_submitter">governance::proposal_submitter</a>(proposal);
     <b>let</b> bal = <a href="../social_contracts/governance.md#social_contracts_governance_mark_proposal_implemented_take_pool">governance::mark_proposal_implemented_take_pool</a>(
@@ -2937,22 +3016,21 @@ If max_resolution_window_ms is None, this function cannot be called (must be exp
         0
     };
     // Fees on payouts (apply to total escrow)
-    <b>let</b> <b>mut</b> fee = 0;
-    <b>if</b> (spot_config.fee_bps &gt; 0) { fee = (total_escrow * spot_config.fee_bps) / 10000; };
-    <b>let</b> distributable = total_escrow - fee;
+    <b>let</b> platform_fee = (total_escrow * spot_config.platform_fee_bps) / 10000;
+    <b>let</b> ecosystem_fee = (total_escrow * spot_config.ecosystem_fee_bps) / 10000;
+    <b>let</b> fee = platform_fee + ecosystem_fee;
+    <b>let</b> distributable = total_escrow - platform_fee - ecosystem_fee;
     // Split fee between <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> and ecosystem treasury (configurable)
     <b>if</b> (fee &gt; 0) {
-        <b>let</b> platform_part = (fee * spot_config.fee_split_bps_platform) / 10000;
-        <b>let</b> treasury_part = fee - platform_part;
         <b>let</b> <b>mut</b> fee_coin = coin::from_balance(balance::split(&<b>mut</b> record.escrow, fee), ctx);
         // Send <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> fee to <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> treasury
-        <b>if</b> (platform_part &gt; 0) {
-            <b>let</b> <b>mut</b> platform_coin = coin::split(&<b>mut</b> fee_coin, platform_part, ctx);
-            <a href="../social_contracts/platform.md#social_contracts_platform_add_to_treasury">platform::add_to_treasury</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, &<b>mut</b> platform_coin, platform_part, clock, ctx);
+        <b>if</b> (platform_fee &gt; 0) {
+            <b>let</b> <b>mut</b> platform_coin = coin::split(&<b>mut</b> fee_coin, platform_fee, ctx);
+            <a href="../social_contracts/platform.md#social_contracts_platform_add_to_treasury">platform::add_to_treasury</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, &<b>mut</b> platform_coin, platform_fee, clock, ctx);
             coin::destroy_zero(platform_coin);
         };
         // Send ecosystem treasury fee
-        <b>if</b> (treasury_part &gt; 0) {
+        <b>if</b> (ecosystem_fee &gt; 0) {
             transfer::public_transfer(fee_coin, <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">profile::get_treasury_address</a>(treasury));
         } <b>else</b> {
             coin::destroy_zero(fee_coin);

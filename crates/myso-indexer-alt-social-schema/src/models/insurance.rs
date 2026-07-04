@@ -9,8 +9,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::schema::{
     insurance_config, insurance_coverage_routes, insurance_events, insurance_market_exposures,
-    insurance_policies, insurance_policy_events, insurance_route_fills, insurance_user_exposures,
-    insurance_vault_transactions, insurance_vaults,
+    insurance_policies, insurance_policy_events, insurance_route_fills, insurance_router_config,
+    insurance_user_exposures, insurance_vault_transactions, insurance_vaults,
 };
 
 pub const STATUS_ACTIVE: i16 = 1;
@@ -131,7 +131,7 @@ pub struct InsuranceConfig {
     pub max_duration_ms: i64,
     pub fee_bps: i64,
     pub version: i64,
-    pub timestamp_ms: i64,
+    pub updated_at: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
     pub enable_flag: bool,
@@ -147,6 +147,7 @@ pub struct InsuranceConfig {
     pub liq_ref_amount: i64,
     pub exposure_cap_bps: i64,
     pub exposure_k_bps: i64,
+    pub odds_base_bps: i64,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -159,7 +160,7 @@ pub struct NewInsuranceConfig {
     pub max_duration_ms: i64,
     pub fee_bps: i64,
     pub version: i64,
-    pub timestamp_ms: i64,
+    pub updated_at: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
     pub min_spot_total_liquidity: i64,
@@ -174,6 +175,7 @@ pub struct NewInsuranceConfig {
     pub liq_ref_amount: i64,
     pub exposure_cap_bps: i64,
     pub exposure_k_bps: i64,
+    pub odds_base_bps: i64,
 }
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
@@ -407,4 +409,57 @@ pub struct NewInsuranceRouteFill {
     pub transaction_id: String,
     pub timestamp_ms: i64,
     pub created_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = insurance_router_config)]
+pub struct NewInsuranceRouterConfig {
+    pub updated_by: String,
+    pub router_enabled: bool,
+    pub router_paused: bool,
+    pub max_route_reserve_market: i64,
+    pub max_route_reserve_user: i64,
+    pub max_route_reserve_option: i64,
+    pub max_vault_concentration_bps: i64,
+    pub min_vault_health_factor_bps: i64,
+    pub max_route_legs: i64,
+    pub version: i64,
+    pub updated_at: i64,
+    pub time: chrono::DateTime<chrono::Utc>,
+    pub transaction_id: String,
+}
+
+impl NewInsuranceRouterConfig {
+    pub fn from_event(
+        updated_by: String,
+        router_enabled: bool,
+        router_paused: bool,
+        max_route_reserve_market: u64,
+        max_route_reserve_user: u64,
+        max_route_reserve_option: u64,
+        max_vault_concentration_bps: u64,
+        min_vault_health_factor_bps: u64,
+        max_route_legs: u64,
+        version: u64,
+        updated_at: u64,
+        transaction_id: String,
+    ) -> Self {
+        let time = chrono::DateTime::<chrono::Utc>::from_timestamp((updated_at / 1000) as i64, 0)
+            .unwrap_or_else(chrono::Utc::now);
+        Self {
+            updated_by,
+            router_enabled,
+            router_paused,
+            max_route_reserve_market: max_route_reserve_market as i64,
+            max_route_reserve_user: max_route_reserve_user as i64,
+            max_route_reserve_option: max_route_reserve_option as i64,
+            max_vault_concentration_bps: max_vault_concentration_bps as i64,
+            min_vault_health_factor_bps: min_vault_health_factor_bps as i64,
+            max_route_legs: max_route_legs as i64,
+            version: version as i64,
+            updated_at: updated_at as i64,
+            time,
+            transaction_id,
+        }
+    }
 }

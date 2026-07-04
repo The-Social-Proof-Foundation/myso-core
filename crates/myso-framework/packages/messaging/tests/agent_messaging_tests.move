@@ -24,6 +24,7 @@ use messaging::messaging::{
     MessagingReader,
     MessagingSender,
 };
+use messaging::messaging_config::MessagingConfig;
 use messaging::metadata;
 use messaging::mydata_policies;
 use messaging::paid_messaging_policy::{Self, PaidMessagingRegistry};
@@ -32,10 +33,13 @@ use myso::permissioned_group::{PermissionedGroup, PermissionsAdmin};
 
 use social_contracts::block_list::{Self, BlockListRegistry};
 use social_contracts::ai_credit::AiCreditConfig;
-use social_contracts::memory::{Self, MemoryAccount, MemoryRegistry, SubAgent, AgenticOrganization};
+use social_contracts::memory::{Self, MemoryAccount, MemoryRegistry, SubAgent, AgenticOrganization,
+        MemoryConfig};
 use social_contracts::memory_test_helpers;
-use social_contracts::platform::{Self, Platform, PlatformRegistry};
-use social_contracts::profile::{Self, UsernameRegistry};
+use social_contracts::platform::{Self, Platform, PlatformRegistry,
+        PlatformConfig};
+use social_contracts::profile::{Self, UsernameRegistry,
+        ProfileConfig};
 use social_contracts::social_graph::{Self, SocialGraph};
 
 const ADMIN: address = @0xAD;
@@ -58,7 +62,7 @@ fun setup(scenario: &mut ts::Scenario) {
     {
         let clock = clock::create_for_testing(ts::ctx(scenario));
         profile::init_for_testing(&clock, ts::ctx(scenario));
-        platform::test_init(ts::ctx(scenario));
+        platform::test_init(&clock, ts::ctx(scenario));
         msg::init_for_testing_with_clock(&clock, ts::ctx(scenario));
         version::init_for_testing(ts::ctx(scenario));
         clock::share_for_testing(clock);
@@ -68,8 +72,10 @@ fun setup(scenario: &mut ts::Scenario) {
     {
         let mut registry = ts::take_shared<PlatformRegistry>(scenario);
         let clock = ts::take_shared<Clock>(scenario);
+        let platform_config = ts::take_shared<PlatformConfig>(scenario);
         platform::create_platform(
             &mut registry,
+            &platform_config,
             string::utf8(b"Messaging Platform"),
             string::utf8(b"tagline"),
             string::utf8(b"desc"),
@@ -96,6 +102,7 @@ fun setup(scenario: &mut ts::Scenario) {
             ts::ctx(scenario),
         );
         ts::return_shared(clock);
+        ts::return_shared(platform_config);
         ts::return_shared(registry);
     };
 
@@ -115,8 +122,10 @@ fun setup(scenario: &mut ts::Scenario) {
         let mut memory_registry = ts::take_shared<MemoryRegistry>(scenario);
         let mut ai_credit_config = ts::take_shared<AiCreditConfig>(scenario);
         let clock = ts::take_shared<Clock>(scenario);
+        let profile_config = ts::take_shared<ProfileConfig>(scenario);
         profile::create_profile(
             &mut registry,
+            &profile_config,
             &mut memory_registry,
             &mut ai_credit_config,
             string::utf8(b"Author"),
@@ -128,6 +137,7 @@ fun setup(scenario: &mut ts::Scenario) {
             ts::ctx(scenario),
         );
         ts::return_shared(clock);
+        ts::return_shared(profile_config);
         ts::return_shared(ai_credit_config);
         ts::return_shared(memory_registry);
         ts::return_shared(registry);
@@ -142,6 +152,7 @@ fun setup(scenario: &mut ts::Scenario) {
 }
 
 fun register_agent(
+    memory_config: &MemoryConfig,
     memory_account: &mut MemoryAccount,
     organization: &mut AgenticOrganization,
     platform_id: address,
@@ -149,6 +160,7 @@ fun register_agent(
     ctx: &mut myso::tx_context::TxContext,
 ) {
     memory::register_sub_agent(
+        memory_config,
         memory_account,
         organization,
         AGENT_PUBKEY,
@@ -175,8 +187,10 @@ fun setup_carol_with_agent(scenario: &mut ts::Scenario) {
         let mut memory_registry = ts::take_shared<MemoryRegistry>(scenario);
         let mut ai_credit_config = ts::take_shared<AiCreditConfig>(scenario);
         let clock = ts::take_shared<Clock>(scenario);
+        let profile_config = ts::take_shared<ProfileConfig>(scenario);
         profile::create_profile(
             &mut registry,
+            &profile_config,
             &mut memory_registry,
             &mut ai_credit_config,
             string::utf8(b"Carol"),
@@ -188,6 +202,7 @@ fun setup_carol_with_agent(scenario: &mut ts::Scenario) {
             ts::ctx(scenario),
         );
         ts::return_shared(clock);
+        ts::return_shared(profile_config);
         ts::return_shared(ai_credit_config);
         ts::return_shared(memory_registry);
         ts::return_shared(registry);
@@ -214,7 +229,9 @@ fun setup_carol_with_agent(scenario: &mut ts::Scenario) {
         let mut org = memory_test_helpers::take_created_org(scenario);
         let mut memory_account = ts::take_shared<MemoryAccount>(scenario);
         let clock = ts::take_shared<Clock>(scenario);
+        let memory_config = ts::take_shared<MemoryConfig>(scenario);
         memory::register_sub_agent(
+            &memory_config,
             &mut memory_account,
             &mut org,
             CAROL_AGENT_PUBKEY,
@@ -232,6 +249,7 @@ fun setup_carol_with_agent(scenario: &mut ts::Scenario) {
             &clock,
             ts::ctx(scenario),
         );
+        ts::return_shared(memory_config);
         ts::return_shared(clock);
         ts::return_shared(memory_account);
         ts::return_shared(org);
@@ -255,7 +273,9 @@ fun agent_creates_dm_with_human_peer() {
         let mut org = memory_test_helpers::take_created_org(&mut scenario);
         let mut memory_account = ts::take_shared<MemoryAccount>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
-        register_agent(&mut memory_account, &mut org, platform_id, &clock, ts::ctx(&mut scenario));
+        let memory_config = ts::take_shared<MemoryConfig>(&scenario);
+        register_agent(&memory_config, &mut memory_account, &mut org, platform_id, &clock, ts::ctx(&mut scenario));
+        ts::return_shared(memory_config);
         ts::return_shared(clock);
         ts::return_shared(memory_account);
         ts::return_shared(org);
@@ -271,6 +291,7 @@ fun agent_creates_dm_with_human_peer() {
         let block_list = ts::take_shared<BlockListRegistry>(&scenario);
         let platform = ts::take_shared<Platform>(&scenario);
         let memory_account = ts::take_shared<MemoryAccount>(&scenario);
+        let memory_config = ts::take_shared<MemoryConfig>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
 
         let mut members = vec_set::empty<address>();
@@ -283,6 +304,7 @@ fun agent_creates_dm_with_human_peer() {
             &group_leaver,
             &block_list,
             &platform,
+            &memory_config,
             &memory_account,
             &memory_account,
             string::utf8(TEST_GROUP_NAME),
@@ -308,6 +330,7 @@ fun agent_creates_dm_with_human_peer() {
         assert!(option::is_some(&agent_chat), 8);
 
         ts::return_shared(clock);
+        ts::return_shared(memory_config);
         ts::return_shared(memory_account);
         ts::return_shared(platform);
         ts::return_shared(block_list);
@@ -340,8 +363,10 @@ fun agent_without_message_cap_cannot_create_group() {
         let platform_id = object::uid_to_address(platform::id(&platform_obj));
         let mut org = memory_test_helpers::take_created_org(&mut scenario);
         let mut memory_account = ts::take_shared<MemoryAccount>(&scenario);
+        let memory_config = ts::take_shared<MemoryConfig>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         memory::register_sub_agent(
+            &memory_config,
             &mut memory_account,
             &mut org,
             AGENT_PUBKEY,
@@ -359,6 +384,7 @@ fun agent_without_message_cap_cannot_create_group() {
             &clock,
             ts::ctx(&mut scenario),
         );
+        ts::return_shared(memory_config);
         ts::return_shared(clock);
         ts::return_shared(memory_account);
         ts::return_shared(org);
@@ -374,6 +400,7 @@ fun agent_without_message_cap_cannot_create_group() {
         let block_list = ts::take_shared<BlockListRegistry>(&scenario);
         let platform = ts::take_shared<Platform>(&scenario);
         let memory_account = ts::take_shared<MemoryAccount>(&scenario);
+        let memory_config = ts::take_shared<MemoryConfig>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
 
         let members = vec_set::empty<address>();
@@ -384,6 +411,7 @@ fun agent_without_message_cap_cannot_create_group() {
             &group_leaver,
             &block_list,
             &platform,
+            &memory_config,
             &memory_account,
             &memory_account,
             string::utf8(TEST_GROUP_NAME),
@@ -395,6 +423,7 @@ fun agent_without_message_cap_cannot_create_group() {
         );
 
         ts::return_shared(clock);
+        ts::return_shared(memory_config);
         ts::return_shared(memory_account);
         ts::return_shared(platform);
         ts::return_shared(block_list);
@@ -427,7 +456,9 @@ fun principal_mydata_oversight_fallback() {
         let mut org = memory_test_helpers::take_created_org(&mut scenario);
         let mut memory_account = ts::take_shared<MemoryAccount>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
-        register_agent(&mut memory_account, &mut org, platform_id, &clock, ts::ctx(&mut scenario));
+        let memory_config = ts::take_shared<MemoryConfig>(&scenario);
+        register_agent(&memory_config, &mut memory_account, &mut org, platform_id, &clock, ts::ctx(&mut scenario));
+        ts::return_shared(memory_config);
         ts::return_shared(clock);
         ts::return_shared(memory_account);
         ts::return_shared(org);
@@ -443,6 +474,7 @@ fun principal_mydata_oversight_fallback() {
         let block_list = ts::take_shared<BlockListRegistry>(&scenario);
         let platform = ts::take_shared<Platform>(&scenario);
         let memory_account = ts::take_shared<MemoryAccount>(&scenario);
+        let memory_config = ts::take_shared<MemoryConfig>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
 
         msg::create_agent_and_share_group(
@@ -452,6 +484,7 @@ fun principal_mydata_oversight_fallback() {
             &group_leaver,
             &block_list,
             &platform,
+            &memory_config,
             &memory_account,
             &memory_account,
             string::utf8(TEST_GROUP_NAME),
@@ -463,6 +496,7 @@ fun principal_mydata_oversight_fallback() {
         );
 
         ts::return_shared(clock);
+        ts::return_shared(memory_config);
         ts::return_shared(memory_account);
         ts::return_shared(platform);
         ts::return_shared(block_list);
@@ -518,7 +552,9 @@ fun agent_cannot_bypass_via_human_create_group() {
         let mut org = memory_test_helpers::take_created_org(&mut scenario);
         let mut memory_account = ts::take_shared<MemoryAccount>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
-        register_agent(&mut memory_account, &mut org, platform_id, &clock, ts::ctx(&mut scenario));
+        let memory_config = ts::take_shared<MemoryConfig>(&scenario);
+        register_agent(&memory_config, &mut memory_account, &mut org, platform_id, &clock, ts::ctx(&mut scenario));
+        ts::return_shared(memory_config);
         ts::return_shared(clock);
         ts::return_shared(memory_account);
         ts::return_shared(org);
@@ -576,7 +612,9 @@ fun cross_principal_agent_peer_gets_permissions_and_oversight() {
         let mut org = memory_test_helpers::take_created_org(&mut scenario);
         let mut memory_account = ts::take_shared<MemoryAccount>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
-        register_agent(&mut memory_account, &mut org, platform_id, &clock, ts::ctx(&mut scenario));
+        let memory_config = ts::take_shared<MemoryConfig>(&scenario);
+        register_agent(&memory_config, &mut memory_account, &mut org, platform_id, &clock, ts::ctx(&mut scenario));
+        ts::return_shared(memory_config);
         ts::return_shared(clock);
         ts::return_shared(memory_account);
         ts::return_shared(org);
@@ -601,6 +639,7 @@ fun cross_principal_agent_peer_gets_permissions_and_oversight() {
             (memory_two, memory_one)
         };
         let clock = ts::take_shared<Clock>(&scenario);
+        let memory_config = ts::take_shared<MemoryConfig>(&scenario);
 
         let mut members = vec_set::empty<address>();
         vec_set::insert(&mut members, CAROL_AGENT_ADDR);
@@ -612,6 +651,7 @@ fun cross_principal_agent_peer_gets_permissions_and_oversight() {
             &group_leaver,
             &block_list,
             &platform,
+            &memory_config,
             &author_memory,
             &carol_memory,
             string::utf8(TEST_GROUP_NAME),
@@ -627,6 +667,7 @@ fun cross_principal_agent_peer_gets_permissions_and_oversight() {
         assert!(group.has_permission<Messaging, PermissionsAdmin>(CAROL), 2);
         assert!(group.has_permission<Messaging, MessagingReader>(CAROL), 3);
 
+        ts::return_shared(memory_config);
         ts::return_shared(clock);
         ts::return_shared(carol_memory);
         ts::return_shared(author_memory);
@@ -661,7 +702,9 @@ fun agent_paid_dm_stranger_at_min_succeeds() {
         let mut org = memory_test_helpers::take_created_org(&mut scenario);
         let mut memory_account = ts::take_shared<MemoryAccount>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
-        register_agent(&mut memory_account, &mut org, platform_id, &clock, ts::ctx(&mut scenario));
+        let memory_config = ts::take_shared<MemoryConfig>(&scenario);
+        register_agent(&memory_config, &mut memory_account, &mut org, platform_id, &clock, ts::ctx(&mut scenario));
+        ts::return_shared(memory_config);
         ts::return_shared(clock);
         ts::return_shared(memory_account);
         ts::return_shared(org);
@@ -689,6 +732,7 @@ fun agent_paid_dm_stranger_at_min_succeeds() {
         let block_list = ts::take_shared<BlockListRegistry>(&scenario);
         let platform = ts::take_shared<Platform>(&scenario);
         let memory_account = ts::take_shared<MemoryAccount>(&scenario);
+        let memory_config = ts::take_shared<MemoryConfig>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
 
         let mut members = vec_set::empty<address>();
@@ -701,6 +745,7 @@ fun agent_paid_dm_stranger_at_min_succeeds() {
             &group_leaver,
             &block_list,
             &platform,
+            &memory_config,
             &memory_account,
             &memory_account,
             string::utf8(TEST_GROUP_NAME),
@@ -717,6 +762,7 @@ fun agent_paid_dm_stranger_at_min_succeeds() {
         transfer::public_share_object(msg_log);
 
         ts::return_shared(clock);
+        ts::return_shared(memory_config);
         ts::return_shared(memory_account);
         ts::return_shared(platform);
         ts::return_shared(block_list);
@@ -737,11 +783,14 @@ fun agent_paid_dm_stranger_at_min_succeeds() {
         let block_list = ts::take_shared<BlockListRegistry>(&scenario);
         let platform = ts::take_shared<Platform>(&scenario);
         let memory_account = ts::take_shared<MemoryAccount>(&scenario);
+        let memory_config = ts::take_shared<MemoryConfig>(&scenario);
+        let messaging_config = ts::take_shared<MessagingConfig>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let payment = coin::mint_for_testing<MYSO>(1000, ts::ctx(&mut scenario));
 
         msg::send_agent_paid_message_digest(
             &version,
+            &messaging_config,
             &group,
             &mut msg_log,
             &paid_registry,
@@ -749,6 +798,7 @@ fun agent_paid_dm_stranger_at_min_succeeds() {
             &block_list,
             &group_manager,
             &platform,
+            &memory_config,
             &memory_account,
             BOB,
             payment,
@@ -760,6 +810,8 @@ fun agent_paid_dm_stranger_at_min_succeeds() {
         );
 
         ts::return_shared(clock);
+        ts::return_shared(memory_config);
+        ts::return_shared(messaging_config);
         ts::return_shared(memory_account);
         ts::return_shared(platform);
         ts::return_shared(block_list);
@@ -792,7 +844,9 @@ fun agent_paid_dm_below_min_fails() {
         let mut org = memory_test_helpers::take_created_org(&mut scenario);
         let mut memory_account = ts::take_shared<MemoryAccount>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
-        register_agent(&mut memory_account, &mut org, platform_id, &clock, ts::ctx(&mut scenario));
+        let memory_config = ts::take_shared<MemoryConfig>(&scenario);
+        register_agent(&memory_config, &mut memory_account, &mut org, platform_id, &clock, ts::ctx(&mut scenario));
+        ts::return_shared(memory_config);
         ts::return_shared(clock);
         ts::return_shared(memory_account);
         ts::return_shared(org);
@@ -820,6 +874,7 @@ fun agent_paid_dm_below_min_fails() {
         let block_list = ts::take_shared<BlockListRegistry>(&scenario);
         let platform = ts::take_shared<Platform>(&scenario);
         let memory_account = ts::take_shared<MemoryAccount>(&scenario);
+        let memory_config = ts::take_shared<MemoryConfig>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
 
         let mut members = vec_set::empty<address>();
@@ -832,6 +887,7 @@ fun agent_paid_dm_below_min_fails() {
             &group_leaver,
             &block_list,
             &platform,
+            &memory_config,
             &memory_account,
             &memory_account,
             string::utf8(TEST_GROUP_NAME),
@@ -843,6 +899,7 @@ fun agent_paid_dm_below_min_fails() {
         );
 
         ts::return_shared(clock);
+        ts::return_shared(memory_config);
         ts::return_shared(memory_account);
         ts::return_shared(platform);
         ts::return_shared(block_list);
@@ -863,11 +920,14 @@ fun agent_paid_dm_below_min_fails() {
         let block_list = ts::take_shared<BlockListRegistry>(&scenario);
         let platform = ts::take_shared<Platform>(&scenario);
         let memory_account = ts::take_shared<MemoryAccount>(&scenario);
+        let memory_config = ts::take_shared<MemoryConfig>(&scenario);
+        let messaging_config = ts::take_shared<MessagingConfig>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let payment = coin::mint_for_testing<MYSO>(500, ts::ctx(&mut scenario));
 
         msg::send_agent_paid_message_digest(
             &version,
+            &messaging_config,
             &group,
             &mut msg_log,
             &paid_registry,
@@ -875,6 +935,7 @@ fun agent_paid_dm_below_min_fails() {
             &block_list,
             &group_manager,
             &platform,
+            &memory_config,
             &memory_account,
             BOB,
             payment,
@@ -886,6 +947,8 @@ fun agent_paid_dm_below_min_fails() {
         );
 
         ts::return_shared(clock);
+        ts::return_shared(memory_config);
+        ts::return_shared(messaging_config);
         ts::return_shared(memory_account);
         ts::return_shared(platform);
         ts::return_shared(block_list);
@@ -918,7 +981,9 @@ fun agent_paid_dm_principal_follower_bypass_fails() {
         let mut org = memory_test_helpers::take_created_org(&mut scenario);
         let mut memory_account = ts::take_shared<MemoryAccount>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
-        register_agent(&mut memory_account, &mut org, platform_id, &clock, ts::ctx(&mut scenario));
+        let memory_config = ts::take_shared<MemoryConfig>(&scenario);
+        register_agent(&memory_config, &mut memory_account, &mut org, platform_id, &clock, ts::ctx(&mut scenario));
+        ts::return_shared(memory_config);
         ts::return_shared(clock);
         ts::return_shared(memory_account);
         ts::return_shared(org);
@@ -953,6 +1018,7 @@ fun agent_paid_dm_principal_follower_bypass_fails() {
         let block_list = ts::take_shared<BlockListRegistry>(&scenario);
         let platform = ts::take_shared<Platform>(&scenario);
         let memory_account = ts::take_shared<MemoryAccount>(&scenario);
+        let memory_config = ts::take_shared<MemoryConfig>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
 
         msg::create_agent_and_share_group(
@@ -962,6 +1028,7 @@ fun agent_paid_dm_principal_follower_bypass_fails() {
             &group_leaver,
             &block_list,
             &platform,
+            &memory_config,
             &memory_account,
             &memory_account,
             string::utf8(TEST_GROUP_NAME),
@@ -973,6 +1040,7 @@ fun agent_paid_dm_principal_follower_bypass_fails() {
         );
 
         ts::return_shared(clock);
+        ts::return_shared(memory_config);
         ts::return_shared(memory_account);
         ts::return_shared(platform);
         ts::return_shared(block_list);
@@ -993,11 +1061,14 @@ fun agent_paid_dm_principal_follower_bypass_fails() {
         let block_list = ts::take_shared<BlockListRegistry>(&scenario);
         let platform = ts::take_shared<Platform>(&scenario);
         let memory_account = ts::take_shared<MemoryAccount>(&scenario);
+        let memory_config = ts::take_shared<MemoryConfig>(&scenario);
+        let messaging_config = ts::take_shared<MessagingConfig>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let payment = coin::mint_for_testing<MYSO>(1000, ts::ctx(&mut scenario));
 
         msg::send_agent_paid_message_digest(
             &version,
+            &messaging_config,
             &group,
             &mut msg_log,
             &paid_registry,
@@ -1005,6 +1076,7 @@ fun agent_paid_dm_principal_follower_bypass_fails() {
             &block_list,
             &group_manager,
             &platform,
+            &memory_config,
             &memory_account,
             BOB,
             payment,
@@ -1016,6 +1088,8 @@ fun agent_paid_dm_principal_follower_bypass_fails() {
         );
 
         ts::return_shared(clock);
+        ts::return_shared(memory_config);
+        ts::return_shared(messaging_config);
         ts::return_shared(memory_account);
         ts::return_shared(platform);
         ts::return_shared(block_list);

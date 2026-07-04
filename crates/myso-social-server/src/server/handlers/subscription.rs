@@ -161,3 +161,14 @@ pub async fn check_subscription_access(
         .await?;
     Ok(Json(serde_json::json!({ "has_access": has_access })))
 }
+
+pub async fn get_subscription_config(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<crate::reader::SubscriptionConfigInfo>, SocialError> {
+    state
+        .reader
+        .get_subscription_configuration()
+        .await?
+        .ok_or_else(|| SocialError::not_found("Subscription configuration"))
+        .map(Json)
+}

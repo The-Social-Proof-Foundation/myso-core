@@ -21,13 +21,13 @@ use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
     NewInsuranceConfig, NewInsuranceCoverageRoute, NewInsuranceEventLog,
     NewInsuranceMarketExposure, NewInsurancePolicy, NewInsurancePolicyEvent, NewInsuranceRouteFill,
-    NewInsuranceUserExposure, NewInsuranceVault, NewInsuranceVaultTransaction,
-    UpdateInsuranceVaultStatus,
+    NewInsuranceRouterConfig, NewInsuranceUserExposure, NewInsuranceVault,
+    NewInsuranceVaultTransaction, UpdateInsuranceVaultStatus,
 };
 use myso_indexer_alt_social_schema::schema::{
     insurance_config, insurance_coverage_routes, insurance_events, insurance_market_exposures,
-    insurance_policies, insurance_policy_events, insurance_route_fills, insurance_user_exposures,
-    insurance_vault_transactions, insurance_vaults,
+    insurance_policies, insurance_policy_events, insurance_route_fills, insurance_router_config,
+    insurance_user_exposures, insurance_vault_transactions, insurance_vaults,
 };
 
 use super::common;
@@ -40,6 +40,7 @@ const INSURANCE_MODULES: &[&str] = &["insurance"];
 #[derive(Debug, Clone)]
 pub enum InsuranceRow {
     InsuranceConfig(InsuranceConfigSnapshot),
+    InsuranceRouterConfig(NewInsuranceRouterConfig),
     InsuranceVault(NewInsuranceVault),
     InsuranceVaultTransaction(NewInsuranceVaultTransaction),
     InsuranceVaultBalanceUpdate {
@@ -62,7 +63,7 @@ pub enum InsuranceRow {
         fee_paid: Option<i64>,
         payout: Option<i64>,
         reserve_released: Option<i64>,
-        timestamp_ms: i64,
+        updated_at: i64,
         transaction_id: String,
     },
     InsuranceCoverageRoute(NewInsuranceCoverageRoute),
@@ -84,6 +85,9 @@ impl InsuranceRow {
         match row {
             crate::handlers::SocialEventRow::InsuranceConfig(snapshot) => {
                 Some(InsuranceRow::InsuranceConfig(snapshot))
+            }
+            crate::handlers::SocialEventRow::InsuranceRouterConfig(c) => {
+                Some(InsuranceRow::InsuranceRouterConfig(c))
             }
             crate::handlers::SocialEventRow::InsuranceVault(v) => {
                 Some(InsuranceRow::InsuranceVault(v))
@@ -132,7 +136,7 @@ impl InsuranceRow {
                 fee_paid,
                 payout,
                 reserve_released,
-                timestamp_ms,
+                updated_at: timestamp_ms,
                 transaction_id,
             }),
             crate::handlers::SocialEventRow::InsuranceCoverageRoute(r) => {
@@ -246,7 +250,7 @@ struct LatestInsuranceConfigRow {
     #[diesel(sql_type = BigInt)]
     version: i64,
     #[diesel(sql_type = BigInt)]
-    timestamp_ms: i64,
+    updated_at: i64,
     #[diesel(sql_type = Timestamptz)]
     time: chrono::DateTime<chrono::Utc>,
     #[diesel(sql_type = Text)]
@@ -275,6 +279,8 @@ struct LatestInsuranceConfigRow {
     exposure_cap_bps: i64,
     #[diesel(sql_type = BigInt)]
     exposure_k_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    odds_base_bps: i64,
 }
 
 fn latest_row_to_new(row: LatestInsuranceConfigRow) -> NewInsuranceConfig {
@@ -286,7 +292,7 @@ fn latest_row_to_new(row: LatestInsuranceConfigRow) -> NewInsuranceConfig {
         max_duration_ms: row.max_duration_ms,
         fee_bps: row.fee_bps,
         version: row.version,
-        timestamp_ms: row.timestamp_ms,
+        updated_at: row.updated_at,
         time: row.time,
         transaction_id: row.transaction_id,
         min_spot_total_liquidity: row.min_spot_total_liquidity,
@@ -301,6 +307,7 @@ fn latest_row_to_new(row: LatestInsuranceConfigRow) -> NewInsuranceConfig {
         liq_ref_amount: row.liq_ref_amount,
         exposure_cap_bps: row.exposure_cap_bps,
         exposure_k_bps: row.exposure_k_bps,
+        odds_base_bps: row.odds_base_bps,
     }
 }
 
@@ -309,11 +316,11 @@ async fn load_latest_insurance_config(
 ) -> Result<Option<NewInsuranceConfig>> {
     let query = "
         SELECT updated_by, enable_flag, min_coverage_bps, max_coverage_bps, max_duration_ms,
-               fee_bps, version, timestamp_ms, time, transaction_id,
+               fee_bps, version, updated_at, time, transaction_id,
                min_spot_total_liquidity, max_coverage_fraction_of_option_bps,
                max_risk_multiplier_bps, min_premium_amount, spot_smoothing_per_option,
                implied_prob_floor_bps, odds_floor_1x, odds_cap_bps, liq_cap_bps, liq_ref_amount,
-               exposure_cap_bps, exposure_k_bps
+               exposure_cap_bps, exposure_k_bps, odds_base_bps
         FROM insurance_config
         ORDER BY time DESC
         LIMIT 1
@@ -339,7 +346,7 @@ fn finalize_insurance_config(
             max_duration_ms: update.max_duration_ms,
             fee_bps: update.fee_bps,
             version: update.version,
-            timestamp_ms: update.timestamp_ms,
+            updated_at: update.updated_at,
             time: update.time,
             transaction_id: update.transaction_id.clone(),
             min_spot_total_liquidity: prev.min_spot_total_liquidity,
@@ -354,6 +361,7 @@ fn finalize_insurance_config(
             liq_ref_amount: prev.liq_ref_amount,
             exposure_cap_bps: prev.exposure_cap_bps,
             exposure_k_bps: prev.exposure_k_bps,
+            odds_base_bps: update.odds_base_bps,
         },
         InsuranceConfigSnapshot::RiskPricingUpdated(update) => NewInsuranceConfig {
             updated_by: update.updated_by.clone(),
@@ -363,7 +371,7 @@ fn finalize_insurance_config(
             max_duration_ms: prev.max_duration_ms,
             fee_bps: prev.fee_bps,
             version: prev.version,
-            timestamp_ms: update.timestamp_ms,
+            updated_at: update.updated_at,
             time: update.time,
             transaction_id: update.transaction_id.clone(),
             min_spot_total_liquidity: update.min_spot_total_liquidity,
@@ -378,6 +386,7 @@ fn finalize_insurance_config(
             liq_ref_amount: update.liq_ref_amount,
             exposure_cap_bps: update.exposure_cap_bps,
             exposure_k_bps: update.exposure_k_bps,
+            odds_base_bps: prev.odds_base_bps,
         },
     }
 }
@@ -399,6 +408,12 @@ impl Handler for InsuranceHandler {
                         .execute(conn)
                         .await?;
                     running_latest = merged;
+                }
+                InsuranceRow::InsuranceRouterConfig(c) => {
+                    total += diesel::insert_into(insurance_router_config::table)
+                        .values(c)
+                        .execute(conn)
+                        .await?;
                 }
                 InsuranceRow::InsuranceVault(v) => {
                     total += diesel::insert_into(insurance_vaults::table)
@@ -498,7 +513,7 @@ impl Handler for InsuranceHandler {
                     fee_paid,
                     payout,
                     reserve_released,
-                    timestamp_ms,
+                    updated_at,
                     transaction_id,
                 } => {
                     #[derive(QueryableByName)]
@@ -547,7 +562,7 @@ impl Handler for InsuranceHandler {
                             refunded_amount: *refunded_amount,
                             fee_paid: *fee_paid,
                             payout: *payout,
-                            timestamp_ms: *timestamp_ms,
+                            timestamp_ms: *updated_at,
                             time: chrono::Utc::now(),
                             transaction_id: transaction_id.clone(),
                         };

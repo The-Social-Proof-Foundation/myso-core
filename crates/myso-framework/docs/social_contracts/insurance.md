@@ -30,6 +30,7 @@ Sells coverage against losing outcomes and pays out deterministically on SPoT re
 -  [Struct `CoverageCancelledEvent`](#social_contracts_insurance_CoverageCancelledEvent)
 -  [Struct `CoverageClaimedEvent`](#social_contracts_insurance_CoverageClaimedEvent)
 -  [Struct `ConfigUpdatedEvent`](#social_contracts_insurance_ConfigUpdatedEvent)
+-  [Struct `RouterLimitsUpdatedEvent`](#social_contracts_insurance_RouterLimitsUpdatedEvent)
 -  [Struct `PolicyExpiredEvent`](#social_contracts_insurance_PolicyExpiredEvent)
 -  [Constants](#@Constants_0)
 -  [Function `init_config`](#social_contracts_insurance_init_config)
@@ -293,6 +294,11 @@ Sells coverage against losing outcomes and pays out deterministically on SPoT re
 <dd>
 </dd>
 <dt>
+<code>odds_base_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
 <code>version: u64</code>
 </dt>
 <dd>
@@ -355,6 +361,11 @@ Sells coverage against losing outcomes and pays out deterministically on SPoT re
 </dd>
 <dt>
 <code>min_vault_health_factor_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_route_legs: u64</code>
 </dt>
 <dd>
 </dd>
@@ -1696,6 +1707,72 @@ Events
 <dd>
 </dd>
 <dt>
+<code>odds_base_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_insurance_RouterLimitsUpdatedEvent"></a>
+
+## Struct `RouterLimitsUpdatedEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_RouterLimitsUpdatedEvent">RouterLimitsUpdatedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>updated_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_route_reserve_market: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_route_reserve_user: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_route_reserve_option: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_vault_concentration_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>min_vault_health_factor_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_route_legs: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
 <code>timestamp: u64</code>
 </dt>
 <dd>
@@ -2169,6 +2246,24 @@ Constants
 
 
 
+<a name="social_contracts_insurance_DEFAULT_ODDS_BASE_BPS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_ODDS_BASE_BPS">DEFAULT_ODDS_BASE_BPS</a>: u64 = 5000;
+</code></pre>
+
+
+
+<a name="social_contracts_insurance_DEFAULT_MAX_ROUTE_LEGS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MAX_ROUTE_LEGS">DEFAULT_MAX_ROUTE_LEGS</a>: u64 = 4;
+</code></pre>
+
+
+
 <a name="social_contracts_insurance_DEFAULT_MIN_SPOT_TOTAL_LIQUIDITY"></a>
 
 Default SPoT risk pricing (baseline pool size ~1000 MYSO at 10^9 scaling).
@@ -2352,15 +2447,6 @@ Target pool size such that liquidity multiplier ≈ 1× when <code>total_option_
 
 
 
-<a name="social_contracts_insurance_MAX_ROUTE_LEGS"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_MAX_ROUTE_LEGS">MAX_ROUTE_LEGS</a>: u64 = 4;
-</code></pre>
-
-
-
 <a name="social_contracts_insurance_init_config"></a>
 
 ## Function `init_config`
@@ -2412,6 +2498,7 @@ Creates InsuranceConfig and transfers InsuranceAdminCap to caller.
         liq_ref_amount: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_LIQ_REF_AMOUNT">DEFAULT_LIQ_REF_AMOUNT</a>,
         exposure_cap_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_EXPOSURE_CAP_BPS">DEFAULT_EXPOSURE_CAP_BPS</a>,
         exposure_k_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_EXPOSURE_K_BPS">DEFAULT_EXPOSURE_K_BPS</a>,
+        odds_base_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_ODDS_BASE_BPS">DEFAULT_ODDS_BASE_BPS</a>,
         version: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_VERSION">DEFAULT_VERSION</a>,
     });
     transfer::share_object(<a href="../social_contracts/insurance.md#social_contracts_insurance_new_router_config_defaults">new_router_config_defaults</a>(ctx));
@@ -2454,7 +2541,7 @@ Creates InsuranceConfig and transfers InsuranceAdminCap to caller.
 Update config (admin only)
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_config">set_config</a>(_: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">social_contracts::insurance::InsuranceAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, min_coverage_bps: u64, max_coverage_bps: u64, max_duration_ms: u64, fee_bps: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_config">set_config</a>(_: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">social_contracts::insurance::InsuranceAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, min_coverage_bps: u64, max_coverage_bps: u64, max_duration_ms: u64, fee_bps: u64, odds_base_bps: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2470,6 +2557,7 @@ Update config (admin only)
     max_coverage_bps: u64,
     max_duration_ms: u64,
     fee_bps: u64,
+    odds_base_bps: u64,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
@@ -2478,10 +2566,12 @@ Update config (admin only)
     <b>assert</b>!(max_coverage_bps &lt;= <a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a>, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidCoverage">EInvalidCoverage</a>);
     <b>assert</b>!(max_duration_ms &gt; 0, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidDuration">EInvalidDuration</a>);
     <b>assert</b>!(fee_bps &lt;= <a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a>, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidCoverage">EInvalidCoverage</a>);
+    <b>assert</b>!(odds_base_bps &gt; 0, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidCoverage">EInvalidCoverage</a>);
     config.min_coverage_bps = min_coverage_bps;
     config.max_coverage_bps = max_coverage_bps;
     config.max_duration_ms = max_duration_ms;
     config.fee_bps = fee_bps;
+    config.odds_base_bps = odds_base_bps;
     <b>let</b> updated_by = tx_context::sender(ctx);
     <b>let</b> timestamp = clock::timestamp_ms(clock);
     event::emit(<a href="../social_contracts/insurance.md#social_contracts_insurance_ConfigUpdatedEvent">ConfigUpdatedEvent</a> {
@@ -2491,6 +2581,7 @@ Update config (admin only)
         max_coverage_bps,
         max_duration_ms,
         fee_bps,
+        odds_base_bps,
         timestamp,
     });
 }
@@ -2616,6 +2707,7 @@ Emergency enable/disable toggle (admin only)
         max_coverage_bps: config.max_coverage_bps,
         max_duration_ms: config.max_duration_ms,
         fee_bps: config.fee_bps,
+        odds_base_bps: config.odds_base_bps,
         timestamp,
     });
 }
@@ -2686,6 +2778,7 @@ Emergency enable/disable toggle (admin only)
         liq_ref_amount: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_LIQ_REF_AMOUNT">DEFAULT_LIQ_REF_AMOUNT</a>,
         exposure_cap_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_EXPOSURE_CAP_BPS">DEFAULT_EXPOSURE_CAP_BPS</a>,
         exposure_k_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_EXPOSURE_K_BPS">DEFAULT_EXPOSURE_K_BPS</a>,
+        odds_base_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_ODDS_BASE_BPS">DEFAULT_ODDS_BASE_BPS</a>,
         version: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_VERSION">DEFAULT_VERSION</a>,
     };
     transfer::share_object(<a href="../social_contracts/insurance.md#social_contracts_insurance_new_router_config_defaults">new_router_config_defaults</a>(ctx));
@@ -2697,6 +2790,7 @@ Emergency enable/disable toggle (admin only)
         max_coverage_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MAX_COVERAGE_BPS">DEFAULT_MAX_COVERAGE_BPS</a>,
         max_duration_ms: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MAX_DURATION_MS">DEFAULT_MAX_DURATION_MS</a>,
         fee_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_FEE_BPS">DEFAULT_FEE_BPS</a>,
+        odds_base_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_ODDS_BASE_BPS">DEFAULT_ODDS_BASE_BPS</a>,
         timestamp: ts,
     });
     event::emit(<a href="../social_contracts/insurance.md#social_contracts_insurance_RiskPricingConfigUpdatedEvent">RiskPricingConfigUpdatedEvent</a> {
@@ -2873,7 +2967,7 @@ Underwriter updates vault listing parameters (emit for indexer discovery).
 
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_router_limits">set_router_limits</a>(_: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">social_contracts::insurance::InsuranceAdminCap</a>, router_cfg: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">social_contracts::insurance::InsuranceRouterConfig</a>, max_route_reserve_market: u64, max_route_reserve_user: u64, max_route_reserve_option: u64, max_vault_concentration_bps: u64, min_vault_health_factor_bps: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_router_limits">set_router_limits</a>(_: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">social_contracts::insurance::InsuranceAdminCap</a>, router_cfg: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">social_contracts::insurance::InsuranceRouterConfig</a>, max_route_reserve_market: u64, max_route_reserve_user: u64, max_route_reserve_option: u64, max_vault_concentration_bps: u64, min_vault_health_factor_bps: u64, max_route_legs: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2890,6 +2984,8 @@ Underwriter updates vault listing parameters (emit for indexer discovery).
     max_route_reserve_option: u64,
     max_vault_concentration_bps: u64,
     min_vault_health_factor_bps: u64,
+    max_route_legs: u64,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
     <b>assert</b>!(
@@ -2897,12 +2993,23 @@ Underwriter updates vault listing parameters (emit for indexer discovery).
         <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidCoverage">EInvalidCoverage</a>
     );
     <b>assert</b>!(min_vault_health_factor_bps &gt; 0, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidAmount">EInvalidAmount</a>);
+    <b>assert</b>!(max_route_legs &gt; 0, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidAmount">EInvalidAmount</a>);
     router_cfg.max_route_reserve_market = max_route_reserve_market;
     router_cfg.max_route_reserve_user = max_route_reserve_user;
     router_cfg.max_route_reserve_option = max_route_reserve_option;
     router_cfg.max_vault_concentration_bps = max_vault_concentration_bps;
     router_cfg.min_vault_health_factor_bps = min_vault_health_factor_bps;
-    <b>let</b> _ = ctx;
+    router_cfg.max_route_legs = max_route_legs;
+    event::emit(<a href="../social_contracts/insurance.md#social_contracts_insurance_RouterLimitsUpdatedEvent">RouterLimitsUpdatedEvent</a> {
+        updated_by: tx_context::sender(ctx),
+        max_route_reserve_market,
+        max_route_reserve_user,
+        max_route_reserve_option,
+        max_vault_concentration_bps,
+        min_vault_health_factor_bps,
+        max_route_legs,
+        timestamp: clock::timestamp_ms(clock),
+    });
 }
 </code></pre>
 
@@ -3269,6 +3376,7 @@ Tail shortfall payout only (<code>tail_mode_enabled</code> + caps). Does not int
         max_route_reserve_option: 0,
         max_vault_concentration_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a>,
         min_vault_health_factor_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a>,
+        max_route_legs: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MAX_ROUTE_LEGS">DEFAULT_MAX_ROUTE_LEGS</a>,
         market_pause: table::new(ctx),
         version: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_VERSION">DEFAULT_VERSION</a>,
     }
@@ -3712,7 +3820,7 @@ Utilization curve only (<code><a href="../social_contracts/insurance.md#social_c
     <b>let</b> reserved_opt = <a href="../social_contracts/insurance.md#social_contracts_insurance_get_market_option_reserved">get_market_option_reserved</a>(vault, vault_market_id, option_id);
     <b>let</b> p_floor = config.implied_prob_floor_bps;
     <b>let</b> denom_p = <b>if</b> (p_win_bps &gt; p_floor) { p_win_bps } <b>else</b> { p_floor };
-    <b>let</b> odds_core_u128 = (5000u128) * (<a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a> <b>as</b> u128) / (denom_p <b>as</b> u128);
+    <b>let</b> odds_core_u128 = (config.odds_base_bps <b>as</b> u128) * (<a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a> <b>as</b> u128) / (denom_p <b>as</b> u128);
     <b>assert</b>!(odds_core_u128 &lt;= (<a href="../social_contracts/insurance.md#social_contracts_insurance_MAX_U64">MAX_U64</a> <b>as</b> u128), <a href="../social_contracts/insurance.md#social_contracts_insurance_EOverflow">EOverflow</a>);
     <b>let</b> odds_core = odds_core_u128 <b>as</b> u64;
     <b>let</b> <b>mut</b> odds_mult_bps = <b>if</b> (config.odds_cap_bps &lt; odds_core) {
@@ -4391,6 +4499,12 @@ Buy coverage for a SPoT position
     <b>assert</b>!(total_covered &gt; 0, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidAmount">EInvalidAmount</a>);
     <b>assert</b>!(total_covered &gt;= min_total_covered, <a href="../social_contracts/insurance.md#social_contracts_insurance_ESlippageCovered">ESlippageCovered</a>);
     <b>assert</b>!(total_covered &lt;= position_amount, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidAmount">EInvalidAmount</a>);
+    <b>let</b> <b>mut</b> route_leg_count = 0;
+    <b>if</b> (fill_0 &gt; 0) { route_leg_count = route_leg_count + 1; };
+    <b>if</b> (fill_1 &gt; 0) { route_leg_count = route_leg_count + 1; };
+    <b>if</b> (fill_2 &gt; 0) { route_leg_count = route_leg_count + 1; };
+    <b>if</b> (fill_3 &gt; 0) { route_leg_count = route_leg_count + 1; };
+    <b>assert</b>!(route_leg_count &lt;= router_cfg.max_route_legs, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidCoverage">EInvalidCoverage</a>);
     <b>if</b> (fill_0 &gt; 0 && fill_1 &gt; 0) {
         <b>assert</b>!(object::id(v0) != object::id(v1), <a href="../social_contracts/insurance.md#social_contracts_insurance_EDuplicateVaultInRoute">EDuplicateVaultInRoute</a>);
     };

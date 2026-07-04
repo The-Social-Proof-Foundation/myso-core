@@ -39,8 +39,7 @@ impl Clone for ReceiptSigner {
 
 impl ReceiptSigner {
     pub fn from_hex(private_key_hex: &str) -> Result<Self> {
-        let bytes = hex::decode(private_key_hex.trim())
-            .context("invalid private key hex")?;
+        let bytes = hex::decode(private_key_hex.trim()).context("invalid private key hex")?;
         let key_bytes: [u8; 32] = bytes
             .try_into()
             .map_err(|_| anyhow::anyhow!("private key must be 32 bytes"))?;

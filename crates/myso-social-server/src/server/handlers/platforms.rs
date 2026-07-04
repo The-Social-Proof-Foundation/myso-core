@@ -142,3 +142,14 @@ pub async fn get_platform_events(
         "total": total
     })))
 }
+
+pub async fn get_platform_config(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<crate::reader::PlatformConfigInfo>, SocialError> {
+    state
+        .reader
+        .get_platform_configuration()
+        .await?
+        .ok_or_else(|| SocialError::not_found("Platform configuration"))
+        .map(Json)
+}

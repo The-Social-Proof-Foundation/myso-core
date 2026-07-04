@@ -4,6 +4,7 @@ module messaging::paid_escrow_settlement_tests;
 use myso::coin::{Self, Coin};
 use myso::myso::MYSO;
 use myso::test_scenario as ts;
+use messaging::messaging_config::{Self, MessagingConfig};
 use messaging::paid_escrow_settlement as fees;
 use std::unit_test::assert_eq;
 
@@ -13,12 +14,23 @@ const ALICE: address = @0xA11CE;
 fun distribute_matches_social_bps() {
     let mut s = ts::begin(ALICE);
     s.next_tx(ALICE);
+    messaging_config::init_for_testing(s.ctx());
+    s.next_tx(ALICE);
+    let config = s.take_shared<MessagingConfig>();
     let coin_in = coin::mint_for_testing<MYSO>(10_000, s.ctx());
-    let totals = fees::distribute_escrow_to_recipients(coin_in, @0x1, @0x2, @0x3, s.ctx());
+    let totals = fees::distribute_escrow_to_recipients(
+        &config,
+        coin_in,
+        @0x1,
+        @0x2,
+        @0x3,
+        s.ctx(),
+    );
     assert_eq!(fees::total_amount(&totals), 10_000);
     assert_eq!(fees::platform_fee(&totals), 250);
     assert_eq!(fees::treasury_fee(&totals), 250);
     assert_eq!(fees::net_amount(&totals), 9_500);
+    ts::return_shared(config);
     s.end();
 }
 
@@ -29,8 +41,12 @@ const RECIPIENT: address = @0xB0B;
 fun distribute_no_platform_routes_both_fees_to_ecosystem() {
     let mut s = ts::begin(ALICE);
     s.next_tx(ALICE);
+    messaging_config::init_for_testing(s.ctx());
+    s.next_tx(ALICE);
+    let config = s.take_shared<MessagingConfig>();
     let coin_in = coin::mint_for_testing<MYSO>(10_000, s.ctx());
     let totals = fees::distribute_escrow_to_recipients(
+        &config,
         coin_in,
         fees::no_platform_fee_recipient(),
         ECOSYSTEM,
@@ -41,6 +57,7 @@ fun distribute_no_platform_routes_both_fees_to_ecosystem() {
     assert_eq!(fees::platform_fee(&totals), 250);
     assert_eq!(fees::treasury_fee(&totals), 250);
     assert_eq!(fees::net_amount(&totals), 9_500);
+    ts::return_shared(config);
 
     s.next_tx(ECOSYSTEM);
     let ecosystem_coin = s.take_from_sender<Coin<MYSO>>();

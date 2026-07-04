@@ -26,12 +26,74 @@ fn json_str(data: &serde_json::Value, key: &str) -> Option<String> {
     data.get(key).and_then(|v| v.as_str()).map(String::from)
 }
 
+pub(crate) fn new_ai_credit_config_with_defaults() -> NewAiCreditConfig {
+    NewAiCreditConfig {
+        updated_by: String::new(),
+        oracle_pubkey_hex: String::new(),
+        treasury_address: String::new(),
+        min_deposit_mist: 0,
+        max_single_settlement_mist: 0,
+        receipt_ttl_ms: 0,
+        oracle_markup_bps: 0,
+        catalog_version: None,
+        version: 0,
+        updated_at: 0,
+        event_id: String::new(),
+        transaction_id: String::new(),
+        time: Utc::now(),
+    }
+}
+
+fn config_updated_at(data: &serde_json::Value, now: chrono::DateTime<chrono::Utc>) -> i64 {
+    data.get("timestamp")
+        .or_else(|| data.get("updated_at"))
+        .and_then(json_opt_i64)
+        .unwrap_or_else(|| now.timestamp_millis())
+}
+
+fn config_updated_by(data: &serde_json::Value) -> String {
+    json_str(data, "updated_by")
+        .or_else(|| json_str(data, "admin"))
+        .unwrap_or_default()
+}
+
 pub(crate) fn json_receipt_id(data: &serde_json::Value) -> Option<String> {
     let v = data.get("receipt_id")?;
     if let Some(s) = v.as_str() {
         return Some(s.to_string());
     }
     v.as_u64().map(|n| n.to_string())
+}
+
+fn config_audit_event(
+    event_name: &str,
+    event_id: &str,
+    transaction_id: &str,
+    now: chrono::DateTime<chrono::Utc>,
+) -> NewAiCreditEvent {
+    NewAiCreditEvent {
+        event_type: event_name.to_string(),
+        balance_id: None,
+        memory_account_id: None,
+        principal_owner: None,
+        profile_id: None,
+        agent_object_id: None,
+        amount_mist: None,
+        new_balance_mist: None,
+        credits: None,
+        receipt_id: None,
+        usage_kind: None,
+        settlement_nonce: None,
+        remaining_mist: None,
+        credits_remaining: None,
+        daily_cap_mist: None,
+        monthly_cap_mist: None,
+        budget_mist: None,
+        require_approval_above_mist: None,
+        event_id: event_id.to_string(),
+        transaction_id: transaction_id.to_string(),
+        time: now,
+    }
 }
 
 pub fn handle_ai_credit_event(
@@ -97,9 +159,12 @@ pub fn handle_ai_credit_event(
         }
         "AiCreditDeposited" => {
             let balance_id = json_str(data, "balance_id")?;
-            let amount_mist = json_to_i64(data.get("amount_mist").unwrap_or(&serde_json::Value::Null));
-            let new_balance_mist =
-                json_to_i64(data.get("new_balance_mist").unwrap_or(&serde_json::Value::Null));
+            let amount_mist =
+                json_to_i64(data.get("amount_mist").unwrap_or(&serde_json::Value::Null));
+            let new_balance_mist = json_to_i64(
+                data.get("new_balance_mist")
+                    .unwrap_or(&serde_json::Value::Null),
+            );
             let credits = json_to_i64(data.get("credits").unwrap_or(&serde_json::Value::Null));
             Some(vec![
                 SocialEventRow::AiCreditBalanceBalanceUpdate {
@@ -136,9 +201,12 @@ pub fn handle_ai_credit_event(
         }
         "AiCreditWithdrawn" => {
             let balance_id = json_str(data, "balance_id")?;
-            let amount_mist = json_to_i64(data.get("amount_mist").unwrap_or(&serde_json::Value::Null));
-            let new_balance_mist =
-                json_to_i64(data.get("new_balance_mist").unwrap_or(&serde_json::Value::Null));
+            let amount_mist =
+                json_to_i64(data.get("amount_mist").unwrap_or(&serde_json::Value::Null));
+            let new_balance_mist = json_to_i64(
+                data.get("new_balance_mist")
+                    .unwrap_or(&serde_json::Value::Null),
+            );
             Some(vec![
                 SocialEventRow::AiCreditBalanceBalanceUpdate {
                     balance_id: balance_id.clone(),
@@ -174,9 +242,14 @@ pub fn handle_ai_credit_event(
         }
         "AiCreditAccountCapsUpdated" => {
             let balance_id = json_str(data, "balance_id")?;
-            let daily_cap_mist = json_opt_i64(data.get("daily_cap_mist").unwrap_or(&serde_json::Value::Null));
-            let monthly_cap_mist =
-                json_opt_i64(data.get("monthly_cap_mist").unwrap_or(&serde_json::Value::Null));
+            let daily_cap_mist = json_opt_i64(
+                data.get("daily_cap_mist")
+                    .unwrap_or(&serde_json::Value::Null),
+            );
+            let monthly_cap_mist = json_opt_i64(
+                data.get("monthly_cap_mist")
+                    .unwrap_or(&serde_json::Value::Null),
+            );
             Some(vec![
                 SocialEventRow::AiCreditBalanceCapsUpdate {
                     balance_id: balance_id.clone(),
@@ -214,12 +287,20 @@ pub fn handle_ai_credit_event(
         "AiCreditAgentBudgetUpdated" => {
             let balance_id = json_str(data, "balance_id")?;
             let agent_object_id = json_str(data, "agent_object_id")?;
-            let budget_mist = json_opt_i64(data.get("budget_mist").unwrap_or(&serde_json::Value::Null));
-            let daily_cap_mist = json_opt_i64(data.get("daily_cap_mist").unwrap_or(&serde_json::Value::Null));
-            let monthly_cap_mist =
-                json_opt_i64(data.get("monthly_cap_mist").unwrap_or(&serde_json::Value::Null));
-            let require_approval_above_mist =
-                json_opt_i64(data.get("require_approval_above_mist").unwrap_or(&serde_json::Value::Null));
+            let budget_mist =
+                json_opt_i64(data.get("budget_mist").unwrap_or(&serde_json::Value::Null));
+            let daily_cap_mist = json_opt_i64(
+                data.get("daily_cap_mist")
+                    .unwrap_or(&serde_json::Value::Null),
+            );
+            let monthly_cap_mist = json_opt_i64(
+                data.get("monthly_cap_mist")
+                    .unwrap_or(&serde_json::Value::Null),
+            );
+            let require_approval_above_mist = json_opt_i64(
+                data.get("require_approval_above_mist")
+                    .unwrap_or(&serde_json::Value::Null),
+            );
             Some(vec![
                 SocialEventRow::AiCreditAgentBudgetUpsert(NewAiCreditAgentBudget {
                     balance_id: balance_id.clone(),
@@ -301,12 +382,18 @@ pub fn handle_ai_credit_event(
             let agent_object_id = json_str(data, "agent_object_id")?;
             let amount_mist =
                 json_to_i64(data.get("amount_mist").unwrap_or(&serde_json::Value::Null));
-            let remaining_mist =
-                json_to_i64(data.get("remaining_mist").unwrap_or(&serde_json::Value::Null));
-            let credits_remaining =
-                json_to_i64(data.get("credits_remaining").unwrap_or(&serde_json::Value::Null));
-            let settlement_nonce =
-                json_to_i64(data.get("settlement_nonce").unwrap_or(&serde_json::Value::Null));
+            let remaining_mist = json_to_i64(
+                data.get("remaining_mist")
+                    .unwrap_or(&serde_json::Value::Null),
+            );
+            let credits_remaining = json_to_i64(
+                data.get("credits_remaining")
+                    .unwrap_or(&serde_json::Value::Null),
+            );
+            let settlement_nonce = json_to_i64(
+                data.get("settlement_nonce")
+                    .unwrap_or(&serde_json::Value::Null),
+            );
             let usage_kind = data
                 .get("usage_kind")
                 .and_then(|v| v.as_u64())
@@ -354,28 +441,28 @@ pub fn handle_ai_credit_event(
                 activity_at_ms: now.timestamp_millis(),
             });
             rows.push(SocialEventRow::AiCreditEvent(NewAiCreditEvent {
-                    event_type: event_name.to_string(),
-                    balance_id: Some(balance_id),
-                    memory_account_id: None,
-                    principal_owner: None,
-                    profile_id: None,
-                    agent_object_id: Some(agent_object_id),
-                    amount_mist: Some(amount_mist),
-                    new_balance_mist: None,
-                    credits: None,
-                    receipt_id,
-                    usage_kind,
-                    settlement_nonce: Some(settlement_nonce),
-                    remaining_mist: Some(remaining_mist),
-                    credits_remaining: Some(credits_remaining),
-                    daily_cap_mist: None,
-                    monthly_cap_mist: None,
-                    budget_mist: None,
-                    require_approval_above_mist: None,
-                    event_id: event_id.to_string(),
-                    transaction_id,
-                    time: now,
-                }));
+                event_type: event_name.to_string(),
+                balance_id: Some(balance_id),
+                memory_account_id: None,
+                principal_owner: None,
+                profile_id: None,
+                agent_object_id: Some(agent_object_id),
+                amount_mist: Some(amount_mist),
+                new_balance_mist: None,
+                credits: None,
+                receipt_id,
+                usage_kind,
+                settlement_nonce: Some(settlement_nonce),
+                remaining_mist: Some(remaining_mist),
+                credits_remaining: Some(credits_remaining),
+                daily_cap_mist: None,
+                monthly_cap_mist: None,
+                budget_mist: None,
+                require_approval_above_mist: None,
+                event_id: event_id.to_string(),
+                transaction_id,
+                time: now,
+            }));
             Some(rows)
         }
         "AiCreditBalancePaused" | "AiCreditBalanceReactivated" => {
@@ -443,7 +530,10 @@ pub fn handle_ai_credit_event(
         "AiCreditAgentBudgetChanged" => {
             let balance_id = json_str(data, "balance_id")?;
             let agent_object_id = json_str(data, "agent_object_id")?;
-            let enabled = data.get("enabled").and_then(|v| v.as_bool()).unwrap_or(true);
+            let enabled = data
+                .get("enabled")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(true);
             let set_by = json_str(data, "set_by")?;
             let set_by_agent_id = json_str(data, "set_by_agent_id");
             let organization_id = json_str(data, "organization_id");
@@ -493,11 +583,18 @@ pub fn handle_ai_credit_event(
         "AiCreditSpendApproved" => {
             let balance_id = json_str(data, "balance_id")?;
             let agent_object_id = json_str(data, "agent_object_id")?;
-            let approval_nonce = json_to_i64(data.get("approval_nonce").unwrap_or(&serde_json::Value::Null));
-            let max_amount_mist =
-                json_to_i64(data.get("max_amount_mist").unwrap_or(&serde_json::Value::Null));
-            let expires_at_ms =
-                json_to_i64(data.get("expires_at_ms").unwrap_or(&serde_json::Value::Null));
+            let approval_nonce = json_to_i64(
+                data.get("approval_nonce")
+                    .unwrap_or(&serde_json::Value::Null),
+            );
+            let max_amount_mist = json_to_i64(
+                data.get("max_amount_mist")
+                    .unwrap_or(&serde_json::Value::Null),
+            );
+            let expires_at_ms = json_to_i64(
+                data.get("expires_at_ms")
+                    .unwrap_or(&serde_json::Value::Null),
+            );
             let approved_by = json_str(data, "approved_by")?;
             let approved_by_agent_id = json_str(data, "approved_by_agent_id");
             let organization_id = json_str(data, "organization_id");
@@ -543,7 +640,10 @@ pub fn handle_ai_credit_event(
         "AiCreditSpendApprovalRevoked" => {
             let balance_id = json_str(data, "balance_id")?;
             let agent_object_id = json_str(data, "agent_object_id")?;
-            let approval_nonce = json_to_i64(data.get("approval_nonce").unwrap_or(&serde_json::Value::Null));
+            let approval_nonce = json_to_i64(
+                data.get("approval_nonce")
+                    .unwrap_or(&serde_json::Value::Null),
+            );
             let revoked_by = json_str(data, "revoked_by")?;
             Some(vec![
                 SocialEventRow::AiCreditSpendApprovalStatus {
@@ -571,8 +671,12 @@ pub fn handle_ai_credit_event(
         "AiCreditSpendApprovalConsumed" => {
             let balance_id = json_str(data, "balance_id")?;
             let agent_object_id = json_str(data, "agent_object_id")?;
-            let approval_nonce = json_to_i64(data.get("approval_nonce").unwrap_or(&serde_json::Value::Null));
-            let amount_mist = json_to_i64(data.get("amount_mist").unwrap_or(&serde_json::Value::Null));
+            let approval_nonce = json_to_i64(
+                data.get("approval_nonce")
+                    .unwrap_or(&serde_json::Value::Null),
+            );
+            let amount_mist =
+                json_to_i64(data.get("amount_mist").unwrap_or(&serde_json::Value::Null));
             let approved_by = json_str(data, "approved_by")?;
             Some(vec![
                 SocialEventRow::AiCreditSpendApprovalStatus {
@@ -602,26 +706,42 @@ pub fn handle_ai_credit_event(
             ])
         }
         "AiCreditConfigInitialized" => {
+            let updated_by = config_updated_by(data);
             let oracle_pubkey_hex = json_str(data, "oracle_pubkey_hex")?;
             let treasury_address = json_str(data, "treasury_address")?;
-            let min_deposit_mist =
-                json_to_i64(data.get("min_deposit_mist").unwrap_or(&serde_json::Value::Null));
+            let min_deposit_mist = json_to_i64(
+                data.get("min_deposit_mist")
+                    .unwrap_or(&serde_json::Value::Null),
+            );
             let max_single_settlement_mist = json_to_i64(
                 data.get("max_single_settlement_mist")
                     .unwrap_or(&serde_json::Value::Null),
             );
-            let receipt_ttl_ms =
-                json_to_i64(data.get("receipt_ttl_ms").unwrap_or(&serde_json::Value::Null));
+            let receipt_ttl_ms = json_to_i64(
+                data.get("receipt_ttl_ms")
+                    .unwrap_or(&serde_json::Value::Null),
+            );
+            let oracle_markup_bps = json_to_i64(
+                data.get("oracle_markup_bps")
+                    .unwrap_or(&serde_json::Value::Null),
+            );
+            let version = data
+                .get("version")
+                .and_then(json_opt_i64)
+                .unwrap_or(0);
+            let updated_at = config_updated_at(data, now);
             Some(vec![
                 SocialEventRow::AiCreditConfigUpsert(NewAiCreditConfig {
-                    id: 1,
+                    updated_by,
                     oracle_pubkey_hex: oracle_pubkey_hex.clone(),
                     treasury_address: treasury_address.clone(),
                     min_deposit_mist,
                     max_single_settlement_mist,
                     receipt_ttl_ms,
+                    oracle_markup_bps,
                     catalog_version: None,
-                    updated_at_ms: now.timestamp_millis(),
+                    version,
+                    updated_at,
                     event_id: event_id.to_string(),
                     transaction_id: transaction_id.clone(),
                     time: now,
@@ -652,17 +772,23 @@ pub fn handle_ai_credit_event(
             ])
         }
         "AiCreditSettlementLimitsUpdated" => {
+            let updated_by = config_updated_by(data);
             let max_single_settlement_mist = json_to_i64(
                 data.get("max_single_settlement_mist")
                     .unwrap_or(&serde_json::Value::Null),
             );
-            let receipt_ttl_ms =
-                json_to_i64(data.get("receipt_ttl_ms").unwrap_or(&serde_json::Value::Null));
+            let receipt_ttl_ms = json_to_i64(
+                data.get("receipt_ttl_ms")
+                    .unwrap_or(&serde_json::Value::Null),
+            );
+            let updated_at = config_updated_at(data, now);
             Some(vec![
                 SocialEventRow::AiCreditConfigLimitsUpdate {
+                    updated_by,
                     max_single_settlement_mist,
                     receipt_ttl_ms,
-                    updated_at_ms: now.timestamp_millis(),
+                    updated_at,
+                    time: now,
                     event_id: event_id.to_string(),
                     transaction_id: transaction_id.clone(),
                 },
@@ -689,6 +815,75 @@ pub fn handle_ai_credit_event(
                     transaction_id,
                     time: now,
                 }),
+            ])
+        }
+        "AiCreditOraclePubkeyUpdated" => {
+            let updated_by = config_updated_by(data);
+            let oracle_pubkey_hex = json_str(data, "new_pubkey_hex")?;
+            let updated_at = config_updated_at(data, now);
+            Some(vec![
+                SocialEventRow::AiCreditConfigPubkeyUpdate {
+                    updated_by,
+                    oracle_pubkey_hex,
+                    updated_at,
+                    time: now,
+                    event_id: event_id.to_string(),
+                    transaction_id: transaction_id.clone(),
+                },
+                SocialEventRow::AiCreditEvent(config_audit_event(
+                    event_name,
+                    event_id,
+                    &transaction_id,
+                    now,
+                )),
+            ])
+        }
+        "AiCreditMarkupUpdated" => {
+            let updated_by = config_updated_by(data);
+            let oracle_markup_bps = json_to_i64(
+                data.get("oracle_markup_bps")
+                    .unwrap_or(&serde_json::Value::Null),
+            );
+            let updated_at = config_updated_at(data, now);
+            Some(vec![
+                SocialEventRow::AiCreditConfigMarkupUpdate {
+                    updated_by,
+                    oracle_markup_bps,
+                    updated_at,
+                    time: now,
+                    event_id: event_id.to_string(),
+                    transaction_id: transaction_id.clone(),
+                },
+                SocialEventRow::AiCreditEvent(config_audit_event(
+                    event_name,
+                    event_id,
+                    &transaction_id,
+                    now,
+                )),
+            ])
+        }
+        "AiCreditMinDepositUpdated" => {
+            let updated_by = config_updated_by(data);
+            let min_deposit_mist = json_to_i64(
+                data.get("min_deposit_mist")
+                    .unwrap_or(&serde_json::Value::Null),
+            );
+            let updated_at = config_updated_at(data, now);
+            Some(vec![
+                SocialEventRow::AiCreditConfigMinDepositUpdate {
+                    updated_by,
+                    min_deposit_mist,
+                    updated_at,
+                    time: now,
+                    event_id: event_id.to_string(),
+                    transaction_id: transaction_id.clone(),
+                },
+                SocialEventRow::AiCreditEvent(config_audit_event(
+                    event_name,
+                    event_id,
+                    &transaction_id,
+                    now,
+                )),
             ])
         }
         _ => None,
@@ -718,11 +913,20 @@ mod tests {
         assert!(rows.iter().any(|r| {
             matches!(
                 r,
-                SocialEventRow::AiCreditOrgSpendFromAgent { amount_mist: 222222223, .. }
+                SocialEventRow::AiCreditOrgSpendFromAgent {
+                    amount_mist: 222222223,
+                    ..
+                }
             )
         }));
         assert!(rows.iter().any(|r| {
-            matches!(r, SocialEventRow::AiCreditBalanceSettlementUpdate { settlement_nonce: 1, .. })
+            matches!(
+                r,
+                SocialEventRow::AiCreditBalanceSettlementUpdate {
+                    settlement_nonce: 1,
+                    ..
+                }
+            )
         }));
         assert!(rows.iter().any(|r| {
             matches!(
@@ -750,5 +954,43 @@ mod tests {
         assert_eq!(from_str.as_deref(), Some("999"));
         let from_u64 = json_receipt_id(&serde_json::json!({ "receipt_id": 42 }));
         assert_eq!(from_u64.as_deref(), Some("42"));
+    }
+
+    #[test]
+    fn oracle_pubkey_updated_emits_pubkey_update_row() {
+        let data = serde_json::json!({
+            "updated_by": "0x9cc886f94db2b2a41b1f8d7c20c7fc0960e1f9eb34ce2c0c7f309",
+            "new_pubkey_hex": "deadbeef01234567",
+        });
+        let rows = handle_ai_credit_event("AiCreditOraclePubkeyUpdated", &data, "tx:0")
+            .expect("handler should produce rows");
+        assert!(rows.iter().any(|r| {
+            matches!(
+                r,
+                SocialEventRow::AiCreditConfigPubkeyUpdate {
+                    oracle_pubkey_hex,
+                    ..
+                } if oracle_pubkey_hex == "deadbeef01234567"
+            )
+        }));
+    }
+
+    #[test]
+    fn markup_updated_emits_markup_update_row() {
+        let data = serde_json::json!({
+            "updated_by": "0x9cc886f94db2b2a41b1f8d7c20c7fc0960e1f9eb34ce2c0c7f309",
+            "oracle_markup_bps": 250,
+        });
+        let rows = handle_ai_credit_event("AiCreditMarkupUpdated", &data, "tx:0")
+            .expect("handler should produce rows");
+        assert!(rows.iter().any(|r| {
+            matches!(
+                r,
+                SocialEventRow::AiCreditConfigMarkupUpdate {
+                    oracle_markup_bps: 250,
+                    ..
+                }
+            )
+        }));
     }
 }

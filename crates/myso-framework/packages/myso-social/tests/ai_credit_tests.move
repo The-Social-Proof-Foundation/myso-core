@@ -15,9 +15,11 @@ module social_contracts::ai_credit_tests {
     use myso::coin::{Self, Coin};
     use myso::myso::MYSO;
 
-    use social_contracts::memory::{Self, MemoryAccount, MemoryRegistry, SubAgent};
+    use social_contracts::memory::{Self, MemoryAccount, MemoryRegistry, SubAgent,
+        MemoryConfig};
     use social_contracts::memory_test_helpers;
-    use social_contracts::profile::{Self, Profile, UsernameRegistry};
+    use social_contracts::profile::{Self, Profile, UsernameRegistry,
+        ProfileConfig};
     use social_contracts::ai_credit::{Self, AiCreditBalance, AiCreditConfig};
 
     const ADMIN: address = @0xAD;
@@ -42,11 +44,14 @@ module social_contracts::ai_credit_tests {
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(scenario);
+            let memory_config = test_scenario::take_shared<MemoryConfig>(scenario);
+            let profile_config = test_scenario::take_shared<ProfileConfig>(scenario);
             let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(scenario);
             let clock = test_scenario::take_shared<Clock>(scenario);
 
             profile::create_profile(
                 &mut registry,
+                &profile_config,
                 &mut memory_registry,
                 &mut ai_credit_config,
                 string::utf8(b"User One"),
@@ -58,6 +63,8 @@ module social_contracts::ai_credit_tests {
                 test_scenario::ctx(scenario),
             );
 
+            test_scenario::return_shared(profile_config);
+            test_scenario::return_shared(memory_config);
             test_scenario::return_shared(clock);
             test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(memory_registry);
@@ -98,11 +105,13 @@ module social_contracts::ai_credit_tests {
 
         test_scenario::next_tx(scenario, USER1);
         {
+            let memory_config = test_scenario::take_shared<MemoryConfig>(scenario);
             let mut org = memory_test_helpers::take_created_org(scenario);
             let mut memory_account = test_scenario::take_shared<MemoryAccount>(scenario);
             let clock = test_scenario::take_shared<Clock>(scenario);
 
             memory::register_sub_agent(
+                &memory_config,
                 &mut memory_account,
                 &mut org,
                 AGENT_PUBKEY,
@@ -124,6 +133,7 @@ module social_contracts::ai_credit_tests {
             test_scenario::return_shared(org);
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(clock);
+        test_scenario::return_shared(memory_config);
         };
 
         test_scenario::next_tx(scenario, USER1);

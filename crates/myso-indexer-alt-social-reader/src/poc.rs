@@ -203,9 +203,10 @@ pub(crate) async fn get_poc_configuration(
                dispute_second_round_fee_multiplier_bps,
                dispute_second_round_quorum_multiplier_bps,
                username_beneficiary_join_referral_bps,
-               updated_by, updated_at, transaction_id
+               max_disputes_per_post, min_vault_deposit_amount,
+               updated_by, updated_at, transaction_id, version, time
         FROM poc_configuration
-        ORDER BY updated_at DESC
+        ORDER BY time DESC
         LIMIT 1
     ";
 

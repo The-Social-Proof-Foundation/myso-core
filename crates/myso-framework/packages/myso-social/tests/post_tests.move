@@ -19,9 +19,11 @@ module social_contracts::post_tests {
     use myso::test_utils;
     
     use social_contracts::post::{Self, Post, Comment, PostConfig, PromotionData};
-    use social_contracts::profile::{Self, UsernameRegistry};
+    use social_contracts::profile::{Self, UsernameRegistry,
+        ProfileConfig};
     use social_contracts::ai_credit::AiCreditConfig;
-    use social_contracts::memory::{MemoryRegistry, MemoryAccount, SubAgent, Self as memory, AgenticOrganization};
+    use social_contracts::memory::{MemoryRegistry, MemoryAccount, SubAgent, Self as memory, AgenticOrganization,
+        MemoryConfig};
     use social_contracts::memory_test_helpers;
     
     const PLACEHOLDER_AGENT: address = @0xBEEF;
@@ -53,11 +55,14 @@ module social_contracts::post_tests {
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(scenario);
+            let memory_config = test_scenario::take_shared<MemoryConfig>(scenario);
+            let profile_config = test_scenario::take_shared<ProfileConfig>(scenario);
             let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(scenario);
             let clock = test_scenario::take_shared<Clock>(scenario);
 
             profile::create_profile(
                 &mut registry,
+                &profile_config,
                 &mut memory_registry,
                 &mut ai_credit_config,
                 string::utf8(b"User One"),
@@ -69,6 +74,8 @@ module social_contracts::post_tests {
                 test_scenario::ctx(scenario),
             );
 
+            test_scenario::return_shared(profile_config);
+            test_scenario::return_shared(memory_config);
             test_scenario::return_shared(clock);
             test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(memory_registry);
@@ -82,10 +89,12 @@ module social_contracts::post_tests {
 
         test_scenario::next_tx(scenario, USER1);
         {
+            let memory_config = test_scenario::take_shared<MemoryConfig>(scenario);
             let mut org = memory_test_helpers::take_created_org(scenario);
             let mut memory_account = test_scenario::take_shared<MemoryAccount>(scenario);
             let clock = test_scenario::take_shared<Clock>(scenario);
             memory::register_sub_agent(
+                &memory_config,
                 &mut memory_account,
                 &mut org,
                 PLACEHOLDER_PUBKEY,
@@ -106,6 +115,7 @@ module social_contracts::post_tests {
             test_scenario::return_shared(org);
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(clock);
+        test_scenario::return_shared(memory_config);
         };
     }
 
@@ -507,7 +517,7 @@ module social_contracts::post_tests {
             let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
             social_contracts::profile::test_init(&clock, test_scenario::ctx(&mut scenario));
 
-            social_contracts::platform::test_init(test_scenario::ctx(&mut scenario));
+            social_contracts::platform::test_init(&clock, test_scenario::ctx(&mut scenario));
             social_contracts::block_list::test_init(&clock, test_scenario::ctx(&mut scenario));
 
             social_contracts::mydata::test_init(&clock, test_scenario::ctx(&mut scenario));
@@ -606,7 +616,7 @@ module social_contracts::post_tests {
             let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
             social_contracts::profile::test_init(&clock, test_scenario::ctx(&mut scenario));
 
-            social_contracts::platform::test_init(test_scenario::ctx(&mut scenario));
+            social_contracts::platform::test_init(&clock, test_scenario::ctx(&mut scenario));
             social_contracts::block_list::test_init(&clock, test_scenario::ctx(&mut scenario));
 
             social_contracts::mydata::test_init(&clock, test_scenario::ctx(&mut scenario));
@@ -755,7 +765,7 @@ module social_contracts::post_tests {
             let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
             social_contracts::profile::test_init(&clock, test_scenario::ctx(&mut scenario));
 
-            social_contracts::platform::test_init(test_scenario::ctx(&mut scenario));
+            social_contracts::platform::test_init(&clock, test_scenario::ctx(&mut scenario));
             social_contracts::block_list::test_init(&clock, test_scenario::ctx(&mut scenario));
 
             social_contracts::mydata::test_init(&clock, test_scenario::ctx(&mut scenario));
@@ -846,7 +856,7 @@ module social_contracts::post_tests {
             let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
             social_contracts::profile::test_init(&clock, test_scenario::ctx(&mut scenario));
 
-            social_contracts::platform::test_init(test_scenario::ctx(&mut scenario));
+            social_contracts::platform::test_init(&clock, test_scenario::ctx(&mut scenario));
             social_contracts::block_list::test_init(&clock, test_scenario::ctx(&mut scenario));
 
             social_contracts::mydata::test_init(&clock, test_scenario::ctx(&mut scenario));
@@ -1002,7 +1012,7 @@ module social_contracts::post_tests {
             let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
             social_contracts::profile::test_init(&clock, test_scenario::ctx(&mut scenario));
 
-            social_contracts::platform::test_init(test_scenario::ctx(&mut scenario));
+            social_contracts::platform::test_init(&clock, test_scenario::ctx(&mut scenario));
             social_contracts::block_list::test_init(&clock, test_scenario::ctx(&mut scenario));
 
             social_contracts::mydata::test_init(&clock, test_scenario::ctx(&mut scenario));
@@ -1421,6 +1431,7 @@ module social_contracts::post_tests {
                 &mut wrong_vault,
                 &mut tip_coin,
                 100,
+                0,
                 &memory_account,
                 &clock,
                 test_scenario::ctx(&mut scenario)

@@ -140,6 +140,9 @@ pub enum PostRow {
         max_reaction_length: i64,
         commenter_tip_percentage: i64,
         repost_tip_percentage: i64,
+        min_promotion_amount: i64,
+        max_promotion_amount: i64,
+        min_view_duration_ms: i64,
         version: Option<i64>,
         updated_at: i64,
         transaction_id: String,
@@ -399,6 +402,9 @@ impl PostRow {
                 max_reaction_length,
                 commenter_tip_percentage,
                 repost_tip_percentage,
+                min_promotion_amount,
+                max_promotion_amount,
+                min_view_duration_ms,
                 version,
                 updated_at,
                 transaction_id,
@@ -412,6 +418,9 @@ impl PostRow {
                 max_reaction_length,
                 commenter_tip_percentage,
                 repost_tip_percentage,
+                min_promotion_amount,
+                max_promotion_amount,
+                min_view_duration_ms,
                 version,
                 updated_at,
                 transaction_id,
@@ -1356,6 +1365,9 @@ impl Handler for PostsHandler {
                     max_reaction_length,
                     commenter_tip_percentage,
                     repost_tip_percentage,
+                    min_promotion_amount,
+                    max_promotion_amount,
+                    min_view_duration_ms,
                     version,
                     updated_at,
                     transaction_id,
@@ -1373,6 +1385,9 @@ impl Handler for PostsHandler {
                                 post_config::max_reaction_length.eq(max_reaction_length),
                                 post_config::commenter_tip_percentage.eq(commenter_tip_percentage),
                                 post_config::repost_tip_percentage.eq(repost_tip_percentage),
+                                post_config::min_promotion_amount.eq(min_promotion_amount),
+                                post_config::max_promotion_amount.eq(max_promotion_amount),
+                                post_config::min_view_duration_ms.eq(min_view_duration_ms),
                                 post_config::version.eq(version_val),
                                 post_config::updated_at.eq(updated_at),
                                 post_config::transaction_id.eq(transaction_id),
@@ -1381,8 +1396,8 @@ impl Handler for PostsHandler {
                             .await;
                     } else {
                         let _ = sql_query(
-                            r#"INSERT INTO post_config (updated_by, max_content_length, max_media_urls, max_mentions, max_metadata_size, max_description_length, max_reaction_length, commenter_tip_percentage, repost_tip_percentage, version, updated_at, transaction_id)
-                               SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, COALESCE((SELECT MAX(version) FROM post_config), 0) + 1, $10, $11"#,
+                            r#"INSERT INTO post_config (updated_by, max_content_length, max_media_urls, max_mentions, max_metadata_size, max_description_length, max_reaction_length, commenter_tip_percentage, repost_tip_percentage, min_promotion_amount, max_promotion_amount, min_view_duration_ms, version, updated_at, transaction_id)
+                               SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, COALESCE((SELECT MAX(version) FROM post_config), 0) + 1, $13, $14"#,
                         )
                         .bind::<Text, _>(updated_by)
                         .bind::<BigInt, _>(max_content_length)
@@ -1393,6 +1408,9 @@ impl Handler for PostsHandler {
                         .bind::<BigInt, _>(max_reaction_length)
                         .bind::<BigInt, _>(commenter_tip_percentage)
                         .bind::<BigInt, _>(repost_tip_percentage)
+                        .bind::<BigInt, _>(min_promotion_amount)
+                        .bind::<BigInt, _>(max_promotion_amount)
+                        .bind::<BigInt, _>(min_view_duration_ms)
                         .bind::<BigInt, _>(updated_at)
                         .bind::<Text, _>(transaction_id)
                         .execute(conn)

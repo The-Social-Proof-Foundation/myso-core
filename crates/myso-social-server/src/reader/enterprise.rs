@@ -14,8 +14,8 @@ use myso_indexer_alt_social_schema::models::{
     APPROVAL_STATUS_REQUESTED,
 };
 use myso_indexer_alt_social_schema::schema::{
-    ai_credit_balances, ai_credit_spend_approvals, audit_log, memory_usage_stats,
-    org_invitations, org_memory_permissions, org_role_assignments, org_roles,
+    ai_credit_balances, ai_credit_spend_approvals, audit_log, memory_usage_stats, org_invitations,
+    org_memory_permissions, org_role_assignments, org_roles,
 };
 use myso_pg_db::Db;
 use serde::{Deserialize, Serialize};

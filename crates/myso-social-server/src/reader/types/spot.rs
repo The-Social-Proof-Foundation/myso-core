@@ -64,9 +64,19 @@ pub struct SpotConfigInfo {
     #[diesel(sql_type = BigInt)]
     pub payout_delay_ms: i64,
     #[diesel(sql_type = BigInt)]
-    pub fee_bps: i64,
+    pub platform_fee_bps: i64,
     #[diesel(sql_type = BigInt)]
-    pub fee_split_bps_platform: i64,
+    pub ecosystem_fee_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub min_betting_options: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_betting_options: i64,
+    #[diesel(sql_type = BigInt)]
+    pub min_reasoning_length: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_reasoning_length: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_evidence_urls: i64,
     #[diesel(sql_type = Text)]
     pub oracle_address: String,
     #[diesel(sql_type = BigInt)]
@@ -74,7 +84,7 @@ pub struct SpotConfigInfo {
     #[diesel(sql_type = BigInt)]
     pub version: i64,
     #[diesel(sql_type = BigInt)]
-    pub timestamp_ms: i64,
+    pub updated_at: i64,
     #[diesel(sql_type = Timestamptz)]
     pub time: chrono::DateTime<chrono::Utc>,
     #[diesel(sql_type = Text)]

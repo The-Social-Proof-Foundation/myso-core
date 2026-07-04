@@ -4,6 +4,7 @@ module messaging::paid_messaging_policy_tests;
 
 use messaging::group_manager::GroupManager;
 use messaging::message_log::MessageLog;
+use messaging::messaging_config::MessagingConfig;
 use messaging::messaging::{
     Self as msg,
     Messaging,
@@ -150,9 +151,11 @@ fun stranger_dm_below_min_fails() {
     let group_manager = ts::take_shared<GroupManager>(&mut scenario);
     let block_list = ts::take_shared<BlockListRegistry>(&mut scenario);
     let mut clock = clock::create_for_testing(ts::ctx(&mut scenario));
+    let config = ts::take_shared<MessagingConfig>(&mut scenario);
     let payment = coin::mint_for_testing<MYSO>(500, ts::ctx(&mut scenario));
     msg::send_paid_message_digest(
         &version,
+        &config,
         &group,
         &mut msg_log,
         &paid_registry,
@@ -197,9 +200,11 @@ fun stranger_dm_at_min_succeeds() {
     let group_manager = ts::take_shared<GroupManager>(&mut scenario);
     let block_list = ts::take_shared<BlockListRegistry>(&mut scenario);
     let mut clock = clock::create_for_testing(ts::ctx(&mut scenario));
+    let config = ts::take_shared<MessagingConfig>(&mut scenario);
     let payment = coin::mint_for_testing<MYSO>(1000, ts::ctx(&mut scenario));
     msg::send_paid_message_digest(
         &version,
+        &config,
         &group,
         &mut msg_log,
         &paid_registry,
@@ -221,6 +226,7 @@ fun stranger_dm_at_min_succeeds() {
     ts::return_shared(social_graph);
     ts::return_shared(group_manager);
     ts::return_shared(block_list);
+    ts::return_shared(config);
     destroy(clock);
     ts::end(scenario);
 }
@@ -257,9 +263,11 @@ fun follower_paid_open_on_new_dm_fails() {
     let group_manager = ts::take_shared<GroupManager>(&mut scenario);
     let block_list = ts::take_shared<BlockListRegistry>(&mut scenario);
     let mut clock = clock::create_for_testing(ts::ctx(&mut scenario));
+    let config = ts::take_shared<MessagingConfig>(&mut scenario);
     let payment = coin::mint_for_testing<MYSO>(1000, ts::ctx(&mut scenario));
     msg::send_paid_message_digest(
         &version,
+        &config,
         &group,
         &mut msg_log,
         &paid_registry,
@@ -328,9 +336,11 @@ fun group_chat_skips_paid_policy_gates() {
     let group_manager = ts::take_shared<GroupManager>(&mut scenario);
     let block_list = ts::take_shared<BlockListRegistry>(&mut scenario);
     let mut clock = clock::create_for_testing(ts::ctx(&mut scenario));
+    let config = ts::take_shared<MessagingConfig>(&mut scenario);
     let payment = coin::mint_for_testing<MYSO>(1, ts::ctx(&mut scenario));
     msg::send_paid_message_digest(
         &version,
+        &config,
         &group,
         &mut msg_log,
         &paid_registry,
@@ -352,6 +362,7 @@ fun group_chat_skips_paid_policy_gates() {
     ts::return_shared(social_graph);
     ts::return_shared(group_manager);
     ts::return_shared(block_list);
+    ts::return_shared(config);
     destroy(clock);
     ts::end(scenario);
 }
@@ -414,9 +425,11 @@ fun blocked_peer_cannot_send_paid_dm() {
     let group_manager = ts::take_shared<GroupManager>(&mut scenario);
     let block_list = ts::take_shared<BlockListRegistry>(&mut scenario);
     let mut clock = clock::create_for_testing(ts::ctx(&mut scenario));
+    let config = ts::take_shared<MessagingConfig>(&mut scenario);
     let payment = coin::mint_for_testing<MYSO>(1000, ts::ctx(&mut scenario));
     msg::send_paid_message_digest(
         &version,
+        &config,
         &group,
         &mut msg_log,
         &paid_registry,
@@ -458,9 +471,11 @@ fun blocker_cannot_send_paid_dm_to_blocked() {
     let group_manager = ts::take_shared<GroupManager>(&mut scenario);
     let block_list = ts::take_shared<BlockListRegistry>(&mut scenario);
     let mut clock = clock::create_for_testing(ts::ctx(&mut scenario));
+    let config = ts::take_shared<MessagingConfig>(&mut scenario);
     let payment = coin::mint_for_testing<MYSO>(1000, ts::ctx(&mut scenario));
     msg::send_paid_message_digest(
         &version,
+        &config,
         &group,
         &mut msg_log,
         &paid_registry,
@@ -503,9 +518,11 @@ fun paid_send_succeeds_after_unblock() {
     let group_manager = ts::take_shared<GroupManager>(&mut scenario);
     let block_list = ts::take_shared<BlockListRegistry>(&mut scenario);
     let mut clock = clock::create_for_testing(ts::ctx(&mut scenario));
+    let config = ts::take_shared<MessagingConfig>(&mut scenario);
     let payment = coin::mint_for_testing<MYSO>(1000, ts::ctx(&mut scenario));
     msg::send_paid_message_digest(
         &version,
+        &config,
         &group,
         &mut msg_log,
         &paid_registry,
@@ -527,6 +544,7 @@ fun paid_send_succeeds_after_unblock() {
     ts::return_shared(social_graph);
     ts::return_shared(group_manager);
     ts::return_shared(block_list);
+    ts::return_shared(config);
     destroy(clock);
     ts::end(scenario);
 }

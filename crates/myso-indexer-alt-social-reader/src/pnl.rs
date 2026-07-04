@@ -65,6 +65,8 @@ pub struct ProfilePnLWindowResult {
     pub mydata_myso: i64,
     /// Post monetization (`revenue_source = posts` and monetization types).
     pub posts_monetization_myso: i64,
+    /// Paid messaging inbound revenue (`revenue_source = messaging`).
+    pub messaging_myso: i64,
     /// Unified revenue rows to this recipient not covered by the explicit buckets above.
     pub other_inbound_myso: i64,
     /// Sum of inbound unified-revenue buckets (creator fees + tips + subscriptions + mydata + posts + other).
@@ -90,6 +92,8 @@ struct ProfilePnLRawRow {
     #[diesel(sql_type = BigInt)]
     posts_monetization_myso: i64,
     #[diesel(sql_type = BigInt)]
+    messaging_myso: i64,
+    #[diesel(sql_type = BigInt)]
     other_inbound_myso: i64,
 }
 
@@ -109,6 +113,7 @@ pub async fn get_profile_pnl_for_windows(
             .saturating_add(row.subscriptions_myso)
             .saturating_add(row.mydata_myso)
             .saturating_add(row.posts_monetization_myso)
+            .saturating_add(row.messaging_myso)
             .saturating_add(row.other_inbound_myso);
         let net_cash_flow_myso = row
             .swap_net_myso
@@ -123,6 +128,7 @@ pub async fn get_profile_pnl_for_windows(
             subscriptions_myso: row.subscriptions_myso,
             mydata_myso: row.mydata_myso,
             posts_monetization_myso: row.posts_monetization_myso,
+            messaging_myso: row.messaging_myso,
             other_inbound_myso: row.other_inbound_myso,
             gross_inbound_myso,
             net_cash_flow_myso,
@@ -168,11 +174,16 @@ async fn profile_pnl_one_window(
             (SELECT COALESCE(SUM(amount), 0)::bigint FROM unified_revenue
              WHERE recipient_address = $1
                AND ($2::bigint < 0 OR time >= (NOW() - ($2::bigint * INTERVAL '1 day')))
+               AND revenue_source = 'messaging') AS messaging_myso,
+            (SELECT COALESCE(SUM(amount), 0)::bigint FROM unified_revenue
+             WHERE recipient_address = $1
+               AND ($2::bigint < 0 OR time >= (NOW() - ($2::bigint * INTERVAL '1 day')))
                AND NOT (revenue_source = 'spt' AND revenue_type = 'creator_fee')
                AND NOT (revenue_source = 'tips')
                AND NOT (revenue_source = 'subscription')
                AND NOT (revenue_source IN ('my_ip', 'mydata'))
                AND NOT (revenue_source = 'posts' AND revenue_type IN ('post_monetization', 'premium_content'))
+               AND NOT (revenue_source = 'messaging')
             ) AS other_inbound_myso
     "#;
 

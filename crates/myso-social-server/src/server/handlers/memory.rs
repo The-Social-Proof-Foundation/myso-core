@@ -93,3 +93,14 @@ pub async fn list_sub_agent_children(
         .await?;
     Ok(Json(children))
 }
+
+pub async fn get_memory_config(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<crate::reader::MemoryConfigInfo>, SocialError> {
+    state
+        .reader
+        .get_memory_configuration()
+        .await?
+        .ok_or_else(|| SocialError::not_found("Memory configuration"))
+        .map(Json)
+}

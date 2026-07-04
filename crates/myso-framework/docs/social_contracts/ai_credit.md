@@ -33,6 +33,8 @@ Credits display: <code>credits = <a href="../social_contracts/ai_credit.md#socia
 -  [Struct `AiCreditBalanceReactivated`](#social_contracts_ai_credit_AiCreditBalanceReactivated)
 -  [Struct `AiCreditOraclePubkeyUpdated`](#social_contracts_ai_credit_AiCreditOraclePubkeyUpdated)
 -  [Struct `AiCreditSettlementLimitsUpdated`](#social_contracts_ai_credit_AiCreditSettlementLimitsUpdated)
+-  [Struct `AiCreditMarkupUpdated`](#social_contracts_ai_credit_AiCreditMarkupUpdated)
+-  [Struct `AiCreditMinDepositUpdated`](#social_contracts_ai_credit_AiCreditMinDepositUpdated)
 -  [Struct `AiCreditConfigInitialized`](#social_contracts_ai_credit_AiCreditConfigInitialized)
 -  [Constants](#@Constants_0)
 -  [Function `bootstrap_init`](#social_contracts_ai_credit_bootstrap_init)
@@ -61,12 +63,16 @@ Credits display: <code>credits = <a href="../social_contracts/ai_credit.md#socia
 -  [Function `settle_usage_with_signature`](#social_contracts_ai_credit_settle_usage_with_signature)
 -  [Function `execute_settlement`](#social_contracts_ai_credit_execute_settlement)
 -  [Function `update_oracle_pubkey`](#social_contracts_ai_credit_update_oracle_pubkey)
+-  [Function `update_oracle_markup`](#social_contracts_ai_credit_update_oracle_markup)
+-  [Function `update_min_deposit`](#social_contracts_ai_credit_update_min_deposit)
 -  [Function `update_settlement_limits`](#social_contracts_ai_credit_update_settlement_limits)
 -  [Function `update_treasury`](#social_contracts_ai_credit_update_treasury)
 -  [Function `balance_mist`](#social_contracts_ai_credit_balance_mist)
 -  [Function `available_mist`](#social_contracts_ai_credit_available_mist)
 -  [Function `credits_from_mist`](#social_contracts_ai_credit_credits_from_mist)
 -  [Function `mist_from_credits`](#social_contracts_ai_credit_mist_from_credits)
+-  [Function `oracle_markup_bps`](#social_contracts_ai_credit_oracle_markup_bps)
+-  [Function `min_deposit_mist`](#social_contracts_ai_credit_min_deposit_mist)
 -  [Function `spend_approval_for`](#social_contracts_ai_credit_spend_approval_for)
 -  [Function `approval_max_amount_mist`](#social_contracts_ai_credit_approval_max_amount_mist)
 -  [Function `approval_expires_at_ms`](#social_contracts_ai_credit_approval_expires_at_ms)
@@ -211,7 +217,7 @@ Credits display: <code>credits = <a href="../social_contracts/ai_credit.md#socia
 <dd>
 </dd>
 <dt>
-<code>min_deposit_mist: u64</code>
+<code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_min_deposit_mist">min_deposit_mist</a>: u64</code>
 </dt>
 <dd>
 </dd>
@@ -222,6 +228,11 @@ Credits display: <code>credits = <a href="../social_contracts/ai_credit.md#socia
 </dd>
 <dt>
 <code>receipt_ttl_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_oracle_markup_bps">oracle_markup_bps</a>: u64</code>
 </dt>
 <dd>
 </dd>
@@ -1278,6 +1289,11 @@ Emitted alongside the legacy <code><a href="../social_contracts/ai_credit.md#soc
 </dt>
 <dd>
 </dd>
+<dt>
+<code>new_pubkey: vector&lt;u8&gt;</code>
+</dt>
+<dd>
+</dd>
 </dl>
 
 
@@ -1314,6 +1330,68 @@ Emitted alongside the legacy <code><a href="../social_contracts/ai_credit.md#soc
 
 </details>
 
+<a name="social_contracts_ai_credit_AiCreditMarkupUpdated"></a>
+
+## Struct `AiCreditMarkupUpdated`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditMarkupUpdated">AiCreditMarkupUpdated</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>updated_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_oracle_markup_bps">oracle_markup_bps</a>: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_ai_credit_AiCreditMinDepositUpdated"></a>
+
+## Struct `AiCreditMinDepositUpdated`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditMinDepositUpdated">AiCreditMinDepositUpdated</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>updated_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_min_deposit_mist">min_deposit_mist</a>: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="social_contracts_ai_credit_AiCreditConfigInitialized"></a>
 
 ## Struct `AiCreditConfigInitialized`
@@ -1341,7 +1419,7 @@ Emitted alongside the legacy <code><a href="../social_contracts/ai_credit.md#soc
 <dd>
 </dd>
 <dt>
-<code>min_deposit_mist: u64</code>
+<code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_min_deposit_mist">min_deposit_mist</a>: u64</code>
 </dt>
 <dd>
 </dd>
@@ -1352,6 +1430,11 @@ Emitted alongside the legacy <code><a href="../social_contracts/ai_credit.md#soc
 </dd>
 <dt>
 <code>receipt_ttl_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_oracle_markup_bps">oracle_markup_bps</a>: u64</code>
 </dt>
 <dd>
 </dd>
@@ -1697,23 +1780,26 @@ Emitted alongside the legacy <code><a href="../social_contracts/ai_credit.md#soc
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_bootstrap_init">bootstrap_init</a>(treasury: <b>address</b>, oracle_pubkey: vector&lt;u8&gt;, ctx: &<b>mut</b> TxContext) {
     <b>assert</b>!(vector::length(&oracle_pubkey) == <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_ED25519_PK_LEN">ED25519_PK_LEN</a>, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EInvalidPubkey">EInvalidPubkey</a>);
-    <b>let</b> min_deposit_mist = <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_MIST_PER_MYSO">MIST_PER_MYSO</a>;
+    <b>let</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_min_deposit_mist">min_deposit_mist</a> = <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_MIST_PER_MYSO">MIST_PER_MYSO</a>;
     <b>let</b> max_single_settlement_mist = 1000 * <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_MIST_PER_MYSO">MIST_PER_MYSO</a>;
     <b>let</b> receipt_ttl_ms = 300_000;
+    <b>let</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_oracle_markup_bps">oracle_markup_bps</a> = 0;
     event::emit(<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfigInitialized">AiCreditConfigInitialized</a> {
         oracle_pubkey,
         treasury,
-        min_deposit_mist,
+        <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_min_deposit_mist">min_deposit_mist</a>,
         max_single_settlement_mist,
         receipt_ttl_ms,
+        <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_oracle_markup_bps">oracle_markup_bps</a>,
     });
     <b>let</b> config = <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">AiCreditConfig</a> {
         id: object::new(ctx),
         oracle_pubkey,
         treasury,
-        min_deposit_mist,
+        <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_min_deposit_mist">min_deposit_mist</a>,
         max_single_settlement_mist,
         receipt_ttl_ms,
+        <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_oracle_markup_bps">oracle_markup_bps</a>,
         balances_by_memory: table::new(ctx),
         version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     };
@@ -1892,7 +1978,7 @@ Called only from [<code><a href="../social_contracts/profile.md#social_contracts
     <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_owner">assert_owner</a>(balance, ctx);
     <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_active">assert_active</a>(balance);
     <b>let</b> amount = coin::value(&payment);
-    <b>assert</b>!(amount &gt;= config.min_deposit_mist, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EInvalidAmount">EInvalidAmount</a>);
+    <b>assert</b>!(amount &gt;= config.<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_min_deposit_mist">min_deposit_mist</a>, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EInvalidAmount">EInvalidAmount</a>);
     balance::join(&<b>mut</b> balance.balance, coin::into_balance(payment));
     <b>let</b> new_balance_mist = <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_balance_mist">balance_mist</a>(balance);
     event::emit(<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditDeposited">AiCreditDeposited</a> {
@@ -2282,7 +2368,7 @@ must be at least as strict as the parent's own envelope; the human owner remains
 unconstrained root.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_set_child_agent_budget">set_child_agent_budget</a>(config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">social_contracts::ai_credit::AiCreditConfig</a>, balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, parent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, child: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, budget_mist: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, daily_cap_mist: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, monthly_cap_mist: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, require_approval_above_mist: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_set_child_agent_budget">set_child_agent_budget</a>(config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">social_contracts::ai_credit::AiCreditConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, parent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, child: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, budget_mist: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, daily_cap_mist: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, monthly_cap_mist: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, require_approval_above_mist: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2293,6 +2379,7 @@ unconstrained root.
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_set_child_agent_budget">set_child_agent_budget</a>(
     config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">AiCreditConfig</a>,
+    memory_config: &MemoryConfig,
     balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>,
     account: &MemoryAccount,
     parent: &SubAgent,
@@ -2306,7 +2393,7 @@ unconstrained root.
 ) {
     <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_version">assert_version</a>(config, balance);
     <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_active">assert_active</a>(balance);
-    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_parent_manages_child">assert_parent_manages_child</a>(balance, account, parent, child, clock, ctx);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_parent_manages_child">assert_parent_manages_child</a>(memory_config, balance, account, parent, child, clock, ctx);
     <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_child_budget_within_parent_envelope">assert_child_budget_within_parent_envelope</a>(
         balance,
         <a href="../social_contracts/memory.md#social_contracts_memory_agent_object_id">memory::agent_object_id</a>(parent),
@@ -2342,7 +2429,7 @@ unconstrained root.
 Parent kill switch for a descendant's budget.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_disable_child_agent_budget">disable_child_agent_budget</a>(config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">social_contracts::ai_credit::AiCreditConfig</a>, balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, parent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, child: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_disable_child_agent_budget">disable_child_agent_budget</a>(config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">social_contracts::ai_credit::AiCreditConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, parent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, child: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2353,6 +2440,7 @@ Parent kill switch for a descendant's budget.
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_disable_child_agent_budget">disable_child_agent_budget</a>(
     config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">AiCreditConfig</a>,
+    memory_config: &MemoryConfig,
     balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>,
     account: &MemoryAccount,
     parent: &SubAgent,
@@ -2361,7 +2449,7 @@ Parent kill switch for a descendant's budget.
     ctx: &TxContext,
 ) {
     <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_version">assert_version</a>(config, balance);
-    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_parent_manages_child">assert_parent_manages_child</a>(balance, account, parent, child, clock, ctx);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_parent_manages_child">assert_parent_manages_child</a>(memory_config, balance, account, parent, child, clock, ctx);
     <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_disable_agent_budget_internal">disable_agent_budget_internal</a>(
         balance,
         <a href="../social_contracts/memory.md#social_contracts_memory_agent_object_id">memory::agent_object_id</a>(child),
@@ -2385,7 +2473,7 @@ envelope (its threshold and remaining caps). Beyond that, approval escalates up 
 tree — ultimately to the human owner via <code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_approve_agent_spend">approve_agent_spend</a></code>.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_approve_child_agent_spend">approve_child_agent_spend</a>(config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">social_contracts::ai_credit::AiCreditConfig</a>, balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, parent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, child: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, max_amount_mist: u64, expires_at_ms: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_approve_child_agent_spend">approve_child_agent_spend</a>(config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">social_contracts::ai_credit::AiCreditConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, parent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, child: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, max_amount_mist: u64, expires_at_ms: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2396,6 +2484,7 @@ tree — ultimately to the human owner via <code><a href="../social_contracts/ai
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_approve_child_agent_spend">approve_child_agent_spend</a>(
     config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">AiCreditConfig</a>,
+    memory_config: &MemoryConfig,
     balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>,
     account: &MemoryAccount,
     parent: &SubAgent,
@@ -2407,7 +2496,7 @@ tree — ultimately to the human owner via <code><a href="../social_contracts/ai
 ) {
     <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_version">assert_version</a>(config, balance);
     <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_active">assert_active</a>(balance);
-    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_parent_manages_child">assert_parent_manages_child</a>(balance, account, parent, child, clock, ctx);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_parent_manages_child">assert_parent_manages_child</a>(memory_config, balance, account, parent, child, clock, ctx);
     <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_within_parent_envelope">assert_within_parent_envelope</a>(
         balance,
         <a href="../social_contracts/memory.md#social_contracts_memory_agent_object_id">memory::agent_object_id</a>(parent),
@@ -2804,6 +2893,77 @@ not <code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_A
     config.oracle_pubkey = new_pk;
     event::emit(<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditOraclePubkeyUpdated">AiCreditOraclePubkeyUpdated</a> {
         updated_by: tx_context::sender(ctx),
+        new_pubkey: new_pk,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_update_oracle_markup"></a>
+
+## Function `update_oracle_markup`
+
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_update_oracle_markup">update_oracle_markup</a>(cap: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditOracleAdminCap">social_contracts::ai_credit::AiCreditOracleAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">social_contracts::ai_credit::AiCreditConfig</a>, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_oracle_markup_bps">oracle_markup_bps</a>: u64, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_update_oracle_markup">update_oracle_markup</a>(
+    cap: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditOracleAdminCap">AiCreditOracleAdminCap</a>,
+    config: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">AiCreditConfig</a>,
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_oracle_markup_bps">oracle_markup_bps</a>: u64,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_oracle_admin">assert_oracle_admin</a>(cap, ctx);
+    <b>assert</b>!(<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_oracle_markup_bps">oracle_markup_bps</a> &lt;= 10000, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EInvalidAmount">EInvalidAmount</a>);
+    config.<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_oracle_markup_bps">oracle_markup_bps</a> = <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_oracle_markup_bps">oracle_markup_bps</a>;
+    event::emit(<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditMarkupUpdated">AiCreditMarkupUpdated</a> {
+        updated_by: tx_context::sender(ctx),
+        <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_oracle_markup_bps">oracle_markup_bps</a>,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_update_min_deposit"></a>
+
+## Function `update_min_deposit`
+
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_update_min_deposit">update_min_deposit</a>(cap: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditOracleAdminCap">social_contracts::ai_credit::AiCreditOracleAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">social_contracts::ai_credit::AiCreditConfig</a>, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_min_deposit_mist">min_deposit_mist</a>: u64, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_update_min_deposit">update_min_deposit</a>(
+    cap: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditOracleAdminCap">AiCreditOracleAdminCap</a>,
+    config: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">AiCreditConfig</a>,
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_min_deposit_mist">min_deposit_mist</a>: u64,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_oracle_admin">assert_oracle_admin</a>(cap, ctx);
+    <b>assert</b>!(<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_min_deposit_mist">min_deposit_mist</a> &gt; 0, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EInvalidAmount">EInvalidAmount</a>);
+    config.<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_min_deposit_mist">min_deposit_mist</a> = <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_min_deposit_mist">min_deposit_mist</a>;
+    event::emit(<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditMinDepositUpdated">AiCreditMinDepositUpdated</a> {
+        updated_by: tx_context::sender(ctx),
+        <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_min_deposit_mist">min_deposit_mist</a>,
     });
 }
 </code></pre>
@@ -2969,6 +3129,54 @@ not <code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_A
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_mist_from_credits">mist_from_credits</a>(credits: u64): u64 {
     credits * <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_MIST_PER_MYSO">MIST_PER_MYSO</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_oracle_markup_bps"></a>
+
+## Function `oracle_markup_bps`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_oracle_markup_bps">oracle_markup_bps</a>(config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">social_contracts::ai_credit::AiCreditConfig</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_oracle_markup_bps">oracle_markup_bps</a>(config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">AiCreditConfig</a>): u64 {
+    config.<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_oracle_markup_bps">oracle_markup_bps</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_min_deposit_mist"></a>
+
+## Function `min_deposit_mist`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_min_deposit_mist">min_deposit_mist</a>(config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">social_contracts::ai_credit::AiCreditConfig</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_min_deposit_mist">min_deposit_mist</a>(config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">AiCreditConfig</a>): u64 {
+    config.<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_min_deposit_mist">min_deposit_mist</a>
 }
 </code></pre>
 
@@ -3500,7 +3708,7 @@ derived address, parent is active with <code>CAP_BUDGET_MANAGE</code>, both agen
 this balance, and the child sits strictly below the parent in the agent tree.
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_parent_manages_child">assert_parent_manages_child</a>(balance: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, parent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, child: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_parent_manages_child">assert_parent_manages_child</a>(memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, balance: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, parent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, child: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3510,6 +3718,7 @@ this balance, and the child sits strictly below the parent in the agent tree.
 
 
 <pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_parent_manages_child">assert_parent_manages_child</a>(
+    memory_config: &MemoryConfig,
     balance: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>,
     account: &MemoryAccount,
     parent: &SubAgent,
@@ -3532,7 +3741,7 @@ this balance, and the child sits strictly below the parent in the agent tree.
     <b>let</b> parent_id = <a href="../social_contracts/memory.md#social_contracts_memory_agent_object_id">memory::agent_object_id</a>(parent);
     <b>let</b> child_id = <a href="../social_contracts/memory.md#social_contracts_memory_agent_object_id">memory::agent_object_id</a>(child);
     <b>assert</b>!(parent_id != child_id, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_ECannotManageSelf">ECannotManageSelf</a>);
-    <b>assert</b>!(<a href="../social_contracts/memory.md#social_contracts_memory_is_descendant_agent">memory::is_descendant_agent</a>(account, parent_id, child_id), <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_ENotDescendant">ENotDescendant</a>);
+    <b>assert</b>!(<a href="../social_contracts/memory.md#social_contracts_memory_is_descendant_agent">memory::is_descendant_agent</a>(memory_config, account, parent_id, child_id), <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_ENotDescendant">ENotDescendant</a>);
 }
 </code></pre>
 

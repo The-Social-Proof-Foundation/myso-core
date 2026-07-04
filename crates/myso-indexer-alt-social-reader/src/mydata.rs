@@ -29,7 +29,15 @@ pub struct MyDataConfigRow {
     #[diesel(sql_type = BigInt)]
     pub max_free_access_grants: i64,
     #[diesel(sql_type = BigInt)]
-    pub timestamp_ms: i64,
+    pub max_encryption_id_bytes: i64,
+    #[diesel(sql_type = BigInt)]
+    pub version: i64,
+    #[diesel(sql_type = BigInt)]
+    pub updated_at: i64,
+    #[diesel(sql_type = diesel::sql_types::Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
 }
 
 pub(crate) async fn get_mydata_record(
@@ -128,7 +136,7 @@ pub(crate) async fn get_mydata_config(
 
     let query = "
         SELECT updated_by, enable_flag, max_tags, max_subscription_days, max_free_access_grants,
-               timestamp_ms
+               max_encryption_id_bytes, version, updated_at, time, transaction_id
         FROM mydata_config
         ORDER BY time DESC
         LIMIT 1

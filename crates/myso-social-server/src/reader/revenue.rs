@@ -524,8 +524,8 @@ pub(crate) async fn get_platform_revenue_stats(
     let mut conn = db.connect().await?;
     let query = "
         SELECT platform_address, total_revenue, total_subscription_revenue, total_mydata_revenue,
-               total_spt_revenue, total_transactions, total_creators, total_payers,
-               avg_transaction_amount, active_months, last_active_month
+               total_spt_revenue, total_messaging_revenue, total_transactions, total_creators,
+               total_payers, avg_transaction_amount, active_months, last_active_month
         FROM platform_revenue_summary WHERE platform_address = $1
     ";
     #[derive(QueryableByName)]
@@ -540,6 +540,8 @@ pub(crate) async fn get_platform_revenue_stats(
         total_mydata_revenue: i64,
         #[diesel(sql_type = BigInt)]
         total_spt_revenue: i64,
+        #[diesel(sql_type = BigInt)]
+        total_messaging_revenue: i64,
         #[diesel(sql_type = BigInt)]
         total_transactions: i64,
         #[diesel(sql_type = BigInt)]
@@ -566,6 +568,7 @@ pub(crate) async fn get_platform_revenue_stats(
                 "subscription_revenue": 0,
                 "mydata_revenue": 0,
                 "spt_revenue": 0,
+                "messaging_revenue": 0,
                 "total_transactions": 0,
                 "unique_creators": 0,
                 "unique_payers": 0,
@@ -581,6 +584,7 @@ pub(crate) async fn get_platform_revenue_stats(
                 "subscription_revenue": r.total_subscription_revenue,
                 "mydata_revenue": r.total_mydata_revenue,
                 "spt_revenue": r.total_spt_revenue,
+                "messaging_revenue": r.total_messaging_revenue,
                 "total_transactions": r.total_transactions,
                 "unique_creators": r.total_creators,
                 "unique_payers": r.total_payers,
@@ -604,17 +608,19 @@ pub(crate) async fn get_current_treasury(
         #[diesel(sql_type = Text)]
         updated_by: String,
         #[diesel(sql_type = BigInt)]
-        timestamp_ms: i64,
+        updated_at: i64,
         #[diesel(sql_type = Timestamptz)]
         time: chrono::DateTime<chrono::Utc>,
         #[diesel(sql_type = Text)]
         transaction_id: String,
+        #[diesel(sql_type = BigInt)]
+        profile_sale_fee_bps: i64,
     }
 
     let mut conn = db.connect().await?;
     let row = diesel::sql_query(
-        "SELECT treasury_address, updated_by, timestamp_ms, time, transaction_id \
-         FROM ecosystem_treasury ORDER BY time DESC LIMIT 1",
+        "SELECT treasury_address, updated_by, updated_at, time, transaction_id, \
+         profile_sale_fee_bps FROM ecosystem_treasury ORDER BY time DESC LIMIT 1",
     )
     .get_result::<TreasuryRow>(&mut conn)
     .await
@@ -624,9 +630,10 @@ pub(crate) async fn get_current_treasury(
         serde_json::json!({
             "treasury_address": r.treasury_address,
             "updated_by": r.updated_by,
-            "timestamp_ms": r.timestamp_ms,
+            "updated_at": r.updated_at,
             "time": r.time.timestamp(),
-            "transaction_id": r.transaction_id
+            "transaction_id": r.transaction_id,
+            "profile_sale_fee_bps": r.profile_sale_fee_bps
         })
     }))
 }
@@ -643,7 +650,7 @@ pub(crate) async fn get_treasury_history(
             .select((
                 ecosystem_treasury::treasury_address,
                 ecosystem_treasury::updated_by,
-                ecosystem_treasury::timestamp_ms,
+                ecosystem_treasury::updated_at,
                 ecosystem_treasury::time,
                 ecosystem_treasury::transaction_id,
             ))
@@ -652,11 +659,11 @@ pub(crate) async fn get_treasury_history(
     Ok(rows
         .into_iter()
         .map(
-            |(treasury_address, updated_by, timestamp_ms, time, transaction_id)| {
+            |(treasury_address, updated_by, updated_at, time, transaction_id)| {
                 serde_json::json!({
                     "treasury_address": treasury_address,
                     "updated_by": updated_by,
-                    "timestamp_ms": timestamp_ms,
+                    "updated_at": updated_at,
                     "time": time.timestamp(),
                     "transaction_id": transaction_id
                 })

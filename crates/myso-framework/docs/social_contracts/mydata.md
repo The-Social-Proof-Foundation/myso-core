@@ -394,6 +394,11 @@ Global configuration for MyData system
 <dd>
 </dd>
 <dt>
+<code>max_encryption_id_bytes: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
 <code><a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a>: u64</code>
 </dt>
 <dd>
@@ -1479,6 +1484,11 @@ Registry for tracking MyData ownership
 <dd>
 </dd>
 <dt>
+<code>max_encryption_id_bytes: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
 <code>timestamp: u64</code>
 </dt>
 <dd>
@@ -1673,11 +1683,11 @@ Registry for tracking MyData ownership
 
 
 
-<a name="social_contracts_mydata_MAX_ENCRYPTION_ID_BYTES"></a>
+<a name="social_contracts_mydata_DEFAULT_MAX_ENCRYPTION_ID_BYTES"></a>
 
 
 
-<pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_ENCRYPTION_ID_BYTES">MAX_ENCRYPTION_ID_BYTES</a>: u64 = 1024;
+<pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MAX_ENCRYPTION_ID_BYTES">DEFAULT_MAX_ENCRYPTION_ID_BYTES</a>: u64 = 1024;
 </code></pre>
 
 
@@ -1806,7 +1816,7 @@ Create a MyDataAdminCap for bootstrap (package visibility only)
 Update MyData configuration (admin only)
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_update_mydata_config">update_mydata_config</a>(_: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataAdminCap">social_contracts::mydata::MyDataAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, enable_flag: bool, max_tags: u64, max_subscription_days: u64, max_free_access_grants: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_update_mydata_config">update_mydata_config</a>(_: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataAdminCap">social_contracts::mydata::MyDataAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, enable_flag: bool, max_tags: u64, max_subscription_days: u64, max_free_access_grants: u64, max_encryption_id_bytes: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1822,6 +1832,7 @@ Update MyData configuration (admin only)
     max_tags: u64,
     max_subscription_days: u64,
     max_free_access_grants: u64,
+    max_encryption_id_bytes: u64,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
@@ -1829,10 +1840,12 @@ Update MyData configuration (admin only)
     <b>assert</b>!(max_subscription_days &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>assert</b>!(max_tags &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>assert</b>!(max_free_access_grants &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <b>assert</b>!(max_encryption_id_bytes &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     config.enable_flag = enable_flag;
     config.max_tags = max_tags;
     config.max_subscription_days = max_subscription_days;
     config.max_free_access_grants = max_free_access_grants;
+    config.max_encryption_id_bytes = max_encryption_id_bytes;
     // Emit config updated event
     event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfigUpdatedEvent">MyDataConfigUpdatedEvent</a> {
         updated_by: tx_context::sender(ctx),
@@ -1840,6 +1853,7 @@ Update MyData configuration (admin only)
         max_tags,
         max_subscription_days,
         max_free_access_grants,
+        max_encryption_id_bytes,
         timestamp: clock::timestamp_ms(clock),
     });
 }
@@ -1873,6 +1887,7 @@ Update MyData configuration (admin only)
         max_tags: <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_TAGS">MAX_TAGS</a>,
         max_subscription_days: <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_SUBSCRIPTION_DAYS">MAX_SUBSCRIPTION_DAYS</a>,
         max_free_access_grants: <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_FREE_ACCESS_GRANTS">MAX_FREE_ACCESS_GRANTS</a>,
+        max_encryption_id_bytes: <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MAX_ENCRYPTION_ID_BYTES">DEFAULT_MAX_ENCRYPTION_ID_BYTES</a>,
         <a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a>: ver,
     };
     event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfigUpdatedEvent">MyDataConfigUpdatedEvent</a> {
@@ -1881,6 +1896,7 @@ Update MyData configuration (admin only)
         max_tags: <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_TAGS">MAX_TAGS</a>,
         max_subscription_days: <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_SUBSCRIPTION_DAYS">MAX_SUBSCRIPTION_DAYS</a>,
         max_free_access_grants: <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_FREE_ACCESS_GRANTS">MAX_FREE_ACCESS_GRANTS</a>,
+        max_encryption_id_bytes: <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MAX_ENCRYPTION_ID_BYTES">DEFAULT_MAX_ENCRYPTION_ID_BYTES</a>,
         timestamp: clock::timestamp_ms(clock),
     });
     transfer::share_object(config);
@@ -2684,7 +2700,7 @@ Create new MyData data with proper MyData encryption
     // Input validation
     <b>assert</b>!(vector::length(&<a href="../social_contracts/mydata.md#social_contracts_mydata_tags">tags</a>) &lt;= config.max_tags, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>assert</b>!(!vector::is_empty(&encryption_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
-    <b>assert</b>!(vector::length(&encryption_id) &lt;= <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_ENCRYPTION_ID_BYTES">MAX_ENCRYPTION_ID_BYTES</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <b>assert</b>!(vector::length(&encryption_id) &lt;= config.max_encryption_id_bytes, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     // Validate prices with overflow protection
     <b>if</b> (option::is_some(&<a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a>)) {
         <b>let</b> price_val = *option::borrow(&<a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a>);
@@ -2828,7 +2844,7 @@ Purchase one-time access to MyData data.
 Sub-agent buyers must satisfy <code>max_action_spend</code> for <code>price</code> on <code>account</code>.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time">purchase_one_time</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time">purchase_one_time</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2839,6 +2855,7 @@ Sub-agent buyers must satisfy <code>max_action_spend</code> for <code>price</cod
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time">purchase_one_time</a>(
     config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>,
     <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
     payment: Coin&lt;MYSO&gt;,
     account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>,
@@ -2856,6 +2873,7 @@ Sub-agent buyers must satisfy <code>max_action_spend</code> for <code>price</cod
     <b>let</b> <b>mut</b> organization_id = option::none();
     <b>if</b> (<a href="../social_contracts/memory.md#social_contracts_memory_is_registered_agent">social_contracts::memory::is_registered_agent</a>(account, buyer)) {
         <b>let</b> acting = <a href="../social_contracts/memory.md#social_contracts_memory_resolve_actor_with_cap">social_contracts::memory::resolve_actor_with_cap</a>(
+            memory_config,
             account,
             0,
             <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>,
@@ -2906,7 +2924,7 @@ Purchase subscription access to MyData data.
 Sub-agent buyers must satisfy <code>max_action_spend</code> for <code>price</code> on <code>account</code>.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription">purchase_subscription</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription">purchase_subscription</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2917,6 +2935,7 @@ Sub-agent buyers must satisfy <code>max_action_spend</code> for <code>price</cod
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription">purchase_subscription</a>(
     config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>,
     <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
     payment: Coin&lt;MYSO&gt;,
     account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>,
@@ -2934,6 +2953,7 @@ Sub-agent buyers must satisfy <code>max_action_spend</code> for <code>price</cod
     <b>let</b> <b>mut</b> organization_id = option::none();
     <b>if</b> (<a href="../social_contracts/memory.md#social_contracts_memory_is_registered_agent">social_contracts::memory::is_registered_agent</a>(account, buyer)) {
         <b>let</b> acting = <a href="../social_contracts/memory.md#social_contracts_memory_resolve_actor_with_cap">social_contracts::memory::resolve_actor_with_cap</a>(
+            memory_config,
             account,
             0,
             <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>,
@@ -3239,7 +3259,7 @@ owner with <code>CAP_MYDATA_READ</code>. Register this package on the key server
 mode; <code>EncryptedObject.package_id</code> at encrypt time must match this package.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_mydata_approve">mydata_approve</a>(id: vector&lt;u8&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_mydata_approve">mydata_approve</a>(memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, id: vector&lt;u8&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3249,6 +3269,7 @@ mode; <code>EncryptedObject.package_id</code> at encrypt time must match this pa
 
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_mydata_approve">mydata_approve</a>(
+    memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>,
     id: vector&lt;u8&gt;,
     <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
     account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>,
@@ -3268,6 +3289,7 @@ mode; <code>EncryptedObject.package_id</code> at encrypt time must match this pa
         <b>abort</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_EPolicyNotEntitled">EPolicyNotEntitled</a>
     };
     <b>let</b> acting = <a href="../social_contracts/memory.md#social_contracts_memory_resolve_actor_with_cap">social_contracts::memory::resolve_actor_with_cap</a>(
+        memory_config,
         account,
         <a href="../social_contracts/memory.md#social_contracts_memory_cap_mydata_read">social_contracts::memory::cap_mydata_read</a>(),
         <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>,

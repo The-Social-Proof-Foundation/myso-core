@@ -7285,6 +7285,15 @@ emit_migration_event
 create_upgrade_admin_cap
 	public(package) fun
 	0x50c1::upgrade
+MemoryAdminCap
+	public struct
+	0x50c1::memory
+MemoryConfig
+	public struct
+	0x50c1::memory
+MemoryConfigUpdatedEvent
+	public struct
+	0x50c1::memory
 MemoryRegistry
 	public struct
 	0x50c1::memory
@@ -7626,6 +7635,12 @@ organization_description
 	0x50c1::memory
 bootstrap_init
 	public(package) fun
+	0x50c1::memory
+create_memory_admin_cap
+	public(package) fun
+	0x50c1::memory
+update_memory_config
+	public entry fun
 	0x50c1::memory
 create_account_for_profile
 	public(package) fun
@@ -8083,6 +8098,12 @@ AiCreditOraclePubkeyUpdated
 AiCreditSettlementLimitsUpdated
 	public struct
 	0x50c1::ai_credit
+AiCreditMarkupUpdated
+	public struct
+	0x50c1::ai_credit
+AiCreditMinDepositUpdated
+	public struct
+	0x50c1::ai_credit
 AiCreditConfigInitialized
 	public struct
 	0x50c1::ai_credit
@@ -8164,6 +8185,12 @@ execute_settlement
 update_oracle_pubkey
 	public entry fun
 	0x50c1::ai_credit
+update_oracle_markup
+	public entry fun
+	0x50c1::ai_credit
+update_min_deposit
+	public entry fun
+	0x50c1::ai_credit
 update_settlement_limits
 	public entry fun
 	0x50c1::ai_credit
@@ -8180,6 +8207,12 @@ credits_from_mist
 	public fun
 	0x50c1::ai_credit
 mist_from_credits
+	public fun
+	0x50c1::ai_credit
+oracle_markup_bps
+	public fun
+	0x50c1::ai_credit
+min_deposit_mist
 	public fun
 	0x50c1::ai_credit
 spend_approval_for
@@ -8380,6 +8413,15 @@ borrow_registry_version_mut
 migrate_block_list_registry
 	public entry fun
 	0x50c1::block_list
+SubscriptionAdminCap
+	public struct
+	0x50c1::subscription
+SubscriptionConfig
+	public struct
+	0x50c1::subscription
+SubscriptionConfigUpdatedEvent
+	public struct
+	0x50c1::subscription
 ProfileSubscriptionService
 	public struct
 	0x50c1::subscription
@@ -8455,9 +8497,27 @@ subscription_auto_renew
 subscription_renewal_balance
 	public fun
 	0x50c1::subscription
+bootstrap_init
+	public(package) fun
+	0x50c1::subscription
+create_subscription_admin_cap
+	public(package) fun
+	0x50c1::subscription
+update_subscription_config
+	public entry fun
+	0x50c1::subscription
 migrate_service
 	public entry fun
 	0x50c1::subscription
+ProfileAdminCap
+	public struct
+	0x50c1::profile
+ProfileConfig
+	public struct
+	0x50c1::profile
+ProfileConfigUpdatedEvent
+	public struct
+	0x50c1::profile
 EcosystemTreasuryAdminCap
 	public struct
 	0x50c1::profile
@@ -8689,10 +8749,22 @@ get_treasury_address
 update_treasury_address
 	public entry fun
 	0x50c1::profile
+update_ecosystem_treasury_config
+	public entry fun
+	0x50c1::profile
+profile_sale_fee_bps
+	public fun
+	0x50c1::profile
 treasury_version
 	public fun
 	0x50c1::profile
 migrate_ecosystem_treasury
+	public entry fun
+	0x50c1::profile
+create_profile_admin_cap
+	public(package) fun
+	0x50c1::profile
+update_profile_config
 	public entry fun
 	0x50c1::profile
 create_ecosystem_treasury_admin_cap
@@ -9256,6 +9328,12 @@ create_spot_governance_registry
 create_governance_admin_cap
 	public(package) fun
 	0x50c1::governance
+PlatformConfig
+	public struct
+	0x50c1::platform
+PlatformConfigUpdatedEvent
+	public struct
+	0x50c1::platform
 PlatformStatus
 	public struct
 	0x50c1::platform
@@ -9543,6 +9621,9 @@ add_moderator_register
 	0x50c1::platform
 remove_moderator_unregister
 	public(package) fun
+	0x50c1::platform
+update_platform_config
+	public entry fun
 	0x50c1::platform
 create_platform_admin_cap
 	public(package) fun
@@ -10924,6 +11005,12 @@ bootstrap_init
 update_poc_config
 	public entry fun
 	0x50c1::proof_of_creativity
+max_disputes_per_post
+	public(package) fun
+	0x50c1::proof_of_creativity
+min_vault_deposit_amount
+	public(package) fun
+	0x50c1::proof_of_creativity
 create_username_beneficiary
 	public entry fun
 	0x50c1::proof_of_creativity
@@ -11090,6 +11177,9 @@ CoverageClaimedEvent
 	public struct
 	0x50c1::insurance
 ConfigUpdatedEvent
+	public struct
+	0x50c1::insurance
+RouterLimitsUpdatedEvent
 	public struct
 	0x50c1::insurance
 PolicyExpiredEvent
@@ -11263,6 +11353,12 @@ migrate_config
 migrate_vault
 	public entry fun
 	0x50c1::insurance
+MessagingAdminCap
+	public struct
+	0x50c1::bootstrap
+create_messaging_admin_cap
+	public(package) fun
+	0x50c1::bootstrap
 claim_all_admin_capabilities
 	public entry fun
 	0x50c1::bootstrap
@@ -11500,6 +11596,36 @@ borrow_metadata
 borrow_metadata_mut
 	public(package) fun
 	0xe110::group_manager
+MessagingConfig
+	public struct
+	0xe110::messaging_config
+MessagingConfigUpdatedEvent
+	public struct
+	0xe110::messaging_config
+share_initial
+	public(package) fun
+	0xe110::messaging_config
+update_messaging_config
+	public fun
+	0xe110::messaging_config
+paid_msg_platform_fee_bps
+	public fun
+	0xe110::messaging_config
+paid_msg_treasury_fee_bps
+	public fun
+	0xe110::messaging_config
+payment_expiration_ms
+	public fun
+	0xe110::messaging_config
+min_reply_chars
+	public fun
+	0xe110::messaging_config
+max_dedupe_key_bytes
+	public fun
+	0xe110::messaging_config
+new_defaults
+	fun
+	0xe110::messaging_config
 EscrowFeeTotals
 	public struct
 	0xe110::paid_escrow_settlement

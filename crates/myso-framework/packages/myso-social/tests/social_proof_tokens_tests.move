@@ -4,6 +4,8 @@
 #[test_only]
 #[allow(unused_function, unused_assignment, unused_let_mut, unused_variable, unused_use, duplicate_alias, unused_const)]
 module social_contracts::token_exchange_tests {
+    use social_contracts::memory::MemoryConfig;
+
     use std::vector;
     use std::string;
     use std::option::{Self, Option};
@@ -26,12 +28,15 @@ module social_contracts::token_exchange_tests {
         TokenPool,
         ReservationPoolObject,
     };
-    use social_contracts::profile::{Self, Profile, UsernameRegistry, EcosystemTreasury};
+    use social_contracts::profile::{Self, Profile, UsernameRegistry, EcosystemTreasury,
+        ProfileConfig};
     use social_contracts::ai_credit::AiCreditConfig;
     use social_contracts::memory::MemoryRegistry;
-    use social_contracts::post::{Self, Post};
+    use social_contracts::post::{Self, Post,
+        PostConfig};
     use social_contracts::block_list::{Self, BlockListRegistry};
-    use social_contracts::platform::{Self, Platform, PlatformRegistry};
+    use social_contracts::platform::{Self, Platform, PlatformRegistry,
+        PlatformConfig};
     use social_contracts::poc_vault::{Self as poc_vault, PoCBeneficiaryVault};
     
     // Test addresses
@@ -125,6 +130,8 @@ module social_contracts::token_exchange_tests {
                 20000_000_000, // profile_threshold (20000 MYSO) 
                 2000, // max_individual_stake_bps (20%)
                 1000,
+                5000, // non_platform_platform_to_creator_bps
+                5000, // non_platform_platform_to_treasury_bps
                 &clock,
                 test_scenario::ctx(&mut scenario)
             );
@@ -168,6 +175,8 @@ module social_contracts::token_exchange_tests {
                 20000_000_000,
                 50_000, // 500% of threshold per reserver
                 80_000,
+                5000, // non_platform_platform_to_creator_bps
+                5000, // non_platform_platform_to_treasury_bps
                 &clock,
                 test_scenario::ctx(&mut scenario)
             );
@@ -189,12 +198,14 @@ module social_contracts::token_exchange_tests {
         let profile_id = {
             test_scenario::next_tx(&mut scenario, CREATOR);
             {
+                let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
                 let mut username_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
                 let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
             let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
                 let clock = test_scenario::take_shared<Clock>(&scenario);
                 profile::create_profile(
                     &mut username_registry,
+                    &profile_config,
                     &mut memory_registry,
                     &mut ai_credit_config,
                     string::utf8(b"Creator Threshold"),
@@ -209,6 +220,7 @@ module social_contracts::token_exchange_tests {
                 test_scenario::return_shared(memory_registry);
                 test_scenario::return_shared(clock);
                 test_scenario::return_shared(username_registry);
+            test_scenario::return_shared(profile_config);
             };
 
             test_scenario::next_tx(&mut scenario, CREATOR);
@@ -292,6 +304,8 @@ module social_contracts::token_exchange_tests {
                 1000_000_000, // profile_threshold lowered for existing pool check
                 2000, // max_individual_stake_bps
                 1000,
+                5000, // non_platform_platform_to_creator_bps
+                5000, // non_platform_platform_to_treasury_bps
                 &clock,
                 test_scenario::ctx(&mut scenario)
             );
@@ -353,6 +367,8 @@ module social_contracts::token_exchange_tests {
                 LAUNCH_THRESHOLD_MIST,
                 10000,
                 1000,
+                5000, // non_platform_platform_to_creator_bps
+                5000, // non_platform_platform_to_treasury_bps
                 &clock,
                 test_scenario::ctx(&mut scenario)
             );
@@ -365,11 +381,13 @@ module social_contracts::token_exchange_tests {
         test_scenario::next_tx(&mut scenario, CREATOR);
         let profile_id = {
             let mut username_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
             let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             profile::create_profile(
                 &mut username_registry,
+                &profile_config,
                 &mut memory_registry,
                 &mut ai_credit_config,
                 string::utf8(b"Launch Supply Profile"),
@@ -386,6 +404,7 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(clock);
             test_scenario::return_shared(username_registry);
+            test_scenario::return_shared(profile_config);
             pid
         };
 
@@ -545,6 +564,8 @@ module social_contracts::token_exchange_tests {
                 LAUNCH_THRESHOLD_MIST,
                 10000,
                 1000,
+                5000, // non_platform_platform_to_creator_bps
+                5000, // non_platform_platform_to_treasury_bps
                 &clock,
                 test_scenario::ctx(&mut scenario)
             );
@@ -557,11 +578,13 @@ module social_contracts::token_exchange_tests {
         let profile_id = {
             test_scenario::next_tx(&mut scenario, CREATOR);
             let mut username_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
             let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             profile::create_profile(
                 &mut username_registry,
+                &profile_config,
                 &mut memory_registry,
                 &mut ai_credit_config,
                 string::utf8(b"Launch Supply Post Owner"),
@@ -578,6 +601,7 @@ module social_contracts::token_exchange_tests {
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(clock);
             test_scenario::return_shared(username_registry);
+            test_scenario::return_shared(profile_config);
             pid
         };
 
@@ -650,6 +674,7 @@ CREATOR,
             social_proof_tokens::reserve_towards_post(
                 &mut registry,
                 &config,
+                1,
                 &mut reservation_pool_object,
                 &treasury,
                 &post_obj,
@@ -686,6 +711,7 @@ CREATOR,
             social_proof_tokens::reserve_towards_post(
                 &mut registry,
                 &config,
+                1,
                 &mut reservation_pool_object,
                 &treasury,
                 &post_obj,
@@ -778,25 +804,21 @@ CREATOR,
         // Initialize platform module
         test_scenario::next_tx(&mut scenario, ADMIN);
         {
-            // Initialize platform module
-            platform::test_init(test_scenario::ctx(&mut scenario));
-        };
-        
-        // Create and share a test clock (required by create_platform)
-        test_scenario::next_tx(&mut scenario, ADMIN);
-        {
-            let c = clock::create_for_testing(test_scenario::ctx(&mut scenario));
-            clock::share_for_testing(c);
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            platform::test_init(&clock, test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
         };
         
         // Create a platform for testing
         test_scenario::next_tx(&mut scenario, ADMIN);
         {
+            let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
             let mut registry = test_scenario::take_shared<platform::PlatformRegistry>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             
             platform::create_platform(
                 &mut registry,
+                &platform_config,
                 string::utf8(b"Test Platform"),
                 string::utf8(b"Test tagline"),
                 string::utf8(b"Test description"),
@@ -825,6 +847,7 @@ CREATOR,
             
             test_scenario::return_shared(clock);
             test_scenario::return_shared(registry);
+        test_scenario::return_shared(platform_config);
         };
         
         // Mint coins for testing users
@@ -870,6 +893,8 @@ CREATOR,
                 10000_000_000, // profile_threshold (10000 MYSO)
                 2000, // max_individual_stake_bps (20%)
                 1000,
+                5000, // non_platform_platform_to_creator_bps
+                5000, // non_platform_platform_to_treasury_bps
                 &clock,
                 test_scenario::ctx(&mut scenario)
             );
@@ -922,10 +947,12 @@ CREATOR,
         {
             let mut platform_obj = test_scenario::take_shared<Platform>(scenario);
             let mut registry = test_scenario::take_shared<PlatformRegistry>(scenario);
+            let platform_config = test_scenario::take_shared<PlatformConfig>(scenario);
             let platform_id = object::uid_to_address(platform::id(&platform_obj));
             platform::test_set_approval(&mut registry, platform_id, true);
             test_scenario::return_shared(platform_obj);
             test_scenario::return_shared(registry);
+            test_scenario::return_shared(platform_config);
         };
     }
 
@@ -955,11 +982,13 @@ CREATOR,
         let profile_id = {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(scenario);
+            let profile_config = test_scenario::take_shared<ProfileConfig>(scenario);
             let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(scenario);
             let clock = test_scenario::take_shared<Clock>(scenario);
 
             profile::create_profile(
                 &mut registry,
+                &profile_config,
                 &mut memory_registry,
                 &mut ai_credit_config,
                 string::utf8(b"Creator"),
@@ -977,6 +1006,7 @@ CREATOR,
             test_scenario::return_shared(ai_credit_config);
 
             test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(profile_config);
             test_scenario::return_shared(clock);
             test_scenario::return_shared(registry);
             profile_id
@@ -1535,11 +1565,13 @@ CREATOR,
         let _profile_id = {
             test_scenario::next_tx(&mut scenario, CREATOR);
             let mut username_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
             let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             profile::create_profile(
                 &mut username_registry,
+                &profile_config,
                 &mut memory_registry,
                 &mut ai_credit_config,
                 string::utf8(b"Wd Prof"),
@@ -1556,6 +1588,7 @@ CREATOR,
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(clock);
             test_scenario::return_shared(username_registry);
+            test_scenario::return_shared(profile_config);
             pid
         };
 
@@ -1656,11 +1689,13 @@ CREATOR,
         let profile_id = {
             test_scenario::next_tx(&mut scenario, CREATOR);
             let mut username_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
             let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             profile::create_profile(
                 &mut username_registry,
+                &profile_config,
                 &mut memory_registry,
                 &mut ai_credit_config,
                 string::utf8(b"Wd Post Prof"),
@@ -1677,6 +1712,7 @@ CREATOR,
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(clock);
             test_scenario::return_shared(username_registry);
+            test_scenario::return_shared(profile_config);
             pid
         };
 
@@ -1748,6 +1784,7 @@ CREATOR,
             social_proof_tokens::reserve_towards_post(
                 &mut registry,
                 &config,
+                1,
                 &mut pool,
                 &treasury,
                 &post_obj,
@@ -1782,6 +1819,7 @@ CREATOR,
             social_proof_tokens::withdraw_reservation_for_post(
                 &mut registry,
                 &config,
+                1,
                 &mut pool,
                 &treasury,
                 &post_obj,
@@ -1820,11 +1858,13 @@ CREATOR,
         let _profile_id = {
             test_scenario::next_tx(&mut scenario, CREATOR);
             let mut username_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
             let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             profile::create_profile(
                 &mut username_registry,
+                &profile_config,
                 &mut memory_registry,
                 &mut ai_credit_config,
                 string::utf8(b"Partial Wd"),
@@ -1841,6 +1881,7 @@ CREATOR,
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(clock);
             test_scenario::return_shared(username_registry);
+            test_scenario::return_shared(profile_config);
             pid
         };
 
@@ -1969,11 +2010,13 @@ CREATOR,
         let profile_id = {
             test_scenario::next_tx(&mut scenario, CREATOR);
             let mut username_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
             let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             profile::create_profile(
                 &mut username_registry,
+                &profile_config,
                 &mut memory_registry,
                 &mut ai_credit_config,
                 string::utf8(b"Two Post Prof"),
@@ -1990,6 +2033,7 @@ CREATOR,
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(clock);
             test_scenario::return_shared(username_registry);
+            test_scenario::return_shared(profile_config);
             pid
         };
 
@@ -2079,6 +2123,7 @@ CREATOR,
             social_proof_tokens::reserve_towards_post(
                 &mut registry,
                 &config,
+                1,
                 &mut pool,
                 &treasury,
                 &post_a,
@@ -2113,6 +2158,7 @@ CREATOR,
             social_proof_tokens::withdraw_reservation_for_post(
                 &mut registry,
                 &config,
+                1,
                 &mut pool,
                 &treasury,
                 &post_b,
@@ -2144,11 +2190,13 @@ CREATOR,
         let profile_id = {
             test_scenario::next_tx(&mut scenario, CREATOR);
             let mut username_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
             let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             profile::create_profile(
                 &mut username_registry,
+                &profile_config,
                 &mut memory_registry,
                 &mut ai_credit_config,
                 string::utf8(b"Prof only"),
@@ -2165,6 +2213,7 @@ CREATOR,
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(clock);
             test_scenario::return_shared(username_registry);
+            test_scenario::return_shared(profile_config);
             pid
         };
 
@@ -2264,6 +2313,7 @@ CREATOR,
             social_proof_tokens::withdraw_reservation_for_post(
                 &mut registry,
                 &config,
+                1,
                 &mut pool,
                 &treasury,
                 &post_obj,
@@ -2295,11 +2345,13 @@ CREATOR,
         let profile_id = {
             test_scenario::next_tx(&mut scenario, CREATOR);
             let mut username_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
             let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             profile::create_profile(
                 &mut username_registry,
+                &profile_config,
                 &mut memory_registry,
                 &mut ai_credit_config,
                 string::utf8(b"Post pool"),
@@ -2316,6 +2368,7 @@ CREATOR,
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(clock);
             test_scenario::return_shared(username_registry);
+            test_scenario::return_shared(profile_config);
             pid
         };
 
@@ -2388,6 +2441,7 @@ CREATOR,
             social_proof_tokens::reserve_towards_post(
                 &mut registry,
                 &config,
+                1,
                 &mut pool,
                 &treasury,
                 &post_obj,
@@ -2449,11 +2503,13 @@ CREATOR,
         let _profile_id = {
             test_scenario::next_tx(&mut scenario, CREATOR);
             let mut username_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
             let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             profile::create_profile(
                 &mut username_registry,
+                &profile_config,
                 &mut memory_registry,
                 &mut ai_credit_config,
                 string::utf8(b"Plat Wd Prof"),
@@ -2470,6 +2526,7 @@ CREATOR,
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(clock);
             test_scenario::return_shared(username_registry);
+            test_scenario::return_shared(profile_config);
             pid
         };
 
@@ -2590,11 +2647,13 @@ CREATOR,
         let profile_id = {
             test_scenario::next_tx(&mut scenario, CREATOR);
             let mut username_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
             let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             profile::create_profile(
                 &mut username_registry,
+                &profile_config,
                 &mut memory_registry,
                 &mut ai_credit_config,
                 string::utf8(b"Plat Post Prof"),
@@ -2611,6 +2670,7 @@ CREATOR,
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(clock);
             test_scenario::return_shared(username_registry);
+            test_scenario::return_shared(profile_config);
             pid
         };
 
@@ -2687,6 +2747,7 @@ CREATOR,
             social_proof_tokens::reserve_towards_post_with_platform(
                 &mut registry,
                 &config,
+                1,
                 &mut pool,
                 &treasury,
                 &platform_registry,
@@ -2729,6 +2790,7 @@ CREATOR,
             social_proof_tokens::withdraw_reservation_with_platform_for_post(
                 &mut registry,
                 &config,
+                1,
                 &mut pool,
                 &treasury,
                 &platform_registry,
@@ -2770,11 +2832,13 @@ CREATOR,
         let profile_id = {
             test_scenario::next_tx(&mut scenario, CREATOR);
             let mut username_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
             let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             profile::create_profile(
                 &mut username_registry,
+                &profile_config,
                 &mut memory_registry,
                 &mut ai_credit_config,
                 string::utf8(b"PoC Prof"),
@@ -2791,6 +2855,7 @@ CREATOR,
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(clock);
             test_scenario::return_shared(username_registry);
+            test_scenario::return_shared(profile_config);
             pid
         };
 
@@ -2864,6 +2929,7 @@ CREATOR,
             social_proof_tokens::reserve_towards_post(
                 &mut registry,
                 &config,
+                1,
                 &mut pool,
                 &treasury,
                 &post_obj,
@@ -2902,6 +2968,7 @@ CREATOR,
             social_proof_tokens::withdraw_reservation_for_post(
                 &mut registry,
                 &config,
+                1,
                 &mut pool,
                 &treasury,
                 &post_obj,
@@ -3119,9 +3186,11 @@ CREATOR,
             let mut username_registry = test_scenario::take_shared<UsernameRegistry>(scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(scenario);
             let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(scenario);
+            let profile_config = test_scenario::take_shared<ProfileConfig>(scenario);
             let clock = test_scenario::take_shared<Clock>(scenario);
             profile::create_profile(
                 &mut username_registry,
+                &profile_config,
                 &mut memory_registry,
                 &mut ai_credit_config,
                 string::utf8(b"PoC Sync Owner"),
@@ -3136,6 +3205,7 @@ CREATOR,
             let pid = option::extract(&mut p);
             test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(profile_config);
             test_scenario::return_shared(clock);
             test_scenario::return_shared(username_registry);
             pid

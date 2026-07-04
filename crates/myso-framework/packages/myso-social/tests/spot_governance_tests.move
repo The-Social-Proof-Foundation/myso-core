@@ -15,7 +15,8 @@ module social_contracts::spot_governance_tests {
     use social_contracts::social_proof_of_truth as spot;
     use social_contracts::social_proof_tokens as spt;
     use social_contracts::post::{Self, Post};
-    use social_contracts::platform::{Self, Platform, PlatformRegistry};
+    use social_contracts::platform::{Self, Platform, PlatformRegistry,
+        PlatformConfig};
     use social_contracts::block_list::{Self, BlockListRegistry};
     use social_contracts::profile::{Self, EcosystemTreasury};
     use social_contracts::governance::{Self, GovernanceDAO, Proposal, GovernanceAdminCap};
@@ -34,7 +35,7 @@ module social_contracts::spot_governance_tests {
         {
             let clock = clock::create_for_testing(test_scenario::ctx(&mut scen));
             block_list::test_init(&clock, test_scenario::ctx(&mut scen));
-            platform::test_init(test_scenario::ctx(&mut scen));
+            platform::test_init(&clock, test_scenario::ctx(&mut scen));
             post::test_init(test_scenario::ctx(&mut scen));
             profile::init_for_testing(&clock, test_scenario::ctx(&mut scen));
             clock::share_for_testing(clock);
@@ -57,9 +58,11 @@ module social_contracts::spot_governance_tests {
         test_scenario::next_tx(&mut scen, USER1);
         {
             let mut preg = test_scenario::take_shared<PlatformRegistry>(&scen);
+            let platform_config = test_scenario::take_shared<PlatformConfig>(&scen);
             let clock = test_scenario::take_shared<Clock>(&scen);
             platform::create_platform(
                 &mut preg,
+                &platform_config,
                 string::utf8(b"SPoT Gov Test Platform"),
                 string::utf8(b"Tag"),
                 string::utf8(b"Desc"),
@@ -79,6 +82,7 @@ module social_contracts::spot_governance_tests {
                 test_scenario::ctx(&mut scen),
             );
             test_scenario::return_shared(clock);
+            test_scenario::return_shared(platform_config);
             test_scenario::return_shared(preg);
         };
         scen
@@ -157,6 +161,11 @@ module social_contracts::spot_governance_tests {
                 0,
                 5000,
                 5000,
+                2,
+                10,
+                1,
+                1000,
+                10,
                 ADMIN,
                 0,
                 10000,

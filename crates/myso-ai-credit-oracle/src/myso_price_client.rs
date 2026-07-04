@@ -128,9 +128,7 @@ fn parse_price_value(value: Option<&serde_json::Value>) -> Result<f64> {
         serde_json::Value::String(s) => s
             .parse::<f64>()
             .with_context(|| format!("invalid last_price string: {s}"))?,
-        serde_json::Value::Number(n) => n
-            .as_f64()
-            .context("invalid last_price number")?,
+        serde_json::Value::Number(n) => n.as_f64().context("invalid last_price number")?,
         other => anyhow::bail!("unexpected last_price type: {other}"),
     };
     validate_myso_usd(raw)

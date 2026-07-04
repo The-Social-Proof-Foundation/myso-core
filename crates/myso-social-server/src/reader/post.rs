@@ -10,7 +10,7 @@ use diesel::QueryableByName;
 use diesel::SelectableHelper;
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::schema::{
-    comments, post_config, posts, posts_deletion_events, posts_moderation_events, posts_reports,
+    comments, posts, posts_deletion_events, posts_moderation_events, posts_reports,
     posts_transfers, reactions,
 };
 
@@ -167,52 +167,20 @@ pub(crate) async fn list_posts(
 
 pub(crate) async fn get_post_config(db: &Db) -> Result<Option<PostConfigRow>, SocialError> {
     let mut conn = db.connect().await?;
-    let result = post_config::table
-        .order_by(post_config::time.desc())
-        .limit(1)
-        .select((
-            post_config::updated_by,
-            post_config::max_content_length,
-            post_config::max_media_urls,
-            post_config::max_mentions,
-            post_config::max_metadata_size,
-            post_config::max_description_length,
-            post_config::max_reaction_length,
-            post_config::commenter_tip_percentage,
-            post_config::repost_tip_percentage,
-            post_config::version,
-            post_config::updated_at,
-        ))
-        .first::<(String, i64, i64, i64, i64, i64, i64, i64, i64, i64, i64)>(&mut conn)
+    let query = "
+        SELECT updated_by, max_content_length, max_media_urls, max_mentions, max_metadata_size,
+               max_description_length, max_reaction_length, commenter_tip_percentage,
+               repost_tip_percentage, min_promotion_amount, max_promotion_amount,
+               min_view_duration_ms, version, updated_at
+        FROM post_config
+        ORDER BY time DESC
+        LIMIT 1
+    ";
+    let result = diesel::sql_query(query)
+        .get_result::<PostConfigRow>(&mut conn)
         .await
         .optional()?;
-    Ok(result.map(
-        |(
-            updated_by,
-            max_content_length,
-            max_media_urls,
-            max_mentions,
-            max_metadata_size,
-            max_description_length,
-            max_reaction_length,
-            commenter_tip_percentage,
-            repost_tip_percentage,
-            version,
-            updated_at,
-        )| PostConfigRow {
-            updated_by,
-            max_content_length,
-            max_media_urls,
-            max_mentions,
-            max_metadata_size,
-            max_description_length,
-            max_reaction_length,
-            commenter_tip_percentage,
-            repost_tip_percentage,
-            version,
-            updated_at,
-        },
-    ))
+    Ok(result)
 }
 
 pub(crate) async fn get_trending_posts(

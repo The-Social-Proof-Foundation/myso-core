@@ -27,8 +27,7 @@ use axum::{
     Json,
 };
 use myso_indexer_alt_social_schema::models::{
-    OrgMemoryPermissionRow, OrgRoleAssignmentRow, ORG_PERM_AUDITOR,
-    ORG_PERM_DASHBOARD_VIEWER,
+    OrgMemoryPermissionRow, OrgRoleAssignmentRow, ORG_PERM_AUDITOR, ORG_PERM_DASHBOARD_VIEWER,
 };
 use serde::Serialize;
 use std::sync::Arc;
@@ -64,11 +63,12 @@ pub fn member_has_org_permission(
     role_assignments: &[OrgRoleAssignmentRow],
     required_bit: i64,
 ) -> bool {
-    memory_permissions.iter().any(|row| {
-        row.active && row.permission_kind & required_bit == required_bit
-    }) || role_assignments.iter().any(|row| {
-        row.active && row.assigned_mask & required_bit == required_bit
-    })
+    memory_permissions
+        .iter()
+        .any(|row| row.active && row.permission_kind & required_bit == required_bit)
+        || role_assignments
+            .iter()
+            .any(|row| row.active && row.assigned_mask & required_bit == required_bit)
 }
 
 pub async fn caller_has_org_permission(
@@ -155,13 +155,7 @@ pub async fn org_dashboard_access_middleware(
     request: Request<Body>,
     next: Next,
 ) -> Response {
-    org_access_middleware_inner(
-        state,
-        OrgAccessRequirement::DashboardViewer,
-        request,
-        next,
-    )
-    .await
+    org_access_middleware_inner(state, OrgAccessRequirement::DashboardViewer, request, next).await
 }
 
 pub async fn org_auditor_access_middleware(
@@ -221,7 +215,10 @@ mod tests {
     fn auditor_via_role_assignment_mask() {
         assert!(member_has_org_permission(
             &[],
-            &[role_assignment(ORG_PERM_AUDITOR | ORG_PERM_DASHBOARD_VIEWER, true)],
+            &[role_assignment(
+                ORG_PERM_AUDITOR | ORG_PERM_DASHBOARD_VIEWER,
+                true
+            )],
             ORG_PERM_AUDITOR,
         ));
     }

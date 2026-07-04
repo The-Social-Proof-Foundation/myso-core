@@ -3,7 +3,7 @@
 
 use std::time::Instant;
 
-use crate::catalog::{MIST_PER_MYSO, PricingCatalog};
+use crate::catalog::{PricingCatalog, MIST_PER_MYSO};
 use crate::myso_price_client::{validate_myso_usd, MIN_MYSO_USD};
 
 pub const USAGE_INFERENCE: u8 = 1;
@@ -63,8 +63,7 @@ impl PricingEngine {
     }
 
     pub fn price_age_secs(&self) -> Option<u64> {
-        self.price_fetched_at
-            .map(|t| t.elapsed().as_secs())
+        self.price_fetched_at.map(|t| t.elapsed().as_secs())
     }
 
     pub fn is_price_stale(&self, max_stale_secs: u64) -> bool {
@@ -87,7 +86,8 @@ impl PricingEngine {
     }
 
     pub fn inference_mist(&self, model_id: &str, tokens_in: u64, tokens_out: u64) -> u64 {
-        self.inference_breakdown(model_id, tokens_in, tokens_out).amount_mist
+        self.inference_breakdown(model_id, tokens_in, tokens_out)
+            .amount_mist
     }
 
     pub fn inference_breakdown(
@@ -137,8 +137,7 @@ impl PricingEngine {
     }
 
     fn token_mist(&self, tokens: u64, mist_per_1m: u64) -> u64 {
-        let catalog_mist =
-            ((tokens as u128) * (mist_per_1m as u128) / 1_000_000) as u64;
+        let catalog_mist = ((tokens as u128) * (mist_per_1m as u128) / 1_000_000) as u64;
         self.scale_mist(catalog_mist)
     }
 

@@ -23,34 +23,38 @@ module social_contracts::memory_org_governance_tests {
         MemorySharePackage,
         OrgGovernanceProposer,
         OrgGovernanceVoter,
+        MemoryConfig,
     };
     use social_contracts::memory_test_helpers;
-    use social_contracts::profile::{Self, Profile, UsernameRegistry};
+    use social_contracts::profile::{Self, Profile, UsernameRegistry,
+        ProfileConfig};
     use social_contracts::ai_credit::AiCreditConfig;
 
     const ADMIN: address = @0xAD;
     const USER1: address = @0x1;
     const GOVERNANCE_MEMBER: address = @0x607;
 
-    fun init_env(scenario: &mut test_scenario::Scenario) {
-        test_scenario::next_tx(scenario, ADMIN);
+    fun init_env(sc: &mut test_scenario::Scenario) {
+        test_scenario::next_tx(sc, ADMIN);
         {
-            let clock = clock::create_for_testing(test_scenario::ctx(scenario));
-            profile::init_for_testing(&clock, test_scenario::ctx(scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(sc));
+            profile::init_for_testing(&clock, test_scenario::ctx(sc));
             clock::share_for_testing(clock);
-            let coins = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(scenario));
-            transfer::public_transfer(coins, USER1);
         };
 
-        test_scenario::next_tx(scenario, USER1);
+        test_scenario::next_tx(sc, USER1);
         {
-            let mut registry = test_scenario::take_shared<UsernameRegistry>(scenario);
-            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(scenario);
-            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(scenario);
-            let clock = test_scenario::take_shared<Clock>(scenario);
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(sc);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(sc);
+            let memory_config = test_scenario::take_shared<MemoryConfig>(sc);
+
+            let profile_config = test_scenario::take_shared<ProfileConfig>(sc);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(sc);
+            let clock = test_scenario::take_shared<Clock>(sc);
 
             profile::create_profile(
                 &mut registry,
+                &profile_config,
                 &mut memory_registry,
                 &mut ai_credit_config,
                 string::utf8(b"User One"),
@@ -59,13 +63,14 @@ module social_contracts::memory_org_governance_tests {
                 b"",
                 b"",
                 &clock,
-                test_scenario::ctx(scenario),
+                test_scenario::ctx(sc),
             );
-
+            test_scenario::return_shared(memory_config);
             test_scenario::return_shared(clock);
             test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(registry);
+            test_scenario::return_shared(profile_config);
         };
     }
 
@@ -79,27 +84,29 @@ module social_contracts::memory_org_governance_tests {
         )
     }
 
-    fun setup_org_with_group(scenario: &mut test_scenario::Scenario): ID {
-        test_scenario::next_tx(scenario, USER1);
+    fun setup_org_with_group(sc: &mut test_scenario::Scenario): ID {
+        test_scenario::next_tx(sc, USER1);
         {
-            memory_test_helpers::create_default_org_in_tx(scenario);
+            memory_test_helpers::create_default_org_in_tx(sc);
         };
 
-        test_scenario::next_tx(scenario, USER1);
+        test_scenario::next_tx(sc, USER1);
         {
-            let mut org = memory_test_helpers::take_created_org(scenario);
+            let mut org = memory_test_helpers::take_created_org(sc);
             let org_id = object::id(&org);
-            let memory_account = test_scenario::take_shared<MemoryAccount>(scenario);
-            let clock = test_scenario::take_shared<Clock>(scenario);
+            let memory_account = test_scenario::take_shared<MemoryAccount>(sc);
+            let clock = test_scenario::take_shared<Clock>(sc);
+            let memory_config = test_scenario::take_shared<MemoryConfig>(sc);
             memory::ensure_org_memory_group(
                 &memory_account,
                 &mut org,
                 &clock,
-                test_scenario::ctx(scenario),
+                test_scenario::ctx(sc),
             );
             test_scenario::return_shared(org);
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(clock);
+            test_scenario::return_shared(memory_config);
             org_id
         }
     }
@@ -120,6 +127,7 @@ module social_contracts::memory_org_governance_tests {
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
 
+            let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
             memory::grant_org_memory_permission(
                 &memory_account,
                 &org,
@@ -174,6 +182,7 @@ module social_contracts::memory_org_governance_tests {
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(group);
             test_scenario::return_shared(org);
+            test_scenario::return_shared(memory_config);
         };
 
         test_scenario::end(scenario);
@@ -193,7 +202,9 @@ module social_contracts::memory_org_governance_tests {
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
 
+            let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
             memory::define_custom_org_role(
+                &memory_config,
                 &memory_account,
                 &mut org,
                 &group,
@@ -207,6 +218,7 @@ module social_contracts::memory_org_governance_tests {
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(group);
             test_scenario::return_shared(org);
+            test_scenario::return_shared(memory_config);
         };
 
         test_scenario::end(scenario);

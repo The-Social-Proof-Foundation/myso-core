@@ -35,6 +35,10 @@
     },
     {
       "address": "myso",
+      "name": "permissioned_group"
+    },
+    {
+      "address": "myso",
       "name": "table"
     },
     {
@@ -322,7 +326,26 @@
       "visibility": "Public",
       "entry": false,
       "type_parameters": [],
-      "parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
       "return_": [
         "u8"
       ]
@@ -509,9 +532,243 @@
         "u64"
       ]
     },
-    "register_child": {
+    "cap_budget_manage": {
       "source_index": 33,
       "index": 33,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u64"
+      ]
+    },
+    "org_perm_memory_read": {
+      "source_index": 34,
+      "index": 34,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u64"
+      ]
+    },
+    "org_perm_memory_write": {
+      "source_index": 35,
+      "index": 35,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u64"
+      ]
+    },
+    "org_perm_agent_manager": {
+      "source_index": 36,
+      "index": 36,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u64"
+      ]
+    },
+    "org_perm_budget_manager": {
+      "source_index": 37,
+      "index": 37,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u64"
+      ]
+    },
+    "org_perm_spend_approver": {
+      "source_index": 38,
+      "index": 38,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u64"
+      ]
+    },
+    "org_perm_dashboard_viewer": {
+      "source_index": 39,
+      "index": 39,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u64"
+      ]
+    },
+    "org_perm_auditor": {
+      "source_index": 40,
+      "index": 40,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u64"
+      ]
+    },
+    "org_perm_all": {
+      "source_index": 41,
+      "index": 41,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u64"
+      ]
+    },
+    "org_perm_governance_proposer": {
+      "source_index": 42,
+      "index": 42,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u64"
+      ]
+    },
+    "org_perm_governance_voter": {
+      "source_index": 43,
+      "index": 43,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u64"
+      ]
+    },
+    "org_governance_perm_all": {
+      "source_index": 44,
+      "index": 44,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u64"
+      ]
+    },
+    "role_mask_owner": {
+      "source_index": 45,
+      "index": 45,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u64"
+      ]
+    },
+    "role_mask_admin": {
+      "source_index": 46,
+      "index": 46,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u64"
+      ]
+    },
+    "role_mask_agent_manager": {
+      "source_index": 47,
+      "index": 47,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u64"
+      ]
+    },
+    "role_mask_finance_approver": {
+      "source_index": 48,
+      "index": 48,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u64"
+      ]
+    },
+    "role_mask_memory_administrator": {
+      "source_index": 49,
+      "index": 49,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u64"
+      ]
+    },
+    "role_mask_auditor": {
+      "source_index": 50,
+      "index": 50,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u64"
+      ]
+    },
+    "register_child": {
+      "source_index": 51,
+      "index": 51,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -523,8 +780,8 @@
       ]
     },
     "register_peer": {
-      "source_index": 34,
-      "index": 34,
+      "source_index": 52,
+      "index": 52,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -536,8 +793,8 @@
       ]
     },
     "derive_sub_agent_address": {
-      "source_index": 35,
-      "index": 35,
+      "source_index": 53,
+      "index": 53,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -572,8 +829,8 @@
       ]
     },
     "agent_object_id": {
-      "source_index": 36,
-      "index": 36,
+      "source_index": 54,
+      "index": 54,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -613,8 +870,8 @@
       ]
     },
     "organization_id": {
-      "source_index": 37,
-      "index": 37,
+      "source_index": 55,
+      "index": 55,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -653,9 +910,82 @@
         }
       ]
     },
+    "organization_memory_account_id": {
+      "source_index": 56,
+      "index": 56,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "org",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "AgenticOrganization",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "object"
+            },
+            "name": "ID",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "organization_active": {
+      "source_index": 57,
+      "index": 57,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "org",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "AgenticOrganization",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
     "sub_agent_organization_id": {
-      "source_index": 38,
-      "index": 38,
+      "source_index": 58,
+      "index": 58,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -695,8 +1025,8 @@
       ]
     },
     "organization_org_type": {
-      "source_index": 39,
-      "index": 39,
+      "source_index": 59,
+      "index": 59,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -727,8 +1057,8 @@
       ]
     },
     "organization_root_agent_id": {
-      "source_index": 40,
-      "index": 40,
+      "source_index": 60,
+      "index": 60,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -782,8 +1112,8 @@
       ]
     },
     "organization_name": {
-      "source_index": 41,
-      "index": 41,
+      "source_index": 61,
+      "index": 61,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -842,8 +1172,8 @@
       ]
     },
     "organization_description": {
-      "source_index": 42,
-      "index": 42,
+      "source_index": 62,
+      "index": 62,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -902,8 +1232,8 @@
       ]
     },
     "bootstrap_init": {
-      "source_index": 43,
-      "index": 43,
+      "source_index": 63,
+      "index": 63,
       "doc": null,
       "attributes": [],
       "visibility": "Package",
@@ -911,7 +1241,156 @@
       "type_parameters": [],
       "parameters": [
         {
-          "name": "_clock",
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "create_memory_admin_cap": {
+      "source_index": 64,
+      "index": 64,
+      "doc": " Create a [`MemoryAdminCap`] for bootstrap (package visibility only).",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "social_contracts",
+              "name": "memory"
+            },
+            "name": "MemoryAdminCap",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "update_memory_config": {
+      "source_index": 65,
+      "index": 65,
+      "doc": " Update global memory configuration (admin only).",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "max_organizations_per_user",
+          "type_": "u8"
+        },
+        {
+          "name": "org_category_update_cooldown_ms",
+          "type_": "u64"
+        },
+        {
+          "name": "max_agent_depth",
+          "type_": "u8"
+        },
+        {
+          "name": "max_label_length",
+          "type_": "u64"
+        },
+        {
+          "name": "max_org_name_length",
+          "type_": "u64"
+        },
+        {
+          "name": "max_org_description_length",
+          "type_": "u64"
+        },
+        {
+          "name": "clock",
           "type_": {
             "Reference": [
               false,
@@ -950,8 +1429,8 @@
       "return_": []
     },
     "create_account_for_profile": {
-      "source_index": 44,
-      "index": 44,
+      "source_index": 66,
+      "index": 66,
       "doc": null,
       "attributes": [],
       "visibility": "Package",
@@ -1031,8 +1510,8 @@
       ]
     },
     "transfer_account_owner_with_profile": {
-      "source_index": 45,
-      "index": 45,
+      "source_index": 67,
+      "index": 67,
       "doc": " Profile transfer must revoke all sub-agent objects in the same PTB (via [`revoke_sub_agent`])\n before calling [`profile::transfer_profile_with_memory`].",
       "attributes": [],
       "visibility": "Package",
@@ -1091,14 +1570,32 @@
       "return_": []
     },
     "create_agentic_organization": {
-      "source_index": 46,
-      "index": 46,
+      "source_index": 68,
+      "index": 68,
       "doc": " Human owner creates a competitive agentic organization (max 8 per account).",
       "attributes": [],
       "visibility": "Public",
       "entry": true,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "account",
           "type_": {
@@ -1215,14 +1712,32 @@
       "return_": []
     },
     "create_agentic_organization_internal": {
-      "source_index": 47,
-      "index": 47,
+      "source_index": 69,
+      "index": 69,
       "doc": null,
       "attributes": [],
       "visibility": "Package",
       "entry": false,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "account",
           "type_": {
@@ -1350,14 +1865,32 @@
       ]
     },
     "update_agentic_organization_metadata": {
-      "source_index": 48,
-      "index": 48,
+      "source_index": 70,
+      "index": 70,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
       "entry": true,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "account",
           "type_": {
@@ -1470,14 +2003,32 @@
       "return_": []
     },
     "update_agentic_organization_category": {
-      "source_index": 49,
-      "index": 49,
+      "source_index": 71,
+      "index": 71,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
       "entry": true,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "account",
           "type_": {
@@ -1558,8 +2109,8 @@
       "return_": []
     },
     "deactivate_agentic_organization": {
-      "source_index": 50,
-      "index": 50,
+      "source_index": 72,
+      "index": 72,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -1641,15 +2192,1638 @@
       ],
       "return_": []
     },
+    "ensure_org_memory_group": {
+      "source_index": 73,
+      "index": 73,
+      "doc": " Lazy-create the org's memory share group (a `PermissionedGroup<MemorySharePackage>`\n derived from the org UID). Owner-only; idempotent. The owner receives\n `PermissionsAdmin` + `ExtensionPermissionsAdmin` from group creation, then typically\n grants `ExtensionPermissionsAdmin` to the org root agent's derived address once so the\n root agent can manage member permissions without further human transactions.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryAccount",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "org",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "AgenticOrganization",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "org_memory_group_address": {
+      "source_index": 74,
+      "index": 74,
+      "doc": " Deterministic address of the org's memory share group (whether or not created yet).",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "org",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "AgenticOrganization",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "address"
+      ]
+    },
+    "org_memory_group_exists": {
+      "source_index": 75,
+      "index": 75,
+      "doc": " Whether the org's memory share group has been created.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "org",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "AgenticOrganization",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "assert_org_permission": {
+      "source_index": 76,
+      "index": 76,
+      "doc": " Shared authorization helper for org-scoped permissions. Verifies the group is the\n org's derived share group, the org is active, and `addr` holds witness permission `P`.\n Used by this module and `ai_credit` (role-gated budget/approval entries) so permission\n checks are never duplicated per call site.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "P",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "org",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "AgenticOrganization",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "group",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "social_contracts",
+                            "name": "memory"
+                          },
+                          "name": "MemorySharePackage",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "addr",
+          "type_": "address"
+        }
+      ],
+      "return_": []
+    },
+    "has_org_permission": {
+      "source_index": 77,
+      "index": 77,
+      "doc": " Non-aborting variant of [`assert_org_permission`].",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "P",
+          "constraints": [
+            "Drop"
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "name": "org",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "AgenticOrganization",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "group",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "social_contracts",
+                            "name": "memory"
+                          },
+                          "name": "MemorySharePackage",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "addr",
+          "type_": "address"
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "grant_org_memory_permission": {
+      "source_index": 78,
+      "index": 78,
+      "doc": " Grant org permissions (mask over the fixed witness set) to a member.\n Caller must hold `ExtensionPermissionsAdmin` on the group (owner from creation, or a\n delegated manager such as the org root agent). Granting is idempotent per bit.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryAccount",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "org",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "AgenticOrganization",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "group",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "social_contracts",
+                            "name": "memory"
+                          },
+                          "name": "MemorySharePackage",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "member",
+          "type_": "address"
+        },
+        {
+          "name": "permissions_mask",
+          "type_": "u64"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "revoke_org_memory_permission": {
+      "source_index": 79,
+      "index": 79,
+      "doc": " Revoke org permissions (mask) from a member. Revocation is idempotent per bit.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryAccount",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "org",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "AgenticOrganization",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "group",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "social_contracts",
+                            "name": "memory"
+                          },
+                          "name": "MemorySharePackage",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "member",
+          "type_": "address"
+        },
+        {
+          "name": "permissions_mask",
+          "type_": "u64"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "define_custom_org_role": {
+      "source_index": 80,
+      "index": 80,
+      "doc": " Define (or redefine) a custom org role as a named mask. Built-in role names are\n reserved. Redefinition is safe: assignments record their exact granted delta.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryAccount",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "org",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "AgenticOrganization",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "group",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "social_contracts",
+                            "name": "memory"
+                          },
+                          "name": "MemorySharePackage",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "name",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "string"
+              },
+              "name": "String",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "mask",
+          "type_": "u64"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "assign_org_role": {
+      "source_index": 81,
+      "index": 81,
+      "doc": " Assign a role (built-in or custom) to a member: grants the role's constituent\n witnesses and records the exact granted delta for later revocation.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryAccount",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "org",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "AgenticOrganization",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "group",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "social_contracts",
+                            "name": "memory"
+                          },
+                          "name": "MemorySharePackage",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "member",
+          "type_": "address"
+        },
+        {
+          "name": "role_name",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "string"
+              },
+              "name": "String",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "revoke_org_role": {
+      "source_index": 82,
+      "index": 82,
+      "doc": " Revoke a role assignment: removes exactly the delta the assignment granted\n (permissions the member held before the assignment are untouched).",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryAccount",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "org",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "AgenticOrganization",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "group",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "social_contracts",
+                            "name": "memory"
+                          },
+                          "name": "MemorySharePackage",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "member",
+          "type_": "address"
+        },
+        {
+          "name": "role_name",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "string"
+              },
+              "name": "String",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "org_role_assignment_mask": {
+      "source_index": 83,
+      "index": 83,
+      "doc": " Assigned-delta mask for a role assignment, if present.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "org",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "AgenticOrganization",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "member",
+          "type_": "address"
+        },
+        {
+          "name": "role_name",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "string"
+              },
+              "name": "String",
+              "type_arguments": []
+            }
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "std",
+              "name": "option"
+            },
+            "name": "Option",
+            "type_arguments": [
+              {
+                "phantom": false,
+                "argument": "u64"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "create_org_invitation": {
+      "source_index": 84,
+      "index": 84,
+      "doc": " Create a pending invitation for `invitee`. At least one of `role_name` or\n `permissions_mask` must be set. The invitee accepts or declines via the\n corresponding entry functions.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryAccount",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "org",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "AgenticOrganization",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "group",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "social_contracts",
+                            "name": "memory"
+                          },
+                          "name": "MemorySharePackage",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "invitee",
+          "type_": "address"
+        },
+        {
+          "name": "role_name",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "std",
+                        "name": "string"
+                      },
+                      "name": "String",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "permissions_mask",
+          "type_": "u64"
+        },
+        {
+          "name": "expires_at_ms",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "u64"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "accept_org_invitation": {
+      "source_index": 85,
+      "index": 85,
+      "doc": " Accept a pending invitation: grants the invited role and/or permissions,\n then removes the invitation dynamic field.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryAccount",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "org",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "AgenticOrganization",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "group",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "social_contracts",
+                            "name": "memory"
+                          },
+                          "name": "MemorySharePackage",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "invitee",
+          "type_": "address"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "decline_org_invitation": {
+      "source_index": 86,
+      "index": 86,
+      "doc": " Decline a pending invitation and remove the invitation dynamic field.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryAccount",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "org",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "AgenticOrganization",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "invitee",
+          "type_": "address"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "org_role_mask": {
+      "source_index": 87,
+      "index": 87,
+      "doc": " Effective mask for a role name (built-in constant or custom definition).",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "org",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "AgenticOrganization",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "role_name",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "std",
+                    "name": "string"
+                  },
+                  "name": "String",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "std",
+              "name": "option"
+            },
+            "name": "Option",
+            "type_arguments": [
+              {
+                "phantom": false,
+                "argument": "u64"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "approve_org_key_policy": {
+      "source_index": 88,
+      "index": 88,
+      "doc": " Approve MYDATA key release for org-shared memory: the account owner (own-blob suffix)\n or any holder of `OrgMemoryReader` on the org's share group. Registered sub-agents\n must additionally have an active ancestor chain.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "id",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryAccount",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "org",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "AgenticOrganization",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "group",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "social_contracts",
+                            "name": "memory"
+                          },
+                          "name": "MemorySharePackage",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
     "register_sub_agent": {
-      "source_index": 51,
-      "index": 51,
+      "source_index": 89,
+      "index": 89,
       "doc": " Human owner registers a root-level sub-agent bound to an organization.",
       "attributes": [],
       "visibility": "Public",
       "entry": true,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "account",
           "type_": {
@@ -1827,14 +4001,32 @@
       "return_": []
     },
     "register_sub_agent_delegated": {
-      "source_index": 52,
-      "index": 52,
+      "source_index": 90,
+      "index": 90,
       "doc": " Delegated agent registers a child or peer sub-agent.",
       "attributes": [],
       "visibility": "Public",
       "entry": true,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "account",
           "type_": {
@@ -2016,8 +4208,8 @@
       "return_": []
     },
     "update_sub_agent": {
-      "source_index": 53,
-      "index": 53,
+      "source_index": 91,
+      "index": 91,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -2178,14 +4370,32 @@
       "return_": []
     },
     "update_sub_agent_label": {
-      "source_index": 54,
-      "index": 54,
+      "source_index": 92,
+      "index": 92,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
       "entry": true,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "account",
           "type_": {
@@ -2275,8 +4485,8 @@
       "return_": []
     },
     "deactivate_sub_agent": {
-      "source_index": 55,
-      "index": 55,
+      "source_index": 93,
+      "index": 93,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -2359,8 +4569,8 @@
       "return_": []
     },
     "revoke_sub_agent": {
-      "source_index": 56,
-      "index": 56,
+      "source_index": 94,
+      "index": 94,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -2438,8 +4648,8 @@
       "return_": []
     },
     "emit_sub_agents_cleared_on_transfer": {
-      "source_index": 57,
-      "index": 57,
+      "source_index": 95,
+      "index": 95,
       "doc": " Emit bulk-clear audit after the last agent revoke during profile transfer orchestration.",
       "attributes": [],
       "visibility": "Package",
@@ -2480,8 +4690,8 @@
       "return_": []
     },
     "ensure_agent_memory_vault": {
-      "source_index": 58,
-      "index": 58,
+      "source_index": 96,
+      "index": 96,
       "doc": " Lazy-create per-agent memory vault derived from the sub-agent object.",
       "attributes": [],
       "visibility": "Public",
@@ -2575,8 +4785,8 @@
       ]
     },
     "deactivate_account": {
-      "source_index": 59,
-      "index": 59,
+      "source_index": 97,
+      "index": 97,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -2623,8 +4833,8 @@
       "return_": []
     },
     "reactivate_account": {
-      "source_index": 60,
-      "index": 60,
+      "source_index": 98,
+      "index": 98,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -2671,8 +4881,8 @@
       "return_": []
     },
     "migrate_account": {
-      "source_index": 61,
-      "index": 61,
+      "source_index": 99,
+      "index": 99,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -2719,8 +4929,8 @@
       "return_": []
     },
     "admin_migrate_account": {
-      "source_index": 62,
-      "index": 62,
+      "source_index": 100,
+      "index": 100,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -2785,8 +4995,8 @@
       "return_": []
     },
     "migrate_registry": {
-      "source_index": 63,
-      "index": 63,
+      "source_index": 101,
+      "index": 101,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -2833,8 +5043,8 @@
       "return_": []
     },
     "resolve_human_actor": {
-      "source_index": 64,
-      "index": 64,
+      "source_index": 102,
+      "index": 102,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -2892,14 +5102,32 @@
       ]
     },
     "resolve_actor_from_account": {
-      "source_index": 65,
-      "index": 65,
+      "source_index": 103,
+      "index": 103,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
       "entry": false,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "root",
           "type_": {
@@ -2969,14 +5197,32 @@
       ]
     },
     "resolve_actor_with_cap": {
-      "source_index": 66,
-      "index": 66,
+      "source_index": 104,
+      "index": 104,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
       "entry": false,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "root",
           "type_": {
@@ -3072,8 +5318,8 @@
       ]
     },
     "assert_human_actor_with_cap": {
-      "source_index": 67,
-      "index": 67,
+      "source_index": 105,
+      "index": 105,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3131,8 +5377,8 @@
       ]
     },
     "assert_action_spend_limit": {
-      "source_index": 68,
-      "index": 68,
+      "source_index": 106,
+      "index": 106,
       "doc": " Per-transaction MYSO (MIST) spend ceiling for sub-agents. Principal owner is exempt.",
       "attributes": [],
       "visibility": "Public",
@@ -3183,8 +5429,8 @@
       "return_": []
     },
     "assert_direct_execution_allowed": {
-      "source_index": 69,
-      "index": 69,
+      "source_index": 107,
+      "index": 107,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3235,8 +5481,8 @@
       "return_": []
     },
     "assert_platform_scope_entry": {
-      "source_index": 70,
-      "index": 70,
+      "source_index": 108,
+      "index": 108,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3283,8 +5529,8 @@
       "return_": []
     },
     "assert_platform_scope": {
-      "source_index": 71,
-      "index": 71,
+      "source_index": 109,
+      "index": 109,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3331,8 +5577,8 @@
       "return_": []
     },
     "assert_sub_agent_active": {
-      "source_index": 72,
-      "index": 72,
+      "source_index": 110,
+      "index": 110,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3379,8 +5625,8 @@
       "return_": []
     },
     "profile_id": {
-      "source_index": 73,
-      "index": 73,
+      "source_index": 111,
+      "index": 111,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3411,8 +5657,8 @@
       ]
     },
     "owner": {
-      "source_index": 74,
-      "index": 74,
+      "source_index": 112,
+      "index": 112,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3443,8 +5689,8 @@
       ]
     },
     "sub_agent_derived_address": {
-      "source_index": 75,
-      "index": 75,
+      "source_index": 113,
+      "index": 113,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3475,8 +5721,8 @@
       ]
     },
     "sub_agent_capabilities": {
-      "source_index": 76,
-      "index": 76,
+      "source_index": 114,
+      "index": 114,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3507,8 +5753,8 @@
       ]
     },
     "sub_agent_platform_scope": {
-      "source_index": 77,
-      "index": 77,
+      "source_index": 115,
+      "index": 115,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3553,8 +5799,8 @@
       ]
     },
     "sub_agent_active": {
-      "source_index": 78,
-      "index": 78,
+      "source_index": 116,
+      "index": 116,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3585,8 +5831,8 @@
       ]
     },
     "sub_agent_depth": {
-      "source_index": 79,
-      "index": 79,
+      "source_index": 117,
+      "index": 117,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3617,8 +5863,8 @@
       ]
     },
     "sub_agent_parent_object_id": {
-      "source_index": 80,
-      "index": 80,
+      "source_index": 118,
+      "index": 118,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3672,8 +5918,8 @@
       ]
     },
     "sub_agent_memory_account_id": {
-      "source_index": 81,
-      "index": 81,
+      "source_index": 119,
+      "index": 119,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3713,8 +5959,8 @@
       ]
     },
     "acting_principal_owner": {
-      "source_index": 82,
-      "index": 82,
+      "source_index": 120,
+      "index": 120,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3745,8 +5991,8 @@
       ]
     },
     "acting_profile_id": {
-      "source_index": 83,
-      "index": 83,
+      "source_index": 121,
+      "index": 121,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3777,8 +6023,8 @@
       ]
     },
     "acting_actor_address": {
-      "source_index": 84,
-      "index": 84,
+      "source_index": 122,
+      "index": 122,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3809,8 +6055,8 @@
       ]
     },
     "acting_sub_agent_id": {
-      "source_index": 85,
-      "index": 85,
+      "source_index": 123,
+      "index": 123,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3864,8 +6110,8 @@
       ]
     },
     "acting_identity_class": {
-      "source_index": 86,
-      "index": 86,
+      "source_index": 124,
+      "index": 124,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3896,8 +6142,8 @@
       ]
     },
     "acting_parent_object_id": {
-      "source_index": 87,
-      "index": 87,
+      "source_index": 125,
+      "index": 125,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3951,8 +6197,8 @@
       ]
     },
     "acting_depth": {
-      "source_index": 88,
-      "index": 88,
+      "source_index": 126,
+      "index": 126,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3983,8 +6229,8 @@
       ]
     },
     "acting_organization_id": {
-      "source_index": 89,
-      "index": 89,
+      "source_index": 127,
+      "index": 127,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -4038,8 +6284,8 @@
       ]
     },
     "has_account": {
-      "source_index": 90,
-      "index": 90,
+      "source_index": 128,
+      "index": 128,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -4074,8 +6320,8 @@
       ]
     },
     "account_id_for_owner": {
-      "source_index": 91,
-      "index": 91,
+      "source_index": 129,
+      "index": 129,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -4133,8 +6379,8 @@
       ]
     },
     "is_registered_agent": {
-      "source_index": 92,
-      "index": 92,
+      "source_index": 130,
+      "index": 130,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -4168,9 +6414,85 @@
         "bool"
       ]
     },
+    "is_descendant_agent": {
+      "source_index": 131,
+      "index": 131,
+      "doc": " True when `descendant_id` sits strictly below `ancestor_id` in the agent tree\n (walks the registry mirror; bounded by MAX_AGENT_DEPTH). Self is not a descendant.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryAccount",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ancestor_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "descendant_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
     "is_active": {
-      "source_index": 93,
-      "index": 93,
+      "source_index": 132,
+      "index": 132,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -4201,8 +6523,8 @@
       ]
     },
     "account_version": {
-      "source_index": 94,
-      "index": 94,
+      "source_index": 133,
+      "index": 133,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -4233,8 +6555,8 @@
       ]
     },
     "registry_version": {
-      "source_index": 95,
-      "index": 95,
+      "source_index": 134,
+      "index": 134,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -4265,8 +6587,8 @@
       ]
     },
     "current_contract_version": {
-      "source_index": 96,
-      "index": 96,
+      "source_index": 135,
+      "index": 135,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -4278,14 +6600,32 @@
       ]
     },
     "approve_key_policy": {
-      "source_index": 97,
-      "index": 97,
+      "source_index": 136,
+      "index": 136,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
       "entry": true,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "id",
           "type_": {
@@ -4350,14 +6690,32 @@
       "return_": []
     },
     "approve_key_write_policy": {
-      "source_index": 98,
-      "index": 98,
+      "source_index": 137,
+      "index": 137,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
       "entry": true,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "id",
           "type_": {
@@ -4422,8 +6780,8 @@
       "return_": []
     },
     "owner_key_suffix_bytes": {
-      "source_index": 99,
-      "index": 99,
+      "source_index": 138,
+      "index": 138,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -4442,14 +6800,32 @@
       ]
     },
     "register_sub_agent_internal": {
-      "source_index": 100,
-      "index": 100,
+      "source_index": 139,
+      "index": 139,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
       "entry": false,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "account",
           "type_": {
@@ -4627,14 +7003,32 @@
       "return_": []
     },
     "register_sub_agent_delegated_internal": {
-      "source_index": 101,
-      "index": 101,
+      "source_index": 140,
+      "index": 140,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
       "entry": false,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "account",
           "type_": {
@@ -4798,14 +7192,32 @@
       "return_": []
     },
     "finish_register_sub_agent": {
-      "source_index": 102,
-      "index": 102,
+      "source_index": 141,
+      "index": 141,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
       "entry": false,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "account",
           "type_": {
@@ -5006,8 +7418,8 @@
       ]
     },
     "bind_root_agent_to_organization": {
-      "source_index": 103,
-      "index": 103,
+      "source_index": 142,
+      "index": 142,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -5067,8 +7479,8 @@
       "return_": []
     },
     "registry_entry_from_agent": {
-      "source_index": 104,
-      "index": 104,
+      "source_index": 143,
+      "index": 143,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -5108,8 +7520,8 @@
       ]
     },
     "insert_registry_entry": {
-      "source_index": 105,
-      "index": 105,
+      "source_index": 144,
+      "index": 144,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -5156,8 +7568,8 @@
       "return_": []
     },
     "sync_registry_from_agent": {
-      "source_index": 106,
-      "index": 106,
+      "source_index": 145,
+      "index": 145,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -5204,8 +7616,8 @@
       "return_": []
     },
     "sync_registry_active": {
-      "source_index": 107,
-      "index": 107,
+      "source_index": 146,
+      "index": 146,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -5242,8 +7654,8 @@
       "return_": []
     },
     "remove_registry_entry": {
-      "source_index": 108,
-      "index": 108,
+      "source_index": 147,
+      "index": 147,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -5289,8 +7701,8 @@
       "return_": []
     },
     "assert_registry_entry_active": {
-      "source_index": 109,
-      "index": 109,
+      "source_index": 148,
+      "index": 148,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -5337,8 +7749,8 @@
       "return_": []
     },
     "assert_action_spend_limit_from_entry": {
-      "source_index": 110,
-      "index": 110,
+      "source_index": 149,
+      "index": 149,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -5407,14 +7819,32 @@
       "return_": []
     },
     "assert_ancestor_chain_active_from_table": {
-      "source_index": 111,
-      "index": 111,
+      "source_index": 150,
+      "index": 150,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
       "entry": false,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "account",
           "type_": {
@@ -5459,14 +7889,32 @@
       "return_": []
     },
     "resolve_delegated_registration_placement": {
-      "source_index": 112,
-      "index": 112,
+      "source_index": 151,
+      "index": 151,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
       "entry": false,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "account",
           "type_": {
@@ -5582,8 +8030,8 @@
       ]
     },
     "assert_may_manage": {
-      "source_index": 113,
-      "index": 113,
+      "source_index": 152,
+      "index": 152,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -5670,8 +8118,8 @@
       "return_": []
     },
     "assert_registrar_is_ancestor_from_table": {
-      "source_index": 114,
-      "index": 114,
+      "source_index": 153,
+      "index": 153,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -5722,8 +8170,8 @@
       "return_": []
     },
     "assert_update_caps_monotonic": {
-      "source_index": 115,
-      "index": 115,
+      "source_index": 154,
+      "index": 154,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -5814,8 +8262,8 @@
       "return_": []
     },
     "assert_agent_belongs_to_account": {
-      "source_index": 116,
-      "index": 116,
+      "source_index": 155,
+      "index": 155,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -5862,8 +8310,8 @@
       "return_": []
     },
     "destroy_sub_agent": {
-      "source_index": 117,
-      "index": 117,
+      "source_index": 156,
+      "index": 156,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -5887,8 +8335,8 @@
       "return_": []
     },
     "assert_caps_subset": {
-      "source_index": 118,
-      "index": 118,
+      "source_index": 157,
+      "index": 157,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -5907,8 +8355,8 @@
       "return_": []
     },
     "assert_scope_allowed_for_delegate": {
-      "source_index": 119,
-      "index": 119,
+      "source_index": 158,
+      "index": 158,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -5955,8 +8403,8 @@
       "return_": []
     },
     "assert_valid_register_scope": {
-      "source_index": 120,
-      "index": 120,
+      "source_index": 159,
+      "index": 159,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -5971,8 +8419,8 @@
       "return_": []
     },
     "assert_sub_agent_not_expired": {
-      "source_index": 121,
-      "index": 121,
+      "source_index": 160,
+      "index": 160,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -6019,8 +8467,8 @@
       "return_": []
     },
     "assert_valid_identity_class": {
-      "source_index": 122,
-      "index": 122,
+      "source_index": 161,
+      "index": 161,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -6035,14 +8483,32 @@
       "return_": []
     },
     "assert_org_name_within_limit": {
-      "source_index": 123,
-      "index": 123,
+      "source_index": 162,
+      "index": 162,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
       "entry": false,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "name",
           "type_": {
@@ -6079,14 +8545,32 @@
       "return_": []
     },
     "assert_org_description_within_limit": {
-      "source_index": 124,
-      "index": 124,
+      "source_index": 163,
+      "index": 163,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
       "entry": false,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "description",
           "type_": {
@@ -6123,8 +8607,8 @@
       "return_": []
     },
     "assert_valid_org_type": {
-      "source_index": 125,
-      "index": 125,
+      "source_index": 164,
+      "index": 164,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -6139,8 +8623,8 @@
       "return_": []
     },
     "assert_organization_belongs_to_account": {
-      "source_index": 126,
-      "index": 126,
+      "source_index": 165,
+      "index": 165,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -6187,8 +8671,8 @@
       "return_": []
     },
     "assert_organization_ready_for_root": {
-      "source_index": 127,
-      "index": 127,
+      "source_index": 166,
+      "index": 166,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -6234,9 +8718,707 @@
       ],
       "return_": []
     },
+    "is_org_group": {
+      "source_index": 167,
+      "index": 167,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "org",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "AgenticOrganization",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "group",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "social_contracts",
+                            "name": "memory"
+                          },
+                          "name": "MemorySharePackage",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "assert_org_group": {
+      "source_index": 168,
+      "index": 168,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "org",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "AgenticOrganization",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "group",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "social_contracts",
+                            "name": "memory"
+                          },
+                          "name": "MemorySharePackage",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "assert_org_permission_manager": {
+      "source_index": 169,
+      "index": 169,
+      "doc": " The framework re-checks manager permission per grant/revoke; this explicit check exists\n so wrappers fail fast (and so no-op masks cannot bypass authorization entirely).",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "group",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "social_contracts",
+                            "name": "memory"
+                          },
+                          "name": "MemorySharePackage",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "assert_valid_org_permission_mask": {
+      "source_index": 170,
+      "index": 170,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "mask",
+          "type_": "u64"
+        }
+      ],
+      "return_": []
+    },
+    "assert_valid_org_ops_permission_mask": {
+      "source_index": 171,
+      "index": 171,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "mask",
+          "type_": "u64"
+        }
+      ],
+      "return_": []
+    },
+    "assert_valid_org_governance_permission_mask": {
+      "source_index": 172,
+      "index": 172,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "mask",
+          "type_": "u64"
+        }
+      ],
+      "return_": []
+    },
+    "assert_member_grantable": {
+      "source_index": 173,
+      "index": 173,
+      "doc": " Grantable members: human addresses (org staff, not in the agents table) or registered\n sub-agents belonging to this org. Cross-org agent grants are rejected because the\n relayer scopes org recall by the agent's own organization.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryAccount",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "org",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "AgenticOrganization",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "member",
+          "type_": "address"
+        }
+      ],
+      "return_": []
+    },
+    "grant_org_permissions_from_mask_via_org": {
+      "source_index": 174,
+      "index": 174,
+      "doc": " Grant each witness in `mask` via the org object's delegate admin on the group.\n Used when the transaction sender is the invitee (accept path) rather than a manager.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "org",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "AgenticOrganization",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "group",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "social_contracts",
+                            "name": "memory"
+                          },
+                          "name": "MemorySharePackage",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "member",
+          "type_": "address"
+        },
+        {
+          "name": "mask",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "ensure_org_group_delegate_admin": {
+      "source_index": 175,
+      "index": 175,
+      "doc": " One-time bootstrap: grant the org shared object delegate admin on its memory group so\n invitation accept can fulfill grants without the invitee holding manager permission.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "org",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "AgenticOrganization",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "group",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "social_contracts",
+                            "name": "memory"
+                          },
+                          "name": "MemorySharePackage",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "grant_org_permissions_from_mask": {
+      "source_index": 176,
+      "index": 176,
+      "doc": " Grant each witness in `mask` the member does not already hold. Returns the delta\n actually granted. Static per-bit branches (Move cannot grant by runtime TypeName).",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "group",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "social_contracts",
+                            "name": "memory"
+                          },
+                          "name": "MemorySharePackage",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "member",
+          "type_": "address"
+        },
+        {
+          "name": "mask",
+          "type_": "u64"
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "revoke_org_permissions_from_mask": {
+      "source_index": 177,
+      "index": 177,
+      "doc": " Revoke each witness in `mask` the member currently holds. Returns the delta revoked.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "group",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "social_contracts",
+                            "name": "memory"
+                          },
+                          "name": "MemorySharePackage",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "member",
+          "type_": "address"
+        },
+        {
+          "name": "mask",
+          "type_": "u64"
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "is_builtin_role_name": {
+      "source_index": 178,
+      "index": 178,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "name",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "std",
+                    "name": "string"
+                  },
+                  "name": "String",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "builtin_role_mask": {
+      "source_index": 179,
+      "index": 179,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "name",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "std",
+                    "name": "string"
+                  },
+                  "name": "String",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "resolve_role_mask": {
+      "source_index": 180,
+      "index": 180,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "org",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "AgenticOrganization",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "role_name",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "std",
+                    "name": "string"
+                  },
+                  "name": "String",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
     "has_cap": {
-      "source_index": 128,
-      "index": 128,
+      "source_index": 181,
+      "index": 181,
       "doc": null,
       "attributes": [],
       "visibility": "Package",
@@ -6257,8 +9439,8 @@
       ]
     },
     "cap_requires_approval": {
-      "source_index": 129,
-      "index": 129,
+      "source_index": 182,
+      "index": 182,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -6293,8 +9475,8 @@
       ]
     },
     "emit_sub_agent_registered": {
-      "source_index": 130,
-      "index": 130,
+      "source_index": 183,
+      "index": 183,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -6341,8 +9523,8 @@
       "return_": []
     },
     "emit_sub_agent_updated": {
-      "source_index": 131,
-      "index": 131,
+      "source_index": 184,
+      "index": 184,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -6389,8 +9571,8 @@
       "return_": []
     },
     "emit_sub_agent_deactivated": {
-      "source_index": 132,
-      "index": 132,
+      "source_index": 185,
+      "index": 185,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -6437,8 +9619,8 @@
       "return_": []
     },
     "emit_sub_agent_revoked": {
-      "source_index": 133,
-      "index": 133,
+      "source_index": 186,
+      "index": 186,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -6485,8 +9667,8 @@
       "return_": []
     },
     "get_version": {
-      "source_index": 134,
-      "index": 134,
+      "source_index": 187,
+      "index": 187,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -6517,8 +9699,8 @@
       ]
     },
     "set_version": {
-      "source_index": 135,
-      "index": 135,
+      "source_index": 188,
+      "index": 188,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -6551,8 +9733,8 @@
       "return_": []
     },
     "bump_version": {
-      "source_index": 136,
-      "index": 136,
+      "source_index": 189,
+      "index": 189,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -6585,8 +9767,8 @@
       "return_": []
     },
     "assert_object_version": {
-      "source_index": 137,
-      "index": 137,
+      "source_index": 190,
+      "index": 190,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -6615,8 +9797,8 @@
       "return_": []
     },
     "assert_cap_for_this_package": {
-      "source_index": 138,
-      "index": 138,
+      "source_index": 191,
+      "index": 191,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -6645,8 +9827,8 @@
       "return_": []
     },
     "has_suffix": {
-      "source_index": 139,
-      "index": 139,
+      "source_index": 192,
+      "index": 192,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -6682,8 +9864,155 @@
     }
   },
   "structs": {
-    "MemoryRegistry": {
+    "MemoryAdminCap": {
       "index": 0,
+      "doc": " Admin capability for memory configuration",
+      "attributes": [],
+      "abilities": [
+        "Key",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "MemoryConfig": {
+      "index": 1,
+      "doc": " Global memory feature configuration",
+      "attributes": [],
+      "abilities": [
+        "Key"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          },
+          "max_organizations_per_user": {
+            "index": 1,
+            "doc": null,
+            "type_": "u8"
+          },
+          "org_category_update_cooldown_ms": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_agent_depth": {
+            "index": 3,
+            "doc": null,
+            "type_": "u8"
+          },
+          "max_label_length": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_org_name_length": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_org_description_length": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "version": {
+            "index": 7,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "MemoryConfigUpdatedEvent": {
+      "index": 2,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "updated_by": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "max_organizations_per_user": {
+            "index": 1,
+            "doc": null,
+            "type_": "u8"
+          },
+          "org_category_update_cooldown_ms": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_agent_depth": {
+            "index": 3,
+            "doc": null,
+            "type_": "u8"
+          },
+          "max_label_length": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_org_name_length": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_org_description_length": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "timestamp": {
+            "index": 7,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "MemoryRegistry": {
+      "index": 3,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -6743,7 +10072,7 @@
       }
     },
     "SubAgentKey": {
-      "index": 1,
+      "index": 4,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -6764,7 +10093,7 @@
       }
     },
     "AgentMemoryVaultKey": {
-      "index": 2,
+      "index": 5,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -6783,8 +10112,377 @@
         }
       }
     },
+    "MemorySharePackage": {
+      "index": 6,
+      "doc": " Package witness for `PermissionedGroup<MemorySharePackage>` (org memory share groups).",
+      "attributes": [],
+      "abilities": [
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": true,
+        "fields": {
+          "dummy_field": {
+            "index": 0,
+            "type_": "bool"
+          }
+        }
+      }
+    },
+    "OrgMemoryGroupTag": {
+      "index": 7,
+      "doc": " Derivation key for the per-organization memory share group (derived from the org UID).",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": true,
+        "fields": {
+          "dummy_field": {
+            "index": 0,
+            "type_": "bool"
+          }
+        }
+      }
+    },
+    "OrgMemoryReader": {
+      "index": 8,
+      "doc": " Permission to read org-visible shared memory (relayer recall scope + MYDATA key release).",
+      "attributes": [],
+      "abilities": [
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": true,
+        "fields": {
+          "dummy_field": {
+            "index": 0,
+            "type_": "bool"
+          }
+        }
+      }
+    },
+    "OrgMemoryWriter": {
+      "index": 9,
+      "doc": " Permission to write org-visible shared memory.",
+      "attributes": [],
+      "abilities": [
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": true,
+        "fields": {
+          "dummy_field": {
+            "index": 0,
+            "type_": "bool"
+          }
+        }
+      }
+    },
+    "OrgAgentManager": {
+      "index": 10,
+      "doc": " Permission to manage the org's agent fleet (dashboard + future scheduler surfaces).",
+      "attributes": [],
+      "abilities": [
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": true,
+        "fields": {
+          "dummy_field": {
+            "index": 0,
+            "type_": "bool"
+          }
+        }
+      }
+    },
+    "OrgBudgetManager": {
+      "index": 11,
+      "doc": " Permission to manage AI-credit budgets for the org's agents (`ai_credit::set_agent_budget_as_manager`).",
+      "attributes": [],
+      "abilities": [
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": true,
+        "fields": {
+          "dummy_field": {
+            "index": 0,
+            "type_": "bool"
+          }
+        }
+      }
+    },
+    "OrgSpendApprover": {
+      "index": 12,
+      "doc": " Permission to approve over-threshold AI-credit spends (`ai_credit::approve_agent_spend_as_approver`).",
+      "attributes": [],
+      "abilities": [
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": true,
+        "fields": {
+          "dummy_field": {
+            "index": 0,
+            "type_": "bool"
+          }
+        }
+      }
+    },
+    "OrgDashboardViewer": {
+      "index": 13,
+      "doc": " Permission to view org dashboards (recorded on-chain; server-side read gating is a later phase).",
+      "attributes": [],
+      "abilities": [
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": true,
+        "fields": {
+          "dummy_field": {
+            "index": 0,
+            "type_": "bool"
+          }
+        }
+      }
+    },
+    "OrgAuditor": {
+      "index": 14,
+      "doc": " Permission to read org audit logs (recorded on-chain; server-side read gating is a later phase).",
+      "attributes": [],
+      "abilities": [
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": true,
+        "fields": {
+          "dummy_field": {
+            "index": 0,
+            "type_": "bool"
+          }
+        }
+      }
+    },
+    "OrgGovernanceProposer": {
+      "index": 15,
+      "doc": " Permission to create governance proposals for the organization.",
+      "attributes": [],
+      "abilities": [
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": true,
+        "fields": {
+          "dummy_field": {
+            "index": 0,
+            "type_": "bool"
+          }
+        }
+      }
+    },
+    "OrgGovernanceVoter": {
+      "index": 16,
+      "doc": " Permission to vote on governance proposals for the organization.",
+      "attributes": [],
+      "abilities": [
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": true,
+        "fields": {
+          "dummy_field": {
+            "index": 0,
+            "type_": "bool"
+          }
+        }
+      }
+    },
+    "OrgInvitationKey": {
+      "index": 17,
+      "doc": " Dynamic-field key on the org UID for a pending invitation to `invitee`.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "invitee": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          }
+        }
+      }
+    },
+    "OrgInvitation": {
+      "index": 18,
+      "doc": " Pending org membership invitation stored on the org UID.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "invitee": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "role_name": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "std",
+                          "name": "string"
+                        },
+                        "name": "String",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "permissions_mask": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "invited_by": {
+            "index": 3,
+            "doc": null,
+            "type_": "address"
+          },
+          "created_at_ms": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "expires_at_ms": {
+            "index": 5,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "u64"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "OrgCustomRoleKey": {
+      "index": 19,
+      "doc": " Dynamic-field key on the org UID for a custom role definition (`name -> mask`).",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "name": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "string"
+                },
+                "name": "String",
+                "type_arguments": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "OrgRoleAssignmentKey": {
+      "index": 20,
+      "doc": " Dynamic-field key on the org UID recording a role assignment's exact granted delta,\n so revocation removes precisely what the assignment added (immune to role redefinition\n and to overlap with direct grants or other roles).",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "member": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "role_name": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "string"
+                },
+                "name": "String",
+                "type_arguments": []
+              }
+            }
+          }
+        }
+      }
+    },
     "SubAgentConstraints": {
-      "index": 3,
+      "index": 21,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -6824,7 +10522,7 @@
       }
     },
     "OrgRegistryEntry": {
-      "index": 4,
+      "index": 22,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -6845,7 +10543,7 @@
       }
     },
     "AgenticOrganization": {
-      "index": 5,
+      "index": 23,
       "doc": " Competitive agentic organization wrapper (one root-agent tree per org).",
       "attributes": [],
       "abilities": [
@@ -7035,7 +10733,7 @@
       }
     },
     "AgentRegistryEntry": {
-      "index": 6,
+      "index": 24,
       "doc": " Auth mirror for on-chain ancestor walks without PTB ancestor inputs.",
       "attributes": [],
       "abilities": [
@@ -7189,7 +10887,7 @@
       }
     },
     "SubAgent": {
-      "index": 7,
+      "index": 25,
       "doc": " Shared derived sub-agent object (one per agent).",
       "attributes": [],
       "abilities": [
@@ -7407,7 +11105,7 @@
       }
     },
     "AgentMemoryVault": {
-      "index": 8,
+      "index": 26,
       "doc": " Lazy per-agent memory blob anchor (derived from [`SubAgent`]).",
       "attributes": [],
       "abilities": [
@@ -7468,7 +11166,7 @@
       }
     },
     "ActingContext": {
-      "index": 9,
+      "index": 27,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -7592,7 +11290,7 @@
       }
     },
     "MemoryAccount": {
-      "index": 10,
+      "index": 28,
       "doc": " Human root plus on-chain agent auth index (shared [`SubAgent`] objects remain canonical).",
       "attributes": [],
       "abilities": [
@@ -7751,7 +11449,7 @@
       }
     },
     "MemoryAccountCreated": {
-      "index": 11,
+      "index": 29,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -7790,7 +11488,7 @@
       }
     },
     "SubAgentRegistered": {
-      "index": 12,
+      "index": 30,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -8011,7 +11709,7 @@
       }
     },
     "SubAgentUpdated": {
-      "index": 13,
+      "index": 31,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -8232,7 +11930,7 @@
       }
     },
     "SubAgentDeactivated": {
-      "index": 14,
+      "index": 32,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -8290,7 +11988,7 @@
       }
     },
     "SubAgentRevoked": {
-      "index": 15,
+      "index": 33,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -8348,7 +12046,7 @@
       }
     },
     "SubAgentsClearedOnTransfer": {
-      "index": 16,
+      "index": 34,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -8402,7 +12100,7 @@
       }
     },
     "MemoryAccountDeactivated": {
-      "index": 17,
+      "index": 35,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -8436,7 +12134,7 @@
       }
     },
     "MemoryAccountReactivated": {
-      "index": 18,
+      "index": 36,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -8470,7 +12168,7 @@
       }
     },
     "MemoryAccountMigrated": {
-      "index": 19,
+      "index": 37,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -8509,7 +12207,7 @@
       }
     },
     "MemoryRegistryMigrated": {
-      "index": 20,
+      "index": 38,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -8548,7 +12246,7 @@
       }
     },
     "AgentMemoryVaultCreated": {
-      "index": 21,
+      "index": 39,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -8605,7 +12303,7 @@
       }
     },
     "AgenticOrganizationCreated": {
-      "index": 22,
+      "index": 40,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -8724,7 +12422,7 @@
       }
     },
     "AgenticOrganizationUpdated": {
-      "index": 23,
+      "index": 41,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -8809,7 +12507,7 @@
       }
     },
     "AgenticOrganizationCategoryUpdated": {
-      "index": 24,
+      "index": 42,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -8853,7 +12551,7 @@
       }
     },
     "AgenticOrganizationDeactivated": {
-      "index": 25,
+      "index": 43,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -8880,6 +12578,783 @@
           },
           "deactivated_at": {
             "index": 1,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "OrgMemoryGroupCreated": {
+      "index": 44,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "group_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "organization_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "account_id": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "principal_owner": {
+            "index": 3,
+            "doc": null,
+            "type_": "address"
+          },
+          "created_at": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "OrgMemoryPermissionGranted": {
+      "index": 45,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "organization_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "account_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "group_id": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "member": {
+            "index": 3,
+            "doc": null,
+            "type_": "address"
+          },
+          "permissions_mask": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "granted_by": {
+            "index": 5,
+            "doc": null,
+            "type_": "address"
+          },
+          "timestamp_ms": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "OrgMemoryPermissionRevoked": {
+      "index": 46,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "organization_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "account_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "group_id": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "member": {
+            "index": 3,
+            "doc": null,
+            "type_": "address"
+          },
+          "permissions_mask": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "revoked_by": {
+            "index": 5,
+            "doc": null,
+            "type_": "address"
+          },
+          "timestamp_ms": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "OrgRoleDefined": {
+      "index": 47,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "organization_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "account_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "role_name": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "string"
+                },
+                "name": "String",
+                "type_arguments": []
+              }
+            }
+          },
+          "mask": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "previous_mask": {
+            "index": 4,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "u64"
+                  }
+                ]
+              }
+            }
+          },
+          "defined_by": {
+            "index": 5,
+            "doc": null,
+            "type_": "address"
+          },
+          "timestamp_ms": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "OrgRoleAssigned": {
+      "index": 48,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "organization_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "account_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "group_id": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "member": {
+            "index": 3,
+            "doc": null,
+            "type_": "address"
+          },
+          "role_name": {
+            "index": 4,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "string"
+                },
+                "name": "String",
+                "type_arguments": []
+              }
+            }
+          },
+          "mask": {
+            "index": 5,
+            "doc": " Full mask of the role at assignment time.",
+            "type_": "u64"
+          },
+          "granted_mask": {
+            "index": 6,
+            "doc": " Delta actually granted (excludes permissions the member already held).",
+            "type_": "u64"
+          },
+          "assigned_by": {
+            "index": 7,
+            "doc": null,
+            "type_": "address"
+          },
+          "timestamp_ms": {
+            "index": 8,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "OrgRoleRevoked": {
+      "index": 49,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "organization_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "account_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "group_id": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "member": {
+            "index": 3,
+            "doc": null,
+            "type_": "address"
+          },
+          "role_name": {
+            "index": 4,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "string"
+                },
+                "name": "String",
+                "type_arguments": []
+              }
+            }
+          },
+          "revoked_mask": {
+            "index": 5,
+            "doc": " Delta actually revoked (the assignment's recorded granted_mask).",
+            "type_": "u64"
+          },
+          "revoked_by": {
+            "index": 6,
+            "doc": null,
+            "type_": "address"
+          },
+          "timestamp_ms": {
+            "index": 7,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "OrgInvitationCreated": {
+      "index": 50,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "organization_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "account_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "invitee": {
+            "index": 2,
+            "doc": null,
+            "type_": "address"
+          },
+          "role_name": {
+            "index": 3,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "std",
+                          "name": "string"
+                        },
+                        "name": "String",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "permissions_mask": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "invited_by": {
+            "index": 5,
+            "doc": null,
+            "type_": "address"
+          },
+          "timestamp_ms": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "expires_at_ms": {
+            "index": 7,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "u64"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "OrgInvitationAccepted": {
+      "index": 51,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "organization_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "account_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "group_id": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "invitee": {
+            "index": 3,
+            "doc": null,
+            "type_": "address"
+          },
+          "role_name": {
+            "index": 4,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "std",
+                          "name": "string"
+                        },
+                        "name": "String",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "permissions_mask": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "granted_mask": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "accepted_by": {
+            "index": 7,
+            "doc": null,
+            "type_": "address"
+          },
+          "timestamp_ms": {
+            "index": 8,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "OrgInvitationDeclined": {
+      "index": 52,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "organization_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "account_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "invitee": {
+            "index": 2,
+            "doc": null,
+            "type_": "address"
+          },
+          "declined_by": {
+            "index": 3,
+            "doc": null,
+            "type_": "address"
+          },
+          "timestamp_ms": {
+            "index": 4,
             "doc": null,
             "type_": "u64"
           }

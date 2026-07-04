@@ -1907,6 +1907,24 @@
       "type_parameters": [],
       "parameters": [
         {
+          "name": "memory_config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
           "name": "registry",
           "type_": {
             "Reference": [
@@ -2592,6 +2610,24 @@
           }
         },
         {
+          "name": "memory_config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
           "name": "content",
           "type_": {
             "Datatype": {
@@ -3017,6 +3053,24 @@
           }
         },
         {
+          "name": "memory_config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
           "name": "memory_account",
           "type_": {
             "Reference": [
@@ -3293,6 +3347,24 @@
                     "name": "post"
                   },
                   "name": "PostConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "memory_config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
                   "type_arguments": []
                 }
               }
@@ -3879,6 +3951,24 @@
           }
         },
         {
+          "name": "memory_config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
           "name": "memory_account",
           "type_": {
             "Reference": [
@@ -4025,6 +4115,10 @@
         },
         {
           "name": "amount",
+          "type_": "u64"
+        },
+        {
+          "name": "min_vault_deposit_amount",
           "type_": "u64"
         },
         {
@@ -4278,6 +4372,10 @@
         {
           "name": "is_post_event",
           "type_": "bool"
+        },
+        {
+          "name": "min_vault_deposit_amount",
+          "type_": "u64"
         },
         {
           "name": "clock",
@@ -4646,7 +4744,7 @@
     "increment_poc_disputes_submitted": {
       "source_index": 59,
       "index": 59,
-      "doc": " Increment after each successful `submit_poc_dispute` (max 2).",
+      "doc": " Increment after each successful `submit_poc_dispute`.",
       "attributes": [],
       "visibility": "Package",
       "entry": false,
@@ -4669,6 +4767,10 @@
               }
             ]
           }
+        },
+        {
+          "name": "max_disputes",
+          "type_": "u8"
         }
       ],
       "return_": []
@@ -4742,6 +4844,10 @@
               ]
             }
           }
+        },
+        {
+          "name": "min_vault_deposit_amount",
+          "type_": "u64"
         },
         {
           "name": "clock",
@@ -4916,6 +5022,10 @@
           "type_": "u64"
         },
         {
+          "name": "min_vault_deposit_amount",
+          "type_": "u64"
+        },
+        {
           "name": "clock",
           "type_": {
             "Reference": [
@@ -5067,6 +5177,10 @@
         },
         {
           "name": "amount",
+          "type_": "u64"
+        },
+        {
+          "name": "min_vault_deposit_amount",
           "type_": "u64"
         },
         {
@@ -6127,6 +6241,24 @@
                     "name": "post"
                   },
                   "name": "PostConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "memory_config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
                   "type_arguments": []
                 }
               }
@@ -7197,6 +7329,18 @@
           "type_": "u64"
         },
         {
+          "name": "min_promotion_amount",
+          "type_": "u64"
+        },
+        {
+          "name": "max_promotion_amount",
+          "type_": "u64"
+        },
+        {
+          "name": "min_view_duration_ms",
+          "type_": "u64"
+        },
+        {
           "name": "clock",
           "type_": {
             "Reference": [
@@ -7328,6 +7472,24 @@
                     "name": "post"
                   },
                   "name": "PostConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "memory_config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
                   "type_arguments": []
                 }
               }
@@ -7640,6 +7802,24 @@
                     "name": "post"
                   },
                   "name": "PromotionData",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "post"
+                  },
+                  "name": "PostConfig",
                   "type_arguments": []
                 }
               }
@@ -9674,8 +9854,23 @@
             "doc": " Percentage of tip that goes to reposter (remainder to original post owner)",
             "type_": "u64"
           },
-          "version": {
+          "min_promotion_amount": {
             "index": 9,
+            "doc": " Minimum payment per view for promoted posts (MIST)",
+            "type_": "u64"
+          },
+          "max_promotion_amount": {
+            "index": 10,
+            "doc": " Maximum payment per view for promoted posts (MIST)",
+            "type_": "u64"
+          },
+          "min_view_duration_ms": {
+            "index": 11,
+            "doc": " Minimum view duration for a promoted post view to count (ms)",
+            "type_": "u64"
+          },
+          "version": {
+            "index": 12,
             "doc": " Version for upgrades",
             "type_": "u64"
           }
@@ -9742,6 +9937,21 @@
           "repost_tip_percentage": {
             "index": 9,
             "doc": " New repost tip percentage value",
+            "type_": "u64"
+          },
+          "min_promotion_amount": {
+            "index": 10,
+            "doc": " New min promotion amount value (MIST per view)",
+            "type_": "u64"
+          },
+          "max_promotion_amount": {
+            "index": 11,
+            "doc": " New max promotion amount value (MIST per view)",
+            "type_": "u64"
+          },
+          "min_view_duration_ms": {
+            "index": 12,
+            "doc": " New min view duration value (ms)",
             "type_": "u64"
           }
         }

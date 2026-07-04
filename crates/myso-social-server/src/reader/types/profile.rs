@@ -68,3 +68,28 @@ pub struct ProfileDailyStatsChartData {
     pub date_range: DateRange,
     pub summary: ProfileDailyStatsSummary,
 }
+
+#[derive(Debug, Serialize, QueryableByName)]
+#[serde(rename_all = "camelCase")]
+pub struct ProfileConfigInfo {
+    #[diesel(sql_type = Text)]
+    pub updated_by: String,
+    #[diesel(sql_type = BigInt)]
+    pub max_vesting_pieces: i64,
+    #[diesel(sql_type = BigInt)]
+    pub curve_factor_min: i64,
+    #[diesel(sql_type = BigInt)]
+    pub curve_factor_max: i64,
+    #[diesel(sql_type = BigInt)]
+    pub curve_precision: i64,
+    #[diesel(sql_type = BigInt)]
+    pub min_claim_threshold_divisor: i64,
+    #[diesel(sql_type = BigInt)]
+    pub min_username_length: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_username_length: i64,
+    #[diesel(sql_type = BigInt)]
+    pub version: i64,
+    #[diesel(sql_type = BigInt)]
+    pub updated_at: i64,
+}

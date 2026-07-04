@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use async_graphql::{Context, Enum, InputObject, Object, SimpleObject};
-use std::str::FromStr;
 use myso_indexer_alt_social_reader::{
     AgentSpendBreakdownEntry, AuditLogFilter, OrganizationStatsWindow,
 };
@@ -10,6 +9,7 @@ use myso_indexer_alt_social_schema::models::{
     AiCreditAgentBudgetRow, AiCreditSpendApprovalRow, AuditLogRow, OrgInvitationRow,
     OrgMemoryPermissionRow, OrgRoleAssignmentRow, OrgRoleRow,
 };
+use std::str::FromStr;
 
 use crate::api::scalars::big_int::BigInt;
 use crate::api::scalars::date_time::DateTime as GqlDateTime;
@@ -479,7 +479,9 @@ impl AgentSpendBreakdown {
     }
 }
 
-pub(crate) fn window_from_gql(window: Option<OrganizationStatsWindowGql>) -> OrganizationStatsWindow {
+pub(crate) fn window_from_gql(
+    window: Option<OrganizationStatsWindowGql>,
+) -> OrganizationStatsWindow {
     window.unwrap_or_default().into()
 }
 

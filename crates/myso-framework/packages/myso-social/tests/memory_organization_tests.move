@@ -14,9 +14,11 @@ module social_contracts::memory_organization_tests {
     use myso::coin::{Self, Coin};
     use myso::myso::MYSO;
 
-    use social_contracts::memory::{Self, MemoryRegistry, MemoryAccount, SubAgent, AgenticOrganization};
+    use social_contracts::memory::{Self, MemoryRegistry, MemoryAccount, SubAgent, AgenticOrganization,
+        MemoryConfig};
     use social_contracts::memory_test_helpers;
-    use social_contracts::profile::{Self, Profile, UsernameRegistry};
+    use social_contracts::profile::{Self, Profile, UsernameRegistry,
+        ProfileConfig};
     use social_contracts::ai_credit::AiCreditConfig;
 
     const ADMIN: address = @0xAD;
@@ -34,11 +36,14 @@ module social_contracts::memory_organization_tests {
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(scenario);
+            let memory_config = test_scenario::take_shared<MemoryConfig>(scenario);
+            let profile_config = test_scenario::take_shared<ProfileConfig>(scenario);
             let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(scenario);
             let clock = test_scenario::take_shared<Clock>(scenario);
 
             profile::create_profile(
                 &mut registry,
+                &profile_config,
                 &mut memory_registry,
                 &mut ai_credit_config,
                 string::utf8(b"User Two"),
@@ -50,6 +55,8 @@ module social_contracts::memory_organization_tests {
                 test_scenario::ctx(scenario),
             );
 
+            test_scenario::return_shared(profile_config);
+            test_scenario::return_shared(memory_config);
             test_scenario::return_shared(clock);
             test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(memory_registry);
@@ -72,6 +79,7 @@ module social_contracts::memory_organization_tests {
 
         test_scenario::next_tx(scenario, USER1);
         {
+            let profile_config = test_scenario::take_shared<ProfileConfig>(scenario);
             let mut registry = test_scenario::take_shared<UsernameRegistry>(scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(scenario);
             let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(scenario);
@@ -79,6 +87,7 @@ module social_contracts::memory_organization_tests {
 
             profile::create_profile(
                 &mut registry,
+                &profile_config,
                 &mut memory_registry,
                 &mut ai_credit_config,
                 string::utf8(b"User One"),
@@ -94,6 +103,7 @@ module social_contracts::memory_organization_tests {
             test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_config);
         };
     }
 
@@ -116,6 +126,7 @@ module social_contracts::memory_organization_tests {
     }
 
     fun register_root_agent(
+        config: &MemoryConfig,
         memory_account: &mut MemoryAccount,
         org: &mut AgenticOrganization,
         derived: address,
@@ -124,6 +135,7 @@ module social_contracts::memory_organization_tests {
         ctx: &mut myso::tx_context::TxContext,
     ) {
         memory::register_sub_agent(
+            config,
             memory_account,
             org,
             pubkey,
@@ -144,12 +156,14 @@ module social_contracts::memory_organization_tests {
     }
 
     fun register_child_agent(
+        config: &MemoryConfig,
         memory_account: &mut MemoryAccount,
         parent: &SubAgent,
         clock: &Clock,
         ctx: &mut myso::tx_context::TxContext,
     ) {
         memory::register_sub_agent_delegated(
+            config,
             memory_account,
             parent,
             CHILD_PUBKEY,
@@ -174,9 +188,14 @@ module social_contracts::memory_organization_tests {
     fun test_create_org_each_valid_type() {
         let mut scenario = test_scenario::begin(ADMIN);
         init_env(&mut scenario);
+        test_scenario::next_tx(&mut scenario, USER1);
+        let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
+        let max_per_user = memory::max_organizations_per_user(&memory_config);
+        let type_count = memory::org_type_count();
+        test_scenario::return_shared(memory_config);
 
         let mut i: u8 = 0;
-        while (i < memory::max_organizations_per_user()) {
+        while (i < max_per_user) {
             test_scenario::next_tx(&mut scenario, USER1);
             {
                 memory_test_helpers::create_org_in_tx(&mut scenario, i);
@@ -192,9 +211,9 @@ module social_contracts::memory_organization_tests {
             i = i + 1;
         };
 
-        i = memory::max_organizations_per_user();
+        i = max_per_user;
         init_user2_profile(&mut scenario);
-        while (i < memory::org_type_count()) {
+        while (i < type_count) {
             test_scenario::next_tx(&mut scenario, USER2);
             {
                 memory_test_helpers::create_org_in_tx(&mut scenario, i);
@@ -214,14 +233,16 @@ module social_contracts::memory_organization_tests {
     }
 
     fun create_org_for_limit_test(
-        scenario: &mut test_scenario::Scenario,
+        scenario: &mut test_scenario::Scenario
     ) {
         test_scenario::next_tx(scenario, USER1);
         {
+            let memory_config = test_scenario::take_shared<MemoryConfig>(scenario);
             let mut memory_account = test_scenario::take_shared<MemoryAccount>(scenario);
             let clock = test_scenario::take_shared<Clock>(scenario);
             memory::test_force_account_version(&mut memory_account, 4);
             memory::test_create_agentic_organization(
+                &memory_config,
                 &mut memory_account,
                 memory::org_type_other(),
                 option::none(),
@@ -231,12 +252,13 @@ module social_contracts::memory_organization_tests {
             );
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(clock);
+        test_scenario::return_shared(memory_config);
         };
     }
 
     #[test]
     #[expected_failure(abort_code = 35, location = social_contracts::memory)]
-    fun test_org_limit_exceeded() {
+    fun test_org_limit_exceeded(    ) {
         let mut scenario = test_scenario::begin(ADMIN);
         init_env(&mut scenario);
 
@@ -251,10 +273,12 @@ module social_contracts::memory_organization_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
+            let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
             let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             memory::test_force_account_version(&mut memory_account, 4);
             memory::test_create_agentic_organization(
+                &memory_config,
                 &mut memory_account,
                 memory::org_type_other(),
                 option::none(),
@@ -264,6 +288,7 @@ module social_contracts::memory_organization_tests {
             );
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(clock);
+        test_scenario::return_shared(memory_config);
         };
 
         test_scenario::end(scenario);
@@ -281,11 +306,13 @@ module social_contracts::memory_organization_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
+            let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
             let mut org = memory_test_helpers::take_created_org(&mut scenario);
             let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
 
             register_root_agent(
+                &memory_config,
                 &mut memory_account,
                 &mut org,
                 ROOT_AGENT,
@@ -297,6 +324,7 @@ module social_contracts::memory_organization_tests {
             test_scenario::return_shared(org);
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(clock);
+            test_scenario::return_shared(memory_config);
         };
 
         test_scenario::next_tx(&mut scenario, USER1);
@@ -338,11 +366,13 @@ module social_contracts::memory_organization_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
+            let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
             let mut org = memory_test_helpers::take_created_org(&mut scenario);
             let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
 
             register_root_agent(
+                &memory_config,
                 &mut memory_account,
                 &mut org,
                 ROOT_AGENT,
@@ -352,6 +382,7 @@ module social_contracts::memory_organization_tests {
             );
 
             register_root_agent(
+                &memory_config,
                 &mut memory_account,
                 &mut org,
                 SECOND_ROOT_AGENT,
@@ -363,6 +394,7 @@ module social_contracts::memory_organization_tests {
             test_scenario::return_shared(org);
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(clock);
+            test_scenario::return_shared(memory_config);
         };
 
         test_scenario::end(scenario);
@@ -380,11 +412,13 @@ module social_contracts::memory_organization_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
+            let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
             let mut org = memory_test_helpers::take_created_org(&mut scenario);
             let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
 
             register_root_agent(
+                &memory_config,
                 &mut memory_account,
                 &mut org,
                 ROOT_AGENT,
@@ -395,16 +429,19 @@ module social_contracts::memory_organization_tests {
             test_scenario::return_shared(org);
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(clock);
+            test_scenario::return_shared(memory_config);
         };
 
         test_scenario::next_tx(&mut scenario, ROOT_AGENT);
         {
+            let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
             let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let org = test_scenario::take_shared<AgenticOrganization>(&scenario);
             let parent = take_agent(&scenario, &memory_account, ROOT_AGENT);
             let clock = test_scenario::take_shared<Clock>(&scenario);
 
             register_child_agent(
+                &memory_config,
                 &mut memory_account,
                 &parent,
                 &clock,
@@ -415,6 +452,7 @@ module social_contracts::memory_organization_tests {
             test_scenario::return_shared(org);
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(clock);
+            test_scenario::return_shared(memory_config);
         };
 
         test_scenario::next_tx(&mut scenario, USER1);
@@ -441,10 +479,12 @@ module social_contracts::memory_organization_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
+            let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
             let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
 
             memory::test_create_agentic_organization(
+                &memory_config,
                 &mut memory_account,
                 memory::org_type_count(),
                 option::none(),
@@ -455,6 +495,7 @@ module social_contracts::memory_organization_tests {
 
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(clock);
+        test_scenario::return_shared(memory_config);
         };
 
         test_scenario::end(scenario);
@@ -477,9 +518,11 @@ module social_contracts::memory_organization_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
+            let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
             let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             memory::test_create_agentic_organization(
+                &memory_config,
                 &mut memory_account,
                 memory::org_type_company(),
                 option::some(string::utf8(b"Acme Agents")),
@@ -489,6 +532,7 @@ module social_contracts::memory_organization_tests {
             );
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(clock);
+        test_scenario::return_shared(memory_config);
         };
 
         test_scenario::next_tx(&mut scenario, USER1);
@@ -509,9 +553,11 @@ module social_contracts::memory_organization_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
+            let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
             let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             memory::test_create_agentic_organization(
+                &memory_config,
                 &mut memory_account,
                 memory::org_type_other(),
                 option::none(),
@@ -521,6 +567,7 @@ module social_contracts::memory_organization_tests {
             );
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(clock);
+        test_scenario::return_shared(memory_config);
         };
 
         test_scenario::next_tx(&mut scenario, USER1);
@@ -547,8 +594,10 @@ module social_contracts::memory_organization_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut org = memory_test_helpers::take_created_org(&mut scenario);
+            let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             memory::update_agentic_organization_metadata(
+                &memory_config,
                 &memory_account,
                 &mut org,
                 option::some(string::utf8(b"Renamed Org")),
@@ -557,6 +606,7 @@ module social_contracts::memory_organization_tests {
             );
             test_scenario::return_shared(org);
             test_scenario::return_shared(memory_account);
+            test_scenario::return_shared(memory_config);
         };
 
         test_scenario::next_tx(&mut scenario, USER1);
@@ -577,10 +627,12 @@ module social_contracts::memory_organization_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
+            let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
             let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             let desc_bytes = repeat_byte(memory::max_org_description_length(), 97);
             memory::test_create_agentic_organization(
+                &memory_config,
                 &mut memory_account,
                 memory::org_type_other(),
                 option::none(),
@@ -590,6 +642,7 @@ module social_contracts::memory_organization_tests {
             );
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(clock);
+        test_scenario::return_shared(memory_config);
         };
 
         test_scenario::end(scenario);
@@ -603,10 +656,12 @@ module social_contracts::memory_organization_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
+            let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
             let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             let desc_bytes = repeat_byte(memory::max_org_description_length() + 1, 97);
             memory::test_create_agentic_organization(
+                &memory_config,
                 &mut memory_account,
                 memory::org_type_other(),
                 option::none(),
@@ -616,6 +671,7 @@ module social_contracts::memory_organization_tests {
             );
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(clock);
+        test_scenario::return_shared(memory_config);
         };
 
         test_scenario::end(scenario);

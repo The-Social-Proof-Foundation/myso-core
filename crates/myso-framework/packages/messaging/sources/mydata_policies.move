@@ -23,7 +23,7 @@ use myso::permissioned_group::PermissionedGroup;
 use messaging::messaging::{MessagingReader, Messaging};
 use messaging::encryption_history::EncryptionHistory;
 use messaging::version::Version;
-use social_contracts::memory::{Self, MemoryAccount};
+use social_contracts::memory::{Self, MemoryAccount, MemoryConfig};
 use social_contracts::platform::{Self, Platform};
 use myso::clock::Clock;
 use myso::bcs;
@@ -149,6 +149,7 @@ entry fun mydata_approve_agent_reader(
     group: &PermissionedGroup<Messaging>,
     encryption_history: &EncryptionHistory,
     platform: &Platform,
+    memory_config: &MemoryConfig,
     memory_account: &MemoryAccount,
     clock: &Clock,
     ctx: &TxContext,
@@ -157,6 +158,7 @@ entry fun mydata_approve_agent_reader(
     validate_identity(group, encryption_history, id);
     let platform_id = object::uid_to_address(platform::id(platform));
     let acting = memory::resolve_actor_with_cap(
+        memory_config,
         memory_account,
         memory::cap_message_read(),
         option::some(platform_id),

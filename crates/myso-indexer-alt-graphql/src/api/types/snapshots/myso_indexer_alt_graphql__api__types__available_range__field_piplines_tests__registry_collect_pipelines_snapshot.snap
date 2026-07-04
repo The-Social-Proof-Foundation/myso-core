@@ -227,6 +227,42 @@ AiCreditBalance.pendingApprovals
 AiCreditBalance.agentBudgets
   => {}
 
+AiCreditConfig.updatedBy
+  => {}
+
+AiCreditConfig.oraclePubkeyHex
+  => {}
+
+AiCreditConfig.treasuryAddress
+  => {}
+
+AiCreditConfig.minDepositMist
+  => {}
+
+AiCreditConfig.maxSingleSettlementMist
+  => {}
+
+AiCreditConfig.receiptTtlMs
+  => {}
+
+AiCreditConfig.oracleMarkupBps
+  => {}
+
+AiCreditConfig.catalogVersion
+  => {}
+
+AiCreditConfig.version
+  => {}
+
+AiCreditConfig.updatedAt
+  => {}
+
+AiCreditConfig.time
+  => {}
+
+AiCreditConfig.transactionId
+  => {}
+
 AiCreditUsageLine.receiptId
   => {}
 
@@ -917,6 +953,27 @@ DynamicField.receivedTransactions
 DynamicField.value
   => {}
 
+EcosystemTreasury.treasuryAddress
+  => {}
+
+EcosystemTreasury.profileSaleFeeBps
+  => {}
+
+EcosystemTreasury.updatedBy
+  => {}
+
+EcosystemTreasury.version
+  => {}
+
+EcosystemTreasury.updatedAt
+  => {}
+
+EcosystemTreasury.time
+  => {}
+
+EcosystemTreasury.transactionId
+  => {}
+
 EndOfEpochTransaction.transactions
   => {}
 
@@ -1403,7 +1460,7 @@ InsuranceConfig.feeBps
 InsuranceConfig.version
   => {}
 
-InsuranceConfig.timestampMs
+InsuranceConfig.updatedAt
   => {}
 
 InsuranceConfig.time
@@ -1446,6 +1503,15 @@ InsuranceConfig.exposureCapBps
   => {}
 
 InsuranceConfig.exposureKBps
+  => {}
+
+InsuranceConfig.oddsBaseBps
+  => {}
+
+InsuranceConfiguration.pricing
+  => {}
+
+InsuranceConfiguration.router
   => {}
 
 InsuranceCoverageRoute.routeId
@@ -1685,6 +1751,45 @@ InsuranceRouteFill.timestampMs
 InsuranceRouteFill.createdAt
   => {}
 
+InsuranceRouterConfig.updatedBy
+  => {}
+
+InsuranceRouterConfig.routerEnabled
+  => {}
+
+InsuranceRouterConfig.routerPaused
+  => {}
+
+InsuranceRouterConfig.maxRouteReserveMarket
+  => {}
+
+InsuranceRouterConfig.maxRouteReserveUser
+  => {}
+
+InsuranceRouterConfig.maxRouteReserveOption
+  => {}
+
+InsuranceRouterConfig.maxVaultConcentrationBps
+  => {}
+
+InsuranceRouterConfig.minVaultHealthFactorBps
+  => {}
+
+InsuranceRouterConfig.maxRouteLegs
+  => {}
+
+InsuranceRouterConfig.version
+  => {}
+
+InsuranceRouterConfig.updatedAt
+  => {}
+
+InsuranceRouterConfig.time
+  => {}
+
+InsuranceRouterConfig.transactionId
+  => {}
+
 InsuranceVault.vaultId
   => {}
 
@@ -1796,10 +1901,103 @@ MemoryAccount.active
 MemoryAccount.createdAt
   => {}
 
+MemoryConfig.updatedBy
+  => {}
+
+MemoryConfig.maxOrganizationsPerUser
+  => {}
+
+MemoryConfig.orgCategoryUpdateCooldownMs
+  => {}
+
+MemoryConfig.maxAgentDepth
+  => {}
+
+MemoryConfig.maxLabelLength
+  => {}
+
+MemoryConfig.maxOrgNameLength
+  => {}
+
+MemoryConfig.maxOrgDescriptionLength
+  => {}
+
+MemoryConfig.version
+  => {}
+
+MemoryConfig.updatedAt
+  => {}
+
+MemoryConfig.time
+  => {}
+
+MemoryConfig.transactionId
+  => {}
+
 MergeCoinsCommand.coin
   => {}
 
 MergeCoinsCommand.coins
+  => {}
+
+MessagingAgentGroup.groupId
+  => {}
+
+MessagingAgentGroup.creatorActor
+  => {}
+
+MessagingAgentGroup.creatorPrincipal
+  => {}
+
+MessagingAgentGroup.creatorSubAgentId
+  => {}
+
+MessagingAgentGroup.creatorIdentityClass
+  => {}
+
+MessagingAgentGroup.organizationId
+  => {}
+
+MessagingAgentGroup.groupName
+  => {}
+
+MessagingAgentGroup.groupUuid
+  => {}
+
+MessagingAgentGroup.createdAtMs
+  => {}
+
+MessagingAgentGroup.transactionId
+  => {}
+
+MessagingConfig.updatedBy
+  => {}
+
+MessagingConfig.paidMsgPlatformFeeBps
+  => {}
+
+MessagingConfig.paidMsgTreasuryFeeBps
+  => {}
+
+MessagingConfig.paymentExpirationMs
+  => {}
+
+MessagingConfig.minReplyChars
+  => {}
+
+MessagingConfig.maxDedupeKeyBytes
+  => {}
+
+MessagingConfig.version
+  => {}
+
+MessagingConfig.updatedAt
+  => {}
+
+MessagingConfig.time
+  => {}
+
+MessagingConfig.transactionId
   => {}
 
 MoveCallCommand.function
@@ -2246,7 +2444,19 @@ MyDataConfig.maxSubscriptionDays
 MyDataConfig.maxFreeAccessGrants
   => {}
 
-MyDataConfig.timestampMs
+MyDataConfig.maxEncryptionIdBytes
+  => {}
+
+MyDataConfig.version
+  => {}
+
+MyDataConfig.updatedAt
+  => {}
+
+MyDataConfig.time
+  => {}
+
+MyDataConfig.transactionId
   => {}
 
 MyDataDailyRevenue.day
@@ -2801,6 +3011,51 @@ PageInfo.startCursor
 PageInfo.endCursor
   => {}
 
+PaidMessageEscrow.groupId
+  => {}
+
+PaidMessageEscrow.seq
+  => {}
+
+PaidMessageEscrow.payer
+  => {}
+
+PaidMessageEscrow.payerProfile
+  => {}
+
+PaidMessageEscrow.recipient
+  => {}
+
+PaidMessageEscrow.recipientProfile
+  => {}
+
+PaidMessageEscrow.amount
+  => {}
+
+PaidMessageEscrow.status
+  => {}
+
+PaidMessageEscrow.platformFee
+  => {}
+
+PaidMessageEscrow.treasuryFee
+  => {}
+
+PaidMessageEscrow.netAmount
+  => {}
+
+PaidMessageEscrow.createdAtMs
+  => {}
+
+PaidMessageEscrow.claimedAtMs
+  => {}
+
+PaidMessageEscrow.refundedAtMs
+  => {}
+
+PaidMessageEscrow.transactionId
+  => {}
+
 PerEpochConfig.object
   => {}
 
@@ -2922,6 +3177,45 @@ PlatformBlockedProfileSummary.blockedBy
   => {}
 
 PlatformBlockedProfileSummary.createdAt
+  => {}
+
+PlatformConfig.updatedBy
+  => {}
+
+PlatformConfig.maxReasoningLength
+  => {}
+
+PlatformConfig.maxCoverPhotoUrlLength
+  => {}
+
+PlatformConfig.maxMediaPreviews
+  => {}
+
+PlatformConfig.maxMediaPreviewUrlLength
+  => {}
+
+PlatformConfig.maxBadgeNameLength
+  => {}
+
+PlatformConfig.maxBadgeDescriptionLength
+  => {}
+
+PlatformConfig.maxBadgeMediaUrlLength
+  => {}
+
+PlatformConfig.maxBadgeIconUrlLength
+  => {}
+
+PlatformConfig.version
+  => {}
+
+PlatformConfig.updatedAt
+  => {}
+
+PlatformConfig.time
+  => {}
+
+PlatformConfig.transactionId
   => {}
 
 PlatformMemberSummary.walletAddress
@@ -3102,6 +3396,9 @@ PlatformRevenueSummary.totalMydataRevenue
   => {}
 
 PlatformRevenueSummary.totalSptRevenue
+  => {}
+
+PlatformRevenueSummary.totalMessagingRevenue
   => {}
 
 PlatformRevenueSummary.totalTransactions
@@ -3290,10 +3587,19 @@ PocConfig.videoEmbeddedAudioRedirectBps
 PocConfig.usernameBeneficiaryJoinReferralBps
   => {}
 
+PocConfig.maxDisputesPerPost
+  => {}
+
+PocConfig.minVaultDepositAmount
+  => {}
+
 PocConfig.updatedBy
   => {}
 
 PocConfig.updatedAt
+  => {}
+
+PocConfig.time
   => {}
 
 PocConfig.transactionId
@@ -3779,10 +4085,25 @@ PostConfig.commenterTipPercentage
 PostConfig.repostTipPercentage
   => {}
 
+PostConfig.minPromotionAmount
+  => {}
+
+PostConfig.maxPromotionAmount
+  => {}
+
+PostConfig.minViewDurationMs
+  => {}
+
 PostConfig.version
   => {}
 
 PostConfig.updatedAt
+  => {}
+
+PostConfig.time
+  => {}
+
+PostConfig.transactionId
   => {}
 
 PostDeletionEvent.eventId
@@ -4115,6 +4436,42 @@ ProfileBadge.assignedAt
 ProfileBadge.badgeType
   => {}
 
+ProfileConfig.updatedBy
+  => {}
+
+ProfileConfig.maxVestingPieces
+  => {}
+
+ProfileConfig.curveFactorMin
+  => {}
+
+ProfileConfig.curveFactorMax
+  => {}
+
+ProfileConfig.curvePrecision
+  => {}
+
+ProfileConfig.minClaimThresholdDivisor
+  => {}
+
+ProfileConfig.minUsernameLength
+  => {}
+
+ProfileConfig.maxUsernameLength
+  => {}
+
+ProfileConfig.version
+  => {}
+
+ProfileConfig.updatedAt
+  => {}
+
+ProfileConfig.time
+  => {}
+
+ProfileConfig.transactionId
+  => {}
+
 ProfilePnLWindowStats.window
   => {}
 
@@ -4137,6 +4494,9 @@ ProfilePnLWindowStats.mydataMyso
   => {}
 
 ProfilePnLWindowStats.postsMonetizationMyso
+  => {}
+
+ProfilePnLWindowStats.messagingMyso
   => {}
 
 ProfilePnLWindowStats.otherInboundMyso
@@ -4685,6 +5045,33 @@ Query.mydataConfiguration
 Query.insuranceConfiguration
   => {}
 
+Query.aiCreditConfiguration
+  => {}
+
+Query.messagingConfiguration
+  => {}
+
+Query.paidMessageEscrows
+  => {}
+
+Query.messagingAgentGroups
+  => {}
+
+Query.subscriptionConfiguration
+  => {}
+
+Query.profileConfiguration
+  => {}
+
+Query.memoryConfiguration
+  => {}
+
+Query.platformConfiguration
+  => {}
+
+Query.ecosystemTreasury
+  => {}
+
 Query.socialGraphFollowing
   => {}
 
@@ -5201,10 +5588,10 @@ SpotConfig.maxResolutionWindowMs
 SpotConfig.payoutDelayMs
   => {}
 
-SpotConfig.feeBps
+SpotConfig.platformFeeBps
   => {}
 
-SpotConfig.feeSplitBpsPlatform
+SpotConfig.ecosystemFeeBps
   => {}
 
 SpotConfig.oracleAddress
@@ -5213,10 +5600,25 @@ SpotConfig.oracleAddress
 SpotConfig.maxSingleBet
   => {}
 
+SpotConfig.minBettingOptions
+  => {}
+
+SpotConfig.maxBettingOptions
+  => {}
+
+SpotConfig.minReasoningLength
+  => {}
+
+SpotConfig.maxReasoningLength
+  => {}
+
+SpotConfig.maxEvidenceUrls
+  => {}
+
 SpotConfig.version
   => {}
 
-SpotConfig.timestampMs
+SpotConfig.updatedAt
   => {}
 
 SpotConfig.time
@@ -5399,7 +5801,19 @@ SptExchangeConfig.maxHoldPercentBps
 SptExchangeConfig.tradingEnabled
   => {}
 
+SptExchangeConfig.nonPlatformPlatformToCreatorBps
+  => {}
+
+SptExchangeConfig.nonPlatformPlatformToTreasuryBps
+  => {}
+
 SptExchangeConfig.updatedAt
+  => {}
+
+SptExchangeConfig.version
+  => {}
+
+SptExchangeConfig.time
   => {}
 
 SptExchangeConfig.transactionId
@@ -5697,6 +6111,27 @@ SubAgent.orgRoles
   => {}
 
 SubAgent.children
+  => {}
+
+SubscriptionConfig.updatedBy
+  => {}
+
+SubscriptionConfig.billingPeriodMs
+  => {}
+
+SubscriptionConfig.maxRenewalMonths
+  => {}
+
+SubscriptionConfig.version
+  => {}
+
+SubscriptionConfig.updatedAt
+  => {}
+
+SubscriptionConfig.time
+  => {}
+
+SubscriptionConfig.transactionId
   => {}
 
 TipSummary.tipper

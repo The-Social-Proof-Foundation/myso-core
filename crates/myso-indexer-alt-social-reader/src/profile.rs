@@ -671,3 +671,100 @@ pub(crate) async fn get_profile_badges(
     metrics.requests_succeeded.inc();
     Ok(results)
 }
+
+#[derive(Debug, Clone, QueryableByName)]
+pub struct ProfileConfigRow {
+    #[diesel(sql_type = Text)]
+    pub updated_by: String,
+    #[diesel(sql_type = BigInt)]
+    pub max_vesting_pieces: i64,
+    #[diesel(sql_type = BigInt)]
+    pub curve_factor_min: i64,
+    #[diesel(sql_type = BigInt)]
+    pub curve_factor_max: i64,
+    #[diesel(sql_type = BigInt)]
+    pub curve_precision: i64,
+    #[diesel(sql_type = BigInt)]
+    pub min_claim_threshold_divisor: i64,
+    #[diesel(sql_type = BigInt)]
+    pub min_username_length: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_username_length: i64,
+    #[diesel(sql_type = BigInt)]
+    pub version: i64,
+    #[diesel(sql_type = BigInt)]
+    pub updated_at: i64,
+    #[diesel(sql_type = diesel::sql_types::Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+}
+
+/// Latest profile configuration.
+pub(crate) async fn get_profile_config(
+    conn: &mut Connection<'_>,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Option<ProfileConfigRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+
+    let query = "
+        SELECT updated_by, max_vesting_pieces, curve_factor_min, curve_factor_max, curve_precision,
+               min_claim_threshold_divisor, min_username_length, max_username_length, version,
+               updated_at, time, transaction_id
+        FROM profile_config
+        ORDER BY time DESC
+        LIMIT 1
+    ";
+
+    let result = diesel::sql_query(query)
+        .get_result::<ProfileConfigRow>(conn)
+        .await
+        .optional()?;
+
+    metrics.requests_succeeded.inc();
+    Ok(result)
+}
+
+#[derive(Debug, Clone, QueryableByName)]
+pub struct EcosystemTreasuryRow {
+    #[diesel(sql_type = Text)]
+    pub treasury_address: String,
+    #[diesel(sql_type = BigInt)]
+    pub profile_sale_fee_bps: i64,
+    #[diesel(sql_type = Text)]
+    pub updated_by: String,
+    #[diesel(sql_type = BigInt)]
+    pub version: i64,
+    #[diesel(sql_type = BigInt)]
+    pub updated_at: i64,
+    #[diesel(sql_type = diesel::sql_types::Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+}
+
+/// Latest ecosystem treasury configuration (treasury address + profile sale fee bps).
+pub(crate) async fn get_ecosystem_treasury(
+    conn: &mut Connection<'_>,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Option<EcosystemTreasuryRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+
+    let query = "
+        SELECT treasury_address, profile_sale_fee_bps, updated_by, version, updated_at, time,
+               transaction_id
+        FROM ecosystem_treasury
+        ORDER BY time DESC
+        LIMIT 1
+    ";
+
+    let result = diesel::sql_query(query)
+        .get_result::<EcosystemTreasuryRow>(conn)
+        .await
+        .optional()?;
+
+    metrics.requests_succeeded.inc();
+    Ok(result)
+}

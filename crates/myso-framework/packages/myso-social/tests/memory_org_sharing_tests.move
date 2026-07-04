@@ -25,9 +25,10 @@ module social_contracts::memory_org_sharing_tests {
         OrgMemoryReader,
         OrgMemoryWriter,
         OrgSpendApprover,
-    };
+        MemoryConfig};
     use social_contracts::memory_test_helpers;
-    use social_contracts::profile::{Self, Profile, UsernameRegistry};
+    use social_contracts::profile::{Self, Profile, UsernameRegistry,
+        ProfileConfig};
     use social_contracts::ai_credit::AiCreditConfig;
 
     const ADMIN: address = @0xAD;
@@ -52,11 +53,14 @@ module social_contracts::memory_org_sharing_tests {
         {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(scenario);
+            let memory_config = test_scenario::take_shared<MemoryConfig>(scenario);
+            let profile_config = test_scenario::take_shared<ProfileConfig>(scenario);
             let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(scenario);
             let clock = test_scenario::take_shared<Clock>(scenario);
 
             profile::create_profile(
                 &mut registry,
+                &profile_config,
                 &mut memory_registry,
                 &mut ai_credit_config,
                 string::utf8(b"User One"),
@@ -68,6 +72,8 @@ module social_contracts::memory_org_sharing_tests {
                 test_scenario::ctx(scenario),
             );
 
+            test_scenario::return_shared(profile_config);
+            test_scenario::return_shared(memory_config);
             test_scenario::return_shared(clock);
             test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(memory_registry);
@@ -127,12 +133,15 @@ module social_contracts::memory_org_sharing_tests {
     }
 
     fun register_root_agent_for_org(scenario: &mut test_scenario::Scenario, org_id: ID) {
+        let memory_config = test_scenario::take_shared<MemoryConfig>(scenario);
+
         test_scenario::next_tx(scenario, USER1);
         {
             let mut org = test_scenario::take_shared_by_id<AgenticOrganization>(scenario, org_id);
             let mut memory_account = test_scenario::take_shared<MemoryAccount>(scenario);
             let clock = test_scenario::take_shared<Clock>(scenario);
             memory::register_sub_agent(
+                &memory_config,
                 &mut memory_account,
                 &mut org,
                 ROOT_PUBKEY,
@@ -154,16 +163,19 @@ module social_contracts::memory_org_sharing_tests {
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(clock);
         };
+        test_scenario::return_shared(memory_config);
     }
 
     fun register_member_agent_via_root(scenario: &mut test_scenario::Scenario, org_id: ID) {
         test_scenario::next_tx(scenario, ROOT_AGENT);
         {
+            let memory_config = test_scenario::take_shared<MemoryConfig>(scenario);
             let _org = test_scenario::take_shared_by_id<AgenticOrganization>(scenario, org_id);
             let mut memory_account = test_scenario::take_shared<MemoryAccount>(scenario);
             let parent = take_agent(scenario, &memory_account, ROOT_AGENT);
             let clock = test_scenario::take_shared<Clock>(scenario);
             memory::register_sub_agent_delegated(
+                &memory_config,
                 &mut memory_account,
                 &parent,
                 MEMBER_PUBKEY,
@@ -186,6 +198,7 @@ module social_contracts::memory_org_sharing_tests {
             test_scenario::return_shared(parent);
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(clock);
+        test_scenario::return_shared(memory_config);
         };
     }
 
@@ -500,11 +513,13 @@ module social_contracts::memory_org_sharing_tests {
         // Owner path (own-blob suffix).
         test_scenario::next_tx(&mut scenario, USER1);
         {
+            let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
             let org = test_scenario::take_shared_by_id<AgenticOrganization>(&scenario, org_id);
             let group = take_group(&scenario, &org);
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             memory::approve_org_key_policy(
+                &memory_config,
                 memory::owner_key_suffix_bytes(USER1),
                 &memory_account,
                 &org,
@@ -516,16 +531,22 @@ module social_contracts::memory_org_sharing_tests {
             test_scenario::return_shared(org);
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(clock);
+            test_scenario::return_shared(memory_config);
         };
 
         // Reader path (org agent holding OrgMemoryReader).
         test_scenario::next_tx(&mut scenario, ROOT_AGENT);
         {
+            let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
             let org = test_scenario::take_shared_by_id<AgenticOrganization>(&scenario, org_id);
-            let group = take_group(&scenario, &org);
+            let group = test_scenario::take_shared_by_id<PermissionedGroup<MemorySharePackage>>(
+                &scenario,
+                object::id_from_address(memory::org_memory_group_address(&org)),
+            );
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             memory::approve_org_key_policy(
+                &memory_config,
                 b"org-blob-id",
                 &memory_account,
                 &org,
@@ -536,6 +557,7 @@ module social_contracts::memory_org_sharing_tests {
             test_scenario::return_shared(group);
             test_scenario::return_shared(org);
             test_scenario::return_shared(memory_account);
+            test_scenario::return_shared(memory_config);
             test_scenario::return_shared(clock);
         };
 
@@ -553,11 +575,13 @@ module social_contracts::memory_org_sharing_tests {
         // Root agent has no OrgMemoryReader grant — key release must abort.
         test_scenario::next_tx(&mut scenario, ROOT_AGENT);
         {
+            let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
             let org = test_scenario::take_shared_by_id<AgenticOrganization>(&scenario, org_id);
             let group = take_group(&scenario, &org);
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             memory::approve_org_key_policy(
+                &memory_config,
                 b"org-blob-id",
                 &memory_account,
                 &org,
@@ -568,6 +592,7 @@ module social_contracts::memory_org_sharing_tests {
             test_scenario::return_shared(group);
             test_scenario::return_shared(org);
             test_scenario::return_shared(memory_account);
+            test_scenario::return_shared(memory_config);
             test_scenario::return_shared(clock);
         };
 

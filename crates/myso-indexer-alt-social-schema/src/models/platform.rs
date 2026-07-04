@@ -6,7 +6,7 @@ use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::schema::{
-    platform_blocked_profiles, platform_events, platform_memberships,
+    platform_blocked_profiles, platform_config, platform_events, platform_memberships,
     platform_moderator_permissions, platform_moderators, platform_token_airdrops, platforms,
 };
 
@@ -398,4 +398,57 @@ pub struct ProfilePlatformMembershipRow {
     pub deleted_at: Option<NaiveDateTime>,
     pub moderator_count: i64,
     pub blocked_profiles_count: i64,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = platform_config)]
+pub struct NewPlatformConfig {
+    pub updated_by: String,
+    pub max_reasoning_length: i64,
+    pub max_cover_photo_url_length: i64,
+    pub max_media_previews: i64,
+    pub max_media_preview_url_length: i64,
+    pub max_badge_name_length: i64,
+    pub max_badge_description_length: i64,
+    pub max_badge_media_url_length: i64,
+    pub max_badge_icon_url_length: i64,
+    pub version: i64,
+    pub updated_at: i64,
+    pub time: chrono::DateTime<chrono::Utc>,
+    pub transaction_id: String,
+}
+
+impl NewPlatformConfig {
+    pub fn from_event(
+        updated_by: String,
+        max_reasoning_length: u64,
+        max_cover_photo_url_length: u64,
+        max_media_previews: u64,
+        max_media_preview_url_length: u64,
+        max_badge_name_length: u64,
+        max_badge_description_length: u64,
+        max_badge_media_url_length: u64,
+        max_badge_icon_url_length: u64,
+        version: u64,
+        updated_at: u64,
+        transaction_id: String,
+    ) -> Self {
+        let time = chrono::DateTime::<chrono::Utc>::from_timestamp((updated_at / 1000) as i64, 0)
+            .unwrap_or_else(chrono::Utc::now);
+        Self {
+            updated_by,
+            max_reasoning_length: max_reasoning_length as i64,
+            max_cover_photo_url_length: max_cover_photo_url_length as i64,
+            max_media_previews: max_media_previews as i64,
+            max_media_preview_url_length: max_media_preview_url_length as i64,
+            max_badge_name_length: max_badge_name_length as i64,
+            max_badge_description_length: max_badge_description_length as i64,
+            max_badge_media_url_length: max_badge_media_url_length as i64,
+            max_badge_icon_url_length: max_badge_icon_url_length as i64,
+            version: version as i64,
+            updated_at: updated_at as i64,
+            time,
+            transaction_id,
+        }
+    }
 }

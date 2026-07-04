@@ -19,6 +19,10 @@
     },
     {
       "address": "myso",
+      "name": "dynamic_field"
+    },
+    {
+      "address": "myso",
       "name": "ed25519"
     },
     {
@@ -32,6 +36,10 @@
     {
       "address": "myso",
       "name": "object"
+    },
+    {
+      "address": "myso",
+      "name": "permissioned_group"
     },
     {
       "address": "myso",
@@ -817,9 +825,251 @@
       ],
       "return_": []
     },
-    "disable_agent_budget": {
+    "set_agent_budget_as_manager": {
       "source_index": 9,
       "index": 9,
+      "doc": " Org role-gated budget management: a holder of `OrgBudgetManager` on the org's memory\n share group may manage budgets for agents belonging to that org, without the owner key.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "balance",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditBalance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryAccount",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "org",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "AgenticOrganization",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "group",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "social_contracts",
+                            "name": "memory"
+                          },
+                          "name": "MemorySharePackage",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "agent",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "SubAgent",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "budget_mist",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "u64"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "daily_cap_mist",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "u64"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "monthly_cap_mist",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "u64"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "require_approval_above_mist",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "u64"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "disable_agent_budget": {
+      "source_index": 10,
+      "index": 10,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -876,6 +1126,952 @@
           }
         },
         {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "approve_agent_spend": {
+      "source_index": 11,
+      "index": 11,
+      "doc": " Owner grants a one-shot allowance: the agent may settle a single usage receipt up to\n `max_amount_mist` above its approval threshold, until `expires_at_ms`. Re-approving\n overwrites any existing allowance for the agent.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "balance",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditBalance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "agent_object_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "max_amount_mist",
+          "type_": "u64"
+        },
+        {
+          "name": "expires_at_ms",
+          "type_": "u64"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "approve_agent_spend_as_approver": {
+      "source_index": 12,
+      "index": 12,
+      "doc": " Org role-gated approval: a holder of `OrgSpendApprover` on the org's memory share\n group may approve spends for agents belonging to that org (Finance Approver flow).",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "balance",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditBalance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryAccount",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "org",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "AgenticOrganization",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "group",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "social_contracts",
+                            "name": "memory"
+                          },
+                          "name": "MemorySharePackage",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "agent",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "SubAgent",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "max_amount_mist",
+          "type_": "u64"
+        },
+        {
+          "name": "expires_at_ms",
+          "type_": "u64"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "revoke_agent_spend_approval": {
+      "source_index": 13,
+      "index": 13,
+      "doc": " Owner revokes an agent's live allowance.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "balance",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditBalance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "agent_object_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "set_child_agent_budget": {
+      "source_index": 14,
+      "index": 14,
+      "doc": " Parent agent (holding `CAP_BUDGET_MANAGE`) sets a descendant's budget. Child limits\n must be at least as strict as the parent's own envelope; the human owner remains the\n unconstrained root.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "memory_config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "balance",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditBalance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryAccount",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "parent",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "SubAgent",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "child",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "SubAgent",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "budget_mist",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "u64"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "daily_cap_mist",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "u64"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "monthly_cap_mist",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "u64"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "require_approval_above_mist",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "u64"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "disable_child_agent_budget": {
+      "source_index": 15,
+      "index": 15,
+      "doc": " Parent kill switch for a descendant's budget.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "memory_config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "balance",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditBalance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryAccount",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "parent",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "SubAgent",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "child",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "SubAgent",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "approve_child_agent_spend": {
+      "source_index": 16,
+      "index": 16,
+      "doc": " Parent approves a descendant's over-threshold spend, but only within the parent's own\n envelope (its threshold and remaining caps). Beyond that, approval escalates up the\n tree — ultimately to the human owner via `approve_agent_spend`.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "memory_config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "balance",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditBalance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryAccount",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "parent",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "SubAgent",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "child",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "SubAgent",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "max_amount_mist",
+          "type_": "u64"
+        },
+        {
+          "name": "expires_at_ms",
+          "type_": "u64"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
           "name": "ctx",
           "type_": {
             "Reference": [
@@ -897,8 +2093,8 @@
       "return_": []
     },
     "pause_balance": {
-      "source_index": 10,
-      "index": 10,
+      "source_index": 17,
+      "index": 17,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -963,8 +2159,8 @@
       "return_": []
     },
     "reactivate_balance": {
-      "source_index": 11,
-      "index": 11,
+      "source_index": 18,
+      "index": 18,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -1029,8 +2225,8 @@
       "return_": []
     },
     "settle_usage": {
-      "source_index": 12,
-      "index": 12,
+      "source_index": 19,
+      "index": 19,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -1168,8 +2364,8 @@
       "return_": []
     },
     "settle_usage_batch": {
-      "source_index": 13,
-      "index": 13,
+      "source_index": 20,
+      "index": 20,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -1311,8 +2507,8 @@
       "return_": []
     },
     "settle_signed_usage": {
-      "source_index": 14,
-      "index": 14,
+      "source_index": 21,
+      "index": 21,
       "doc": " PTB/oracle entry point: receipt fields are primitives; balance and agent IDs are derived\n from shared objects (not caller-supplied). Authorization is the oracle Ed25519 signature,\n not `AiCreditOracleAdminCap`.",
       "attributes": [],
       "visibility": "Public",
@@ -1457,8 +2653,8 @@
       "return_": []
     },
     "make_usage_receipt_from_objects": {
-      "source_index": 15,
-      "index": 15,
+      "source_index": 22,
+      "index": 22,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -1536,8 +2732,8 @@
       ]
     },
     "settle_usage_with_signature": {
-      "source_index": 16,
-      "index": 16,
+      "source_index": 23,
+      "index": 23,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -1675,8 +2871,8 @@
       "return_": []
     },
     "execute_settlement": {
-      "source_index": 17,
-      "index": 17,
+      "source_index": 24,
+      "index": 24,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -1808,8 +3004,8 @@
       "return_": []
     },
     "update_oracle_pubkey": {
-      "source_index": 18,
-      "index": 18,
+      "source_index": 25,
+      "index": 25,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -1879,9 +3075,149 @@
       ],
       "return_": []
     },
+    "update_oracle_markup": {
+      "source_index": 26,
+      "index": 26,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "cap",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditOracleAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "oracle_markup_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "update_min_deposit": {
+      "source_index": 27,
+      "index": 27,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "cap",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditOracleAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "min_deposit_mist",
+          "type_": "u64"
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
     "update_settlement_limits": {
-      "source_index": 19,
-      "index": 19,
+      "source_index": 28,
+      "index": 28,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -1954,8 +3290,8 @@
       "return_": []
     },
     "update_treasury": {
-      "source_index": 20,
-      "index": 20,
+      "source_index": 29,
+      "index": 29,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -2024,8 +3360,8 @@
       "return_": []
     },
     "balance_mist": {
-      "source_index": 21,
-      "index": 21,
+      "source_index": 30,
+      "index": 30,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -2056,8 +3392,8 @@
       ]
     },
     "available_mist": {
-      "source_index": 22,
-      "index": 22,
+      "source_index": 31,
+      "index": 31,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -2088,8 +3424,8 @@
       ]
     },
     "credits_from_mist": {
-      "source_index": 23,
-      "index": 23,
+      "source_index": 32,
+      "index": 32,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -2106,8 +3442,8 @@
       ]
     },
     "mist_from_credits": {
-      "source_index": 24,
-      "index": 24,
+      "source_index": 33,
+      "index": 33,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -2123,9 +3459,328 @@
         "u64"
       ]
     },
+    "oracle_markup_bps": {
+      "source_index": 34,
+      "index": 34,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "min_deposit_mist": {
+      "source_index": 35,
+      "index": 35,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "spend_approval_for": {
+      "source_index": 36,
+      "index": 36,
+      "doc": " Live allowance for an agent, if any (may be expired — check `approval_expires_at`).",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "balance",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditBalance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "agent_object_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "std",
+              "name": "option"
+            },
+            "name": "Option",
+            "type_arguments": [
+              {
+                "phantom": false,
+                "argument": {
+                  "Datatype": {
+                    "module": {
+                      "address": "social_contracts",
+                      "name": "ai_credit"
+                    },
+                    "name": "SpendApproval",
+                    "type_arguments": []
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "approval_max_amount_mist": {
+      "source_index": 37,
+      "index": 37,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "approval",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "SpendApproval",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "approval_expires_at_ms": {
+      "source_index": 38,
+      "index": 38,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "approval",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "SpendApproval",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "approval_approved_by": {
+      "source_index": 39,
+      "index": 39,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "approval",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "SpendApproval",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "address"
+      ]
+    },
+    "approval_nonce": {
+      "source_index": 40,
+      "index": 40,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "approval",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "SpendApproval",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "agent_approval_threshold": {
+      "source_index": 41,
+      "index": 41,
+      "doc": " Approval threshold on the agent's budget entry, if configured.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "balance",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditBalance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "agent_object_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "std",
+              "name": "option"
+            },
+            "name": "Option",
+            "type_arguments": [
+              {
+                "phantom": false,
+                "argument": "u64"
+              }
+            ]
+          }
+        }
+      ]
+    },
     "agent_remaining_mist": {
-      "source_index": 25,
-      "index": 25,
+      "source_index": 42,
+      "index": 42,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -2183,8 +3838,8 @@
       ]
     },
     "usage_inference": {
-      "source_index": 26,
-      "index": 26,
+      "source_index": 43,
+      "index": 43,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -2196,8 +3851,8 @@
       ]
     },
     "usage_tool": {
-      "source_index": 27,
-      "index": 27,
+      "source_index": 44,
+      "index": 44,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -2209,8 +3864,8 @@
       ]
     },
     "usage_embed": {
-      "source_index": 28,
-      "index": 28,
+      "source_index": 45,
+      "index": 45,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -2222,8 +3877,8 @@
       ]
     },
     "usage_storage": {
-      "source_index": 29,
-      "index": 29,
+      "source_index": 46,
+      "index": 46,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -2235,8 +3890,8 @@
       ]
     },
     "usage_workflow": {
-      "source_index": 30,
-      "index": 30,
+      "source_index": 47,
+      "index": 47,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -2248,8 +3903,8 @@
       ]
     },
     "mist_per_myso": {
-      "source_index": 31,
-      "index": 31,
+      "source_index": 48,
+      "index": 48,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -2261,8 +3916,8 @@
       ]
     },
     "assert_agent_may_spend": {
-      "source_index": 32,
-      "index": 32,
+      "source_index": 49,
+      "index": 49,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -2349,8 +4004,8 @@
       "return_": []
     },
     "assert_version": {
-      "source_index": 33,
-      "index": 33,
+      "source_index": 50,
+      "index": 50,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -2397,8 +4052,8 @@
       "return_": []
     },
     "assert_owner": {
-      "source_index": 34,
-      "index": 34,
+      "source_index": 51,
+      "index": 51,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -2445,8 +4100,8 @@
       "return_": []
     },
     "assert_active": {
-      "source_index": 35,
-      "index": 35,
+      "source_index": 52,
+      "index": 52,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -2475,8 +4130,8 @@
       "return_": []
     },
     "assert_agent_linked": {
-      "source_index": 36,
-      "index": 36,
+      "source_index": 53,
+      "index": 53,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -2522,9 +4177,1001 @@
       ],
       "return_": []
     },
+    "assert_org_gate_for_agent": {
+      "source_index": 54,
+      "index": 54,
+      "doc": " Org role gates require: account matches the balance, org belongs to the account,\n and the target agent belongs to that org.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "balance",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditBalance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryAccount",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "org",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "AgenticOrganization",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "agent",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "SubAgent",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "assert_parent_manages_child": {
+      "source_index": 55,
+      "index": 55,
+      "doc": " Common authorization for parent-delegated budget operations: sender is the parent's\n derived address, parent is active with `CAP_BUDGET_MANAGE`, both agents are linked to\n this balance, and the child sits strictly below the parent in the agent tree.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "memory_config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "balance",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditBalance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryAccount",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "parent",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "SubAgent",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "child",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "SubAgent",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "assert_child_budget_within_parent_envelope": {
+      "source_index": 56,
+      "index": 56,
+      "doc": " Child budget limits must be at least as strict as the parent's own entry (when the\n parent has one; an unconstrained parent may set anything).",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "balance",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditBalance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "parent_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "budget_mist",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "std",
+                    "name": "option"
+                  },
+                  "name": "Option",
+                  "type_arguments": [
+                    {
+                      "phantom": false,
+                      "argument": "u64"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "daily_cap_mist",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "std",
+                    "name": "option"
+                  },
+                  "name": "Option",
+                  "type_arguments": [
+                    {
+                      "phantom": false,
+                      "argument": "u64"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "monthly_cap_mist",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "std",
+                    "name": "option"
+                  },
+                  "name": "Option",
+                  "type_arguments": [
+                    {
+                      "phantom": false,
+                      "argument": "u64"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "require_approval_above_mist",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "std",
+                    "name": "option"
+                  },
+                  "name": "Option",
+                  "type_arguments": [
+                    {
+                      "phantom": false,
+                      "argument": "u64"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "assert_limit_not_looser": {
+      "source_index": 57,
+      "index": 57,
+      "doc": " `child` is not looser than `parent`: when the parent limit is set, the child limit\n must be set and must not exceed it.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "child",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "std",
+                    "name": "option"
+                  },
+                  "name": "Option",
+                  "type_arguments": [
+                    {
+                      "phantom": false,
+                      "argument": "u64"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "parent",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "std",
+                    "name": "option"
+                  },
+                  "name": "Option",
+                  "type_arguments": [
+                    {
+                      "phantom": false,
+                      "argument": "u64"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "assert_within_parent_envelope": {
+      "source_index": 58,
+      "index": 58,
+      "doc": " Parents may only approve amounts they could spend themselves: within their own\n approval threshold (if set) and remaining budget/day/month caps (if set).",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "balance",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditBalance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "parent_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "amount_mist",
+          "type_": "u64"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "upsert_agent_budget": {
+      "source_index": 59,
+      "index": 59,
+      "doc": " Shared budget upsert used by owner, org-manager, and parent paths. Emits the legacy\n `AiCreditAgentBudgetUpdated` plus the audit-grade `AiCreditAgentBudgetChanged`.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "balance",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditBalance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "agent",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "SubAgent",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "budget_mist",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "u64"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "daily_cap_mist",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "u64"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "monthly_cap_mist",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "u64"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "require_approval_above_mist",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "u64"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "set_by",
+          "type_": "address"
+        },
+        {
+          "name": "set_by_agent_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "object"
+                      },
+                      "name": "ID",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "organization_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "object"
+                      },
+                      "name": "ID",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "disable_agent_budget_internal": {
+      "source_index": 60,
+      "index": 60,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "balance",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditBalance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "agent_object_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "set_by",
+          "type_": "address"
+        },
+        {
+          "name": "set_by_agent_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "object"
+                      },
+                      "name": "ID",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "store_spend_approval": {
+      "source_index": 61,
+      "index": 61,
+      "doc": " Store (or overwrite) the agent's one-shot allowance and emit the approval event.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "balance",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditBalance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "agent_object_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "max_amount_mist",
+          "type_": "u64"
+        },
+        {
+          "name": "expires_at_ms",
+          "type_": "u64"
+        },
+        {
+          "name": "approved_by",
+          "type_": "address"
+        },
+        {
+          "name": "approved_by_agent_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "object"
+                      },
+                      "name": "ID",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "organization_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "object"
+                      },
+                      "name": "ID",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "next_approval_nonce": {
+      "source_index": 62,
+      "index": 62,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "balance",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditBalance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "maybe_consume_spend_approval": {
+      "source_index": 63,
+      "index": 63,
+      "doc": " Consume the agent's allowance when the settlement amount exceeds its approval\n threshold. Aborts when no live, sufficient allowance exists — this is the on-chain\n enforcement of `require_approval_above_mist`.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "balance",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditBalance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "agent_object_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "amount_mist",
+          "type_": "u64"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
     "assert_oracle_admin": {
-      "source_index": 37,
-      "index": 37,
+      "source_index": 64,
+      "index": 64,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -2571,8 +5218,8 @@
       "return_": []
     },
     "verify_receipt_signature": {
-      "source_index": 38,
-      "index": 38,
+      "source_index": 65,
+      "index": 65,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -2630,8 +5277,8 @@
       "return_": []
     },
     "assert_receipt_fresh": {
-      "source_index": 39,
-      "index": 39,
+      "source_index": 66,
+      "index": 66,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -2696,8 +5343,8 @@
       "return_": []
     },
     "roll_account_windows": {
-      "source_index": 40,
-      "index": 40,
+      "source_index": 67,
+      "index": 67,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -2730,8 +5377,8 @@
       "return_": []
     },
     "roll_agent_windows": {
-      "source_index": 41,
-      "index": 41,
+      "source_index": 68,
+      "index": 68,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -2764,8 +5411,8 @@
       "return_": []
     },
     "assert_account_caps": {
-      "source_index": 42,
-      "index": 42,
+      "source_index": 69,
+      "index": 69,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -2798,8 +5445,8 @@
       "return_": []
     },
     "assert_agent_caps": {
-      "source_index": 43,
-      "index": 43,
+      "source_index": 70,
+      "index": 70,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -2914,8 +5561,13 @@
             "doc": null,
             "type_": "u64"
           },
-          "balances_by_memory": {
+          "oracle_markup_bps": {
             "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "balances_by_memory": {
+            "index": 7,
             "doc": null,
             "type_": {
               "Datatype": {
@@ -2956,7 +5608,7 @@
             }
           },
           "version": {
-            "index": 7,
+            "index": 8,
             "doc": null,
             "type_": "u64"
           }
@@ -3104,8 +5756,94 @@
         }
       }
     },
-    "AiCreditBalance": {
+    "SpendApprovalKey": {
       "index": 3,
+      "doc": " Dynamic-field key on `AiCreditBalance.id` for the agent's live spend allowance.\n One allowance per agent; re-approving overwrites. Stored as a dynamic field so the\n `AiCreditBalance` struct layout never changes (upgrade-safe).",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "agent_object_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "SpendApproval": {
+      "index": 4,
+      "doc": " One-shot spend allowance consumed by the first over-threshold settlement it covers.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "max_amount_mist": {
+            "index": 0,
+            "doc": null,
+            "type_": "u64"
+          },
+          "expires_at_ms": {
+            "index": 1,
+            "doc": null,
+            "type_": "u64"
+          },
+          "approved_by": {
+            "index": 2,
+            "doc": null,
+            "type_": "address"
+          },
+          "approval_nonce": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "ApprovalNonceKey": {
+      "index": 5,
+      "doc": " Dynamic-field key on `AiCreditBalance.id` for the monotonic approval nonce counter.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "dummy_field": {
+            "index": 0,
+            "type_": "bool"
+          }
+        }
+      }
+    },
+    "AiCreditBalance": {
+      "index": 6,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -3304,7 +6042,7 @@
       }
     },
     "IntentMessage": {
-      "index": 4,
+      "index": 7,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -3344,7 +6082,7 @@
       }
     },
     "UsageReceipt": {
-      "index": 5,
+      "index": 8,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -3412,7 +6150,7 @@
       }
     },
     "AiCreditBalanceCreated": {
-      "index": 6,
+      "index": 9,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -3465,7 +6203,7 @@
       }
     },
     "AiCreditDeposited": {
-      "index": 7,
+      "index": 10,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -3509,7 +6247,7 @@
       }
     },
     "AiCreditWithdrawn": {
-      "index": 8,
+      "index": 11,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -3548,7 +6286,7 @@
       }
     },
     "AiCreditAccountCapsUpdated": {
-      "index": 9,
+      "index": 12,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -3615,7 +6353,7 @@
       }
     },
     "AiCreditAgentBudgetUpdated": {
-      "index": 10,
+      "index": 13,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -3734,7 +6472,7 @@
       }
     },
     "AiCreditAgentBudgetDisabled": {
-      "index": 11,
+      "index": 14,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -3776,8 +6514,529 @@
         }
       }
     },
+    "AiCreditAgentBudgetChanged": {
+      "index": 15,
+      "doc": " Audit-grade budget change event carrying previous and new values plus the actor.\n Emitted alongside the legacy `AiCreditAgentBudgetUpdated`/`Disabled` events.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "balance_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "agent_object_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "had_previous_entry": {
+            "index": 2,
+            "doc": null,
+            "type_": "bool"
+          },
+          "prev_budget_mist": {
+            "index": 3,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "u64"
+                  }
+                ]
+              }
+            }
+          },
+          "prev_daily_cap_mist": {
+            "index": 4,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "u64"
+                  }
+                ]
+              }
+            }
+          },
+          "prev_monthly_cap_mist": {
+            "index": 5,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "u64"
+                  }
+                ]
+              }
+            }
+          },
+          "prev_require_approval_above_mist": {
+            "index": 6,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "u64"
+                  }
+                ]
+              }
+            }
+          },
+          "prev_enabled": {
+            "index": 7,
+            "doc": null,
+            "type_": "bool"
+          },
+          "budget_mist": {
+            "index": 8,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "u64"
+                  }
+                ]
+              }
+            }
+          },
+          "daily_cap_mist": {
+            "index": 9,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "u64"
+                  }
+                ]
+              }
+            }
+          },
+          "monthly_cap_mist": {
+            "index": 10,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "u64"
+                  }
+                ]
+              }
+            }
+          },
+          "require_approval_above_mist": {
+            "index": 11,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "u64"
+                  }
+                ]
+              }
+            }
+          },
+          "enabled": {
+            "index": 12,
+            "doc": null,
+            "type_": "bool"
+          },
+          "set_by": {
+            "index": 13,
+            "doc": null,
+            "type_": "address"
+          },
+          "set_by_agent_id": {
+            "index": 14,
+            "doc": " Set when a parent agent changed a descendant's budget.",
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "object"
+                        },
+                        "name": "ID",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "organization_id": {
+            "index": 15,
+            "doc": " Set when the change went through an org role gate.",
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "object"
+                        },
+                        "name": "ID",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "timestamp_ms": {
+            "index": 16,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "AiCreditSpendApproved": {
+      "index": 16,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "balance_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "agent_object_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "approval_nonce": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_amount_mist": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "expires_at_ms": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "approved_by": {
+            "index": 5,
+            "doc": null,
+            "type_": "address"
+          },
+          "approved_by_agent_id": {
+            "index": 6,
+            "doc": " Set when a parent agent approved a descendant's spend.",
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "object"
+                        },
+                        "name": "ID",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "organization_id": {
+            "index": 7,
+            "doc": " Set when the approval went through an org role gate.",
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "object"
+                        },
+                        "name": "ID",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "timestamp_ms": {
+            "index": 8,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "AiCreditSpendApprovalRevoked": {
+      "index": 17,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "balance_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "agent_object_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "approval_nonce": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "revoked_by": {
+            "index": 3,
+            "doc": null,
+            "type_": "address"
+          },
+          "timestamp_ms": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "AiCreditSpendApprovalConsumed": {
+      "index": 18,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "balance_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "agent_object_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "approval_nonce": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "amount_mist": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "approved_by": {
+            "index": 4,
+            "doc": null,
+            "type_": "address"
+          },
+          "timestamp_ms": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
     "AiCreditUsageSettled": {
-      "index": 12,
+      "index": 19,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -3850,7 +7109,7 @@
       }
     },
     "AiCreditBalanceDepleted": {
-      "index": 13,
+      "index": 20,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -3879,7 +7138,7 @@
       }
     },
     "AiCreditBalancePaused": {
-      "index": 14,
+      "index": 21,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -3908,7 +7167,7 @@
       }
     },
     "AiCreditBalanceReactivated": {
-      "index": 15,
+      "index": 22,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -3937,7 +7196,7 @@
       }
     },
     "AiCreditOraclePubkeyUpdated": {
-      "index": 16,
+      "index": 23,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -3952,12 +7211,19 @@
             "index": 0,
             "doc": null,
             "type_": "address"
+          },
+          "new_pubkey": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "vector": "u8"
+            }
           }
         }
       }
     },
     "AiCreditSettlementLimitsUpdated": {
-      "index": 17,
+      "index": 24,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -3981,8 +7247,58 @@
         }
       }
     },
+    "AiCreditMarkupUpdated": {
+      "index": 25,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "updated_by": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "oracle_markup_bps": {
+            "index": 1,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "AiCreditMinDepositUpdated": {
+      "index": 26,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "updated_by": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "min_deposit_mist": {
+            "index": 1,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
     "AiCreditConfigInitialized": {
-      "index": 18,
+      "index": 27,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -4017,6 +7333,11 @@
           },
           "receipt_ttl_ms": {
             "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "oracle_markup_bps": {
+            "index": 5,
             "doc": null,
             "type_": "u64"
           }

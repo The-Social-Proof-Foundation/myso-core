@@ -19,14 +19,14 @@ use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
-    NewAgentMemoryVault, NewAgenticOrganization, NewAuditLog, NewMemoryAccount,
-    NewOrgMemoryPermission, NewOrgInvitation, NewOrgRole, NewOrgRoleAssignment, NewOrganizationEvent,
-    NewSubAgentEvent,
+    NewAgentMemoryVault, NewAgenticOrganization, NewAuditLog, NewMemoryAccount, NewMemoryConfig,
+    NewOrgInvitation, NewOrgMemoryPermission, NewOrgRole, NewOrgRoleAssignment,
+    NewOrganizationEvent, NewSubAgentEvent,
 };
 use myso_indexer_alt_social_schema::schema::{
-    audit_log, memory_accounts, org_invitations, org_memory_permissions, org_role_assignments, org_roles, profiles,
-    sub_agent_events, sub_agent_memory_vaults, sub_agent_organization_events,
-    sub_agent_organizations, sub_agents,
+    audit_log, memory_accounts, memory_config, org_invitations, org_memory_permissions,
+    org_role_assignments, org_roles, profiles, sub_agent_events, sub_agent_memory_vaults,
+    sub_agent_organization_events, sub_agent_organizations, sub_agents,
 };
 
 use super::common;
@@ -43,6 +43,7 @@ const MEMORY_MODULE: &str = "memory";
 #[derive(Debug, Clone)]
 pub enum MemoryRow {
     MemoryAccount(NewMemoryAccount),
+    MemoryConfig(NewMemoryConfig),
     ProfileMemoryAccountLink {
         profile_id: String,
         memory_account_id: String,
@@ -120,6 +121,7 @@ impl MemoryRow {
     fn from_social(row: crate::handlers::SocialEventRow) -> Option<Self> {
         match row {
             crate::handlers::SocialEventRow::MemoryAccount(a) => Some(MemoryRow::MemoryAccount(a)),
+            crate::handlers::SocialEventRow::MemoryConfig(c) => Some(MemoryRow::MemoryConfig(c)),
             crate::handlers::SocialEventRow::ProfileMemoryAccountLink {
                 profile_id,
                 memory_account_id,
@@ -256,7 +258,7 @@ impl MemoryRow {
 }
 
 impl FieldCount for MemoryRow {
-    const FIELD_COUNT: usize = 10;
+    const FIELD_COUNT: usize = 11;
 }
 
 pub struct MemoryHandler;
@@ -319,6 +321,12 @@ impl Handler for MemoryHandler {
         let mut total = 0;
         for row in values {
             match row {
+                MemoryRow::MemoryConfig(c) => {
+                    total += diesel::insert_into(memory_config::table)
+                        .values(c)
+                        .execute(conn)
+                        .await?;
+                }
                 MemoryRow::MemoryAccount(a) => {
                     let principal_owner = a.principal_owner.clone();
                     let profile_id = a.profile_id.clone();

@@ -146,9 +146,97 @@ impl BcsPaidMessagingPolicyUpdated {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct BcsMessagingConfigUpdatedEvent {
+    updated_by: AccountAddress,
+    timestamp: u64,
+    paid_msg_platform_fee_bps: u64,
+    paid_msg_treasury_fee_bps: u64,
+    payment_expiration_ms: u64,
+    min_reply_chars: u32,
+    max_dedupe_key_bytes: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct BcsPaidMessageSent {
+    group_id: BcsMoveObjectId,
+    seq: u64,
+    payer: AccountAddress,
+    recipient: AccountAddress,
+    amount: u64,
+    created_at_ms: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct BcsPaidMessageReplied {
+    group_id: BcsMoveObjectId,
+    paid_msg_seq: u64,
+    recipient: AccountAddress,
+    reply_char_count: u32,
+}
+
+#[derive(Debug, Deserialize)]
+struct BcsPaymentClaimed {
+    group_id: BcsMoveObjectId,
+    seq: u64,
+    recipient: AccountAddress,
+    amount: u64,
+    claimed_at_ms: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct BcsPaymentClaimedSettled {
+    group_id: BcsMoveObjectId,
+    seq: u64,
+    recipient: AccountAddress,
+    total_amount: u64,
+    platform_fee: u64,
+    treasury_fee: u64,
+    net_amount: u64,
+    platform_fee_recipient: AccountAddress,
+    ecosystem_fee_recipient: AccountAddress,
+    claimed_at_ms: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct BcsPaymentRefunded {
+    group_id: BcsMoveObjectId,
+    seq: u64,
+    payer: AccountAddress,
+    amount: u64,
+    refunded_at_ms: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct BcsAgentGroupCreated {
+    group_id: BcsMoveObjectId,
+    creator_actor: AccountAddress,
+    creator_principal: AccountAddress,
+    creator_sub_agent_id: Option<BcsMoveObjectId>,
+    creator_identity_class: u64,
+    organization_id: Option<BcsMoveObjectId>,
+    group_name: String,
+    group_uuid: String,
+    created_at: u64,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct BcsEcosystemTreasuryUpdatedEvent {
     updated_by: AccountAddress,
     new_treasury_address: AccountAddress,
+    profile_sale_fee_bps: u64,
+    timestamp: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsProfileConfigUpdatedEvent {
+    updated_by: AccountAddress,
+    max_vesting_pieces: u64,
+    curve_factor_min: u64,
+    curve_factor_max: u64,
+    curve_precision: u64,
+    min_claim_threshold_divisor: u64,
+    min_username_length: u64,
+    max_username_length: u64,
     timestamp: u64,
 }
 
@@ -1121,6 +1209,18 @@ pub struct BcsMemoryAccountCreatedEvent {
     profile_id: AccountAddress,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct BcsMemoryConfigUpdatedEvent {
+    updated_by: AccountAddress,
+    max_organizations_per_user: u8,
+    org_category_update_cooldown_ms: u64,
+    max_agent_depth: u8,
+    max_label_length: u64,
+    max_org_name_length: u64,
+    max_org_description_length: u64,
+    timestamp: u64,
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct BcsSubAgentRegisteredEvent {
     account_id: AccountAddress,
@@ -1489,11 +1589,25 @@ struct BcsAiCreditConfigInitializedEvent {
     min_deposit_mist: u64,
     max_single_settlement_mist: u64,
     receipt_ttl_ms: u64,
+    oracle_markup_bps: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct BcsAiCreditOraclePubkeyUpdatedEvent {
+    updated_by: AccountAddress,
+    new_pubkey: Vec<u8>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct BcsAiCreditMarkupUpdatedEvent {
+    updated_by: AccountAddress,
+    oracle_markup_bps: u64,
 }
 
 #[derive(Debug, Deserialize)]
-struct BcsAiCreditOraclePubkeyUpdatedEvent {
+struct BcsAiCreditMinDepositUpdatedEvent {
     updated_by: AccountAddress,
+    min_deposit_mist: u64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -1540,6 +1654,9 @@ pub struct BcsPostParametersUpdatedEvent {
     max_reaction_length: u64,
     commenter_tip_percentage: u64,
     repost_tip_percentage: u64,
+    min_promotion_amount: u64,
+    max_promotion_amount: u64,
+    min_view_duration_ms: u64,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -1733,6 +1850,8 @@ pub struct BcsPocConfigUpdatedEvent {
     dispute_second_round_fee_multiplier_bps: u64,
     dispute_second_round_quorum_multiplier_bps: u64,
     username_beneficiary_join_referral_bps: u64,
+    max_disputes_per_post: u8,
+    min_vault_deposit_amount: u64,
     timestamp: u64,
 }
 
@@ -1755,6 +1874,19 @@ pub struct BcsConfigUpdatedEvent {
     max_coverage_bps: u64,
     max_duration_ms: u64,
     fee_bps: u64,
+    odds_base_bps: u64,
+    timestamp: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsRouterLimitsUpdatedEvent {
+    updated_by: AccountAddress,
+    max_route_reserve_market: u64,
+    max_route_reserve_user: u64,
+    max_route_reserve_option: u64,
+    max_vault_concentration_bps: u64,
+    min_vault_health_factor_bps: u64,
+    max_route_legs: u64,
     timestamp: u64,
 }
 
@@ -1972,6 +2104,7 @@ pub struct BcsMyDataConfigUpdatedEvent {
     max_tags: u64,
     max_subscription_days: u64,
     max_free_access_grants: u64,
+    max_encryption_id_bytes: u64,
     timestamp: u64,
 }
 
@@ -2084,7 +2217,7 @@ pub struct BcsSpotRefundEvent {
     amount: u64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsSpotConfigUpdatedEvent {
     updated_by: AccountAddress,
     enable_flag: bool,
@@ -2092,8 +2225,13 @@ pub struct BcsSpotConfigUpdatedEvent {
     resolution_window_ms: u64,
     max_resolution_window_ms: u64,
     payout_delay_ms: u64,
-    fee_bps: u64,
-    fee_split_bps_platform: u64,
+    platform_fee_bps: u64,
+    ecosystem_fee_bps: u64,
+    min_betting_options: u64,
+    max_betting_options: u64,
+    min_reasoning_length: u64,
+    max_reasoning_length: u64,
+    max_evidence_urls: u64,
     oracle_address: AccountAddress,
     max_single_bet: u64,
     max_bets_per_record: u64,
@@ -2208,6 +2346,14 @@ pub struct BcsProfileSubscriptionServiceDeactivatedEvent {
     deactivated_at: u64,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct BcsSubscriptionConfigUpdatedEvent {
+    updated_by: AccountAddress,
+    billing_period_ms: u64,
+    max_renewal_months: u64,
+    timestamp: u64,
+}
+
 // Social Proof Token (SPT) event structs - field order matches social_proof_tokens.move
 #[derive(Debug, Deserialize, Serialize)]
 pub struct BcsTokenPoolCreatedEvent {
@@ -2317,6 +2463,8 @@ pub struct BcsSptConfigUpdatedEvent {
     profile_threshold: u64,
     max_individual_reservation_bps: u64,
     max_reservers_per_pool: u64,
+    non_platform_platform_to_creator_bps: u64,
+    non_platform_platform_to_treasury_bps: u64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -2440,6 +2588,20 @@ pub struct BcsPocRedirectionUpdatedEvent {
 #[derive(Debug, Deserialize)]
 pub struct BcsPlatformStatus {
     status: u8,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsPlatformConfigUpdatedEvent {
+    updated_by: AccountAddress,
+    max_reasoning_length: u64,
+    max_cover_photo_url_length: u64,
+    max_media_previews: u64,
+    max_media_preview_url_length: u64,
+    max_badge_name_length: u64,
+    max_badge_description_length: u64,
+    max_badge_media_url_length: u64,
+    max_badge_icon_url_length: u64,
+    timestamp: u64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -2616,6 +2778,8 @@ fn parse_event_contents_inner(
         "memory" => parse_memory_event(event_name, contents),
         "ai_credit" => parse_ai_credit_event(event_name, contents),
         "paid_messaging_policy" => parse_paid_messaging_policy_event(event_name, contents),
+        "messaging_config" | "messaging" => parse_messaging_event(event_name, contents),
+        "message_log" => parse_message_log_event(event_name, contents),
         _ => Ok(None),
     };
 
@@ -2821,6 +2985,22 @@ fn parse_profile_event(
             Ok(Some(serde_json::json!({
                 "updated_by": addr_to_string(&ev.updated_by),
                 "new_treasury_address": addr_to_string(&ev.new_treasury_address),
+                "profile_sale_fee_bps": ev.profile_sale_fee_bps,
+                "timestamp": ev.timestamp,
+            })))
+        }
+        "ProfileConfigUpdatedEvent" => {
+            let ev = bcs::from_bytes::<BcsProfileConfigUpdatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "updated_by": addr_to_string(&ev.updated_by),
+                "max_vesting_pieces": ev.max_vesting_pieces,
+                "curve_factor_min": ev.curve_factor_min,
+                "curve_factor_max": ev.curve_factor_max,
+                "curve_precision": ev.curve_precision,
+                "min_claim_threshold_divisor": ev.min_claim_threshold_divisor,
+                "min_username_length": ev.min_username_length,
+                "max_username_length": ev.max_username_length,
                 "timestamp": ev.timestamp,
             })))
         }
@@ -2843,6 +3023,113 @@ fn parse_paid_messaging_policy_event(
                 "min_cost": ev.min_cost,
             })))
         }
+        _ => Ok(None),
+    }
+}
+
+fn parse_messaging_event(
+    event_name: &str,
+    contents: &[u8],
+) -> Result<Option<serde_json::Value>, EventParseError> {
+    match event_name {
+        "MessagingConfigUpdatedEvent" => {
+            let ev = bcs::from_bytes::<BcsMessagingConfigUpdatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "updated_by": addr_to_string(&ev.updated_by),
+                "timestamp": ev.timestamp,
+                "paid_msg_platform_fee_bps": ev.paid_msg_platform_fee_bps,
+                "paid_msg_treasury_fee_bps": ev.paid_msg_treasury_fee_bps,
+                "payment_expiration_ms": ev.payment_expiration_ms,
+                "min_reply_chars": ev.min_reply_chars,
+                "max_dedupe_key_bytes": ev.max_dedupe_key_bytes,
+            })))
+        }
+        "AgentGroupCreated" => {
+            let ev = bcs::from_bytes::<BcsAgentGroupCreated>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "group_id": move_object_id_to_string(&ev.group_id),
+                "creator_actor": addr_to_string(&ev.creator_actor),
+                "creator_principal": addr_to_string(&ev.creator_principal),
+                "creator_sub_agent_id": optional_move_object_id_json(&ev.creator_sub_agent_id),
+                "creator_identity_class": ev.creator_identity_class,
+                "organization_id": optional_move_object_id_json(&ev.organization_id),
+                "group_name": ev.group_name,
+                "group_uuid": ev.group_uuid,
+                "created_at": ev.created_at,
+            })))
+        }
+        _ => Ok(None),
+    }
+}
+
+fn parse_message_log_event(
+    event_name: &str,
+    contents: &[u8],
+) -> Result<Option<serde_json::Value>, EventParseError> {
+    match event_name {
+        "PaidMessageSent" => {
+            let ev = bcs::from_bytes::<BcsPaidMessageSent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "group_id": move_object_id_to_string(&ev.group_id),
+                "seq": ev.seq,
+                "payer": addr_to_string(&ev.payer),
+                "recipient": addr_to_string(&ev.recipient),
+                "amount": ev.amount,
+                "created_at_ms": ev.created_at_ms,
+            })))
+        }
+        "PaidMessageReplied" => {
+            let ev = bcs::from_bytes::<BcsPaidMessageReplied>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "group_id": move_object_id_to_string(&ev.group_id),
+                "paid_msg_seq": ev.paid_msg_seq,
+                "recipient": addr_to_string(&ev.recipient),
+                "reply_char_count": ev.reply_char_count,
+            })))
+        }
+        "PaymentClaimed" => {
+            let ev = bcs::from_bytes::<BcsPaymentClaimed>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "group_id": move_object_id_to_string(&ev.group_id),
+                "seq": ev.seq,
+                "recipient": addr_to_string(&ev.recipient),
+                "amount": ev.amount,
+                "claimed_at_ms": ev.claimed_at_ms,
+            })))
+        }
+        "PaymentClaimedSettled" => {
+            let ev = bcs::from_bytes::<BcsPaymentClaimedSettled>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "group_id": move_object_id_to_string(&ev.group_id),
+                "seq": ev.seq,
+                "recipient": addr_to_string(&ev.recipient),
+                "total_amount": ev.total_amount,
+                "platform_fee": ev.platform_fee,
+                "treasury_fee": ev.treasury_fee,
+                "net_amount": ev.net_amount,
+                "platform_fee_recipient": addr_to_string(&ev.platform_fee_recipient),
+                "ecosystem_fee_recipient": addr_to_string(&ev.ecosystem_fee_recipient),
+                "claimed_at_ms": ev.claimed_at_ms,
+            })))
+        }
+        "PaymentRefunded" => {
+            let ev = bcs::from_bytes::<BcsPaymentRefunded>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "group_id": move_object_id_to_string(&ev.group_id),
+                "seq": ev.seq,
+                "payer": addr_to_string(&ev.payer),
+                "amount": ev.amount,
+                "refunded_at_ms": ev.refunded_at_ms,
+            })))
+        }
+        // MessageLogCreated intentionally ignored — handled by messaging stack.
         _ => Ok(None),
     }
 }
@@ -3385,6 +3672,9 @@ fn parse_post_event(
                 "max_reaction_length": ev.max_reaction_length,
                 "commenter_tip_percentage": ev.commenter_tip_percentage,
                 "repost_tip_percentage": ev.repost_tip_percentage,
+                "min_promotion_amount": ev.min_promotion_amount,
+                "max_promotion_amount": ev.max_promotion_amount,
+                "min_view_duration_ms": ev.min_view_duration_ms,
             })))
         }
         _ => Ok(None),
@@ -3700,6 +3990,20 @@ fn parse_memory_event(
                 "timestamp_ms": ev.timestamp_ms,
             })))
         }
+        "MemoryConfigUpdatedEvent" => {
+            let ev = bcs::from_bytes::<BcsMemoryConfigUpdatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "updated_by": addr_to_string(&ev.updated_by),
+                "max_organizations_per_user": ev.max_organizations_per_user,
+                "org_category_update_cooldown_ms": ev.org_category_update_cooldown_ms,
+                "max_agent_depth": ev.max_agent_depth,
+                "max_label_length": ev.max_label_length,
+                "max_org_name_length": ev.max_org_name_length,
+                "max_org_description_length": ev.max_org_description_length,
+                "timestamp": ev.timestamp,
+            })))
+        }
         _ => Ok(None),
     }
 }
@@ -3858,6 +4162,7 @@ fn parse_ai_credit_event(
                 "min_deposit_mist": ev.min_deposit_mist,
                 "max_single_settlement_mist": ev.max_single_settlement_mist,
                 "receipt_ttl_ms": ev.receipt_ttl_ms,
+                "oracle_markup_bps": ev.oracle_markup_bps,
             })))
         }
         "AiCreditOraclePubkeyUpdated" => {
@@ -3865,6 +4170,23 @@ fn parse_ai_credit_event(
                 .map_err(|e| bcs_parse_err(e, contents))?;
             Ok(Some(serde_json::json!({
                 "updated_by": addr_to_string(&ev.updated_by),
+                "new_pubkey_hex": hex::encode(&ev.new_pubkey),
+            })))
+        }
+        "AiCreditMarkupUpdated" => {
+            let ev = bcs::from_bytes::<BcsAiCreditMarkupUpdatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "updated_by": addr_to_string(&ev.updated_by),
+                "oracle_markup_bps": ev.oracle_markup_bps,
+            })))
+        }
+        "AiCreditMinDepositUpdated" => {
+            let ev = bcs::from_bytes::<BcsAiCreditMinDepositUpdatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "updated_by": addr_to_string(&ev.updated_by),
+                "min_deposit_mist": ev.min_deposit_mist,
             })))
         }
         "AiCreditSettlementLimitsUpdated" => {
@@ -4034,6 +4356,22 @@ fn parse_platform_event(
                 "timestamp": ev.timestamp,
             })))
         }
+        "PlatformConfigUpdatedEvent" => {
+            let ev = bcs::from_bytes::<BcsPlatformConfigUpdatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "updated_by": addr_to_string(&ev.updated_by),
+                "max_reasoning_length": ev.max_reasoning_length,
+                "max_cover_photo_url_length": ev.max_cover_photo_url_length,
+                "max_media_previews": ev.max_media_previews,
+                "max_media_preview_url_length": ev.max_media_preview_url_length,
+                "max_badge_name_length": ev.max_badge_name_length,
+                "max_badge_description_length": ev.max_badge_description_length,
+                "max_badge_media_url_length": ev.max_badge_media_url_length,
+                "max_badge_icon_url_length": ev.max_badge_icon_url_length,
+                "timestamp": ev.timestamp,
+            })))
+        }
         _ => Ok(None),
     }
 }
@@ -4179,6 +4517,8 @@ fn parse_poc_event(
                 "dispute_second_round_fee_multiplier_bps": ev.dispute_second_round_fee_multiplier_bps,
                 "dispute_second_round_quorum_multiplier_bps": ev.dispute_second_round_quorum_multiplier_bps,
                 "username_beneficiary_join_referral_bps": ev.username_beneficiary_join_referral_bps,
+                "max_disputes_per_post": ev.max_disputes_per_post,
+                "min_vault_deposit_amount": ev.min_vault_deposit_amount,
                 "timestamp": ev.timestamp,
             })))
         }
@@ -4379,6 +4719,7 @@ fn parse_mydata_event(
                 "max_tags": ev.max_tags,
                 "max_subscription_days": ev.max_subscription_days,
                 "max_free_access_grants": ev.max_free_access_grants,
+                "max_encryption_id_bytes": ev.max_encryption_id_bytes,
                 "timestamp": ev.timestamp,
             })))
         }
@@ -4493,6 +4834,21 @@ fn parse_insurance_event(
                 "max_coverage_bps": ev.max_coverage_bps,
                 "max_duration_ms": ev.max_duration_ms,
                 "fee_bps": ev.fee_bps,
+                "odds_base_bps": ev.odds_base_bps,
+                "timestamp": ev.timestamp,
+            })))
+        }
+        "RouterLimitsUpdatedEvent" => {
+            let ev = bcs::from_bytes::<BcsRouterLimitsUpdatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "updated_by": addr_to_string(&ev.updated_by),
+                "max_route_reserve_market": ev.max_route_reserve_market,
+                "max_route_reserve_user": ev.max_route_reserve_user,
+                "max_route_reserve_option": ev.max_route_reserve_option,
+                "max_vault_concentration_bps": ev.max_vault_concentration_bps,
+                "min_vault_health_factor_bps": ev.min_vault_health_factor_bps,
+                "max_route_legs": ev.max_route_legs,
                 "timestamp": ev.timestamp,
             })))
         }
@@ -4754,8 +5110,13 @@ fn parse_spot_event(
                 "resolution_window_ms": ev.resolution_window_ms,
                 "max_resolution_window_ms": ev.max_resolution_window_ms,
                 "payout_delay_ms": ev.payout_delay_ms,
-                "fee_bps": ev.fee_bps,
-                "fee_split_bps_platform": ev.fee_split_bps_platform,
+                "platform_fee_bps": ev.platform_fee_bps,
+                "ecosystem_fee_bps": ev.ecosystem_fee_bps,
+                "min_betting_options": ev.min_betting_options,
+                "max_betting_options": ev.max_betting_options,
+                "min_reasoning_length": ev.min_reasoning_length,
+                "max_reasoning_length": ev.max_reasoning_length,
+                "max_evidence_urls": ev.max_evidence_urls,
                 "oracle_address": addr_to_string(&ev.oracle_address),
                 "max_single_bet": ev.max_single_bet,
                 "max_bets_per_record": ev.max_bets_per_record,
@@ -4936,6 +5297,8 @@ fn parse_spt_event(
                 "profile_threshold": ev.profile_threshold,
                 "max_individual_reservation_bps": ev.max_individual_reservation_bps,
                 "max_reservers_per_pool": ev.max_reservers_per_pool,
+                "non_platform_platform_to_creator_bps": ev.non_platform_platform_to_creator_bps,
+                "non_platform_platform_to_treasury_bps": ev.non_platform_platform_to_treasury_bps,
             })))
         }
         "TokensAddedEvent" => {
@@ -5088,6 +5451,16 @@ fn parse_subscription_event(
                 "service_id": addr_to_string(&ev.service_id),
                 "profile_owner": addr_to_string(&ev.profile_owner),
                 "deactivated_at": ev.deactivated_at,
+            })))
+        }
+        "SubscriptionConfigUpdatedEvent" => {
+            let ev = bcs::from_bytes::<BcsSubscriptionConfigUpdatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "updated_by": addr_to_string(&ev.updated_by),
+                "billing_period_ms": ev.billing_period_ms,
+                "max_renewal_months": ev.max_renewal_months,
+                "timestamp": ev.timestamp,
             })))
         }
         _ => Ok(None),
@@ -6489,5 +6862,88 @@ mod tests {
         let json = parse_event_contents("post", "ReactionEvent", &bytes).expect("parse");
         assert_eq!(json["reaction_text"], "like");
         assert!(json["organization_id"].as_str().unwrap().starts_with("0x"));
+    }
+
+    /// The Move `AiCreditOraclePubkeyUpdated` event was fixed to carry `new_pubkey`
+    /// so the indexer can persist `oracle_pubkey_hex` instead of only `updated_by`.
+    #[test]
+    fn ai_credit_oracle_pubkey_updated_bcs_roundtrip() {
+        let updated_by = AccountAddress::from_hex_literal(
+            "0x9cc886f94db2b2a41b1f8d7c20c7fc0960e1f9eb34ce2c0c7f309",
+        )
+        .unwrap();
+        let new_pubkey = vec![0xde, 0xad, 0xbe, 0xef, 0x01, 0x23, 0x45, 0x67];
+        let ev = BcsAiCreditOraclePubkeyUpdatedEvent {
+            updated_by,
+            new_pubkey: new_pubkey.clone(),
+        };
+        let bytes = bcs::to_bytes(&ev).expect("serialize AiCreditOraclePubkeyUpdated");
+        let json = parse_event_contents("ai_credit", "AiCreditOraclePubkeyUpdated", &bytes)
+            .expect("parse AiCreditOraclePubkeyUpdated");
+        assert!(json["updated_by"].as_str().unwrap().starts_with("0x"));
+        assert_eq!(json["new_pubkey_hex"], hex::encode(&new_pubkey));
+    }
+
+    /// New `AiCreditMarkupUpdated` event carries the dynamic `oracle_markup_bps`.
+    #[test]
+    fn ai_credit_markup_updated_bcs_roundtrip() {
+        let updated_by = AccountAddress::from_hex_literal(
+            "0x9cc886f94db2b2a41b1f8d7c20c7fc0960e1f9eb34ce2c0c7f309",
+        )
+        .unwrap();
+        let ev = BcsAiCreditMarkupUpdatedEvent {
+            updated_by,
+            oracle_markup_bps: 250,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("serialize AiCreditMarkupUpdated");
+        let json = parse_event_contents("ai_credit", "AiCreditMarkupUpdated", &bytes)
+            .expect("parse AiCreditMarkupUpdated");
+        assert!(json["updated_by"].as_str().unwrap().starts_with("0x"));
+        assert_eq!(json["oracle_markup_bps"], 250);
+    }
+
+    /// SpotConfig fee redo: the event now carries `platform_fee_bps` +
+    /// `ecosystem_fee_bps` of gross, and no longer carries the legacy
+    /// `fee_bps` / `fee_split_bps_platform` fields.
+    #[test]
+    fn spot_config_updated_bcs_roundtrip_fee_breakout() {
+        let updated_by = AccountAddress::from_hex_literal(
+            "0x9cc886f94db2b2a41b1f8d7c20c7fc0960e1f9eb34ce2c0c7f309",
+        )
+        .unwrap();
+        let oracle_address = AccountAddress::from_hex_literal(
+            "0x2f41b4f43f505d427e8777c511461de8e50eac26558a996627dded27dce50918",
+        )
+        .unwrap();
+        let ev = BcsSpotConfigUpdatedEvent {
+            updated_by,
+            enable_flag: true,
+            confidence_threshold_bps: 6500,
+            resolution_window_ms: 86_400_000,
+            max_resolution_window_ms: 604_800_000,
+            payout_delay_ms: 12_000,
+            platform_fee_bps: 50,
+            ecosystem_fee_bps: 50,
+            min_betting_options: 2,
+            max_betting_options: 10,
+            min_reasoning_length: 10,
+            max_reasoning_length: 5000,
+            max_evidence_urls: 10,
+            oracle_address,
+            max_single_bet: 1_000_000_000,
+            max_bets_per_record: 100,
+            timestamp: 1_700_000_000,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("serialize SpotConfigUpdatedEvent");
+        let json = parse_event_contents("social_proof_of_truth", "SpotConfigUpdatedEvent", &bytes)
+            .expect("parse SpotConfigUpdatedEvent");
+        assert_eq!(json["platform_fee_bps"], 50);
+        assert_eq!(json["ecosystem_fee_bps"], 50);
+        assert_eq!(json["min_betting_options"], 2);
+        assert_eq!(json["max_betting_options"], 10);
+        assert_eq!(json["max_reasoning_length"], 5000);
+        assert_eq!(json["max_evidence_urls"], 10);
+        assert!(json.get("fee_bps").is_none());
+        assert!(json.get("fee_split_bps_platform").is_none());
     }
 }

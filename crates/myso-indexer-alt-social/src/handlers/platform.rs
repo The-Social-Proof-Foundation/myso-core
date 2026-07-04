@@ -6,8 +6,9 @@ use serde::Deserialize;
 use super::common;
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
-    NewPlatform, NewPlatformBlockedProfile, NewPlatformEvent, NewPlatformMembership,
-    NewPlatformModerator, NewPlatformModeratorPermission, NewPlatformTokenAirdrop,
+    NewPlatform, NewPlatformBlockedProfile, NewPlatformConfig, NewPlatformEvent,
+    NewPlatformMembership, NewPlatformModerator, NewPlatformModeratorPermission,
+    NewPlatformTokenAirdrop,
 };
 use myso_indexer_alt_social_schema::platform_permissions::ALL_MODERATOR_EXTENSION_PERMISSIONS;
 
@@ -324,8 +325,53 @@ pub fn handle_platform_event(
         "TreasuryFundedEvent" => {
             process_treasury_funded_event(data, event_id, checkpoint_timestamp_ms)
         }
+        "PlatformConfigUpdatedEvent" => {
+            process_platform_config_updated_event(data, event_id, checkpoint_timestamp_ms)
+        }
         _ => None,
     }
+}
+
+fn process_platform_config_updated_event(
+    data: &serde_json::Value,
+    event_id: &str,
+    checkpoint_timestamp_ms: u64,
+) -> Option<Vec<SocialEventRow>> {
+    let updated_by = data.get("updated_by")?.as_str()?.to_string();
+    let max_reasoning_length =
+        common::json_field_as_i64(data.get("max_reasoning_length")).unwrap_or(0);
+    let max_cover_photo_url_length =
+        common::json_field_as_i64(data.get("max_cover_photo_url_length")).unwrap_or(0);
+    let max_media_previews = common::json_field_as_i64(data.get("max_media_previews")).unwrap_or(0);
+    let max_media_preview_url_length =
+        common::json_field_as_i64(data.get("max_media_preview_url_length")).unwrap_or(0);
+    let max_badge_name_length =
+        common::json_field_as_i64(data.get("max_badge_name_length")).unwrap_or(0);
+    let max_badge_description_length =
+        common::json_field_as_i64(data.get("max_badge_description_length")).unwrap_or(0);
+    let max_badge_media_url_length =
+        common::json_field_as_i64(data.get("max_badge_media_url_length")).unwrap_or(0);
+    let max_badge_icon_url_length =
+        common::json_field_as_i64(data.get("max_badge_icon_url_length")).unwrap_or(0);
+    let event_ms = common::json_field_as_i64(data.get("timestamp"));
+    let timestamp_ms = common::chain_timestamp_ms(event_ms, checkpoint_timestamp_ms);
+    let now = common::chain_time_from_ms(timestamp_ms);
+    let row = NewPlatformConfig {
+        updated_by,
+        max_reasoning_length,
+        max_cover_photo_url_length,
+        max_media_previews,
+        max_media_preview_url_length,
+        max_badge_name_length,
+        max_badge_description_length,
+        max_badge_media_url_length,
+        max_badge_icon_url_length,
+        version: 0,
+        updated_at: timestamp_ms,
+        time: now,
+        transaction_id: event_id.to_string(),
+    };
+    Some(vec![SocialEventRow::PlatformConfig(row)])
 }
 
 fn normalize_dao_fields(

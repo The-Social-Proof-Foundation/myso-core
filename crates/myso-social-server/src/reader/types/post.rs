@@ -71,18 +71,35 @@ pub struct BlockedEventRow {
     pub event_id: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, QueryableByName)]
 pub struct PostConfigRow {
+    #[diesel(sql_type = Text)]
     pub updated_by: String,
+    #[diesel(sql_type = BigInt)]
     pub max_content_length: i64,
+    #[diesel(sql_type = BigInt)]
     pub max_media_urls: i64,
+    #[diesel(sql_type = BigInt)]
     pub max_mentions: i64,
+    #[diesel(sql_type = BigInt)]
     pub max_metadata_size: i64,
+    #[diesel(sql_type = BigInt)]
     pub max_description_length: i64,
+    #[diesel(sql_type = BigInt)]
     pub max_reaction_length: i64,
+    #[diesel(sql_type = BigInt)]
     pub commenter_tip_percentage: i64,
+    #[diesel(sql_type = BigInt)]
     pub repost_tip_percentage: i64,
+    #[diesel(sql_type = BigInt)]
+    pub min_promotion_amount: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_promotion_amount: i64,
+    #[diesel(sql_type = BigInt)]
+    pub min_view_duration_ms: i64,
+    #[diesel(sql_type = BigInt)]
     pub version: i64,
+    #[diesel(sql_type = BigInt)]
     pub updated_at: i64,
 }
 

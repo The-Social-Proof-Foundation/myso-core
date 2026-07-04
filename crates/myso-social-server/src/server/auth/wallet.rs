@@ -44,7 +44,10 @@ pub enum WalletAuthError {
         server_time: i64,
         ttl_seconds: i64,
     },
-    AddressMismatch { expected: String, got: String },
+    AddressMismatch {
+        expected: String,
+        got: String,
+    },
 }
 
 impl std::fmt::Display for WalletAuthError {

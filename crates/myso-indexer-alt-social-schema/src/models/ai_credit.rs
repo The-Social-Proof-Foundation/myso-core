@@ -196,14 +196,16 @@ pub struct AiCreditSpendApprovalRow {
 #[derive(Debug, Clone, Insertable, AsChangeset, Serialize, Deserialize)]
 #[diesel(table_name = ai_credit_config)]
 pub struct NewAiCreditConfig {
-    pub id: i16,
+    pub updated_by: String,
     pub oracle_pubkey_hex: String,
     pub treasury_address: String,
     pub min_deposit_mist: i64,
     pub max_single_settlement_mist: i64,
     pub receipt_ttl_ms: i64,
+    pub oracle_markup_bps: i64,
     pub catalog_version: Option<String>,
-    pub updated_at_ms: i64,
+    pub version: i64,
+    pub updated_at: i64,
     pub event_id: String,
     pub transaction_id: String,
     pub time: chrono::DateTime<chrono::Utc>,
@@ -212,14 +214,17 @@ pub struct NewAiCreditConfig {
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
 #[diesel(table_name = ai_credit_config)]
 pub struct AiCreditConfigRow {
-    pub id: i16,
+    pub id: i32,
+    pub updated_by: String,
     pub oracle_pubkey_hex: String,
     pub treasury_address: String,
     pub min_deposit_mist: i64,
     pub max_single_settlement_mist: i64,
     pub receipt_ttl_ms: i64,
+    pub oracle_markup_bps: i64,
     pub catalog_version: Option<String>,
-    pub updated_at_ms: i64,
+    pub version: i64,
+    pub updated_at: i64,
     pub event_id: String,
     pub transaction_id: String,
     pub time: chrono::DateTime<chrono::Utc>,
