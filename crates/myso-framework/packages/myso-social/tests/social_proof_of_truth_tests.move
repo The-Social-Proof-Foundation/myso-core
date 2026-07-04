@@ -53,9 +53,9 @@ module social_contracts::social_proof_of_truth_tests {
         {
             let clock = test_scenario::take_shared<Clock>(&scen);
             let ctx = test_scenario::ctx(&mut scen);
-            let spot_gov_id = governance::bootstrap_init(&clock, ctx);
+            let gov_ids = governance::bootstrap_init(&clock, ctx);
             governance::test_grant_admin_cap(ctx);
-            spot::test_init(&clock, spot_gov_id, ctx);
+            spot::test_init(&clock, gov_ids.spot_governance_registry_id(), ctx);
             test_scenario::return_shared(clock);
         };
 

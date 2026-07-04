@@ -278,7 +278,6 @@ pub struct EcosystemTreasury {
     pub updated_at: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
-    pub profile_sale_fee_bps: i64,
     pub version: i64,
 }
 
@@ -290,7 +289,6 @@ pub struct NewEcosystemTreasury {
     pub updated_at: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
-    pub profile_sale_fee_bps: i64,
     pub version: i64,
 }
 
@@ -299,7 +297,6 @@ impl NewEcosystemTreasury {
         treasury_address: String,
         updated_by: String,
         updated_at: u64,
-        profile_sale_fee_bps: u64,
         transaction_id: String,
     ) -> Self {
         let timestamp_secs = (updated_at / 1000) as i64;
@@ -311,7 +308,6 @@ impl NewEcosystemTreasury {
             updated_by,
             updated_at: updated_at as i64,
             time,
-            profile_sale_fee_bps: profile_sale_fee_bps as i64,
             transaction_id,
             version: 0,
         }

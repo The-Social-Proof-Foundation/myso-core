@@ -1493,6 +1493,15 @@ Emitted alongside the legacy <code><a href="../social_contracts/ai_credit.md#soc
 
 
 
+<a name="social_contracts_ai_credit_DEFAULT_ORACLE_MARKUP_BPS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_DEFAULT_ORACLE_MARKUP_BPS">DEFAULT_ORACLE_MARKUP_BPS</a>: u64 = 1500;
+</code></pre>
+
+
+
 <a name="social_contracts_ai_credit_USAGE_INFERENCE"></a>
 
 
@@ -1783,7 +1792,7 @@ Emitted alongside the legacy <code><a href="../social_contracts/ai_credit.md#soc
     <b>let</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_min_deposit_mist">min_deposit_mist</a> = <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_MIST_PER_MYSO">MIST_PER_MYSO</a>;
     <b>let</b> max_single_settlement_mist = 1000 * <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_MIST_PER_MYSO">MIST_PER_MYSO</a>;
     <b>let</b> receipt_ttl_ms = 300_000;
-    <b>let</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_oracle_markup_bps">oracle_markup_bps</a> = 0;
+    <b>let</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_oracle_markup_bps">oracle_markup_bps</a> = <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_DEFAULT_ORACLE_MARKUP_BPS">DEFAULT_ORACLE_MARKUP_BPS</a>;
     event::emit(<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfigInitialized">AiCreditConfigInitialized</a> {
         oracle_pubkey,
         treasury,

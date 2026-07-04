@@ -378,6 +378,11 @@ impl PocConfig {
         self.inner.min_vault_deposit_amount
     }
 
+    /// Shared PoC GovernanceDAO object ID (registry_type = 1).
+    async fn dispute_governance_registry_id(&self) -> Option<&str> {
+        self.inner.dispute_governance_registry_id.as_deref()
+    }
+
     /// Address that last updated PoC configuration.
     async fn updated_by(&self) -> &str {
         &self.inner.updated_by
@@ -418,8 +423,8 @@ impl SpotConfig {
     }
 
     /// Whether SPoT (Social Proof of Truth) is enabled.
-    async fn enable_flag(&self) -> bool {
-        self.inner.enable_flag
+    async fn truth_enabled(&self) -> bool {
+        self.inner.truth_enabled
     }
 
     /// Confidence threshold in basis points.
@@ -527,8 +532,8 @@ impl MyDataConfig {
     }
 
     /// Whether MyData marketplace is enabled.
-    async fn enable_flag(&self) -> bool {
-        self.inner.enable_flag
+    async fn marketplace_enabled(&self) -> bool {
+        self.inner.marketplace_enabled
     }
 
     /// Maximum tags per record.
@@ -591,8 +596,8 @@ impl InsuranceConfig {
     }
 
     /// Whether insurance is enabled.
-    async fn enable_flag(&self) -> bool {
-        self.inner.enable_flag
+    async fn insurance_enabled(&self) -> bool {
+        self.inner.insurance_enabled
     }
 
     /// Minimum coverage in basis points.
@@ -941,6 +946,11 @@ impl ProfileConfig {
         self.inner.max_username_length
     }
 
+    /// Fee in basis points taken on profile sales (10000 = 100%).
+    async fn profile_sale_fee_bps(&self) -> i64 {
+        self.inner.profile_sale_fee_bps
+    }
+
     /// Configuration version.
     async fn version(&self) -> i64 {
         self.inner.version
@@ -1126,11 +1136,6 @@ impl EcosystemTreasury {
     /// Treasury address that receives ecosystem fees (e.g. profile sale fees).
     async fn treasury_address(&self) -> &str {
         &self.inner.treasury_address
-    }
-
-    /// Fee in basis points taken on profile sales (10000 = 100%).
-    async fn profile_sale_fee_bps(&self) -> i64 {
-        self.inner.profile_sale_fee_bps
     }
 
     /// Address that last updated the configuration.

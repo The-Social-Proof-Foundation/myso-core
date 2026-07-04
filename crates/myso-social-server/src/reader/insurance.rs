@@ -18,7 +18,7 @@ pub(crate) async fn get_insurance_configuration(
 ) -> Result<Option<InsuranceConfigurationResponse>, SocialError> {
     let mut conn = db.connect().await?;
     let query = "
-        SELECT updated_by, enable_flag, min_coverage_bps, max_coverage_bps, max_duration_ms,
+        SELECT updated_by, insurance_enabled, min_coverage_bps, max_coverage_bps, max_duration_ms,
                fee_bps, version, updated_at, time, transaction_id,
                min_spot_total_liquidity, max_coverage_fraction_of_option_bps,
                max_risk_multiplier_bps, min_premium_amount, spot_smoothing_per_option,

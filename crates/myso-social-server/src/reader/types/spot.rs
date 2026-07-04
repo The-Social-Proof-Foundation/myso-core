@@ -54,7 +54,7 @@ pub struct SpotConfigInfo {
     #[diesel(sql_type = Text)]
     pub updated_by: String,
     #[diesel(sql_type = Bool)]
-    pub enable_flag: bool,
+    pub truth_enabled: bool,
     #[diesel(sql_type = BigInt)]
     pub confidence_threshold_bps: i64,
     #[diesel(sql_type = BigInt)]

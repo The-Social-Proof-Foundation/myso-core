@@ -956,9 +956,6 @@ DynamicField.value
 EcosystemTreasury.treasuryAddress
   => {}
 
-EcosystemTreasury.profileSaleFeeBps
-  => {}
-
 EcosystemTreasury.updatedBy
   => {}
 
@@ -1442,7 +1439,7 @@ Input.ix
 InsuranceConfig.updatedBy
   => {}
 
-InsuranceConfig.enableFlag
+InsuranceConfig.insuranceEnabled
   => {}
 
 InsuranceConfig.minCoverageBps
@@ -2432,7 +2429,7 @@ MyDataClaim.time
 MyDataConfig.updatedBy
   => {}
 
-MyDataConfig.enableFlag
+MyDataConfig.marketplaceEnabled
   => {}
 
 MyDataConfig.maxTags
@@ -3593,6 +3590,9 @@ PocConfig.maxDisputesPerPost
 PocConfig.minVaultDepositAmount
   => {}
 
+PocConfig.disputeGovernanceRegistryId
+  => {}
+
 PocConfig.updatedBy
   => {}
 
@@ -4458,6 +4458,9 @@ ProfileConfig.minUsernameLength
   => {}
 
 ProfileConfig.maxUsernameLength
+  => {}
+
+ProfileConfig.profileSaleFeeBps
   => {}
 
 ProfileConfig.version
@@ -5573,7 +5576,7 @@ SpotBetWithdrawal.transactionId
 SpotConfig.updatedBy
   => {}
 
-SpotConfig.enableFlag
+SpotConfig.truthEnabled
   => {}
 
 SpotConfig.confidenceThresholdBps

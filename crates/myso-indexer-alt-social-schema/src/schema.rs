@@ -176,7 +176,6 @@ diesel::table! {
         updated_at -> Int8,
         time -> Timestamptz,
         transaction_id -> Varchar,
-        profile_sale_fee_bps -> Int8,
         version -> Int8,
     }
 }
@@ -226,7 +225,7 @@ diesel::table! {
         updated_at -> Int8,
         time -> Timestamptz,
         transaction_id -> Text,
-        enable_flag -> Bool,
+        insurance_enabled -> Bool,
         min_spot_total_liquidity -> Int8,
         max_coverage_fraction_of_option_bps -> Int8,
         max_risk_multiplier_bps -> Int8,
@@ -420,7 +419,7 @@ diesel::table! {
     mydata_config (id, time) {
         id -> Int4,
         updated_by -> Text,
-        enable_flag -> Bool,
+        marketplace_enabled -> Bool,
         max_tags -> Int8,
         max_subscription_days -> Int8,
         max_free_access_grants -> Int8,
@@ -798,6 +797,7 @@ diesel::table! {
         max_reasoning_length -> Int8,
         max_evidence_urls -> Int8,
         max_votes_per_dispute -> Int8,
+        dispute_governance_registry_id -> Nullable<Text>,
         oracle_address -> Nullable<Text>,
         claim_treasury_fee_bps -> Int8,
         max_referral_bps -> Int8,
@@ -1956,7 +1956,7 @@ diesel::table! {
     spot_config (id, time) {
         id -> Int4,
         updated_by -> Text,
-        enable_flag -> Bool,
+        truth_enabled -> Bool,
         confidence_threshold_bps -> Int8,
         resolution_window_ms -> Int8,
         max_resolution_window_ms -> Int8,
@@ -2486,6 +2486,7 @@ diesel::table! {
         min_claim_threshold_divisor -> Int8,
         min_username_length -> Int8,
         max_username_length -> Int8,
+        profile_sale_fee_bps -> Int8,
         version -> Int8,
         updated_at -> Int8,
         time -> Timestamptz,

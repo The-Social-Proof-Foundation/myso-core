@@ -2053,7 +2053,7 @@ type InsuranceConfig {
 	"""
 	Whether insurance is enabled.
 	"""
-	enableFlag: Boolean!
+	insuranceEnabled: Boolean!
 	"""
 	Exposure multiplier cap, in basis points.
 	"""
@@ -3476,7 +3476,7 @@ type MyDataConfig {
 	"""
 	Whether MyData marketplace is enabled.
 	"""
-	enableFlag: Boolean!
+	marketplaceEnabled: Boolean!
 	"""
 	Maximum free access grants.
 	"""
@@ -7135,7 +7135,7 @@ type SpotConfig {
 	"""
 	Whether SPoT (Social Proof of Truth) is enabled.
 	"""
-	enableFlag: Boolean!
+	truthEnabled: Boolean!
 	"""
 	Fee in basis points.
 	"""

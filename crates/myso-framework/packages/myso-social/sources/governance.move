@@ -360,9 +360,23 @@ module social_contracts::governance {
         executed_at_epoch: u64,
     }
 
+    /// PoC + SPoT governance registry IDs returned from bootstrap for wiring into module configs.
+    public struct BootstrapGovernanceRegistryIds has copy, drop {
+        poc_governance_registry_id: ID,
+        spot_governance_registry_id: ID,
+    }
+
+    public fun poc_governance_registry_id(ids: &BootstrapGovernanceRegistryIds): ID {
+        ids.poc_governance_registry_id
+    }
+
+    public fun spot_governance_registry_id(ids: &BootstrapGovernanceRegistryIds): ID {
+        ids.spot_governance_registry_id
+    }
+
     /// Bootstrap initialization function - creates the governance registries.
-    /// Returns the shared SPoT governance registry object ID for wiring into [`social_contracts::social_proof_of_truth`].
-    public(package) fun bootstrap_init(clock: &Clock, ctx: &mut TxContext): ID {
+    /// Returns PoC and SPoT registry IDs for wiring into [`proof_of_creativity`] and [`social_proof_of_truth`].
+    public(package) fun bootstrap_init(clock: &Clock, ctx: &mut TxContext): BootstrapGovernanceRegistryIds {
         let current_time = clock::timestamp_ms(clock);
         let founder = tx_context::sender(ctx);
 
@@ -512,7 +526,10 @@ module social_contracts::governance {
         seed_founding_delegate(&mut spot_registry, founder, ctx);
         transfer::share_object(spot_registry);
 
-        spot_registry_id
+        BootstrapGovernanceRegistryIds {
+            poc_governance_registry_id: proof_of_creativity_registry_id,
+            spot_governance_registry_id: spot_registry_id,
+        }
     }
 
     /// Install the founding delegate without going through nomination (bootstrap / platform creation).
@@ -2347,6 +2364,10 @@ module social_contracts::governance {
 
     public fun proposal_type_spot_value(): u8 {
         PROPOSAL_TYPE_SPOT
+    }
+
+    public fun proposal_type_proof_of_creativity_value(): u8 {
+        PROPOSAL_TYPE_PROOF_OF_CREATIVITY
     }
 
     public fun proposal_status(proposal: &Proposal): u8 {

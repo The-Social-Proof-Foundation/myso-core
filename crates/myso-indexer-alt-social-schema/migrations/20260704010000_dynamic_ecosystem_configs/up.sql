@@ -25,9 +25,9 @@
 
 -- 1.1 ai_credit_config (singleton) — oracle markup bps
 ALTER TABLE ai_credit_config
-ADD COLUMN IF NOT EXISTS oracle_markup_bps BIGINT NOT NULL DEFAULT 0;
-UPDATE ai_credit_config SET oracle_markup_bps = 0 WHERE oracle_markup_bps IS NULL;
-COMMENT ON COLUMN ai_credit_config.oracle_markup_bps IS 'Markup in basis points applied on top of oracle AI credit pricing (default: 0; max 10000)';
+ADD COLUMN IF NOT EXISTS oracle_markup_bps BIGINT NOT NULL DEFAULT 1500;
+UPDATE ai_credit_config SET oracle_markup_bps = 1500 WHERE oracle_markup_bps IS NULL OR oracle_markup_bps = 0;
+COMMENT ON COLUMN ai_credit_config.oracle_markup_bps IS 'Markup in basis points applied on top of oracle AI credit pricing (default: 1500 = 15%; max 10000)';
 
 -- 1.2 post_config (hypertable) — promotion parameters
 ALTER TABLE post_config
@@ -87,6 +87,11 @@ UPDATE poc_configuration SET min_vault_deposit_amount = 1 WHERE min_vault_deposi
 COMMENT ON COLUMN poc_configuration.max_disputes_per_post IS 'Max successful dispute submissions per post (lifetime, default: 2); SMALLINT mirrors Move u8';
 COMMENT ON COLUMN poc_configuration.min_vault_deposit_amount IS 'Minimum amount (per asset) accepted into a beneficiary vault deposit (default: 1)';
 
+ALTER TABLE poc_configuration
+  ADD COLUMN IF NOT EXISTS dispute_governance_registry_id TEXT NULL;
+COMMENT ON COLUMN poc_configuration.dispute_governance_registry_id IS
+  'Shared PoC GovernanceDAO object ID (registry_type = 1)';
+
 -- 1.7 mydata_config (hypertable) — max encryption_id byte length
 ALTER TABLE mydata_config
 ADD COLUMN IF NOT EXISTS max_encryption_id_bytes BIGINT NOT NULL DEFAULT 1024;
@@ -99,11 +104,16 @@ ADD COLUMN IF NOT EXISTS odds_base_bps BIGINT NOT NULL DEFAULT 5000;
 UPDATE insurance_config SET odds_base_bps = 5000 WHERE odds_base_bps IS NULL;
 COMMENT ON COLUMN insurance_config.odds_base_bps IS 'Base odds multiplier in bps used by compute_spot_risk_quote (default: 5000; must be > 0)';
 
--- 1.9 ecosystem_treasury (hypertable) — profile sale fee bps
-ALTER TABLE ecosystem_treasury
-ADD COLUMN IF NOT EXISTS profile_sale_fee_bps BIGINT NOT NULL DEFAULT 500;
-UPDATE ecosystem_treasury SET profile_sale_fee_bps = 500 WHERE profile_sale_fee_bps IS NULL;
-COMMENT ON COLUMN ecosystem_treasury.profile_sale_fee_bps IS 'Fee in bps taken on profile sales (default: 500; 10000 = 100%)';
+-- 1.9 config semantic renames + defaults
+ALTER TABLE mydata_config RENAME COLUMN enable_flag TO marketplace_enabled;
+ALTER TABLE spot_config RENAME COLUMN enable_flag TO truth_enabled;
+ALTER TABLE insurance_config RENAME COLUMN enable_flag TO insurance_enabled;
+COMMENT ON COLUMN mydata_config.marketplace_enabled IS 'Whether the MyData marketplace is enabled (default: false)';
+COMMENT ON COLUMN spot_config.truth_enabled IS 'Whether Social Proof of Truth (SPoT) is enabled (default: false)';
+COMMENT ON COLUMN insurance_config.insurance_enabled IS 'Whether insurance is enabled (default: false)';
+ALTER TABLE spt_exchange_config ALTER COLUMN trading_enabled SET DEFAULT TRUE;
+UPDATE spt_exchange_config SET trading_enabled = TRUE WHERE trading_enabled = FALSE;
+ALTER TABLE spt_config ALTER COLUMN trading_enabled SET DEFAULT TRUE;
 
 -- ============================================================================
 -- 2. CREATE NEW CONFIG HYPERTABLES
@@ -219,6 +229,7 @@ CREATE TABLE IF NOT EXISTS profile_config (
     min_claim_threshold_divisor BIGINT NOT NULL DEFAULT 1000,
     min_username_length BIGINT NOT NULL DEFAULT 2,
     max_username_length BIGINT NOT NULL DEFAULT 50,
+    profile_sale_fee_bps BIGINT NOT NULL DEFAULT 500,
     version BIGINT NOT NULL DEFAULT 0,
     updated_at BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -259,6 +270,7 @@ COMMENT ON COLUMN profile_config.curve_precision IS 'Curve factor precision divi
 COMMENT ON COLUMN profile_config.min_claim_threshold_divisor IS 'Minimum claim threshold divisor (default: 1000)';
 COMMENT ON COLUMN profile_config.min_username_length IS 'Minimum username length (default: 2)';
 COMMENT ON COLUMN profile_config.max_username_length IS 'Maximum username length (default: 50)';
+COMMENT ON COLUMN profile_config.profile_sale_fee_bps IS 'Fee in bps taken on profile sales (default: 500; 10000 = 100%)';
 
 -- 2.4 memory_config
 --    u8 fields (max_organizations_per_user, max_agent_depth) use SMALLINT to match
@@ -738,6 +750,8 @@ BEGIN
         SELECT 1 FROM timescaledb_information.hypertables
         WHERE hypertable_name = 'poc_configuration'
     ) THEN
+        -- TimescaleDB rejects hypertables with a unique/PK that omits the partition column.
+        ALTER TABLE poc_configuration DROP CONSTRAINT IF EXISTS poc_configuration_pkey;
         PERFORM create_hypertable('poc_configuration', 'time', if_not_exists => TRUE,
                                   create_default_indexes => FALSE,
                                   chunk_time_interval => INTERVAL '1 month');
@@ -748,7 +762,6 @@ BEGIN
     ) AND NOT EXISTS (
         SELECT 1 FROM pg_constraint WHERE conname = 'poc_configuration_pkey'
     ) THEN
-        ALTER TABLE poc_configuration DROP CONSTRAINT IF EXISTS poc_configuration_pkey;
         ALTER TABLE poc_configuration ADD PRIMARY KEY (id, time);
     END IF;
 END $$;

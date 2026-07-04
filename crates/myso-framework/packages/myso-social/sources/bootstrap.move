@@ -65,12 +65,20 @@ module social_contracts::bootstrap {
         social_contracts::block_list::bootstrap_init(clock, ctx);
         social_contracts::mydata::bootstrap_init(clock, ctx);
         social_contracts::memory::bootstrap_init(clock, ctx);
-        let spot_governance_registry_id = social_contracts::governance::bootstrap_init(clock, ctx);
+        let gov_ids = social_contracts::governance::bootstrap_init(clock, ctx);
         social_contracts::post::bootstrap_init(clock, ctx);
         social_contracts::subscription::bootstrap_init(clock, ctx);
         social_contracts::social_proof_tokens::bootstrap_init(clock, ctx);
-        social_contracts::proof_of_creativity::bootstrap_init(clock, ctx);
-        social_contracts::social_proof_of_truth::bootstrap_init(clock, spot_governance_registry_id, ctx);
+        social_contracts::proof_of_creativity::bootstrap_init(
+            clock,
+            gov_ids.poc_governance_registry_id(),
+            ctx,
+        );
+        social_contracts::social_proof_of_truth::bootstrap_init(
+            clock,
+            gov_ids.spot_governance_registry_id(),
+            ctx,
+        );
         social_contracts::insurance::bootstrap_init(clock, ctx);
         social_contracts::ai_credit::bootstrap_init(
             admin,

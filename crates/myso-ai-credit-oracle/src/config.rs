@@ -79,6 +79,23 @@ pub struct OracleArgs {
     #[arg(long, env = "AI_CREDIT_ECOSYSTEM_MARGIN_PCT", default_value = "0.125")]
     pub ecosystem_margin_pct: f64,
 
+    #[arg(
+        long,
+        env = "AI_CREDIT_GRAPHQL_URL",
+        default_value = "http://127.0.0.1:9125/graphql"
+    )]
+    pub graphql_url: String,
+
+    #[arg(
+        long,
+        env = "AI_CREDIT_MARKUP_REFRESH_INTERVAL_SECS",
+        default_value = "300"
+    )]
+    pub markup_refresh_interval_secs: u64,
+
+    #[arg(long, env = "AI_CREDIT_MARKUP_GRAPHQL_ENABLED", default_value = "true")]
+    pub markup_graphql_enabled: bool,
+
     #[arg(long, env = "AI_CREDIT_USAGE_SYNC_SECRET")]
     pub usage_sync_secret: Option<String>,
 

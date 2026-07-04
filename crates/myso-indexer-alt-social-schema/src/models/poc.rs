@@ -174,6 +174,8 @@ pub struct PocConfigRow {
     #[diesel(sql_type = BigInt)]
     pub max_votes_per_dispute: i64,
     #[diesel(sql_type = Nullable<Text>)]
+    pub dispute_governance_registry_id: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
     pub oracle_address: Option<String>,
     #[diesel(sql_type = BigInt)]
     pub claim_treasury_fee_bps: i64,
@@ -302,6 +304,7 @@ pub struct NewPocConfiguration {
     pub max_reasoning_length: i64,
     pub max_evidence_urls: i64,
     pub max_votes_per_dispute: i64,
+    pub dispute_governance_registry_id: Option<String>,
     pub oracle_address: Option<String>,
     pub claim_treasury_fee_bps: i64,
     pub max_referral_bps: i64,

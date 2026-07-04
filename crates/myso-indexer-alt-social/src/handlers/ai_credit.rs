@@ -34,7 +34,7 @@ pub(crate) fn new_ai_credit_config_with_defaults() -> NewAiCreditConfig {
         min_deposit_mist: 0,
         max_single_settlement_mist: 0,
         receipt_ttl_ms: 0,
-        oracle_markup_bps: 0,
+        oracle_markup_bps: 1500,
         catalog_version: None,
         version: 0,
         updated_at: 0,

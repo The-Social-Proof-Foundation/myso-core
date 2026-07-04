@@ -238,7 +238,7 @@ struct LatestInsuranceConfigRow {
     #[diesel(sql_type = Text)]
     updated_by: String,
     #[diesel(sql_type = Bool)]
-    enable_flag: bool,
+    insurance_enabled: bool,
     #[diesel(sql_type = BigInt)]
     min_coverage_bps: i64,
     #[diesel(sql_type = BigInt)]
@@ -286,7 +286,7 @@ struct LatestInsuranceConfigRow {
 fn latest_row_to_new(row: LatestInsuranceConfigRow) -> NewInsuranceConfig {
     NewInsuranceConfig {
         updated_by: row.updated_by,
-        enable_flag: row.enable_flag,
+        insurance_enabled: row.insurance_enabled,
         min_coverage_bps: row.min_coverage_bps,
         max_coverage_bps: row.max_coverage_bps,
         max_duration_ms: row.max_duration_ms,
@@ -315,7 +315,7 @@ async fn load_latest_insurance_config(
     conn: &mut Connection<'_>,
 ) -> Result<Option<NewInsuranceConfig>> {
     let query = "
-        SELECT updated_by, enable_flag, min_coverage_bps, max_coverage_bps, max_duration_ms,
+        SELECT updated_by, insurance_enabled, min_coverage_bps, max_coverage_bps, max_duration_ms,
                fee_bps, version, updated_at, time, transaction_id,
                min_spot_total_liquidity, max_coverage_fraction_of_option_bps,
                max_risk_multiplier_bps, min_premium_amount, spot_smoothing_per_option,
@@ -340,7 +340,7 @@ fn finalize_insurance_config(
         InsuranceConfigSnapshot::Initialized(config) => config.clone(),
         InsuranceConfigSnapshot::Updated(update) => NewInsuranceConfig {
             updated_by: update.updated_by.clone(),
-            enable_flag: update.enable_flag,
+            insurance_enabled: update.insurance_enabled,
             min_coverage_bps: update.min_coverage_bps,
             max_coverage_bps: update.max_coverage_bps,
             max_duration_ms: update.max_duration_ms,
@@ -365,7 +365,7 @@ fn finalize_insurance_config(
         },
         InsuranceConfigSnapshot::RiskPricingUpdated(update) => NewInsuranceConfig {
             updated_by: update.updated_by.clone(),
-            enable_flag: prev.enable_flag,
+            insurance_enabled: prev.insurance_enabled,
             min_coverage_bps: prev.min_coverage_bps,
             max_coverage_bps: prev.max_coverage_bps,
             max_duration_ms: prev.max_duration_ms,

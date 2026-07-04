@@ -27,7 +27,7 @@ pub enum InsuranceConfigSnapshot {
 pub(crate) fn new_insurance_config_with_defaults() -> NewInsuranceConfig {
     NewInsuranceConfig {
         updated_by: String::new(),
-        enable_flag: false,
+        insurance_enabled: false,
         min_coverage_bps: DEFAULT_MIN_COVERAGE_BPS,
         max_coverage_bps: DEFAULT_MAX_COVERAGE_BPS,
         max_duration_ms: DEFAULT_MAX_DURATION_MS,
@@ -144,7 +144,7 @@ fn process_config_initialized_event(
 
     let mut config = new_insurance_config_with_defaults();
     config.updated_by = admin;
-    config.enable_flag = false;
+    config.insurance_enabled = false;
     config.min_coverage_bps = min_coverage_bps;
     config.max_coverage_bps = max_coverage_bps;
     config.max_duration_ms = max_duration_ms;
@@ -171,7 +171,7 @@ fn process_config_updated_event(
     default_timestamp_ms: i64,
 ) -> Option<Vec<SocialEventRow>> {
     let updated_by = json_str(data.get("updated_by")?);
-    let enable_flag = data.get("enable_flag")?.as_bool().unwrap_or(false);
+    let insurance_enabled = data.get("insurance_enabled")?.as_bool().unwrap_or(false);
     let min_coverage_bps = json_to_i64(data.get("min_coverage_bps")?);
     let max_coverage_bps = json_to_i64(data.get("max_coverage_bps")?);
     let max_duration_ms = json_to_i64(data.get("max_duration_ms")?);
@@ -185,7 +185,7 @@ fn process_config_updated_event(
 
     let mut config = new_insurance_config_with_defaults();
     config.updated_by = updated_by;
-    config.enable_flag = enable_flag;
+    config.insurance_enabled = insurance_enabled;
     config.min_coverage_bps = min_coverage_bps;
     config.max_coverage_bps = max_coverage_bps;
     config.max_duration_ms = max_duration_ms;

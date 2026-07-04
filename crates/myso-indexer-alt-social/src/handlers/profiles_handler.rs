@@ -16,6 +16,7 @@ use diesel::BoolExpressionMethods;
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
 use diesel::QueryDsl;
+use diesel::SelectableHelper;
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_framework::pipeline::Processor;
 use myso_indexer_alt_framework::postgres::handler::Handler;
@@ -25,7 +26,8 @@ use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
     NewAiCreditBalance, NewEcosystemTreasury, NewMemoryAccount, NewProfile, NewProfileBadge,
     NewProfileConfig, NewProfileEvent, NewProfileOffer, NewProfileSaleFee, NewUsernameRegistry,
-    NewVestingEvent, NewVestingWallet, ProfileUpdateSet,
+    NewVestingEvent, NewVestingWallet, ProfileUpdateSet, default_profile_config,
+    merge_profile_config,
 };
 use myso_indexer_alt_social_schema::schema::{
     ai_credit_balances, ecosystem_treasury, memory_accounts, profile_badges, profile_config,
@@ -444,7 +446,6 @@ fn default_ecosystem_treasury() -> NewEcosystemTreasury {
         updated_at: 0,
         time: chrono::Utc::now(),
         transaction_id: String::new(),
-        profile_sale_fee_bps: 0,
         version: 0,
     }
 }
@@ -465,12 +466,23 @@ fn merge_ecosystem_treasury(
             incoming.treasury_address.clone()
         },
         updated_by: incoming.updated_by.clone(),
-        profile_sale_fee_bps: incoming.profile_sale_fee_bps,
         updated_at: incoming.updated_at,
         time: incoming.time,
         transaction_id: incoming.transaction_id.clone(),
         version,
     }
+}
+
+async fn load_latest_profile_config(
+    conn: &mut Connection<'_>,
+) -> Result<Option<NewProfileConfig>> {
+    profile_config::table
+        .order(profile_config::time.desc())
+        .select(NewProfileConfig::as_select())
+        .first(conn)
+        .await
+        .optional()
+        .map_err(Into::into)
 }
 
 async fn load_latest_ecosystem_treasury(
@@ -484,7 +496,6 @@ async fn load_latest_ecosystem_treasury(
             ecosystem_treasury::updated_at,
             ecosystem_treasury::time,
             ecosystem_treasury::transaction_id,
-            ecosystem_treasury::profile_sale_fee_bps,
             ecosystem_treasury::version,
         ))
         .first::<(
@@ -494,28 +505,20 @@ async fn load_latest_ecosystem_treasury(
             chrono::DateTime<chrono::Utc>,
             String,
             i64,
-            i64,
         )>(conn)
         .await
         .optional()
         .map(|opt| {
             opt.map(
-                |(
-                    treasury_address,
-                    updated_by,
-                    updated_at,
-                    time,
-                    transaction_id,
-                    profile_sale_fee_bps,
-                    version,
-                )| NewEcosystemTreasury {
-                    treasury_address,
-                    updated_by,
-                    updated_at,
-                    time,
-                    transaction_id,
-                    profile_sale_fee_bps,
-                    version,
+                |(treasury_address, updated_by, updated_at, time, transaction_id, version)| {
+                    NewEcosystemTreasury {
+                        treasury_address,
+                        updated_by,
+                        updated_at,
+                        time,
+                        transaction_id,
+                        version,
+                    }
                 },
             )
         })
@@ -693,8 +696,12 @@ async fn commit_profile_row<'a>(row: &ProfileRow, conn: &mut Connection<'a>) -> 
                 .await?;
         }
         ProfileRow::ProfileConfig(c) => {
+            let prev = load_latest_profile_config(conn)
+                .await?
+                .unwrap_or_else(default_profile_config);
+            let merged = merge_profile_config(&prev, c);
             total += diesel::insert_into(profile_config::table)
-                .values(c)
+                .values(&merged)
                 .execute(conn)
                 .await?;
         }

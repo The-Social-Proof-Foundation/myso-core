@@ -90,8 +90,8 @@ DROP TABLE IF EXISTS insurance_router_config CASCADE;
 -- 2. DROP COLUMNS ADDED TO EXISTING CONFIG TABLES (reverse alter order)
 -- ============================================================================
 
--- 2.9 ecosystem_treasury
-ALTER TABLE ecosystem_treasury
+-- 2.9 profile_config
+ALTER TABLE profile_config
 DROP COLUMN IF EXISTS profile_sale_fee_bps;
 
 -- 2.8 insurance_config
@@ -104,6 +104,7 @@ DROP COLUMN IF EXISTS max_encryption_id_bytes;
 
 -- 2.6 poc_configuration
 ALTER TABLE poc_configuration
+DROP COLUMN IF EXISTS dispute_governance_registry_id,
 DROP COLUMN IF EXISTS max_disputes_per_post,
 DROP COLUMN IF EXISTS min_vault_deposit_amount;
 
@@ -130,6 +131,13 @@ ALTER TABLE post_config
 DROP COLUMN IF EXISTS min_view_duration_ms,
 DROP COLUMN IF EXISTS max_promotion_amount,
 DROP COLUMN IF EXISTS min_promotion_amount;
+
+-- 1.9 config semantic renames + defaults (reverse)
+ALTER TABLE spt_config ALTER COLUMN trading_enabled SET DEFAULT FALSE;
+ALTER TABLE spt_exchange_config ALTER COLUMN trading_enabled SET DEFAULT FALSE;
+ALTER TABLE insurance_config RENAME COLUMN insurance_enabled TO enable_flag;
+ALTER TABLE spot_config RENAME COLUMN truth_enabled TO enable_flag;
+ALTER TABLE mydata_config RENAME COLUMN marketplace_enabled TO enable_flag;
 
 -- 2.1 ai_credit_config
 ALTER TABLE ai_credit_config

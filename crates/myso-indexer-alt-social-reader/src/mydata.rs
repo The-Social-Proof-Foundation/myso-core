@@ -21,7 +21,7 @@ pub struct MyDataConfigRow {
     #[diesel(sql_type = Text)]
     pub updated_by: String,
     #[diesel(sql_type = Bool)]
-    pub enable_flag: bool,
+    pub marketplace_enabled: bool,
     #[diesel(sql_type = BigInt)]
     pub max_tags: i64,
     #[diesel(sql_type = BigInt)]
@@ -135,7 +135,7 @@ pub(crate) async fn get_mydata_config(
     let _guard = metrics.latency.start_timer();
 
     let query = "
-        SELECT updated_by, enable_flag, max_tags, max_subscription_days, max_free_access_grants,
+        SELECT updated_by, marketplace_enabled, max_tags, max_subscription_days, max_free_access_grants,
                max_encryption_id_bytes, version, updated_at, time, transaction_id
         FROM mydata_config
         ORDER BY time DESC

@@ -484,16 +484,35 @@ fn process_ecosystem_treasury_updated_event(
     let event_ms = common::json_field_as_i64(data.get("timestamp"));
     let timestamp_ms = common::chain_timestamp_ms(event_ms, checkpoint_timestamp_ms);
     let time = common::chain_time_from_ms(timestamp_ms);
-    let row = NewEcosystemTreasury {
+    let version = common::json_field_as_i64(data.get("version")).unwrap_or(0);
+    let transaction_id = event_id.to_string();
+    let treasury = NewEcosystemTreasury {
         treasury_address: new_treasury_address,
-        updated_by,
-        profile_sale_fee_bps,
+        updated_by: updated_by.clone(),
         updated_at: timestamp_ms,
         time,
-        transaction_id: event_id.to_string(),
-        version: common::json_field_as_i64(data.get("version")).unwrap_or(0),
+        transaction_id: transaction_id.clone(),
+        version,
     };
-    Some(vec![SocialEventRow::EcosystemTreasury(row)])
+    let fee_config = NewProfileConfig {
+        updated_by,
+        max_vesting_pieces: 0,
+        curve_factor_min: 0,
+        curve_factor_max: 0,
+        curve_precision: 0,
+        min_claim_threshold_divisor: 0,
+        min_username_length: 0,
+        max_username_length: 0,
+        profile_sale_fee_bps,
+        version: 0,
+        updated_at: timestamp_ms,
+        time,
+        transaction_id,
+    };
+    Some(vec![
+        SocialEventRow::EcosystemTreasury(treasury),
+        SocialEventRow::ProfileConfig(fee_config),
+    ])
 }
 
 #[derive(Debug, Deserialize)]
@@ -541,6 +560,7 @@ fn process_profile_config_updated_event(
         min_claim_threshold_divisor: ev.min_claim_threshold_divisor as i64,
         min_username_length: ev.min_username_length as i64,
         max_username_length: ev.max_username_length as i64,
+        profile_sale_fee_bps: 0,
         version: 0,
         updated_at: timestamp_ms,
         time,

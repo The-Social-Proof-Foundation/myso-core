@@ -610,7 +610,7 @@ module social_contracts::social_proof_tokens {
             profile_threshold: DEFAULT_PROFILE_THRESHOLD,
             max_individual_reservation_bps: DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS,
             max_reservers_per_pool: DEFAULT_MAX_RESERVERS_PER_POOL,
-            trading_enabled: false, // Trading disabled by default during bootstrap
+            trading_enabled: true,
             non_platform_platform_to_creator_bps: DEFAULT_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS,
             non_platform_platform_to_treasury_bps: DEFAULT_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS,
         };

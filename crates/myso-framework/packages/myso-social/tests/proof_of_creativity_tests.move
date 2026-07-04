@@ -5,6 +5,7 @@
 #[allow(unused_use, unused_variable, unused_assignment, duplicate_alias)]
 module social_contracts::proof_of_creativity_tests {
     use social_contracts::proof_of_creativity as poc;
+    use social_contracts::governance;
 
     use myso::test_scenario::{Self, Scenario};
     use myso::clock::{Self, Clock};
@@ -22,7 +23,9 @@ module social_contracts::proof_of_creativity_tests {
         test_scenario::next_tx(&mut scen, ADMIN);
         {
             let clock = clock::create_for_testing(test_scenario::ctx(&mut scen));
-            poc::test_init(&clock, test_scenario::ctx(&mut scen));
+            let ctx = test_scenario::ctx(&mut scen);
+            let gov_ids = governance::bootstrap_init(&clock, ctx);
+            poc::test_init(&clock, gov_ids.poc_governance_registry_id(), ctx);
             clock::share_for_testing(clock);
         };
 

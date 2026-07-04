@@ -323,7 +323,7 @@ fn process_mydata_config_updated_event(
     transaction_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
     let updated_by = data.get("updated_by")?.as_str()?.to_string();
-    let enable_flag = data.get("enable_flag")?.as_bool().unwrap_or(false);
+    let marketplace_enabled = data.get("marketplace_enabled")?.as_bool().unwrap_or(false);
     let max_tags = json_to_i64(data.get("max_tags")?);
     let max_subscription_days = json_to_i64(data.get("max_subscription_days")?);
     let max_free_access_grants = json_to_i64(data.get("max_free_access_grants")?);
@@ -336,7 +336,7 @@ fn process_mydata_config_updated_event(
 
     let config = NewMyDataConfig {
         updated_by,
-        enable_flag,
+        marketplace_enabled,
         max_tags,
         max_subscription_days,
         max_free_access_grants,

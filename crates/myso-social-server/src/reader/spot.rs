@@ -242,7 +242,7 @@ pub(crate) async fn list_spot_refunds(
 pub(crate) async fn get_spot_configuration(db: &Db) -> Result<Option<SpotConfigInfo>, SocialError> {
     let mut conn = db.connect().await?;
     let query = "
-        SELECT updated_by, enable_flag, confidence_threshold_bps, resolution_window_ms,
+        SELECT updated_by, truth_enabled, confidence_threshold_bps, resolution_window_ms,
                max_resolution_window_ms, payout_delay_ms, platform_fee_bps, ecosystem_fee_bps,
                min_betting_options, max_betting_options, min_reasoning_length, max_reasoning_length,
                max_evidence_urls, oracle_address, max_single_bet, version, updated_at, time,

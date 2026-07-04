@@ -215,7 +215,7 @@ Global configuration for SPoT
 <dd>
 </dd>
 <dt>
-<code>enable_flag: bool</code>
+<code>truth_enabled: bool</code>
 </dt>
 <dd>
 </dd>
@@ -789,7 +789,7 @@ Events
 <dd>
 </dd>
 <dt>
-<code>enable_flag: bool</code>
+<code>truth_enabled: bool</code>
 </dt>
 <dd>
 </dd>
@@ -1750,7 +1750,7 @@ Sum of per-option escrow (same aggregation as resolve).
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_is_enabled">is_enabled</a>(config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">SpotConfig</a>): bool { config.enable_flag }
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_is_enabled">is_enabled</a>(config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">SpotConfig</a>): bool { config.truth_enabled }
 </code></pre>
 
 
@@ -1900,7 +1900,7 @@ Sum of per-option escrow (same aggregation as resolve).
     <b>let</b> admin = tx_context::sender(ctx);
     <b>let</b> config = <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">SpotConfig</a> {
         id: object::new(ctx),
-        enable_flag: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_ENABLE">DEFAULT_ENABLE</a>,
+        truth_enabled: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_ENABLE">DEFAULT_ENABLE</a>,
         confidence_threshold_bps: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_CONFIDENCE_THRESHOLD_BPS">DEFAULT_CONFIDENCE_THRESHOLD_BPS</a>,
         resolution_window_ms: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_RESOLUTION_WINDOW_MS">DEFAULT_RESOLUTION_WINDOW_MS</a>,
         max_resolution_window_ms: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MAX_RESOLUTION_WINDOW_MS">DEFAULT_MAX_RESOLUTION_WINDOW_MS</a>,
@@ -1921,7 +1921,7 @@ Sum of per-option escrow (same aggregation as resolve).
     // Emit event so indexer can populate spot_config table
     event::emit(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfigUpdatedEvent">SpotConfigUpdatedEvent</a> {
         updated_by: admin,
-        enable_flag: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_ENABLE">DEFAULT_ENABLE</a>,
+        truth_enabled: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_ENABLE">DEFAULT_ENABLE</a>,
         confidence_threshold_bps: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_CONFIDENCE_THRESHOLD_BPS">DEFAULT_CONFIDENCE_THRESHOLD_BPS</a>,
         resolution_window_ms: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_RESOLUTION_WINDOW_MS">DEFAULT_RESOLUTION_WINDOW_MS</a>,
         max_resolution_window_ms: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MAX_RESOLUTION_WINDOW_MS">DEFAULT_MAX_RESOLUTION_WINDOW_MS</a>,
@@ -2008,7 +2008,7 @@ Update SPoT configuration (admin only).
 <code>max_single_bet</code> and <code>max_bets_per_record</code> use <code>0</code> for no limit; positive values enforce caps.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_update_spot_config">update_spot_config</a>(_: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotAdminCap">social_contracts::social_proof_of_truth::SpotAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, enable_flag: bool, confidence_threshold_bps: u64, resolution_window_ms: u64, max_resolution_window_ms: u64, payout_delay_ms: u64, platform_fee_bps: u64, ecosystem_fee_bps: u64, min_betting_options: u64, max_betting_options: u64, min_reasoning_length: u64, max_reasoning_length: u64, max_evidence_urls: u64, oracle_address: <b>address</b>, max_single_bet: u64, max_bets_per_record: u64, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_spot_governance_registry_id">spot_governance_registry_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_update_spot_config">update_spot_config</a>(_: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotAdminCap">social_contracts::social_proof_of_truth::SpotAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, truth_enabled: bool, confidence_threshold_bps: u64, resolution_window_ms: u64, max_resolution_window_ms: u64, payout_delay_ms: u64, platform_fee_bps: u64, ecosystem_fee_bps: u64, min_betting_options: u64, max_betting_options: u64, min_reasoning_length: u64, max_reasoning_length: u64, max_evidence_urls: u64, oracle_address: <b>address</b>, max_single_bet: u64, max_bets_per_record: u64, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_spot_governance_registry_id">spot_governance_registry_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2020,7 +2020,7 @@ Update SPoT configuration (admin only).
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_update_spot_config">update_spot_config</a>(
     _: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotAdminCap">SpotAdminCap</a>,
     config: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">SpotConfig</a>,
-    enable_flag: bool,
+    truth_enabled: bool,
     confidence_threshold_bps: u64,
     resolution_window_ms: u64,
     max_resolution_window_ms: u64,
@@ -2050,7 +2050,7 @@ Update SPoT configuration (admin only).
     <b>assert</b>!(min_reasoning_length &lt;= max_reasoning_length, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidReasoning">EInvalidReasoning</a>);
     <b>assert</b>!(max_evidence_urls &gt; 0, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
     // windows may be zero in tests to resolve immediately
-    config.enable_flag = enable_flag;
+    config.truth_enabled = truth_enabled;
     config.confidence_threshold_bps = confidence_threshold_bps;
     config.resolution_window_ms = resolution_window_ms;
     config.max_resolution_window_ms = max_resolution_window_ms;
@@ -2069,7 +2069,7 @@ Update SPoT configuration (admin only).
     // Emit config updated event
     event::emit(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfigUpdatedEvent">SpotConfigUpdatedEvent</a> {
         updated_by: tx_context::sender(ctx),
-        enable_flag,
+        truth_enabled,
         confidence_threshold_bps,
         resolution_window_ms,
         max_resolution_window_ms,
@@ -2184,7 +2184,7 @@ Oracle-only: fix record timestamps/window fields after upgrade (off-chain suppli
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
-    <b>assert</b>!(config.enable_flag, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EDisabled">EDisabled</a>);
+    <b>assert</b>!(config.truth_enabled, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EDisabled">EDisabled</a>);
     // Verify SPoT is enabled <b>for</b> this <a href="../social_contracts/post.md#social_contracts_post">post</a>
     <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post_is_spot_enabled">social_contracts::post::is_spot_enabled</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EDisabled">EDisabled</a>);
     // Validate betting options
@@ -2278,7 +2278,7 @@ Only allowed when status is OPEN (not DAO_REQUIRED, not RESOLVED, not REFUNDABLE
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
-    <b>assert</b>!(spot_config.enable_flag, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EDisabled">EDisabled</a>);
+    <b>assert</b>!(spot_config.truth_enabled, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EDisabled">EDisabled</a>);
     // Only allow withdrawal when status is OPEN (not DAO_REQUIRED or RESOLVED)
     <b>assert</b>!(record.status == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_OPEN">STATUS_OPEN</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EWithdrawalNotAllowed">EWithdrawalNotAllowed</a>);
     <b>let</b> bets_len = vector::length(&record.bets);
@@ -2382,7 +2382,7 @@ Place bet - all funds go to escrow
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
-    <b>assert</b>!(spot_config.enable_flag, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EDisabled">EDisabled</a>);
+    <b>assert</b>!(spot_config.truth_enabled, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EDisabled">EDisabled</a>);
     <b>assert</b>!(record.status == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_OPEN">STATUS_OPEN</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EDaoDebateFrozen">EDaoDebateFrozen</a>);
     <b>assert</b>!(amount &gt; 0, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
     <b>if</b> (spot_config.max_single_bet &gt; 0) { <b>assert</b>!(amount &lt;= spot_config.max_single_bet, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>); };
@@ -3106,7 +3106,7 @@ Users can claim their winnings after payout_delay_ms has elapsed since resolutio
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
-    <b>assert</b>!(spot_config.enable_flag, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EDisabled">EDisabled</a>);
+    <b>assert</b>!(spot_config.truth_enabled, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EDisabled">EDisabled</a>);
     <b>assert</b>!(record.status == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_RESOLVED">STATUS_RESOLVED</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EWrongStatus">EWrongStatus</a>);
     <b>assert</b>!(option::is_some(&record.outcome), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ENotOracle">ENotOracle</a>);
     <b>let</b> user = tx_context::sender(ctx);

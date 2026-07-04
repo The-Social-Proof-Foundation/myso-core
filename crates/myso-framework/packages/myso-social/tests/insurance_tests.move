@@ -51,8 +51,8 @@ module social_contracts::insurance_tests {
         test_scenario::next_tx(&mut scen, ADMIN);
         {
             let clock = test_scenario::take_shared<Clock>(&scen);
-            let spot_gov_id = governance::bootstrap_init(&clock, test_scenario::ctx(&mut scen));
-            spot::test_init(&clock, spot_gov_id, test_scenario::ctx(&mut scen));
+            let gov_ids = governance::bootstrap_init(&clock, test_scenario::ctx(&mut scen));
+            spot::test_init(&clock, gov_ids.spot_governance_registry_id(), test_scenario::ctx(&mut scen));
             test_scenario::return_shared(clock);
         };
 
@@ -152,7 +152,7 @@ module social_contracts::insurance_tests {
             let admin_cap = test_scenario::take_from_sender<insurance::InsuranceAdminCap>(scenario);
             let mut config = test_scenario::take_shared<insurance::InsuranceConfig>(scenario);
             let clock = test_scenario::take_shared<Clock>(scenario);
-            insurance::set_enable_flag(&admin_cap, &mut config, true, &clock, test_scenario::ctx(scenario));
+            insurance::set_insurance_enabled(&admin_cap, &mut config, true, &clock, test_scenario::ctx(scenario));
             test_scenario::return_shared(config);
             test_scenario::return_shared(clock);
             test_scenario::return_to_sender(scenario, admin_cap);
@@ -369,7 +369,7 @@ module social_contracts::insurance_tests {
             let admin_cap = test_scenario::take_from_sender<insurance::InsuranceAdminCap>(&scen);
             let mut config = test_scenario::take_shared<insurance::InsuranceConfig>(&scen);
             let clock = test_scenario::take_shared<Clock>(&scen);
-            insurance::set_enable_flag(&admin_cap, &mut config, true, &clock, test_scenario::ctx(&mut scen));
+            insurance::set_insurance_enabled(&admin_cap, &mut config, true, &clock, test_scenario::ctx(&mut scen));
             test_scenario::return_shared(config);
             test_scenario::return_shared(clock);
             test_scenario::return_to_sender(&scen, admin_cap);

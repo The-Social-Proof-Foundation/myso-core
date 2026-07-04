@@ -102,7 +102,7 @@ module social_contracts::social_proof_of_truth {
     /// Global configuration for SPoT
     public struct SpotConfig has key {
         id: UID,
-        enable_flag: bool,
+        truth_enabled: bool,
         confidence_threshold_bps: u64,
         resolution_window_ms: u64,
         max_resolution_window_ms: u64,
@@ -208,7 +208,7 @@ module social_contracts::social_proof_of_truth {
 
     public struct SpotConfigUpdatedEvent has copy, drop {
         updated_by: address,
-        enable_flag: bool,
+        truth_enabled: bool,
         confidence_threshold_bps: u64,
         resolution_window_ms: u64,
         max_resolution_window_ms: u64,
@@ -300,7 +300,7 @@ module social_contracts::social_proof_of_truth {
     }
 
     // Public getter for SpotConfig
-    public fun is_enabled(config: &SpotConfig): bool { config.enable_flag }
+    public fun is_enabled(config: &SpotConfig): bool { config.truth_enabled }
 
     public fun spot_governance_registry_id(config: &SpotConfig): ID {
         config.spot_governance_registry_id
@@ -331,7 +331,7 @@ module social_contracts::social_proof_of_truth {
         let admin = tx_context::sender(ctx);
         let config = SpotConfig {
             id: object::new(ctx),
-            enable_flag: DEFAULT_ENABLE,
+            truth_enabled: DEFAULT_ENABLE,
             confidence_threshold_bps: DEFAULT_CONFIDENCE_THRESHOLD_BPS,
             resolution_window_ms: DEFAULT_RESOLUTION_WINDOW_MS,
             max_resolution_window_ms: DEFAULT_MAX_RESOLUTION_WINDOW_MS,
@@ -353,7 +353,7 @@ module social_contracts::social_proof_of_truth {
         // Emit event so indexer can populate spot_config table
         event::emit(SpotConfigUpdatedEvent {
             updated_by: admin,
-            enable_flag: DEFAULT_ENABLE,
+            truth_enabled: DEFAULT_ENABLE,
             confidence_threshold_bps: DEFAULT_CONFIDENCE_THRESHOLD_BPS,
             resolution_window_ms: DEFAULT_RESOLUTION_WINDOW_MS,
             max_resolution_window_ms: DEFAULT_MAX_RESOLUTION_WINDOW_MS,
@@ -396,7 +396,7 @@ module social_contracts::social_proof_of_truth {
         // Create and share config
         transfer::share_object(SpotConfig {
             id: object::new(ctx),
-            enable_flag: DEFAULT_ENABLE,
+            truth_enabled: DEFAULT_ENABLE,
             confidence_threshold_bps: DEFAULT_CONFIDENCE_THRESHOLD_BPS,
             resolution_window_ms: DEFAULT_RESOLUTION_WINDOW_MS,
             max_resolution_window_ms: DEFAULT_MAX_RESOLUTION_WINDOW_MS,
@@ -425,7 +425,7 @@ module social_contracts::social_proof_of_truth {
     public entry fun update_spot_config(
         _: &SpotAdminCap,
         config: &mut SpotConfig,
-        enable_flag: bool,
+        truth_enabled: bool,
         confidence_threshold_bps: u64,
         resolution_window_ms: u64,
         max_resolution_window_ms: u64,
@@ -456,7 +456,7 @@ module social_contracts::social_proof_of_truth {
         assert!(max_evidence_urls > 0, EInvalidAmount);
         // windows may be zero in tests to resolve immediately
 
-        config.enable_flag = enable_flag;
+        config.truth_enabled = truth_enabled;
         config.confidence_threshold_bps = confidence_threshold_bps;
         config.resolution_window_ms = resolution_window_ms;
         config.max_resolution_window_ms = max_resolution_window_ms;
@@ -476,7 +476,7 @@ module social_contracts::social_proof_of_truth {
         // Emit config updated event
         event::emit(SpotConfigUpdatedEvent {
             updated_by: tx_context::sender(ctx),
-            enable_flag,
+            truth_enabled,
             confidence_threshold_bps,
             resolution_window_ms,
             max_resolution_window_ms,
@@ -532,7 +532,7 @@ module social_contracts::social_proof_of_truth {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        assert!(config.enable_flag, EDisabled);
+        assert!(config.truth_enabled, EDisabled);
         
         // Verify SPoT is enabled for this post
         assert!(social_contracts::post::is_spot_enabled(post), EDisabled);
@@ -613,7 +613,7 @@ module social_contracts::social_proof_of_truth {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        assert!(spot_config.enable_flag, EDisabled);
+        assert!(spot_config.truth_enabled, EDisabled);
         // Only allow withdrawal when status is OPEN (not DAO_REQUIRED or RESOLVED)
         assert!(record.status == STATUS_OPEN, EWithdrawalNotAllowed);
         
@@ -708,7 +708,7 @@ module social_contracts::social_proof_of_truth {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        assert!(spot_config.enable_flag, EDisabled);
+        assert!(spot_config.truth_enabled, EDisabled);
         assert!(record.status == STATUS_OPEN, EDaoDebateFrozen);
         assert!(amount > 0, EInvalidAmount);
         if (spot_config.max_single_bet > 0) { assert!(amount <= spot_config.max_single_bet, EInvalidAmount); };
@@ -1251,7 +1251,7 @@ module social_contracts::social_proof_of_truth {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        assert!(spot_config.enable_flag, EDisabled);
+        assert!(spot_config.truth_enabled, EDisabled);
         assert!(record.status == STATUS_RESOLVED, EWrongStatus);
         assert!(option::is_some(&record.outcome), ENotOracle);
         

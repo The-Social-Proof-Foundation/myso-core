@@ -9,6 +9,7 @@ module social_contracts::proof_of_creativity_username_beneficiary_tests {
     use std::vector;
 
     use social_contracts::proof_of_creativity as poc;
+    use social_contracts::governance;
     use social_contracts::profile::{Self, EcosystemTreasury, UsernameRegistry,
         ProfileConfig};
     use social_contracts::ai_credit::AiCreditConfig;
@@ -37,7 +38,9 @@ module social_contracts::proof_of_creativity_username_beneficiary_tests {
         {
             let clock = clock::create_for_testing(test_scenario::ctx(scenario));
             profile::init_for_testing(&clock, test_scenario::ctx(scenario));
-            poc::test_init(&clock, test_scenario::ctx(scenario));
+            let ctx = test_scenario::ctx(scenario);
+            let gov_ids = governance::bootstrap_init(&clock, ctx);
+            poc::test_init(&clock, gov_ids.poc_governance_registry_id(), ctx);
             clock::share_for_testing(clock);
         };
     }

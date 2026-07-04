@@ -99,7 +99,7 @@ module social_contracts::insurance {
 
     public struct InsuranceConfig has key {
         id: UID,
-        enable_flag: bool,
+        insurance_enabled: bool,
         min_coverage_bps: u64,
         max_coverage_bps: u64,
         max_duration_ms: u64,
@@ -143,7 +143,7 @@ module social_contracts::insurance {
         max_payout_per_event: u64,
         global_hard_cap: u64,
         tail_mode_enabled: bool,
-        paused: bool,
+        insurance_backstop_pool_enabled: bool,
         sweep_premium_bps: u64,
         tail_pay_partial_on_cap: bool,
         version: u64,
@@ -379,7 +379,7 @@ module social_contracts::insurance {
 
     public struct ConfigUpdatedEvent has copy, drop {
         updated_by: address,
-        enable_flag: bool,
+        insurance_enabled: bool,
         min_coverage_bps: u64,
         max_coverage_bps: u64,
         max_duration_ms: u64,
@@ -428,7 +428,7 @@ module social_contracts::insurance {
         let ts = clock::timestamp_ms(clock);
         transfer::share_object(InsuranceConfig {
             id: object::new(ctx),
-            enable_flag: false,
+            insurance_enabled: false,
             min_coverage_bps,
             max_coverage_bps,
             max_duration_ms,
@@ -506,7 +506,7 @@ module social_contracts::insurance {
         let timestamp = clock::timestamp_ms(clock);
         event::emit(ConfigUpdatedEvent {
             updated_by,
-            enable_flag: config.enable_flag,
+            insurance_enabled: config.insurance_enabled,
             min_coverage_bps,
             max_coverage_bps,
             max_duration_ms,
@@ -582,20 +582,20 @@ module social_contracts::insurance {
     }
 
     /// Emergency enable/disable toggle (admin only)
-    public entry fun set_enable_flag(
+    public entry fun set_insurance_enabled(
         _: &InsuranceAdminCap,
         config: &mut InsuranceConfig,
-        enable_flag: bool,
+        insurance_enabled: bool,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        config.enable_flag = enable_flag;
+        config.insurance_enabled = insurance_enabled;
 
         let updated_by = tx_context::sender(ctx);
         let timestamp = clock::timestamp_ms(clock);
         event::emit(ConfigUpdatedEvent {
             updated_by,
-            enable_flag: config.enable_flag,
+            insurance_enabled: config.insurance_enabled,
             min_coverage_bps: config.min_coverage_bps,
             max_coverage_bps: config.max_coverage_bps,
             max_duration_ms: config.max_duration_ms,
@@ -614,7 +614,7 @@ module social_contracts::insurance {
         let ts = clock::timestamp_ms(clock);
         let config = InsuranceConfig {
             id: object::new(ctx),
-            enable_flag: false,
+            insurance_enabled: false,
             min_coverage_bps: DEFAULT_MIN_COVERAGE_BPS,
             max_coverage_bps: DEFAULT_MAX_COVERAGE_BPS,
             max_duration_ms: DEFAULT_MAX_DURATION_MS,
@@ -640,7 +640,7 @@ module social_contracts::insurance {
 
         event::emit(ConfigUpdatedEvent {
             updated_by: admin,
-            enable_flag: false,
+            insurance_enabled: false,
             min_coverage_bps: DEFAULT_MIN_COVERAGE_BPS,
             max_coverage_bps: DEFAULT_MAX_COVERAGE_BPS,
             max_duration_ms: DEFAULT_MAX_DURATION_MS,
@@ -834,13 +834,13 @@ module social_contracts::insurance {
         let _ = ctx;
     }
 
-    public entry fun set_backstop_paused(
+    public entry fun set_backstop_pool_enabled(
         _: &InsuranceAdminCap,
         pool: &mut InsuranceBackstopPool,
-        paused: bool,
+        enabled: bool,
         ctx: &mut TxContext,
     ) {
-        pool.paused = paused;
+        pool.insurance_backstop_pool_enabled = enabled;
         let _ = ctx;
     }
 
@@ -873,9 +873,9 @@ module social_contracts::insurance {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
-        assert!(config.enable_flag, EDisabled);
+        assert!(config.insurance_enabled, EDisabled);
         assert!(pool.tail_mode_enabled, ETailModeDisabled);
-        assert!(!pool.paused, EBackstopPaused);
+        assert!(pool.insurance_backstop_pool_enabled, EBackstopPaused);
         assert!(amount_requested > 0, EInvalidAmount);
 
         let pool_balance = balance::value(&pool.capital);
@@ -974,7 +974,7 @@ module social_contracts::insurance {
             max_payout_per_event: MAX_U64,
             global_hard_cap: MAX_U64,
             tail_mode_enabled: false,
-            paused: false,
+            insurance_backstop_pool_enabled: true,
             sweep_premium_bps: 0,
             tail_pay_partial_on_cap: true,
             version: DEFAULT_VERSION,
@@ -1008,7 +1008,7 @@ module social_contracts::insurance {
         payment: Coin<MYSO>,
         ctx: &mut TxContext
     ) {
-        assert!(config.enable_flag, EDisabled);
+        assert!(config.insurance_enabled, EDisabled);
         let deposit_amount = coin::value(&payment);
         assert!(deposit_amount > 0, EInvalidAmount);
         balance::join(&mut vault.capital, coin::into_balance(payment));
@@ -1026,7 +1026,7 @@ module social_contracts::insurance {
         amount: u64,
         ctx: &mut TxContext
     ) {
-        assert!(config.enable_flag, EDisabled);
+        assert!(config.insurance_enabled, EDisabled);
         assert!(tx_context::sender(ctx) == vault.underwriter, ENotAdmin);
         assert!(amount > 0, EInvalidAmount);
 
@@ -1480,7 +1480,7 @@ module social_contracts::insurance {
         check_market_router: bool,
         ctx: &mut TxContext,
     ): (ID, ID, u64, u64, u64, u64, u64) {
-        assert!(config.enable_flag, EDisabled);
+        assert!(config.insurance_enabled, EDisabled);
         assert!(spot::is_enabled(spot_config), EMarketClosed);
         assert!(spot::is_open(record), EMarketClosed);
         assert!(coverage_bps >= config.min_coverage_bps, EInvalidCoverage);
@@ -1525,7 +1525,7 @@ module social_contracts::insurance {
 
         let sweep_bps = backstop.sweep_premium_bps;
         if (sweep_bps > 0) {
-            assert!(!backstop.paused, EBackstopPaused);
+            assert!(backstop.insurance_backstop_pool_enabled, EBackstopPaused);
         };
         let sweep_amt = (premium * sweep_bps) / BPS_DENOM;
         let to_vault_amt = premium - sweep_amt;
@@ -1603,7 +1603,7 @@ module social_contracts::insurance {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        assert!(config.enable_flag, EDisabled);
+        assert!(config.insurance_enabled, EDisabled);
         assert!(spot::is_enabled(spot_config), EMarketClosed);
         assert!(spot::is_open(record), EMarketClosed);
         assert!(coverage_bps >= config.min_coverage_bps, EInvalidCoverage);
@@ -1671,7 +1671,7 @@ module social_contracts::insurance {
         ctx: &mut TxContext,
     ) {
         assert!(clock::timestamp_ms(clock) <= deadline_ms, EDeadlinePassed);
-        assert!(config.enable_flag, EDisabled);
+        assert!(config.insurance_enabled, EDisabled);
         assert!(router_cfg.router_enabled, ERouteDisabled);
         assert!(!router_cfg.router_paused, ERouterPaused);
         assert!(spot::is_enabled(spot_config), EMarketClosed);
@@ -1991,7 +1991,7 @@ module social_contracts::insurance {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        assert!(config.enable_flag, EDisabled);
+        assert!(config.insurance_enabled, EDisabled);
         assert!(spot::is_enabled(spot_config), EMarketClosed);
         assert!(spot::is_open(record), EMarketClosed);
         assert!(policy.status == STATUS_ACTIVE, EPolicyNotActive);
@@ -2053,7 +2053,7 @@ module social_contracts::insurance {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        assert!(config.enable_flag, EDisabled);
+        assert!(config.insurance_enabled, EDisabled);
         assert!(spot::is_enabled(spot_config), EMarketClosed);
         assert!(policy.status == STATUS_ACTIVE, EPolicyNotActive);
         assert!(tx_context::sender(ctx) == policy.insured, ENotPolicyOwner);

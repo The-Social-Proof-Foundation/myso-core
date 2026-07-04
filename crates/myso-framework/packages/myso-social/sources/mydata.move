@@ -48,7 +48,7 @@ module social_contracts::mydata {
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
 
     // === Default constants for config initialization ===
-    const DEFAULT_ENABLE: bool = false;
+    const DEFAULT_MARKETPLACE_ENABLED: bool = false;
 
     // === Error codes ===
     const EUnauthorized: u64 = 1;
@@ -135,7 +135,7 @@ module social_contracts::mydata {
     /// Global configuration for MyData system
     public struct MyDataConfig has key {
         id: UID,
-        enable_flag: bool,
+        marketplace_enabled: bool,
         max_tags: u64,
         max_subscription_days: u64,
         max_free_access_grants: u64,
@@ -327,7 +327,7 @@ module social_contracts::mydata {
 
     public struct MyDataConfigUpdatedEvent has copy, drop {
         updated_by: address,
-        enable_flag: bool,
+        marketplace_enabled: bool,
         max_tags: u64,
         max_subscription_days: u64,
         max_free_access_grants: u64,
@@ -348,7 +348,7 @@ module social_contracts::mydata {
     public entry fun update_mydata_config(
         _: &MyDataAdminCap,
         config: &mut MyDataConfig,
-        enable_flag: bool,
+        marketplace_enabled: bool,
         max_tags: u64,
         max_subscription_days: u64,
         max_free_access_grants: u64,
@@ -362,7 +362,7 @@ module social_contracts::mydata {
         assert!(max_free_access_grants > 0, EInvalidInput);
         assert!(max_encryption_id_bytes > 0, EInvalidInput);
 
-        config.enable_flag = enable_flag;
+        config.marketplace_enabled = marketplace_enabled;
         config.max_tags = max_tags;
         config.max_subscription_days = max_subscription_days;
         config.max_free_access_grants = max_free_access_grants;
@@ -371,7 +371,7 @@ module social_contracts::mydata {
         // Emit config updated event
         event::emit(MyDataConfigUpdatedEvent {
             updated_by: tx_context::sender(ctx),
-            enable_flag,
+            marketplace_enabled,
             max_tags,
             max_subscription_days,
             max_free_access_grants,
@@ -380,14 +380,18 @@ module social_contracts::mydata {
         });
     }
 
+    public fun marketplace_enabled(config: &MyDataConfig): bool {
+        config.marketplace_enabled
+    }
+
     // === Core Functions ===
 
-    fun share_mydata_system_objects(clock: &Clock, ctx: &mut TxContext, enable_flag: bool) {
+    fun share_mydata_system_objects(clock: &Clock, ctx: &mut TxContext, marketplace_enabled: bool) {
         let sender = tx_context::sender(ctx);
         let ver = upgrade::current_version();
         let config = MyDataConfig {
             id: object::new(ctx),
-            enable_flag,
+            marketplace_enabled,
             max_tags: MAX_TAGS,
             max_subscription_days: MAX_SUBSCRIPTION_DAYS,
             max_free_access_grants: MAX_FREE_ACCESS_GRANTS,
@@ -396,7 +400,7 @@ module social_contracts::mydata {
         };
         event::emit(MyDataConfigUpdatedEvent {
             updated_by: sender,
-            enable_flag,
+            marketplace_enabled,
             max_tags: MAX_TAGS,
             max_subscription_days: MAX_SUBSCRIPTION_DAYS,
             max_free_access_grants: MAX_FREE_ACCESS_GRANTS,
@@ -449,7 +453,7 @@ module social_contracts::mydata {
 
     /// Bootstrap: shared config, ownership registry, and query-marketplace objects (pools, anchors, vault).
     public(package) fun bootstrap_init(clock: &Clock, ctx: &mut TxContext) {
-        share_mydata_system_objects(clock, ctx, DEFAULT_ENABLE);
+        share_mydata_system_objects(clock, ctx, DEFAULT_MARKETPLACE_ENABLED);
     }
 
     public fun create_mydata_pool_admin_cap(ctx: &mut TxContext): MyDataPoolAdminCap {
@@ -908,7 +912,7 @@ module social_contracts::mydata {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
-        assert!(config.enable_flag, EDisabled);
+        assert!(config.marketplace_enabled, EDisabled);
         
         let mydata = create(
             config,
@@ -950,7 +954,7 @@ module social_contracts::mydata {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
-        assert!(config.enable_flag, EDisabled);
+        assert!(config.marketplace_enabled, EDisabled);
         
         // Check version compatibility
         assert!(mydata.version == upgrade::current_version(), EInvalidInput);
@@ -1020,7 +1024,7 @@ module social_contracts::mydata {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
-        assert!(config.enable_flag, EDisabled);
+        assert!(config.marketplace_enabled, EDisabled);
         
         // Check version compatibility
         assert!(mydata.version == upgrade::current_version(), EInvalidInput);
@@ -1296,7 +1300,7 @@ module social_contracts::mydata {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
-        assert!(config.enable_flag, EDisabled);
+        assert!(config.marketplace_enabled, EDisabled);
         
         // Check version compatibility
         assert!(mydata.version == upgrade::current_version(), EInvalidInput);

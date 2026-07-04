@@ -43,7 +43,10 @@ strict wall-clock guarantee when governance is idle.
 -  [Struct `GovernanceParametersUpdatedEvent`](#social_contracts_governance_GovernanceParametersUpdatedEvent)
 -  [Struct `GovernanceRegistryCreatedEvent`](#social_contracts_governance_GovernanceRegistryCreatedEvent)
 -  [Struct `DelegatePanelRefreshedEvent`](#social_contracts_governance_DelegatePanelRefreshedEvent)
+-  [Struct `BootstrapGovernanceRegistryIds`](#social_contracts_governance_BootstrapGovernanceRegistryIds)
 -  [Constants](#@Constants_0)
+-  [Function `poc_governance_registry_id`](#social_contracts_governance_poc_governance_registry_id)
+-  [Function `spot_governance_registry_id`](#social_contracts_governance_spot_governance_registry_id)
 -  [Function `bootstrap_init`](#social_contracts_governance_bootstrap_init)
 -  [Function `seed_founding_delegate`](#social_contracts_governance_seed_founding_delegate)
 -  [Function `initialize_registry_tables`](#social_contracts_governance_initialize_registry_tables)
@@ -93,6 +96,7 @@ strict wall-clock guarantee when governance is idle.
 -  [Function `mark_proposal_implemented_platform_to_ecosystem_treasury`](#social_contracts_governance_mark_proposal_implemented_platform_to_ecosystem_treasury)
 -  [Function `proposal_type_platform_value`](#social_contracts_governance_proposal_type_platform_value)
 -  [Function `proposal_type_spot_value`](#social_contracts_governance_proposal_type_spot_value)
+-  [Function `proposal_type_proof_of_creativity_value`](#social_contracts_governance_proposal_type_proof_of_creativity_value)
 -  [Function `proposal_status`](#social_contracts_governance_proposal_status)
 -  [Function `proposal_reference_id`](#social_contracts_governance_proposal_reference_id)
 -  [Function `status_approved_value`](#social_contracts_governance_status_approved_value)
@@ -1539,6 +1543,38 @@ Event emitted when a delegate panel refresh applies a completed term boundary
 
 </details>
 
+<a name="social_contracts_governance_BootstrapGovernanceRegistryIds"></a>
+
+## Struct `BootstrapGovernanceRegistryIds`
+
+PoC + SPoT governance registry IDs returned from bootstrap for wiring into module configs.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/governance.md#social_contracts_governance_BootstrapGovernanceRegistryIds">BootstrapGovernanceRegistryIds</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code><a href="../social_contracts/governance.md#social_contracts_governance_poc_governance_registry_id">poc_governance_registry_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/governance.md#social_contracts_governance_spot_governance_registry_id">spot_governance_registry_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="@Constants_0"></a>
 
 ## Constants
@@ -1993,15 +2029,13 @@ Field names for dynamic fields
 
 
 
-<a name="social_contracts_governance_bootstrap_init"></a>
+<a name="social_contracts_governance_poc_governance_registry_id"></a>
 
-## Function `bootstrap_init`
-
-Bootstrap initialization function - creates the governance registries.
-Returns the shared SPoT governance registry object ID for wiring into [<code><a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth">social_contracts::social_proof_of_truth</a></code>].
+## Function `poc_governance_registry_id`
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_bootstrap_init">bootstrap_init</a>(clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_poc_governance_registry_id">poc_governance_registry_id</a>(ids: &<a href="../social_contracts/governance.md#social_contracts_governance_BootstrapGovernanceRegistryIds">social_contracts::governance::BootstrapGovernanceRegistryIds</a>): <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>
 </code></pre>
 
 
@@ -2010,7 +2044,57 @@ Returns the shared SPoT governance registry object ID for wiring into [<code><a 
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_bootstrap_init">bootstrap_init</a>(clock: &Clock, ctx: &<b>mut</b> TxContext): ID {
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_poc_governance_registry_id">poc_governance_registry_id</a>(ids: &<a href="../social_contracts/governance.md#social_contracts_governance_BootstrapGovernanceRegistryIds">BootstrapGovernanceRegistryIds</a>): ID {
+    ids.<a href="../social_contracts/governance.md#social_contracts_governance_poc_governance_registry_id">poc_governance_registry_id</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_spot_governance_registry_id"></a>
+
+## Function `spot_governance_registry_id`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_spot_governance_registry_id">spot_governance_registry_id</a>(ids: &<a href="../social_contracts/governance.md#social_contracts_governance_BootstrapGovernanceRegistryIds">social_contracts::governance::BootstrapGovernanceRegistryIds</a>): <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_spot_governance_registry_id">spot_governance_registry_id</a>(ids: &<a href="../social_contracts/governance.md#social_contracts_governance_BootstrapGovernanceRegistryIds">BootstrapGovernanceRegistryIds</a>): ID {
+    ids.<a href="../social_contracts/governance.md#social_contracts_governance_spot_governance_registry_id">spot_governance_registry_id</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_bootstrap_init"></a>
+
+## Function `bootstrap_init`
+
+Bootstrap initialization function - creates the governance registries.
+Returns PoC and SPoT registry IDs for wiring into [<code><a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity">proof_of_creativity</a></code>] and [<code><a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth">social_proof_of_truth</a></code>].
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_bootstrap_init">bootstrap_init</a>(clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../social_contracts/governance.md#social_contracts_governance_BootstrapGovernanceRegistryIds">social_contracts::governance::BootstrapGovernanceRegistryIds</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_bootstrap_init">bootstrap_init</a>(clock: &Clock, ctx: &<b>mut</b> TxContext): <a href="../social_contracts/governance.md#social_contracts_governance_BootstrapGovernanceRegistryIds">BootstrapGovernanceRegistryIds</a> {
     <b>let</b> current_time = clock::timestamp_ms(clock);
     <b>let</b> founder = tx_context::sender(ctx);
     // Create MySocial Ecosystem Governance Registry
@@ -2142,7 +2226,10 @@ Returns the shared SPoT governance registry object ID for wiring into [<code><a 
     });
     <a href="../social_contracts/governance.md#social_contracts_governance_seed_founding_delegate">seed_founding_delegate</a>(&<b>mut</b> spot_registry, founder, ctx);
     transfer::share_object(spot_registry);
-    spot_registry_id
+    <a href="../social_contracts/governance.md#social_contracts_governance_BootstrapGovernanceRegistryIds">BootstrapGovernanceRegistryIds</a> {
+        <a href="../social_contracts/governance.md#social_contracts_governance_poc_governance_registry_id">poc_governance_registry_id</a>: proof_of_creativity_registry_id,
+        <a href="../social_contracts/governance.md#social_contracts_governance_spot_governance_registry_id">spot_governance_registry_id</a>: spot_registry_id,
+    }
 }
 </code></pre>
 
@@ -4791,6 +4878,30 @@ Registry type discriminator for platform routing (see [<code><a href="../social_
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_proposal_type_spot_value">proposal_type_spot_value</a>(): u8 {
     <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_SPOT">PROPOSAL_TYPE_SPOT</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_proposal_type_proof_of_creativity_value"></a>
+
+## Function `proposal_type_proof_of_creativity_value`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_proposal_type_proof_of_creativity_value">proposal_type_proof_of_creativity_value</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_proposal_type_proof_of_creativity_value">proposal_type_proof_of_creativity_value</a>(): u8 {
+    <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_PROOF_OF_CREATIVITY">PROPOSAL_TYPE_PROOF_OF_CREATIVITY</a>
 }
 </code></pre>
 

@@ -9109,6 +9109,15 @@ GovernanceRegistryCreatedEvent
 DelegatePanelRefreshedEvent
 	public struct
 	0x50c1::governance
+BootstrapGovernanceRegistryIds
+	public struct
+	0x50c1::governance
+poc_governance_registry_id
+	public fun
+	0x50c1::governance
+spot_governance_registry_id
+	public fun
+	0x50c1::governance
 bootstrap_init
 	public(package) fun
 	0x50c1::governance
@@ -9254,6 +9263,9 @@ proposal_type_platform_value
 	public fun
 	0x50c1::governance
 proposal_type_spot_value
+	public fun
+	0x50c1::governance
+proposal_type_proof_of_creativity_value
 	public fun
 	0x50c1::governance
 proposal_status
@@ -9720,6 +9732,9 @@ create_mydata_admin_cap
 	0x50c1::mydata
 update_mydata_config
 	public entry fun
+	0x50c1::mydata
+marketplace_enabled
+	public fun
 	0x50c1::mydata
 share_mydata_system_objects
 	fun
@@ -11011,6 +11026,9 @@ max_disputes_per_post
 min_vault_deposit_amount
 	public(package) fun
 	0x50c1::proof_of_creativity
+dispute_governance_registry_id
+	public fun
+	0x50c1::proof_of_creativity
 create_username_beneficiary
 	public entry fun
 	0x50c1::proof_of_creativity
@@ -11194,7 +11212,7 @@ set_config
 set_risk_pricing_config
 	public entry fun
 	0x50c1::insurance
-set_enable_flag
+set_insurance_enabled
 	public entry fun
 	0x50c1::insurance
 create_insurance_admin_cap
@@ -11224,7 +11242,7 @@ set_backstop_caps
 set_tail_mode
 	public entry fun
 	0x50c1::insurance
-set_backstop_paused
+set_backstop_pool_enabled
 	public entry fun
 	0x50c1::insurance
 deposit_backstop_treasury

@@ -2165,7 +2165,7 @@ Bootstrap initialization function - creates the social proof tokens configuratio
         profile_threshold: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_PROFILE_THRESHOLD">DEFAULT_PROFILE_THRESHOLD</a>,
         max_individual_reservation_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS">DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS</a>,
         max_reservers_per_pool: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_MAX_RESERVERS_PER_POOL">DEFAULT_MAX_RESERVERS_PER_POOL</a>,
-        trading_enabled: <b>false</b>, // Trading disabled by default during <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">bootstrap</a>
+        trading_enabled: <b>true</b>,
         non_platform_platform_to_creator_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS">DEFAULT_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS</a>,
         non_platform_platform_to_treasury_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS">DEFAULT_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS</a>,
     };

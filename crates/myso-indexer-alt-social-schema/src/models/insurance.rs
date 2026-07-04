@@ -134,7 +134,7 @@ pub struct InsuranceConfig {
     pub updated_at: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
-    pub enable_flag: bool,
+    pub insurance_enabled: bool,
     pub min_spot_total_liquidity: i64,
     pub max_coverage_fraction_of_option_bps: i64,
     pub max_risk_multiplier_bps: i64,
@@ -154,7 +154,7 @@ pub struct InsuranceConfig {
 #[diesel(table_name = insurance_config)]
 pub struct NewInsuranceConfig {
     pub updated_by: String,
-    pub enable_flag: bool,
+    pub insurance_enabled: bool,
     pub min_coverage_bps: i64,
     pub max_coverage_bps: i64,
     pub max_duration_ms: i64,

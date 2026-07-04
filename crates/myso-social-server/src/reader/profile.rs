@@ -306,8 +306,8 @@ pub(crate) async fn get_profile_configuration(
     let mut conn = db.connect().await?;
     let query = "
         SELECT updated_by, max_vesting_pieces, curve_factor_min, curve_factor_max, curve_precision,
-               min_claim_threshold_divisor, min_username_length, max_username_length, version,
-               updated_at
+               min_claim_threshold_divisor, min_username_length, max_username_length,
+               profile_sale_fee_bps, version, updated_at
         FROM profile_config
         ORDER BY time DESC
         LIMIT 1

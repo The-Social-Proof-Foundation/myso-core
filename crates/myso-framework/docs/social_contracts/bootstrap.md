@@ -177,12 +177,20 @@ Creates and transfers all admin capabilities to caller, then seals the bootstrap
     <a href="../social_contracts/block_list.md#social_contracts_block_list_bootstrap_init">social_contracts::block_list::bootstrap_init</a>(clock, ctx);
     <a href="../social_contracts/mydata.md#social_contracts_mydata_bootstrap_init">social_contracts::mydata::bootstrap_init</a>(clock, ctx);
     <a href="../social_contracts/memory.md#social_contracts_memory_bootstrap_init">social_contracts::memory::bootstrap_init</a>(clock, ctx);
-    <b>let</b> spot_governance_registry_id = <a href="../social_contracts/governance.md#social_contracts_governance_bootstrap_init">social_contracts::governance::bootstrap_init</a>(clock, ctx);
+    <b>let</b> gov_ids = <a href="../social_contracts/governance.md#social_contracts_governance_bootstrap_init">social_contracts::governance::bootstrap_init</a>(clock, ctx);
     <a href="../social_contracts/post.md#social_contracts_post_bootstrap_init">social_contracts::post::bootstrap_init</a>(clock, ctx);
     <a href="../social_contracts/subscription.md#social_contracts_subscription_bootstrap_init">social_contracts::subscription::bootstrap_init</a>(clock, ctx);
     <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_bootstrap_init">social_contracts::social_proof_tokens::bootstrap_init</a>(clock, ctx);
-    <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_bootstrap_init">social_contracts::proof_of_creativity::bootstrap_init</a>(clock, ctx);
-    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_bootstrap_init">social_contracts::social_proof_of_truth::bootstrap_init</a>(clock, spot_governance_registry_id, ctx);
+    <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_bootstrap_init">social_contracts::proof_of_creativity::bootstrap_init</a>(
+        clock,
+        gov_ids.poc_governance_registry_id(),
+        ctx,
+    );
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_bootstrap_init">social_contracts::social_proof_of_truth::bootstrap_init</a>(
+        clock,
+        gov_ids.spot_governance_registry_id(),
+        ctx,
+    );
     <a href="../social_contracts/insurance.md#social_contracts_insurance_bootstrap_init">social_contracts::insurance::bootstrap_init</a>(clock, ctx);
     <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_bootstrap_init">social_contracts::ai_credit::bootstrap_init</a>(
         admin,

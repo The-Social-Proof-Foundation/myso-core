@@ -1828,7 +1828,7 @@ pub struct BcsVotingRewardClaimedEvent {
     timestamp: u64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsPocConfigUpdatedEvent {
     updated_by: AccountAddress,
     oracle_address: AccountAddress,
@@ -1843,6 +1843,7 @@ pub struct BcsPocConfigUpdatedEvent {
     max_reasoning_length: u64,
     max_evidence_urls: u64,
     max_votes_per_dispute: u64,
+    dispute_governance_registry_id: AccountAddress,
     claim_treasury_fee_bps: u64,
     max_referral_bps: u64,
     video_embedded_audio_redirect_bps: u64,
@@ -1869,7 +1870,7 @@ pub struct BcsConfigInitializedEvent {
 #[derive(Debug, Deserialize)]
 pub struct BcsConfigUpdatedEvent {
     updated_by: AccountAddress,
-    enable_flag: bool,
+    insurance_enabled: bool,
     min_coverage_bps: u64,
     max_coverage_bps: u64,
     max_duration_ms: u64,
@@ -2100,7 +2101,7 @@ pub struct BcsMyDataUnregisteredEvent {
 #[derive(Debug, Deserialize)]
 pub struct BcsMyDataConfigUpdatedEvent {
     updated_by: AccountAddress,
-    enable_flag: bool,
+    marketplace_enabled: bool,
     max_tags: u64,
     max_subscription_days: u64,
     max_free_access_grants: u64,
@@ -2220,7 +2221,7 @@ pub struct BcsSpotRefundEvent {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct BcsSpotConfigUpdatedEvent {
     updated_by: AccountAddress,
-    enable_flag: bool,
+    truth_enabled: bool,
     confidence_threshold_bps: u64,
     resolution_window_ms: u64,
     max_resolution_window_ms: u64,
@@ -4510,6 +4511,7 @@ fn parse_poc_event(
                 "max_reasoning_length": ev.max_reasoning_length,
                 "max_evidence_urls": ev.max_evidence_urls,
                 "max_votes_per_dispute": ev.max_votes_per_dispute,
+                "dispute_governance_registry_id": addr_to_string(&ev.dispute_governance_registry_id),
                 "claim_treasury_fee_bps": ev.claim_treasury_fee_bps,
                 "max_referral_bps": ev.max_referral_bps,
                 "video_embedded_audio_redirect_bps": ev.video_embedded_audio_redirect_bps,
@@ -4715,7 +4717,7 @@ fn parse_mydata_event(
                 .map_err(|e| bcs_parse_err(e, contents))?;
             Ok(Some(serde_json::json!({
                 "updated_by": addr_to_string(&ev.updated_by),
-                "enable_flag": ev.enable_flag,
+                "marketplace_enabled": ev.marketplace_enabled,
                 "max_tags": ev.max_tags,
                 "max_subscription_days": ev.max_subscription_days,
                 "max_free_access_grants": ev.max_free_access_grants,
@@ -4829,7 +4831,7 @@ fn parse_insurance_event(
                 .map_err(|e| bcs_parse_err(e, contents))?;
             Ok(Some(serde_json::json!({
                 "updated_by": addr_to_string(&ev.updated_by),
-                "enable_flag": ev.enable_flag,
+                "insurance_enabled": ev.insurance_enabled,
                 "min_coverage_bps": ev.min_coverage_bps,
                 "max_coverage_bps": ev.max_coverage_bps,
                 "max_duration_ms": ev.max_duration_ms,
@@ -5105,7 +5107,7 @@ fn parse_spot_event(
                 .map_err(|e| bcs_parse_err(e, contents))?;
             Ok(Some(serde_json::json!({
                 "updated_by": addr_to_string(&ev.updated_by),
-                "enable_flag": ev.enable_flag,
+                "truth_enabled": ev.truth_enabled,
                 "confidence_threshold_bps": ev.confidence_threshold_bps,
                 "resolution_window_ms": ev.resolution_window_ms,
                 "max_resolution_window_ms": ev.max_resolution_window_ms,
@@ -6917,7 +6919,7 @@ mod tests {
         .unwrap();
         let ev = BcsSpotConfigUpdatedEvent {
             updated_by,
-            enable_flag: true,
+            truth_enabled: true,
             confidence_threshold_bps: 6500,
             resolution_window_ms: 86_400_000,
             max_resolution_window_ms: 604_800_000,
@@ -6945,5 +6947,54 @@ mod tests {
         assert_eq!(json["max_evidence_urls"], 10);
         assert!(json.get("fee_bps").is_none());
         assert!(json.get("fee_split_bps_platform").is_none());
+    }
+
+    #[test]
+    fn poc_config_updated_bcs_roundtrip_dispute_governance_registry_id() {
+        let updated_by = AccountAddress::from_hex_literal(
+            "0x9cc886f94db2b2a41b1f8d7c20c7fc0960e1f9eb34ce2c0c7f309",
+        )
+        .unwrap();
+        let oracle_address = AccountAddress::from_hex_literal(
+            "0x2f41b4f43f505d427e8777c511461de8e50eac26558a996627dded27dce50918",
+        )
+        .unwrap();
+        let dispute_governance_registry_id = AccountAddress::from_hex_literal(
+            "0x3f41b4f43f505d427e8777c511461de8e50eac26558a996627dded27dce50919",
+        )
+        .unwrap();
+        let ev = BcsPocConfigUpdatedEvent {
+            updated_by,
+            oracle_address,
+            image_threshold: 85,
+            video_threshold: 85,
+            audio_threshold: 85,
+            revenue_redirect_percentage: 100,
+            dispute_cost: 5_000_000_000,
+            min_vote_stake: 1_000_000_000,
+            max_vote_stake: 100_000_000_000,
+            voting_duration_ms: 7 * 24 * 60 * 60 * 1000,
+            max_reasoning_length: 5000,
+            max_evidence_urls: 10,
+            max_votes_per_dispute: 10_000,
+            dispute_governance_registry_id,
+            claim_treasury_fee_bps: 100,
+            max_referral_bps: 500,
+            video_embedded_audio_redirect_bps: 3000,
+            dispute_quorum_base_stake: 0,
+            dispute_second_round_fee_multiplier_bps: 10_000,
+            dispute_second_round_quorum_multiplier_bps: 10_000,
+            username_beneficiary_join_referral_bps: 500,
+            max_disputes_per_post: 2,
+            min_vault_deposit_amount: 1,
+            timestamp: 1_700_000_000,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("serialize PoCConfigUpdatedEvent");
+        let json = parse_event_contents("proof_of_creativity", "PoCConfigUpdatedEvent", &bytes)
+            .expect("parse PoCConfigUpdatedEvent");
+        assert!(json["dispute_governance_registry_id"]
+            .as_str()
+            .unwrap()
+            .starts_with("0x"));
     }
 }

@@ -80,7 +80,7 @@ pub(crate) async fn get_mydata_configuration(
 ) -> Result<Option<MyDataConfigInfo>, SocialError> {
     let mut conn = db.connect().await?;
     let query = "
-        SELECT updated_by, enable_flag, max_tags, max_subscription_days,
+        SELECT updated_by, marketplace_enabled, max_tags, max_subscription_days,
                max_free_access_grants, max_encryption_id_bytes, version, updated_at, time,
                transaction_id
         FROM mydata_config

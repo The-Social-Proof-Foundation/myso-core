@@ -168,8 +168,10 @@ struct PocConfigUpdatedEvent {
     max_reasoning_length: u64,
     #[serde(deserialize_with = "deserialize_u64")]
     max_evidence_urls: u64,
-    #[serde(deserialize_with = "deserialize_u64")]
+    #[serde(default, deserialize_with = "deserialize_u64")]
     max_votes_per_dispute: u64,
+    #[serde(default)]
+    dispute_governance_registry_id: Option<String>,
     #[serde(default = "default_claim_treasury_fee_bps")]
     claim_treasury_fee_bps: u64,
     #[serde(default = "default_max_referral_bps")]
@@ -654,6 +656,9 @@ fn process_poc_config_updated_event(
         max_reasoning_length: ev.max_reasoning_length as i64,
         max_evidence_urls: ev.max_evidence_urls as i64,
         max_votes_per_dispute: ev.max_votes_per_dispute as i64,
+        dispute_governance_registry_id: ev
+            .dispute_governance_registry_id
+            .filter(|s| !s.is_empty()),
         oracle_address: Some(ev.oracle_address),
         claim_treasury_fee_bps: ev.claim_treasury_fee_bps as i64,
         max_referral_bps: ev.max_referral_bps as i64,

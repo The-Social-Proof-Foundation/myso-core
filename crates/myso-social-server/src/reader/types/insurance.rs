@@ -10,7 +10,7 @@ pub struct InsuranceConfigInfo {
     #[diesel(sql_type = Text)]
     pub updated_by: String,
     #[diesel(sql_type = Bool)]
-    pub enable_flag: bool,
+    pub insurance_enabled: bool,
     #[diesel(sql_type = BigInt)]
     pub min_coverage_bps: i64,
     #[diesel(sql_type = BigInt)]

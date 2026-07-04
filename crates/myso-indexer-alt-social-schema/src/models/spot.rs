@@ -251,7 +251,7 @@ pub struct NewSpotEventLog {
 #[diesel(table_name = spot_config)]
 pub struct NewSpotConfig {
     pub updated_by: String,
-    pub enable_flag: bool,
+    pub truth_enabled: bool,
     pub confidence_threshold_bps: i64,
     pub resolution_window_ms: i64,
     pub max_resolution_window_ms: i64,

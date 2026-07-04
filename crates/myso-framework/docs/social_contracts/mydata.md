@@ -54,6 +54,7 @@ not row-level dataset membership.
 -  [Constants](#@Constants_0)
 -  [Function `create_mydata_admin_cap`](#social_contracts_mydata_create_mydata_admin_cap)
 -  [Function `update_mydata_config`](#social_contracts_mydata_update_mydata_config)
+-  [Function `marketplace_enabled`](#social_contracts_mydata_marketplace_enabled)
 -  [Function `share_mydata_system_objects`](#social_contracts_mydata_share_mydata_system_objects)
 -  [Function `bootstrap_init`](#social_contracts_mydata_bootstrap_init)
 -  [Function `create_mydata_pool_admin_cap`](#social_contracts_mydata_create_mydata_pool_admin_cap)
@@ -374,7 +375,7 @@ Global configuration for MyData system
 <dd>
 </dd>
 <dt>
-<code>enable_flag: bool</code>
+<code><a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>: bool</code>
 </dt>
 <dd>
 </dd>
@@ -1464,7 +1465,7 @@ Registry for tracking MyData ownership
 <dd>
 </dd>
 <dt>
-<code>enable_flag: bool</code>
+<code><a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>: bool</code>
 </dt>
 <dd>
 </dd>
@@ -1503,11 +1504,11 @@ Registry for tracking MyData ownership
 ## Constants
 
 
-<a name="social_contracts_mydata_DEFAULT_ENABLE"></a>
+<a name="social_contracts_mydata_DEFAULT_MARKETPLACE_ENABLED"></a>
 
 
 
-<pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_ENABLE">DEFAULT_ENABLE</a>: bool = <b>false</b>;
+<pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MARKETPLACE_ENABLED">DEFAULT_MARKETPLACE_ENABLED</a>: bool = <b>false</b>;
 </code></pre>
 
 
@@ -1816,7 +1817,7 @@ Create a MyDataAdminCap for bootstrap (package visibility only)
 Update MyData configuration (admin only)
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_update_mydata_config">update_mydata_config</a>(_: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataAdminCap">social_contracts::mydata::MyDataAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, enable_flag: bool, max_tags: u64, max_subscription_days: u64, max_free_access_grants: u64, max_encryption_id_bytes: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_update_mydata_config">update_mydata_config</a>(_: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataAdminCap">social_contracts::mydata::MyDataAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>: bool, max_tags: u64, max_subscription_days: u64, max_free_access_grants: u64, max_encryption_id_bytes: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1828,7 +1829,7 @@ Update MyData configuration (admin only)
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_update_mydata_config">update_mydata_config</a>(
     _: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataAdminCap">MyDataAdminCap</a>,
     config: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
-    enable_flag: bool,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>: bool,
     max_tags: u64,
     max_subscription_days: u64,
     max_free_access_grants: u64,
@@ -1841,7 +1842,7 @@ Update MyData configuration (admin only)
     <b>assert</b>!(max_tags &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>assert</b>!(max_free_access_grants &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>assert</b>!(max_encryption_id_bytes &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
-    config.enable_flag = enable_flag;
+    config.<a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a> = <a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>;
     config.max_tags = max_tags;
     config.max_subscription_days = max_subscription_days;
     config.max_free_access_grants = max_free_access_grants;
@@ -1849,7 +1850,7 @@ Update MyData configuration (admin only)
     // Emit config updated event
     event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfigUpdatedEvent">MyDataConfigUpdatedEvent</a> {
         updated_by: tx_context::sender(ctx),
-        enable_flag,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>,
         max_tags,
         max_subscription_days,
         max_free_access_grants,
@@ -1863,13 +1864,13 @@ Update MyData configuration (admin only)
 
 </details>
 
-<a name="social_contracts_mydata_share_mydata_system_objects"></a>
+<a name="social_contracts_mydata_marketplace_enabled"></a>
 
-## Function `share_mydata_system_objects`
+## Function `marketplace_enabled`
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_share_mydata_system_objects">share_mydata_system_objects</a>(clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>, enable_flag: bool)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>): bool
 </code></pre>
 
 
@@ -1878,12 +1879,36 @@ Update MyData configuration (admin only)
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_share_mydata_system_objects">share_mydata_system_objects</a>(clock: &Clock, ctx: &<b>mut</b> TxContext, enable_flag: bool) {
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>): bool {
+    config.<a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_share_mydata_system_objects"></a>
+
+## Function `share_mydata_system_objects`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_share_mydata_system_objects">share_mydata_system_objects</a>(clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>: bool)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_share_mydata_system_objects">share_mydata_system_objects</a>(clock: &Clock, ctx: &<b>mut</b> TxContext, <a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>: bool) {
     <b>let</b> sender = tx_context::sender(ctx);
     <b>let</b> ver = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
     <b>let</b> config = <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a> {
         id: object::new(ctx),
-        enable_flag,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>,
         max_tags: <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_TAGS">MAX_TAGS</a>,
         max_subscription_days: <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_SUBSCRIPTION_DAYS">MAX_SUBSCRIPTION_DAYS</a>,
         max_free_access_grants: <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_FREE_ACCESS_GRANTS">MAX_FREE_ACCESS_GRANTS</a>,
@@ -1892,7 +1917,7 @@ Update MyData configuration (admin only)
     };
     event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfigUpdatedEvent">MyDataConfigUpdatedEvent</a> {
         updated_by: sender,
-        enable_flag,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>,
         max_tags: <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_TAGS">MAX_TAGS</a>,
         max_subscription_days: <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_SUBSCRIPTION_DAYS">MAX_SUBSCRIPTION_DAYS</a>,
         max_free_access_grants: <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_FREE_ACCESS_GRANTS">MAX_FREE_ACCESS_GRANTS</a>,
@@ -1960,7 +1985,7 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
 
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_bootstrap_init">bootstrap_init</a>(clock: &Clock, ctx: &<b>mut</b> TxContext) {
-    <a href="../social_contracts/mydata.md#social_contracts_mydata_share_mydata_system_objects">share_mydata_system_objects</a>(clock, ctx, <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_ENABLE">DEFAULT_ENABLE</a>);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_share_mydata_system_objects">share_mydata_system_objects</a>(clock, ctx, <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MARKETPLACE_ENABLED">DEFAULT_MARKETPLACE_ENABLED</a>);
 }
 </code></pre>
 
@@ -2803,7 +2828,7 @@ Create and share MyData publicly
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
-    <b>assert</b>!(config.enable_flag, <a href="../social_contracts/mydata.md#social_contracts_mydata_EDisabled">EDisabled</a>);
+    <b>assert</b>!(config.<a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EDisabled">EDisabled</a>);
     <b>let</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a> = <a href="../social_contracts/mydata.md#social_contracts_mydata_create">create</a>(
         config,
         <a href="../social_contracts/mydata.md#social_contracts_mydata_media_type">media_type</a>,
@@ -2862,7 +2887,7 @@ Sub-agent buyers must satisfy <code>max_action_spend</code> for <code>price</cod
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
-    <b>assert</b>!(config.enable_flag, <a href="../social_contracts/mydata.md#social_contracts_mydata_EDisabled">EDisabled</a>);
+    <b>assert</b>!(config.<a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EDisabled">EDisabled</a>);
     // Check <a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> compatibility
     <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>let</b> buyer = tx_context::sender(ctx);
@@ -2942,7 +2967,7 @@ Sub-agent buyers must satisfy <code>max_action_spend</code> for <code>price</cod
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
-    <b>assert</b>!(config.enable_flag, <a href="../social_contracts/mydata.md#social_contracts_mydata_EDisabled">EDisabled</a>);
+    <b>assert</b>!(config.<a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EDisabled">EDisabled</a>);
     // Check <a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> compatibility
     <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>let</b> buyer = tx_context::sender(ctx);
@@ -3368,7 +3393,7 @@ Grant free access (owner only) - useful for samples or promotions
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
-    <b>assert</b>!(config.enable_flag, <a href="../social_contracts/mydata.md#social_contracts_mydata_EDisabled">EDisabled</a>);
+    <b>assert</b>!(config.<a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EDisabled">EDisabled</a>);
     // Check <a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> compatibility
     <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EUnauthorized">EUnauthorized</a>);

@@ -691,6 +691,8 @@ pub struct ProfileConfigRow {
     #[diesel(sql_type = BigInt)]
     pub max_username_length: i64,
     #[diesel(sql_type = BigInt)]
+    pub profile_sale_fee_bps: i64,
+    #[diesel(sql_type = BigInt)]
     pub version: i64,
     #[diesel(sql_type = BigInt)]
     pub updated_at: i64,
@@ -710,8 +712,8 @@ pub(crate) async fn get_profile_config(
 
     let query = "
         SELECT updated_by, max_vesting_pieces, curve_factor_min, curve_factor_max, curve_precision,
-               min_claim_threshold_divisor, min_username_length, max_username_length, version,
-               updated_at, time, transaction_id
+               min_claim_threshold_divisor, min_username_length, max_username_length,
+               profile_sale_fee_bps, version, updated_at, time, transaction_id
         FROM profile_config
         ORDER BY time DESC
         LIMIT 1
@@ -730,8 +732,6 @@ pub(crate) async fn get_profile_config(
 pub struct EcosystemTreasuryRow {
     #[diesel(sql_type = Text)]
     pub treasury_address: String,
-    #[diesel(sql_type = BigInt)]
-    pub profile_sale_fee_bps: i64,
     #[diesel(sql_type = Text)]
     pub updated_by: String,
     #[diesel(sql_type = BigInt)]
@@ -744,7 +744,7 @@ pub struct EcosystemTreasuryRow {
     pub transaction_id: String,
 }
 
-/// Latest ecosystem treasury configuration (treasury address + profile sale fee bps).
+/// Latest ecosystem treasury configuration (treasury address).
 pub(crate) async fn get_ecosystem_treasury(
     conn: &mut Connection<'_>,
     metrics: &DbReaderMetrics,
@@ -753,8 +753,7 @@ pub(crate) async fn get_ecosystem_treasury(
     let _guard = metrics.latency.start_timer();
 
     let query = "
-        SELECT treasury_address, profile_sale_fee_bps, updated_by, version, updated_at, time,
-               transaction_id
+        SELECT treasury_address, updated_by, version, updated_at, time, transaction_id
         FROM ecosystem_treasury
         ORDER BY time DESC
         LIMIT 1

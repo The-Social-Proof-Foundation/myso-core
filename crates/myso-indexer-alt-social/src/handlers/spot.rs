@@ -316,7 +316,7 @@ fn process_spot_config_updated_event(
     now: chrono::DateTime<chrono::Utc>,
 ) -> Option<Vec<SocialEventRow>> {
     let updated_by = data.get("updated_by")?.as_str()?.to_string();
-    let enable_flag = data.get("enable_flag")?.as_bool().unwrap_or(false);
+    let truth_enabled = data.get("truth_enabled")?.as_bool().unwrap_or(false);
     let confidence_threshold_bps = json_to_i64(data.get("confidence_threshold_bps")?);
     let resolution_window_ms = json_to_i64(data.get("resolution_window_ms")?);
     let max_resolution_window_ms = json_to_i64(data.get("max_resolution_window_ms")?);
@@ -345,7 +345,7 @@ fn process_spot_config_updated_event(
 
     let config = NewSpotConfig {
         updated_by,
-        enable_flag,
+        truth_enabled,
         confidence_threshold_bps,
         resolution_window_ms,
         max_resolution_window_ms,
@@ -476,7 +476,7 @@ mod tests {
     fn spot_config_fee_breakout_maps_to_row() {
         let data = serde_json::json!({
             "updated_by": "0x9cc886f94db2b2a41b1f8d7c20c7fc0960e1f9eb34ce2c0c7f309",
-            "enable_flag": true,
+            "truth_enabled": true,
             "confidence_threshold_bps": 6500,
             "resolution_window_ms": 86400000,
             "max_resolution_window_ms": 604800000,

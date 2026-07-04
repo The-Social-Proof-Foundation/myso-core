@@ -144,8 +144,8 @@ module social_contracts::proof_of_creativity {
         max_evidence_urls: u64,
         /// Maximum number of votes allowed per dispute
         max_votes_per_dispute: u64,
-        /// Governance registry ID for PoC disputes
-        dispute_governance_id: ID,
+        /// Shared PoC GovernanceDAO object ID (registry_type = 1)
+        dispute_governance_registry_id: ID,
         /// Treasury fee (bps of gross) taken at vault claim
         claim_treasury_fee_bps: u64,
         /// Max referral fee (bps of post-treasury gross) when beneficiary supplies `Some(referrer)` at claim
@@ -350,6 +350,7 @@ module social_contracts::proof_of_creativity {
         max_reasoning_length: u64,
         max_evidence_urls: u64,
         max_votes_per_dispute: u64,
+        dispute_governance_registry_id: ID,
         claim_treasury_fee_bps: u64,
         max_referral_bps: u64,
         video_embedded_audio_redirect_bps: u64,
@@ -375,7 +376,11 @@ module social_contracts::proof_of_creativity {
     }
 
     /// Bootstrap initialization function - creates the PoC configuration and registry
-    public(package) fun bootstrap_init(clock: &Clock, ctx: &mut TxContext) {
+    public(package) fun bootstrap_init(
+        clock: &Clock,
+        dispute_governance_registry_id: ID,
+        ctx: &mut TxContext,
+    ) {
         let sender = tx_context::sender(ctx);
 
         let config = PoCConfig {
@@ -392,7 +397,7 @@ module social_contracts::proof_of_creativity {
             max_reasoning_length: MAX_REASONING_LENGTH,
             max_evidence_urls: MAX_EVIDENCE_URLS,
             max_votes_per_dispute: DEFAULT_MAX_VOTES_PER_DISPUTE,
-            dispute_governance_id: object::id_from_address(@0x0), // Placeholder for future governance
+            dispute_governance_registry_id,
             claim_treasury_fee_bps: DEFAULT_CLAIM_TREASURY_FEE_BPS,
             max_referral_bps: DEFAULT_MAX_REFERRAL_BPS,
             video_embedded_audio_redirect_bps: DEFAULT_VIDEO_EMBEDDED_AUDIO_REDIRECT_BPS,
@@ -420,6 +425,7 @@ module social_contracts::proof_of_creativity {
             max_reasoning_length: MAX_REASONING_LENGTH,
             max_evidence_urls: MAX_EVIDENCE_URLS,
             max_votes_per_dispute: DEFAULT_MAX_VOTES_PER_DISPUTE,
+            dispute_governance_registry_id,
             claim_treasury_fee_bps: DEFAULT_CLAIM_TREASURY_FEE_BPS,
             max_referral_bps: DEFAULT_MAX_REFERRAL_BPS,
             video_embedded_audio_redirect_bps: DEFAULT_VIDEO_EMBEDDED_AUDIO_REDIRECT_BPS,
@@ -544,6 +550,7 @@ module social_contracts::proof_of_creativity {
             max_reasoning_length,
             max_evidence_urls,
             max_votes_per_dispute,
+            dispute_governance_registry_id: config.dispute_governance_registry_id,
             claim_treasury_fee_bps,
             max_referral_bps,
             video_embedded_audio_redirect_bps,
@@ -563,6 +570,10 @@ module social_contracts::proof_of_creativity {
 
     public(package) fun min_vault_deposit_amount(config: &PoCConfig): u64 {
         config.min_vault_deposit_amount
+    }
+
+    public fun dispute_governance_registry_id(config: &PoCConfig): ID {
+        config.dispute_governance_registry_id
     }
 
     /// Provision a username beneficiary vault for an off-platform creator (admin only).
@@ -1672,9 +1683,9 @@ module social_contracts::proof_of_creativity {
 
     #[test_only]
     /// Initialize the PoC system for testing
-    public fun test_init(clock: &Clock, ctx: &mut TxContext) {
+    public fun test_init(clock: &Clock, dispute_governance_registry_id: ID, ctx: &mut TxContext) {
         let sender = tx_context::sender(ctx);
-        bootstrap_init(clock, ctx);
+        bootstrap_init(clock, dispute_governance_registry_id, ctx);
         
         // Create and transfer admin capabilities to the transaction sender
         transfer::public_transfer(PoCAdminCap { id: object::new(ctx) }, sender);

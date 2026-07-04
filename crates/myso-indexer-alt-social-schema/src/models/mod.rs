@@ -166,7 +166,8 @@ pub use profile::{
     CURVE_PRECISION, MAX_BADGE_DESCRIPTION_LENGTH, MAX_BADGE_ICON_URL_LENGTH,
     MAX_BADGE_MEDIA_URL_LENGTH, MAX_BADGE_NAME_LENGTH, NewProfile, NewProfileBadge,
     NewProfileConfig, NewProfileEvent, NewProfileOffer, NewProfileSaleFee, PROFILE_SALE_FEE_BPS,
-    Profile, ProfileOffer, ProfileSaleFee, ProfileUpdateSet,
+    Profile, ProfileOffer, ProfileSaleFee, ProfileUpdateSet, default_profile_config,
+    merge_profile_config,
 };
 pub use promotion::{
     NewPromotedPost, NewPromotionBudgetEvent, NewPromotionStatusEvent, NewPromotionView,

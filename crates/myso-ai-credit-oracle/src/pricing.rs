@@ -12,6 +12,8 @@ pub const USAGE_EMBED: u8 = 3;
 pub const CATALOG_USD_PEG: f64 = 1.0;
 /// Used when the remote price oracle is unreachable and no price has been fetched yet.
 pub const DEFAULT_MYSO_USD_FALLBACK: f64 = 0.0045;
+/// On-chain default oracle markup (15%) when GraphQL/REST config is unavailable.
+pub const DEFAULT_ORACLE_MARKUP_BPS: u64 = 1500;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PriceBreakdown {
@@ -24,20 +26,49 @@ pub struct PriceBreakdown {
 pub struct PricingEngine {
     catalog: PricingCatalog,
     ecosystem_margin_pct: f64,
+    oracle_markup_bps: u64,
     myso_usd: f64,
     price_fetched_at: Option<Instant>,
     price_ever_fetched: bool,
+    markup_ever_fetched: bool,
 }
 
 impl PricingEngine {
     pub fn new(catalog: PricingCatalog, ecosystem_margin_pct: f64) -> Self {
         Self {
             catalog,
-            ecosystem_margin_pct: ecosystem_margin_pct.clamp(0.10, 0.15),
+            ecosystem_margin_pct: ecosystem_margin_pct.clamp(0.0, 1.0),
+            oracle_markup_bps: pct_to_markup_bps(ecosystem_margin_pct),
             myso_usd: CATALOG_USD_PEG,
             price_fetched_at: None,
             price_ever_fetched: false,
+            markup_ever_fetched: false,
         }
+    }
+
+    pub fn set_oracle_markup_bps(&mut self, bps: u64) {
+        self.oracle_markup_bps = bps;
+        self.ecosystem_margin_pct = bps as f64 / 10_000.0;
+        self.markup_ever_fetched = true;
+    }
+
+    pub fn set_ecosystem_margin_pct(&mut self, pct: f64) {
+        let pct = pct.clamp(0.0, 1.0);
+        self.ecosystem_margin_pct = pct;
+        self.oracle_markup_bps = pct_to_markup_bps(pct);
+        self.markup_ever_fetched = true;
+    }
+
+    pub fn apply_fallback_markup(&mut self) {
+        self.set_oracle_markup_bps(DEFAULT_ORACLE_MARKUP_BPS);
+    }
+
+    pub fn oracle_markup_bps(&self) -> u64 {
+        self.oracle_markup_bps
+    }
+
+    pub fn markup_ever_fetched(&self) -> bool {
+        self.markup_ever_fetched
     }
 
     pub fn set_myso_usd(&mut self, usd: f64, fetched_at: Instant) {
@@ -154,6 +185,10 @@ impl PricingEngine {
     }
 }
 
+fn pct_to_markup_bps(pct: f64) -> u64 {
+    ((pct.clamp(0.0, 1.0) * 10_000.0).round()) as u64
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -184,12 +219,31 @@ min_charge_mist = 1_000_000
 
     #[test]
     fn inference_with_margin_at_usd_peg() {
-        let mut engine = PricingEngine::new(test_catalog(), 0.125);
+        let mut engine = PricingEngine::new(test_catalog(), 0.15);
         engine.set_myso_usd(1.0, Instant::now());
         let breakdown = engine.inference_breakdown("gpt-4o-mini", 2000, 500);
         assert_eq!(breakdown.base_mist, 600_000);
         assert_eq!(breakdown.amount_mist, 1_000_000);
         assert_eq!(breakdown.margin_mist, 400_000);
+    }
+
+    #[test]
+    fn split_margin_at_fifteen_percent_bps() {
+        let mut engine = PricingEngine::new(test_catalog(), 0.0);
+        engine.set_oracle_markup_bps(1500);
+        let breakdown = engine.split_margin(1_000_000);
+        assert_eq!(breakdown.base_mist, 1_000_000);
+        assert_eq!(breakdown.amount_mist, 1_150_000);
+        assert_eq!(breakdown.margin_mist, 150_000);
+        assert!((engine.ecosystem_margin_pct() - 0.15).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn apply_fallback_markup_uses_default_bps() {
+        let mut engine = PricingEngine::new(test_catalog(), 0.0);
+        engine.apply_fallback_markup();
+        assert_eq!(engine.oracle_markup_bps(), DEFAULT_ORACLE_MARKUP_BPS);
+        assert!(engine.markup_ever_fetched());
     }
 
     #[test]
@@ -202,14 +256,14 @@ min_charge_mist = 1_000_000
 
     #[test]
     fn price_stale_when_never_fetched() {
-        let engine = PricingEngine::new(test_catalog(), 0.125);
+        let engine = PricingEngine::new(test_catalog(), 0.15);
         assert!(!engine.price_ever_fetched());
         assert!(engine.is_price_stale(300));
     }
 
     #[test]
     fn fallback_sets_default_myso_usd() {
-        let mut engine = PricingEngine::new(test_catalog(), 0.125);
+        let mut engine = PricingEngine::new(test_catalog(), 0.15);
         engine.apply_fallback_myso_usd();
         assert!(engine.price_ever_fetched());
         assert!((engine.myso_usd() - DEFAULT_MYSO_USD_FALLBACK).abs() < f64::EPSILON);

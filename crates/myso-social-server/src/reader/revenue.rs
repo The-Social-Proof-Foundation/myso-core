@@ -613,14 +613,12 @@ pub(crate) async fn get_current_treasury(
         time: chrono::DateTime<chrono::Utc>,
         #[diesel(sql_type = Text)]
         transaction_id: String,
-        #[diesel(sql_type = BigInt)]
-        profile_sale_fee_bps: i64,
     }
 
     let mut conn = db.connect().await?;
     let row = diesel::sql_query(
-        "SELECT treasury_address, updated_by, updated_at, time, transaction_id, \
-         profile_sale_fee_bps FROM ecosystem_treasury ORDER BY time DESC LIMIT 1",
+        "SELECT treasury_address, updated_by, updated_at, time, transaction_id \
+         FROM ecosystem_treasury ORDER BY time DESC LIMIT 1",
     )
     .get_result::<TreasuryRow>(&mut conn)
     .await
@@ -632,8 +630,7 @@ pub(crate) async fn get_current_treasury(
             "updated_by": r.updated_by,
             "updated_at": r.updated_at,
             "time": r.time.timestamp(),
-            "transaction_id": r.transaction_id,
-            "profile_sale_fee_bps": r.profile_sale_fee_bps
+            "transaction_id": r.transaction_id
         })
     }))
 }

@@ -50,7 +50,7 @@ pub struct MyDataConfigInfo {
     #[diesel(sql_type = Text)]
     pub updated_by: String,
     #[diesel(sql_type = Bool)]
-    pub enable_flag: bool,
+    pub marketplace_enabled: bool,
     #[diesel(sql_type = BigInt)]
     pub max_tags: i64,
     #[diesel(sql_type = BigInt)]

@@ -208,7 +208,7 @@ pub struct ProfileSaleFee {
     pub time: chrono::DateTime<chrono::Utc>,
 }
 
-#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[derive(Debug, Clone, Insertable, Queryable, Selectable, Serialize, Deserialize)]
 #[diesel(table_name = profile_config)]
 pub struct NewProfileConfig {
     pub updated_by: String,
@@ -219,10 +219,88 @@ pub struct NewProfileConfig {
     pub min_claim_threshold_divisor: i64,
     pub min_username_length: i64,
     pub max_username_length: i64,
+    pub profile_sale_fee_bps: i64,
     pub version: i64,
     pub updated_at: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
+}
+
+pub fn default_profile_config() -> NewProfileConfig {
+    NewProfileConfig {
+        updated_by: String::new(),
+        max_vesting_pieces: 10,
+        curve_factor_min: 100,
+        curve_factor_max: 10_000,
+        curve_precision: 1000,
+        min_claim_threshold_divisor: 1000,
+        min_username_length: 2,
+        max_username_length: 50,
+        profile_sale_fee_bps: PROFILE_SALE_FEE_BPS as i64,
+        version: 0,
+        updated_at: 0,
+        time: chrono::Utc::now(),
+        transaction_id: String::new(),
+    }
+}
+
+pub fn merge_profile_config(prev: &NewProfileConfig, incoming: &NewProfileConfig) -> NewProfileConfig {
+    let version = if incoming.version > 0 {
+        incoming.version
+    } else {
+        prev.version + 1
+    };
+    NewProfileConfig {
+        updated_by: if incoming.updated_by.is_empty() {
+            prev.updated_by.clone()
+        } else {
+            incoming.updated_by.clone()
+        },
+        max_vesting_pieces: if incoming.max_vesting_pieces > 0 {
+            incoming.max_vesting_pieces
+        } else {
+            prev.max_vesting_pieces
+        },
+        curve_factor_min: if incoming.curve_factor_min > 0 {
+            incoming.curve_factor_min
+        } else {
+            prev.curve_factor_min
+        },
+        curve_factor_max: if incoming.curve_factor_max > 0 {
+            incoming.curve_factor_max
+        } else {
+            prev.curve_factor_max
+        },
+        curve_precision: if incoming.curve_precision > 0 {
+            incoming.curve_precision
+        } else {
+            prev.curve_precision
+        },
+        min_claim_threshold_divisor: if incoming.min_claim_threshold_divisor > 0 {
+            incoming.min_claim_threshold_divisor
+        } else {
+            prev.min_claim_threshold_divisor
+        },
+        min_username_length: if incoming.min_username_length > 0 {
+            incoming.min_username_length
+        } else {
+            prev.min_username_length
+        },
+        max_username_length: if incoming.max_username_length > 0 {
+            incoming.max_username_length
+        } else {
+            prev.max_username_length
+        },
+        profile_sale_fee_bps: if incoming.profile_sale_fee_bps > 0 {
+            incoming.profile_sale_fee_bps
+        } else {
+            prev.profile_sale_fee_bps
+        },
+        version,
+        updated_at: incoming.updated_at,
+        time: incoming.time,
+        transaction_id: incoming.transaction_id.clone(),
+    }
 }
 
 impl NewProfileConfig {
@@ -235,6 +313,7 @@ impl NewProfileConfig {
         min_claim_threshold_divisor: u64,
         min_username_length: u64,
         max_username_length: u64,
+        profile_sale_fee_bps: u64,
         version: u64,
         updated_at: u64,
         transaction_id: String,
@@ -250,10 +329,76 @@ impl NewProfileConfig {
             min_claim_threshold_divisor: min_claim_threshold_divisor as i64,
             min_username_length: min_username_length as i64,
             max_username_length: max_username_length as i64,
+            profile_sale_fee_bps: profile_sale_fee_bps as i64,
             version: version as i64,
             updated_at: updated_at as i64,
             time,
             transaction_id,
         }
+    }
+}
+
+#[cfg(test)]
+mod merge_profile_config_tests {
+    use super::{default_profile_config, merge_profile_config, NewProfileConfig, PROFILE_SALE_FEE_BPS};
+
+    fn sample_config(
+        max_vesting_pieces: i64,
+        profile_sale_fee_bps: i64,
+        version: i64,
+    ) -> NewProfileConfig {
+        let mut cfg = default_profile_config();
+        cfg.max_vesting_pieces = max_vesting_pieces;
+        cfg.profile_sale_fee_bps = profile_sale_fee_bps;
+        cfg.version = version;
+        cfg.updated_by = "0xabc".to_string();
+        cfg
+    }
+
+    #[test]
+    fn treasury_fee_update_preserves_vesting_fields() {
+        let prev = sample_config(42, PROFILE_SALE_FEE_BPS as i64, 1);
+        let incoming = NewProfileConfig {
+            updated_by: "0xdef".to_string(),
+            max_vesting_pieces: 0,
+            curve_factor_min: 0,
+            curve_factor_max: 0,
+            curve_precision: 0,
+            min_claim_threshold_divisor: 0,
+            min_username_length: 0,
+            max_username_length: 0,
+            profile_sale_fee_bps: 750,
+            version: 0,
+            updated_at: 100,
+            time: prev.time,
+            transaction_id: "tx1".to_string(),
+        };
+        let merged = merge_profile_config(&prev, &incoming);
+        assert_eq!(merged.max_vesting_pieces, 42);
+        assert_eq!(merged.profile_sale_fee_bps, 750);
+        assert_eq!(merged.updated_by, "0xdef");
+    }
+
+    #[test]
+    fn profile_config_update_preserves_fee() {
+        let prev = sample_config(42, 600, 2);
+        let incoming = NewProfileConfig {
+            updated_by: "0xdef".to_string(),
+            max_vesting_pieces: 99,
+            curve_factor_min: 0,
+            curve_factor_max: 0,
+            curve_precision: 0,
+            min_claim_threshold_divisor: 0,
+            min_username_length: 0,
+            max_username_length: 0,
+            profile_sale_fee_bps: 0,
+            version: 0,
+            updated_at: 200,
+            time: prev.time,
+            transaction_id: "tx2".to_string(),
+        };
+        let merged = merge_profile_config(&prev, &incoming);
+        assert_eq!(merged.max_vesting_pieces, 99);
+        assert_eq!(merged.profile_sale_fee_bps, 600);
     }
 }

@@ -1207,7 +1207,7 @@ module social_contracts::governance_tests {
         {
             let clock = test_scenario::take_shared<Clock>(&scenario);
             let ctx = test_scenario::ctx(&mut scenario);
-            let _spot_id = governance::bootstrap_init(&clock, ctx);
+            let _gov_ids = governance::bootstrap_init(&clock, ctx);
             governance::test_grant_admin_cap(ctx);
             test_scenario::return_shared(clock);
         };

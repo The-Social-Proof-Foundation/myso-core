@@ -1462,10 +1462,6 @@ union DynamicFieldValue = MoveObject | MoveValue
 
 type EcosystemTreasury {
 	"""
-	Fee in basis points taken on profile sales (10000 = 100%).
-	"""
-	profileSaleFeeBps: Int!
-	"""
 	When the configuration was last updated.
 	"""
 	time: DateTime!
@@ -2277,10 +2273,6 @@ type Input {
 
 type InsuranceConfig {
 	"""
-	Whether insurance is enabled.
-	"""
-	enableFlag: Boolean!
-	"""
 	Exposure multiplier cap, in basis points.
 	"""
 	exposureCapBps: Int!
@@ -2296,6 +2288,10 @@ type InsuranceConfig {
 	Implied probability floor, in basis points.
 	"""
 	impliedProbFloorBps: Int!
+	"""
+	Whether insurance is enabled.
+	"""
+	insuranceEnabled: Boolean!
 	"""
 	Liquidity multiplier cap, in basis points.
 	"""
@@ -3875,7 +3871,7 @@ type MyDataConfig {
 	"""
 	Whether MyData marketplace is enabled.
 	"""
-	enableFlag: Boolean!
+	marketplaceEnabled: Boolean!
 	"""
 	Maximum encryption id byte length accepted when creating a MyData record.
 	"""
@@ -5349,6 +5345,10 @@ type PocConfig {
 	"""
 	disputeCost: Int!
 	"""
+	Shared PoC GovernanceDAO object ID (registry_type = 1).
+	"""
+	disputeGovernanceRegistryId: String
+	"""
 	Minimum aggregate voting stake (`uphold` + `overturn`) required for a full resolution on round 1; `0` disables the quorum gate.
 	"""
 	disputeQuorumBaseStake: Int!
@@ -6395,6 +6395,10 @@ type ProfileConfig {
 	Minimum username length enforced at profile creation.
 	"""
 	minUsernameLength: Int!
+	"""
+	Fee in basis points taken on profile sales (10000 = 100%).
+	"""
+	profileSaleFeeBps: Int!
 	"""
 	When the configuration was last updated.
 	"""
@@ -7984,10 +7988,6 @@ type SpotConfig {
 	"""
 	ecosystemFeeBps: Int!
 	"""
-	Whether SPoT (Social Proof of Truth) is enabled.
-	"""
-	enableFlag: Boolean!
-	"""
 	Maximum number of betting options allowed on a SPoT record.
 	"""
 	maxBettingOptions: Int!
@@ -8039,6 +8039,10 @@ type SpotConfig {
 	Transaction ID of the last config update.
 	"""
 	transactionId: String!
+	"""
+	Whether SPoT (Social Proof of Truth) is enabled.
+	"""
+	truthEnabled: Boolean!
 	"""
 	Last updated timestamp (epoch milliseconds).
 	"""

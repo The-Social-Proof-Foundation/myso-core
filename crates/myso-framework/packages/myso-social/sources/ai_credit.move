@@ -44,6 +44,7 @@ module social_contracts::ai_credit {
     const MONTH_MS: u64 = 30 * DAY_MS;
     const INTENT_AI_CREDIT_USAGE: u8 = 1;
     const ED25519_PK_LEN: u64 = 32;
+    const DEFAULT_ORACLE_MARKUP_BPS: u64 = 1500;
 
     const USAGE_INFERENCE: u8 = 1;
     const USAGE_TOOL: u8 = 2;
@@ -317,7 +318,7 @@ module social_contracts::ai_credit {
         let min_deposit_mist = MIST_PER_MYSO;
         let max_single_settlement_mist = 1000 * MIST_PER_MYSO;
         let receipt_ttl_ms = 300_000;
-        let oracle_markup_bps = 0;
+        let oracle_markup_bps = DEFAULT_ORACLE_MARKUP_BPS;
         event::emit(AiCreditConfigInitialized {
             oracle_pubkey,
             treasury,

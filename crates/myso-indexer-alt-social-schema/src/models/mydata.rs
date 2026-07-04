@@ -410,7 +410,7 @@ pub struct NewMyDataRegistry {
 pub struct MyDataConfig {
     pub id: i32,
     pub updated_by: String,
-    pub enable_flag: bool,
+    pub marketplace_enabled: bool,
     pub max_tags: i64,
     pub max_subscription_days: i64,
     pub max_free_access_grants: i64,
@@ -425,7 +425,7 @@ pub struct MyDataConfig {
 #[diesel(table_name = mydata_config)]
 pub struct NewMyDataConfig {
     pub updated_by: String,
-    pub enable_flag: bool,
+    pub marketplace_enabled: bool,
     pub max_tags: i64,
     pub max_subscription_days: i64,
     pub max_free_access_grants: i64,

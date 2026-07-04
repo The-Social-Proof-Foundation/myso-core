@@ -19,7 +19,7 @@ pub struct SpotConfigRow {
     #[diesel(sql_type = Text)]
     pub updated_by: String,
     #[diesel(sql_type = Bool)]
-    pub enable_flag: bool,
+    pub truth_enabled: bool,
     #[diesel(sql_type = BigInt)]
     pub confidence_threshold_bps: i64,
     #[diesel(sql_type = BigInt)]
@@ -127,7 +127,7 @@ pub(crate) async fn get_spot_config(
     let _guard = metrics.latency.start_timer();
 
     let query = "
-        SELECT updated_by, enable_flag, confidence_threshold_bps, resolution_window_ms,
+        SELECT updated_by, truth_enabled, confidence_threshold_bps, resolution_window_ms,
                max_resolution_window_ms, payout_delay_ms, platform_fee_bps, ecosystem_fee_bps,
                min_betting_options, max_betting_options, min_reasoning_length, max_reasoning_length,
                max_evidence_urls, oracle_address, max_single_bet, version, updated_at, time,

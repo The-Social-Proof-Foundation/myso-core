@@ -36,7 +36,7 @@ Sells coverage against losing outcomes and pays out deterministically on SPoT re
 -  [Function `init_config`](#social_contracts_insurance_init_config)
 -  [Function `set_config`](#social_contracts_insurance_set_config)
 -  [Function `set_risk_pricing_config`](#social_contracts_insurance_set_risk_pricing_config)
--  [Function `set_enable_flag`](#social_contracts_insurance_set_enable_flag)
+-  [Function `set_insurance_enabled`](#social_contracts_insurance_set_insurance_enabled)
 -  [Function `create_insurance_admin_cap`](#social_contracts_insurance_create_insurance_admin_cap)
 -  [Function `bootstrap_init`](#social_contracts_insurance_bootstrap_init)
 -  [Function `create_vault`](#social_contracts_insurance_create_vault)
@@ -46,7 +46,7 @@ Sells coverage against losing outcomes and pays out deterministically on SPoT re
 -  [Function `set_market_pause`](#social_contracts_insurance_set_market_pause)
 -  [Function `set_backstop_caps`](#social_contracts_insurance_set_backstop_caps)
 -  [Function `set_tail_mode`](#social_contracts_insurance_set_tail_mode)
--  [Function `set_backstop_paused`](#social_contracts_insurance_set_backstop_paused)
+-  [Function `set_backstop_pool_enabled`](#social_contracts_insurance_set_backstop_pool_enabled)
 -  [Function `deposit_backstop_treasury`](#social_contracts_insurance_deposit_backstop_treasury)
 -  [Function `tail_pay_shortfall`](#social_contracts_insurance_tail_pay_shortfall)
 -  [Function `min_cap_sub`](#social_contracts_insurance_min_cap_sub)
@@ -209,7 +209,7 @@ Sells coverage against losing outcomes and pays out deterministically on SPoT re
 <dd>
 </dd>
 <dt>
-<code>enable_flag: bool</code>
+<code>insurance_enabled: bool</code>
 </dt>
 <dd>
 </dd>
@@ -441,7 +441,7 @@ Sells coverage against losing outcomes and pays out deterministically on SPoT re
 <dd>
 </dd>
 <dt>
-<code>paused: bool</code>
+<code>insurance_backstop_pool_enabled: bool</code>
 </dt>
 <dd>
 </dd>
@@ -1682,7 +1682,7 @@ Events
 <dd>
 </dd>
 <dt>
-<code>enable_flag: bool</code>
+<code>insurance_enabled: bool</code>
 </dt>
 <dd>
 </dd>
@@ -2481,7 +2481,7 @@ Creates InsuranceConfig and transfers InsuranceAdminCap to caller.
     <b>let</b> ts = clock::timestamp_ms(clock);
     transfer::share_object(<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">InsuranceConfig</a> {
         id: object::new(ctx),
-        enable_flag: <b>false</b>,
+        insurance_enabled: <b>false</b>,
         min_coverage_bps,
         max_coverage_bps,
         max_duration_ms,
@@ -2576,7 +2576,7 @@ Update config (admin only)
     <b>let</b> timestamp = clock::timestamp_ms(clock);
     event::emit(<a href="../social_contracts/insurance.md#social_contracts_insurance_ConfigUpdatedEvent">ConfigUpdatedEvent</a> {
         updated_by,
-        enable_flag: config.enable_flag,
+        insurance_enabled: config.insurance_enabled,
         min_coverage_bps,
         max_coverage_bps,
         max_duration_ms,
@@ -2674,14 +2674,14 @@ Update SPoT-linked risk pricing (admin only).
 
 </details>
 
-<a name="social_contracts_insurance_set_enable_flag"></a>
+<a name="social_contracts_insurance_set_insurance_enabled"></a>
 
-## Function `set_enable_flag`
+## Function `set_insurance_enabled`
 
 Emergency enable/disable toggle (admin only)
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_enable_flag">set_enable_flag</a>(_: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">social_contracts::insurance::InsuranceAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, enable_flag: bool, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_insurance_enabled">set_insurance_enabled</a>(_: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">social_contracts::insurance::InsuranceAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, insurance_enabled: bool, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2690,19 +2690,19 @@ Emergency enable/disable toggle (admin only)
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_enable_flag">set_enable_flag</a>(
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_insurance_enabled">set_insurance_enabled</a>(
     _: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">InsuranceAdminCap</a>,
     config: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">InsuranceConfig</a>,
-    enable_flag: bool,
+    insurance_enabled: bool,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
-    config.enable_flag = enable_flag;
+    config.insurance_enabled = insurance_enabled;
     <b>let</b> updated_by = tx_context::sender(ctx);
     <b>let</b> timestamp = clock::timestamp_ms(clock);
     event::emit(<a href="../social_contracts/insurance.md#social_contracts_insurance_ConfigUpdatedEvent">ConfigUpdatedEvent</a> {
         updated_by,
-        enable_flag: config.enable_flag,
+        insurance_enabled: config.insurance_enabled,
         min_coverage_bps: config.min_coverage_bps,
         max_coverage_bps: config.max_coverage_bps,
         max_duration_ms: config.max_duration_ms,
@@ -2761,7 +2761,7 @@ Emergency enable/disable toggle (admin only)
     <b>let</b> ts = clock::timestamp_ms(clock);
     <b>let</b> config = <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">InsuranceConfig</a> {
         id: object::new(ctx),
-        enable_flag: <b>false</b>,
+        insurance_enabled: <b>false</b>,
         min_coverage_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MIN_COVERAGE_BPS">DEFAULT_MIN_COVERAGE_BPS</a>,
         max_coverage_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MAX_COVERAGE_BPS">DEFAULT_MAX_COVERAGE_BPS</a>,
         max_duration_ms: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MAX_DURATION_MS">DEFAULT_MAX_DURATION_MS</a>,
@@ -2785,7 +2785,7 @@ Emergency enable/disable toggle (admin only)
     transfer::share_object(<a href="../social_contracts/insurance.md#social_contracts_insurance_new_backstop_pool_defaults">new_backstop_pool_defaults</a>(ctx));
     event::emit(<a href="../social_contracts/insurance.md#social_contracts_insurance_ConfigUpdatedEvent">ConfigUpdatedEvent</a> {
         updated_by: admin,
-        enable_flag: <b>false</b>,
+        insurance_enabled: <b>false</b>,
         min_coverage_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MIN_COVERAGE_BPS">DEFAULT_MIN_COVERAGE_BPS</a>,
         max_coverage_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MAX_COVERAGE_BPS">DEFAULT_MAX_COVERAGE_BPS</a>,
         max_duration_ms: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MAX_DURATION_MS">DEFAULT_MAX_DURATION_MS</a>,
@@ -3121,13 +3121,13 @@ Underwriter updates vault listing parameters (emit for indexer discovery).
 
 </details>
 
-<a name="social_contracts_insurance_set_backstop_paused"></a>
+<a name="social_contracts_insurance_set_backstop_pool_enabled"></a>
 
-## Function `set_backstop_paused`
+## Function `set_backstop_pool_enabled`
 
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_backstop_paused">set_backstop_paused</a>(_: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">social_contracts::insurance::InsuranceAdminCap</a>, pool: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceBackstopPool">social_contracts::insurance::InsuranceBackstopPool</a>, paused: bool, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_backstop_pool_enabled">set_backstop_pool_enabled</a>(_: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">social_contracts::insurance::InsuranceAdminCap</a>, pool: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceBackstopPool">social_contracts::insurance::InsuranceBackstopPool</a>, enabled: bool, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3136,13 +3136,13 @@ Underwriter updates vault listing parameters (emit for indexer discovery).
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_backstop_paused">set_backstop_paused</a>(
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_backstop_pool_enabled">set_backstop_pool_enabled</a>(
     _: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">InsuranceAdminCap</a>,
     pool: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceBackstopPool">InsuranceBackstopPool</a>,
-    paused: bool,
+    enabled: bool,
     ctx: &<b>mut</b> TxContext,
 ) {
-    pool.paused = paused;
+    pool.insurance_backstop_pool_enabled = enabled;
     <b>let</b> _ = ctx;
 }
 </code></pre>
@@ -3215,9 +3215,9 @@ Tail shortfall payout only (<code>tail_mode_enabled</code> + caps). Does not int
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
-    <b>assert</b>!(config.enable_flag, <a href="../social_contracts/insurance.md#social_contracts_insurance_EDisabled">EDisabled</a>);
+    <b>assert</b>!(config.insurance_enabled, <a href="../social_contracts/insurance.md#social_contracts_insurance_EDisabled">EDisabled</a>);
     <b>assert</b>!(pool.tail_mode_enabled, <a href="../social_contracts/insurance.md#social_contracts_insurance_ETailModeDisabled">ETailModeDisabled</a>);
-    <b>assert</b>!(!pool.paused, <a href="../social_contracts/insurance.md#social_contracts_insurance_EBackstopPaused">EBackstopPaused</a>);
+    <b>assert</b>!(pool.insurance_backstop_pool_enabled, <a href="../social_contracts/insurance.md#social_contracts_insurance_EBackstopPaused">EBackstopPaused</a>);
     <b>assert</b>!(amount_requested &gt; 0, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidAmount">EInvalidAmount</a>);
     <b>let</b> pool_balance = balance::value(&pool.capital);
     <b>let</b> <b>mut</b> paid_market = 0;
@@ -3412,7 +3412,7 @@ Tail shortfall payout only (<code>tail_mode_enabled</code> + caps). Does not int
         max_payout_per_event: <a href="../social_contracts/insurance.md#social_contracts_insurance_MAX_U64">MAX_U64</a>,
         global_hard_cap: <a href="../social_contracts/insurance.md#social_contracts_insurance_MAX_U64">MAX_U64</a>,
         tail_mode_enabled: <b>false</b>,
-        paused: <b>false</b>,
+        insurance_backstop_pool_enabled: <b>true</b>,
         sweep_premium_bps: 0,
         tail_pay_partial_on_cap: <b>true</b>,
         version: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_VERSION">DEFAULT_VERSION</a>,
@@ -3506,7 +3506,7 @@ Deposit capital into vault
     payment: Coin&lt;MYSO&gt;,
     ctx: &<b>mut</b> TxContext
 ) {
-    <b>assert</b>!(config.enable_flag, <a href="../social_contracts/insurance.md#social_contracts_insurance_EDisabled">EDisabled</a>);
+    <b>assert</b>!(config.insurance_enabled, <a href="../social_contracts/insurance.md#social_contracts_insurance_EDisabled">EDisabled</a>);
     <b>let</b> deposit_amount = coin::value(&payment);
     <b>assert</b>!(deposit_amount &gt; 0, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidAmount">EInvalidAmount</a>);
     balance::join(&<b>mut</b> vault.capital, coin::into_balance(payment));
@@ -3544,7 +3544,7 @@ Withdraw unreserved capital (underwriter only)
     amount: u64,
     ctx: &<b>mut</b> TxContext
 ) {
-    <b>assert</b>!(config.enable_flag, <a href="../social_contracts/insurance.md#social_contracts_insurance_EDisabled">EDisabled</a>);
+    <b>assert</b>!(config.insurance_enabled, <a href="../social_contracts/insurance.md#social_contracts_insurance_EDisabled">EDisabled</a>);
     <b>assert</b>!(tx_context::sender(ctx) == vault.underwriter, <a href="../social_contracts/insurance.md#social_contracts_insurance_ENotAdmin">ENotAdmin</a>);
     <b>assert</b>!(amount &gt; 0, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidAmount">EInvalidAmount</a>);
     <b>let</b> capital_value = balance::value(&vault.capital);
@@ -4268,7 +4268,7 @@ Preview premium with SPoT pool odds, liquidity, and vault concentration on this 
     check_market_router: bool,
     ctx: &<b>mut</b> TxContext,
 ): (ID, ID, u64, u64, u64, u64, u64) {
-    <b>assert</b>!(config.enable_flag, <a href="../social_contracts/insurance.md#social_contracts_insurance_EDisabled">EDisabled</a>);
+    <b>assert</b>!(config.insurance_enabled, <a href="../social_contracts/insurance.md#social_contracts_insurance_EDisabled">EDisabled</a>);
     <b>assert</b>!(spot::is_enabled(spot_config), <a href="../social_contracts/insurance.md#social_contracts_insurance_EMarketClosed">EMarketClosed</a>);
     <b>assert</b>!(spot::is_open(record), <a href="../social_contracts/insurance.md#social_contracts_insurance_EMarketClosed">EMarketClosed</a>);
     <b>assert</b>!(coverage_bps &gt;= config.min_coverage_bps, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidCoverage">EInvalidCoverage</a>);
@@ -4305,7 +4305,7 @@ Preview premium with SPoT pool odds, liquidity, and vault concentration on this 
     <b>assert</b>!(coin::value(payment) &gt;= premium, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInsufficientPremium">EInsufficientPremium</a>);
     <b>let</b> sweep_bps = backstop.sweep_premium_bps;
     <b>if</b> (sweep_bps &gt; 0) {
-        <b>assert</b>!(!backstop.paused, <a href="../social_contracts/insurance.md#social_contracts_insurance_EBackstopPaused">EBackstopPaused</a>);
+        <b>assert</b>!(backstop.insurance_backstop_pool_enabled, <a href="../social_contracts/insurance.md#social_contracts_insurance_EBackstopPaused">EBackstopPaused</a>);
     };
     <b>let</b> sweep_amt = (premium * sweep_bps) / <a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a>;
     <b>let</b> to_vault_amt = premium - sweep_amt;
@@ -4398,7 +4398,7 @@ Buy coverage for a SPoT position
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
-    <b>assert</b>!(config.enable_flag, <a href="../social_contracts/insurance.md#social_contracts_insurance_EDisabled">EDisabled</a>);
+    <b>assert</b>!(config.insurance_enabled, <a href="../social_contracts/insurance.md#social_contracts_insurance_EDisabled">EDisabled</a>);
     <b>assert</b>!(spot::is_enabled(spot_config), <a href="../social_contracts/insurance.md#social_contracts_insurance_EMarketClosed">EMarketClosed</a>);
     <b>assert</b>!(spot::is_open(record), <a href="../social_contracts/insurance.md#social_contracts_insurance_EMarketClosed">EMarketClosed</a>);
     <b>assert</b>!(coverage_bps &gt;= config.min_coverage_bps, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidCoverage">EInvalidCoverage</a>);
@@ -4483,7 +4483,7 @@ Buy coverage for a SPoT position
     ctx: &<b>mut</b> TxContext,
 ) {
     <b>assert</b>!(clock::timestamp_ms(clock) &lt;= deadline_ms, <a href="../social_contracts/insurance.md#social_contracts_insurance_EDeadlinePassed">EDeadlinePassed</a>);
-    <b>assert</b>!(config.enable_flag, <a href="../social_contracts/insurance.md#social_contracts_insurance_EDisabled">EDisabled</a>);
+    <b>assert</b>!(config.insurance_enabled, <a href="../social_contracts/insurance.md#social_contracts_insurance_EDisabled">EDisabled</a>);
     <b>assert</b>!(router_cfg.router_enabled, <a href="../social_contracts/insurance.md#social_contracts_insurance_ERouteDisabled">ERouteDisabled</a>);
     <b>assert</b>!(!router_cfg.router_paused, <a href="../social_contracts/insurance.md#social_contracts_insurance_ERouterPaused">ERouterPaused</a>);
     <b>assert</b>!(spot::is_enabled(spot_config), <a href="../social_contracts/insurance.md#social_contracts_insurance_EMarketClosed">EMarketClosed</a>);
@@ -4809,7 +4809,7 @@ Cancellation can result in 0 refund due to fee + rounding
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
-    <b>assert</b>!(config.enable_flag, <a href="../social_contracts/insurance.md#social_contracts_insurance_EDisabled">EDisabled</a>);
+    <b>assert</b>!(config.insurance_enabled, <a href="../social_contracts/insurance.md#social_contracts_insurance_EDisabled">EDisabled</a>);
     <b>assert</b>!(spot::is_enabled(spot_config), <a href="../social_contracts/insurance.md#social_contracts_insurance_EMarketClosed">EMarketClosed</a>);
     <b>assert</b>!(spot::is_open(record), <a href="../social_contracts/insurance.md#social_contracts_insurance_EMarketClosed">EMarketClosed</a>);
     <b>assert</b>!(policy.status == <a href="../social_contracts/insurance.md#social_contracts_insurance_STATUS_ACTIVE">STATUS_ACTIVE</a>, <a href="../social_contracts/insurance.md#social_contracts_insurance_EPolicyNotActive">EPolicyNotActive</a>);
@@ -4884,7 +4884,7 @@ This prevents exploitation where user buys insurance then exits bet.
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
-    <b>assert</b>!(config.enable_flag, <a href="../social_contracts/insurance.md#social_contracts_insurance_EDisabled">EDisabled</a>);
+    <b>assert</b>!(config.insurance_enabled, <a href="../social_contracts/insurance.md#social_contracts_insurance_EDisabled">EDisabled</a>);
     <b>assert</b>!(spot::is_enabled(spot_config), <a href="../social_contracts/insurance.md#social_contracts_insurance_EMarketClosed">EMarketClosed</a>);
     <b>assert</b>!(policy.status == <a href="../social_contracts/insurance.md#social_contracts_insurance_STATUS_ACTIVE">STATUS_ACTIVE</a>, <a href="../social_contracts/insurance.md#social_contracts_insurance_EPolicyNotActive">EPolicyNotActive</a>);
     <b>assert</b>!(tx_context::sender(ctx) == policy.insured, <a href="../social_contracts/insurance.md#social_contracts_insurance_ENotPolicyOwner">ENotPolicyOwner</a>);

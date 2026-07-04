@@ -14,12 +14,15 @@ use crate::catalog::{PricingCatalog, CAP_AI_SPEND};
 use crate::catalog_sync::{spawn_catalog_sync_worker, startup_catalog_sync};
 use crate::chain_balance;
 use crate::config::OracleArgs;
+use crate::graphql_client::MarkupConfigClient;
 use crate::ledger::BalanceLedger;
+use crate::markup_refresh::{spawn_markup_refresh_worker, startup_markup_refresh};
 use crate::myso_price_client::MysoPriceClient;
 use crate::openrouter_client::OpenRouterClient;
 use crate::price_refresh::{spawn_price_refresh_worker, startup_price_refresh};
 use crate::pricing::{
-    PriceBreakdown, PricingEngine, CATALOG_USD_PEG, USAGE_EMBED, USAGE_INFERENCE, USAGE_TOOL,
+    PriceBreakdown, PricingEngine, CATALOG_USD_PEG, DEFAULT_ORACLE_MARKUP_BPS, USAGE_EMBED,
+    USAGE_INFERENCE, USAGE_TOOL,
 };
 use crate::receipt::{ReceiptStore, UsageLine};
 use crate::settlement_coordinator::{
@@ -127,6 +130,7 @@ pub struct EstimateResponse {
     pub base_mist: u64,
     pub margin_mist: u64,
     pub ecosystem_margin_pct: f64,
+    pub oracle_markup_bps: u64,
     pub catalog_version: String,
     pub catalog_usd_peg: f64,
     pub myso_usd: f64,
@@ -168,10 +172,16 @@ pub async fn serve(args: OracleArgs) -> anyhow::Result<()> {
     };
     let catalog = PricingCatalog::load(&catalog_path)?;
     let catalog = Arc::new(RwLock::new(catalog));
+    let initial_margin_pct = DEFAULT_ORACLE_MARKUP_BPS as f64 / 10_000.0;
     let pricing = Arc::new(RwLock::new(PricingEngine::new(
         catalog.read().await.clone(),
-        args.ecosystem_margin_pct,
+        initial_margin_pct,
     )));
+    let markup_client = MarkupConfigClient::new(
+        args.graphql_url.clone(),
+        args.social_server_url.clone(),
+    );
+    startup_markup_refresh(&args, &pricing, &markup_client).await;
     let myso_price_client = MysoPriceClient::new(args.myso_price_oracle_url.clone());
     startup_price_refresh(&args, &pricing, &myso_price_client).await;
     spawn_price_refresh_worker(Arc::new(args.clone()), pricing.clone(), myso_price_client);
@@ -179,6 +189,7 @@ pub async fn serve(args: OracleArgs) -> anyhow::Result<()> {
     let store = ReceiptStore::load(&args.receipt_store_path)?;
     let store_arc = Arc::new(Mutex::new(store));
     let args_arc = Arc::new(args.clone());
+    spawn_markup_refresh_worker(args_arc.clone(), pricing.clone(), markup_client);
 
     if args.catalog_sync_active() {
         let openrouter = OpenRouterClient::new(
@@ -674,6 +685,7 @@ async fn estimate(
         base_mist: breakdown.base_mist,
         margin_mist: breakdown.margin_mist,
         ecosystem_margin_pct: pricing.ecosystem_margin_pct(),
+        oracle_markup_bps: pricing.oracle_markup_bps(),
         catalog_version: pricing.catalog_version().to_string(),
         catalog_usd_peg: fx.catalog_usd_peg,
         myso_usd: fx.myso_usd,
