@@ -60,6 +60,18 @@ pub struct MyDataConfigInfo {
     #[diesel(sql_type = BigInt)]
     pub max_encryption_id_bytes: i64,
     #[diesel(sql_type = BigInt)]
+    pub p2p_platform_fee_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub p2p_ecosystem_fee_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub mydata_marketplace_platform_fee_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub mydata_marketplace_ecosystem_fee_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub non_platform_platform_to_creator_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub non_platform_platform_to_treasury_bps: i64,
+    #[diesel(sql_type = BigInt)]
     pub version: i64,
     #[diesel(sql_type = BigInt)]
     pub updated_at: i64,
@@ -79,6 +91,14 @@ pub struct PurchaseInfo {
     pub buyer: String,
     #[diesel(sql_type = BigInt)]
     pub price: i64,
+    #[diesel(sql_type = BigInt)]
+    pub platform_fee: i64,
+    #[diesel(sql_type = BigInt)]
+    pub ecosystem_fee: i64,
+    #[diesel(sql_type = BigInt)]
+    pub creator_amount: i64,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub platform_address: Option<String>,
     #[diesel(sql_type = Text)]
     pub purchase_type: String,
     #[diesel(sql_type = BigInt)]
@@ -140,6 +160,14 @@ pub struct RevenueInfo {
     pub to_address: String,
     #[diesel(sql_type = BigInt)]
     pub amount: i64,
+    #[diesel(sql_type = BigInt)]
+    pub platform_fee: i64,
+    #[diesel(sql_type = BigInt)]
+    pub ecosystem_fee: i64,
+    #[diesel(sql_type = BigInt)]
+    pub creator_amount: i64,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub platform_address: Option<String>,
     #[diesel(sql_type = Text)]
     pub revenue_type: String,
     #[diesel(sql_type = BigInt)]
@@ -336,6 +364,16 @@ pub struct MyDataClaimInfo {
     pub claimant: String,
     #[diesel(sql_type = BigInt)]
     pub amount: i64,
+    #[diesel(sql_type = BigInt)]
+    pub gross_amount: i64,
+    #[diesel(sql_type = BigInt)]
+    pub platform_fee: i64,
+    #[diesel(sql_type = BigInt)]
+    pub ecosystem_fee: i64,
+    #[diesel(sql_type = BigInt)]
+    pub net_amount: i64,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub platform_address: Option<String>,
     #[diesel(sql_type = BigInt)]
     pub claimed_at_ms: i64,
     #[diesel(sql_type = Text)]

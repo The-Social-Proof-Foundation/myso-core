@@ -30,7 +30,7 @@ Sells coverage against losing outcomes and pays out deterministically on SPoT re
 -  [Struct `CoverageCancelledEvent`](#social_contracts_insurance_CoverageCancelledEvent)
 -  [Struct `CoverageClaimedEvent`](#social_contracts_insurance_CoverageClaimedEvent)
 -  [Struct `ConfigUpdatedEvent`](#social_contracts_insurance_ConfigUpdatedEvent)
--  [Struct `RouterLimitsUpdatedEvent`](#social_contracts_insurance_RouterLimitsUpdatedEvent)
+-  [Struct `RouterConfigUpdatedEvent`](#social_contracts_insurance_RouterConfigUpdatedEvent)
 -  [Struct `PolicyExpiredEvent`](#social_contracts_insurance_PolicyExpiredEvent)
 -  [Constants](#@Constants_0)
 -  [Function `init_config`](#social_contracts_insurance_init_config)
@@ -41,8 +41,7 @@ Sells coverage against losing outcomes and pays out deterministically on SPoT re
 -  [Function `bootstrap_init`](#social_contracts_insurance_bootstrap_init)
 -  [Function `create_vault`](#social_contracts_insurance_create_vault)
 -  [Function `set_vault_status`](#social_contracts_insurance_set_vault_status)
--  [Function `set_router_flags`](#social_contracts_insurance_set_router_flags)
--  [Function `set_router_limits`](#social_contracts_insurance_set_router_limits)
+-  [Function `update_router_config`](#social_contracts_insurance_update_router_config)
 -  [Function `set_market_pause`](#social_contracts_insurance_set_market_pause)
 -  [Function `set_backstop_caps`](#social_contracts_insurance_set_backstop_caps)
 -  [Function `set_tail_mode`](#social_contracts_insurance_set_tail_mode)
@@ -53,6 +52,7 @@ Sells coverage against losing outcomes and pays out deterministically on SPoT re
 -  [Function `min_u64`](#social_contracts_insurance_min_u64)
 -  [Function `copy_id_vec`](#social_contracts_insurance_copy_id_vec)
 -  [Function `new_router_config_defaults`](#social_contracts_insurance_new_router_config_defaults)
+-  [Function `emit_router_config_updated`](#social_contracts_insurance_emit_router_config_updated)
 -  [Function `new_backstop_pool_defaults`](#social_contracts_insurance_new_backstop_pool_defaults)
 -  [Function `assert_market_router_open`](#social_contracts_insurance_assert_market_router_open)
 -  [Function `assert_vault_buy_guards`](#social_contracts_insurance_assert_vault_buy_guards)
@@ -145,7 +145,6 @@ Sells coverage against losing outcomes and pays out deterministically on SPoT re
 <b>use</b> <a href="../social_contracts/profile.md#social_contracts_profile">social_contracts::profile</a>;
 <b>use</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_contracts::social_graph</a>;
 <b>use</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth">social_contracts::social_proof_of_truth</a>;
-<b>use</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">social_contracts::subscription</a>;
 <b>use</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade">social_contracts::upgrade</a>;
 <b>use</b> <a href="../std/address.md#std_address">std::address</a>;
 <b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
@@ -330,12 +329,7 @@ Sells coverage against losing outcomes and pays out deterministically on SPoT re
 <dd>
 </dd>
 <dt>
-<code>router_enabled: bool</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>router_paused: bool</code>
+<code>paused: bool</code>
 </dt>
 <dd>
 </dd>
@@ -1721,13 +1715,13 @@ Events
 
 </details>
 
-<a name="social_contracts_insurance_RouterLimitsUpdatedEvent"></a>
+<a name="social_contracts_insurance_RouterConfigUpdatedEvent"></a>
 
-## Struct `RouterLimitsUpdatedEvent`
+## Struct `RouterConfigUpdatedEvent`
 
 
 
-<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_RouterLimitsUpdatedEvent">RouterLimitsUpdatedEvent</a> <b>has</b> <b>copy</b>, drop
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_RouterConfigUpdatedEvent">RouterConfigUpdatedEvent</a> <b>has</b> <b>copy</b>, drop
 </code></pre>
 
 
@@ -1739,6 +1733,11 @@ Events
 <dl>
 <dt>
 <code>updated_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>paused: bool</code>
 </dt>
 <dd>
 </dd>
@@ -2042,15 +2041,6 @@ Errors
 
 
 <pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_ERouterPaused">ERouterPaused</a>: u64 = 23;
-</code></pre>
-
-
-
-<a name="social_contracts_insurance_ERouteDisabled"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_ERouteDisabled">ERouteDisabled</a>: u64 = 24;
 </code></pre>
 
 
@@ -2781,8 +2771,10 @@ Emergency enable/disable toggle (admin only)
         odds_base_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_ODDS_BASE_BPS">DEFAULT_ODDS_BASE_BPS</a>,
         version: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_VERSION">DEFAULT_VERSION</a>,
     };
-    transfer::share_object(<a href="../social_contracts/insurance.md#social_contracts_insurance_new_router_config_defaults">new_router_config_defaults</a>(ctx));
     transfer::share_object(<a href="../social_contracts/insurance.md#social_contracts_insurance_new_backstop_pool_defaults">new_backstop_pool_defaults</a>(ctx));
+    <b>let</b> router_cfg = <a href="../social_contracts/insurance.md#social_contracts_insurance_new_router_config_defaults">new_router_config_defaults</a>(ctx);
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_emit_router_config_updated">emit_router_config_updated</a>(&router_cfg, admin, ts);
+    transfer::share_object(router_cfg);
     event::emit(<a href="../social_contracts/insurance.md#social_contracts_insurance_ConfigUpdatedEvent">ConfigUpdatedEvent</a> {
         updated_by: admin,
         insurance_enabled: <b>false</b>,
@@ -2927,13 +2919,13 @@ Underwriter updates vault listing parameters (emit for indexer discovery).
 
 </details>
 
-<a name="social_contracts_insurance_set_router_flags"></a>
+<a name="social_contracts_insurance_update_router_config"></a>
 
-## Function `set_router_flags`
+## Function `update_router_config`
 
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_router_flags">set_router_flags</a>(_: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">social_contracts::insurance::InsuranceAdminCap</a>, router_cfg: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">social_contracts::insurance::InsuranceRouterConfig</a>, router_enabled: bool, router_paused: bool, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_update_router_config">update_router_config</a>(_: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">social_contracts::insurance::InsuranceAdminCap</a>, router_cfg: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">social_contracts::insurance::InsuranceRouterConfig</a>, paused: bool, max_route_reserve_market: u64, max_route_reserve_user: u64, max_route_reserve_option: u64, max_vault_concentration_bps: u64, min_vault_health_factor_bps: u64, max_route_legs: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2942,43 +2934,10 @@ Underwriter updates vault listing parameters (emit for indexer discovery).
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_router_flags">set_router_flags</a>(
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_update_router_config">update_router_config</a>(
     _: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">InsuranceAdminCap</a>,
     router_cfg: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">InsuranceRouterConfig</a>,
-    router_enabled: bool,
-    router_paused: bool,
-    clock: &Clock,
-    ctx: &<b>mut</b> TxContext,
-) {
-    router_cfg.router_enabled = router_enabled;
-    router_cfg.router_paused = router_paused;
-    <b>let</b> _ = clock;
-    <b>let</b> _ = ctx;
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_insurance_set_router_limits"></a>
-
-## Function `set_router_limits`
-
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_router_limits">set_router_limits</a>(_: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">social_contracts::insurance::InsuranceAdminCap</a>, router_cfg: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">social_contracts::insurance::InsuranceRouterConfig</a>, max_route_reserve_market: u64, max_route_reserve_user: u64, max_route_reserve_option: u64, max_vault_concentration_bps: u64, min_vault_health_factor_bps: u64, max_route_legs: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_router_limits">set_router_limits</a>(
-    _: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">InsuranceAdminCap</a>,
-    router_cfg: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">InsuranceRouterConfig</a>,
+    paused: bool,
     max_route_reserve_market: u64,
     max_route_reserve_user: u64,
     max_route_reserve_option: u64,
@@ -2994,22 +2953,19 @@ Underwriter updates vault listing parameters (emit for indexer discovery).
     );
     <b>assert</b>!(min_vault_health_factor_bps &gt; 0, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidAmount">EInvalidAmount</a>);
     <b>assert</b>!(max_route_legs &gt; 0, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidAmount">EInvalidAmount</a>);
+    router_cfg.paused = paused;
     router_cfg.max_route_reserve_market = max_route_reserve_market;
     router_cfg.max_route_reserve_user = max_route_reserve_user;
     router_cfg.max_route_reserve_option = max_route_reserve_option;
     router_cfg.max_vault_concentration_bps = max_vault_concentration_bps;
     router_cfg.min_vault_health_factor_bps = min_vault_health_factor_bps;
     router_cfg.max_route_legs = max_route_legs;
-    event::emit(<a href="../social_contracts/insurance.md#social_contracts_insurance_RouterLimitsUpdatedEvent">RouterLimitsUpdatedEvent</a> {
-        updated_by: tx_context::sender(ctx),
-        max_route_reserve_market,
-        max_route_reserve_user,
-        max_route_reserve_option,
-        max_vault_concentration_bps,
-        min_vault_health_factor_bps,
-        max_route_legs,
-        timestamp: clock::timestamp_ms(clock),
-    });
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_emit_router_config_updated">emit_router_config_updated</a>(
+        router_cfg,
+        tx_context::sender(ctx),
+        clock::timestamp_ms(clock),
+    );
+    <b>let</b> _ = ctx;
 }
 </code></pre>
 
@@ -3369,8 +3325,7 @@ Tail shortfall payout only (<code>tail_mode_enabled</code> + caps). Does not int
 <pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_new_router_config_defaults">new_router_config_defaults</a>(ctx: &<b>mut</b> TxContext): <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">InsuranceRouterConfig</a> {
     <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">InsuranceRouterConfig</a> {
         id: object::new(ctx),
-        router_enabled: <b>true</b>,
-        router_paused: <b>false</b>,
+        paused: <b>false</b>,
         max_route_reserve_market: 0,
         max_route_reserve_user: 0,
         max_route_reserve_option: 0,
@@ -3380,6 +3335,44 @@ Tail shortfall payout only (<code>tail_mode_enabled</code> + caps). Does not int
         market_pause: table::new(ctx),
         version: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_VERSION">DEFAULT_VERSION</a>,
     }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_emit_router_config_updated"></a>
+
+## Function `emit_router_config_updated`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_emit_router_config_updated">emit_router_config_updated</a>(router_cfg: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">social_contracts::insurance::InsuranceRouterConfig</a>, updated_by: <b>address</b>, timestamp: u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_emit_router_config_updated">emit_router_config_updated</a>(
+    router_cfg: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">InsuranceRouterConfig</a>,
+    updated_by: <b>address</b>,
+    timestamp: u64,
+) {
+    event::emit(<a href="../social_contracts/insurance.md#social_contracts_insurance_RouterConfigUpdatedEvent">RouterConfigUpdatedEvent</a> {
+        updated_by,
+        paused: router_cfg.paused,
+        max_route_reserve_market: router_cfg.max_route_reserve_market,
+        max_route_reserve_user: router_cfg.max_route_reserve_user,
+        max_route_reserve_option: router_cfg.max_route_reserve_option,
+        max_vault_concentration_bps: router_cfg.max_vault_concentration_bps,
+        min_vault_health_factor_bps: router_cfg.min_vault_health_factor_bps,
+        max_route_legs: router_cfg.max_route_legs,
+        timestamp,
+    });
 }
 </code></pre>
 
@@ -4123,7 +4116,7 @@ Preview premium with SPoT pool odds, liquidity, and vault concentration on this 
     coverage_bps: u64,
     duration_ms: u64,
 ): <a href="../social_contracts/insurance.md#social_contracts_insurance_VaultCoverageQuote">VaultCoverageQuote</a> {
-    <b>if</b> (router_cfg.router_paused) {
+    <b>if</b> (router_cfg.paused) {
         <b>return</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_coverage_quote_skipped">coverage_quote_skipped</a>(<a href="../social_contracts/insurance.md#social_contracts_insurance_SKIPPED_ROUTER_PAUSED">SKIPPED_ROUTER_PAUSED</a>)
     };
     <b>let</b> market_id = spot::get_id_address(record);
@@ -4484,8 +4477,7 @@ Buy coverage for a SPoT position
 ) {
     <b>assert</b>!(clock::timestamp_ms(clock) &lt;= deadline_ms, <a href="../social_contracts/insurance.md#social_contracts_insurance_EDeadlinePassed">EDeadlinePassed</a>);
     <b>assert</b>!(config.insurance_enabled, <a href="../social_contracts/insurance.md#social_contracts_insurance_EDisabled">EDisabled</a>);
-    <b>assert</b>!(router_cfg.router_enabled, <a href="../social_contracts/insurance.md#social_contracts_insurance_ERouteDisabled">ERouteDisabled</a>);
-    <b>assert</b>!(!router_cfg.router_paused, <a href="../social_contracts/insurance.md#social_contracts_insurance_ERouterPaused">ERouterPaused</a>);
+    <b>assert</b>!(!router_cfg.paused, <a href="../social_contracts/insurance.md#social_contracts_insurance_ERouterPaused">ERouterPaused</a>);
     <b>assert</b>!(spot::is_enabled(spot_config), <a href="../social_contracts/insurance.md#social_contracts_insurance_EMarketClosed">EMarketClosed</a>);
     <b>assert</b>!(spot::is_open(record), <a href="../social_contracts/insurance.md#social_contracts_insurance_EMarketClosed">EMarketClosed</a>);
     <b>assert</b>!(coverage_bps &gt;= config.min_coverage_bps, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidCoverage">EInvalidCoverage</a>);

@@ -127,6 +127,7 @@ pub(crate) async fn get_subscription_revenue_by_service(
     let mut conn = db.connect().await?;
     let query = "
         SELECT service_id, subscription_id, from_address, to_address, amount,
+               platform_fee, ecosystem_fee, creator_amount, platform_address,
                revenue_type, payment_time, time, transaction_id
         FROM subscription_revenue
         WHERE service_id = $1
@@ -208,6 +209,7 @@ pub(crate) async fn list_subscription_revenue(
     let (query, bind_service) = if service_id.is_some() {
         (
             "SELECT service_id, subscription_id, from_address, to_address, amount,
+                    platform_fee, ecosystem_fee, creator_amount, platform_address,
                     revenue_type, payment_time, time, transaction_id
              FROM subscription_revenue WHERE service_id = $1
              ORDER BY time DESC LIMIT $2 OFFSET $3",
@@ -216,6 +218,7 @@ pub(crate) async fn list_subscription_revenue(
     } else {
         (
             "SELECT service_id, subscription_id, from_address, to_address, amount,
+                    platform_fee, ecosystem_fee, creator_amount, platform_address,
                     revenue_type, payment_time, time, transaction_id
              FROM subscription_revenue
              ORDER BY time DESC LIMIT $1 OFFSET $2",
@@ -275,7 +278,10 @@ pub(crate) async fn get_subscription_configuration(
 ) -> Result<Option<SubscriptionConfigInfo>, SocialError> {
     let mut conn = db.connect().await?;
     let query = "
-        SELECT updated_by, billing_period_ms, max_renewal_months, version, updated_at
+        SELECT updated_by, billing_period_ms, max_renewal_months,
+               platform_fee_bps, ecosystem_fee_bps,
+               non_platform_platform_to_creator_bps, non_platform_platform_to_treasury_bps,
+               version, updated_at
         FROM subscription_config
         ORDER BY time DESC
         LIMIT 1

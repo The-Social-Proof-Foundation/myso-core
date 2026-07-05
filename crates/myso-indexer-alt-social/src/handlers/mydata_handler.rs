@@ -21,13 +21,14 @@ use myso_indexer_alt_social_schema::models::{
     NewMyDataAccessLog, NewMyDataBroadPool, NewMyDataClaim, NewMyDataConfig, NewMyDataData,
     NewMyDataDistributionRound, NewMyDataListingSubPool, NewMyDataMerkleRoot, NewMyDataPurchase,
     NewMyDataRegistry, NewMyDataRevenue, NewMyDataSnapshotAnchor, NewMyDataSubPool,
-    NewMyDataSubscription,
+    NewMyDataSubscription, NewUnifiedRevenue, REVENUE_TYPE_MYDATA_CREATOR_AMOUNT,
+    REVENUE_TYPE_MYDATA_ECOSYSTEM_FEE, REVENUE_TYPE_MYDATA_PLATFORM_FEE,
 };
 use myso_indexer_alt_social_schema::schema::{
-    mydata_access_logs, mydata_broad_pools, mydata_claims, mydata_config, mydata_data,
-    mydata_distribution_rounds, mydata_listing_sub_pools, mydata_merkle_roots, mydata_purchases,
-    mydata_registry, mydata_revenue, mydata_snapshot_anchors, mydata_sub_pools,
-    mydata_subscriptions,
+    ecosystem_treasury, mydata_access_logs, mydata_broad_pools, mydata_claims, mydata_config,
+    mydata_data, mydata_distribution_rounds, mydata_listing_sub_pools, mydata_merkle_roots,
+    mydata_purchases, mydata_registry, mydata_revenue, mydata_snapshot_anchors, mydata_sub_pools,
+    mydata_subscriptions, unified_revenue,
 };
 
 use super::common;
@@ -365,8 +366,12 @@ impl Handler for MyDataHandler {
                     let row = NewMyDataRevenue {
                         mydata_id: r.mydata_id.clone(),
                         from_address: r.from_address.clone(),
-                        to_address,
+                        to_address: to_address.clone(),
                         amount: r.amount,
+                        platform_fee: r.platform_fee,
+                        ecosystem_fee: r.ecosystem_fee,
+                        creator_amount: r.creator_amount,
+                        platform_address: r.platform_address.clone(),
                         revenue_type: r.revenue_type.clone(),
                         revenue_time: r.revenue_time,
                         transaction_id: r.transaction_id.clone(),
@@ -375,6 +380,19 @@ impl Handler for MyDataHandler {
                         .values(&row)
                         .execute(conn)
                         .await?;
+                    total += insert_mydata_p2p_unified_revenue(
+                        conn,
+                        &r.mydata_id,
+                        &r.from_address,
+                        &to_address,
+                        r.platform_address.as_deref(),
+                        r.creator_amount,
+                        r.platform_fee,
+                        r.ecosystem_fee,
+                        r.revenue_time,
+                        &r.transaction_id,
+                    )
+                    .await?;
                 }
                 MyDataRow::MyDataAccessLog(a) => {
                     total += diesel::insert_into(mydata_access_logs::table)
@@ -572,15 +590,179 @@ impl Handler for MyDataHandler {
                         .await?;
                 }
                 MyDataRow::MyDataClaim(c) => {
+                    let snapshot_id = c.snapshot_id.clone();
+                    let claimant = c.claimant.clone();
+                    let platform_address = c.platform_address.clone();
+                    let net_amount = c.net_amount;
+                    let platform_fee = c.platform_fee;
+                    let ecosystem_fee = c.ecosystem_fee;
+                    let claimed_at_ms = c.claimed_at_ms;
+                    let transaction_id = c.transaction_id.clone();
                     total += diesel::insert_into(mydata_claims::table)
                         .values(c)
                         .on_conflict((mydata_claims::event_id, mydata_claims::time))
                         .do_nothing()
                         .execute(conn)
                         .await?;
+                    total += insert_mydata_marketplace_unified_revenue(
+                        conn,
+                        &snapshot_id,
+                        &claimant,
+                        platform_address.as_deref(),
+                        net_amount,
+                        platform_fee,
+                        ecosystem_fee,
+                        claimed_at_ms,
+                        &transaction_id,
+                    )
+                    .await?;
                 }
             }
         }
         Ok(total)
     }
+}
+
+async fn load_ecosystem_treasury_address(conn: &mut Connection<'_>) -> Option<String> {
+    ecosystem_treasury::table
+        .order(ecosystem_treasury::time.desc())
+        .select(ecosystem_treasury::treasury_address)
+        .first(conn)
+        .await
+        .ok()
+}
+
+async fn insert_mydata_p2p_unified_revenue(
+    conn: &mut Connection<'_>,
+    mydata_id: &str,
+    payer_address: &str,
+    creator_address: &str,
+    platform_address: Option<&str>,
+    creator_amount: i64,
+    platform_fee: i64,
+    ecosystem_fee: i64,
+    revenue_time: i64,
+    transaction_id: &str,
+) -> Result<usize> {
+    let mut total = 0usize;
+    if creator_amount > 0 {
+        total += diesel::insert_into(unified_revenue::table)
+            .values(NewUnifiedRevenue::from_mydata(
+                REVENUE_TYPE_MYDATA_CREATOR_AMOUNT.to_string(),
+                creator_address.to_string(),
+                platform_address.map(str::to_string),
+                creator_amount,
+                mydata_id.to_string(),
+                payer_address.to_string(),
+                creator_address.to_string(),
+                revenue_time,
+                transaction_id.to_string(),
+            ))
+            .execute(conn)
+            .await?;
+    }
+    if platform_fee > 0 {
+        if let Some(platform) = platform_address {
+            total += diesel::insert_into(unified_revenue::table)
+                .values(NewUnifiedRevenue::from_mydata(
+                    REVENUE_TYPE_MYDATA_PLATFORM_FEE.to_string(),
+                    creator_address.to_string(),
+                    Some(platform.to_string()),
+                    platform_fee,
+                    mydata_id.to_string(),
+                    payer_address.to_string(),
+                    platform.to_string(),
+                    revenue_time,
+                    transaction_id.to_string(),
+                ))
+                .execute(conn)
+                .await?;
+        }
+    }
+    if ecosystem_fee > 0 {
+        if let Some(treasury) = load_ecosystem_treasury_address(conn).await {
+            total += diesel::insert_into(unified_revenue::table)
+                .values(NewUnifiedRevenue::from_mydata(
+                    REVENUE_TYPE_MYDATA_ECOSYSTEM_FEE.to_string(),
+                    creator_address.to_string(),
+                    None,
+                    ecosystem_fee,
+                    mydata_id.to_string(),
+                    payer_address.to_string(),
+                    treasury,
+                    revenue_time,
+                    transaction_id.to_string(),
+                ))
+                .execute(conn)
+                .await?;
+        }
+    }
+    Ok(total)
+}
+
+async fn insert_mydata_marketplace_unified_revenue(
+    conn: &mut Connection<'_>,
+    snapshot_id: &str,
+    claimant: &str,
+    platform_address: Option<&str>,
+    net_amount: i64,
+    platform_fee: i64,
+    ecosystem_fee: i64,
+    revenue_time: i64,
+    transaction_id: &str,
+) -> Result<usize> {
+    let mut total = 0usize;
+    if net_amount > 0 {
+        total += diesel::insert_into(unified_revenue::table)
+            .values(NewUnifiedRevenue::from_mydata(
+                REVENUE_TYPE_MYDATA_CREATOR_AMOUNT.to_string(),
+                claimant.to_string(),
+                platform_address.map(str::to_string),
+                net_amount,
+                snapshot_id.to_string(),
+                snapshot_id.to_string(),
+                claimant.to_string(),
+                revenue_time,
+                transaction_id.to_string(),
+            ))
+            .execute(conn)
+            .await?;
+    }
+    if platform_fee > 0 {
+        if let Some(platform) = platform_address {
+            total += diesel::insert_into(unified_revenue::table)
+                .values(NewUnifiedRevenue::from_mydata(
+                    REVENUE_TYPE_MYDATA_PLATFORM_FEE.to_string(),
+                    claimant.to_string(),
+                    Some(platform.to_string()),
+                    platform_fee,
+                    snapshot_id.to_string(),
+                    snapshot_id.to_string(),
+                    platform.to_string(),
+                    revenue_time,
+                    transaction_id.to_string(),
+                ))
+                .execute(conn)
+                .await?;
+        }
+    }
+    if ecosystem_fee > 0 {
+        if let Some(treasury) = load_ecosystem_treasury_address(conn).await {
+            total += diesel::insert_into(unified_revenue::table)
+                .values(NewUnifiedRevenue::from_mydata(
+                    REVENUE_TYPE_MYDATA_ECOSYSTEM_FEE.to_string(),
+                    claimant.to_string(),
+                    None,
+                    ecosystem_fee,
+                    snapshot_id.to_string(),
+                    snapshot_id.to_string(),
+                    treasury,
+                    revenue_time,
+                    transaction_id.to_string(),
+                ))
+                .execute(conn)
+                .await?;
+        }
+    }
+    Ok(total)
 }

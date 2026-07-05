@@ -206,7 +206,6 @@ pub struct NewAiCreditConfig {
     pub catalog_version: Option<String>,
     pub version: i64,
     pub updated_at: i64,
-    pub event_id: String,
     pub transaction_id: String,
     pub time: chrono::DateTime<chrono::Utc>,
 }
@@ -225,7 +224,6 @@ pub struct AiCreditConfigRow {
     pub catalog_version: Option<String>,
     pub version: i64,
     pub updated_at: i64,
-    pub event_id: String,
     pub transaction_id: String,
     pub time: chrono::DateTime<chrono::Utc>,
 }

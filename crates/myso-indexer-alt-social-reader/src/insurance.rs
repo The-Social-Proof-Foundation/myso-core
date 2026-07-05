@@ -368,9 +368,7 @@ pub struct InsuranceRouterConfigRow {
     #[diesel(sql_type = Text)]
     pub updated_by: String,
     #[diesel(sql_type = Bool)]
-    pub router_enabled: bool,
-    #[diesel(sql_type = Bool)]
-    pub router_paused: bool,
+    pub paused: bool,
     #[diesel(sql_type = BigInt)]
     pub max_route_reserve_market: i64,
     #[diesel(sql_type = BigInt)]
@@ -401,7 +399,7 @@ pub(crate) async fn get_insurance_router_config(
     let _guard = metrics.latency.start_timer();
 
     let query = "
-        SELECT updated_by, router_enabled, router_paused, max_route_reserve_market,
+        SELECT updated_by, paused, max_route_reserve_market,
                max_route_reserve_user, max_route_reserve_option, max_vault_concentration_bps,
                min_vault_health_factor_bps, max_route_legs, version, updated_at, time,
                transaction_id

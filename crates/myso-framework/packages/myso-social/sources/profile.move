@@ -25,8 +25,6 @@ module social_contracts::profile {
     use myso::myso::MYSO;
     use myso::address;
 
-    use social_contracts::subscription::{Self, ProfileSubscriptionService, ProfileSubscription};
-    
     use social_contracts::upgrade;
     use social_contracts::memory as memory;
     use social_contracts::ai_credit::{Self, AiCreditBalance, AiCreditConfig};
@@ -125,6 +123,8 @@ module social_contracts::profile {
         min_claim_threshold_divisor: u64,
         min_username_length: u64,
         max_username_length: u64,
+        /// Fee (bps) taken on profile sales (`10_000` = 100%)
+        profile_sale_fee_bps: u64,
         version: u64,
     }
 
@@ -137,6 +137,7 @@ module social_contracts::profile {
         min_claim_threshold_divisor: u64,
         min_username_length: u64,
         max_username_length: u64,
+        profile_sale_fee_bps: u64,
         timestamp: u64,
     }
 
@@ -160,8 +161,6 @@ module social_contracts::profile {
         id: UID,
         /// Treasury address that receives fees
         treasury_address: address,
-        /// Fee (bps) taken on profile sales (`10_000` = 100%)
-        profile_sale_fee_bps: u64,
         /// Version for upgrades
         version: u64,
     }
@@ -197,6 +196,12 @@ module social_contracts::profile {
         x_username: Option<String>,
         /// Minimum offer amount in MYSO tokens the owner is willing to accept (optional)
         min_offer_amount: Option<u64>,
+        /// Profile website URL (optional)
+        website: Option<String>,
+        /// Birthdate as opaque string, e.g. ISO-8601 (optional)
+        birthdate: Option<String>,
+        /// Location label (optional)
+        location: Option<String>,
         /// Collection of badges assigned to the profile
         badges: vector<ProfileBadge>,
         /// Badge ID of the selected/primary badge to display (optional)
@@ -372,6 +377,9 @@ module social_contracts::profile {
         updated_at: u64,
         x_username: Option<String>,
         min_offer_amount: Option<u64>,
+        website: Option<String>,
+        birthdate: Option<String>,
+        location: Option<String>,
     }
 
     /// Emitted when a username is claimed at profile creation
@@ -492,7 +500,6 @@ module social_contracts::profile {
     public struct EcosystemTreasuryUpdatedEvent has copy, drop {
         updated_by: address,
         new_treasury_address: address,
-        profile_sale_fee_bps: u64,
         timestamp: u64,
     }
     
@@ -514,7 +521,6 @@ module social_contracts::profile {
         let treasury = EcosystemTreasury {
             id: object::new(ctx),
             treasury_address: sender,
-            profile_sale_fee_bps: PROFILE_SALE_FEE_BPS,
             version: current_version,
         };
 
@@ -522,7 +528,6 @@ module social_contracts::profile {
         event::emit(EcosystemTreasuryUpdatedEvent {
             updated_by: sender,
             new_treasury_address: sender,
-            profile_sale_fee_bps: PROFILE_SALE_FEE_BPS,
             timestamp: clock::timestamp_ms(clock),
         });
         
@@ -541,6 +546,7 @@ module social_contracts::profile {
             min_claim_threshold_divisor: MIN_CLAIM_THRESHOLD_DIVISOR,
             min_username_length: MIN_USERNAME_LENGTH,
             max_username_length: MAX_USERNAME_LENGTH,
+            profile_sale_fee_bps: PROFILE_SALE_FEE_BPS,
             version: current_version,
         };
         event::emit(ProfileConfigUpdatedEvent {
@@ -552,6 +558,7 @@ module social_contracts::profile {
             min_claim_threshold_divisor: MIN_CLAIM_THRESHOLD_DIVISOR,
             min_username_length: MIN_USERNAME_LENGTH,
             max_username_length: MAX_USERNAME_LENGTH,
+            profile_sale_fee_bps: PROFILE_SALE_FEE_BPS,
             timestamp: clock::timestamp_ms(clock),
         });
         transfer::share_object(config);
@@ -739,6 +746,17 @@ module social_contracts::profile {
         }
     }
 
+    fun apply_optional_string_update(field: &mut Option<String>, update: Option<String>) {
+        if (option::is_some(&update)) {
+            let value = option::destroy_some(update);
+            if (string::length(&value) == 0) {
+                *field = option::none();
+            } else {
+                *field = option::some(value);
+            };
+        };
+    }
+
     fun emit_profile_updated_event(profile: &Profile, clock: &Clock, _ctx: &TxContext) {
         event::emit(ProfileUpdatedEvent {
             profile_id: object::uid_to_address(&profile.id),
@@ -750,6 +768,9 @@ module social_contracts::profile {
             updated_at: clock::timestamp_ms(clock),
             x_username: profile.x_username,
             min_offer_amount: profile.min_offer_amount,
+            website: profile.website,
+            birthdate: profile.birthdate,
+            location: profile.location,
         });
     }
 
@@ -826,6 +847,9 @@ module social_contracts::profile {
             owner,
             x_username: option::none(),
             min_offer_amount: option::none(),
+            website: option::none(),
+            birthdate: option::none(),
+            location: option::none(),
             badges: vector::empty<ProfileBadge>(),
             selected_badge_id: option::none(),
             selected_ecosystem_badge_id: option::none(),
@@ -930,6 +954,9 @@ module social_contracts::profile {
             owner,
             x_username: option::none(),
             min_offer_amount: option::none(),
+            website: option::none(),
+            birthdate: option::none(),
+            location: option::none(),
             badges: vector::empty<ProfileBadge>(),
             selected_badge_id: option::none(),
             selected_ecosystem_badge_id: option::none(),
@@ -1108,6 +1135,9 @@ module social_contracts::profile {
         new_profile_picture_url: vector<u8>,
         new_cover_photo_url: vector<u8>,
         min_offer_amount: Option<u64>,
+        new_website: Option<String>,
+        new_birthdate: Option<String>,
+        new_location: Option<String>,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
@@ -1133,6 +1163,10 @@ module social_contracts::profile {
         if (option::is_some(&min_offer_amount)) {
             profile.min_offer_amount = min_offer_amount;
         };
+
+        apply_optional_string_update(&mut profile.website, new_website);
+        apply_optional_string_update(&mut profile.birthdate, new_birthdate);
+        apply_optional_string_update(&mut profile.location, new_location);
 
         emit_profile_updated_event(profile, clock, ctx);
     }
@@ -1162,6 +1196,21 @@ module social_contracts::profile {
     /// Get the owner of a profile
     public fun owner(profile: &Profile): address {
         profile.owner
+    }
+
+    /// Get the profile website (optional)
+    public fun website(profile: &Profile): Option<String> {
+        profile.website
+    }
+
+    /// Get the profile birthdate (optional)
+    public fun birthdate(profile: &Profile): Option<String> {
+        profile.birthdate
+    }
+
+    /// Get the profile location (optional)
+    public fun location(profile: &Profile): Option<String> {
+        profile.location
     }
 
     /// Get the ID of a profile
@@ -1207,28 +1256,6 @@ module social_contracts::profile {
     /// Get the owner of a profile
     public fun get_owner(profile: &Profile): address {
         profile.owner
-    }
-
-    /// Create a subscription service for this profile (creates separate service object)
-    public entry fun create_subscription_service(
-        profile: &Profile,
-        monthly_fee: u64,
-        clock: &Clock,
-        ctx: &mut TxContext
-    ) {
-        assert!(tx_context::sender(ctx) == profile.owner, EUnauthorized);
-        
-        // Create the subscription service and share it
-        subscription::create_profile_service_entry(monthly_fee, clock, ctx);
-    }
-
-    /// Check if a viewer has a valid subscription (uses subscription module functions)
-    public fun has_valid_subscription(
-        subscription: &ProfileSubscription,
-        service: &ProfileSubscriptionService,
-        clock: &Clock,
-    ): bool {
-        subscription::is_subscription_valid(subscription, service, clock)
     }
 
     /// Create an offer to purchase a profile
@@ -1297,6 +1324,7 @@ module social_contracts::profile {
     public entry fun accept_offer(
         registry: &mut UsernameRegistry,
         mut profile: Profile,
+        config: &ProfileConfig,
         treasury: &EcosystemTreasury,
         offeror: address,
         new_main_profile: Option<address>,
@@ -1325,7 +1353,7 @@ module social_contracts::profile {
         let ProfileOffer { offeror: _, amount, created_at: _, locked_myso } = table::remove(offers, offeror);
         
         // Calculate the fee amount (5% of the total)
-        let fee_amount = (amount * treasury.profile_sale_fee_bps) / 10000;
+        let fee_amount = (amount * config.profile_sale_fee_bps) / 10000;
         
         // Convert the locked balance to a coin
         let mut payment = coin::from_balance(locked_myso, ctx);
@@ -1395,6 +1423,7 @@ module social_contracts::profile {
         memory_registry: &mut memory::MemoryRegistry,
         linked_account: &mut memory::MemoryAccount,
         mut profile: Profile,
+        config: &ProfileConfig,
         treasury: &EcosystemTreasury,
         offeror: address,
         new_main_profile: Option<address>,
@@ -1420,7 +1449,7 @@ module social_contracts::profile {
 
         let ProfileOffer { offeror: _, amount, created_at: _, locked_myso } = table::remove(offers, offeror);
 
-        let fee_amount = (amount * treasury.profile_sale_fee_bps) / 10000;
+        let fee_amount = (amount * config.profile_sale_fee_bps) / 10000;
         let mut payment = coin::from_balance(locked_myso, ctx);
         let fee_payment = coin::split(&mut payment, fee_amount, ctx);
         transfer::public_transfer(fee_payment, get_treasury_address(treasury));
@@ -1557,35 +1586,24 @@ module social_contracts::profile {
         event::emit(EcosystemTreasuryUpdatedEvent {
             updated_by: tx_context::sender(ctx),
             new_treasury_address: new_address,
-            profile_sale_fee_bps: treasury.profile_sale_fee_bps,
             timestamp: clock::timestamp_ms(clock),
         });
     }
 
-    /// Update Ecosystem Treasury config: treasury address and profile sale fee bps (admin only).
+    /// Update Ecosystem Treasury address (admin only).
     public entry fun update_ecosystem_treasury_config(
-        _: &EcosystemTreasuryAdminCap,
+        admin_cap: &EcosystemTreasuryAdminCap,
         treasury: &mut EcosystemTreasury,
         new_address: address,
-        profile_sale_fee_bps: u64,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        assert!(profile_sale_fee_bps <= 10000, EInvalidConfig);
-        treasury.treasury_address = new_address;
-        treasury.profile_sale_fee_bps = profile_sale_fee_bps;
-
-        event::emit(EcosystemTreasuryUpdatedEvent {
-            updated_by: tx_context::sender(ctx),
-            new_treasury_address: new_address,
-            profile_sale_fee_bps,
-            timestamp: clock::timestamp_ms(clock),
-        });
+        update_treasury_address(admin_cap, treasury, new_address, clock, ctx);
     }
 
     /// Read the configured profile sale fee (bps).
-    public fun profile_sale_fee_bps(treasury: &EcosystemTreasury): u64 {
-        treasury.profile_sale_fee_bps
+    public fun profile_sale_fee_bps(config: &ProfileConfig): u64 {
+        config.profile_sale_fee_bps
     }
 
     /// Get the version of the EcosystemTreasury
@@ -1636,6 +1654,7 @@ module social_contracts::profile {
         min_claim_threshold_divisor: u64,
         min_username_length: u64,
         max_username_length: u64,
+        profile_sale_fee_bps: u64,
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
@@ -1644,6 +1663,7 @@ module social_contracts::profile {
         assert!(curve_factor_min > 0 && curve_factor_max >= curve_factor_min, EInvalidConfig);
         assert!(min_claim_threshold_divisor > 0, EInvalidConfig);
         assert!(min_username_length > 0 && max_username_length >= min_username_length, EInvalidConfig);
+        assert!(profile_sale_fee_bps <= 10000, EInvalidConfig);
 
         config.max_vesting_pieces = max_vesting_pieces;
         config.curve_factor_min = curve_factor_min;
@@ -1652,6 +1672,7 @@ module social_contracts::profile {
         config.min_claim_threshold_divisor = min_claim_threshold_divisor;
         config.min_username_length = min_username_length;
         config.max_username_length = max_username_length;
+        config.profile_sale_fee_bps = profile_sale_fee_bps;
 
         event::emit(ProfileConfigUpdatedEvent {
             updated_by: tx_context::sender(ctx),
@@ -1662,8 +1683,69 @@ module social_contracts::profile {
             min_claim_threshold_divisor,
             min_username_length,
             max_username_length,
+            profile_sale_fee_bps,
             timestamp: clock::timestamp_ms(clock),
         });
+    }
+
+    /// Migration function for ProfileConfig — copies the profile sale fee from the pre-upgrade value.
+    public entry fun migrate_profile_config(
+        config: &mut ProfileConfig,
+        profile_sale_fee_bps: u64,
+        _: &upgrade::UpgradeAdminCap,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        let current_version = upgrade::current_version();
+        assert!(config.version < current_version, EInvalidConfig);
+        assert!(profile_sale_fee_bps <= 10000, EInvalidConfig);
+
+        let old_version = config.version;
+        config.profile_sale_fee_bps = profile_sale_fee_bps;
+        config.version = current_version;
+
+        upgrade::emit_migration_event(
+            object::id(config),
+            string::utf8(b"ProfileConfig"),
+            old_version,
+            tx_context::sender(ctx),
+        );
+
+        event::emit(ProfileConfigUpdatedEvent {
+            updated_by: tx_context::sender(ctx),
+            max_vesting_pieces: config.max_vesting_pieces,
+            curve_factor_min: config.curve_factor_min,
+            curve_factor_max: config.curve_factor_max,
+            curve_precision: config.curve_precision,
+            min_claim_threshold_divisor: config.min_claim_threshold_divisor,
+            min_username_length: config.min_username_length,
+            max_username_length: config.max_username_length,
+            profile_sale_fee_bps: config.profile_sale_fee_bps,
+            timestamp: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// Migration function for Profile — initializes on-chain website/birthdate/location fields.
+    public entry fun migrate_profile(
+        profile: &mut Profile,
+        _: &upgrade::UpgradeAdminCap,
+        ctx: &mut TxContext,
+    ) {
+        let current_version = upgrade::current_version();
+        assert!(profile.version < current_version, 1);
+
+        let old_version = profile.version;
+        profile.website = option::none();
+        profile.birthdate = option::none();
+        profile.location = option::none();
+        profile.version = current_version;
+
+        upgrade::emit_migration_event(
+            object::id(profile),
+            string::utf8(b"Profile"),
+            old_version,
+            tx_context::sender(ctx),
+        );
     }
 
     /// Create an EcosystemTreasuryAdminCap for bootstrap (package visibility only)
@@ -1902,6 +1984,9 @@ module social_contracts::profile {
             owner,
             x_username: option::none(),
             min_offer_amount: option::none(),
+            website: option::none(),
+            birthdate: option::none(),
+            location: option::none(),
             badges: vector::empty<ProfileBadge>(),
             selected_badge_id: option::none(),
             selected_ecosystem_badge_id: option::none(),

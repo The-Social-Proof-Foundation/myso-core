@@ -119,6 +119,14 @@ pub struct MyDataRevenueRow {
     pub to_address: String,
     #[diesel(sql_type = BigInt)]
     pub amount: i64,
+    #[diesel(sql_type = BigInt)]
+    pub platform_fee: i64,
+    #[diesel(sql_type = BigInt)]
+    pub ecosystem_fee: i64,
+    #[diesel(sql_type = BigInt)]
+    pub creator_amount: i64,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub platform_address: Option<String>,
     #[diesel(sql_type = Text)]
     pub revenue_type: String,
     #[diesel(sql_type = BigInt)]
@@ -210,6 +218,14 @@ pub struct MyDataPurchaseRow {
     pub buyer: String,
     #[diesel(sql_type = BigInt)]
     pub price: i64,
+    #[diesel(sql_type = BigInt)]
+    pub platform_fee: i64,
+    #[diesel(sql_type = BigInt)]
+    pub ecosystem_fee: i64,
+    #[diesel(sql_type = BigInt)]
+    pub creator_amount: i64,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub platform_address: Option<String>,
     #[diesel(sql_type = Text)]
     pub purchase_type: String,
     #[diesel(sql_type = BigInt)]
@@ -301,6 +317,10 @@ pub struct NewMyDataPurchase {
     pub mydata_id: String,
     pub buyer: String,
     pub price: i64,
+    pub platform_fee: i64,
+    pub ecosystem_fee: i64,
+    pub creator_amount: i64,
+    pub platform_address: Option<String>,
     pub purchase_type: String,
     pub purchase_time: i64,
     pub transaction_id: String,
@@ -355,6 +375,10 @@ pub struct NewMyDataRevenue {
     pub from_address: String,
     pub to_address: String,
     pub amount: i64,
+    pub platform_fee: i64,
+    pub ecosystem_fee: i64,
+    pub creator_amount: i64,
+    pub platform_address: Option<String>,
     pub revenue_type: String,
     pub revenue_time: i64,
     pub transaction_id: String,
@@ -430,6 +454,12 @@ pub struct NewMyDataConfig {
     pub max_subscription_days: i64,
     pub max_free_access_grants: i64,
     pub max_encryption_id_bytes: i64,
+    pub p2p_platform_fee_bps: i64,
+    pub p2p_ecosystem_fee_bps: i64,
+    pub mydata_marketplace_platform_fee_bps: i64,
+    pub mydata_marketplace_ecosystem_fee_bps: i64,
+    pub non_platform_platform_to_creator_bps: i64,
+    pub non_platform_platform_to_treasury_bps: i64,
     pub version: i64,
     pub updated_at: i64,
     pub transaction_id: String,
@@ -595,6 +625,11 @@ pub struct NewMyDataClaim {
     pub snapshot_id: String,
     pub claimant: String,
     pub amount: i64,
+    pub gross_amount: i64,
+    pub platform_fee: i64,
+    pub ecosystem_fee: i64,
+    pub net_amount: i64,
+    pub platform_address: Option<String>,
     pub claimed_at_ms: i64,
     pub event_id: String,
     pub transaction_id: String,
@@ -720,6 +755,16 @@ pub struct MyDataClaimRow {
     pub claimant: String,
     #[diesel(sql_type = BigInt)]
     pub amount: i64,
+    #[diesel(sql_type = BigInt)]
+    pub gross_amount: i64,
+    #[diesel(sql_type = BigInt)]
+    pub platform_fee: i64,
+    #[diesel(sql_type = BigInt)]
+    pub ecosystem_fee: i64,
+    #[diesel(sql_type = BigInt)]
+    pub net_amount: i64,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub platform_address: Option<String>,
     #[diesel(sql_type = BigInt)]
     pub claimed_at_ms: i64,
     #[diesel(sql_type = Text)]

@@ -108,6 +108,8 @@ pub(crate) async fn ingest_usage_line(
             created_at: chrono::Utc::now(),
             organization_id: req.organization_id,
         })
+        .on_conflict(ai_credit_usage_lines::receipt_id)
+        .do_nothing()
         .execute(&mut conn)
         .await?;
     Ok(())

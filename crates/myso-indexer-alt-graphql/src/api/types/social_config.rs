@@ -556,6 +556,36 @@ impl MyDataConfig {
         self.inner.max_encryption_id_bytes
     }
 
+    /// P2P marketplace platform fee in bps (default 250 = 2.5%).
+    async fn p2p_platform_fee_bps(&self) -> i64 {
+        self.inner.p2p_platform_fee_bps
+    }
+
+    /// P2P marketplace ecosystem fee in bps (default 250 = 2.5%).
+    async fn p2p_ecosystem_fee_bps(&self) -> i64 {
+        self.inner.p2p_ecosystem_fee_bps
+    }
+
+    /// MyData marketplace pool claim platform fee in bps (default 250 = 2.5%).
+    async fn mydata_marketplace_platform_fee_bps(&self) -> i64 {
+        self.inner.mydata_marketplace_platform_fee_bps
+    }
+
+    /// MyData marketplace pool claim ecosystem fee in bps (default 250 = 2.5%).
+    async fn mydata_marketplace_ecosystem_fee_bps(&self) -> i64 {
+        self.inner.mydata_marketplace_ecosystem_fee_bps
+    }
+
+    /// When no platform is present, share of the platform fee bucket routed to creators (bps).
+    async fn non_platform_platform_to_creator_bps(&self) -> i64 {
+        self.inner.non_platform_platform_to_creator_bps
+    }
+
+    /// When no platform is present, share of the platform fee bucket routed to ecosystem treasury (bps).
+    async fn non_platform_platform_to_treasury_bps(&self) -> i64 {
+        self.inner.non_platform_platform_to_treasury_bps
+    }
+
     /// Configuration version.
     async fn version(&self) -> i64 {
         self.inner.version
@@ -872,6 +902,26 @@ impl SubscriptionConfig {
         self.inner.max_renewal_months
     }
 
+    /// Platform fee in bps deducted from gross subscription payments (default 250 = 2.5%).
+    async fn platform_fee_bps(&self) -> i64 {
+        self.inner.platform_fee_bps
+    }
+
+    /// Ecosystem treasury fee in bps deducted from gross subscription payments (default 250 = 2.5%).
+    async fn ecosystem_fee_bps(&self) -> i64 {
+        self.inner.ecosystem_fee_bps
+    }
+
+    /// When no platform is present, share of the platform fee bucket routed to creators (bps).
+    async fn non_platform_platform_to_creator_bps(&self) -> i64 {
+        self.inner.non_platform_platform_to_creator_bps
+    }
+
+    /// When no platform is present, share of the platform fee bucket routed to ecosystem treasury (bps).
+    async fn non_platform_platform_to_treasury_bps(&self) -> i64 {
+        self.inner.non_platform_platform_to_treasury_bps
+    }
+
     /// Configuration version.
     async fn version(&self) -> i64 {
         self.inner.version
@@ -1182,14 +1232,9 @@ impl InsuranceRouterConfig {
         &self.inner.updated_by
     }
 
-    /// Whether the coverage router is enabled.
-    async fn router_enabled(&self) -> bool {
-        self.inner.router_enabled
-    }
-
     /// Whether the coverage router is paused.
-    async fn router_paused(&self) -> bool {
-        self.inner.router_paused
+    async fn paused(&self) -> bool {
+        self.inner.paused
     }
 
     /// Maximum route reserve that may be locked across a single market.

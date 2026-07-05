@@ -184,10 +184,69 @@ pub struct OracleArgs {
     /// Shared secret for `POST /internal/audit/logs` on social-server.
     #[arg(long, env = "AI_CREDIT_AUDIT_SYNC_SECRET")]
     pub audit_sync_secret: Option<String>,
+
+    /// Required on all `/v1/ai-credit/*` and `/usage-history` requests (`x-ai-credit-oracle-secret`).
+    #[arg(long, env = "AI_CREDIT_ORACLE_API_SECRET")]
+    pub oracle_api_secret: Option<String>,
+
+    /// Require `AI_CREDIT_ORACLE_API_SECRET` at startup (set false for local dev).
+    #[arg(long, env = "AI_CREDIT_REQUIRE_SECRETS", default_value = "true")]
+    pub require_secrets: bool,
+
+    /// Verify agent signatures on `POST /v1/ai-credit/usage` (set false for local dev).
+    #[arg(long, env = "AI_CREDIT_AGENT_AUTH_ENABLED", default_value = "true")]
+    pub agent_auth_enabled: bool,
+
+    #[arg(
+        long,
+        env = "AI_CREDIT_AGENT_AUTH_TTL_SECS",
+        default_value = "300"
+    )]
+    pub agent_auth_ttl_secs: i64,
+
+    /// Require `AI_CREDIT_SETTLEMENT_SECRET` at startup and on `/internal/ai-credit/settle`.
+    #[arg(
+        long,
+        env = "AI_CREDIT_REQUIRE_SETTLEMENT_SECRET",
+        default_value = "true"
+    )]
+    pub require_settlement_secret: bool,
+
+    /// After corrupt receipt JSON backup, allow empty store on load.
+    #[arg(long, env = "AI_CREDIT_RECEIPT_STORE_RECOVER", default_value = "false")]
+    pub receipt_store_recover: bool,
+
+    #[arg(
+        long,
+        env = "AI_CREDIT_INGEST_RECONCILE_INTERVAL_SECS",
+        default_value = "30"
+    )]
+    pub ingest_reconcile_interval_secs: u64,
+
+    #[arg(
+        long,
+        env = "AI_CREDIT_INGEST_BACKLOG_WARN_AGE_SECS",
+        default_value = "300"
+    )]
+    pub ingest_backlog_warn_age_secs: u64,
 }
 
 impl OracleArgs {
     pub fn catalog_sync_active(&self) -> bool {
         self.catalog_sync_enabled && self.openrouter_api_key.is_some()
+    }
+
+    pub fn validate_startup(&self) -> anyhow::Result<()> {
+        if self.require_secrets && self.oracle_api_secret.is_none() {
+            anyhow::bail!(
+                "AI_CREDIT_ORACLE_API_SECRET is required when AI_CREDIT_REQUIRE_SECRETS=true"
+            );
+        }
+        if self.require_settlement_secret && self.settlement_secret.is_none() {
+            anyhow::bail!(
+                "AI_CREDIT_SETTLEMENT_SECRET is required when AI_CREDIT_REQUIRE_SETTLEMENT_SECRET=true"
+            );
+        }
+        Ok(())
     }
 }

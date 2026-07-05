@@ -303,9 +303,32 @@ impl MyDataPurchase {
         resolve_profile_summary(ctx, &self.inner.buyer).await
     }
 
-    /// Price paid.
+    /// Price paid (gross).
     async fn price(&self) -> i64 {
         self.inner.price
+    }
+
+    /// Platform fee slice deducted from gross payment.
+    async fn platform_fee(&self) -> i64 {
+        self.inner.platform_fee
+    }
+
+    /// Ecosystem fee slice deducted from gross payment.
+    async fn ecosystem_fee(&self) -> i64 {
+        self.inner.ecosystem_fee
+    }
+
+    /// Net amount credited to listing owner after fees.
+    async fn creator_amount(&self) -> i64 {
+        self.inner.creator_amount
+    }
+
+    /// Platform treasury recipient when a platform fee was routed on-chain.
+    async fn platform_id(&self) -> Option<MySoAddress> {
+        self.inner
+            .platform_address
+            .as_ref()
+            .and_then(|a| MySoAddress::from_str(a).ok().map(|addr| addr.into()))
     }
 
     /// Purchase type ("one_time" or "subscription").
@@ -440,9 +463,32 @@ impl MyDataRevenue {
             .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
     }
 
-    /// Amount.
+    /// Amount (gross).
     async fn amount(&self) -> i64 {
         self.inner.amount
+    }
+
+    /// Platform fee slice deducted from gross payment.
+    async fn platform_fee(&self) -> i64 {
+        self.inner.platform_fee
+    }
+
+    /// Ecosystem fee slice deducted from gross payment.
+    async fn ecosystem_fee(&self) -> i64 {
+        self.inner.ecosystem_fee
+    }
+
+    /// Net amount credited to listing owner after fees.
+    async fn creator_amount(&self) -> i64 {
+        self.inner.creator_amount
+    }
+
+    /// Platform treasury recipient when a platform fee was routed on-chain.
+    async fn platform_id(&self) -> Option<MySoAddress> {
+        self.inner
+            .platform_address
+            .as_ref()
+            .and_then(|a| MySoAddress::from_str(a).ok().map(|addr| addr.into()))
     }
 
     /// Revenue type ("one_time", "subscription", "grant").
@@ -911,6 +957,34 @@ impl MyDataClaim {
 
     async fn amount(&self) -> i64 {
         self.inner.amount
+    }
+
+    /// Gross claim amount before on-chain fee deduction.
+    async fn gross_amount(&self) -> i64 {
+        self.inner.gross_amount
+    }
+
+    /// Platform fee slice deducted at claim.
+    async fn platform_fee(&self) -> i64 {
+        self.inner.platform_fee
+    }
+
+    /// Ecosystem fee slice deducted at claim.
+    async fn ecosystem_fee(&self) -> i64 {
+        self.inner.ecosystem_fee
+    }
+
+    /// Net amount paid to claimant after fees.
+    async fn net_amount(&self) -> i64 {
+        self.inner.net_amount
+    }
+
+    /// Platform treasury recipient when a platform fee was routed on-chain.
+    async fn platform_id(&self) -> Option<MySoAddress> {
+        self.inner
+            .platform_address
+            .as_ref()
+            .and_then(|a| MySoAddress::from_str(a).ok().map(|addr| addr.into()))
     }
 
     async fn claimed_at_ms(&self) -> i64 {

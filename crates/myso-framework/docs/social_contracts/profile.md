@@ -58,6 +58,7 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `move_username`](#social_contracts_profile_move_username)
 -  [Function `profile_picture_event_string`](#social_contracts_profile_profile_picture_event_string)
 -  [Function `cover_photo_event_string`](#social_contracts_profile_cover_photo_event_string)
+-  [Function `apply_optional_string_update`](#social_contracts_profile_apply_optional_string_update)
 -  [Function `emit_profile_updated_event`](#social_contracts_profile_emit_profile_updated_event)
 -  [Function `create_profile`](#social_contracts_profile_create_profile)
 -  [Function `create_profile_from_beneficiary_claim`](#social_contracts_profile_create_profile_from_beneficiary_claim)
@@ -70,6 +71,9 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `profile_picture`](#social_contracts_profile_profile_picture)
 -  [Function `cover_photo`](#social_contracts_profile_cover_photo)
 -  [Function `owner`](#social_contracts_profile_owner)
+-  [Function `website`](#social_contracts_profile_website)
+-  [Function `birthdate`](#social_contracts_profile_birthdate)
+-  [Function `location`](#social_contracts_profile_location)
 -  [Function `id`](#social_contracts_profile_id)
 -  [Function `lookup_profile_by_username`](#social_contracts_profile_lookup_profile_by_username)
 -  [Function `is_username_beneficiary_locked`](#social_contracts_profile_is_username_beneficiary_locked)
@@ -77,8 +81,6 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `lookup_profile_by_owner`](#social_contracts_profile_lookup_profile_by_owner)
 -  [Function `get_id_address`](#social_contracts_profile_get_id_address)
 -  [Function `get_owner`](#social_contracts_profile_get_owner)
--  [Function `create_subscription_service`](#social_contracts_profile_create_subscription_service)
--  [Function `has_valid_subscription`](#social_contracts_profile_has_valid_subscription)
 -  [Function `create_offer`](#social_contracts_profile_create_offer)
 -  [Function `accept_offer`](#social_contracts_profile_accept_offer)
 -  [Function `accept_offer_with_memory`](#social_contracts_profile_accept_offer_with_memory)
@@ -93,6 +95,8 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `migrate_ecosystem_treasury`](#social_contracts_profile_migrate_ecosystem_treasury)
 -  [Function `create_profile_admin_cap`](#social_contracts_profile_create_profile_admin_cap)
 -  [Function `update_profile_config`](#social_contracts_profile_update_profile_config)
+-  [Function `migrate_profile_config`](#social_contracts_profile_migrate_profile_config)
+-  [Function `migrate_profile`](#social_contracts_profile_migrate_profile)
 -  [Function `create_ecosystem_treasury_admin_cap`](#social_contracts_profile_create_ecosystem_treasury_admin_cap)
 -  [Function `create_ecosystem_badge_admin_cap`](#social_contracts_profile_create_ecosystem_badge_admin_cap)
 -  [Function `create_username_admin_cap`](#social_contracts_profile_create_username_admin_cap)
@@ -200,7 +204,6 @@ Handles user identity, profile creation, management, and username registration
 <b>use</b> <a href="../myso/vec_set.md#myso_vec_set">myso::vec_set</a>;
 <b>use</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit">social_contracts::ai_credit</a>;
 <b>use</b> <a href="../social_contracts/memory.md#social_contracts_memory">social_contracts::memory</a>;
-<b>use</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">social_contracts::subscription</a>;
 <b>use</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade">social_contracts::upgrade</a>;
 <b>use</b> <a href="../std/address.md#std_address">std::address</a>;
 <b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
@@ -300,6 +303,12 @@ Global profile feature configuration
 <dd>
 </dd>
 <dt>
+<code><a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>: u64</code>
+</dt>
+<dd>
+ Fee (bps) taken on profile sales (<code>10_000</code> = 100%)
+</dd>
+<dt>
 <code><a href="../social_contracts/profile.md#social_contracts_profile_version">version</a>: u64</code>
 </dt>
 <dd>
@@ -362,6 +371,11 @@ Global profile feature configuration
 </dd>
 <dt>
 <code>max_username_length: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>: u64</code>
 </dt>
 <dd>
 </dd>
@@ -483,12 +497,6 @@ Social Ecosystem Treasury that receives fees from profile sales
 </dt>
 <dd>
  Treasury address that receives fees
-</dd>
-<dt>
-<code><a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>: u64</code>
-</dt>
-<dd>
- Fee (bps) taken on profile sales (<code>10_000</code> = 100%)
 </dd>
 <dt>
 <code><a href="../social_contracts/profile.md#social_contracts_profile_version">version</a>: u64</code>
@@ -620,6 +628,24 @@ Profile object that contains user information
 </dt>
 <dd>
  Minimum offer amount in MYSO tokens the owner is willing to accept (optional)
+</dd>
+<dt>
+<code><a href="../social_contracts/profile.md#social_contracts_profile_website">website</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+ Profile website URL (optional)
+</dd>
+<dt>
+<code><a href="../social_contracts/profile.md#social_contracts_profile_birthdate">birthdate</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+ Birthdate as opaque string, e.g. ISO-8601 (optional)
+</dd>
+<dt>
+<code><a href="../social_contracts/profile.md#social_contracts_profile_location">location</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+ Location label (optional)
 </dd>
 <dt>
 <code>badges: vector&lt;<a href="../social_contracts/profile.md#social_contracts_profile_ProfileBadge">social_contracts::profile::ProfileBadge</a>&gt;</code>
@@ -1312,6 +1338,21 @@ Profile updated event with all profile details (username lives in registry)
 </dt>
 <dd>
 </dd>
+<dt>
+<code><a href="../social_contracts/profile.md#social_contracts_profile_website">website</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/profile.md#social_contracts_profile_birthdate">birthdate</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/profile.md#social_contracts_profile_location">location</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+</dd>
 </dl>
 
 
@@ -1941,11 +1982,6 @@ Event emitted when Ecosystem Treasury address is updated
 <dd>
 </dd>
 <dt>
-<code><a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
 <code>timestamp: u64</code>
 </dt>
 <dd>
@@ -2489,14 +2525,12 @@ Bootstrap initialization function - creates the username registry and treasury
     <b>let</b> treasury = <a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">EcosystemTreasury</a> {
         <a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>: object::new(ctx),
         treasury_address: sender,
-        <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>: <a href="../social_contracts/profile.md#social_contracts_profile_PROFILE_SALE_FEE_BPS">PROFILE_SALE_FEE_BPS</a>,
         <a href="../social_contracts/profile.md#social_contracts_profile_version">version</a>: current_version,
     };
     // Emit event so indexer can populate ecosystem_treasury table
     event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasuryUpdatedEvent">EcosystemTreasuryUpdatedEvent</a> {
         updated_by: sender,
         new_treasury_address: sender,
-        <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>: <a href="../social_contracts/profile.md#social_contracts_profile_PROFILE_SALE_FEE_BPS">PROFILE_SALE_FEE_BPS</a>,
         timestamp: clock::timestamp_ms(clock),
     });
     // Share the registry to make it globally accessible
@@ -2512,6 +2546,7 @@ Bootstrap initialization function - creates the username registry and treasury
         min_claim_threshold_divisor: <a href="../social_contracts/profile.md#social_contracts_profile_MIN_CLAIM_THRESHOLD_DIVISOR">MIN_CLAIM_THRESHOLD_DIVISOR</a>,
         min_username_length: <a href="../social_contracts/profile.md#social_contracts_profile_MIN_USERNAME_LENGTH">MIN_USERNAME_LENGTH</a>,
         max_username_length: <a href="../social_contracts/profile.md#social_contracts_profile_MAX_USERNAME_LENGTH">MAX_USERNAME_LENGTH</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>: <a href="../social_contracts/profile.md#social_contracts_profile_PROFILE_SALE_FEE_BPS">PROFILE_SALE_FEE_BPS</a>,
         <a href="../social_contracts/profile.md#social_contracts_profile_version">version</a>: current_version,
     };
     event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfigUpdatedEvent">ProfileConfigUpdatedEvent</a> {
@@ -2523,6 +2558,7 @@ Bootstrap initialization function - creates the username registry and treasury
         min_claim_threshold_divisor: <a href="../social_contracts/profile.md#social_contracts_profile_MIN_CLAIM_THRESHOLD_DIVISOR">MIN_CLAIM_THRESHOLD_DIVISOR</a>,
         min_username_length: <a href="../social_contracts/profile.md#social_contracts_profile_MIN_USERNAME_LENGTH">MIN_USERNAME_LENGTH</a>,
         max_username_length: <a href="../social_contracts/profile.md#social_contracts_profile_MAX_USERNAME_LENGTH">MAX_USERNAME_LENGTH</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>: <a href="../social_contracts/profile.md#social_contracts_profile_PROFILE_SALE_FEE_BPS">PROFILE_SALE_FEE_BPS</a>,
         timestamp: clock::timestamp_ms(clock),
     });
     transfer::share_object(config);
@@ -3025,6 +3061,37 @@ Release a username beneficiary lock after claim or admin end.
 
 </details>
 
+<a name="social_contracts_profile_apply_optional_string_update"></a>
+
+## Function `apply_optional_string_update`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_apply_optional_string_update">apply_optional_string_update</a>(field: &<b>mut</b> <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, update: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_apply_optional_string_update">apply_optional_string_update</a>(field: &<b>mut</b> Option&lt;String&gt;, update: Option&lt;String&gt;) {
+    <b>if</b> (option::is_some(&update)) {
+        <b>let</b> value = option::destroy_some(update);
+        <b>if</b> (string::length(&value) == 0) {
+            *field = option::none();
+        } <b>else</b> {
+            *field = option::some(value);
+        };
+    };
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_profile_emit_profile_updated_event"></a>
 
 ## Function `emit_profile_updated_event`
@@ -3051,6 +3118,9 @@ Release a username beneficiary lock after claim or admin end.
         updated_at: clock::timestamp_ms(clock),
         <a href="../social_contracts/profile.md#social_contracts_profile_x_username">x_username</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_x_username">x_username</a>,
         <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_website">website</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_website">website</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_birthdate">birthdate</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_birthdate">birthdate</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_location">location</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_location">location</a>,
     });
 }
 </code></pre>
@@ -3134,6 +3204,9 @@ Main entry: also creates a linked [<code><a href="../social_contracts/memory.md#
         <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>,
         <a href="../social_contracts/profile.md#social_contracts_profile_x_username">x_username</a>: option::none(),
         <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: option::none(),
+        <a href="../social_contracts/profile.md#social_contracts_profile_website">website</a>: option::none(),
+        <a href="../social_contracts/profile.md#social_contracts_profile_birthdate">birthdate</a>: option::none(),
+        <a href="../social_contracts/profile.md#social_contracts_profile_location">location</a>: option::none(),
         badges: vector::empty&lt;<a href="../social_contracts/profile.md#social_contracts_profile_ProfileBadge">ProfileBadge</a>&gt;(),
         selected_badge_id: option::none(),
         selected_ecosystem_badge_id: option::none(),
@@ -3249,6 +3322,9 @@ Create a profile from an oracle-verified PoC username beneficiary claim.
         <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>,
         <a href="../social_contracts/profile.md#social_contracts_profile_x_username">x_username</a>: option::none(),
         <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: option::none(),
+        <a href="../social_contracts/profile.md#social_contracts_profile_website">website</a>: option::none(),
+        <a href="../social_contracts/profile.md#social_contracts_profile_birthdate">birthdate</a>: option::none(),
+        <a href="../social_contracts/profile.md#social_contracts_profile_location">location</a>: option::none(),
         badges: vector::empty&lt;<a href="../social_contracts/profile.md#social_contracts_profile_ProfileBadge">ProfileBadge</a>&gt;(),
         selected_badge_id: option::none(),
         selected_ecosystem_badge_id: option::none(),
@@ -3465,7 +3541,7 @@ Same as [<code><a href="../social_contracts/profile.md#social_contracts_profile_
 Only the profile owner can update profile information
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_update_profile">update_profile</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, new_display_name: <a href="../std/string.md#std_string_String">std::string::String</a>, new_bio: <a href="../std/string.md#std_string_String">std::string::String</a>, new_profile_picture_url: vector&lt;u8&gt;, new_cover_photo_url: vector&lt;u8&gt;, <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_update_profile">update_profile</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, new_display_name: <a href="../std/string.md#std_string_String">std::string::String</a>, new_bio: <a href="../std/string.md#std_string_String">std::string::String</a>, new_profile_picture_url: vector&lt;u8&gt;, new_cover_photo_url: vector&lt;u8&gt;, <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, new_website: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, new_birthdate: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, new_location: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3482,6 +3558,9 @@ Only the profile owner can update profile information
     new_profile_picture_url: vector&lt;u8&gt;,
     new_cover_photo_url: vector&lt;u8&gt;,
     <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: Option&lt;u64&gt;,
+    new_website: Option&lt;String&gt;,
+    new_birthdate: Option&lt;String&gt;,
+    new_location: Option&lt;String&gt;,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
@@ -3502,6 +3581,9 @@ Only the profile owner can update profile information
     <b>if</b> (option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>)) {
         <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a> = <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>;
     };
+    <a href="../social_contracts/profile.md#social_contracts_profile_apply_optional_string_update">apply_optional_string_update</a>(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_website">website</a>, new_website);
+    <a href="../social_contracts/profile.md#social_contracts_profile_apply_optional_string_update">apply_optional_string_update</a>(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_birthdate">birthdate</a>, new_birthdate);
+    <a href="../social_contracts/profile.md#social_contracts_profile_apply_optional_string_update">apply_optional_string_update</a>(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_location">location</a>, new_location);
     <a href="../social_contracts/profile.md#social_contracts_profile_emit_profile_updated_event">emit_profile_updated_event</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, clock, ctx);
 }
 </code></pre>
@@ -3628,6 +3710,81 @@ Get the owner of a profile
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): <b>address</b> {
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_website"></a>
+
+## Function `website`
+
+Get the profile website (optional)
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_website">website</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_website">website</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): Option&lt;String&gt; {
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_website">website</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_birthdate"></a>
+
+## Function `birthdate`
+
+Get the profile birthdate (optional)
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_birthdate">birthdate</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_birthdate">birthdate</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): Option&lt;String&gt; {
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_birthdate">birthdate</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_location"></a>
+
+## Function `location`
+
+Get the profile location (optional)
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_location">location</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_location">location</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): Option&lt;String&gt; {
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_location">location</a>
 }
 </code></pre>
 
@@ -3820,67 +3977,6 @@ Get the owner of a profile
 
 </details>
 
-<a name="social_contracts_profile_create_subscription_service"></a>
-
-## Function `create_subscription_service`
-
-Create a subscription service for this profile (creates separate service object)
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_create_subscription_service">create_subscription_service</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, monthly_fee: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_create_subscription_service">create_subscription_service</a>(
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
-    monthly_fee: u64,
-    clock: &Clock,
-    ctx: &<b>mut</b> TxContext
-) {
-    <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
-    // Create the <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a> service and share it
-    <a href="../social_contracts/subscription.md#social_contracts_subscription_create_profile_service_entry">subscription::create_profile_service_entry</a>(monthly_fee, clock, ctx);
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_profile_has_valid_subscription"></a>
-
-## Function `has_valid_subscription`
-
-Check if a viewer has a valid subscription (uses subscription module functions)
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_has_valid_subscription">has_valid_subscription</a>(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>): bool
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_has_valid_subscription">has_valid_subscription</a>(
-    <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &ProfileSubscription,
-    service: &ProfileSubscriptionService,
-    clock: &Clock,
-): bool {
-    <a href="../social_contracts/subscription.md#social_contracts_subscription_is_subscription_valid">subscription::is_subscription_valid</a>(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>, service, clock)
-}
-</code></pre>
-
-
-
-</details>
-
 <a name="social_contracts_profile_create_offer"></a>
 
 ## Function `create_offer`
@@ -3960,7 +4056,7 @@ Locks MYSO tokens in the offer
 Accept an offer when there is **no** linked Memory account. Use [<code><a href="../social_contracts/profile.md#social_contracts_profile_accept_offer_with_memory">accept_offer_with_memory</a></code>] for profiles created via [<code><a href="../social_contracts/profile.md#social_contracts_profile_create_profile">create_profile</a></code>].
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_accept_offer">accept_offer</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, offeror: <b>address</b>, new_main_profile: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_accept_offer">accept_offer</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, offeror: <b>address</b>, new_main_profile: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3972,6 +4068,7 @@ Accept an offer when there is **no** linked Memory account. Use [<code><a href="
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_accept_offer">accept_offer</a>(
     registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>,
     <b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
+    config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">ProfileConfig</a>,
     treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">EcosystemTreasury</a>,
     offeror: <b>address</b>,
     new_main_profile: Option&lt;<b>address</b>&gt;,
@@ -3993,7 +4090,7 @@ Accept an offer when there is **no** linked Memory account. Use [<code><a href="
     // Remove the offer from the table and get the locked tokens
     <b>let</b> <a href="../social_contracts/profile.md#social_contracts_profile_ProfileOffer">ProfileOffer</a> { offeror: _, amount, created_at: _, locked_myso } = table::remove(offers, offeror);
     // Calculate the fee amount (5% of the total)
-    <b>let</b> fee_amount = (amount * treasury.<a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>) / 10000;
+    <b>let</b> fee_amount = (amount * config.<a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>) / 10000;
     // Convert the locked balance to a coin
     <b>let</b> <b>mut</b> payment = coin::from_balance(locked_myso, ctx);
     // Split the fee amount to send to the treasury
@@ -4056,7 +4153,7 @@ Accept an offer when there is **no** linked Memory account. Use [<code><a href="
 Same as [<code><a href="../social_contracts/profile.md#social_contracts_profile_accept_offer">accept_offer</a></code>] but synchronizes Memory ownership with the buyer.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_accept_offer_with_memory">accept_offer_with_memory</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, memory_registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">social_contracts::memory::MemoryRegistry</a>, linked_account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, offeror: <b>address</b>, new_main_profile: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_accept_offer_with_memory">accept_offer_with_memory</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, memory_registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">social_contracts::memory::MemoryRegistry</a>, linked_account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, offeror: <b>address</b>, new_main_profile: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4070,6 +4167,7 @@ Same as [<code><a href="../social_contracts/profile.md#social_contracts_profile_
     memory_registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">memory::MemoryRegistry</a>,
     linked_account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">memory::MemoryAccount</a>,
     <b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
+    config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">ProfileConfig</a>,
     treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">EcosystemTreasury</a>,
     offeror: <b>address</b>,
     new_main_profile: Option&lt;<b>address</b>&gt;,
@@ -4089,7 +4187,7 @@ Same as [<code><a href="../social_contracts/profile.md#social_contracts_profile_
     <b>let</b> offers = dynamic_field::borrow_mut&lt;vector&lt;u8&gt;, Table&lt;<b>address</b>, <a href="../social_contracts/profile.md#social_contracts_profile_ProfileOffer">ProfileOffer</a>&gt;&gt;(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_OFFERS_FIELD">OFFERS_FIELD</a>);
     <b>assert</b>!(table::contains(offers, offeror), <a href="../social_contracts/profile.md#social_contracts_profile_EOfferDoesNotExist">EOfferDoesNotExist</a>);
     <b>let</b> <a href="../social_contracts/profile.md#social_contracts_profile_ProfileOffer">ProfileOffer</a> { offeror: _, amount, created_at: _, locked_myso } = table::remove(offers, offeror);
-    <b>let</b> fee_amount = (amount * treasury.<a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>) / 10000;
+    <b>let</b> fee_amount = (amount * config.<a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>) / 10000;
     <b>let</b> <b>mut</b> payment = coin::from_balance(locked_myso, ctx);
     <b>let</b> fee_payment = coin::split(&<b>mut</b> payment, fee_amount, ctx);
     transfer::public_transfer(fee_payment, <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">get_treasury_address</a>(treasury));
@@ -4307,7 +4405,6 @@ Update Ecosystem Treasury address (admin only)
     event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasuryUpdatedEvent">EcosystemTreasuryUpdatedEvent</a> {
         updated_by: tx_context::sender(ctx),
         new_treasury_address: new_address,
-        <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>: treasury.<a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>,
         timestamp: clock::timestamp_ms(clock),
     });
 }
@@ -4321,10 +4418,10 @@ Update Ecosystem Treasury address (admin only)
 
 ## Function `update_ecosystem_treasury_config`
 
-Update Ecosystem Treasury config: treasury address and profile sale fee bps (admin only).
+Update Ecosystem Treasury address (admin only).
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_update_ecosystem_treasury_config">update_ecosystem_treasury_config</a>(_: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasuryAdminCap">social_contracts::profile::EcosystemTreasuryAdminCap</a>, treasury: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, new_address: <b>address</b>, <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_update_ecosystem_treasury_config">update_ecosystem_treasury_config</a>(admin_cap: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasuryAdminCap">social_contracts::profile::EcosystemTreasuryAdminCap</a>, treasury: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, new_address: <b>address</b>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4334,22 +4431,13 @@ Update Ecosystem Treasury config: treasury address and profile sale fee bps (adm
 
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_update_ecosystem_treasury_config">update_ecosystem_treasury_config</a>(
-    _: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasuryAdminCap">EcosystemTreasuryAdminCap</a>,
+    admin_cap: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasuryAdminCap">EcosystemTreasuryAdminCap</a>,
     treasury: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">EcosystemTreasury</a>,
     new_address: <b>address</b>,
-    <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>: u64,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
-    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a> &lt;= 10000, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidConfig">EInvalidConfig</a>);
-    treasury.treasury_address = new_address;
-    treasury.<a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a> = <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>;
-    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasuryUpdatedEvent">EcosystemTreasuryUpdatedEvent</a> {
-        updated_by: tx_context::sender(ctx),
-        new_treasury_address: new_address,
-        <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>,
-        timestamp: clock::timestamp_ms(clock),
-    });
+    <a href="../social_contracts/profile.md#social_contracts_profile_update_treasury_address">update_treasury_address</a>(admin_cap, treasury, new_address, clock, ctx);
 }
 </code></pre>
 
@@ -4364,7 +4452,7 @@ Update Ecosystem Treasury config: treasury address and profile sale fee bps (adm
 Read the configured profile sale fee (bps).
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>(treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>): u64
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>): u64
 </code></pre>
 
 
@@ -4373,8 +4461,8 @@ Read the configured profile sale fee (bps).
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>(treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">EcosystemTreasury</a>): u64 {
-    treasury.<a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">ProfileConfig</a>): u64 {
+    config.<a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>
 }
 </code></pre>
 
@@ -4483,7 +4571,7 @@ Create a ProfileAdminCap for bootstrap (package visibility only)
 Update profile configuration (admin only)
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_update_profile_config">update_profile_config</a>(_: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileAdminCap">social_contracts::profile::ProfileAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, max_vesting_pieces: u64, curve_factor_min: u64, curve_factor_max: u64, curve_precision: u64, min_claim_threshold_divisor: u64, min_username_length: u64, max_username_length: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_update_profile_config">update_profile_config</a>(_: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileAdminCap">social_contracts::profile::ProfileAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, max_vesting_pieces: u64, curve_factor_min: u64, curve_factor_max: u64, curve_precision: u64, min_claim_threshold_divisor: u64, min_username_length: u64, max_username_length: u64, <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4502,6 +4590,7 @@ Update profile configuration (admin only)
     min_claim_threshold_divisor: u64,
     min_username_length: u64,
     max_username_length: u64,
+    <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>: u64,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
@@ -4510,6 +4599,7 @@ Update profile configuration (admin only)
     <b>assert</b>!(curve_factor_min &gt; 0 && curve_factor_max &gt;= curve_factor_min, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidConfig">EInvalidConfig</a>);
     <b>assert</b>!(min_claim_threshold_divisor &gt; 0, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidConfig">EInvalidConfig</a>);
     <b>assert</b>!(min_username_length &gt; 0 && max_username_length &gt;= min_username_length, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidConfig">EInvalidConfig</a>);
+    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a> &lt;= 10000, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidConfig">EInvalidConfig</a>);
     config.max_vesting_pieces = max_vesting_pieces;
     config.curve_factor_min = curve_factor_min;
     config.curve_factor_max = curve_factor_max;
@@ -4517,6 +4607,7 @@ Update profile configuration (admin only)
     config.min_claim_threshold_divisor = min_claim_threshold_divisor;
     config.min_username_length = min_username_length;
     config.max_username_length = max_username_length;
+    config.<a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a> = <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>;
     event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfigUpdatedEvent">ProfileConfigUpdatedEvent</a> {
         updated_by: tx_context::sender(ctx),
         max_vesting_pieces,
@@ -4526,8 +4617,104 @@ Update profile configuration (admin only)
         min_claim_threshold_divisor,
         min_username_length,
         max_username_length,
+        <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>,
         timestamp: clock::timestamp_ms(clock),
     });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_migrate_profile_config"></a>
+
+## Function `migrate_profile_config`
+
+Migration function for ProfileConfig — copies the profile sale fee from the pre-upgrade value.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_migrate_profile_config">migrate_profile_config</a>(config: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>: u64, _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_migrate_profile_config">migrate_profile_config</a>(
+    config: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">ProfileConfig</a>,
+    <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>: u64,
+    _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">upgrade::UpgradeAdminCap</a>,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
+    <b>assert</b>!(config.<a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> &lt; current_version, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidConfig">EInvalidConfig</a>);
+    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a> &lt;= 10000, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidConfig">EInvalidConfig</a>);
+    <b>let</b> old_version = config.<a href="../social_contracts/profile.md#social_contracts_profile_version">version</a>;
+    config.<a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a> = <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>;
+    config.<a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> = current_version;
+    <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
+        object::id(config),
+        string::utf8(b"<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">ProfileConfig</a>"),
+        old_version,
+        tx_context::sender(ctx),
+    );
+    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfigUpdatedEvent">ProfileConfigUpdatedEvent</a> {
+        updated_by: tx_context::sender(ctx),
+        max_vesting_pieces: config.max_vesting_pieces,
+        curve_factor_min: config.curve_factor_min,
+        curve_factor_max: config.curve_factor_max,
+        curve_precision: config.curve_precision,
+        min_claim_threshold_divisor: config.min_claim_threshold_divisor,
+        min_username_length: config.min_username_length,
+        max_username_length: config.max_username_length,
+        <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>: config.<a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>,
+        timestamp: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_migrate_profile"></a>
+
+## Function `migrate_profile`
+
+Migration function for Profile — initializes on-chain website/birthdate/location fields.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_migrate_profile">migrate_profile</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_migrate_profile">migrate_profile</a>(
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
+    _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">upgrade::UpgradeAdminCap</a>,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
+    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> &lt; current_version, 1);
+    <b>let</b> old_version = <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_version">version</a>;
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_website">website</a> = option::none();
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_birthdate">birthdate</a> = option::none();
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_location">location</a> = option::none();
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> = current_version;
+    <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
+        object::id(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>),
+        string::utf8(b"<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>"),
+        old_version,
+        tx_context::sender(ctx),
+    );
 }
 </code></pre>
 

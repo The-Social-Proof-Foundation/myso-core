@@ -38,7 +38,7 @@ pub(crate) async fn get_insurance_configuration(
     };
 
     let router_query = "
-        SELECT updated_by, router_enabled, router_paused, max_route_reserve_market,
+        SELECT updated_by, paused, max_route_reserve_market,
                max_route_reserve_user, max_route_reserve_option, max_vault_concentration_bps,
                min_vault_health_factor_bps, max_route_legs, version, updated_at, time,
                transaction_id

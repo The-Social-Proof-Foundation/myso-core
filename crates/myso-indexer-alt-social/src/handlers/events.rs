@@ -223,7 +223,6 @@ struct BcsAgentGroupCreated {
 pub struct BcsEcosystemTreasuryUpdatedEvent {
     updated_by: AccountAddress,
     new_treasury_address: AccountAddress,
-    profile_sale_fee_bps: u64,
     timestamp: u64,
 }
 
@@ -237,6 +236,7 @@ pub struct BcsProfileConfigUpdatedEvent {
     min_claim_threshold_divisor: u64,
     min_username_length: u64,
     max_username_length: u64,
+    profile_sale_fee_bps: u64,
     timestamp: u64,
 }
 
@@ -449,6 +449,9 @@ pub struct BcsProfileUpdatedEvent {
     updated_at: u64,
     x_username: Option<String>,
     min_offer_amount: Option<u64>,
+    website: Option<String>,
+    birthdate: Option<String>,
+    location: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -1879,9 +1882,10 @@ pub struct BcsConfigUpdatedEvent {
     timestamp: u64,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct BcsRouterLimitsUpdatedEvent {
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsRouterConfigUpdatedEvent {
     updated_by: AccountAddress,
+    paused: bool,
     max_route_reserve_market: u64,
     max_route_reserve_user: u64,
     max_route_reserve_option: u64,
@@ -2236,6 +2240,7 @@ pub struct BcsSpotConfigUpdatedEvent {
     oracle_address: AccountAddress,
     max_single_bet: u64,
     max_bets_per_record: u64,
+    spot_governance_registry_id: AccountAddress,
     timestamp: u64,
 }
 
@@ -2466,6 +2471,7 @@ pub struct BcsSptConfigUpdatedEvent {
     max_reservers_per_pool: u64,
     non_platform_platform_to_creator_bps: u64,
     non_platform_platform_to_treasury_bps: u64,
+    trading_enabled: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -2842,6 +2848,9 @@ fn parse_profile_event(
                 "updated_at": ev.updated_at,
                 "x_username": ev.x_username,
                 "min_offer_amount": ev.min_offer_amount,
+                "website": ev.website,
+                "birthdate": ev.birthdate,
+                "location": ev.location,
             })))
         }
         "UsernameClaimedEvent" => {
@@ -2986,7 +2995,6 @@ fn parse_profile_event(
             Ok(Some(serde_json::json!({
                 "updated_by": addr_to_string(&ev.updated_by),
                 "new_treasury_address": addr_to_string(&ev.new_treasury_address),
-                "profile_sale_fee_bps": ev.profile_sale_fee_bps,
                 "timestamp": ev.timestamp,
             })))
         }
@@ -3002,6 +3010,7 @@ fn parse_profile_event(
                 "min_claim_threshold_divisor": ev.min_claim_threshold_divisor,
                 "min_username_length": ev.min_username_length,
                 "max_username_length": ev.max_username_length,
+                "profile_sale_fee_bps": ev.profile_sale_fee_bps,
                 "timestamp": ev.timestamp,
             })))
         }
@@ -4840,11 +4849,12 @@ fn parse_insurance_event(
                 "timestamp": ev.timestamp,
             })))
         }
-        "RouterLimitsUpdatedEvent" => {
-            let ev = bcs::from_bytes::<BcsRouterLimitsUpdatedEvent>(contents)
+        "RouterConfigUpdatedEvent" => {
+            let ev = bcs::from_bytes::<BcsRouterConfigUpdatedEvent>(contents)
                 .map_err(|e| bcs_parse_err(e, contents))?;
             Ok(Some(serde_json::json!({
                 "updated_by": addr_to_string(&ev.updated_by),
+                "paused": ev.paused,
                 "max_route_reserve_market": ev.max_route_reserve_market,
                 "max_route_reserve_user": ev.max_route_reserve_user,
                 "max_route_reserve_option": ev.max_route_reserve_option,
@@ -5122,6 +5132,7 @@ fn parse_spot_event(
                 "oracle_address": addr_to_string(&ev.oracle_address),
                 "max_single_bet": ev.max_single_bet,
                 "max_bets_per_record": ev.max_bets_per_record,
+                "spot_governance_registry_id": addr_to_string(&ev.spot_governance_registry_id),
                 "timestamp": ev.timestamp,
             })))
         }
@@ -5301,6 +5312,7 @@ fn parse_spt_event(
                 "max_reservers_per_pool": ev.max_reservers_per_pool,
                 "non_platform_platform_to_creator_bps": ev.non_platform_platform_to_creator_bps,
                 "non_platform_platform_to_treasury_bps": ev.non_platform_platform_to_treasury_bps,
+                "trading_enabled": ev.trading_enabled,
             })))
         }
         "TokensAddedEvent" => {
@@ -5663,6 +5675,51 @@ mod tests {
             rows.iter()
                 .any(|r| matches!(r, crate::handlers::SocialEventRow::InsuranceVault(_))),
             "expected InsuranceVault row: {:?}",
+            rows
+        );
+    }
+
+    #[test]
+    fn router_config_updated_event_bcs_roundtrip_and_handler() {
+        let updated_by = AccountAddress::from_hex_literal(
+            "0x2458950181e415250823d6ce1d55f2b3427826a111939e0d6d38e9a1397411d8",
+        )
+        .unwrap();
+        let ev = BcsRouterConfigUpdatedEvent {
+            updated_by,
+            paused: false,
+            max_route_reserve_market: 1_000_000_000,
+            max_route_reserve_user: 2_000_000_000,
+            max_route_reserve_option: 3_000_000_000,
+            max_vault_concentration_bps: 10_000,
+            min_vault_health_factor_bps: 10_000,
+            max_route_legs: 4,
+            timestamp: 1_700_000_000_000,
+        };
+        let contents = bcs::to_bytes(&ev).expect("BCS serialize RouterConfigUpdatedEvent");
+        let json = parse_event_contents("insurance", "RouterConfigUpdatedEvent", &contents)
+            .expect("parse RouterConfigUpdatedEvent");
+        assert_eq!(json["paused"], false);
+        assert_eq!(json["max_route_legs"], 4);
+        assert!(!json.get("router_enabled").is_some());
+        assert!(!json.get("router_paused").is_some());
+
+        let rows = crate::handlers::insurance::handle_insurance_event(
+            "RouterConfigUpdatedEvent",
+            &json,
+            "DBxT2TDCTHGmqhE3HT5wBkGWFwnzJM4aRazBywmX1BgQ:1",
+            1_700_000_000_000,
+        )
+        .expect("handler must accept parsed JSON");
+        assert!(
+            rows.iter().any(|r| {
+                matches!(
+                    r,
+                    crate::handlers::SocialEventRow::InsuranceRouterConfig(c) if !c.paused
+                        && c.max_route_legs == 4
+                )
+            }),
+            "expected InsuranceRouterConfig row: {:?}",
             rows
         );
     }
@@ -6934,6 +6991,7 @@ mod tests {
             oracle_address,
             max_single_bet: 1_000_000_000,
             max_bets_per_record: 100,
+            spot_governance_registry_id: oracle_address,
             timestamp: 1_700_000_000,
         };
         let bytes = bcs::to_bytes(&ev).expect("serialize SpotConfigUpdatedEvent");

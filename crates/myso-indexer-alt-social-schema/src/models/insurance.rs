@@ -415,8 +415,7 @@ pub struct NewInsuranceRouteFill {
 #[diesel(table_name = insurance_router_config)]
 pub struct NewInsuranceRouterConfig {
     pub updated_by: String,
-    pub router_enabled: bool,
-    pub router_paused: bool,
+    pub paused: bool,
     pub max_route_reserve_market: i64,
     pub max_route_reserve_user: i64,
     pub max_route_reserve_option: i64,
@@ -432,8 +431,7 @@ pub struct NewInsuranceRouterConfig {
 impl NewInsuranceRouterConfig {
     pub fn from_event(
         updated_by: String,
-        router_enabled: bool,
-        router_paused: bool,
+        paused: bool,
         max_route_reserve_market: u64,
         max_route_reserve_user: u64,
         max_route_reserve_option: u64,
@@ -448,8 +446,7 @@ impl NewInsuranceRouterConfig {
             .unwrap_or_else(chrono::Utc::now);
         Self {
             updated_by,
-            router_enabled,
-            router_paused,
+            paused,
             max_route_reserve_market: max_route_reserve_market as i64,
             max_route_reserve_user: max_route_reserve_user as i64,
             max_route_reserve_option: max_route_reserve_option as i64,

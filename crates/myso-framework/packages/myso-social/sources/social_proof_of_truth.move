@@ -223,6 +223,7 @@ module social_contracts::social_proof_of_truth {
         oracle_address: address,
         max_single_bet: u64,
         max_bets_per_record: u64,
+        spot_governance_registry_id: ID,
         timestamp: u64,
     }
 
@@ -368,6 +369,7 @@ module social_contracts::social_proof_of_truth {
             oracle_address: admin,
             max_single_bet: 0,
             max_bets_per_record: DEFAULT_MAX_BETS_PER_RECORD,
+            spot_governance_registry_id,
             timestamp: clock::timestamp_ms(clock),
         });
 
@@ -491,6 +493,7 @@ module social_contracts::social_proof_of_truth {
             oracle_address,
             max_single_bet,
             max_bets_per_record,
+            spot_governance_registry_id: config.spot_governance_registry_id,
             timestamp: clock::timestamp_ms(clock),
         });
     }

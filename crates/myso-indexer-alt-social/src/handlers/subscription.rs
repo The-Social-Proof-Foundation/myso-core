@@ -29,6 +29,13 @@ struct ProfileSubscriptionCreatedEvent {
     expires_at: u64,
     monthly_fee: u64,
     auto_renew: bool,
+    #[serde(default)]
+    platform_fee: u64,
+    #[serde(default)]
+    ecosystem_fee: u64,
+    #[serde(default)]
+    creator_amount: u64,
+    platform_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -38,6 +45,13 @@ struct ProfileSubscriptionRenewedEvent {
     new_expires_at: u64,
     renewal_count: u64,
     auto_renewed: bool,
+    #[serde(default)]
+    platform_fee: u64,
+    #[serde(default)]
+    ecosystem_fee: u64,
+    #[serde(default)]
+    creator_amount: u64,
+    platform_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -212,6 +226,16 @@ fn process_subscription_created_event(
         subscription_id,
         from_address: event.subscriber,
         amount: event.monthly_fee as i64,
+        platform_fee: event.platform_fee as i64,
+        ecosystem_fee: event.ecosystem_fee as i64,
+        creator_amount: if event.creator_amount > 0 {
+            event.creator_amount as i64
+        } else {
+            event.monthly_fee as i64
+                - event.platform_fee as i64
+                - event.ecosystem_fee as i64
+        },
+        platform_address: event.platform_id.clone(),
         revenue_type: "subscription".to_string(),
         payment_time,
         transaction_id: event_id.to_string(),
@@ -263,6 +287,10 @@ fn process_subscription_renewed_event(
         new_expires_at: event.new_expires_at as i64,
         renewal_count: event.renewal_count as i64,
         auto_renewed: event.auto_renewed,
+        platform_fee: event.platform_fee as i64,
+        ecosystem_fee: event.ecosystem_fee as i64,
+        creator_amount: event.creator_amount as i64,
+        platform_address: event.platform_id.clone(),
         transaction_id: event_id.to_string(),
     });
 
@@ -458,6 +486,14 @@ struct SubscriptionConfigUpdatedEvent {
     updated_by: String,
     billing_period_ms: u64,
     max_renewal_months: u64,
+    #[serde(default)]
+    platform_fee_bps: u64,
+    #[serde(default)]
+    ecosystem_fee_bps: u64,
+    #[serde(default)]
+    non_platform_platform_to_creator_bps: u64,
+    #[serde(default)]
+    non_platform_platform_to_treasury_bps: u64,
     timestamp: u64,
 }
 
@@ -474,16 +510,18 @@ fn process_subscription_config_updated_event(
         "subscription SubscriptionConfigUpdatedEvent JSON did not match struct",
     )?;
     let ms = common::chain_timestamp_ms(Some(ev.timestamp as i64), checkpoint_timestamp_ms);
-    let now = common::chain_time_from_ms(ms);
-    let row = NewSubscriptionConfig {
-        updated_by: ev.updated_by,
-        billing_period_ms: ev.billing_period_ms as i64,
-        max_renewal_months: ev.max_renewal_months as i64,
-        version: 0,
-        updated_at: ms,
-        time: now,
-        transaction_id: event_id.to_string(),
-    };
+    let row = NewSubscriptionConfig::from_event(
+        ev.updated_by,
+        ev.billing_period_ms,
+        ev.max_renewal_months,
+        ev.platform_fee_bps,
+        ev.ecosystem_fee_bps,
+        ev.non_platform_platform_to_creator_bps,
+        ev.non_platform_platform_to_treasury_bps,
+        0,
+        ms as u64,
+        event_id.to_string(),
+    );
     Some(vec![SocialEventRow::SubscriptionConfig(row)])
 }
 

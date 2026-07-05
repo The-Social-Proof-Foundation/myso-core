@@ -119,6 +119,14 @@ mod tests {
             workflow_relayer_url: None,
             workflow_sync_secret: None,
             audit_sync_secret: None,
+            oracle_api_secret: None,
+            require_secrets: false,
+            agent_auth_enabled: false,
+            agent_auth_ttl_secs: 300,
+            require_settlement_secret: false,
+            receipt_store_recover: false,
+            ingest_reconcile_interval_secs: 30,
+            ingest_backlog_warn_age_secs: 300,
         }
     }
 
@@ -140,6 +148,8 @@ mod tests {
             created_at_ms: timestamp_ms,
             void: false,
             organization_id: None,
+            idempotency_key: None,
+            ingest_synced: true,
         }
     }
 

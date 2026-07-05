@@ -100,7 +100,39 @@ DROP COLUMN IF EXISTS odds_base_bps;
 
 -- 2.7 mydata_config
 ALTER TABLE mydata_config
+DROP COLUMN IF EXISTS non_platform_platform_to_treasury_bps,
+DROP COLUMN IF EXISTS non_platform_platform_to_creator_bps,
+DROP COLUMN IF EXISTS mydata_marketplace_ecosystem_fee_bps,
+DROP COLUMN IF EXISTS mydata_marketplace_platform_fee_bps,
+DROP COLUMN IF EXISTS p2p_ecosystem_fee_bps,
+DROP COLUMN IF EXISTS p2p_platform_fee_bps,
 DROP COLUMN IF EXISTS max_encryption_id_bytes;
+
+-- 2.7b subscription_revenue fee breakdown (subscription_config is dropped above)
+ALTER TABLE subscription_revenue
+DROP COLUMN IF EXISTS platform_address,
+DROP COLUMN IF EXISTS creator_amount,
+DROP COLUMN IF EXISTS ecosystem_fee,
+DROP COLUMN IF EXISTS platform_fee;
+
+ALTER TABLE mydata_purchases
+DROP COLUMN IF EXISTS platform_address,
+DROP COLUMN IF EXISTS creator_amount,
+DROP COLUMN IF EXISTS ecosystem_fee,
+DROP COLUMN IF EXISTS platform_fee;
+
+ALTER TABLE mydata_revenue
+DROP COLUMN IF EXISTS platform_address,
+DROP COLUMN IF EXISTS creator_amount,
+DROP COLUMN IF EXISTS ecosystem_fee,
+DROP COLUMN IF EXISTS platform_fee;
+
+ALTER TABLE mydata_claims
+DROP COLUMN IF EXISTS platform_address,
+DROP COLUMN IF EXISTS net_amount,
+DROP COLUMN IF EXISTS ecosystem_fee,
+DROP COLUMN IF EXISTS platform_fee,
+DROP COLUMN IF EXISTS gross_amount;
 
 -- 2.6 poc_configuration
 ALTER TABLE poc_configuration
@@ -219,4 +251,31 @@ BEGIN
     ) THEN
         ALTER TABLE ecosystem_treasury RENAME COLUMN updated_at TO timestamp_ms;
     END IF;
+END $$;
+
+-- ============================================================================
+-- Rollback 1.11 profiles on-chain fields cleanup
+-- ============================================================================
+
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS raised_location TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS gender TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS political_view TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS religion TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS education TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS primary_language TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS relationship_status TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS sensitive_data_updated_at TIMESTAMP;
+
+DO $$ BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'profiles' AND column_name = 'location'
+  ) AND NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'profiles' AND column_name = 'current_location'
+  ) THEN
+    ALTER TABLE profiles RENAME COLUMN location TO current_location;
+  END IF;
 END $$;

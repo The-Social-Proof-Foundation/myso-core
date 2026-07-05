@@ -2573,13 +2573,9 @@ type InsuranceRouterConfig {
 	"""
 	minVaultHealthFactorBps: Int!
 	"""
-	Whether the coverage router is enabled.
-	"""
-	routerEnabled: Boolean!
-	"""
 	Whether the coverage router is paused.
 	"""
-	routerPaused: Boolean!
+	paused: Boolean!
 	"""
 	When the configuration was last updated.
 	"""
@@ -3864,8 +3860,28 @@ type MyDataClaim {
 	claimant: MySoAddress!
 	claimantProfile: ProfileSummary
 	claimedAtMs: Int!
+	"""
+	Ecosystem fee slice deducted at claim.
+	"""
+	ecosystemFee: Int!
 	eventId: String!
+	"""
+	Gross claim amount before on-chain fee deduction.
+	"""
+	grossAmount: Int!
 	id: Int!
+	"""
+	Net amount paid to claimant after fees.
+	"""
+	netAmount: Int!
+	"""
+	Platform fee slice deducted at claim.
+	"""
+	platformFee: Int!
+	"""
+	Platform treasury recipient when a platform fee was routed on-chain.
+	"""
+	platformId: MySoAddress
 	snapshotId: String!
 	time: DateTime!
 	transactionId: String!
@@ -3892,6 +3908,30 @@ type MyDataConfig {
 	Maximum tags per record.
 	"""
 	maxTags: Int!
+	"""
+	MyData marketplace pool claim ecosystem fee in bps (default 250 = 2.5%).
+	"""
+	mydataMarketplaceEcosystemFeeBps: Int!
+	"""
+	MyData marketplace pool claim platform fee in bps (default 250 = 2.5%).
+	"""
+	mydataMarketplacePlatformFeeBps: Int!
+	"""
+	When no platform is present, share of the platform fee bucket routed to creators (bps).
+	"""
+	nonPlatformPlatformToCreatorBps: Int!
+	"""
+	When no platform is present, share of the platform fee bucket routed to ecosystem treasury (bps).
+	"""
+	nonPlatformPlatformToTreasuryBps: Int!
+	"""
+	P2P marketplace ecosystem fee in bps (default 250 = 2.5%).
+	"""
+	p2PEcosystemFeeBps: Int!
+	"""
+	P2P marketplace platform fee in bps (default 250 = 2.5%).
+	"""
+	p2PPlatformFeeBps: Int!
 	"""
 	When the configuration was last updated.
 	"""
@@ -3968,11 +4008,27 @@ type MyDataPurchase {
 	"""
 	buyerProfile: ProfileSummary
 	"""
+	Net amount credited to listing owner after fees.
+	"""
+	creatorAmount: Int!
+	"""
+	Ecosystem fee slice deducted from gross payment.
+	"""
+	ecosystemFee: Int!
+	"""
 	MyData record ID this purchase is for.
 	"""
 	mydataId: String!
 	"""
-	Price paid.
+	Platform fee slice deducted from gross payment.
+	"""
+	platformFee: Int!
+	"""
+	Platform treasury recipient when a platform fee was routed on-chain.
+	"""
+	platformId: MySoAddress
+	"""
+	Price paid (gross).
 	"""
 	price: Int!
 	"""
@@ -4122,13 +4178,29 @@ type MyDataRecord {
 
 type MyDataRevenue {
 	"""
-	Amount.
+	Amount (gross).
 	"""
 	amount: Int!
+	"""
+	Net amount credited to listing owner after fees.
+	"""
+	creatorAmount: Int!
+	"""
+	Ecosystem fee slice deducted from gross payment.
+	"""
+	ecosystemFee: Int!
 	"""
 	Address that paid (from).
 	"""
 	fromAddress: MySoAddress!
+	"""
+	Platform fee slice deducted from gross payment.
+	"""
+	platformFee: Int!
+	"""
+	Platform treasury recipient when a platform fee was routed on-chain.
+	"""
+	platformId: MySoAddress
 	"""
 	Epoch timestamp when the revenue was recorded.
 	"""
@@ -6137,21 +6209,9 @@ type Profile implements Node {
 	"""
 	createdAt: Int
 	"""
-	Current location.
-	"""
-	currentLocation: String
-	"""
 	The profile's display name.
 	"""
 	displayName: String
-	"""
-	Education.
-	"""
-	education: String
-	"""
-	Email (encrypted).
-	"""
-	email: String
 	"""
 	Followers (paginated).
 	"""
@@ -6169,13 +6229,13 @@ type Profile implements Node {
 	"""
 	followingCount: Int!
 	"""
-	Gender.
-	"""
-	gender: String
-	"""
 	The profile's globally unique identifier.
 	"""
 	id: ID!
+	"""
+	Location.
+	"""
+	location: String
 	"""
 	Memory account row for this profile owner.
 	"""
@@ -6192,10 +6252,6 @@ type Profile implements Node {
 	MyData records owned by this profile (paginated).
 	"""
 	mydataRecords(limit: Int, offset: Int): [MyDataRecord!]
-	"""
-	Phone (encrypted).
-	"""
-	phone: String
 	"""
 	Platforms this profile has joined (paginated). Each row includes platform fields in one SQL round-trip.
 	"""
@@ -6214,10 +6270,6 @@ type Profile implements Node {
 	"""
 	pnl(windows: [ProfilePnLWindowGql!]): [ProfilePnLWindowStats!]
 	"""
-	Political view.
-	"""
-	politicalView: String
-	"""
 	Number of posts.
 	"""
 	postCount: Int!
@@ -6235,10 +6287,6 @@ type Profile implements Node {
 	"""
 	postsTotalCount(postType: String, enablePoc: Boolean, pocOutcomes: [Int!], includeRemoved: Boolean): Int
 	"""
-	Primary language.
-	"""
-	primaryLanguage: String
-	"""
 	The profile ID (object address).
 	"""
 	profileId: String
@@ -6247,10 +6295,6 @@ type Profile implements Node {
 	"""
 	profilePhoto: String
 	"""
-	Raised location.
-	"""
-	raisedLocation: String
-	"""
 	Follow suggestions for the browsing viewer while viewing this profile.
 	
 	Candidates come from this profile's friends-of-friends. Results exclude accounts
@@ -6258,14 +6302,6 @@ type Profile implements Node {
 	through the viewer's following graph, and are ranked by that overlap (`mutualCount`).
 	"""
 	recommendations(viewer: MySoAddress, limit: Int, offset: Int): [ProfileSummary!]
-	"""
-	Relationship status.
-	"""
-	relationshipStatus: String
-	"""
-	Religion.
-	"""
-	religion: String
 	"""
 	Reservation SPT holdings for this profile (paginated).
 	"""
@@ -8711,9 +8747,25 @@ type SubscriptionConfig {
 	"""
 	billingPeriodMs: Int!
 	"""
+	Ecosystem treasury fee in bps deducted from gross subscription payments (default 250 = 2.5%).
+	"""
+	ecosystemFeeBps: Int!
+	"""
 	Maximum number of renewal months permitted per subscription.
 	"""
 	maxRenewalMonths: Int!
+	"""
+	When no platform is present, share of the platform fee bucket routed to creators (bps).
+	"""
+	nonPlatformPlatformToCreatorBps: Int!
+	"""
+	When no platform is present, share of the platform fee bucket routed to ecosystem treasury (bps).
+	"""
+	nonPlatformPlatformToTreasuryBps: Int!
+	"""
+	Platform fee in bps deducted from gross subscription payments (default 250 = 2.5%).
+	"""
+	platformFeeBps: Int!
 	"""
 	When the configuration was last updated.
 	"""

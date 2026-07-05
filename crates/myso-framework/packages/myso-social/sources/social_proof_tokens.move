@@ -434,6 +434,8 @@ module social_contracts::social_proof_tokens {
         non_platform_platform_to_creator_bps: u64,
         /// Non-platform split: ecosystem treasury share of platform-fee bucket (bps)
         non_platform_platform_to_treasury_bps: u64,
+        /// Whether SPT trading is enabled
+        trading_enabled: bool,
     }
 
     /// Event emitted when tokens are purchased by someone who already has a social token
@@ -638,6 +640,7 @@ module social_contracts::social_proof_tokens {
             max_reservers_per_pool: DEFAULT_MAX_RESERVERS_PER_POOL,
             non_platform_platform_to_creator_bps: DEFAULT_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS,
             non_platform_platform_to_treasury_bps: DEFAULT_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS,
+            trading_enabled: true,
         });
 
         // Create and share social proof tokens config with proper treasury
@@ -783,6 +786,7 @@ module social_contracts::social_proof_tokens {
             max_reservers_per_pool,
             non_platform_platform_to_creator_bps,
             non_platform_platform_to_treasury_bps,
+            trading_enabled: config.trading_enabled,
         });
     }
 

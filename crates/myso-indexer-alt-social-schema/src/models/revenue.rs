@@ -27,6 +27,14 @@ pub const REVENUE_TYPE_SUBSCRIPTION_REFUND: &str = "refund";
 pub const REVENUE_TYPE_MYDATA_ONE_TIME: &str = "one_time";
 pub const REVENUE_TYPE_MYDATA_SUBSCRIPTION: &str = "subscription";
 pub const REVENUE_TYPE_MYDATA_GRANT: &str = "grant";
+pub const REVENUE_TYPE_SUBSCRIPTION_CREATOR_AMOUNT: &str = "creator_amount";
+pub const REVENUE_TYPE_SUBSCRIPTION_PLATFORM_FEE: &str = "platform_fee";
+pub const REVENUE_TYPE_SUBSCRIPTION_ECOSYSTEM_FEE: &str = "ecosystem_fee";
+
+pub const REVENUE_TYPE_MYDATA_CREATOR_AMOUNT: &str = "creator_amount";
+pub const REVENUE_TYPE_MYDATA_PLATFORM_FEE: &str = "platform_fee";
+pub const REVENUE_TYPE_MYDATA_ECOSYSTEM_FEE: &str = "ecosystem_fee";
+pub const REVENUE_TYPE_MYDATA_MARKETPLACE_CLAIM: &str = "mydata_marketplace_claim";
 
 pub const REVENUE_TYPE_SPT_CREATOR_FEE: &str = "creator_fee";
 pub const REVENUE_TYPE_SPT_PLATFORM_FEE: &str = "platform_fee";

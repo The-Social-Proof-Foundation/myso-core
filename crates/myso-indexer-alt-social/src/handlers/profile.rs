@@ -129,37 +129,13 @@ struct ProfileUpdatedEvent {
     bio: String,
 
     #[serde(default)]
+    website: Option<String>,
+
+    #[serde(default)]
     birthdate: Option<String>,
 
     #[serde(default)]
-    current_location: Option<String>,
-
-    #[serde(default)]
-    raised_location: Option<String>,
-
-    #[serde(default)]
-    phone: Option<String>,
-
-    #[serde(default)]
-    email: Option<String>,
-
-    #[serde(default)]
-    gender: Option<String>,
-
-    #[serde(default)]
-    political_view: Option<String>,
-
-    #[serde(default)]
-    religion: Option<String>,
-
-    #[serde(default)]
-    education: Option<String>,
-
-    #[serde(default)]
-    primary_language: Option<String>,
-
-    #[serde(default)]
-    relationship_status: Option<String>,
+    location: Option<String>,
 
     #[serde(default)]
     x_username: Option<String>,
@@ -224,16 +200,7 @@ impl ProfileCreatedEvent {
             post_count: 0,
             min_offer_amount: None,
             birthdate: None,
-            current_location: None,
-            raised_location: None,
-            phone: None,
-            email: None,
-            gender: None,
-            political_view: None,
-            religion: None,
-            education: None,
-            primary_language: None,
-            relationship_status: None,
+            location: None,
             x_username: None,
             social_proof_token_address: None,
             reservation_pool_address: None,
@@ -406,17 +373,9 @@ fn process_profile_updated_event(
         },
         profile_photo: ev.profile_photo,
         cover_photo: ev.cover_photo,
+        website: ev.website,
         birthdate: ev.birthdate,
-        current_location: ev.current_location,
-        raised_location: ev.raised_location,
-        phone: ev.phone,
-        email: ev.email,
-        gender: ev.gender,
-        political_view: ev.political_view,
-        religion: ev.religion,
-        education: ev.education,
-        primary_language: ev.primary_language,
-        relationship_status: ev.relationship_status,
+        location: ev.location,
         x_username: ev.x_username,
         min_offer_amount: ev.min_offer_amount,
         username: None,
@@ -479,8 +438,6 @@ fn process_ecosystem_treasury_updated_event(
 ) -> Option<Vec<SocialEventRow>> {
     let updated_by = data.get("updated_by")?.as_str()?.to_string();
     let new_treasury_address = data.get("new_treasury_address")?.as_str()?.to_string();
-    let profile_sale_fee_bps =
-        common::json_field_as_i64(data.get("profile_sale_fee_bps")).unwrap_or(0);
     let event_ms = common::json_field_as_i64(data.get("timestamp"));
     let timestamp_ms = common::chain_timestamp_ms(event_ms, checkpoint_timestamp_ms);
     let time = common::chain_time_from_ms(timestamp_ms);
@@ -488,31 +445,13 @@ fn process_ecosystem_treasury_updated_event(
     let transaction_id = event_id.to_string();
     let treasury = NewEcosystemTreasury {
         treasury_address: new_treasury_address,
-        updated_by: updated_by.clone(),
-        updated_at: timestamp_ms,
-        time,
-        transaction_id: transaction_id.clone(),
-        version,
-    };
-    let fee_config = NewProfileConfig {
         updated_by,
-        max_vesting_pieces: 0,
-        curve_factor_min: 0,
-        curve_factor_max: 0,
-        curve_precision: 0,
-        min_claim_threshold_divisor: 0,
-        min_username_length: 0,
-        max_username_length: 0,
-        profile_sale_fee_bps,
-        version: 0,
         updated_at: timestamp_ms,
         time,
         transaction_id,
+        version,
     };
-    Some(vec![
-        SocialEventRow::EcosystemTreasury(treasury),
-        SocialEventRow::ProfileConfig(fee_config),
-    ])
+    Some(vec![SocialEventRow::EcosystemTreasury(treasury)])
 }
 
 #[derive(Debug, Deserialize)]
@@ -532,6 +471,8 @@ struct ProfileConfigUpdatedEvent {
     min_username_length: u64,
     #[serde(default, deserialize_with = "deserialize_number_from_string")]
     max_username_length: u64,
+    #[serde(default, deserialize_with = "deserialize_number_from_string")]
+    profile_sale_fee_bps: u64,
     #[serde(default, deserialize_with = "deserialize_number_from_string")]
     timestamp: u64,
 }
@@ -560,7 +501,7 @@ fn process_profile_config_updated_event(
         min_claim_threshold_divisor: ev.min_claim_threshold_divisor as i64,
         min_username_length: ev.min_username_length as i64,
         max_username_length: ev.max_username_length as i64,
-        profile_sale_fee_bps: 0,
+        profile_sale_fee_bps: ev.profile_sale_fee_bps as i64,
         version: 0,
         updated_at: timestamp_ms,
         time,
@@ -905,17 +846,9 @@ fn process_badge_selected_event(
         bio: None,
         profile_photo: None,
         cover_photo: None,
+        website: None,
         birthdate: None,
-        current_location: None,
-        raised_location: None,
-        phone: None,
-        email: None,
-        gender: None,
-        political_view: None,
-        religion: None,
-        education: None,
-        primary_language: None,
-        relationship_status: None,
+        location: None,
         x_username: None,
         min_offer_amount: None,
         username: None,
@@ -945,17 +878,9 @@ fn process_ecosystem_badge_selection_cleared_event(
         bio: None,
         profile_photo: None,
         cover_photo: None,
+        website: None,
         birthdate: None,
-        current_location: None,
-        raised_location: None,
-        phone: None,
-        email: None,
-        gender: None,
-        political_view: None,
-        religion: None,
-        education: None,
-        primary_language: None,
-        relationship_status: None,
+        location: None,
         x_username: None,
         min_offer_amount: None,
         username: None,

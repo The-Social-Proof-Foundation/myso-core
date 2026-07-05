@@ -510,6 +510,9 @@ module social_contracts::profile_tests {
                 b"https://example.com/new_image.png",
                 b"https://example.com/new_cover.png",
                 option::none<u64>(),
+                option::none(),
+                option::none(),
+                option::none(),
                 &clock,
                 test_scenario::ctx(&mut scenario)
             );
@@ -525,6 +528,102 @@ module social_contracts::profile_tests {
             test_scenario::return_shared(clock);
         };
         
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_update_profile_website_birthdate_location() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        {
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
+            let coins = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
+            transfer::public_transfer(coins, USER1);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+
+            profile::create_profile(
+                &mut registry,
+                &profile_config,
+                &mut memory_registry,
+                &mut ai_credit_config,
+                string::utf8(b"Name"),
+                string::utf8(b"userloc"),
+                string::utf8(b"bio"),
+                b"",
+                b"",
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(ai_credit_config);
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(profile_config);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let mut profile = test_scenario::take_from_sender<Profile>(&scenario);
+
+            profile::update_profile(
+                &mut profile,
+                string::utf8(b""),
+                string::utf8(b""),
+                b"",
+                b"",
+                option::none(),
+                option::some(string::utf8(b"https://example.com")),
+                option::some(string::utf8(b"1990-01-01")),
+                option::some(string::utf8(b"New York")),
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+
+            let website = profile::website(&profile);
+            assert!(option::is_some(website), 0);
+            assert!(option::borrow(website) == &string::utf8(b"https://example.com"), 1);
+
+            let birthdate = profile::birthdate(&profile);
+            assert!(option::is_some(birthdate), 2);
+            assert!(option::borrow(birthdate) == &string::utf8(b"1990-01-01"), 3);
+
+            let location = profile::location(&profile);
+            assert!(option::is_some(location), 4);
+            assert!(option::borrow(location) == &string::utf8(b"New York"), 5);
+
+            profile::update_profile(
+                &mut profile,
+                string::utf8(b""),
+                string::utf8(b""),
+                b"",
+                b"",
+                option::none(),
+                option::some(string::utf8(b"")),
+                option::some(string::utf8(b"")),
+                option::some(string::utf8(b"")),
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+
+            assert!(option::is_none(profile::website(&profile)), 6);
+            assert!(option::is_none(profile::birthdate(&profile)), 7);
+            assert!(option::is_none(profile::location(&profile)), 8);
+
+            test_scenario::return_to_sender(&scenario, profile);
+            test_scenario::return_shared(clock);
+        };
+
         test_scenario::end(scenario);
     }
     
@@ -590,6 +689,9 @@ module social_contracts::profile_tests {
                 b"https://example.com/hacked.png",
                 b"https://example.com/hacked_cover.png",
                 option::none<u64>(),
+                option::none(),
+                option::none(),
+                option::none(),
                 &clock,
                 test_scenario::ctx(&mut scenario)
             );
@@ -835,6 +937,9 @@ module social_contracts::profile_tests {
                 b"",
                 b"",
                 option::none<u64>(),
+                option::none(),
+                option::none(),
+                option::none(),
                 &clock,
                 test_scenario::ctx(&mut scenario)
             );
@@ -1022,6 +1127,7 @@ module social_contracts::profile_tests {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
             let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
+            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
             let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
             let profile = test_scenario::take_from_sender<Profile>(&scenario);
 
@@ -1030,6 +1136,7 @@ module social_contracts::profile_tests {
                 &mut memory_registry,
                 &mut memory_account,
                 profile,
+                &profile_config,
                 &treasury,
                 USER2,
                 option::none(),
@@ -1040,6 +1147,7 @@ module social_contracts::profile_tests {
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(registry);
+            test_scenario::return_shared(profile_config);
             test_scenario::return_shared(treasury);
 
             test_scenario::return_shared(clock);
@@ -1443,6 +1551,7 @@ module social_contracts::profile_tests {
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
             let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
+            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
             let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
             let profile = test_scenario::take_from_sender<Profile>(&scenario);
             
@@ -1451,6 +1560,7 @@ module social_contracts::profile_tests {
                 &mut memory_registry,
                 &mut memory_account,
                 profile,
+                &profile_config,
                 &treasury,
                 USER2,
                 option::none(),
@@ -1461,6 +1571,7 @@ module social_contracts::profile_tests {
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(registry);
+            test_scenario::return_shared(profile_config);
             test_scenario::return_shared(treasury);
 
             test_scenario::return_shared(clock);
@@ -1641,6 +1752,9 @@ module social_contracts::profile_tests {
                 b"https://example.com/image.png",
                 b"",
                 min_offer,
+                option::none(),
+                option::none(),
+                option::none(),
                 &clock,
                 test_scenario::ctx(&mut scenario)
             );

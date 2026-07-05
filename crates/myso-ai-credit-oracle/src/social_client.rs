@@ -112,6 +112,29 @@ impl SocialClient {
     }
 
     pub async fn ingest_usage_line(&self, req: &IngestUsageLineRequest) -> Result<()> {
+        self.ingest_usage_line_with_retries(req, 1).await
+    }
+
+    pub async fn ingest_usage_line_with_retries(
+        &self,
+        req: &IngestUsageLineRequest,
+        max_attempts: u32,
+    ) -> Result<()> {
+        let mut last_err = None;
+        for attempt in 0..max_attempts {
+            if attempt > 0 {
+                let delay_ms = 100u64 * 2u64.saturating_pow(attempt - 1);
+                tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
+            }
+            match self.ingest_usage_line_once(req).await {
+                Ok(()) => return Ok(()),
+                Err(err) => last_err = Some(err),
+            }
+        }
+        Err(last_err.unwrap_or_else(|| anyhow::anyhow!("ingest failed")))
+    }
+
+    async fn ingest_usage_line_once(&self, req: &IngestUsageLineRequest) -> Result<()> {
         let url = format!("{}/internal/ai-credit/usage-lines", self.base_url);
         let mut builder = self.client.post(&url).json(req);
         if let Some(secret) = &self.usage_sync_secret {

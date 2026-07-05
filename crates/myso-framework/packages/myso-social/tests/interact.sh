@@ -1427,6 +1427,7 @@ record_saved_addresses() {
         read_one "MEMORY_ACCOUNT_ID" "memory MemoryAccount (for post PTBs)"
         read_one "MYDATA_REGISTRY_ID" "mydata MyDataRegistry"
         read_one "MYDATA_CONFIG_ID" "mydata MyDataConfig"
+        read_one "SUBSCRIPTION_CONFIG_ID" "subscription SubscriptionConfig"
         read_one "GOVERNANCE_ECOSYSTEM_REGISTRY_ID" "governance ecosystem GovernanceDAO"
         read_one "GOVERNANCE_POC_REGISTRY_ID" "governance PoC GovernanceDAO"
         read_one "POST_CONFIG_ID" "post PostConfig"
@@ -1487,6 +1488,15 @@ EOF
 }
 
 # ---- Upgrade migrations (entry-verified names) ----
+#
+# Subscription & MyData platform/ecosystem fees (post-upgrade):
+#   1. Call subscription::migrate_config and mydata::migrate_config on shared configs.
+#   2. Client entry functions now require &EcosystemTreasury on payment paths:
+#        subscription::{subscribe_to_profile,renew_subscription,auto_renew_subscription}
+#        mydata::{purchase_one_time,purchase_subscription,claim}
+#   3. Optional platform routing via *_with_platform variants:
+#        subscription::{subscribe_to_profile_with_platform,...}
+#        mydata::{purchase_one_time_with_platform,purchase_subscription_with_platform,claim_with_platform}
 
 upgrade_menu() {
     print_header "Upgrade Management Menu"
@@ -1495,9 +1505,11 @@ upgrade_menu() {
     echo "3. Migrate Social Graph"
     echo "4. Migrate UsernameRegistry (profile)"
     echo "5. Migrate Post config"
-    echo "6. Back to Main Menu"
+    echo "6. Migrate MyData config (fee fields)"
+    echo "7. Migrate Subscription config (fee fields)"
+    echo "8. Back to Main Menu"
     echo ""
-    read -r -p "Select an option [1-6]: " choice
+    read -r -p "Select an option [1-8]: " choice
 
     case $choice in
         1) migrate_mydata ;;
@@ -1505,7 +1517,9 @@ upgrade_menu() {
         3) migrate_social_graph ;;
         4) migrate_username_registry ;;
         5) migrate_post_config ;;
-        6) show_menu ;;
+        6) migrate_mydata_config ;;
+        7) migrate_subscription_config ;;
+        8) show_menu ;;
         *) echo "Invalid option" && upgrade_menu ;;
     esac
 }
@@ -1582,6 +1596,38 @@ migrate_post_config() {
 
     print_info "Migrating PostConfig..."
     myso client call --package "$PACKAGE_ID" --module post --function migrate_post_config \
+        --args "$config_id" "$admin_cap_id" --gas-budget "$GAS_BUDGET"
+
+    print_success "Done."
+    press_enter
+    upgrade_menu
+}
+
+migrate_mydata_config() {
+    print_header "Migrating MyData Config (fee bps fields)"
+
+    read -r -p "Enter MyDataConfig ID [${MYDATA_CONFIG_ID:-}]: " config_id
+    config_id="${config_id:-$MYDATA_CONFIG_ID}"
+    read -r -p "Enter UpgradeAdminCap object ID: " admin_cap_id
+
+    print_info "Calling mydata::migrate_config ..."
+    myso client call --package "$PACKAGE_ID" --module mydata --function migrate_config \
+        --args "$config_id" "$admin_cap_id" --gas-budget "$GAS_BUDGET"
+
+    print_success "Done."
+    press_enter
+    upgrade_menu
+}
+
+migrate_subscription_config() {
+    print_header "Migrating Subscription Config (fee bps fields)"
+
+    read -r -p "Enter SubscriptionConfig ID [${SUBSCRIPTION_CONFIG_ID:-}]: " config_id
+    config_id="${config_id:-$SUBSCRIPTION_CONFIG_ID}"
+    read -r -p "Enter UpgradeAdminCap object ID: " admin_cap_id
+
+    print_info "Calling subscription::migrate_config ..."
+    myso client call --package "$PACKAGE_ID" --module subscription --function migrate_config \
         --args "$config_id" "$admin_cap_id" --gas-budget "$GAS_BUDGET"
 
     print_success "Done."

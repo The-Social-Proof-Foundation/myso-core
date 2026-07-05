@@ -72,16 +72,7 @@ impl Profile {
             blocked_count: inner.blocked_count,
             min_offer_amount: inner.min_offer_amount,
             birthdate: inner.birthdate,
-            current_location: inner.current_location,
-            raised_location: inner.raised_location,
-            phone: inner.phone,
-            email: inner.email,
-            gender: inner.gender,
-            political_view: inner.political_view,
-            religion: inner.religion,
-            education: inner.education,
-            primary_language: inner.primary_language,
-            relationship_status: inner.relationship_status,
+            location: inner.location,
             x_username: inner.x_username,
             block_list_address: None,
             social_proof_token_address: inner.social_proof_token_address,
@@ -184,54 +175,9 @@ impl Profile {
         self.inner.birthdate.as_deref()
     }
 
-    /// Current location.
-    async fn current_location(&self) -> Option<&str> {
-        self.inner.current_location.as_deref()
-    }
-
-    /// Raised location.
-    async fn raised_location(&self) -> Option<&str> {
-        self.inner.raised_location.as_deref()
-    }
-
-    /// Phone (encrypted).
-    async fn phone(&self) -> Option<&str> {
-        self.inner.phone.as_deref()
-    }
-
-    /// Email (encrypted).
-    async fn email(&self) -> Option<&str> {
-        self.inner.email.as_deref()
-    }
-
-    /// Gender.
-    async fn gender(&self) -> Option<&str> {
-        self.inner.gender.as_deref()
-    }
-
-    /// Political view.
-    async fn political_view(&self) -> Option<&str> {
-        self.inner.political_view.as_deref()
-    }
-
-    /// Religion.
-    async fn religion(&self) -> Option<&str> {
-        self.inner.religion.as_deref()
-    }
-
-    /// Education.
-    async fn education(&self) -> Option<&str> {
-        self.inner.education.as_deref()
-    }
-
-    /// Primary language.
-    async fn primary_language(&self) -> Option<&str> {
-        self.inner.primary_language.as_deref()
-    }
-
-    /// Relationship status.
-    async fn relationship_status(&self) -> Option<&str> {
-        self.inner.relationship_status.as_deref()
+    /// Location.
+    async fn location(&self) -> Option<&str> {
+        self.inner.location.as_deref()
     }
 
     /// X (Twitter) username.

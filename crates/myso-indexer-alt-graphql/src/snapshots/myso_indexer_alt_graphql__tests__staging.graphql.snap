@@ -207,6 +207,136 @@ enum AddressTransactionRelationship {
 	AFFECTED
 }
 
+type AgentSpendBreakdown {
+	agent: SubAgent
+	agentObjectId: String!
+	budgetEnabled: Boolean!
+	budgetMist: BigInt
+	derivedAddress: MySoAddress!
+	label: String!
+	memoryBytes: BigInt!
+	memoryEntries: BigInt!
+	orgSharedMemoryEntries: BigInt!
+	requireApprovalAboveMist: BigInt
+	spentMist: BigInt!
+	usageEvents: BigInt!
+}
+
+type AgenticOrganization {
+	active: Boolean!
+	ageMs: BigInt!
+	agentSpendBreakdown(window: OrganizationStatsWindowGql, limit: Int! = 20): [AgentSpendBreakdown!]
+	auditLog(filter: AuditLogFilterInput, limit: Int! = 20, offset: Int! = 0): AuditLogConnection
+	createdAt: Int!
+	description: String
+	invitations(invitee: String, status: String): [OrgInvitation!]
+	memoryPermissions(member: String, activeOnly: Boolean): [OrgMemoryPermission!]
+	name: String
+	orgType: OrganizationType!
+	organizationId: String!
+	roleAssignments(member: String, activeOnly: Boolean): [OrgRoleAssignment!]
+	roles: [OrgRole!]
+	rootAgent: SubAgent
+	spendApprovals(status: String, agent: String, limit: Int! = 20): [SpendApproval!]
+	statistics(window: OrganizationStatsWindowGql): GraphOrganizationStatistics
+}
+
+type AgenticOrganizationLeaderboardEntry {
+	organization: AgenticOrganization!
+	rank: Int!
+	sortValue: BigInt!
+}
+
+type AgenticOrganizationLeaderboardResponse {
+	entries: [AgenticOrganizationLeaderboardEntry!]!
+	total: Int!
+}
+
+type AiCreditAgentBudget {
+	agentObjectId: String!
+	budgetMist: BigInt
+	dailyCapMist: BigInt
+	enabled: Boolean!
+	monthlyCapMist: BigInt
+	requireApprovalAboveMist: BigInt
+	spentMist: BigInt!
+}
+
+type AiCreditBalance {
+	active: Boolean!
+	agentBudgets: [AiCreditAgentBudget!]
+	balanceId: String!
+	balanceMist: Int!
+	credits: Int!
+	dailyCapMist: Int
+	monthlyCapMist: Int
+	pendingApprovals: [SpendApproval!]
+	settlementNonce: Int!
+	spentTotalMist: Int!
+	usageHistory(first: Int! = 20): [AiCreditUsageLine!]
+}
+
+type AiCreditConfig {
+	"""
+	Catalog version label carried by the AI credit pricing catalog, when set.
+	"""
+	catalogVersion: String
+	"""
+	Maximum single settlement amount (in MYSO base units) permitted per usage receipt.
+	"""
+	maxSingleSettlementMist: Int!
+	"""
+	Minimum deposit (in MYSO base units) required to open an AI credit balance.
+	"""
+	minDepositMist: Int!
+	"""
+	Markup in basis points applied on top of oracle AI credit pricing (10000 = 100%).
+	"""
+	oracleMarkupBps: Int!
+	"""
+	Hex-encoded ed25519 public key the AI credit oracle uses to sign usage receipts.
+	"""
+	oraclePubkeyHex: String!
+	"""
+	Time-to-live (ms) for a usage receipt before it is considered stale.
+	"""
+	receiptTtlMs: Int!
+	"""
+	When the configuration was last updated.
+	"""
+	time: DateTime!
+	"""
+	Transaction ID of the last config update.
+	"""
+	transactionId: String!
+	"""
+	Treasury address that receives AI credit fees.
+	"""
+	treasuryAddress: String!
+	"""
+	Last updated timestamp (epoch milliseconds).
+	"""
+	updatedAt: Int!
+	"""
+	Address that last updated the configuration.
+	"""
+	updatedBy: String!
+	"""
+	Configuration version.
+	"""
+	version: Int!
+}
+
+type AiCreditUsageLine {
+	amountMist: Int!
+	createdAt: DateTime!
+	modelId: String
+	receiptId: String!
+	settled: Boolean!
+	settlementTx: String
+	usageKind: Int!
+}
+
 type AnonymousVote {
 	decryptionStatus: Int!
 	processingSuccess: Boolean!
@@ -229,6 +359,34 @@ type AnonymousVotingTrend {
 	failedDecryptions: Int!
 	successfulDecryptions: Int!
 	totalVotes: Int!
+}
+
+type AuditLogConnection {
+	entries: [AuditLogEntry!]!
+}
+
+type AuditLogEntry {
+	accountId: String
+	action: String!
+	actorAddress: MySoAddress!
+	actorType: String!
+	id: BigInt!
+	metadata: JSON
+	newState: JSON
+	organizationId: String
+	prevState: JSON
+	source: String!
+	targetId: String!
+	targetType: String!
+	time: DateTime!
+	txDigest: String
+}
+
+input AuditLogFilterInput {
+	action: String
+	actor: String
+	source: String
+	targetType: String
 }
 
 """
@@ -1306,6 +1464,33 @@ The value of a dynamic field (`MoveValue`) or dynamic object field (`MoveObject`
 """
 union DynamicFieldValue = MoveObject | MoveValue
 
+type EcosystemTreasury {
+	"""
+	When the configuration was last updated.
+	"""
+	time: DateTime!
+	"""
+	Transaction ID of the last config update.
+	"""
+	transactionId: String!
+	"""
+	Treasury address that receives ecosystem fees (e.g. profile sale fees).
+	"""
+	treasuryAddress: String!
+	"""
+	Last updated timestamp (epoch milliseconds).
+	"""
+	updatedAt: Int!
+	"""
+	Address that last updated the configuration.
+	"""
+	updatedBy: String!
+	"""
+	Configuration version.
+	"""
+	version: Int!
+}
+
 """
 System transaction that supersedes `ChangeEpochTransaction` as the new way to run transactions at the end of an epoch. Behaves similarly to `ChangeEpochTransaction` but can accommodate other optional transactions to run at the end of the epoch.
 """
@@ -1877,6 +2062,43 @@ type GovernanceStats {
 	votingProposals: Int!
 }
 
+type GraphOrganizationStatistics {
+	activeAgents: Int!
+	aiCreditSpentMist: BigInt!
+	aiCreditUsageEvents: BigInt!
+	attributionCoverage: Float!
+	estimatedAssetsUnderManagementMyso: BigInt!
+	insufficientSample: Boolean!
+	memoryBytes: BigInt!
+	memoryEntries: BigInt!
+	netCashFlowMyso: BigInt!
+	orgSharedMemoryEntries: BigInt!
+	organizationAgeMs: BigInt!
+	originalityPostsAnalyzed: BigInt!
+	originalityScoreAverage: Float
+	spotAccuracy: Float
+	spotBetsResolved: BigInt!
+	statsRollupAt: DateTime
+	totalActionsExecuted: BigInt!
+	totalAgents: Int!
+	totalCounterparties: BigInt!
+	totalEngagement: BigInt!
+	totalOutboundSpendMyso: BigInt!
+	totalPosts: BigInt!
+	totalRevenueMyso: BigInt!
+	totalSpotParticipation: BigInt!
+	totalTransactions: BigInt!
+}
+
+type GraphVestingPiece {
+	amountBps: Int!
+	curveFactor: Int!
+	duration: Int!
+	kind: String!
+	pieceAmount: Int!
+	timeOffset: Int!
+}
+
 """
 Interface implemented by GraphQL types representing entities that are identified by an address.
 
@@ -2055,10 +2277,6 @@ type Input {
 
 type InsuranceConfig {
 	"""
-	Whether insurance is enabled.
-	"""
-	enableFlag: Boolean!
-	"""
 	Exposure multiplier cap, in basis points.
 	"""
 	exposureCapBps: Int!
@@ -2074,6 +2292,10 @@ type InsuranceConfig {
 	Implied probability floor, in basis points.
 	"""
 	impliedProbFloorBps: Int!
+	"""
+	Whether insurance is enabled.
+	"""
+	insuranceEnabled: Boolean!
 	"""
 	Liquidity multiplier cap, in basis points.
 	"""
@@ -2111,6 +2333,10 @@ type InsuranceConfig {
 	"""
 	minSpotTotalLiquidity: Int!
 	"""
+	Base odds multiplier in basis points applied in `compute_spot_risk_quote` (replaces the prior hardcoded 5000 bps).
+	"""
+	oddsBaseBps: Int!
+	"""
 	Odds multiplier cap, in basis points.
 	"""
 	oddsCapBps: Int!
@@ -2127,13 +2353,13 @@ type InsuranceConfig {
 	"""
 	time: DateTime!
 	"""
-	Last updated timestamp (epoch milliseconds).
-	"""
-	timestampMs: Int!
-	"""
 	Transaction ID of the last config update.
 	"""
 	transactionId: String!
+	"""
+	Last updated timestamp (epoch milliseconds).
+	"""
+	updatedAt: Int!
 	"""
 	Address that last updated the configuration.
 	"""
@@ -2142,6 +2368,17 @@ type InsuranceConfig {
 	Configuration version.
 	"""
 	version: Int!
+}
+
+type InsuranceConfiguration {
+	"""
+	Insurance pricing config (risk pricing, odds, exposure, fee bps).
+	"""
+	pricing: InsuranceConfig
+	"""
+	Insurance router config (reserve limits, vault health, max route legs).
+	"""
+	router: InsuranceRouterConfig
 }
 
 type InsuranceCoverageRoute {
@@ -2310,6 +2547,57 @@ type InsuranceRouteFill {
 	vaultId: String!
 }
 
+type InsuranceRouterConfig {
+	"""
+	Maximum number of legs permitted in a single coverage route (enforced at runtime).
+	"""
+	maxRouteLegs: Int!
+	"""
+	Maximum route reserve that may be locked across a single market.
+	"""
+	maxRouteReserveMarket: Int!
+	"""
+	Maximum route reserve that may be locked against a single SPoT option.
+	"""
+	maxRouteReserveOption: Int!
+	"""
+	Maximum route reserve that may be locked for a single user across routes.
+	"""
+	maxRouteReserveUser: Int!
+	"""
+	Maximum vault concentration allowed, in basis points (10000 = 100%).
+	"""
+	maxVaultConcentrationBps: Int!
+	"""
+	Minimum vault health factor required, in basis points (10000 = 100%).
+	"""
+	minVaultHealthFactorBps: Int!
+	"""
+	Whether the coverage router is paused.
+	"""
+	paused: Boolean!
+	"""
+	When the configuration was last updated.
+	"""
+	time: DateTime!
+	"""
+	Transaction ID of the last config update.
+	"""
+	transactionId: String!
+	"""
+	Last updated timestamp (epoch milliseconds).
+	"""
+	updatedAt: Int!
+	"""
+	Address that last updated the configuration.
+	"""
+	updatedBy: String!
+	"""
+	Configuration version.
+	"""
+	version: Int!
+}
+
 type InsuranceVault {
 	"""
 	Base rate in basis points per day.
@@ -2470,6 +2758,53 @@ type MemoryAccount {
 	profileId: MySoAddress!
 }
 
+type MemoryConfig {
+	"""
+	Maximum agent nesting depth allowed in a memory hierarchy.
+	"""
+	maxAgentDepth: Int!
+	"""
+	Maximum byte length accepted for a memory label.
+	"""
+	maxLabelLength: Int!
+	"""
+	Maximum byte length accepted for an organization description.
+	"""
+	maxOrgDescriptionLength: Int!
+	"""
+	Maximum byte length accepted for an organization name.
+	"""
+	maxOrgNameLength: Int!
+	"""
+	Maximum number of agentic organizations a single user may own.
+	"""
+	maxOrganizationsPerUser: Int!
+	"""
+	Cooldown (ms) between organization category updates.
+	"""
+	orgCategoryUpdateCooldownMs: Int!
+	"""
+	When the configuration was last updated.
+	"""
+	time: DateTime!
+	"""
+	Transaction ID of the last config update.
+	"""
+	transactionId: String!
+	"""
+	Last updated timestamp (epoch milliseconds).
+	"""
+	updatedAt: Int!
+	"""
+	Address that last updated the configuration.
+	"""
+	updatedBy: String!
+	"""
+	Configuration version.
+	"""
+	version: Int!
+}
+
 """
 Merges `coins` into the first `coin` (produces no results).
 """
@@ -2482,6 +2817,62 @@ type MergeCoinsCommand {
 	The coins to be merged.
 	"""
 	coins: [TransactionArgument!]!
+}
+
+type MessagingAgentGroup {
+	createdAtMs: Int!
+	creatorActor: MySoAddress!
+	creatorIdentityClass: Int!
+	creatorPrincipal: MySoAddress!
+	creatorSubAgentId: String
+	groupId: String!
+	groupName: String!
+	groupUuid: String!
+	organizationId: String
+	transactionId: String!
+}
+
+type MessagingConfig {
+	"""
+	Maximum byte length accepted for a paid-message dedupe key.
+	"""
+	maxDedupeKeyBytes: Int!
+	"""
+	Minimum character count required for a paid-message reply.
+	"""
+	minReplyChars: Int!
+	"""
+	Platform fee in basis points charged on paid messages (10000 = 100%).
+	"""
+	paidMsgPlatformFeeBps: Int!
+	"""
+	Ecosystem treasury fee in basis points charged on paid messages (10000 = 100%).
+	"""
+	paidMsgTreasuryFeeBps: Int!
+	"""
+	Payment expiration window in milliseconds for paid-message escrow claims.
+	"""
+	paymentExpirationMs: Int!
+	"""
+	When the configuration was last updated.
+	"""
+	time: DateTime!
+	"""
+	Transaction ID of the last config update.
+	"""
+	transactionId: String!
+	"""
+	Last updated timestamp (epoch milliseconds).
+	"""
+	updatedAt: Int!
+	"""
+	Address that last updated the configuration.
+	"""
+	updatedBy: String!
+	"""
+	Configuration version.
+	"""
+	version: Int!
 }
 
 """
@@ -3469,8 +3860,28 @@ type MyDataClaim {
 	claimant: MySoAddress!
 	claimantProfile: ProfileSummary
 	claimedAtMs: Int!
+	"""
+	Ecosystem fee slice deducted at claim.
+	"""
+	ecosystemFee: Int!
 	eventId: String!
+	"""
+	Gross claim amount before on-chain fee deduction.
+	"""
+	grossAmount: Int!
 	id: Int!
+	"""
+	Net amount paid to claimant after fees.
+	"""
+	netAmount: Int!
+	"""
+	Platform fee slice deducted at claim.
+	"""
+	platformFee: Int!
+	"""
+	Platform treasury recipient when a platform fee was routed on-chain.
+	"""
+	platformId: MySoAddress
 	snapshotId: String!
 	time: DateTime!
 	transactionId: String!
@@ -3480,7 +3891,11 @@ type MyDataConfig {
 	"""
 	Whether MyData marketplace is enabled.
 	"""
-	enableFlag: Boolean!
+	marketplaceEnabled: Boolean!
+	"""
+	Maximum encryption id byte length accepted when creating a MyData record.
+	"""
+	maxEncryptionIdBytes: Int!
 	"""
 	Maximum free access grants.
 	"""
@@ -3494,13 +3909,49 @@ type MyDataConfig {
 	"""
 	maxTags: Int!
 	"""
+	MyData marketplace pool claim ecosystem fee in bps (default 250 = 2.5%).
+	"""
+	mydataMarketplaceEcosystemFeeBps: Int!
+	"""
+	MyData marketplace pool claim platform fee in bps (default 250 = 2.5%).
+	"""
+	mydataMarketplacePlatformFeeBps: Int!
+	"""
+	When no platform is present, share of the platform fee bucket routed to creators (bps).
+	"""
+	nonPlatformPlatformToCreatorBps: Int!
+	"""
+	When no platform is present, share of the platform fee bucket routed to ecosystem treasury (bps).
+	"""
+	nonPlatformPlatformToTreasuryBps: Int!
+	"""
+	P2P marketplace ecosystem fee in bps (default 250 = 2.5%).
+	"""
+	p2PEcosystemFeeBps: Int!
+	"""
+	P2P marketplace platform fee in bps (default 250 = 2.5%).
+	"""
+	p2PPlatformFeeBps: Int!
+	"""
+	When the configuration was last updated.
+	"""
+	time: DateTime!
+	"""
+	Transaction ID of the last config update.
+	"""
+	transactionId: String!
+	"""
 	Last updated timestamp (epoch milliseconds).
 	"""
-	timestampMs: Int!
+	updatedAt: Int!
 	"""
 	Address that last updated the configuration.
 	"""
 	updatedBy: String!
+	"""
+	Configuration version.
+	"""
+	version: Int!
 }
 
 type MyDataDailyRevenue {
@@ -3557,11 +4008,27 @@ type MyDataPurchase {
 	"""
 	buyerProfile: ProfileSummary
 	"""
+	Net amount credited to listing owner after fees.
+	"""
+	creatorAmount: Int!
+	"""
+	Ecosystem fee slice deducted from gross payment.
+	"""
+	ecosystemFee: Int!
+	"""
 	MyData record ID this purchase is for.
 	"""
 	mydataId: String!
 	"""
-	Price paid.
+	Platform fee slice deducted from gross payment.
+	"""
+	platformFee: Int!
+	"""
+	Platform treasury recipient when a platform fee was routed on-chain.
+	"""
+	platformId: MySoAddress
+	"""
+	Price paid (gross).
 	"""
 	price: Int!
 	"""
@@ -3572,6 +4039,18 @@ type MyDataPurchase {
 	Purchase type ("one_time" or "subscription").
 	"""
 	purchaseType: String!
+	"""
+	Whether this purchase access has been revoked by the owner.
+	"""
+	revoked: Boolean!
+	"""
+	Epoch ms when access was revoked, if applicable.
+	"""
+	revokedAt: Int
+	"""
+	Address that revoked access, if applicable.
+	"""
+	revokedBy: MySoAddress
 	"""
 	Indexer timestamp when the purchase was recorded.
 	"""
@@ -3699,13 +4178,29 @@ type MyDataRecord {
 
 type MyDataRevenue {
 	"""
-	Amount.
+	Amount (gross).
 	"""
 	amount: Int!
+	"""
+	Net amount credited to listing owner after fees.
+	"""
+	creatorAmount: Int!
+	"""
+	Ecosystem fee slice deducted from gross payment.
+	"""
+	ecosystemFee: Int!
 	"""
 	Address that paid (from).
 	"""
 	fromAddress: MySoAddress!
+	"""
+	Platform fee slice deducted from gross payment.
+	"""
+	platformFee: Int!
+	"""
+	Platform treasury recipient when a platform fee was routed on-chain.
+	"""
+	platformId: MySoAddress
 	"""
 	Epoch timestamp when the revenue was recorded.
 	"""
@@ -3784,6 +4279,18 @@ type MyDataSubscription {
 	Price paid.
 	"""
 	price: Int!
+	"""
+	Whether this subscription access has been revoked by the owner.
+	"""
+	revoked: Boolean!
+	"""
+	Epoch ms when access was revoked, if applicable.
+	"""
+	revokedAt: Int
+	"""
+	Address that revoked access, if applicable.
+	"""
+	revokedBy: MySoAddress
 	"""
 	Subscriber address.
 	"""
@@ -4193,6 +4700,83 @@ type OpenMoveTypeSignatureBody =
 """
 scalar OpenMoveTypeSignature
 
+type OrgInvitation {
+	createdAtMs: BigInt!
+	expiresAtMs: BigInt
+	grantedMask: BigInt
+	invitedBy: MySoAddress!
+	inviteeAddress: MySoAddress!
+	permissionsMask: BigInt!
+	respondedAtMs: BigInt
+	respondedBy: MySoAddress
+	roleName: String
+	status: String!
+}
+
+type OrgMemoryPermission {
+	active: Boolean!
+	grantedAt: DateTime!
+	grantedBy: MySoAddress!
+	memberAddress: MySoAddress!
+	permissionKind: BigInt!
+}
+
+type OrgRole {
+	definedBy: MySoAddress!
+	isBuiltin: Boolean!
+	mask: BigInt!
+	roleName: String!
+}
+
+type OrgRoleAssignment {
+	active: Boolean!
+	assignedAtMs: BigInt!
+	assignedBy: MySoAddress!
+	assignedMask: BigInt!
+	memberAddress: MySoAddress!
+	roleName: String!
+}
+
+type OrganizationCategory {
+	displayName: String!
+	slug: String!
+	value: Int!
+}
+
+enum OrganizationLeaderboardSortGql {
+	HIGHEST_NET_CASH_FLOW
+	FASTEST_GROWING
+	HIGHEST_ACCURACY
+	MOST_ACTIVE
+	HIGHEST_REVENUE
+	LARGEST_ESTIMATED_AUM
+}
+
+enum OrganizationStatsWindowGql {
+	ALL
+	DAYS_7
+	DAYS_30
+	DAYS_180
+	DAYS_365
+}
+
+enum OrganizationType {
+	COMPANY
+	STARTUP
+	INVESTMENT_FUND
+	NONPROFIT
+	RESEARCH
+	GOVERNMENT
+	MEDIA
+	STEWARDSHIP
+	BRAND
+	COMMUNITY
+	SPORTS
+	EDUCATION
+	HEALTHCARE
+	OTHER
+}
+
 """
 Placeholder for unimplemented command types
 """
@@ -4295,6 +4879,31 @@ type PageInfo {
 	startCursor: String
 }
 
+type PaidMessageEscrow {
+	amount: Int!
+	claimedAtMs: Int
+	createdAtMs: Int!
+	groupId: String!
+	netAmount: Int
+	payer: MySoAddress!
+	payerProfile: ProfileSummary
+	platformFee: Int
+	recipient: MySoAddress!
+	recipientProfile: ProfileSummary
+	refundedAtMs: Int
+	seq: Int!
+	status: PaidMessageEscrowStatusGql!
+	transactionId: String!
+	treasuryFee: Int
+}
+
+enum PaidMessageEscrowStatusGql {
+	ESCROWED
+	CLAIMED
+	SETTLED
+	REFUNDED
+}
+
 type PerEpochConfig {
 	"""
 	The per-epoch configuration object as of when the transaction was executed.
@@ -4370,7 +4979,11 @@ type Platform implements Node {
 	"""
 	Moderators of this platform (paginated).
 	"""
-	moderators(limit: Int, offset: Int): [PlatformModeratorSummary!]
+	moderators(permission: String, limit: Int, offset: Int): [PlatformModeratorSummary!]
+	"""
+	Derived PermissionedGroup object id for platform moderators.
+	"""
+	moderatorsGroupId: String
 	"""
 	The platform name.
 	"""
@@ -4453,6 +5066,61 @@ type PlatformBlockedProfileSummary {
 	"""
 	profile: ProfileSummary
 	walletAddress: MySoAddress!
+}
+
+type PlatformConfig {
+	"""
+	Maximum byte length accepted for a platform badge description.
+	"""
+	maxBadgeDescriptionLength: Int!
+	"""
+	Maximum byte length accepted for a platform badge icon URL.
+	"""
+	maxBadgeIconUrlLength: Int!
+	"""
+	Maximum byte length accepted for a platform badge media URL.
+	"""
+	maxBadgeMediaUrlLength: Int!
+	"""
+	Maximum byte length accepted for a platform badge name.
+	"""
+	maxBadgeNameLength: Int!
+	"""
+	Maximum byte length accepted for a platform cover photo URL.
+	"""
+	maxCoverPhotoUrlLength: Int!
+	"""
+	Maximum byte length accepted for a single media preview URL.
+	"""
+	maxMediaPreviewUrlLength: Int!
+	"""
+	Maximum number of media previews allowed on a platform.
+	"""
+	maxMediaPreviews: Int!
+	"""
+	Maximum reasoning text length accepted for platform-level submissions.
+	"""
+	maxReasoningLength: Int!
+	"""
+	When the configuration was last updated.
+	"""
+	time: DateTime!
+	"""
+	Transaction ID of the last config update.
+	"""
+	transactionId: String!
+	"""
+	Last updated timestamp (epoch milliseconds).
+	"""
+	updatedAt: Int!
+	"""
+	Address that last updated the configuration.
+	"""
+	updatedBy: String!
+	"""
+	Configuration version.
+	"""
+	version: Int!
 }
 
 type PlatformMemberSummary {
@@ -4564,6 +5232,7 @@ type PlatformModeratorSummary {
 	Profile of the moderator.
 	"""
 	moderatorProfile: ProfileSummary
+	permissions: [String!]!
 }
 
 type PlatformRevenueSummary {
@@ -4587,6 +5256,10 @@ type PlatformRevenueSummary {
 	Total creators count.
 	"""
 	totalCreators: Int!
+	"""
+	Paid messaging revenue (12-month).
+	"""
+	totalMessagingRevenue: Int!
 	"""
 	MyData revenue (12-month).
 	"""
@@ -4614,6 +5287,11 @@ type PlatformRevenueSummary {
 }
 
 type PlatformUserAccess {
+	canAirdropTreasury: Boolean!
+	canBlockUsers: Boolean!
+	canManageBadges: Boolean!
+	canManagePromotions: Boolean!
+	canModerateContent: Boolean!
 	"""
 	Whether the platform has blocked this wallet.
 	"""
@@ -4626,6 +5304,10 @@ type PlatformUserAccess {
 	Whether the wallet is a moderator of this platform.
 	"""
 	isModerator: Boolean!
+	"""
+	Active granular moderator permissions for this wallet.
+	"""
+	moderatorPermissions: [String!]!
 }
 
 type PocAnalysisResult {
@@ -4703,7 +5385,7 @@ type PocBadge {
 
 type PocBeneficiaryVault {
 	"""
-	Beneficiary wallet for this vault.
+	Deprecated alias for [`vault_routing_key`](Self::vault_routing_key).
 	"""
 	beneficiary: MySoAddress!
 	claims(limit: Int, offset: Int): [PocVaultClaim!]
@@ -4712,6 +5394,7 @@ type PocBeneficiaryVault {
 	"""
 	coinBalances: [PocVaultCoinBalance!]
 	deposits(limit: Int, offset: Int): [PocVaultDeposit!]
+	pocUsernameBeneficiary: PocUsernameBeneficiary
 	transactionId: String!
 	"""
 	Last indexer touch (epoch milliseconds).
@@ -4721,6 +5404,10 @@ type PocBeneficiaryVault {
 	On-chain vault object address.
 	"""
 	vaultId: String!
+	"""
+	Vault directory lookup key stored on-chain as `PoCBeneficiaryVault.beneficiary`.
+	"""
+	vaultRoutingKey: MySoAddress!
 }
 
 type PocConfig {
@@ -4733,6 +5420,10 @@ type PocConfig {
 	Cost to submit a dispute.
 	"""
 	disputeCost: Int!
+	"""
+	Shared PoC GovernanceDAO object ID (registry_type = 1).
+	"""
+	disputeGovernanceRegistryId: String
 	"""
 	Minimum aggregate voting stake (`uphold` + `overturn`) required for a full resolution on round 1; `0` disables the quorum gate.
 	"""
@@ -4749,6 +5440,10 @@ type PocConfig {
 	Similarity threshold for image content (0-100).
 	"""
 	imageThreshold: Int!
+	"""
+	Maximum number of disputes allowed per post.
+	"""
+	maxDisputesPerPost: Int!
 	"""
 	Max evidence URLs per submission.
 	"""
@@ -4767,6 +5462,10 @@ type PocConfig {
 	"""
 	maxVotesPerDispute: Int!
 	"""
+	Minimum vault deposit amount required to submit a dispute (MYSO base units).
+	"""
+	minVaultDepositAmount: Int!
+	"""
 	Minimum stake per vote on a dispute (MYSO base units).
 	"""
 	minVoteStake: Int!
@@ -4779,7 +5478,11 @@ type PocConfig {
 	"""
 	revenueRedirectPercentage: Int!
 	"""
-	Transaction digest for the indexer row for this PoC configuration update.
+	When the configuration was last updated.
+	"""
+	time: DateTime!
+	"""
+	Transaction ID of the last config update.
 	"""
 	transactionId: String!
 	"""
@@ -4790,6 +5493,10 @@ type PocConfig {
 	Address that last updated PoC configuration.
 	"""
 	updatedBy: String!
+	"""
+	One-time join-referral fee (bps) on first username-beneficiary vault claim.
+	"""
+	usernameBeneficiaryJoinReferralBps: Int!
 	"""
 	Max redirect ceiling (bps) when only embedded audio matches on a VIDEO post (on-chain delta ramp applies).
 	"""
@@ -4932,10 +5639,52 @@ type PocRevenueRedirection {
 	similarityScore: Int!
 }
 
+type PocUsernameBeneficiary {
+	"""
+	Deprecated alias for [`vault_routing_key`](Self::vault_routing_key).
+	"""
+	beneficiaryAddress: String!
+	beneficiaryId: String!
+	claimedAtMs: Int
+	claimedBy: String
+	claimedProfileId: String
+	creatorIdentityHash: String!
+	creatorIdentitySource: Int!
+	endReasonCode: Int
+	endedAtMs: Int
+	endedBy: String
+	joinReferralPaid: Boolean!
+	joinReferralPaidAtMs: Int
+	joinReferrer: String
+	oracleEvidenceHash: String!
+	pocBeneficiaryVault: PocBeneficiaryVault
+	provisionedAtMs: Int!
+	provisionedBy: String!
+	requiredXHandle: String!
+	"""
+	1=active, 2=claimed, 3=ended.
+	"""
+	status: Int!
+	transactionId: String!
+	username: String!
+	vaultId: String!
+	"""
+	Identity-derived vault directory lookup key (not a user wallet).
+	"""
+	vaultRoutingKey: String!
+}
+
 type PocVaultClaim {
+	"""
+	Deprecated alias for [`vault_routing_key`](Self::vault_routing_key).
+	"""
 	beneficiary: MySoAddress!
 	beneficiaryAmount: Int!
 	coinType: String!
+	"""
+	Full claim size in base units (`treasury + referrer + beneficiary`).
+	"""
+	grossAmount: Int!
 	id: Int!
 	occurredAtMs: Int!
 	referrer: MySoAddress
@@ -4943,6 +5692,7 @@ type PocVaultClaim {
 	transactionId: String!
 	treasuryAmount: Int!
 	vaultId: String!
+	vaultRoutingKey: MySoAddress!
 }
 
 type PocVaultCoinBalance {
@@ -4954,6 +5704,9 @@ type PocVaultCoinBalance {
 
 type PocVaultDeposit {
 	amount: Int!
+	"""
+	Deprecated alias for [`vault_routing_key`](Self::vault_routing_key).
+	"""
 	beneficiary: MySoAddress!
 	coinType: String!
 	id: Int!
@@ -4961,6 +5714,7 @@ type PocVaultDeposit {
 	sourcePostId: String
 	transactionId: String!
 	vaultId: String!
+	vaultRoutingKey: MySoAddress!
 }
 
 type Post implements Node {
@@ -5032,6 +5786,10 @@ type Post implements Node {
 	Optional linked MyData object id.
 	"""
 	mydataId: String
+	"""
+	Agentic organization attributed to this post, when indexed.
+	"""
+	organizationId: String
 	"""
 	The wallet address of the post owner.
 	"""
@@ -5202,9 +5960,13 @@ type Post implements Node {
 	"""
 	tips(limit: Int, offset: Int): [TipSummary!]
 	"""
-	Total tips received.
+	Creator earnings credited on-chain to the post owner (`Post.tips_received`).
 	"""
 	tipsReceived: Int!
+	"""
+	Total user spend on this post (sum of indexed tip rows with `is_post = true`).
+	"""
+	totalTipVolume: Int!
 	"""
 	Ownership transfers for this post (paginated).
 	"""
@@ -5241,13 +6003,33 @@ type PostConfig {
 	"""
 	maxMetadataSize: Int!
 	"""
+	Maximum promotion amount a post owner may deposit for a single promoted post campaign (MYSO base units).
+	"""
+	maxPromotionAmount: Int!
+	"""
 	Maximum reaction text length.
 	"""
 	maxReactionLength: Int!
 	"""
+	Minimum promotion amount a post owner must deposit to start a promoted post campaign (MYSO base units).
+	"""
+	minPromotionAmount: Int!
+	"""
+	Minimum view duration (ms) required for a promoted-post view to count toward the campaign.
+	"""
+	minViewDurationMs: Int!
+	"""
 	Repost tip percentage (remainder to original post owner).
 	"""
 	repostTipPercentage: Int!
+	"""
+	When the configuration was last updated.
+	"""
+	time: DateTime!
+	"""
+	Transaction ID of the last config update.
+	"""
+	transactionId: String!
 	"""
 	Last updated timestamp (epoch milliseconds).
 	"""
@@ -5354,7 +6136,7 @@ type PostReport {
 	"""
 	reportId: Int!
 	"""
-	When the report was filed (epoch milliseconds, chain timestamp).
+	When the report was filed (Unix ms from myso::clock::Clock at 0x6).
 	"""
 	reportedAt: Int!
 	reporter: MySoAddress!
@@ -5386,6 +6168,15 @@ type Profile implements Node {
 	"""
 	address: MySoAddress!
 	"""
+	Agentic organizations owned by this profile (max 8 per user on-chain).
+	"""
+	agenticOrganizations(orgType: Int, activeOnly: Boolean, limit: Int, offset: Int): [AgenticOrganization!]
+	"""
+	AI credit balance for this profile owner (1 MYSO = 1 credit).
+	"""
+	aiCreditBalance: AiCreditBalance
+	auditLog(filter: AuditLogFilterInput, limit: Int! = 20, offset: Int! = 0): AuditLogConnection
+	"""
 	Profile badges (paginated).
 	"""
 	badges(limit: Int, offset: Int): [ProfileBadge!]
@@ -5414,25 +6205,13 @@ type Profile implements Node {
 	"""
 	coverPhoto: String
 	"""
-	When the profile was created (epoch milliseconds).
+	When the profile was created (Unix ms from chain Clock at 0x6).
 	"""
 	createdAt: Int
-	"""
-	Current location.
-	"""
-	currentLocation: String
 	"""
 	The profile's display name.
 	"""
 	displayName: String
-	"""
-	Education.
-	"""
-	education: String
-	"""
-	Email (encrypted).
-	"""
-	email: String
 	"""
 	Followers (paginated).
 	"""
@@ -5450,13 +6229,13 @@ type Profile implements Node {
 	"""
 	followingCount: Int!
 	"""
-	Gender.
-	"""
-	gender: String
-	"""
 	The profile's globally unique identifier.
 	"""
 	id: ID!
+	"""
+	Location.
+	"""
+	location: String
 	"""
 	Memory account row for this profile owner.
 	"""
@@ -5473,10 +6252,6 @@ type Profile implements Node {
 	MyData records owned by this profile (paginated).
 	"""
 	mydataRecords(limit: Int, offset: Int): [MyDataRecord!]
-	"""
-	Phone (encrypted).
-	"""
-	phone: String
 	"""
 	Platforms this profile has joined (paginated). Each row includes platform fields in one SQL round-trip.
 	"""
@@ -5495,10 +6270,6 @@ type Profile implements Node {
 	"""
 	pnl(windows: [ProfilePnLWindowGql!]): [ProfilePnLWindowStats!]
 	"""
-	Political view.
-	"""
-	politicalView: String
-	"""
 	Number of posts.
 	"""
 	postCount: Int!
@@ -5516,10 +6287,6 @@ type Profile implements Node {
 	"""
 	postsTotalCount(postType: String, enablePoc: Boolean, pocOutcomes: [Int!], includeRemoved: Boolean): Int
 	"""
-	Primary language.
-	"""
-	primaryLanguage: String
-	"""
 	The profile ID (object address).
 	"""
 	profileId: String
@@ -5528,10 +6295,6 @@ type Profile implements Node {
 	"""
 	profilePhoto: String
 	"""
-	Raised location.
-	"""
-	raisedLocation: String
-	"""
 	Follow suggestions for the browsing viewer while viewing this profile.
 	
 	Candidates come from this profile's friends-of-friends. Results exclude accounts
@@ -5539,14 +6302,6 @@ type Profile implements Node {
 	through the viewer's following graph, and are ranked by that overlap (`mutualCount`).
 	"""
 	recommendations(viewer: MySoAddress, limit: Int, offset: Int): [ProfileSummary!]
-	"""
-	Relationship status.
-	"""
-	relationshipStatus: String
-	"""
-	Religion.
-	"""
-	religion: String
 	"""
 	Reservation SPT holdings for this profile (paginated).
 	"""
@@ -5587,7 +6342,7 @@ type Profile implements Node {
 	subAgents(activeOnly: Boolean, limit: Int, offset: Int): [SubAgent!]
 	subAgentsTotalCount(activeOnly: Boolean): Int
 	"""
-	When the profile was last updated (epoch milliseconds).
+	When the profile was last updated (Unix ms from chain Clock at 0x6).
 	"""
 	updatedAt: Int
 	"""
@@ -5651,6 +6406,61 @@ type ProfileBadge {
 	platformId: String!
 }
 
+type ProfileConfig {
+	"""
+	Maximum curve factor accepted for profile vesting curves.
+	"""
+	curveFactorMax: Int!
+	"""
+	Minimum curve factor accepted for profile vesting curves.
+	"""
+	curveFactorMin: Int!
+	"""
+	Precision divisor used when interpreting curve factors.
+	"""
+	curvePrecision: Int!
+	"""
+	Maximum username length enforced at profile creation.
+	"""
+	maxUsernameLength: Int!
+	"""
+	Maximum number of vesting pieces allowed on a profile vesting schedule.
+	"""
+	maxVestingPieces: Int!
+	"""
+	Minimum divisor accepted for the claim threshold on profile vesting.
+	"""
+	minClaimThresholdDivisor: Int!
+	"""
+	Minimum username length enforced at profile creation.
+	"""
+	minUsernameLength: Int!
+	"""
+	Fee in basis points taken on profile sales (10000 = 100%).
+	"""
+	profileSaleFeeBps: Int!
+	"""
+	When the configuration was last updated.
+	"""
+	time: DateTime!
+	"""
+	Transaction ID of the last config update.
+	"""
+	transactionId: String!
+	"""
+	Last updated timestamp (epoch milliseconds).
+	"""
+	updatedAt: Int!
+	"""
+	Address that last updated the configuration.
+	"""
+	updatedBy: String!
+	"""
+	Configuration version.
+	"""
+	version: Int!
+}
+
 """
 Time window for P&L aggregation (cutoff from database `NOW()`).
 """
@@ -5667,6 +6477,7 @@ Per-window cash-flow breakdown for the profile owner wallet.
 """
 type ProfilePnLWindowStats {
 	grossInboundMyso: Int!
+	messagingMyso: Int!
 	mydataMyso: Int!
 	netCashFlowMyso: Int!
 	otherInboundMyso: Int!
@@ -6148,6 +6959,18 @@ type Query {
 	"""
 	address(address: MySoAddress, rootVersion: UInt53, atCheckpoint: UInt53): Address
 	"""
+	Agentic organization by object id. Returns null when social DB not configured or not found.
+	"""
+	agenticOrganization(organizationId: String!): AgenticOrganization
+	"""
+	Category-scoped agentic organization leaderboard. Returns empty when social DB not configured.
+	"""
+	agenticOrganizationsLeaderboard(sort: OrganizationLeaderboardSortGql!, category: OrganizationType!, window: OrganizationStatsWindowGql, limit: Int, offset: Int): AgenticOrganizationLeaderboardResponse
+	"""
+	AI credit configuration. Returns null when social DB not configured or no config.
+	"""
+	aiCreditConfiguration: AiCreditConfig
+	"""
 	Anonymous voting trends (daily aggregates). Returns empty when social DB not configured.
 	"""
 	anonymousVotingTrends(limit: Int): [AnonymousVotingTrend!]
@@ -6196,6 +7019,11 @@ type Query {
 	"""
 	delegates(registryType: Int, isActive: Boolean, viewer: MySoAddress, limit: Int, offset: Int): [Delegate!]
 	"""
+	Ecosystem treasury (treasury address + profile sale fee bps). Returns null when social DB
+	not configured or no treasury row indexed.
+	"""
+	ecosystemTreasury: EcosystemTreasury
+	"""
 	Fetch an epoch by its ID, or fetch the latest epoch if no ID is provided.
 	
 	Returns `null` if the epoch does not exist yet, or was pruned.
@@ -6222,9 +7050,14 @@ type Query {
 	"""
 	governanceRegistry(platformId: String!): GovernanceRegistry
 	"""
-	Insurance configuration. Returns null when social DB not configured or no config.
+	Check whether a user has active MyData access (indexer mirror; key servers use on-chain policy).
 	"""
-	insuranceConfiguration: InsuranceConfig
+	hasMydataAccess(mydataId: ID!, user: MySoAddress!): Boolean
+	"""
+	Insurance configuration (unified view: pricing + router limits). Returns null when social
+	DB not configured or neither side has been indexed.
+	"""
+	insuranceConfiguration: InsuranceConfiguration
 	"""
 	Coverage route by route object ID. Returns null when social DB not configured or not found.
 	"""
@@ -6257,6 +7090,18 @@ type Query {
 	List MyData records (paginated, optionally filtered by creator, media_type, platform_id). Returns empty when social DB not configured.
 	"""
 	listMydata(creator: MySoAddress, mediaType: String, platformId: String, sortBy: String, limit: Int, offset: Int): [MyDataRecord!]
+	"""
+	Memory configuration. Returns null when social DB not configured or no config.
+	"""
+	memoryConfiguration: MemoryConfig
+	"""
+	Agent-created messaging groups for an organization.
+	"""
+	messagingAgentGroups(organizationId: String!, limit: Int, offset: Int): [MessagingAgentGroup!]
+	"""
+	Paid-messaging configuration. Returns null when social DB not configured or no config.
+	"""
+	messagingConfiguration: MessagingConfig
 	"""
 	Fetch addresses by their keys.
 	
@@ -6412,6 +7257,10 @@ type Query {
 	"""
 	objects(first: Int, after: String, last: Int, before: String, filter: ObjectFilter!): ObjectConnection
 	"""
+	Allowed organization category labels (14 values).
+	"""
+	organizationCategories: [OrganizationCategory!]
+	"""
 	Fetch a package by its address.
 	
 	If `version` is specified, the package loaded is the one that shares its original ID with the package at `address`, but whose version is `version`.
@@ -6436,9 +7285,17 @@ type Query {
 	"""
 	packages(first: Int, after: String, last: Int, before: String, filter: PackageCheckpointFilter): MovePackageConnection
 	"""
+	Paid message escrow lifecycle rows for a wallet (latest status per message).
+	"""
+	paidMessageEscrows(address: MySoAddress!, limit: Int, offset: Int): [PaidMessageEscrow!]
+	"""
 	Fetch a platform by ID. Returns null if social DB not configured or not found.
 	"""
 	platform(id: ID!): Platform
+	"""
+	Platform configuration. Returns null when social DB not configured or no config.
+	"""
+	platformConfiguration: PlatformConfig
 	"""
 	Member, platform-block, and moderator flags for a wallet (single DB round-trip).
 	Returns null when social DB not configured.
@@ -6461,6 +7318,18 @@ type Query {
 	"""
 	pocConfiguration: PocConfig
 	"""
+	List PoC username beneficiary provisions with optional status filter.
+	"""
+	pocUsernameBeneficiaries(status: Int, limit: Int, offset: Int): [PocUsernameBeneficiary!]
+	"""
+	PoC username beneficiary provision by on-chain beneficiary object id.
+	"""
+	pocUsernameBeneficiaryById(id: ID!): PocUsernameBeneficiary
+	"""
+	PoC username beneficiary provision by username.
+	"""
+	pocUsernameBeneficiaryByUsername(username: String!): PocUsernameBeneficiary
+	"""
 	Popular MyData records (ordered by purchase + revenue + access counts). Returns empty when social DB not configured.
 	"""
 	popularMydata(limit: Int, offset: Int): [MyDataRecord!]
@@ -6480,6 +7349,10 @@ type Query {
 	Fetch a social profile by owner address. Returns null if social DB not configured or not found.
 	"""
 	profile(address: MySoAddress!): Profile
+	"""
+	Profile configuration. Returns null when social DB not configured or no config.
+	"""
+	profileConfiguration: ProfileConfig
 	"""
 	List social profiles with pagination. Returns empty when social DB not configured.
 	"""
@@ -6619,6 +7492,10 @@ type Query {
 	"""
 	subAgentByObjectId(agentObjectId: String!): SubAgent
 	"""
+	Subscription configuration. Returns null when social DB not configured or no config.
+	"""
+	subscriptionConfiguration: SubscriptionConfig
+	"""
 	Tips received for a post (paginated). Returns empty when social DB not configured.
 	"""
 	tips(postId: ID!, limit: Int, offset: Int): [TipSummary!]
@@ -6650,6 +7527,14 @@ type Query {
 	Fails if the type is malformed, returns `null` if a type mentioned does not exist.
 	"""
 	type(type: String!): MoveType
+	"""
+	Check whether a username is available for registration.
+	"""
+	usernameAvailability(username: String!): UsernameAvailability
+	"""
+	Look up a username in the on-chain registry mirror. Returns null when not found.
+	"""
+	usernameRegistryEntry(username: String!): UsernameRegistry
 	"""
 	Verify a zkLogin signature os from the given `author`.
 	
@@ -6975,6 +7860,7 @@ type SimulationResult {
 type SocialAttribution {
 	actionIdentityClass: Int!
 	actorAddress: MySoAddress!
+	organizationId: String
 	principalOwner: MySoAddress
 	subAgentId: String
 }
@@ -7016,6 +7902,28 @@ type SocialProofToken {
 	tokenType: Int
 	totalReserved: BigInt!
 	volume24H: Int
+}
+
+type SpendApproval {
+	agentObjectId: String!
+	approvedBy: MySoAddress
+	balanceId: String!
+	expiresAtMs: BigInt
+	maxAmountMist: BigInt
+	organizationId: String
+	requestedAmountMist: BigInt
+	requestedAt: DateTime!
+	status: SpendApprovalStatusGql!
+	thresholdMist: BigInt
+	updatedAt: DateTime!
+}
+
+enum SpendApprovalStatusGql {
+	REQUESTED
+	APPROVED
+	CONSUMED
+	REVOKED
+	EXPIRED
 }
 
 """
@@ -7116,17 +8024,21 @@ type SpotConfig {
 	"""
 	confidenceThresholdBps: Int!
 	"""
-	Whether SPoT (Social Proof of Truth) is enabled.
+	Ecosystem treasury fee as a direct percentage of gross bet amount, in basis points (10000 = 100%).
 	"""
-	enableFlag: Boolean!
+	ecosystemFeeBps: Int!
 	"""
-	Fee in basis points.
+	Maximum number of betting options allowed on a SPoT record.
 	"""
-	feeBps: Int!
+	maxBettingOptions: Int!
 	"""
-	Fee split to platform in basis points.
+	Maximum number of evidence URLs allowed on a SPoT record.
 	"""
-	feeSplitBpsPlatform: Int!
+	maxEvidenceUrls: Int!
+	"""
+	Maximum reasoning text length allowed when creating a SPoT record.
+	"""
+	maxReasoningLength: Int!
 	"""
 	Max resolution window duration in milliseconds.
 	"""
@@ -7136,6 +8048,14 @@ type SpotConfig {
 	"""
 	maxSingleBet: Int!
 	"""
+	Minimum number of betting options required on a SPoT record.
+	"""
+	minBettingOptions: Int!
+	"""
+	Minimum reasoning text length required when creating a SPoT record.
+	"""
+	minReasoningLength: Int!
+	"""
 	Oracle address for resolution.
 	"""
 	oracleAddress: String!
@@ -7143,6 +8063,10 @@ type SpotConfig {
 	Payout delay in milliseconds.
 	"""
 	payoutDelayMs: Int!
+	"""
+	Platform fee as a direct percentage of gross bet amount, in basis points (10000 = 100%).
+	"""
+	platformFeeBps: Int!
 	"""
 	Resolution window duration in milliseconds (global default).
 	"""
@@ -7152,13 +8076,17 @@ type SpotConfig {
 	"""
 	time: DateTime!
 	"""
-	Last updated timestamp (epoch milliseconds).
-	"""
-	timestampMs: Int!
-	"""
 	Transaction ID of the last config update.
 	"""
 	transactionId: String!
+	"""
+	Whether SPoT (Social Proof of Truth) is enabled.
+	"""
+	truthEnabled: Boolean!
+	"""
+	Last updated timestamp (epoch milliseconds).
+	"""
+	updatedAt: Int!
 	"""
 	Address that last updated the configuration.
 	"""
@@ -7362,6 +8290,14 @@ type SptExchangeConfig {
 	"""
 	maxReserversPerPool: Int!
 	"""
+	Share of the non-platform platform fee routed to the creator, in basis points (10000 = 100%).
+	"""
+	nonPlatformPlatformToCreatorBps: Int!
+	"""
+	Share of the non-platform platform fee routed to the ecosystem treasury, in basis points (10000 = 100%).
+	"""
+	nonPlatformPlatformToTreasuryBps: Int!
+	"""
 	Platform fee in basis points.
 	"""
 	platformFeeBps: Int!
@@ -7389,6 +8325,10 @@ type SptExchangeConfig {
 	Reservation treasury fee in basis points.
 	"""
 	reservationTreasuryFeeBps: Int!
+	"""
+	When the configuration was last updated.
+	"""
+	time: DateTime!
 	"""
 	Total fee in basis points.
 	"""
@@ -7425,6 +8365,10 @@ type SptExchangeConfig {
 	Address that last updated the configuration.
 	"""
 	updatedBy: String!
+	"""
+	Configuration version.
+	"""
+	version: Int!
 }
 
 type SptHolding {
@@ -7775,6 +8719,7 @@ type StoreExecutionTimeObservationsTransaction {
 type SubAgent {
 	active: Boolean!
 	agentObjectId: String!
+	budget: AiCreditAgentBudget
 	capabilities: Int!
 	children(activeOnly: Boolean, limit: Int, offset: Int): [SubAgent!]
 	createdAt: Int!
@@ -7786,11 +8731,61 @@ type SubAgent {
 	label: String!
 	maxActionSpend: Int
 	memoryVaultId: String
+	orgMemoryPermissions: [OrgMemoryPermission!]
+	orgRoles: [OrgRoleAssignment!]
+	organizationId: String
 	parentObjectId: String
 	platformScope: MySoAddress
 	registerScope: Int!
 	registeredBy: MySoAddress!
 	roleTags: Int!
+}
+
+type SubscriptionConfig {
+	"""
+	Billing period duration in milliseconds.
+	"""
+	billingPeriodMs: Int!
+	"""
+	Ecosystem treasury fee in bps deducted from gross subscription payments (default 250 = 2.5%).
+	"""
+	ecosystemFeeBps: Int!
+	"""
+	Maximum number of renewal months permitted per subscription.
+	"""
+	maxRenewalMonths: Int!
+	"""
+	When no platform is present, share of the platform fee bucket routed to creators (bps).
+	"""
+	nonPlatformPlatformToCreatorBps: Int!
+	"""
+	When no platform is present, share of the platform fee bucket routed to ecosystem treasury (bps).
+	"""
+	nonPlatformPlatformToTreasuryBps: Int!
+	"""
+	Platform fee in bps deducted from gross subscription payments (default 250 = 2.5%).
+	"""
+	platformFeeBps: Int!
+	"""
+	When the configuration was last updated.
+	"""
+	time: DateTime!
+	"""
+	Transaction ID of the last config update.
+	"""
+	transactionId: String!
+	"""
+	Last updated timestamp (epoch milliseconds).
+	"""
+	updatedAt: Int!
+	"""
+	Address that last updated the configuration.
+	"""
+	updatedBy: String!
+	"""
+	Configuration version.
+	"""
+	version: Int!
 }
 
 """
@@ -7810,6 +8805,7 @@ enum SupplyState {
 type TipSummary {
 	amount: Int!
 	createdAt: Int!
+	organizationId: String
 	recipient: MySoAddress!
 	"""
 	Profile of the tip recipient.
@@ -8192,6 +9188,30 @@ type UserSignature {
 	signatureBytes: Base64
 }
 
+type UsernameAvailability {
+	available: Boolean!
+	beneficiaryId: String
+	beneficiaryProvisioned: Boolean!
+	registryClaimed: Boolean!
+	registryProfileId: String
+	unavailableReasons: [UsernameUnavailableReason!]!
+	username: String!
+}
+
+type UsernameRegistry {
+	profileId: String!
+	transactionId: String!
+	username: String!
+}
+
+"""
+Why a username is unavailable for registration.
+"""
+enum UsernameUnavailableReason {
+	REGISTRY_CLAIMED
+	BENEFICIARY_PROVISIONED
+}
+
 type Validator {
 	"""
 	The APY of this validator in basis points (network-wide stake subsidy APY). Divide by 100 for percentage.
@@ -8284,107 +9304,37 @@ input VersionFilter {
 }
 
 type VestingLeaderboardEntry {
-	"""
-	Number of active vesting wallets.
-	"""
 	activeWallets: Int!
-	"""
-	Number of completed vesting wallets.
-	"""
 	completedWallets: Int!
-	"""
-	Owner address.
-	"""
 	ownerAddress: MySoAddress!
-	"""
-	Total amount claimed across all wallets.
-	"""
 	totalClaimed: Int!
-	"""
-	Total amount vested across all wallets.
-	"""
 	totalVested: Int!
-	"""
-	User profile summary.
-	"""
 	user: ProfileSummary!
 }
 
 type VestingLeaderboardResponse {
-	"""
-	Leaderboard entries.
-	"""
 	entries: [VestingLeaderboardEntry!]!
-	"""
-	Total number of unique owners.
-	"""
 	total: Int!
 }
 
 type VestingWallet {
-	"""
-	Amount already claimed.
-	"""
+	claimableAmount: Int!
 	claimedAmount: Int!
-	"""
-	Claimed percentage (0-100).
-	"""
 	claimedPercentage: Float!
-	"""
-	When the wallet was created (epoch milliseconds).
-	"""
 	createdAt: Int!
-	"""
-	Curve factor (1000 = linear).
-	"""
-	curveFactor: Int!
-	"""
-	Vesting duration (ms).
-	"""
-	duration: Int!
-	"""
-	End time (ms since epoch).
-	"""
 	endTime: Int!
-	"""
-	Whether vesting has ended.
-	"""
 	hasEnded: Boolean!
-	"""
-	Whether vesting has started.
-	"""
 	hasStarted: Boolean!
-	"""
-	Owner address.
-	"""
+	nextCliff: GraphVestingPiece
 	ownerAddress: MySoAddress!
-	"""
-	Profile of the vesting wallet owner.
-	"""
 	ownerProfile: ProfileSummary
-	"""
-	Remaining balance.
-	"""
+	pieces: [GraphVestingPiece!]!
 	remainingBalance: Int!
-	"""
-	Vesting start time (ms since epoch).
-	"""
+	scheduleEnd: Int!
 	startTime: Int!
-	"""
-	Total amount vested.
-	"""
 	totalAmount: Int!
-	"""
-	Transaction ID that created the wallet.
-	"""
 	transactionId: String!
-	"""
-	Vesting progress (0.0-1.0).
-	"""
 	vestingProgress: Float!
-	"""
-	Vesting wallet ID (object address).
-	"""
 	walletId: String!
 }
 

@@ -46,9 +46,18 @@ module social_contracts::mydata {
     use mydata::merkle;
 
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
+    use social_contracts::platform::{Self, Platform};
+    use social_contracts::profile::{Self, EcosystemTreasury};
 
     // === Default constants for config initialization ===
     const DEFAULT_MARKETPLACE_ENABLED: bool = false;
+    const BPS_DENOM: u64 = 10_000;
+    const DEFAULT_P2P_PLATFORM_FEE_BPS: u64 = 250;
+    const DEFAULT_P2P_ECOSYSTEM_FEE_BPS: u64 = 250;
+    const DEFAULT_MYDATA_MARKETPLACE_PLATFORM_FEE_BPS: u64 = 250;
+    const DEFAULT_MYDATA_MARKETPLACE_ECOSYSTEM_FEE_BPS: u64 = 250;
+    const DEFAULT_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS: u64 = 0;
+    const DEFAULT_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS: u64 = 10_000;
 
     // === Error codes ===
     const EUnauthorized: u64 = 1;
@@ -65,6 +74,8 @@ module social_contracts::mydata {
     const EPolicyIdMismatch: u64 = 12;
     const EPolicyNotEntitled: u64 = 13;
     const ENoAccessToRevoke: u64 = 14;
+    const EInvalidConfig: u64 = 15;
+    const EPlatformMismatch: u64 = 16;
 
     // === Constants ===
     const MAX_TAGS: u64 = 10;
@@ -140,6 +151,12 @@ module social_contracts::mydata {
         max_subscription_days: u64,
         max_free_access_grants: u64,
         max_encryption_id_bytes: u64,
+        p2p_platform_fee_bps: u64,
+        p2p_ecosystem_fee_bps: u64,
+        mydata_marketplace_platform_fee_bps: u64,
+        mydata_marketplace_ecosystem_fee_bps: u64,
+        non_platform_platform_to_creator_bps: u64,
+        non_platform_platform_to_treasury_bps: u64,
         version: u64,
     }
 
@@ -257,7 +274,11 @@ module social_contracts::mydata {
     public struct ClaimExecutedEvent has copy, drop {
         snapshot_id: ID,
         claimant: address,
-        amount: u64,
+        gross_amount: u64,
+        platform_fee: u64,
+        ecosystem_fee: u64,
+        net_amount: u64,
+        platform_id: Option<address>,
         claimed_at: u64,
     }
 
@@ -295,6 +316,10 @@ module social_contracts::mydata {
         timestamp: u64,
         sub_agent_id: Option<ID>,
         organization_id: Option<ID>,
+        platform_fee: u64,
+        ecosystem_fee: u64,
+        creator_amount: u64,
+        platform_id: Option<address>,
     }
 
     public struct AccessGrantedEvent has copy, drop {
@@ -332,7 +357,155 @@ module social_contracts::mydata {
         max_subscription_days: u64,
         max_free_access_grants: u64,
         max_encryption_id_bytes: u64,
+        p2p_platform_fee_bps: u64,
+        p2p_ecosystem_fee_bps: u64,
+        mydata_marketplace_platform_fee_bps: u64,
+        mydata_marketplace_ecosystem_fee_bps: u64,
+        non_platform_platform_to_creator_bps: u64,
+        non_platform_platform_to_treasury_bps: u64,
         timestamp: u64,
+    }
+
+    fun validate_fee_config(
+        p2p_platform_fee_bps: u64,
+        p2p_ecosystem_fee_bps: u64,
+        mydata_marketplace_platform_fee_bps: u64,
+        mydata_marketplace_ecosystem_fee_bps: u64,
+        non_platform_platform_to_creator_bps: u64,
+        non_platform_platform_to_treasury_bps: u64,
+    ) {
+        assert!(p2p_platform_fee_bps <= BPS_DENOM, EInvalidConfig);
+        assert!(p2p_ecosystem_fee_bps <= BPS_DENOM, EInvalidConfig);
+        assert!(p2p_platform_fee_bps + p2p_ecosystem_fee_bps <= BPS_DENOM, EInvalidConfig);
+        assert!(mydata_marketplace_platform_fee_bps <= BPS_DENOM, EInvalidConfig);
+        assert!(mydata_marketplace_ecosystem_fee_bps <= BPS_DENOM, EInvalidConfig);
+        assert!(mydata_marketplace_platform_fee_bps + mydata_marketplace_ecosystem_fee_bps <= BPS_DENOM, EInvalidConfig);
+        assert!(non_platform_platform_to_creator_bps <= BPS_DENOM, EInvalidConfig);
+        assert!(non_platform_platform_to_treasury_bps <= BPS_DENOM, EInvalidConfig);
+        assert!(
+            non_platform_platform_to_creator_bps + non_platform_platform_to_treasury_bps == BPS_DENOM,
+            EInvalidConfig,
+        );
+    }
+
+    fun calculate_p2p_fees(config: &MyDataConfig, gross: u64): (u64, u64, u64) {
+        let platform_fee = (gross * config.p2p_platform_fee_bps) / BPS_DENOM;
+        let ecosystem_fee = (gross * config.p2p_ecosystem_fee_bps) / BPS_DENOM;
+        let creator_amount = gross - platform_fee - ecosystem_fee;
+        (platform_fee, ecosystem_fee, creator_amount)
+    }
+
+    fun calculate_mydata_marketplace_fees(config: &MyDataConfig, gross: u64): (u64, u64, u64) {
+        let platform_fee = (gross * config.mydata_marketplace_platform_fee_bps) / BPS_DENOM;
+        let ecosystem_fee = (gross * config.mydata_marketplace_ecosystem_fee_bps) / BPS_DENOM;
+        let net_amount = gross - platform_fee - ecosystem_fee;
+        (platform_fee, ecosystem_fee, net_amount)
+    }
+
+    fun route_non_platform_platform_fee(
+        config: &MyDataConfig,
+        treasury: &EcosystemTreasury,
+        platform_fee: u64,
+        recipient_amount: u64,
+        payment: &mut Coin<MYSO>,
+        ctx: &mut TxContext,
+    ): u64 {
+        let platform_fee_to_recipient =
+            (platform_fee * config.non_platform_platform_to_creator_bps) / BPS_DENOM;
+        let platform_fee_to_treasury = platform_fee - platform_fee_to_recipient;
+        let recipient_amount = recipient_amount + platform_fee_to_recipient;
+        if (platform_fee_to_treasury > 0) {
+            let treasury_coin = coin::split(payment, platform_fee_to_treasury, ctx);
+            transfer::public_transfer(treasury_coin, profile::get_treasury_address(treasury));
+        };
+        recipient_amount
+    }
+
+    fun distribute_p2p_fees_no_platform(
+        config: &MyDataConfig,
+        treasury: &EcosystemTreasury,
+        owner: address,
+        payment: Coin<MYSO>,
+        ctx: &mut TxContext,
+    ): (u64, u64, u64) {
+        let gross = coin::value(&payment);
+        let (platform_fee, ecosystem_fee, creator_amount) = calculate_p2p_fees(config, gross);
+        let mut payment = payment;
+
+        if (ecosystem_fee > 0) {
+            let eco_coin = coin::split(&mut payment, ecosystem_fee, ctx);
+            transfer::public_transfer(eco_coin, profile::get_treasury_address(treasury));
+        };
+
+        let creator_amount = if (platform_fee > 0) {
+            route_non_platform_platform_fee(
+                config,
+                treasury,
+                platform_fee,
+                creator_amount,
+                &mut payment,
+                ctx,
+            )
+        } else {
+            creator_amount
+        };
+
+        transfer::public_transfer(payment, owner);
+        (platform_fee, ecosystem_fee, creator_amount)
+    }
+
+    fun distribute_p2p_fees_with_platform(
+        config: &MyDataConfig,
+        treasury: &EcosystemTreasury,
+        owner: address,
+        payment: Coin<MYSO>,
+        platform: &mut Platform,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ): (u64, u64, u64) {
+        let gross = coin::value(&payment);
+        let (platform_fee, ecosystem_fee, creator_amount) = calculate_p2p_fees(config, gross);
+        let mut payment = payment;
+
+        if (ecosystem_fee > 0) {
+            let eco_coin = coin::split(&mut payment, ecosystem_fee, ctx);
+            transfer::public_transfer(eco_coin, profile::get_treasury_address(treasury));
+        };
+
+        if (platform_fee > 0) {
+            let mut platform_coin = coin::split(&mut payment, platform_fee, ctx);
+            platform::add_to_treasury(platform, &mut platform_coin, platform_fee, clock, ctx);
+            coin::destroy_zero(platform_coin);
+        };
+
+        transfer::public_transfer(payment, owner);
+        (platform_fee, ecosystem_fee, creator_amount)
+    }
+
+    fun assert_platform_matches_listing(mydata: &MyData, platform: &Platform) {
+        if (option::is_some(&mydata.platform_id)) {
+            let listing_platform = *option::borrow(&mydata.platform_id);
+            let provided_platform = object::uid_to_address(platform::id(platform));
+            assert!(listing_platform == provided_platform, EPlatformMismatch);
+        };
+    }
+
+    fun emit_mydata_config_updated(config: &MyDataConfig, updated_by: address, timestamp: u64) {
+        event::emit(MyDataConfigUpdatedEvent {
+            updated_by,
+            marketplace_enabled: config.marketplace_enabled,
+            max_tags: config.max_tags,
+            max_subscription_days: config.max_subscription_days,
+            max_free_access_grants: config.max_free_access_grants,
+            max_encryption_id_bytes: config.max_encryption_id_bytes,
+            p2p_platform_fee_bps: config.p2p_platform_fee_bps,
+            p2p_ecosystem_fee_bps: config.p2p_ecosystem_fee_bps,
+            mydata_marketplace_platform_fee_bps: config.mydata_marketplace_platform_fee_bps,
+            mydata_marketplace_ecosystem_fee_bps: config.mydata_marketplace_ecosystem_fee_bps,
+            non_platform_platform_to_creator_bps: config.non_platform_platform_to_creator_bps,
+            non_platform_platform_to_treasury_bps: config.non_platform_platform_to_treasury_bps,
+            timestamp,
+        });
     }
 
     // === Admin Functions ===
@@ -353,31 +526,45 @@ module social_contracts::mydata {
         max_subscription_days: u64,
         max_free_access_grants: u64,
         max_encryption_id_bytes: u64,
+        p2p_platform_fee_bps: u64,
+        p2p_ecosystem_fee_bps: u64,
+        mydata_marketplace_platform_fee_bps: u64,
+        mydata_marketplace_ecosystem_fee_bps: u64,
+        non_platform_platform_to_creator_bps: u64,
+        non_platform_platform_to_treasury_bps: u64,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        // Validate parameters
         assert!(max_subscription_days > 0, EInvalidInput);
         assert!(max_tags > 0, EInvalidInput);
         assert!(max_free_access_grants > 0, EInvalidInput);
         assert!(max_encryption_id_bytes > 0, EInvalidInput);
+        validate_fee_config(
+            p2p_platform_fee_bps,
+            p2p_ecosystem_fee_bps,
+            mydata_marketplace_platform_fee_bps,
+            mydata_marketplace_ecosystem_fee_bps,
+            non_platform_platform_to_creator_bps,
+            non_platform_platform_to_treasury_bps,
+        );
 
         config.marketplace_enabled = marketplace_enabled;
         config.max_tags = max_tags;
         config.max_subscription_days = max_subscription_days;
         config.max_free_access_grants = max_free_access_grants;
         config.max_encryption_id_bytes = max_encryption_id_bytes;
-        
-        // Emit config updated event
-        event::emit(MyDataConfigUpdatedEvent {
-            updated_by: tx_context::sender(ctx),
-            marketplace_enabled,
-            max_tags,
-            max_subscription_days,
-            max_free_access_grants,
-            max_encryption_id_bytes,
-            timestamp: clock::timestamp_ms(clock),
-        });
+        config.p2p_platform_fee_bps = p2p_platform_fee_bps;
+        config.p2p_ecosystem_fee_bps = p2p_ecosystem_fee_bps;
+        config.mydata_marketplace_platform_fee_bps = mydata_marketplace_platform_fee_bps;
+        config.mydata_marketplace_ecosystem_fee_bps = mydata_marketplace_ecosystem_fee_bps;
+        config.non_platform_platform_to_creator_bps = non_platform_platform_to_creator_bps;
+        config.non_platform_platform_to_treasury_bps = non_platform_platform_to_treasury_bps;
+
+        emit_mydata_config_updated(
+            config,
+            tx_context::sender(ctx),
+            clock::timestamp_ms(clock),
+        );
     }
 
     public fun marketplace_enabled(config: &MyDataConfig): bool {
@@ -396,17 +583,15 @@ module social_contracts::mydata {
             max_subscription_days: MAX_SUBSCRIPTION_DAYS,
             max_free_access_grants: MAX_FREE_ACCESS_GRANTS,
             max_encryption_id_bytes: DEFAULT_MAX_ENCRYPTION_ID_BYTES,
+            p2p_platform_fee_bps: DEFAULT_P2P_PLATFORM_FEE_BPS,
+            p2p_ecosystem_fee_bps: DEFAULT_P2P_ECOSYSTEM_FEE_BPS,
+            mydata_marketplace_platform_fee_bps: DEFAULT_MYDATA_MARKETPLACE_PLATFORM_FEE_BPS,
+            mydata_marketplace_ecosystem_fee_bps: DEFAULT_MYDATA_MARKETPLACE_ECOSYSTEM_FEE_BPS,
+            non_platform_platform_to_creator_bps: DEFAULT_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS,
+            non_platform_platform_to_treasury_bps: DEFAULT_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS,
             version: ver,
         };
-        event::emit(MyDataConfigUpdatedEvent {
-            updated_by: sender,
-            marketplace_enabled,
-            max_tags: MAX_TAGS,
-            max_subscription_days: MAX_SUBSCRIPTION_DAYS,
-            max_free_access_grants: MAX_FREE_ACCESS_GRANTS,
-            max_encryption_id_bytes: DEFAULT_MAX_ENCRYPTION_ID_BYTES,
-            timestamp: clock::timestamp_ms(clock),
-        });
+        emit_mydata_config_updated(&config, sender, clock::timestamp_ms(clock));
         transfer::share_object(config);
 
         transfer::share_object(MyDataRegistry {
@@ -673,8 +858,71 @@ module social_contracts::mydata {
         });
     }
 
-    public entry fun claim(
+    fun distribute_mydata_marketplace_claim_fees_no_platform(
+        config: &MyDataConfig,
+        treasury: &EcosystemTreasury,
+        claimant: address,
+        gross_amount: u64,
+        vault_balance: &mut Balance<MYSO>,
+        ctx: &mut TxContext,
+    ): (u64, u64, u64) {
+        let (platform_fee, ecosystem_fee, mut net_amount) = calculate_mydata_marketplace_fees(config, gross_amount);
+        let mut payout_coin = coin::from_balance(balance::split(vault_balance, gross_amount), ctx);
+
+        if (ecosystem_fee > 0) {
+            let eco_coin = coin::split(&mut payout_coin, ecosystem_fee, ctx);
+            transfer::public_transfer(eco_coin, profile::get_treasury_address(treasury));
+        };
+
+        net_amount = if (platform_fee > 0) {
+            route_non_platform_platform_fee(
+                config,
+                treasury,
+                platform_fee,
+                net_amount,
+                &mut payout_coin,
+                ctx,
+            )
+        } else {
+            net_amount
+        };
+
+        transfer::public_transfer(payout_coin, claimant);
+        (platform_fee, ecosystem_fee, net_amount)
+    }
+
+    fun distribute_mydata_marketplace_claim_fees_with_platform(
+        config: &MyDataConfig,
+        treasury: &EcosystemTreasury,
+        claimant: address,
+        gross_amount: u64,
+        platform: &mut Platform,
+        vault_balance: &mut Balance<MYSO>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ): (u64, u64, u64) {
+        let (platform_fee, ecosystem_fee, net_amount) = calculate_mydata_marketplace_fees(config, gross_amount);
+        let mut payout_coin = coin::from_balance(balance::split(vault_balance, gross_amount), ctx);
+
+        if (ecosystem_fee > 0) {
+            let eco_coin = coin::split(&mut payout_coin, ecosystem_fee, ctx);
+            transfer::public_transfer(eco_coin, profile::get_treasury_address(treasury));
+        };
+
+        if (platform_fee > 0) {
+            let mut platform_coin = coin::split(&mut payout_coin, platform_fee, ctx);
+            platform::add_to_treasury(platform, &mut platform_coin, platform_fee, clock, ctx);
+            coin::destroy_zero(platform_coin);
+        };
+
+        transfer::public_transfer(payout_coin, claimant);
+        (platform_fee, ecosystem_fee, net_amount)
+    }
+
+    fun claim_internal_no_platform(
+        config: &MyDataConfig,
         vault: &mut MyDataClaimVault,
+        treasury: &EcosystemTreasury,
         snapshot_id: ID,
         amount: u64,
         leaf_index: u64,
@@ -689,7 +937,6 @@ module social_contracts::mydata {
         let claimant = tx_context::sender(ctx);
         let leaf = merkle::leaf_hash(claimant, amount, object::id_to_bytes(&snapshot_id));
         let root = *table::borrow(&vault.merkle_roots, snapshot_id);
-
         assert!(merkle::verify_proof(leaf, &proof, leaf_index, root), EPqInvalidProof);
 
         if (table::contains(&vault.claimed, snapshot_id)) {
@@ -705,15 +952,135 @@ module social_contracts::mydata {
         let claimed_table = table::borrow_mut(&mut vault.claimed, snapshot_id);
         table::add(claimed_table, claimant, true);
 
-        let payout = balance::split(&mut vault.balance, amount);
-        transfer::public_transfer(coin::from_balance(payout, ctx), claimant);
+        let (platform_fee, ecosystem_fee, net_amount) = distribute_mydata_marketplace_claim_fees_no_platform(
+            config,
+            treasury,
+            claimant,
+            amount,
+            &mut vault.balance,
+            ctx,
+        );
 
         event::emit(ClaimExecutedEvent {
             snapshot_id,
             claimant,
-            amount,
+            gross_amount: amount,
+            platform_fee,
+            ecosystem_fee,
+            net_amount,
+            platform_id: option::none(),
             claimed_at: clock::timestamp_ms(clock),
         });
+    }
+
+    fun claim_internal_with_platform(
+        config: &MyDataConfig,
+        vault: &mut MyDataClaimVault,
+        treasury: &EcosystemTreasury,
+        platform: &mut Platform,
+        snapshot_id: ID,
+        amount: u64,
+        leaf_index: u64,
+        proof: vector<vector<u8>>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(table::contains(&vault.merkle_roots, snapshot_id), EPqMerkleRootNotPublished);
+        assert!(table::contains(&vault.snapshot_escrow, snapshot_id), EPqSnapshotEscrowMissing);
+        assert!(*table::borrow(&vault.snapshot_escrow, snapshot_id) >= amount, EPqEscrowExceeded);
+
+        let claimant = tx_context::sender(ctx);
+        let leaf = merkle::leaf_hash(claimant, amount, object::id_to_bytes(&snapshot_id));
+        let root = *table::borrow(&vault.merkle_roots, snapshot_id);
+        assert!(merkle::verify_proof(leaf, &proof, leaf_index, root), EPqInvalidProof);
+
+        if (table::contains(&vault.claimed, snapshot_id)) {
+            assert!(!table::contains(table::borrow(&vault.claimed, snapshot_id), claimant), EPqAlreadyClaimed);
+        };
+
+        let escrow_remaining = table::borrow_mut(&mut vault.snapshot_escrow, snapshot_id);
+        *escrow_remaining = *escrow_remaining - amount;
+
+        if (!table::contains(&vault.claimed, snapshot_id)) {
+            table::add(&mut vault.claimed, snapshot_id, table::new(ctx));
+        };
+        let claimed_table = table::borrow_mut(&mut vault.claimed, snapshot_id);
+        table::add(claimed_table, claimant, true);
+
+        let platform_id = object::uid_to_address(platform::id(platform));
+        let (platform_fee, ecosystem_fee, net_amount) = distribute_mydata_marketplace_claim_fees_with_platform(
+            config,
+            treasury,
+            claimant,
+            amount,
+            platform,
+            &mut vault.balance,
+            clock,
+            ctx,
+        );
+
+        event::emit(ClaimExecutedEvent {
+            snapshot_id,
+            claimant,
+            gross_amount: amount,
+            platform_fee,
+            ecosystem_fee,
+            net_amount,
+            platform_id: option::some(platform_id),
+            claimed_at: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// Claim MyData marketplace pool payout from vault escrow (no platform).
+    public entry fun claim(
+        config: &MyDataConfig,
+        vault: &mut MyDataClaimVault,
+        treasury: &EcosystemTreasury,
+        snapshot_id: ID,
+        amount: u64,
+        leaf_index: u64,
+        proof: vector<vector<u8>>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        claim_internal_no_platform(
+            config,
+            vault,
+            treasury,
+            snapshot_id,
+            amount,
+            leaf_index,
+            proof,
+            clock,
+            ctx,
+        );
+    }
+
+    /// Claim MyData marketplace pool payout with platform treasury routing.
+    public entry fun claim_with_platform(
+        config: &MyDataConfig,
+        vault: &mut MyDataClaimVault,
+        treasury: &EcosystemTreasury,
+        platform: &mut Platform,
+        snapshot_id: ID,
+        amount: u64,
+        leaf_index: u64,
+        proof: vector<vector<u8>>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        claim_internal_with_platform(
+            config,
+            vault,
+            treasury,
+            platform,
+            snapshot_id,
+            amount,
+            leaf_index,
+            proof,
+            clock,
+            ctx,
+        );
     }
 
     public entry fun deposit(
@@ -943,25 +1310,20 @@ module social_contracts::mydata {
         transfer::share_object(mydata);
     }
 
-    /// Purchase one-time access to MyData data.
-    /// Sub-agent buyers must satisfy `max_action_spend` for `price` on `account`.
-    public entry fun purchase_one_time(
+    fun purchase_one_time_no_platform(
         config: &MyDataConfig,
         memory_config: &social_contracts::memory::MemoryConfig,
         mydata: &mut MyData,
+        treasury: &EcosystemTreasury,
         payment: Coin<MYSO>,
         account: &social_contracts::memory::MemoryAccount,
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
         assert!(config.marketplace_enabled, EDisabled);
-        
-        // Check version compatibility
         assert!(mydata.version == upgrade::current_version(), EInvalidInput);
-        
+
         let buyer = tx_context::sender(ctx);
-        
-        // Check if one-time purchase is available
         assert!(option::is_some(&mydata.one_time_price), ENotForSale);
         let price = *option::borrow(&mydata.one_time_price);
 
@@ -980,26 +1342,27 @@ module social_contracts::mydata {
             sub_agent_id = social_contracts::memory::acting_sub_agent_id(&acting);
             organization_id = social_contracts::memory::acting_organization_id(&acting);
         };
-        
-        // Check payment amount
+
         assert!(coin::value(&payment) >= price, EPriceMismatch);
-        
-        // Check if buyer already has access
         assert!(!table::contains(&mydata.purchasers, buyer), EAlreadyPurchased);
-        
-        // Prevent self-purchase
         assert!(buyer != mydata.owner, ESelfPurchase);
-        
+
         let mut payment = payment;
-        let to_owner = coin::split(&mut payment, price, ctx);
-        transfer::public_transfer(to_owner, mydata.owner);
+        let price_coin = coin::split(&mut payment, price, ctx);
+        let (platform_fee, ecosystem_fee, creator_amount) = distribute_p2p_fees_no_platform(
+            config,
+            treasury,
+            mydata.owner,
+            price_coin,
+            ctx,
+        );
+
         if (coin::value(&payment) > 0) {
             transfer::public_transfer(payment, buyer);
         } else {
             coin::destroy_zero(payment);
         };
-        
-        // Grant access
+
         table::add(&mut mydata.purchasers, buyer, true);
 
         event::emit(PurchaseEvent {
@@ -1010,28 +1373,149 @@ module social_contracts::mydata {
             timestamp: clock::timestamp_ms(clock),
             sub_agent_id,
             organization_id,
+            platform_fee,
+            ecosystem_fee,
+            creator_amount,
+            platform_id: mydata.platform_id,
         });
     }
 
-    /// Purchase subscription access to MyData data.
-    /// Sub-agent buyers must satisfy `max_action_spend` for `price` on `account`.
-    public entry fun purchase_subscription(
+    fun purchase_one_time_with_platform_internal(
         config: &MyDataConfig,
         memory_config: &social_contracts::memory::MemoryConfig,
         mydata: &mut MyData,
+        treasury: &EcosystemTreasury,
+        platform: &mut Platform,
         payment: Coin<MYSO>,
         account: &social_contracts::memory::MemoryAccount,
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
         assert!(config.marketplace_enabled, EDisabled);
-        
-        // Check version compatibility
         assert!(mydata.version == upgrade::current_version(), EInvalidInput);
-        
+        assert_platform_matches_listing(mydata, platform);
+
         let buyer = tx_context::sender(ctx);
-        
-        // Check if subscription is available
+        assert!(option::is_some(&mydata.one_time_price), ENotForSale);
+        let price = *option::borrow(&mydata.one_time_price);
+
+        let mut sub_agent_id = option::none();
+        let mut organization_id = option::none();
+        if (social_contracts::memory::is_registered_agent(account, buyer)) {
+            let acting = social_contracts::memory::resolve_actor_with_cap(
+                memory_config,
+                account,
+                0,
+                mydata.platform_id,
+                price,
+                clock,
+                ctx,
+            );
+            sub_agent_id = social_contracts::memory::acting_sub_agent_id(&acting);
+            organization_id = social_contracts::memory::acting_organization_id(&acting);
+        };
+
+        assert!(coin::value(&payment) >= price, EPriceMismatch);
+        assert!(!table::contains(&mydata.purchasers, buyer), EAlreadyPurchased);
+        assert!(buyer != mydata.owner, ESelfPurchase);
+
+        let mut payment = payment;
+        let price_coin = coin::split(&mut payment, price, ctx);
+        let (platform_fee, ecosystem_fee, creator_amount) = distribute_p2p_fees_with_platform(
+            config,
+            treasury,
+            mydata.owner,
+            price_coin,
+            platform,
+            clock,
+            ctx,
+        );
+
+        if (coin::value(&payment) > 0) {
+            transfer::public_transfer(payment, buyer);
+        } else {
+            coin::destroy_zero(payment);
+        };
+
+        table::add(&mut mydata.purchasers, buyer, true);
+
+        event::emit(PurchaseEvent {
+            ip_id: object::uid_to_address(&mydata.id),
+            buyer,
+            price,
+            purchase_type: string::utf8(b"one_time"),
+            timestamp: clock::timestamp_ms(clock),
+            sub_agent_id,
+            organization_id,
+            platform_fee,
+            ecosystem_fee,
+            creator_amount,
+            platform_id: option::some(object::uid_to_address(platform::id(platform))),
+        });
+    }
+
+    /// Purchase one-time access to MyData data.
+    public entry fun purchase_one_time(
+        config: &MyDataConfig,
+        memory_config: &social_contracts::memory::MemoryConfig,
+        mydata: &mut MyData,
+        treasury: &EcosystemTreasury,
+        payment: Coin<MYSO>,
+        account: &social_contracts::memory::MemoryAccount,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        purchase_one_time_no_platform(
+            config,
+            memory_config,
+            mydata,
+            treasury,
+            payment,
+            account,
+            clock,
+            ctx,
+        );
+    }
+
+    /// Purchase one-time access with platform treasury routing.
+    public entry fun purchase_one_time_with_platform(
+        config: &MyDataConfig,
+        memory_config: &social_contracts::memory::MemoryConfig,
+        mydata: &mut MyData,
+        treasury: &EcosystemTreasury,
+        platform: &mut Platform,
+        payment: Coin<MYSO>,
+        account: &social_contracts::memory::MemoryAccount,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        purchase_one_time_with_platform_internal(
+            config,
+            memory_config,
+            mydata,
+            treasury,
+            platform,
+            payment,
+            account,
+            clock,
+            ctx,
+        );
+    }
+
+    fun purchase_subscription_no_platform(
+        config: &MyDataConfig,
+        memory_config: &social_contracts::memory::MemoryConfig,
+        mydata: &mut MyData,
+        treasury: &EcosystemTreasury,
+        payment: Coin<MYSO>,
+        account: &social_contracts::memory::MemoryAccount,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(config.marketplace_enabled, EDisabled);
+        assert!(mydata.version == upgrade::current_version(), EInvalidInput);
+
+        let buyer = tx_context::sender(ctx);
         assert!(option::is_some(&mydata.subscription_price), ENotForSale);
         let price = *option::borrow(&mydata.subscription_price);
 
@@ -1050,41 +1534,37 @@ module social_contracts::mydata {
             sub_agent_id = social_contracts::memory::acting_sub_agent_id(&acting);
             organization_id = social_contracts::memory::acting_organization_id(&acting);
         };
-        
-        // Check payment amount
+
         assert!(coin::value(&payment) >= price, EPriceMismatch);
-        
-        // Prevent self-purchase
         assert!(buyer != mydata.owner, ESelfPurchase);
-        
-        // Validate subscription duration to prevent overflow
         assert!(mydata.subscription_duration_days > 0, EInvalidInput);
         assert!(mydata.subscription_duration_days <= config.max_subscription_days, EInvalidInput);
-        
-        // Calculate subscription expiry safely with overflow protection
+
         let current_time = clock::timestamp_ms(clock);
         let duration_ms = (mydata.subscription_duration_days as u128) * (MILLISECONDS_PER_DAY as u128);
         let expiry_time = (current_time as u128) + duration_ms;
-        
-        // Ensure we don't overflow u64
         assert!(expiry_time <= (MAX_U64 as u128), EOverflow);
         let expiry_time_u64 = expiry_time as u64;
-        
+
         let mut payment = payment;
-        let to_owner = coin::split(&mut payment, price, ctx);
-        transfer::public_transfer(to_owner, mydata.owner);
+        let price_coin = coin::split(&mut payment, price, ctx);
+        let (platform_fee, ecosystem_fee, creator_amount) = distribute_p2p_fees_no_platform(
+            config,
+            treasury,
+            mydata.owner,
+            price_coin,
+            ctx,
+        );
+
         if (coin::value(&payment) > 0) {
             transfer::public_transfer(payment, buyer);
         } else {
             coin::destroy_zero(payment);
         };
-        
-        // Grant/extend subscription access
+
         if (table::contains(&mydata.subscribers, buyer)) {
-            // Extend existing subscription
             let current_expiry = table::remove(&mut mydata.subscribers, buyer);
             let new_expiry = if (current_expiry > current_time) {
-                // Add to existing time, but check for overflow
                 let extended_time = (current_expiry as u128) + duration_ms;
                 assert!(extended_time <= (MAX_U64 as u128), EOverflow);
                 extended_time as u64
@@ -1093,7 +1573,6 @@ module social_contracts::mydata {
             };
             table::add(&mut mydata.subscribers, buyer, new_expiry);
         } else {
-            // New subscription
             table::add(&mut mydata.subscribers, buyer, expiry_time_u64);
         };
 
@@ -1105,7 +1584,152 @@ module social_contracts::mydata {
             timestamp: clock::timestamp_ms(clock),
             sub_agent_id,
             organization_id,
+            platform_fee,
+            ecosystem_fee,
+            creator_amount,
+            platform_id: mydata.platform_id,
         });
+    }
+
+    fun purchase_subscription_with_platform_internal(
+        config: &MyDataConfig,
+        memory_config: &social_contracts::memory::MemoryConfig,
+        mydata: &mut MyData,
+        treasury: &EcosystemTreasury,
+        platform: &mut Platform,
+        payment: Coin<MYSO>,
+        account: &social_contracts::memory::MemoryAccount,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(config.marketplace_enabled, EDisabled);
+        assert!(mydata.version == upgrade::current_version(), EInvalidInput);
+        assert_platform_matches_listing(mydata, platform);
+
+        let buyer = tx_context::sender(ctx);
+        assert!(option::is_some(&mydata.subscription_price), ENotForSale);
+        let price = *option::borrow(&mydata.subscription_price);
+
+        let mut sub_agent_id = option::none();
+        let mut organization_id = option::none();
+        if (social_contracts::memory::is_registered_agent(account, buyer)) {
+            let acting = social_contracts::memory::resolve_actor_with_cap(
+                memory_config,
+                account,
+                0,
+                mydata.platform_id,
+                price,
+                clock,
+                ctx,
+            );
+            sub_agent_id = social_contracts::memory::acting_sub_agent_id(&acting);
+            organization_id = social_contracts::memory::acting_organization_id(&acting);
+        };
+
+        assert!(coin::value(&payment) >= price, EPriceMismatch);
+        assert!(buyer != mydata.owner, ESelfPurchase);
+        assert!(mydata.subscription_duration_days > 0, EInvalidInput);
+        assert!(mydata.subscription_duration_days <= config.max_subscription_days, EInvalidInput);
+
+        let current_time = clock::timestamp_ms(clock);
+        let duration_ms = (mydata.subscription_duration_days as u128) * (MILLISECONDS_PER_DAY as u128);
+        let expiry_time = (current_time as u128) + duration_ms;
+        assert!(expiry_time <= (MAX_U64 as u128), EOverflow);
+        let expiry_time_u64 = expiry_time as u64;
+
+        let mut payment = payment;
+        let price_coin = coin::split(&mut payment, price, ctx);
+        let (platform_fee, ecosystem_fee, creator_amount) = distribute_p2p_fees_with_platform(
+            config,
+            treasury,
+            mydata.owner,
+            price_coin,
+            platform,
+            clock,
+            ctx,
+        );
+
+        if (coin::value(&payment) > 0) {
+            transfer::public_transfer(payment, buyer);
+        } else {
+            coin::destroy_zero(payment);
+        };
+
+        if (table::contains(&mydata.subscribers, buyer)) {
+            let current_expiry = table::remove(&mut mydata.subscribers, buyer);
+            let new_expiry = if (current_expiry > current_time) {
+                let extended_time = (current_expiry as u128) + duration_ms;
+                assert!(extended_time <= (MAX_U64 as u128), EOverflow);
+                extended_time as u64
+            } else {
+                expiry_time_u64
+            };
+            table::add(&mut mydata.subscribers, buyer, new_expiry);
+        } else {
+            table::add(&mut mydata.subscribers, buyer, expiry_time_u64);
+        };
+
+        event::emit(PurchaseEvent {
+            ip_id: object::uid_to_address(&mydata.id),
+            buyer,
+            price,
+            purchase_type: string::utf8(b"subscription"),
+            timestamp: clock::timestamp_ms(clock),
+            sub_agent_id,
+            organization_id,
+            platform_fee,
+            ecosystem_fee,
+            creator_amount,
+            platform_id: option::some(object::uid_to_address(platform::id(platform))),
+        });
+    }
+
+    /// Purchase subscription access to MyData data.
+    public entry fun purchase_subscription(
+        config: &MyDataConfig,
+        memory_config: &social_contracts::memory::MemoryConfig,
+        mydata: &mut MyData,
+        treasury: &EcosystemTreasury,
+        payment: Coin<MYSO>,
+        account: &social_contracts::memory::MemoryAccount,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        purchase_subscription_no_platform(
+            config,
+            memory_config,
+            mydata,
+            treasury,
+            payment,
+            account,
+            clock,
+            ctx,
+        );
+    }
+
+    /// Purchase subscription access with platform treasury routing.
+    public entry fun purchase_subscription_with_platform(
+        config: &MyDataConfig,
+        memory_config: &social_contracts::memory::MemoryConfig,
+        mydata: &mut MyData,
+        treasury: &EcosystemTreasury,
+        platform: &mut Platform,
+        payment: Coin<MYSO>,
+        account: &social_contracts::memory::MemoryAccount,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        purchase_subscription_with_platform_internal(
+            config,
+            memory_config,
+            mydata,
+            treasury,
+            platform,
+            payment,
+            account,
+            clock,
+            ctx,
+        );
     }
 
     /// Update pricing (owner only)
@@ -1628,6 +2252,12 @@ module social_contracts::mydata {
         
         // Remember old version and update to new version
         let old_version = config.version;
+        config.p2p_platform_fee_bps = DEFAULT_P2P_PLATFORM_FEE_BPS;
+        config.p2p_ecosystem_fee_bps = DEFAULT_P2P_ECOSYSTEM_FEE_BPS;
+        config.mydata_marketplace_platform_fee_bps = DEFAULT_MYDATA_MARKETPLACE_PLATFORM_FEE_BPS;
+        config.mydata_marketplace_ecosystem_fee_bps = DEFAULT_MYDATA_MARKETPLACE_ECOSYSTEM_FEE_BPS;
+        config.non_platform_platform_to_creator_bps = DEFAULT_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS;
+        config.non_platform_platform_to_treasury_bps = DEFAULT_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS;
         config.version = current_version;
         
         // Emit event for object migration
@@ -1652,6 +2282,16 @@ module social_contracts::mydata {
     public fun last_created_sub_pool_id(registry: &MyDataPoolRegistry): ID {
         assert!(option::is_some(&registry.last_created_sub_pool_id), EPqInvalidInput);
         *option::borrow(&registry.last_created_sub_pool_id)
+    }
+
+    #[test_only]
+    public fun p2p_fee_breakdown_for_testing(config: &MyDataConfig, gross: u64): (u64, u64, u64) {
+        calculate_p2p_fees(config, gross)
+    }
+
+    #[test_only]
+    public fun mydata_marketplace_fee_breakdown_for_testing(config: &MyDataConfig, gross: u64): (u64, u64, u64) {
+        calculate_mydata_marketplace_fees(config, gross)
     }
 
     #[test_only]

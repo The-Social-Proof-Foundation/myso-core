@@ -73,6 +73,14 @@ pub struct ProfileSubscriptionRevenueRow {
     pub to_address: String,
     #[diesel(sql_type = BigInt)]
     pub amount: i64,
+    #[diesel(sql_type = BigInt)]
+    pub platform_fee: i64,
+    #[diesel(sql_type = BigInt)]
+    pub ecosystem_fee: i64,
+    #[diesel(sql_type = BigInt)]
+    pub creator_amount: i64,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub platform_address: Option<String>,
     #[diesel(sql_type = Text)]
     pub revenue_type: String,
     #[diesel(sql_type = BigInt)]
@@ -98,6 +106,14 @@ pub struct SubscriptionConfigInfo {
     pub billing_period_ms: i64,
     #[diesel(sql_type = BigInt)]
     pub max_renewal_months: i64,
+    #[diesel(sql_type = BigInt)]
+    pub platform_fee_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub ecosystem_fee_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub non_platform_platform_to_creator_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub non_platform_platform_to_treasury_bps: i64,
     #[diesel(sql_type = BigInt)]
     pub version: i64,
     #[diesel(sql_type = BigInt)]

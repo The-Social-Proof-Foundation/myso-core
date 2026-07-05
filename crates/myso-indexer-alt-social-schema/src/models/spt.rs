@@ -821,6 +821,7 @@ impl NewUnifiedRevenue {
     pub fn from_mydata(
         revenue_type: String,
         creator_address: String,
+        platform_address: Option<String>,
         amount: i64,
         mydata_id: String,
         payer_address: String,
@@ -832,7 +833,7 @@ impl NewUnifiedRevenue {
             revenue_source: REVENUE_SOURCE_MYDATA.to_string(),
             revenue_type,
             creator_address,
-            platform_address: None,
+            platform_address,
             amount,
             currency: CURRENCY_MYSO.to_string(),
             content_id: Some(mydata_id),

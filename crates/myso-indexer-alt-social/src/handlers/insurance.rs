@@ -92,8 +92,8 @@ pub fn handle_insurance_event(
             process_config_initialized_event(data, &tx, event_id, timestamp_ms_i64)
         }
         "ConfigUpdatedEvent" => process_config_updated_event(data, &tx, event_id, timestamp_ms_i64),
-        "RouterLimitsUpdatedEvent" => {
-            process_router_limits_updated_event(data, &tx, event_id, timestamp_ms_i64)
+        "RouterConfigUpdatedEvent" => {
+            process_router_config_updated_event(data, &tx, event_id, timestamp_ms_i64)
         }
         "UnderwriterVaultCreatedEvent" => process_vault_created_event(data, &tx, event_id),
         "UnderwriterVaultDepositedEvent" => {
@@ -206,13 +206,17 @@ fn process_config_updated_event(
     ])
 }
 
-fn process_router_limits_updated_event(
+fn process_router_config_updated_event(
     data: &serde_json::Value,
     tx: &str,
     event_id: &str,
     default_timestamp_ms: i64,
 ) -> Option<Vec<SocialEventRow>> {
     let updated_by = json_str(data.get("updated_by")?);
+    let paused = data
+        .get("paused")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
     let max_route_reserve_market = json_to_i64(data.get("max_route_reserve_market")?);
     let max_route_reserve_user = json_to_i64(data.get("max_route_reserve_user")?);
     let max_route_reserve_option = json_to_i64(data.get("max_route_reserve_option")?);
@@ -227,8 +231,7 @@ fn process_router_limits_updated_event(
 
     let config = NewInsuranceRouterConfig {
         updated_by,
-        router_enabled: true,
-        router_paused: false,
+        paused,
         max_route_reserve_market,
         max_route_reserve_user,
         max_route_reserve_option,
@@ -244,7 +247,7 @@ fn process_router_limits_updated_event(
     Some(vec![
         SocialEventRow::InsuranceRouterConfig(config),
         SocialEventRow::InsuranceEventLog(new_insurance_event_log(
-            "RouterLimitsUpdatedEvent",
+            "RouterConfigUpdatedEvent",
             data,
             event_id,
         )),

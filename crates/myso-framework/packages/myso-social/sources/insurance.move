@@ -50,7 +50,6 @@ module social_contracts::insurance {
     const EVaultDisabled: u64 = 21;
     const EVaultPaused: u64 = 22;
     const ERouterPaused: u64 = 23;
-    const ERouteDisabled: u64 = 24;
     const EDeadlinePassed: u64 = 25;
     const ESlippagePremium: u64 = 26;
     const ESlippageCovered: u64 = 27;
@@ -122,8 +121,7 @@ module social_contracts::insurance {
 
     public struct InsuranceRouterConfig has key {
         id: UID,
-        router_enabled: bool,
-        router_paused: bool,
+        paused: bool,
         max_route_reserve_market: u64,
         max_route_reserve_user: u64,
         max_route_reserve_option: u64,
@@ -388,8 +386,9 @@ module social_contracts::insurance {
         timestamp: u64,
     }
 
-    public struct RouterLimitsUpdatedEvent has copy, drop {
+    public struct RouterConfigUpdatedEvent has copy, drop {
         updated_by: address,
+        paused: bool,
         max_route_reserve_market: u64,
         max_route_reserve_user: u64,
         max_route_reserve_option: u64,
@@ -635,8 +634,11 @@ module social_contracts::insurance {
             version: DEFAULT_VERSION,
         };
 
-        transfer::share_object(new_router_config_defaults(ctx));
         transfer::share_object(new_backstop_pool_defaults(ctx));
+
+        let router_cfg = new_router_config_defaults(ctx);
+        emit_router_config_updated(&router_cfg, admin, ts);
+        transfer::share_object(router_cfg);
 
         event::emit(ConfigUpdatedEvent {
             updated_by: admin,
@@ -740,23 +742,10 @@ module social_contracts::insurance {
         });
     }
 
-    public entry fun set_router_flags(
+    public entry fun update_router_config(
         _: &InsuranceAdminCap,
         router_cfg: &mut InsuranceRouterConfig,
-        router_enabled: bool,
-        router_paused: bool,
-        clock: &Clock,
-        ctx: &mut TxContext,
-    ) {
-        router_cfg.router_enabled = router_enabled;
-        router_cfg.router_paused = router_paused;
-        let _ = clock;
-        let _ = ctx;
-    }
-
-    public entry fun set_router_limits(
-        _: &InsuranceAdminCap,
-        router_cfg: &mut InsuranceRouterConfig,
+        paused: bool,
         max_route_reserve_market: u64,
         max_route_reserve_user: u64,
         max_route_reserve_option: u64,
@@ -772,22 +761,19 @@ module social_contracts::insurance {
         );
         assert!(min_vault_health_factor_bps > 0, EInvalidAmount);
         assert!(max_route_legs > 0, EInvalidAmount);
+        router_cfg.paused = paused;
         router_cfg.max_route_reserve_market = max_route_reserve_market;
         router_cfg.max_route_reserve_user = max_route_reserve_user;
         router_cfg.max_route_reserve_option = max_route_reserve_option;
         router_cfg.max_vault_concentration_bps = max_vault_concentration_bps;
         router_cfg.min_vault_health_factor_bps = min_vault_health_factor_bps;
         router_cfg.max_route_legs = max_route_legs;
-        event::emit(RouterLimitsUpdatedEvent {
-            updated_by: tx_context::sender(ctx),
-            max_route_reserve_market,
-            max_route_reserve_user,
-            max_route_reserve_option,
-            max_vault_concentration_bps,
-            min_vault_health_factor_bps,
-            max_route_legs,
-            timestamp: clock::timestamp_ms(clock),
-        });
+        emit_router_config_updated(
+            router_cfg,
+            tx_context::sender(ctx),
+            clock::timestamp_ms(clock),
+        );
+        let _ = ctx;
     }
 
     public entry fun set_market_pause(
@@ -951,8 +937,7 @@ module social_contracts::insurance {
     fun new_router_config_defaults(ctx: &mut TxContext): InsuranceRouterConfig {
         InsuranceRouterConfig {
             id: object::new(ctx),
-            router_enabled: true,
-            router_paused: false,
+            paused: false,
             max_route_reserve_market: 0,
             max_route_reserve_user: 0,
             max_route_reserve_option: 0,
@@ -962,6 +947,24 @@ module social_contracts::insurance {
             market_pause: table::new(ctx),
             version: DEFAULT_VERSION,
         }
+    }
+
+    fun emit_router_config_updated(
+        router_cfg: &InsuranceRouterConfig,
+        updated_by: address,
+        timestamp: u64,
+    ) {
+        event::emit(RouterConfigUpdatedEvent {
+            updated_by,
+            paused: router_cfg.paused,
+            max_route_reserve_market: router_cfg.max_route_reserve_market,
+            max_route_reserve_user: router_cfg.max_route_reserve_user,
+            max_route_reserve_option: router_cfg.max_route_reserve_option,
+            max_vault_concentration_bps: router_cfg.max_vault_concentration_bps,
+            min_vault_health_factor_bps: router_cfg.min_vault_health_factor_bps,
+            max_route_legs: router_cfg.max_route_legs,
+            timestamp,
+        });
     }
 
     fun new_backstop_pool_defaults(ctx: &mut TxContext): InsuranceBackstopPool {
@@ -1369,7 +1372,7 @@ module social_contracts::insurance {
         coverage_bps: u64,
         duration_ms: u64,
     ): VaultCoverageQuote {
-        if (router_cfg.router_paused) {
+        if (router_cfg.paused) {
             return coverage_quote_skipped(SKIPPED_ROUTER_PAUSED)
         };
         let market_id = spot::get_id_address(record);
@@ -1672,8 +1675,7 @@ module social_contracts::insurance {
     ) {
         assert!(clock::timestamp_ms(clock) <= deadline_ms, EDeadlinePassed);
         assert!(config.insurance_enabled, EDisabled);
-        assert!(router_cfg.router_enabled, ERouteDisabled);
-        assert!(!router_cfg.router_paused, ERouterPaused);
+        assert!(!router_cfg.paused, ERouterPaused);
         assert!(spot::is_enabled(spot_config), EMarketClosed);
         assert!(spot::is_open(record), EMarketClosed);
         assert!(coverage_bps >= config.min_coverage_bps, EInvalidCoverage);

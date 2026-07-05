@@ -8413,102 +8413,6 @@ borrow_registry_version_mut
 migrate_block_list_registry
 	public entry fun
 	0x50c1::block_list
-SubscriptionAdminCap
-	public struct
-	0x50c1::subscription
-SubscriptionConfig
-	public struct
-	0x50c1::subscription
-SubscriptionConfigUpdatedEvent
-	public struct
-	0x50c1::subscription
-ProfileSubscriptionService
-	public struct
-	0x50c1::subscription
-ProfileSubscription
-	public struct
-	0x50c1::subscription
-ProfileSubscriptionCreatedEvent
-	public struct
-	0x50c1::subscription
-ProfileSubscriptionRenewedEvent
-	public struct
-	0x50c1::subscription
-ProfileSubscriptionCancelledEvent
-	public struct
-	0x50c1::subscription
-ProfileSubscriptionUpdatedEvent
-	public struct
-	0x50c1::subscription
-ProfileSubscriptionServiceCreatedEvent
-	public struct
-	0x50c1::subscription
-RenewalBalanceFundedEvent
-	public struct
-	0x50c1::subscription
-ProfileSubscriptionServiceDeactivatedEvent
-	public struct
-	0x50c1::subscription
-create_profile_service
-	public fun
-	0x50c1::subscription
-create_profile_service_entry
-	public entry fun
-	0x50c1::subscription
-subscribe_to_profile
-	public entry fun
-	0x50c1::subscription
-renew_subscription
-	public entry fun
-	0x50c1::subscription
-auto_renew_subscription
-	public entry fun
-	0x50c1::subscription
-can_auto_renew
-	public fun
-	0x50c1::subscription
-fund_renewal_balance
-	public entry fun
-	0x50c1::subscription
-is_subscription_valid
-	public fun
-	0x50c1::subscription
-update_service_fee
-	public entry fun
-	0x50c1::subscription
-deactivate_service
-	public entry fun
-	0x50c1::subscription
-cancel_subscription
-	public entry fun
-	0x50c1::subscription
-service_monthly_fee
-	public fun
-	0x50c1::subscription
-service_subscriber_count
-	public fun
-	0x50c1::subscription
-subscription_expires_at
-	public fun
-	0x50c1::subscription
-subscription_auto_renew
-	public fun
-	0x50c1::subscription
-subscription_renewal_balance
-	public fun
-	0x50c1::subscription
-bootstrap_init
-	public(package) fun
-	0x50c1::subscription
-create_subscription_admin_cap
-	public(package) fun
-	0x50c1::subscription
-update_subscription_config
-	public entry fun
-	0x50c1::subscription
-migrate_service
-	public entry fun
-	0x50c1::subscription
 ProfileAdminCap
 	public struct
 	0x50c1::profile
@@ -8662,6 +8566,9 @@ profile_picture_event_string
 cover_photo_event_string
 	fun
 	0x50c1::profile
+apply_optional_string_update
+	fun
+	0x50c1::profile
 emit_profile_updated_event
 	fun
 	0x50c1::profile
@@ -8698,6 +8605,15 @@ cover_photo
 owner
 	public fun
 	0x50c1::profile
+website
+	public fun
+	0x50c1::profile
+birthdate
+	public fun
+	0x50c1::profile
+location
+	public fun
+	0x50c1::profile
 id
 	public fun
 	0x50c1::profile
@@ -8717,12 +8633,6 @@ get_id_address
 	public fun
 	0x50c1::profile
 get_owner
-	public fun
-	0x50c1::profile
-create_subscription_service
-	public entry fun
-	0x50c1::profile
-has_valid_subscription
 	public fun
 	0x50c1::profile
 create_offer
@@ -8765,6 +8675,12 @@ create_profile_admin_cap
 	public(package) fun
 	0x50c1::profile
 update_profile_config
+	public entry fun
+	0x50c1::profile
+migrate_profile_config
+	public entry fun
+	0x50c1::profile
+migrate_profile
 	public entry fun
 	0x50c1::profile
 create_ecosystem_treasury_admin_cap
@@ -8974,63 +8890,6 @@ vesting_piece_count
 vesting_pieces
 	public fun
 	0x50c1::profile
-VaultBalanceKey
-	public struct
-	0x50c1::poc_vault
-PoCVaultDirectory
-	public struct
-	0x50c1::poc_vault
-PoCBeneficiaryVault
-	public struct
-	0x50c1::poc_vault
-PoCBadgeObject
-	public struct
-	0x50c1::poc_vault
-PoCBeneficiaryVaultDepositEvent
-	public struct
-	0x50c1::poc_vault
-PoCBeneficiaryVaultClaimedEvent
-	public struct
-	0x50c1::poc_vault
-media_index_unspecified
-	public fun
-	0x50c1::poc_vault
-bootstrap_init_directory
-	public(package) fun
-	0x50c1::poc_vault
-beneficiary_address
-	public fun
-	0x50c1::poc_vault
-vault_routes_to_beneficiary
-	public(package) fun
-	0x50c1::poc_vault
-ensure_beneficiary_vault
-	public(package) fun
-	0x50c1::poc_vault
-deposit_coin
-	public(package) fun
-	0x50c1::poc_vault
-claim_vault_balance
-	public(package) fun
-	0x50c1::poc_vault
-claim_vault_balance_for_linked_wallet
-	public(package) fun
-	0x50c1::poc_vault
-sweep_vault_balance_to_treasury
-	public(package) fun
-	0x50c1::poc_vault
-vault_has_balance
-	public(package) fun
-	0x50c1::poc_vault
-new_poc_badge_object
-	public(package) fun
-	0x50c1::poc_vault
-share_po_badge_object
-	public(package) fun
-	0x50c1::poc_vault
-po_badge_object_address
-	public(package) fun
-	0x50c1::poc_vault
 GovernanceAdminCap
 	public struct
 	0x50c1::governance
@@ -9646,6 +9505,213 @@ migrate_platform
 migrate_registry
 	public entry fun
 	0x50c1::platform
+SubscriptionAdminCap
+	public struct
+	0x50c1::subscription
+SubscriptionConfig
+	public struct
+	0x50c1::subscription
+SubscriptionConfigUpdatedEvent
+	public struct
+	0x50c1::subscription
+ProfileSubscriptionService
+	public struct
+	0x50c1::subscription
+ProfileSubscription
+	public struct
+	0x50c1::subscription
+ProfileSubscriptionCreatedEvent
+	public struct
+	0x50c1::subscription
+ProfileSubscriptionRenewedEvent
+	public struct
+	0x50c1::subscription
+ProfileSubscriptionCancelledEvent
+	public struct
+	0x50c1::subscription
+ProfileSubscriptionUpdatedEvent
+	public struct
+	0x50c1::subscription
+ProfileSubscriptionServiceCreatedEvent
+	public struct
+	0x50c1::subscription
+RenewalBalanceFundedEvent
+	public struct
+	0x50c1::subscription
+ProfileSubscriptionServiceDeactivatedEvent
+	public struct
+	0x50c1::subscription
+validate_fee_config
+	fun
+	0x50c1::subscription
+calculate_subscription_fees
+	fun
+	0x50c1::subscription
+route_non_platform_platform_fee
+	fun
+	0x50c1::subscription
+distribute_subscription_payment_fees_no_platform
+	fun
+	0x50c1::subscription
+distribute_subscription_payment_fees_with_platform
+	fun
+	0x50c1::subscription
+emit_subscription_config_updated
+	fun
+	0x50c1::subscription
+create_profile_service
+	public fun
+	0x50c1::subscription
+create_profile_service_entry
+	public entry fun
+	0x50c1::subscription
+subscribe_to_profile_internal_no_platform
+	fun
+	0x50c1::subscription
+subscribe_to_profile_internal_with_platform
+	fun
+	0x50c1::subscription
+finish_subscribe
+	fun
+	0x50c1::subscription
+subscribe_to_profile
+	public entry fun
+	0x50c1::subscription
+subscribe_to_profile_with_platform
+	public entry fun
+	0x50c1::subscription
+renew_subscription_internal_no_platform
+	fun
+	0x50c1::subscription
+renew_subscription_internal_with_platform
+	fun
+	0x50c1::subscription
+emit_subscription_renewed
+	fun
+	0x50c1::subscription
+renew_subscription
+	public entry fun
+	0x50c1::subscription
+renew_subscription_with_platform
+	public entry fun
+	0x50c1::subscription
+auto_renew_subscription_internal_no_platform
+	fun
+	0x50c1::subscription
+auto_renew_subscription_internal_with_platform
+	fun
+	0x50c1::subscription
+auto_renew_subscription
+	public entry fun
+	0x50c1::subscription
+auto_renew_subscription_with_platform
+	public entry fun
+	0x50c1::subscription
+can_auto_renew
+	public fun
+	0x50c1::subscription
+fund_renewal_balance
+	public entry fun
+	0x50c1::subscription
+is_subscription_valid
+	public fun
+	0x50c1::subscription
+update_service_fee
+	public entry fun
+	0x50c1::subscription
+deactivate_service
+	public entry fun
+	0x50c1::subscription
+cancel_subscription
+	public entry fun
+	0x50c1::subscription
+service_monthly_fee
+	public fun
+	0x50c1::subscription
+service_subscriber_count
+	public fun
+	0x50c1::subscription
+subscription_expires_at
+	public fun
+	0x50c1::subscription
+subscription_auto_renew
+	public fun
+	0x50c1::subscription
+subscription_renewal_balance
+	public fun
+	0x50c1::subscription
+bootstrap_init
+	public(package) fun
+	0x50c1::subscription
+create_subscription_admin_cap
+	public(package) fun
+	0x50c1::subscription
+update_subscription_config
+	public entry fun
+	0x50c1::subscription
+migrate_config
+	public entry fun
+	0x50c1::subscription
+migrate_service
+	public entry fun
+	0x50c1::subscription
+VaultBalanceKey
+	public struct
+	0x50c1::poc_vault
+PoCVaultDirectory
+	public struct
+	0x50c1::poc_vault
+PoCBeneficiaryVault
+	public struct
+	0x50c1::poc_vault
+PoCBadgeObject
+	public struct
+	0x50c1::poc_vault
+PoCBeneficiaryVaultDepositEvent
+	public struct
+	0x50c1::poc_vault
+PoCBeneficiaryVaultClaimedEvent
+	public struct
+	0x50c1::poc_vault
+media_index_unspecified
+	public fun
+	0x50c1::poc_vault
+bootstrap_init_directory
+	public(package) fun
+	0x50c1::poc_vault
+beneficiary_address
+	public fun
+	0x50c1::poc_vault
+vault_routes_to_beneficiary
+	public(package) fun
+	0x50c1::poc_vault
+ensure_beneficiary_vault
+	public(package) fun
+	0x50c1::poc_vault
+deposit_coin
+	public(package) fun
+	0x50c1::poc_vault
+claim_vault_balance
+	public(package) fun
+	0x50c1::poc_vault
+claim_vault_balance_for_linked_wallet
+	public(package) fun
+	0x50c1::poc_vault
+sweep_vault_balance_to_treasury
+	public(package) fun
+	0x50c1::poc_vault
+vault_has_balance
+	public(package) fun
+	0x50c1::poc_vault
+new_poc_badge_object
+	public(package) fun
+	0x50c1::poc_vault
+share_po_badge_object
+	public(package) fun
+	0x50c1::poc_vault
+po_badge_object_address
+	public(package) fun
+	0x50c1::poc_vault
 MyData
 	public struct
 	0x50c1::mydata
@@ -9727,6 +9793,30 @@ MyDataUnregisteredEvent
 MyDataConfigUpdatedEvent
 	public struct
 	0x50c1::mydata
+validate_fee_config
+	fun
+	0x50c1::mydata
+calculate_p2p_fees
+	fun
+	0x50c1::mydata
+calculate_mydata_marketplace_fees
+	fun
+	0x50c1::mydata
+route_non_platform_platform_fee
+	fun
+	0x50c1::mydata
+distribute_p2p_fees_no_platform
+	fun
+	0x50c1::mydata
+distribute_p2p_fees_with_platform
+	fun
+	0x50c1::mydata
+assert_platform_matches_listing
+	fun
+	0x50c1::mydata
+emit_mydata_config_updated
+	fun
+	0x50c1::mydata
 create_mydata_admin_cap
 	public(package) fun
 	0x50c1::mydata
@@ -9772,7 +9862,22 @@ get_snapshot_anchor
 publish_merkle_root
 	public entry fun
 	0x50c1::mydata
+distribute_mydata_marketplace_claim_fees_no_platform
+	fun
+	0x50c1::mydata
+distribute_mydata_marketplace_claim_fees_with_platform
+	fun
+	0x50c1::mydata
+claim_internal_no_platform
+	fun
+	0x50c1::mydata
+claim_internal_with_platform
+	fun
+	0x50c1::mydata
 claim
+	public entry fun
+	0x50c1::mydata
+claim_with_platform
 	public entry fun
 	0x50c1::mydata
 deposit
@@ -9805,10 +9910,28 @@ create
 create_and_share
 	public entry fun
 	0x50c1::mydata
+purchase_one_time_no_platform
+	fun
+	0x50c1::mydata
+purchase_one_time_with_platform_internal
+	fun
+	0x50c1::mydata
 purchase_one_time
 	public entry fun
 	0x50c1::mydata
+purchase_one_time_with_platform
+	public entry fun
+	0x50c1::mydata
+purchase_subscription_no_platform
+	fun
+	0x50c1::mydata
+purchase_subscription_with_platform_internal
+	fun
+	0x50c1::mydata
 purchase_subscription
+	public entry fun
+	0x50c1::mydata
+purchase_subscription_with_platform
 	public entry fun
 	0x50c1::mydata
 update_pricing
@@ -11197,7 +11320,7 @@ CoverageClaimedEvent
 ConfigUpdatedEvent
 	public struct
 	0x50c1::insurance
-RouterLimitsUpdatedEvent
+RouterConfigUpdatedEvent
 	public struct
 	0x50c1::insurance
 PolicyExpiredEvent
@@ -11227,10 +11350,7 @@ create_vault
 set_vault_status
 	public entry fun
 	0x50c1::insurance
-set_router_flags
-	public entry fun
-	0x50c1::insurance
-set_router_limits
+update_router_config
 	public entry fun
 	0x50c1::insurance
 set_market_pause
@@ -11261,6 +11381,9 @@ copy_id_vec
 	fun
 	0x50c1::insurance
 new_router_config_defaults
+	fun
+	0x50c1::insurance
+emit_router_config_updated
 	fun
 	0x50c1::insurance
 new_backstop_pool_defaults

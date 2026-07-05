@@ -1,6 +1,8 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+pub mod agent_auth;
+pub mod ai_credit_object;
 pub mod approvals;
 pub mod catalog;
 pub mod catalog_sync;
@@ -18,6 +20,8 @@ pub mod server;
 pub mod settlement;
 pub mod settlement_coordinator;
 pub mod settlement_policy;
+pub mod signature_schemes;
 pub mod signing;
 pub mod social_client;
+pub mod sub_agent_object;
 pub mod workflow_client;

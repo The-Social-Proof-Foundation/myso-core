@@ -192,7 +192,6 @@ plus optional sub-token nano remainder into the <code>u64</code> nano-SPT values
 <b>use</b> <a href="../social_contracts/post.md#social_contracts_post">social_contracts::post</a>;
 <b>use</b> <a href="../social_contracts/profile.md#social_contracts_profile">social_contracts::profile</a>;
 <b>use</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_contracts::social_graph</a>;
-<b>use</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">social_contracts::subscription</a>;
 <b>use</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade">social_contracts::upgrade</a>;
 <b>use</b> <a href="../std/address.md#std_address">std::address</a>;
 <b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
@@ -1293,6 +1292,12 @@ Event emitted when social proof tokens config is updated
 <dd>
  Non-platform split: ecosystem treasury share of platform-fee bucket (bps)
 </dd>
+<dt>
+<code>trading_enabled: bool</code>
+</dt>
+<dd>
+ Whether SPT trading is enabled
+</dd>
 </dl>
 
 
@@ -2192,6 +2197,7 @@ Bootstrap initialization function - creates the social proof tokens configuratio
         max_reservers_per_pool: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_MAX_RESERVERS_PER_POOL">DEFAULT_MAX_RESERVERS_PER_POOL</a>,
         non_platform_platform_to_creator_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS">DEFAULT_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS</a>,
         non_platform_platform_to_treasury_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS">DEFAULT_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS</a>,
+        trading_enabled: <b>true</b>,
     });
     // Create and share social proof tokens config with proper treasury
     transfer::share_object(config);
@@ -2336,6 +2342,7 @@ Update social proof tokens configuration
         max_reservers_per_pool,
         non_platform_platform_to_creator_bps,
         non_platform_platform_to_treasury_bps,
+        trading_enabled: config.trading_enabled,
     });
 }
 </code></pre>

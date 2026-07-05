@@ -31,6 +31,18 @@ pub struct MyDataConfigRow {
     #[diesel(sql_type = BigInt)]
     pub max_encryption_id_bytes: i64,
     #[diesel(sql_type = BigInt)]
+    pub p2p_platform_fee_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub p2p_ecosystem_fee_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub mydata_marketplace_platform_fee_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub mydata_marketplace_ecosystem_fee_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub non_platform_platform_to_creator_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub non_platform_platform_to_treasury_bps: i64,
+    #[diesel(sql_type = BigInt)]
     pub version: i64,
     #[diesel(sql_type = BigInt)]
     pub updated_at: i64,
@@ -108,7 +120,8 @@ pub(crate) async fn list_mydata_purchases_by_buyer(
     let _guard = metrics.latency.start_timer();
 
     let query = "
-        SELECT id, mydata_id, buyer, price, purchase_type, purchase_time, time, transaction_id,
+        SELECT id, mydata_id, buyer, price, platform_fee, ecosystem_fee, creator_amount,
+               platform_address, purchase_type, purchase_time, time, transaction_id,
                revoked, revoked_at, revoked_by
         FROM mydata_purchases
         WHERE buyer = $1
@@ -136,7 +149,10 @@ pub(crate) async fn get_mydata_config(
 
     let query = "
         SELECT updated_by, marketplace_enabled, max_tags, max_subscription_days, max_free_access_grants,
-               max_encryption_id_bytes, version, updated_at, time, transaction_id
+               max_encryption_id_bytes, p2p_platform_fee_bps, p2p_ecosystem_fee_bps,
+               mydata_marketplace_platform_fee_bps, mydata_marketplace_ecosystem_fee_bps,
+               non_platform_platform_to_creator_bps, non_platform_platform_to_treasury_bps,
+               version, updated_at, time, transaction_id
         FROM mydata_config
         ORDER BY time DESC
         LIMIT 1
@@ -239,7 +255,8 @@ pub(crate) async fn get_mydata_purchases(
     let _guard = metrics.latency.start_timer();
 
     let query = "
-        SELECT id, mydata_id, buyer, price, purchase_type, purchase_time, time, transaction_id,
+        SELECT id, mydata_id, buyer, price, platform_fee, ecosystem_fee, creator_amount,
+               platform_address, purchase_type, purchase_time, time, transaction_id,
                revoked, revoked_at, revoked_by
         FROM mydata_purchases
         WHERE mydata_id = $1
@@ -299,7 +316,8 @@ pub(crate) async fn get_mydata_revenue(
     let _guard = metrics.latency.start_timer();
 
     let query = "
-        SELECT id, mydata_id, from_address, to_address, amount, revenue_type, revenue_time, time, transaction_id
+        SELECT id, mydata_id, from_address, to_address, amount, platform_fee, ecosystem_fee,
+               creator_amount, platform_address, revenue_type, revenue_time, time, transaction_id
         FROM mydata_revenue
         WHERE mydata_id = $1
         ORDER BY revenue_time DESC
@@ -662,7 +680,8 @@ pub(crate) async fn list_mydata_claims_for_snapshot(
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
     let query = "
-        SELECT id, snapshot_id, claimant, amount, claimed_at_ms, event_id, transaction_id, time
+        SELECT id, snapshot_id, claimant, amount, gross_amount, platform_fee, ecosystem_fee,
+               net_amount, platform_address, claimed_at_ms, event_id, transaction_id, time
         FROM mydata_claims
         WHERE snapshot_id = $1
         ORDER BY claimed_at_ms DESC

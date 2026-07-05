@@ -104,6 +104,60 @@ ADD COLUMN IF NOT EXISTS odds_base_bps BIGINT NOT NULL DEFAULT 5000;
 UPDATE insurance_config SET odds_base_bps = 5000 WHERE odds_base_bps IS NULL;
 COMMENT ON COLUMN insurance_config.odds_base_bps IS 'Base odds multiplier in bps used by compute_spot_risk_quote (default: 5000; must be > 0)';
 
+-- 1.10 mydata_config — P2P + MyData marketplace fee bps + non-platform split
+ALTER TABLE mydata_config
+ADD COLUMN IF NOT EXISTS p2p_platform_fee_bps BIGINT NOT NULL DEFAULT 250,
+ADD COLUMN IF NOT EXISTS p2p_ecosystem_fee_bps BIGINT NOT NULL DEFAULT 250,
+ADD COLUMN IF NOT EXISTS mydata_marketplace_platform_fee_bps BIGINT NOT NULL DEFAULT 250,
+ADD COLUMN IF NOT EXISTS mydata_marketplace_ecosystem_fee_bps BIGINT NOT NULL DEFAULT 250,
+ADD COLUMN IF NOT EXISTS non_platform_platform_to_creator_bps BIGINT NOT NULL DEFAULT 0,
+ADD COLUMN IF NOT EXISTS non_platform_platform_to_treasury_bps BIGINT NOT NULL DEFAULT 10000;
+UPDATE mydata_config SET p2p_platform_fee_bps = 250 WHERE p2p_platform_fee_bps IS NULL;
+UPDATE mydata_config SET p2p_ecosystem_fee_bps = 250 WHERE p2p_ecosystem_fee_bps IS NULL;
+UPDATE mydata_config SET mydata_marketplace_platform_fee_bps = 250 WHERE mydata_marketplace_platform_fee_bps IS NULL;
+UPDATE mydata_config SET mydata_marketplace_ecosystem_fee_bps = 250 WHERE mydata_marketplace_ecosystem_fee_bps IS NULL;
+UPDATE mydata_config SET non_platform_platform_to_creator_bps = 0 WHERE non_platform_platform_to_creator_bps IS NULL;
+UPDATE mydata_config SET non_platform_platform_to_treasury_bps = 10000 WHERE non_platform_platform_to_treasury_bps IS NULL;
+COMMENT ON COLUMN mydata_config.p2p_platform_fee_bps IS 'P2P marketplace platform fee as % of gross in bps (default: 250)';
+COMMENT ON COLUMN mydata_config.p2p_ecosystem_fee_bps IS 'P2P marketplace ecosystem fee as % of gross in bps (default: 250)';
+COMMENT ON COLUMN mydata_config.mydata_marketplace_platform_fee_bps IS 'MyData marketplace pool claim platform fee as % of gross in bps (default: 250)';
+COMMENT ON COLUMN mydata_config.mydata_marketplace_ecosystem_fee_bps IS 'MyData marketplace pool claim ecosystem fee as % of gross in bps (default: 250)';
+COMMENT ON COLUMN mydata_config.non_platform_platform_to_creator_bps IS 'Non-platform path: recipient share of platform-fee bucket in bps (default: 0)';
+COMMENT ON COLUMN mydata_config.non_platform_platform_to_treasury_bps IS 'Non-platform path: ecosystem share of platform-fee bucket in bps (default: 10000)';
+
+-- 1.11 subscription_revenue — fee breakdown
+ALTER TABLE subscription_revenue
+ADD COLUMN IF NOT EXISTS platform_fee BIGINT NOT NULL DEFAULT 0,
+ADD COLUMN IF NOT EXISTS ecosystem_fee BIGINT NOT NULL DEFAULT 0,
+ADD COLUMN IF NOT EXISTS creator_amount BIGINT NOT NULL DEFAULT 0,
+ADD COLUMN IF NOT EXISTS platform_address TEXT;
+COMMENT ON COLUMN subscription_revenue.platform_fee IS 'Platform fee slice deducted from gross payment (MYSO base units)';
+COMMENT ON COLUMN subscription_revenue.ecosystem_fee IS 'Ecosystem treasury fee slice deducted from gross payment';
+COMMENT ON COLUMN subscription_revenue.creator_amount IS 'Net amount credited to profile owner after fees';
+COMMENT ON COLUMN subscription_revenue.platform_address IS 'Platform treasury recipient when platform fee was routed on-chain';
+
+-- 1.13 mydata purchases/revenue/claims — fee breakdown
+ALTER TABLE mydata_purchases
+ADD COLUMN IF NOT EXISTS platform_fee BIGINT NOT NULL DEFAULT 0,
+ADD COLUMN IF NOT EXISTS ecosystem_fee BIGINT NOT NULL DEFAULT 0,
+ADD COLUMN IF NOT EXISTS creator_amount BIGINT NOT NULL DEFAULT 0,
+ADD COLUMN IF NOT EXISTS platform_address TEXT;
+
+ALTER TABLE mydata_revenue
+ADD COLUMN IF NOT EXISTS platform_fee BIGINT NOT NULL DEFAULT 0,
+ADD COLUMN IF NOT EXISTS ecosystem_fee BIGINT NOT NULL DEFAULT 0,
+ADD COLUMN IF NOT EXISTS creator_amount BIGINT NOT NULL DEFAULT 0,
+ADD COLUMN IF NOT EXISTS platform_address TEXT;
+
+ALTER TABLE mydata_claims
+ADD COLUMN IF NOT EXISTS gross_amount BIGINT NOT NULL DEFAULT 0,
+ADD COLUMN IF NOT EXISTS platform_fee BIGINT NOT NULL DEFAULT 0,
+ADD COLUMN IF NOT EXISTS ecosystem_fee BIGINT NOT NULL DEFAULT 0,
+ADD COLUMN IF NOT EXISTS net_amount BIGINT NOT NULL DEFAULT 0,
+ADD COLUMN IF NOT EXISTS platform_address TEXT;
+UPDATE mydata_claims SET gross_amount = amount WHERE gross_amount = 0 AND amount > 0;
+UPDATE mydata_claims SET net_amount = amount WHERE net_amount = 0 AND amount > 0;
+
 -- 1.9 config semantic renames + defaults
 ALTER TABLE mydata_config RENAME COLUMN enable_flag TO marketplace_enabled;
 ALTER TABLE spot_config RENAME COLUMN enable_flag TO truth_enabled;
@@ -126,8 +180,7 @@ ALTER TABLE spt_config ALTER COLUMN trading_enabled SET DEFAULT TRUE;
 CREATE TABLE IF NOT EXISTS insurance_router_config (
     id SERIAL NOT NULL,
     updated_by TEXT NOT NULL,
-    router_enabled BOOLEAN NOT NULL DEFAULT TRUE,
-    router_paused BOOLEAN NOT NULL DEFAULT FALSE,
+    paused BOOLEAN NOT NULL DEFAULT FALSE,
     max_route_reserve_market BIGINT NOT NULL DEFAULT 0,
     max_route_reserve_user BIGINT NOT NULL DEFAULT 0,
     max_route_reserve_option BIGINT NOT NULL DEFAULT 0,
@@ -166,9 +219,8 @@ END $$;
 CREATE INDEX IF NOT EXISTS idx_insurance_router_config_time ON insurance_router_config(time DESC);
 CREATE INDEX IF NOT EXISTS idx_insurance_router_config_updated_by ON insurance_router_config(updated_by, time);
 CREATE INDEX IF NOT EXISTS idx_insurance_router_config_transaction_id ON insurance_router_config(transaction_id);
-COMMENT ON TABLE insurance_router_config IS 'Tracks InsuranceRouterConfig changes over time (router enable/pause + reserve/health caps + max_route_legs). Each row represents a configuration update.';
-COMMENT ON COLUMN insurance_router_config.router_enabled IS 'Whether the coverage router is globally enabled (default: TRUE)';
-COMMENT ON COLUMN insurance_router_config.router_paused IS 'Whether the coverage router is paused (default: FALSE)';
+COMMENT ON TABLE insurance_router_config IS 'Tracks InsuranceRouterConfig changes over time (router pause + reserve/health caps + max_route_legs). Each row represents a configuration update.';
+COMMENT ON COLUMN insurance_router_config.paused IS 'Whether the coverage router is paused (default: FALSE)';
 COMMENT ON COLUMN insurance_router_config.max_route_reserve_market IS 'Max reserve that may be locked per market across a route (default: 0)';
 COMMENT ON COLUMN insurance_router_config.max_route_reserve_user IS 'Max reserve that may be locked per user across a route (default: 0)';
 COMMENT ON COLUMN insurance_router_config.max_route_reserve_option IS 'Max reserve that may be locked per option across a route (default: 0)';
@@ -182,6 +234,10 @@ CREATE TABLE IF NOT EXISTS subscription_config (
     updated_by TEXT NOT NULL,
     billing_period_ms BIGINT NOT NULL DEFAULT 2592000000,
     max_renewal_months BIGINT NOT NULL DEFAULT 120,
+    platform_fee_bps BIGINT NOT NULL DEFAULT 250,
+    ecosystem_fee_bps BIGINT NOT NULL DEFAULT 250,
+    non_platform_platform_to_creator_bps BIGINT NOT NULL DEFAULT 0,
+    non_platform_platform_to_treasury_bps BIGINT NOT NULL DEFAULT 10000,
     version BIGINT NOT NULL DEFAULT 0,
     updated_at BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -217,6 +273,10 @@ CREATE INDEX IF NOT EXISTS idx_subscription_config_transaction_id ON subscriptio
 COMMENT ON TABLE subscription_config IS 'Tracks SubscriptionConfig changes over time (global subscription billing parameters). Each row represents a configuration update.';
 COMMENT ON COLUMN subscription_config.billing_period_ms IS 'Billing period duration in ms (default: 2592000000 = 30 days)';
 COMMENT ON COLUMN subscription_config.max_renewal_months IS 'Maximum number of renewal months allowed per subscription (default: 120)';
+COMMENT ON COLUMN subscription_config.platform_fee_bps IS 'Platform fee as direct % of gross subscription payment in bps (default: 250 = 2.5%)';
+COMMENT ON COLUMN subscription_config.ecosystem_fee_bps IS 'Ecosystem treasury fee as direct % of gross in bps (default: 250 = 2.5%)';
+COMMENT ON COLUMN subscription_config.non_platform_platform_to_creator_bps IS 'Non-platform path: creator share of platform-fee bucket in bps (default: 0)';
+COMMENT ON COLUMN subscription_config.non_platform_platform_to_treasury_bps IS 'Non-platform path: ecosystem share of platform-fee bucket in bps (default: 10000)';
 
 -- 2.3 profile_config
 CREATE TABLE IF NOT EXISTS profile_config (
@@ -791,3 +851,47 @@ END $$;
 CREATE INDEX IF NOT EXISTS idx_poc_configuration_time ON poc_configuration(time DESC);
 CREATE INDEX IF NOT EXISTS idx_spt_config_time ON spt_config(time DESC);
 CREATE INDEX IF NOT EXISTS idx_ecosystem_treasury_time ON ecosystem_treasury(time DESC);
+
+-- ============================================================================
+-- 1.11 profiles on-chain fields cleanup
+-- Drop legacy off-chain-only columns; unify location naming.
+-- ============================================================================
+
+ALTER TABLE profiles
+  DROP COLUMN IF EXISTS raised_location,
+  DROP COLUMN IF EXISTS phone,
+  DROP COLUMN IF EXISTS email,
+  DROP COLUMN IF EXISTS gender,
+  DROP COLUMN IF EXISTS political_view,
+  DROP COLUMN IF EXISTS religion,
+  DROP COLUMN IF EXISTS education,
+  DROP COLUMN IF EXISTS primary_language,
+  DROP COLUMN IF EXISTS relationship_status,
+  DROP COLUMN IF EXISTS sensitive_data_updated_at;
+
+DO $$ BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'profiles' AND column_name = 'current_location'
+  ) AND NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'profiles' AND column_name = 'location'
+  ) THEN
+    ALTER TABLE profiles RENAME COLUMN current_location TO location;
+  END IF;
+END $$;
+
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS location TEXT;
+
+-- Backfill SPoT governance registry ID from bootstrap governance registry (registry_type = 2).
+UPDATE spot_config sc
+SET spot_governance_registry_id = gr.object_id
+FROM (
+    SELECT object_id
+    FROM governance_registries
+    WHERE registry_type = 2
+    ORDER BY time DESC
+    LIMIT 1
+) gr
+WHERE sc.spot_governance_registry_id IS NULL
+  AND sc.time = (SELECT MAX(time) FROM spot_config);

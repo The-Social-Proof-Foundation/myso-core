@@ -101,7 +101,6 @@ pub enum AiCreditRow {
         receipt_ttl_ms: i64,
         updated_at: i64,
         time: chrono::DateTime<chrono::Utc>,
-        event_id: String,
         transaction_id: String,
     },
     ConfigPubkeyUpdate {
@@ -109,7 +108,6 @@ pub enum AiCreditRow {
         oracle_pubkey_hex: String,
         updated_at: i64,
         time: chrono::DateTime<chrono::Utc>,
-        event_id: String,
         transaction_id: String,
     },
     ConfigMarkupUpdate {
@@ -117,7 +115,6 @@ pub enum AiCreditRow {
         oracle_markup_bps: i64,
         updated_at: i64,
         time: chrono::DateTime<chrono::Utc>,
-        event_id: String,
         transaction_id: String,
     },
     ConfigMinDepositUpdate {
@@ -125,7 +122,6 @@ pub enum AiCreditRow {
         min_deposit_mist: i64,
         updated_at: i64,
         time: chrono::DateTime<chrono::Utc>,
-        event_id: String,
         transaction_id: String,
     },
     Event(NewAiCreditEvent),
@@ -268,7 +264,6 @@ impl AiCreditRow {
                 receipt_ttl_ms,
                 updated_at,
                 time,
-                event_id,
                 transaction_id,
             } => Some(AiCreditRow::ConfigLimitsUpdate {
                 updated_by,
@@ -276,7 +271,6 @@ impl AiCreditRow {
                 receipt_ttl_ms,
                 updated_at,
                 time,
-                event_id,
                 transaction_id,
             }),
             crate::handlers::SocialEventRow::AiCreditConfigPubkeyUpdate {
@@ -284,14 +278,12 @@ impl AiCreditRow {
                 oracle_pubkey_hex,
                 updated_at,
                 time,
-                event_id,
                 transaction_id,
             } => Some(AiCreditRow::ConfigPubkeyUpdate {
                 updated_by,
                 oracle_pubkey_hex,
                 updated_at,
                 time,
-                event_id,
                 transaction_id,
             }),
             crate::handlers::SocialEventRow::AiCreditConfigMarkupUpdate {
@@ -299,14 +291,12 @@ impl AiCreditRow {
                 oracle_markup_bps,
                 updated_at,
                 time,
-                event_id,
                 transaction_id,
             } => Some(AiCreditRow::ConfigMarkupUpdate {
                 updated_by,
                 oracle_markup_bps,
                 updated_at,
                 time,
-                event_id,
                 transaction_id,
             }),
             crate::handlers::SocialEventRow::AiCreditConfigMinDepositUpdate {
@@ -314,14 +304,12 @@ impl AiCreditRow {
                 min_deposit_mist,
                 updated_at,
                 time,
-                event_id,
                 transaction_id,
             } => Some(AiCreditRow::ConfigMinDepositUpdate {
                 updated_by,
                 min_deposit_mist,
                 updated_at,
                 time,
-                event_id,
                 transaction_id,
             }),
             crate::handlers::SocialEventRow::AiCreditEvent(e) => Some(AiCreditRow::Event(e)),
@@ -385,8 +373,6 @@ struct LatestAiCreditConfigRow {
     #[diesel(sql_type = BigInt)]
     updated_at: i64,
     #[diesel(sql_type = Text)]
-    event_id: String,
-    #[diesel(sql_type = Text)]
     transaction_id: String,
     #[diesel(sql_type = Timestamptz)]
     time: chrono::DateTime<chrono::Utc>,
@@ -404,7 +390,6 @@ fn latest_row_to_new(row: LatestAiCreditConfigRow) -> NewAiCreditConfig {
         catalog_version: row.catalog_version,
         version: row.version,
         updated_at: row.updated_at,
-        event_id: row.event_id,
         transaction_id: row.transaction_id,
         time: row.time,
     }
@@ -416,7 +401,7 @@ async fn load_latest_ai_credit_config(
     let query = "
         SELECT updated_by, oracle_pubkey_hex, treasury_address, min_deposit_mist,
                max_single_settlement_mist, receipt_ttl_ms, oracle_markup_bps, catalog_version,
-               version, updated_at, event_id, transaction_id, time
+               version, updated_at, transaction_id, time
         FROM ai_credit_config
         ORDER BY time DESC
         LIMIT 1
@@ -441,7 +426,6 @@ fn finalize_ai_credit_config(prev: &NewAiCreditConfig, row: &AiCreditRow) -> Opt
             receipt_ttl_ms,
             updated_at,
             time,
-            event_id,
             transaction_id,
         } => Some(NewAiCreditConfig {
             updated_by: updated_by.clone(),
@@ -449,7 +433,6 @@ fn finalize_ai_credit_config(prev: &NewAiCreditConfig, row: &AiCreditRow) -> Opt
             receipt_ttl_ms: *receipt_ttl_ms,
             version: next_ai_credit_version(prev, None),
             updated_at: *updated_at,
-            event_id: event_id.clone(),
             transaction_id: transaction_id.clone(),
             time: *time,
             ..prev.clone()
@@ -459,14 +442,12 @@ fn finalize_ai_credit_config(prev: &NewAiCreditConfig, row: &AiCreditRow) -> Opt
             oracle_pubkey_hex,
             updated_at,
             time,
-            event_id,
             transaction_id,
         } => Some(NewAiCreditConfig {
             updated_by: updated_by.clone(),
             oracle_pubkey_hex: oracle_pubkey_hex.clone(),
             version: next_ai_credit_version(prev, None),
             updated_at: *updated_at,
-            event_id: event_id.clone(),
             transaction_id: transaction_id.clone(),
             time: *time,
             ..prev.clone()
@@ -476,14 +457,12 @@ fn finalize_ai_credit_config(prev: &NewAiCreditConfig, row: &AiCreditRow) -> Opt
             oracle_markup_bps,
             updated_at,
             time,
-            event_id,
             transaction_id,
         } => Some(NewAiCreditConfig {
             updated_by: updated_by.clone(),
             oracle_markup_bps: *oracle_markup_bps,
             version: next_ai_credit_version(prev, None),
             updated_at: *updated_at,
-            event_id: event_id.clone(),
             transaction_id: transaction_id.clone(),
             time: *time,
             ..prev.clone()
@@ -493,14 +472,12 @@ fn finalize_ai_credit_config(prev: &NewAiCreditConfig, row: &AiCreditRow) -> Opt
             min_deposit_mist,
             updated_at,
             time,
-            event_id,
             transaction_id,
         } => Some(NewAiCreditConfig {
             updated_by: updated_by.clone(),
             min_deposit_mist: *min_deposit_mist,
             version: next_ai_credit_version(prev, None),
             updated_at: *updated_at,
-            event_id: event_id.clone(),
             transaction_id: transaction_id.clone(),
             time: *time,
             ..prev.clone()

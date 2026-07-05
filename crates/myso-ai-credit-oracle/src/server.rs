@@ -9,6 +9,9 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use tokio::sync::{Mutex, RwLock};
 
+use crate::agent_auth::{
+    agent_auth_error_to_status, check_oracle_api_secret, derive_receipt_id, verify_agent_usage_auth,
+};
 use crate::approvals::{approval_covers, ApprovalsCache};
 use crate::catalog::{PricingCatalog, CAP_AI_SPEND};
 use crate::catalog_sync::{spawn_catalog_sync_worker, startup_catalog_sync};
@@ -46,6 +49,7 @@ pub struct AppState {
     pub store: Arc<Mutex<ReceiptStore>>,
     pub store_path: std::path::PathBuf,
     pub settlement_secret: Option<String>,
+    pub oracle_api_secret: Option<String>,
     pub oracle_args: OracleArgs,
     pub settlement_coordinator: Arc<SettlementCoordinator>,
     pub catalog: Arc<RwLock<PricingCatalog>>,
@@ -150,6 +154,7 @@ pub struct UsageRequest {
     pub tokens_out: Option<u64>,
     pub tool_id: Option<String>,
     pub model_id: Option<String>,
+    pub idempotency_key: String,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -162,6 +167,7 @@ pub struct UsageResponse {
 }
 
 pub async fn serve(args: OracleArgs) -> anyhow::Result<()> {
+    args.validate_startup()?;
     let signer = ReceiptSigner::from_hex(&args.private_key_hex)?;
     tracing::info!(public_key = %signer.public_key_hex(), "oracle signer ready");
 
@@ -186,7 +192,7 @@ pub async fn serve(args: OracleArgs) -> anyhow::Result<()> {
     startup_price_refresh(&args, &pricing, &myso_price_client).await;
     spawn_price_refresh_worker(Arc::new(args.clone()), pricing.clone(), myso_price_client);
 
-    let store = ReceiptStore::load(&args.receipt_store_path)?;
+    let store = ReceiptStore::load(&args.receipt_store_path, args.receipt_store_recover)?;
     let store_arc = Arc::new(Mutex::new(store));
     let args_arc = Arc::new(args.clone());
     spawn_markup_refresh_worker(args_arc.clone(), pricing.clone(), markup_client);
@@ -245,6 +251,7 @@ pub async fn serve(args: OracleArgs) -> anyhow::Result<()> {
         store: store_arc,
         store_path: args.receipt_store_path.clone(),
         settlement_secret: args.settlement_secret.clone(),
+        oracle_api_secret: args.oracle_api_secret.clone(),
         oracle_args: args.clone(),
         settlement_coordinator,
         catalog,
@@ -252,6 +259,8 @@ pub async fn serve(args: OracleArgs) -> anyhow::Result<()> {
         approvals,
         workflow,
     };
+
+    spawn_ingest_reconcile_worker(state.clone());
 
     let app = Router::new()
         .route("/health", get(health))
@@ -269,8 +278,129 @@ pub async fn serve(args: OracleArgs) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn health() -> StatusCode {
-    StatusCode::OK
+async fn health(State(state): State<AppState>) -> Json<HealthResponse> {
+    let pricing = state.pricing.read().await;
+    let max_stale = state.oracle_args.myso_price_max_stale_secs;
+    let price_stale =
+        state.oracle_args.myso_price_enabled && pricing.is_price_stale(max_stale);
+    drop(pricing);
+
+    let store = state.store.lock().await;
+    let pending_receipts = store
+        .lines
+        .iter()
+        .filter(|l| !l.settled && !l.void)
+        .count() as u64;
+    let ingest_backlog = store.ingest_backlog_count();
+    if let Some(oldest) = store.oldest_ingest_backlog_ms() {
+        let age_secs =
+            (chrono::Utc::now().timestamp_millis() as u64 - oldest) / 1000;
+        if age_secs >= state.oracle_args.ingest_backlog_warn_age_secs {
+            tracing::warn!(
+                ingest_backlog,
+                age_secs,
+                warn_age_secs = state.oracle_args.ingest_backlog_warn_age_secs,
+                "ingest backlog aging"
+            );
+        }
+    }
+    drop(store);
+
+    Json(HealthResponse {
+        price_stale,
+        pending_receipts,
+        ingest_backlog,
+        settlement_enabled: state.settlement_secret.is_some(),
+        store_writable: ReceiptStore::probe_writable(&state.store_path),
+    })
+}
+
+#[derive(Debug, serde::Serialize)]
+struct HealthResponse {
+    price_stale: bool,
+    pending_receipts: u64,
+    ingest_backlog: u64,
+    settlement_enabled: bool,
+    store_writable: bool,
+}
+
+fn validate_idempotency_key(key: &str) -> Result<(), StatusCode> {
+    if key.is_empty() || key.len() > 128 {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+    Ok(())
+}
+
+fn usage_response_from_line(line: &UsageLine) -> Result<UsageResponse, StatusCode> {
+    let receipt = UsageReceipt {
+        balance_id: parse_object_id_hex(&line.balance_id).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+        agent_object_id: parse_object_id_hex(&line.agent_object_id)
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+        receipt_id: line.receipt_id,
+        amount_mist: line.amount_mist,
+        usage_kind: line.usage_kind,
+        timestamp_ms: line.timestamp_ms,
+        settlement_nonce: line.settlement_nonce,
+    };
+    Ok(UsageResponse {
+        receipt_id: line.receipt_id,
+        amount_mist: line.amount_mist,
+        settlement_nonce: line.settlement_nonce,
+        signature: line.signature_hex.clone(),
+        receipt,
+    })
+}
+
+fn spawn_ingest_reconcile_worker(state: AppState) {
+    let interval_secs = state.oracle_args.ingest_reconcile_interval_secs;
+    tokio::spawn(async move {
+        let mut ticker =
+            tokio::time::interval(std::time::Duration::from_secs(interval_secs));
+        loop {
+            ticker.tick().await;
+            run_ingest_reconcile_cycle(&state).await;
+        }
+    });
+}
+
+async fn run_ingest_reconcile_cycle(state: &AppState) {
+    let pending: Vec<IngestUsageLineRequest> = {
+        let store = state.store.lock().await;
+        store
+            .lines
+            .iter()
+            .filter(|l| !l.ingest_synced && !l.settled && !l.void)
+            .map(|l| IngestUsageLineRequest {
+                receipt_id: l.receipt_id.to_string(),
+                balance_id: l.balance_id.clone(),
+                agent_object_id: l.agent_object_id.clone(),
+                usage_kind: l.usage_kind as i16,
+                amount_mist: l.amount_mist as i64,
+                model_id: l.model_id.clone(),
+                tool_id: l.tool_id.clone(),
+                metadata: l.metadata.clone(),
+                organization_id: l.organization_id.clone(),
+            })
+            .collect()
+    };
+
+    for ingest in pending {
+        if state
+            .social
+            .ingest_usage_line_with_retries(&ingest, 3)
+            .await
+            .is_ok()
+        {
+            if let Ok(receipt_id) = ingest.receipt_id.parse::<u128>() {
+                let mut store = state.store.lock().await;
+                if store.mark_ingest_synced(receipt_id) {
+                    if let Err(err) = store.save(&state.store_path) {
+                        tracing::warn!(error = %err, receipt_id, "failed to persist ingest_synced flag");
+                    }
+                }
+            }
+        }
+    }
 }
 
 fn pricing_fx_from_engine(state: &AppState, pricing: &PricingEngine) -> PricingFxInfo {
@@ -584,8 +714,10 @@ fn spawn_approval_request_side_effects(
 
 async fn preflight(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Json(req): Json<PreflightRequest>,
-) -> Json<PreflightResponse> {
+) -> Result<Json<PreflightResponse>, StatusCode> {
+    check_oracle_api_secret(&headers, &state.oracle_api_secret)?;
     let pricing = state.pricing.read().await;
     let breakdown = estimate_breakdown(
         &pricing,
@@ -601,7 +733,7 @@ async fn preflight(
     );
     let estimated_mist = breakdown.amount_mist;
     if estimated_mist == 0 {
-        return Json(PreflightResponse {
+        return Ok(Json(PreflightResponse {
             allowed: false,
             reason: Some("estimated_mist must be > 0".into()),
             estimated_mist: Some(0),
@@ -610,11 +742,11 @@ async fn preflight(
             margin_mist: Some(breakdown.margin_mist),
             approval_required: false,
             approval_threshold_mist: None,
-        });
+        }));
     }
 
     let store = state.store.lock().await;
-    match validate_spend_policy(
+    let response = match validate_spend_policy(
         &state,
         &req.owner,
         None,
@@ -624,7 +756,7 @@ async fn preflight(
     )
     .await
     {
-        Ok((effective, _agent)) => Json(PreflightResponse {
+        Ok((effective, _agent)) => PreflightResponse {
             allowed: true,
             reason: None,
             estimated_mist: Some(estimated_mist),
@@ -633,7 +765,7 @@ async fn preflight(
             margin_mist: Some(breakdown.margin_mist),
             approval_required: false,
             approval_threshold_mist: None,
-        }),
+        },
         Err(SpendPolicyError::ApprovalRequired {
             balance_id,
             threshold_mist,
@@ -648,7 +780,7 @@ async fn preflight(
                 estimated_mist,
                 threshold_mist,
             );
-            Json(PreflightResponse {
+            PreflightResponse {
                 allowed: false,
                 reason: Some(APPROVAL_REQUIRED_REASON.to_string()),
                 estimated_mist: Some(estimated_mist),
@@ -657,9 +789,9 @@ async fn preflight(
                 margin_mist: Some(breakdown.margin_mist),
                 approval_required: true,
                 approval_threshold_mist: Some(threshold_mist),
-            })
+            }
         }
-        Err(err) => Json(PreflightResponse {
+        Err(err) => PreflightResponse {
             allowed: false,
             reason: Some(err.reason()),
             estimated_mist: Some(estimated_mist),
@@ -668,18 +800,21 @@ async fn preflight(
             margin_mist: Some(breakdown.margin_mist),
             approval_required: false,
             approval_threshold_mist: None,
-        }),
-    }
+        },
+    };
+    Ok(Json(response))
 }
 
 async fn estimate(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Json(req): Json<EstimateRequest>,
-) -> Json<EstimateResponse> {
+) -> Result<Json<EstimateResponse>, StatusCode> {
+    check_oracle_api_secret(&headers, &state.oracle_api_secret)?;
     let pricing = state.pricing.read().await;
     let breakdown = estimate_breakdown(&pricing, &req);
     let fx = pricing_fx_from_engine(&state, &pricing);
-    Json(EstimateResponse {
+    Ok(Json(EstimateResponse {
         estimated_mist: breakdown.amount_mist,
         estimated_credits: pricing.credits_from_mist(breakdown.amount_mist),
         base_mist: breakdown.base_mist,
@@ -692,13 +827,44 @@ async fn estimate(
         price_oracle_url: fx.price_oracle_url,
         price_age_secs: fx.price_age_secs,
         price_stale: fx.price_stale,
-    })
+    }))
 }
 
 async fn record_usage(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Json(req): Json<UsageRequest>,
 ) -> Result<Json<UsageResponse>, StatusCode> {
+    check_oracle_api_secret(&headers, &state.oracle_api_secret)?;
+    validate_idempotency_key(&req.idempotency_key)?;
+    if let Err(err) = verify_agent_usage_auth(
+        &headers,
+        &req.balance_id,
+        &req.agent_object_id,
+        req.usage_kind,
+        req.tokens_in,
+        req.tokens_out,
+        &req.model_id,
+        &req.tool_id,
+        &req.idempotency_key,
+        &state.oracle_args,
+    )
+    .await
+    {
+        return Err(agent_auth_error_to_status(err));
+    }
+
+    {
+        let store = state.store.lock().await;
+        if let Some(existing) = store.find_by_idempotency(
+            &req.balance_id,
+            &req.agent_object_id,
+            &req.idempotency_key,
+        ) {
+            return Ok(Json(usage_response_from_line(existing)?));
+        }
+    }
+
     let pricing = state.pricing.read().await;
     if price_unavailable_for_usage(&state, &pricing) {
         tracing::warn!("usage rejected: MYSO/USD price unavailable or stale");
@@ -774,17 +940,30 @@ async fn record_usage(
             }
         };
 
-        let on_chain_nonce = chain_balance::fetch_on_chain_settlement_nonce(
+        let indexed_nonce = balance_resp.balance.settlement_nonce.max(0) as u64;
+        let on_chain_nonce = chain_balance::resolve_settlement_nonce(
             &state.oracle_args.myso_rpc,
             &req.balance_id,
+            Some(indexed_nonce),
         )
         .await
-        .ok();
+        .map_err(|err| {
+            tracing::warn!(
+                balance_id = %req.balance_id,
+                error = %err,
+                "cannot resolve settlement_nonce; refusing new receipt"
+            );
+            StatusCode::SERVICE_UNAVAILABLE
+        })?;
 
         let settlement_nonce =
-            BalanceLedger::next_settlement_nonce(&balance_resp, &store_guard, on_chain_nonce);
+            BalanceLedger::next_settlement_nonce(&balance_resp, &store_guard, Some(on_chain_nonce));
 
-        let receipt_id = uuid::Uuid::new_v4().as_u128();
+        let receipt_id = derive_receipt_id(
+            &req.idempotency_key,
+            &req.balance_id,
+            &req.agent_object_id,
+        );
         let timestamp_ms = chrono::Utc::now().timestamp_millis() as u64;
         let receipt = UsageReceipt {
             balance_id: parse_object_id_hex(&req.balance_id)
@@ -829,6 +1008,8 @@ async fn record_usage(
             created_at_ms: timestamp_ms,
             void: false,
             organization_id: agent.organization_id.clone(),
+            idempotency_key: Some(req.idempotency_key.clone()),
+            ingest_synced: false,
         };
 
         if store_guard.insert_pending(line).is_err() {
@@ -862,8 +1043,27 @@ async fn record_usage(
         )
     };
 
-    if let Err(err) = state.social.ingest_usage_line(&ingest).await {
-        tracing::warn!(error = %err, "failed to ingest usage line to social-server");
+    if state
+        .social
+        .ingest_usage_line_with_retries(&ingest, 3)
+        .await
+        .is_ok()
+    {
+        let mut store = state.store.lock().await;
+        if store.mark_ingest_synced(usage_response.receipt_id) {
+            if let Err(err) = store.save(&state.store_path) {
+                tracing::warn!(
+                    error = %err,
+                    receipt_id = usage_response.receipt_id,
+                    "failed to persist ingest_synced flag"
+                );
+            }
+        }
+    } else {
+        tracing::warn!(
+            receipt_id = usage_response.receipt_id,
+            "usage line ingest failed after retries; reconcile worker will retry"
+        );
     }
 
     let balance_id = req.balance_id.clone();
@@ -883,8 +1083,10 @@ pub struct UsageHistoryQuery {
 
 async fn usage_history(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Query(query): Query<UsageHistoryQuery>,
-) -> Json<Vec<UsageLine>> {
+) -> Result<Json<Vec<UsageLine>>, StatusCode> {
+    check_oracle_api_secret(&headers, &state.oracle_api_secret)?;
     let limit = query.limit.unwrap_or(50);
     let store = state.store.lock().await;
     let lines: Vec<UsageLine> = store
@@ -900,33 +1102,39 @@ async fn usage_history(
         .take(limit)
         .cloned()
         .collect();
-    Json(lines)
+    Ok(Json(lines))
 }
 
-async fn get_catalog(State(state): State<AppState>) -> Json<crate::catalog::CatalogResponse> {
+async fn get_catalog(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<crate::catalog::CatalogResponse>, StatusCode> {
+    check_oracle_api_secret(&headers, &state.oracle_api_secret)?;
     let pricing = state.pricing.read().await;
     let catalog = state.catalog.read().await;
     let fx = pricing_fx_from_engine(&state, &pricing);
-    Json(catalog.to_response_with_fx(
+    Ok(Json(catalog.to_response_with_fx(
         fx.catalog_usd_peg,
         fx.myso_usd,
         fx.price_oracle_url,
         fx.price_age_secs,
         fx.price_stale,
-    ))
+    )))
 }
 
 async fn trigger_settle(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    if let Some(secret) = &state.settlement_secret {
-        let provided = headers
-            .get("x-ai-credit-settlement-secret")
-            .and_then(|v| v.to_str().ok());
-        if provided != Some(secret.as_str()) {
-            return Err(StatusCode::UNAUTHORIZED);
-        }
+    let secret = state.settlement_secret.as_ref().ok_or_else(|| {
+        tracing::warn!("settlement trigger rejected: AI_CREDIT_SETTLEMENT_SECRET unset");
+        StatusCode::SERVICE_UNAVAILABLE
+    })?;
+    let provided = headers
+        .get("x-ai-credit-settlement-secret")
+        .and_then(|v| v.to_str().ok());
+    if provided != Some(secret.as_str()) {
+        return Err(StatusCode::UNAUTHORIZED);
     }
     let settled = state
         .settlement_coordinator

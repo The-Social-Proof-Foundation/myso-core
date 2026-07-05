@@ -183,6 +183,19 @@ fn process_mydata_purchase_event(
     let ip_id = data.get("ip_id")?.as_str()?.to_string();
     let buyer = data.get("buyer")?.as_str()?.to_string();
     let price = json_to_i64(data.get("price")?);
+    let platform_fee = data
+        .get("platform_fee")
+        .map(json_to_i64)
+        .unwrap_or(0);
+    let ecosystem_fee = data
+        .get("ecosystem_fee")
+        .map(json_to_i64)
+        .unwrap_or(0);
+    let creator_amount = data
+        .get("creator_amount")
+        .map(json_to_i64)
+        .unwrap_or(price - platform_fee - ecosystem_fee);
+    let platform_id = json_opt_string_field(data, "platform_id");
     let purchase_type = data.get("purchase_type")?.as_str()?.to_string();
     let timestamp = json_to_i64(data.get("timestamp")?);
 
@@ -197,6 +210,10 @@ fn process_mydata_purchase_event(
         mydata_id: ip_id.clone(),
         buyer: buyer.clone(),
         price,
+        platform_fee,
+        ecosystem_fee,
+        creator_amount,
+        platform_address: platform_id.clone(),
         purchase_type: purchase_type.clone(),
         purchase_time: timestamp,
         transaction_id: transaction_id.to_string(),
@@ -231,6 +248,10 @@ fn process_mydata_purchase_event(
         from_address: buyer,
         to_address: String::new(),
         amount: price,
+        platform_fee,
+        ecosystem_fee,
+        creator_amount,
+        platform_address: platform_id,
         revenue_type: purchase_type,
         revenue_time: timestamp,
         transaction_id: transaction_id.to_string(),
@@ -328,6 +349,30 @@ fn process_mydata_config_updated_event(
     let max_subscription_days = json_to_i64(data.get("max_subscription_days")?);
     let max_free_access_grants = json_to_i64(data.get("max_free_access_grants")?);
     let max_encryption_id_bytes = json_to_i64(data.get("max_encryption_id_bytes")?);
+    let p2p_platform_fee_bps = data
+        .get("p2p_platform_fee_bps")
+        .map(json_to_i64)
+        .unwrap_or(250);
+    let p2p_ecosystem_fee_bps = data
+        .get("p2p_ecosystem_fee_bps")
+        .map(json_to_i64)
+        .unwrap_or(250);
+    let mydata_marketplace_platform_fee_bps = data
+        .get("mydata_marketplace_platform_fee_bps")
+        .map(json_to_i64)
+        .unwrap_or(250);
+    let mydata_marketplace_ecosystem_fee_bps = data
+        .get("mydata_marketplace_ecosystem_fee_bps")
+        .map(json_to_i64)
+        .unwrap_or(250);
+    let non_platform_platform_to_creator_bps = data
+        .get("non_platform_platform_to_creator_bps")
+        .map(json_to_i64)
+        .unwrap_or(0);
+    let non_platform_platform_to_treasury_bps = data
+        .get("non_platform_platform_to_treasury_bps")
+        .map(json_to_i64)
+        .unwrap_or(10_000);
     let version = data
         .get("version")
         .and_then(|v| json_opt_i64(v))
@@ -341,6 +386,12 @@ fn process_mydata_config_updated_event(
         max_subscription_days,
         max_free_access_grants,
         max_encryption_id_bytes,
+        p2p_platform_fee_bps,
+        p2p_ecosystem_fee_bps,
+        mydata_marketplace_platform_fee_bps,
+        mydata_marketplace_ecosystem_fee_bps,
+        non_platform_platform_to_creator_bps,
+        non_platform_platform_to_treasury_bps,
         version,
         updated_at,
         transaction_id: transaction_id.to_string(),
@@ -499,15 +550,37 @@ fn process_query_claim_executed(
     let transaction_id = event_id.split(':').next()?.to_string();
     let snapshot_id = data.get("snapshot_id")?.as_str()?.to_string();
     let claimant = data.get("claimant")?.as_str()?.to_string();
-    let amount_raw = data.get("amount")?;
-    let amount = amount_raw
-        .as_i64()
-        .or_else(|| amount_raw.as_u64().map(u64_to_db_i64))?;
+    let gross_amount = data
+        .get("gross_amount")
+        .map(json_to_i64)
+        .unwrap_or_else(|| {
+            data.get("amount")
+                .map(json_to_i64)
+                .unwrap_or(0)
+        });
+    let platform_fee = data
+        .get("platform_fee")
+        .map(json_to_i64)
+        .unwrap_or(0);
+    let ecosystem_fee = data
+        .get("ecosystem_fee")
+        .map(json_to_i64)
+        .unwrap_or(0);
+    let net_amount = data
+        .get("net_amount")
+        .map(json_to_i64)
+        .unwrap_or(gross_amount - platform_fee - ecosystem_fee);
+    let platform_id = json_opt_string_field(data, "platform_id");
     let claimed_at_ms = json_to_i64(data.get("claimed_at")?);
     Some(vec![SocialEventRow::MyDataClaim(NewMyDataClaim {
         snapshot_id,
         claimant,
-        amount,
+        amount: gross_amount,
+        gross_amount,
+        platform_fee,
+        ecosystem_fee,
+        net_amount,
+        platform_address: platform_id,
         claimed_at_ms,
         event_id: event_id.to_string(),
         transaction_id,

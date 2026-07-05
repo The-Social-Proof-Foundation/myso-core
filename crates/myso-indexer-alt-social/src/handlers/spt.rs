@@ -214,17 +214,9 @@ fn process_token_pool_created_event(
             bio: None,
             profile_photo: None,
             cover_photo: None,
+            website: None,
             birthdate: None,
-            current_location: None,
-            raised_location: None,
-            phone: None,
-            email: None,
-            gender: None,
-            political_view: None,
-            religion: None,
-            education: None,
-            primary_language: None,
-            relationship_status: None,
+            location: None,
             x_username: None,
             min_offer_amount: None,
             username: None,
@@ -476,17 +468,9 @@ fn process_reservation_pool_created_event(
             bio: None,
             profile_photo: None,
             cover_photo: None,
+            website: None,
             birthdate: None,
-            current_location: None,
-            raised_location: None,
-            phone: None,
-            email: None,
-            gender: None,
-            political_view: None,
-            religion: None,
-            education: None,
-            primary_language: None,
-            relationship_status: None,
+            location: None,
             x_username: None,
             min_offer_amount: None,
             username: None,
@@ -677,6 +661,7 @@ fn process_spt_config_updated_event(
         json_to_i64(data.get("non_platform_platform_to_creator_bps")?);
     let non_platform_platform_to_treasury_bps =
         json_to_i64(data.get("non_platform_platform_to_treasury_bps")?);
+    let trading_enabled = data.get("trading_enabled").and_then(|v| v.as_bool());
 
     let config = NewSptExchangeConfig {
         updated_by,
@@ -699,7 +684,7 @@ fn process_spt_config_updated_event(
         max_hold_percent_bps,
         non_platform_platform_to_creator_bps,
         non_platform_platform_to_treasury_bps,
-        trading_enabled: None,
+        trading_enabled,
         apply_trading_enabled_only: false,
         updated_at: ts,
         time: now,
@@ -1196,7 +1181,43 @@ mod tests {
     }
 
     #[test]
-    fn config_updated_event_does_not_set_trading_enabled_payload() {
+    fn config_updated_event_sets_trading_enabled_when_present() {
+        let data = json!({
+            "updated_by": "0xadmin",
+            "total_fee_bps": 100i64,
+            "trading_creator_fee_bps": 30i64,
+            "trading_platform_fee_bps": 30i64,
+            "trading_treasury_fee_bps": 40i64,
+            "reservation_total_fee_bps": 100i64,
+            "reservation_creator_fee_bps": 30i64,
+            "reservation_platform_fee_bps": 30i64,
+            "reservation_treasury_fee_bps": 40i64,
+            "base_price": 1i64,
+            "quadratic_coefficient": 1i64,
+            "max_hold_percent_bps": 1000i64,
+            "post_threshold": 1i64,
+            "profile_threshold": 1i64,
+            "max_individual_reservation_bps": 100i64,
+            "max_reservers_per_pool": 100i64,
+            "non_platform_platform_to_creator_bps": 50i64,
+            "non_platform_platform_to_treasury_bps": 50i64,
+            "trading_enabled": true,
+        });
+        let rows = handle_spt_event("ConfigUpdatedEvent", &data, "tx:0", 0, 1000).expect("rows");
+        let cfg = rows.iter().find_map(|r| {
+            if let SocialEventRow::SptExchangeConfig(c) = r {
+                Some(c)
+            } else {
+                None
+            }
+        });
+        let c: &NewSptExchangeConfig = cfg.expect("exchange config");
+        assert_eq!(c.trading_enabled, Some(true));
+        assert!(!c.apply_trading_enabled_only);
+    }
+
+    #[test]
+    fn config_updated_event_omits_trading_enabled_when_absent() {
         let data = json!({
             "updated_by": "0xadmin",
             "total_fee_bps": 100i64,

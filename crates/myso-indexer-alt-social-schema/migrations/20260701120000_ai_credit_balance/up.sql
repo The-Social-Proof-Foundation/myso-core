@@ -109,7 +109,6 @@ CREATE TABLE IF NOT EXISTS ai_credit_config (
     catalog_version TEXT,
     version BIGINT NOT NULL DEFAULT 0,
     updated_at BIGINT NOT NULL,
-    event_id TEXT NOT NULL,
     transaction_id TEXT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

@@ -60,9 +60,7 @@ pub struct InsuranceRouterConfigInfo {
     #[diesel(sql_type = Text)]
     pub updated_by: String,
     #[diesel(sql_type = Bool)]
-    pub router_enabled: bool,
-    #[diesel(sql_type = Bool)]
-    pub router_paused: bool,
+    pub paused: bool,
     #[diesel(sql_type = BigInt)]
     pub max_route_reserve_market: i64,
     #[diesel(sql_type = BigInt)]

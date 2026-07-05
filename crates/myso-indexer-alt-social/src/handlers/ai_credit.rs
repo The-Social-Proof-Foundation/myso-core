@@ -38,7 +38,6 @@ pub(crate) fn new_ai_credit_config_with_defaults() -> NewAiCreditConfig {
         catalog_version: None,
         version: 0,
         updated_at: 0,
-        event_id: String::new(),
         transaction_id: String::new(),
         time: Utc::now(),
     }
@@ -742,7 +741,6 @@ pub fn handle_ai_credit_event(
                     catalog_version: None,
                     version,
                     updated_at,
-                    event_id: event_id.to_string(),
                     transaction_id: transaction_id.clone(),
                     time: now,
                 }),
@@ -789,7 +787,6 @@ pub fn handle_ai_credit_event(
                     receipt_ttl_ms,
                     updated_at,
                     time: now,
-                    event_id: event_id.to_string(),
                     transaction_id: transaction_id.clone(),
                 },
                 SocialEventRow::AiCreditEvent(NewAiCreditEvent {
@@ -827,7 +824,6 @@ pub fn handle_ai_credit_event(
                     oracle_pubkey_hex,
                     updated_at,
                     time: now,
-                    event_id: event_id.to_string(),
                     transaction_id: transaction_id.clone(),
                 },
                 SocialEventRow::AiCreditEvent(config_audit_event(
@@ -851,7 +847,6 @@ pub fn handle_ai_credit_event(
                     oracle_markup_bps,
                     updated_at,
                     time: now,
-                    event_id: event_id.to_string(),
                     transaction_id: transaction_id.clone(),
                 },
                 SocialEventRow::AiCreditEvent(config_audit_event(
@@ -875,7 +870,6 @@ pub fn handle_ai_credit_event(
                     min_deposit_mist,
                     updated_at,
                     time: now,
-                    event_id: event_id.to_string(),
                     transaction_id: transaction_id.clone(),
                 },
                 SocialEventRow::AiCreditEvent(config_audit_event(

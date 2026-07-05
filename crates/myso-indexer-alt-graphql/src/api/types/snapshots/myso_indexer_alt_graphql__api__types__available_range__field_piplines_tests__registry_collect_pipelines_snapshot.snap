@@ -1751,10 +1751,7 @@ InsuranceRouteFill.createdAt
 InsuranceRouterConfig.updatedBy
   => {}
 
-InsuranceRouterConfig.routerEnabled
-  => {}
-
-InsuranceRouterConfig.routerPaused
+InsuranceRouterConfig.paused
   => {}
 
 InsuranceRouterConfig.maxRouteReserveMarket
@@ -2414,6 +2411,21 @@ MyDataClaim.claimantProfile
 MyDataClaim.amount
   => {}
 
+MyDataClaim.grossAmount
+  => {}
+
+MyDataClaim.platformFee
+  => {}
+
+MyDataClaim.ecosystemFee
+  => {}
+
+MyDataClaim.netAmount
+  => {}
+
+MyDataClaim.platformId
+  => {}
+
 MyDataClaim.claimedAtMs
   => {}
 
@@ -2442,6 +2454,24 @@ MyDataConfig.maxFreeAccessGrants
   => {}
 
 MyDataConfig.maxEncryptionIdBytes
+  => {}
+
+MyDataConfig.p2PPlatformFeeBps
+  => {}
+
+MyDataConfig.p2PEcosystemFeeBps
+  => {}
+
+MyDataConfig.mydataMarketplacePlatformFeeBps
+  => {}
+
+MyDataConfig.mydataMarketplaceEcosystemFeeBps
+  => {}
+
+MyDataConfig.nonPlatformPlatformToCreatorBps
+  => {}
+
+MyDataConfig.nonPlatformPlatformToTreasuryBps
   => {}
 
 MyDataConfig.version
@@ -2535,6 +2565,18 @@ MyDataPurchase.buyerProfile
   => {}
 
 MyDataPurchase.price
+  => {}
+
+MyDataPurchase.platformFee
+  => {}
+
+MyDataPurchase.ecosystemFee
+  => {}
+
+MyDataPurchase.creatorAmount
+  => {}
+
+MyDataPurchase.platformId
   => {}
 
 MyDataPurchase.purchaseType
@@ -2649,6 +2691,18 @@ MyDataRevenue.toAddress
   => {}
 
 MyDataRevenue.amount
+  => {}
+
+MyDataRevenue.platformFee
+  => {}
+
+MyDataRevenue.ecosystemFee
+  => {}
+
+MyDataRevenue.creatorAmount
+  => {}
+
+MyDataRevenue.platformId
   => {}
 
 MyDataRevenue.revenueType
@@ -4274,34 +4328,7 @@ Profile.minOfferAmount
 Profile.birthdate
   => {}
 
-Profile.currentLocation
-  => {}
-
-Profile.raisedLocation
-  => {}
-
-Profile.phone
-  => {}
-
-Profile.email
-  => {}
-
-Profile.gender
-  => {}
-
-Profile.politicalView
-  => {}
-
-Profile.religion
-  => {}
-
-Profile.education
-  => {}
-
-Profile.primaryLanguage
-  => {}
-
-Profile.relationshipStatus
+Profile.location
   => {}
 
 Profile.xUsername
@@ -6123,6 +6150,18 @@ SubscriptionConfig.billingPeriodMs
   => {}
 
 SubscriptionConfig.maxRenewalMonths
+  => {}
+
+SubscriptionConfig.platformFeeBps
+  => {}
+
+SubscriptionConfig.ecosystemFeeBps
+  => {}
+
+SubscriptionConfig.nonPlatformPlatformToCreatorBps
+  => {}
+
+SubscriptionConfig.nonPlatformPlatformToTreasuryBps
   => {}
 
 SubscriptionConfig.version

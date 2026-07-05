@@ -52,6 +52,14 @@ not row-level dataset membership.
 -  [Struct `MyDataUnregisteredEvent`](#social_contracts_mydata_MyDataUnregisteredEvent)
 -  [Struct `MyDataConfigUpdatedEvent`](#social_contracts_mydata_MyDataConfigUpdatedEvent)
 -  [Constants](#@Constants_0)
+-  [Function `validate_fee_config`](#social_contracts_mydata_validate_fee_config)
+-  [Function `calculate_p2p_fees`](#social_contracts_mydata_calculate_p2p_fees)
+-  [Function `calculate_mydata_marketplace_fees`](#social_contracts_mydata_calculate_mydata_marketplace_fees)
+-  [Function `route_non_platform_platform_fee`](#social_contracts_mydata_route_non_platform_platform_fee)
+-  [Function `distribute_p2p_fees_no_platform`](#social_contracts_mydata_distribute_p2p_fees_no_platform)
+-  [Function `distribute_p2p_fees_with_platform`](#social_contracts_mydata_distribute_p2p_fees_with_platform)
+-  [Function `assert_platform_matches_listing`](#social_contracts_mydata_assert_platform_matches_listing)
+-  [Function `emit_mydata_config_updated`](#social_contracts_mydata_emit_mydata_config_updated)
 -  [Function `create_mydata_admin_cap`](#social_contracts_mydata_create_mydata_admin_cap)
 -  [Function `update_mydata_config`](#social_contracts_mydata_update_mydata_config)
 -  [Function `marketplace_enabled`](#social_contracts_mydata_marketplace_enabled)
@@ -67,7 +75,12 @@ not row-level dataset membership.
 -  [Function `record_snapshot_anchor`](#social_contracts_mydata_record_snapshot_anchor)
 -  [Function `get_snapshot_anchor`](#social_contracts_mydata_get_snapshot_anchor)
 -  [Function `publish_merkle_root`](#social_contracts_mydata_publish_merkle_root)
+-  [Function `distribute_mydata_marketplace_claim_fees_no_platform`](#social_contracts_mydata_distribute_mydata_marketplace_claim_fees_no_platform)
+-  [Function `distribute_mydata_marketplace_claim_fees_with_platform`](#social_contracts_mydata_distribute_mydata_marketplace_claim_fees_with_platform)
+-  [Function `claim_internal_no_platform`](#social_contracts_mydata_claim_internal_no_platform)
+-  [Function `claim_internal_with_platform`](#social_contracts_mydata_claim_internal_with_platform)
 -  [Function `claim`](#social_contracts_mydata_claim)
+-  [Function `claim_with_platform`](#social_contracts_mydata_claim_with_platform)
 -  [Function `deposit`](#social_contracts_mydata_deposit)
 -  [Function `record_distribution`](#social_contracts_mydata_record_distribution)
 -  [Function `get_broad_pool`](#social_contracts_mydata_get_broad_pool)
@@ -78,8 +91,14 @@ not row-level dataset membership.
 -  [Function `sub_pool_id`](#social_contracts_mydata_sub_pool_id)
 -  [Function `create`](#social_contracts_mydata_create)
 -  [Function `create_and_share`](#social_contracts_mydata_create_and_share)
+-  [Function `purchase_one_time_no_platform`](#social_contracts_mydata_purchase_one_time_no_platform)
+-  [Function `purchase_one_time_with_platform_internal`](#social_contracts_mydata_purchase_one_time_with_platform_internal)
 -  [Function `purchase_one_time`](#social_contracts_mydata_purchase_one_time)
+-  [Function `purchase_one_time_with_platform`](#social_contracts_mydata_purchase_one_time_with_platform)
+-  [Function `purchase_subscription_no_platform`](#social_contracts_mydata_purchase_subscription_no_platform)
+-  [Function `purchase_subscription_with_platform_internal`](#social_contracts_mydata_purchase_subscription_with_platform_internal)
 -  [Function `purchase_subscription`](#social_contracts_mydata_purchase_subscription)
+-  [Function `purchase_subscription_with_platform`](#social_contracts_mydata_purchase_subscription_with_platform)
 -  [Function `update_pricing`](#social_contracts_mydata_update_pricing)
 -  [Function `update_content`](#social_contracts_mydata_update_content)
 -  [Function `assign_mydata_to_pools`](#social_contracts_mydata_assign_mydata_to_pools)
@@ -131,13 +150,19 @@ not row-level dataset membership.
 -  [Function `migrate_config`](#social_contracts_mydata_migrate_config)
 
 
-<pre><code><b>use</b> <a href="../mydata/merkle.md#mydata_merkle">mydata::merkle</a>;
+<pre><code><b>use</b> <a href="../mydata/bf_hmac_encryption.md#mydata_bf_hmac_encryption">mydata::bf_hmac_encryption</a>;
+<b>use</b> <a href="../mydata/gf256.md#mydata_gf256">mydata::gf256</a>;
+<b>use</b> <a href="../mydata/hmac256ctr.md#mydata_hmac256ctr">mydata::hmac256ctr</a>;
+<b>use</b> <a href="../mydata/kdf.md#mydata_kdf">mydata::kdf</a>;
+<b>use</b> <a href="../mydata/merkle.md#mydata_merkle">mydata::merkle</a>;
+<b>use</b> <a href="../mydata/polynomial.md#mydata_polynomial">mydata::polynomial</a>;
 <b>use</b> <a href="../myso/accumulator.md#myso_accumulator">myso::accumulator</a>;
 <b>use</b> <a href="../myso/accumulator_settlement.md#myso_accumulator_settlement">myso::accumulator_settlement</a>;
 <b>use</b> <a href="../myso/address.md#myso_address">myso::address</a>;
 <b>use</b> <a href="../myso/bag.md#myso_bag">myso::bag</a>;
 <b>use</b> <a href="../myso/balance.md#myso_balance">myso::balance</a>;
 <b>use</b> <a href="../myso/bcs.md#myso_bcs">myso::bcs</a>;
+<b>use</b> <a href="../myso/bls12381.md#myso_bls12381">myso::bls12381</a>;
 <b>use</b> <a href="../myso/bootstrap_key.md#myso_bootstrap_key">myso::bootstrap_key</a>;
 <b>use</b> <a href="../myso/clock.md#myso_clock">myso::clock</a>;
 <b>use</b> <a href="../myso/coin.md#myso_coin">myso::coin</a>;
@@ -146,10 +171,13 @@ not row-level dataset membership.
 <b>use</b> <a href="../myso/derived_object.md#myso_derived_object">myso::derived_object</a>;
 <b>use</b> <a href="../myso/dynamic_field.md#myso_dynamic_field">myso::dynamic_field</a>;
 <b>use</b> <a href="../myso/dynamic_object_field.md#myso_dynamic_object_field">myso::dynamic_object_field</a>;
+<b>use</b> <a href="../myso/ed25519.md#myso_ed25519">myso::ed25519</a>;
 <b>use</b> <a href="../myso/event.md#myso_event">myso::event</a>;
 <b>use</b> <a href="../myso/funds_accumulator.md#myso_funds_accumulator">myso::funds_accumulator</a>;
+<b>use</b> <a href="../myso/group_ops.md#myso_group_ops">myso::group_ops</a>;
 <b>use</b> <a href="../myso/hash.md#myso_hash">myso::hash</a>;
 <b>use</b> <a href="../myso/hex.md#myso_hex">myso::hex</a>;
+<b>use</b> <a href="../myso/hmac.md#myso_hmac">myso::hmac</a>;
 <b>use</b> <a href="../myso/myso.md#myso_myso">myso::myso</a>;
 <b>use</b> <a href="../myso/object.md#myso_object">myso::object</a>;
 <b>use</b> <a href="../myso/package.md#myso_package">myso::package</a>;
@@ -165,11 +193,18 @@ not row-level dataset membership.
 <b>use</b> <a href="../myso/url.md#myso_url">myso::url</a>;
 <b>use</b> <a href="../myso/vec_map.md#myso_vec_map">myso::vec_map</a>;
 <b>use</b> <a href="../myso/vec_set.md#myso_vec_set">myso::vec_set</a>;
+<b>use</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit">social_contracts::ai_credit</a>;
+<b>use</b> <a href="../social_contracts/block_list.md#social_contracts_block_list">social_contracts::block_list</a>;
+<b>use</b> <a href="../social_contracts/governance.md#social_contracts_governance">social_contracts::governance</a>;
 <b>use</b> <a href="../social_contracts/memory.md#social_contracts_memory">social_contracts::memory</a>;
+<b>use</b> <a href="../social_contracts/platform.md#social_contracts_platform">social_contracts::platform</a>;
+<b>use</b> <a href="../social_contracts/profile.md#social_contracts_profile">social_contracts::profile</a>;
+<b>use</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_contracts::social_graph</a>;
 <b>use</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade">social_contracts::upgrade</a>;
 <b>use</b> <a href="../std/address.md#std_address">std::address</a>;
 <b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
 <b>use</b> <a href="../std/bcs.md#std_bcs">std::bcs</a>;
+<b>use</b> <a href="../std/hash.md#std_hash">std::hash</a>;
 <b>use</b> <a href="../std/internal.md#std_internal">std::internal</a>;
 <b>use</b> <a href="../std/option.md#std_option">std::option</a>;
 <b>use</b> <a href="../std/string.md#std_string">std::string</a>;
@@ -396,6 +431,36 @@ Global configuration for MyData system
 </dd>
 <dt>
 <code>max_encryption_id_bytes: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>p2p_platform_fee_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>p2p_ecosystem_fee_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>mydata_marketplace_platform_fee_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>mydata_marketplace_ecosystem_fee_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>non_platform_platform_to_creator_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>non_platform_platform_to_treasury_bps: u64</code>
 </dt>
 <dd>
 </dd>
@@ -1071,7 +1136,27 @@ Registry for tracking MyData ownership
 <dd>
 </dd>
 <dt>
-<code>amount: u64</code>
+<code>gross_amount: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>platform_fee: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>ecosystem_fee: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>net_amount: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
 </dt>
 <dd>
 </dd>
@@ -1271,6 +1356,26 @@ Registry for tracking MyData ownership
 </dd>
 <dt>
 <code>organization_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>platform_fee: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>ecosystem_fee: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>creator_amount: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
 </dt>
 <dd>
 </dd>
@@ -1490,6 +1595,36 @@ Registry for tracking MyData ownership
 <dd>
 </dd>
 <dt>
+<code>p2p_platform_fee_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>p2p_ecosystem_fee_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>mydata_marketplace_platform_fee_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>mydata_marketplace_ecosystem_fee_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>non_platform_platform_to_creator_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>non_platform_platform_to_treasury_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
 <code>timestamp: u64</code>
 </dt>
 <dd>
@@ -1509,6 +1644,69 @@ Registry for tracking MyData ownership
 
 
 <pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MARKETPLACE_ENABLED">DEFAULT_MARKETPLACE_ENABLED</a>: bool = <b>false</b>;
+</code></pre>
+
+
+
+<a name="social_contracts_mydata_BPS_DENOM"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_BPS_DENOM">BPS_DENOM</a>: u64 = 10000;
+</code></pre>
+
+
+
+<a name="social_contracts_mydata_DEFAULT_P2P_PLATFORM_FEE_BPS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_P2P_PLATFORM_FEE_BPS">DEFAULT_P2P_PLATFORM_FEE_BPS</a>: u64 = 250;
+</code></pre>
+
+
+
+<a name="social_contracts_mydata_DEFAULT_P2P_ECOSYSTEM_FEE_BPS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_P2P_ECOSYSTEM_FEE_BPS">DEFAULT_P2P_ECOSYSTEM_FEE_BPS</a>: u64 = 250;
+</code></pre>
+
+
+
+<a name="social_contracts_mydata_DEFAULT_MYDATA_MARKETPLACE_PLATFORM_FEE_BPS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MYDATA_MARKETPLACE_PLATFORM_FEE_BPS">DEFAULT_MYDATA_MARKETPLACE_PLATFORM_FEE_BPS</a>: u64 = 250;
+</code></pre>
+
+
+
+<a name="social_contracts_mydata_DEFAULT_MYDATA_MARKETPLACE_ECOSYSTEM_FEE_BPS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MYDATA_MARKETPLACE_ECOSYSTEM_FEE_BPS">DEFAULT_MYDATA_MARKETPLACE_ECOSYSTEM_FEE_BPS</a>: u64 = 250;
+</code></pre>
+
+
+
+<a name="social_contracts_mydata_DEFAULT_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS">DEFAULT_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS</a>: u64 = 0;
+</code></pre>
+
+
+
+<a name="social_contracts_mydata_DEFAULT_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS">DEFAULT_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS</a>: u64 = 10000;
 </code></pre>
 
 
@@ -1635,6 +1833,24 @@ Registry for tracking MyData ownership
 
 
 <pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_ENoAccessToRevoke">ENoAccessToRevoke</a>: u64 = 14;
+</code></pre>
+
+
+
+<a name="social_contracts_mydata_EInvalidConfig"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidConfig">EInvalidConfig</a>: u64 = 15;
+</code></pre>
+
+
+
+<a name="social_contracts_mydata_EPlatformMismatch"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_EPlatformMismatch">EPlatformMismatch</a>: u64 = 16;
 </code></pre>
 
 
@@ -1783,6 +1999,302 @@ Registry for tracking MyData ownership
 
 
 
+<a name="social_contracts_mydata_validate_fee_config"></a>
+
+## Function `validate_fee_config`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_validate_fee_config">validate_fee_config</a>(p2p_platform_fee_bps: u64, p2p_ecosystem_fee_bps: u64, mydata_marketplace_platform_fee_bps: u64, mydata_marketplace_ecosystem_fee_bps: u64, non_platform_platform_to_creator_bps: u64, non_platform_platform_to_treasury_bps: u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_validate_fee_config">validate_fee_config</a>(
+    p2p_platform_fee_bps: u64,
+    p2p_ecosystem_fee_bps: u64,
+    mydata_marketplace_platform_fee_bps: u64,
+    mydata_marketplace_ecosystem_fee_bps: u64,
+    non_platform_platform_to_creator_bps: u64,
+    non_platform_platform_to_treasury_bps: u64,
+) {
+    <b>assert</b>!(p2p_platform_fee_bps &lt;= <a href="../social_contracts/mydata.md#social_contracts_mydata_BPS_DENOM">BPS_DENOM</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidConfig">EInvalidConfig</a>);
+    <b>assert</b>!(p2p_ecosystem_fee_bps &lt;= <a href="../social_contracts/mydata.md#social_contracts_mydata_BPS_DENOM">BPS_DENOM</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidConfig">EInvalidConfig</a>);
+    <b>assert</b>!(p2p_platform_fee_bps + p2p_ecosystem_fee_bps &lt;= <a href="../social_contracts/mydata.md#social_contracts_mydata_BPS_DENOM">BPS_DENOM</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidConfig">EInvalidConfig</a>);
+    <b>assert</b>!(mydata_marketplace_platform_fee_bps &lt;= <a href="../social_contracts/mydata.md#social_contracts_mydata_BPS_DENOM">BPS_DENOM</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidConfig">EInvalidConfig</a>);
+    <b>assert</b>!(mydata_marketplace_ecosystem_fee_bps &lt;= <a href="../social_contracts/mydata.md#social_contracts_mydata_BPS_DENOM">BPS_DENOM</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidConfig">EInvalidConfig</a>);
+    <b>assert</b>!(mydata_marketplace_platform_fee_bps + mydata_marketplace_ecosystem_fee_bps &lt;= <a href="../social_contracts/mydata.md#social_contracts_mydata_BPS_DENOM">BPS_DENOM</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidConfig">EInvalidConfig</a>);
+    <b>assert</b>!(non_platform_platform_to_creator_bps &lt;= <a href="../social_contracts/mydata.md#social_contracts_mydata_BPS_DENOM">BPS_DENOM</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidConfig">EInvalidConfig</a>);
+    <b>assert</b>!(non_platform_platform_to_treasury_bps &lt;= <a href="../social_contracts/mydata.md#social_contracts_mydata_BPS_DENOM">BPS_DENOM</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidConfig">EInvalidConfig</a>);
+    <b>assert</b>!(
+        non_platform_platform_to_creator_bps + non_platform_platform_to_treasury_bps == <a href="../social_contracts/mydata.md#social_contracts_mydata_BPS_DENOM">BPS_DENOM</a>,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidConfig">EInvalidConfig</a>,
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_calculate_p2p_fees"></a>
+
+## Function `calculate_p2p_fees`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_calculate_p2p_fees">calculate_p2p_fees</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, gross: u64): (u64, u64, u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_calculate_p2p_fees">calculate_p2p_fees</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>, gross: u64): (u64, u64, u64) {
+    <b>let</b> platform_fee = (gross * config.p2p_platform_fee_bps) / <a href="../social_contracts/mydata.md#social_contracts_mydata_BPS_DENOM">BPS_DENOM</a>;
+    <b>let</b> ecosystem_fee = (gross * config.p2p_ecosystem_fee_bps) / <a href="../social_contracts/mydata.md#social_contracts_mydata_BPS_DENOM">BPS_DENOM</a>;
+    <b>let</b> creator_amount = gross - platform_fee - ecosystem_fee;
+    (platform_fee, ecosystem_fee, creator_amount)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_calculate_mydata_marketplace_fees"></a>
+
+## Function `calculate_mydata_marketplace_fees`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_calculate_mydata_marketplace_fees">calculate_mydata_marketplace_fees</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, gross: u64): (u64, u64, u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_calculate_mydata_marketplace_fees">calculate_mydata_marketplace_fees</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>, gross: u64): (u64, u64, u64) {
+    <b>let</b> platform_fee = (gross * config.mydata_marketplace_platform_fee_bps) / <a href="../social_contracts/mydata.md#social_contracts_mydata_BPS_DENOM">BPS_DENOM</a>;
+    <b>let</b> ecosystem_fee = (gross * config.mydata_marketplace_ecosystem_fee_bps) / <a href="../social_contracts/mydata.md#social_contracts_mydata_BPS_DENOM">BPS_DENOM</a>;
+    <b>let</b> net_amount = gross - platform_fee - ecosystem_fee;
+    (platform_fee, ecosystem_fee, net_amount)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_route_non_platform_platform_fee"></a>
+
+## Function `route_non_platform_platform_fee`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_route_non_platform_platform_fee">route_non_platform_platform_fee</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, platform_fee: u64, recipient_amount: u64, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_route_non_platform_platform_fee">route_non_platform_platform_fee</a>(
+    config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    treasury: &EcosystemTreasury,
+    platform_fee: u64,
+    recipient_amount: u64,
+    payment: &<b>mut</b> Coin&lt;MYSO&gt;,
+    ctx: &<b>mut</b> TxContext,
+): u64 {
+    <b>let</b> platform_fee_to_recipient =
+        (platform_fee * config.non_platform_platform_to_creator_bps) / <a href="../social_contracts/mydata.md#social_contracts_mydata_BPS_DENOM">BPS_DENOM</a>;
+    <b>let</b> platform_fee_to_treasury = platform_fee - platform_fee_to_recipient;
+    <b>let</b> recipient_amount = recipient_amount + platform_fee_to_recipient;
+    <b>if</b> (platform_fee_to_treasury &gt; 0) {
+        <b>let</b> treasury_coin = coin::split(payment, platform_fee_to_treasury, ctx);
+        transfer::public_transfer(treasury_coin, <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">profile::get_treasury_address</a>(treasury));
+    };
+    recipient_amount
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_distribute_p2p_fees_no_platform"></a>
+
+## Function `distribute_p2p_fees_no_platform`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_distribute_p2p_fees_no_platform">distribute_p2p_fees_no_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>: <b>address</b>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (u64, u64, u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_distribute_p2p_fees_no_platform">distribute_p2p_fees_no_platform</a>(
+    config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    treasury: &EcosystemTreasury,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>: <b>address</b>,
+    payment: Coin&lt;MYSO&gt;,
+    ctx: &<b>mut</b> TxContext,
+): (u64, u64, u64) {
+    <b>let</b> gross = coin::value(&payment);
+    <b>let</b> (platform_fee, ecosystem_fee, creator_amount) = <a href="../social_contracts/mydata.md#social_contracts_mydata_calculate_p2p_fees">calculate_p2p_fees</a>(config, gross);
+    <b>let</b> <b>mut</b> payment = payment;
+    <b>if</b> (ecosystem_fee &gt; 0) {
+        <b>let</b> eco_coin = coin::split(&<b>mut</b> payment, ecosystem_fee, ctx);
+        transfer::public_transfer(eco_coin, <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">profile::get_treasury_address</a>(treasury));
+    };
+    <b>let</b> creator_amount = <b>if</b> (platform_fee &gt; 0) {
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_route_non_platform_platform_fee">route_non_platform_platform_fee</a>(
+            config,
+            treasury,
+            platform_fee,
+            creator_amount,
+            &<b>mut</b> payment,
+            ctx,
+        )
+    } <b>else</b> {
+        creator_amount
+    };
+    transfer::public_transfer(payment, <a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>);
+    (platform_fee, ecosystem_fee, creator_amount)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_distribute_p2p_fees_with_platform"></a>
+
+## Function `distribute_p2p_fees_with_platform`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_distribute_p2p_fees_with_platform">distribute_p2p_fees_with_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>: <b>address</b>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (u64, u64, u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_distribute_p2p_fees_with_platform">distribute_p2p_fees_with_platform</a>(
+    config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    treasury: &EcosystemTreasury,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>: <b>address</b>,
+    payment: Coin&lt;MYSO&gt;,
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> Platform,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+): (u64, u64, u64) {
+    <b>let</b> gross = coin::value(&payment);
+    <b>let</b> (platform_fee, ecosystem_fee, creator_amount) = <a href="../social_contracts/mydata.md#social_contracts_mydata_calculate_p2p_fees">calculate_p2p_fees</a>(config, gross);
+    <b>let</b> <b>mut</b> payment = payment;
+    <b>if</b> (ecosystem_fee &gt; 0) {
+        <b>let</b> eco_coin = coin::split(&<b>mut</b> payment, ecosystem_fee, ctx);
+        transfer::public_transfer(eco_coin, <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">profile::get_treasury_address</a>(treasury));
+    };
+    <b>if</b> (platform_fee &gt; 0) {
+        <b>let</b> <b>mut</b> platform_coin = coin::split(&<b>mut</b> payment, platform_fee, ctx);
+        <a href="../social_contracts/platform.md#social_contracts_platform_add_to_treasury">platform::add_to_treasury</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, &<b>mut</b> platform_coin, platform_fee, clock, ctx);
+        coin::destroy_zero(platform_coin);
+    };
+    transfer::public_transfer(payment, <a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>);
+    (platform_fee, ecosystem_fee, creator_amount)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_assert_platform_matches_listing"></a>
+
+## Function `assert_platform_matches_listing`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_platform_matches_listing">assert_platform_matches_listing</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_platform_matches_listing">assert_platform_matches_listing</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &Platform) {
+    <b>if</b> (option::is_some(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>)) {
+        <b>let</b> listing_platform = *option::borrow(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>);
+        <b>let</b> provided_platform = object::uid_to_address(<a href="../social_contracts/platform.md#social_contracts_platform_id">platform::id</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>));
+        <b>assert</b>!(listing_platform == provided_platform, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPlatformMismatch">EPlatformMismatch</a>);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_emit_mydata_config_updated"></a>
+
+## Function `emit_mydata_config_updated`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_emit_mydata_config_updated">emit_mydata_config_updated</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, updated_by: <b>address</b>, timestamp: u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_emit_mydata_config_updated">emit_mydata_config_updated</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>, updated_by: <b>address</b>, timestamp: u64) {
+    event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfigUpdatedEvent">MyDataConfigUpdatedEvent</a> {
+        updated_by,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>: config.<a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>,
+        max_tags: config.max_tags,
+        max_subscription_days: config.max_subscription_days,
+        max_free_access_grants: config.max_free_access_grants,
+        max_encryption_id_bytes: config.max_encryption_id_bytes,
+        p2p_platform_fee_bps: config.p2p_platform_fee_bps,
+        p2p_ecosystem_fee_bps: config.p2p_ecosystem_fee_bps,
+        mydata_marketplace_platform_fee_bps: config.mydata_marketplace_platform_fee_bps,
+        mydata_marketplace_ecosystem_fee_bps: config.mydata_marketplace_ecosystem_fee_bps,
+        non_platform_platform_to_creator_bps: config.non_platform_platform_to_creator_bps,
+        non_platform_platform_to_treasury_bps: config.non_platform_platform_to_treasury_bps,
+        timestamp,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_mydata_create_mydata_admin_cap"></a>
 
 ## Function `create_mydata_admin_cap`
@@ -1817,7 +2329,7 @@ Create a MyDataAdminCap for bootstrap (package visibility only)
 Update MyData configuration (admin only)
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_update_mydata_config">update_mydata_config</a>(_: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataAdminCap">social_contracts::mydata::MyDataAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>: bool, max_tags: u64, max_subscription_days: u64, max_free_access_grants: u64, max_encryption_id_bytes: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_update_mydata_config">update_mydata_config</a>(_: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataAdminCap">social_contracts::mydata::MyDataAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>: bool, max_tags: u64, max_subscription_days: u64, max_free_access_grants: u64, max_encryption_id_bytes: u64, p2p_platform_fee_bps: u64, p2p_ecosystem_fee_bps: u64, mydata_marketplace_platform_fee_bps: u64, mydata_marketplace_ecosystem_fee_bps: u64, non_platform_platform_to_creator_bps: u64, non_platform_platform_to_treasury_bps: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1834,29 +2346,43 @@ Update MyData configuration (admin only)
     max_subscription_days: u64,
     max_free_access_grants: u64,
     max_encryption_id_bytes: u64,
+    p2p_platform_fee_bps: u64,
+    p2p_ecosystem_fee_bps: u64,
+    mydata_marketplace_platform_fee_bps: u64,
+    mydata_marketplace_ecosystem_fee_bps: u64,
+    non_platform_platform_to_creator_bps: u64,
+    non_platform_platform_to_treasury_bps: u64,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
-    // Validate parameters
     <b>assert</b>!(max_subscription_days &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>assert</b>!(max_tags &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>assert</b>!(max_free_access_grants &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>assert</b>!(max_encryption_id_bytes &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_validate_fee_config">validate_fee_config</a>(
+        p2p_platform_fee_bps,
+        p2p_ecosystem_fee_bps,
+        mydata_marketplace_platform_fee_bps,
+        mydata_marketplace_ecosystem_fee_bps,
+        non_platform_platform_to_creator_bps,
+        non_platform_platform_to_treasury_bps,
+    );
     config.<a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a> = <a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>;
     config.max_tags = max_tags;
     config.max_subscription_days = max_subscription_days;
     config.max_free_access_grants = max_free_access_grants;
     config.max_encryption_id_bytes = max_encryption_id_bytes;
-    // Emit config updated event
-    event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfigUpdatedEvent">MyDataConfigUpdatedEvent</a> {
-        updated_by: tx_context::sender(ctx),
-        <a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>,
-        max_tags,
-        max_subscription_days,
-        max_free_access_grants,
-        max_encryption_id_bytes,
-        timestamp: clock::timestamp_ms(clock),
-    });
+    config.p2p_platform_fee_bps = p2p_platform_fee_bps;
+    config.p2p_ecosystem_fee_bps = p2p_ecosystem_fee_bps;
+    config.mydata_marketplace_platform_fee_bps = mydata_marketplace_platform_fee_bps;
+    config.mydata_marketplace_ecosystem_fee_bps = mydata_marketplace_ecosystem_fee_bps;
+    config.non_platform_platform_to_creator_bps = non_platform_platform_to_creator_bps;
+    config.non_platform_platform_to_treasury_bps = non_platform_platform_to_treasury_bps;
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_emit_mydata_config_updated">emit_mydata_config_updated</a>(
+        config,
+        tx_context::sender(ctx),
+        clock::timestamp_ms(clock),
+    );
 }
 </code></pre>
 
@@ -1913,17 +2439,15 @@ Update MyData configuration (admin only)
         max_subscription_days: <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_SUBSCRIPTION_DAYS">MAX_SUBSCRIPTION_DAYS</a>,
         max_free_access_grants: <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_FREE_ACCESS_GRANTS">MAX_FREE_ACCESS_GRANTS</a>,
         max_encryption_id_bytes: <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MAX_ENCRYPTION_ID_BYTES">DEFAULT_MAX_ENCRYPTION_ID_BYTES</a>,
+        p2p_platform_fee_bps: <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_P2P_PLATFORM_FEE_BPS">DEFAULT_P2P_PLATFORM_FEE_BPS</a>,
+        p2p_ecosystem_fee_bps: <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_P2P_ECOSYSTEM_FEE_BPS">DEFAULT_P2P_ECOSYSTEM_FEE_BPS</a>,
+        mydata_marketplace_platform_fee_bps: <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MYDATA_MARKETPLACE_PLATFORM_FEE_BPS">DEFAULT_MYDATA_MARKETPLACE_PLATFORM_FEE_BPS</a>,
+        mydata_marketplace_ecosystem_fee_bps: <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MYDATA_MARKETPLACE_ECOSYSTEM_FEE_BPS">DEFAULT_MYDATA_MARKETPLACE_ECOSYSTEM_FEE_BPS</a>,
+        non_platform_platform_to_creator_bps: <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS">DEFAULT_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS</a>,
+        non_platform_platform_to_treasury_bps: <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS">DEFAULT_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS</a>,
         <a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a>: ver,
     };
-    event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfigUpdatedEvent">MyDataConfigUpdatedEvent</a> {
-        updated_by: sender,
-        <a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>,
-        max_tags: <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_TAGS">MAX_TAGS</a>,
-        max_subscription_days: <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_SUBSCRIPTION_DAYS">MAX_SUBSCRIPTION_DAYS</a>,
-        max_free_access_grants: <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_FREE_ACCESS_GRANTS">MAX_FREE_ACCESS_GRANTS</a>,
-        max_encryption_id_bytes: <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MAX_ENCRYPTION_ID_BYTES">DEFAULT_MAX_ENCRYPTION_ID_BYTES</a>,
-        timestamp: clock::timestamp_ms(clock),
-    });
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_emit_mydata_config_updated">emit_mydata_config_updated</a>(&config, sender, clock::timestamp_ms(clock));
     transfer::share_object(config);
     transfer::share_object(<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">MyDataRegistry</a> {
         id: object::new(ctx),
@@ -2392,13 +2916,13 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
 
 </details>
 
-<a name="social_contracts_mydata_claim"></a>
+<a name="social_contracts_mydata_distribute_mydata_marketplace_claim_fees_no_platform"></a>
 
-## Function `claim`
+## Function `distribute_mydata_marketplace_claim_fees_no_platform`
 
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_claim">claim</a>(vault: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">social_contracts::mydata::MyDataClaimVault</a>, snapshot_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, amount: u64, leaf_index: u64, proof: vector&lt;vector&lt;u8&gt;&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_distribute_mydata_marketplace_claim_fees_no_platform">distribute_mydata_marketplace_claim_fees_no_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, claimant: <b>address</b>, gross_amount: u64, vault_balance: &<b>mut</b> <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (u64, u64, u64)
 </code></pre>
 
 
@@ -2407,8 +2931,105 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_claim">claim</a>(
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_distribute_mydata_marketplace_claim_fees_no_platform">distribute_mydata_marketplace_claim_fees_no_platform</a>(
+    config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    treasury: &EcosystemTreasury,
+    claimant: <b>address</b>,
+    gross_amount: u64,
+    vault_balance: &<b>mut</b> Balance&lt;MYSO&gt;,
+    ctx: &<b>mut</b> TxContext,
+): (u64, u64, u64) {
+    <b>let</b> (platform_fee, ecosystem_fee, <b>mut</b> net_amount) = <a href="../social_contracts/mydata.md#social_contracts_mydata_calculate_mydata_marketplace_fees">calculate_mydata_marketplace_fees</a>(config, gross_amount);
+    <b>let</b> <b>mut</b> payout_coin = coin::from_balance(balance::split(vault_balance, gross_amount), ctx);
+    <b>if</b> (ecosystem_fee &gt; 0) {
+        <b>let</b> eco_coin = coin::split(&<b>mut</b> payout_coin, ecosystem_fee, ctx);
+        transfer::public_transfer(eco_coin, <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">profile::get_treasury_address</a>(treasury));
+    };
+    net_amount = <b>if</b> (platform_fee &gt; 0) {
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_route_non_platform_platform_fee">route_non_platform_platform_fee</a>(
+            config,
+            treasury,
+            platform_fee,
+            net_amount,
+            &<b>mut</b> payout_coin,
+            ctx,
+        )
+    } <b>else</b> {
+        net_amount
+    };
+    transfer::public_transfer(payout_coin, claimant);
+    (platform_fee, ecosystem_fee, net_amount)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_distribute_mydata_marketplace_claim_fees_with_platform"></a>
+
+## Function `distribute_mydata_marketplace_claim_fees_with_platform`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_distribute_mydata_marketplace_claim_fees_with_platform">distribute_mydata_marketplace_claim_fees_with_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, claimant: <b>address</b>, gross_amount: u64, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, vault_balance: &<b>mut</b> <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (u64, u64, u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_distribute_mydata_marketplace_claim_fees_with_platform">distribute_mydata_marketplace_claim_fees_with_platform</a>(
+    config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    treasury: &EcosystemTreasury,
+    claimant: <b>address</b>,
+    gross_amount: u64,
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> Platform,
+    vault_balance: &<b>mut</b> Balance&lt;MYSO&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+): (u64, u64, u64) {
+    <b>let</b> (platform_fee, ecosystem_fee, net_amount) = <a href="../social_contracts/mydata.md#social_contracts_mydata_calculate_mydata_marketplace_fees">calculate_mydata_marketplace_fees</a>(config, gross_amount);
+    <b>let</b> <b>mut</b> payout_coin = coin::from_balance(balance::split(vault_balance, gross_amount), ctx);
+    <b>if</b> (ecosystem_fee &gt; 0) {
+        <b>let</b> eco_coin = coin::split(&<b>mut</b> payout_coin, ecosystem_fee, ctx);
+        transfer::public_transfer(eco_coin, <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">profile::get_treasury_address</a>(treasury));
+    };
+    <b>if</b> (platform_fee &gt; 0) {
+        <b>let</b> <b>mut</b> platform_coin = coin::split(&<b>mut</b> payout_coin, platform_fee, ctx);
+        <a href="../social_contracts/platform.md#social_contracts_platform_add_to_treasury">platform::add_to_treasury</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, &<b>mut</b> platform_coin, platform_fee, clock, ctx);
+        coin::destroy_zero(platform_coin);
+    };
+    transfer::public_transfer(payout_coin, claimant);
+    (platform_fee, ecosystem_fee, net_amount)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_claim_internal_no_platform"></a>
+
+## Function `claim_internal_no_platform`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_claim_internal_no_platform">claim_internal_no_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, vault: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">social_contracts::mydata::MyDataClaimVault</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, snapshot_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, amount: u64, leaf_index: u64, proof: vector&lt;vector&lt;u8&gt;&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_claim_internal_no_platform">claim_internal_no_platform</a>(
+    config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
     vault: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">MyDataClaimVault</a>,
+    treasury: &EcosystemTreasury,
     snapshot_id: ID,
     amount: u64,
     leaf_index: u64,
@@ -2433,14 +3054,188 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
     };
     <b>let</b> claimed_table = table::borrow_mut(&<b>mut</b> vault.claimed, snapshot_id);
     table::add(claimed_table, claimant, <b>true</b>);
-    <b>let</b> payout = balance::split(&<b>mut</b> vault.balance, amount);
-    transfer::public_transfer(coin::from_balance(payout, ctx), claimant);
+    <b>let</b> (platform_fee, ecosystem_fee, net_amount) = <a href="../social_contracts/mydata.md#social_contracts_mydata_distribute_mydata_marketplace_claim_fees_no_platform">distribute_mydata_marketplace_claim_fees_no_platform</a>(
+        config,
+        treasury,
+        claimant,
+        amount,
+        &<b>mut</b> vault.balance,
+        ctx,
+    );
     event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_ClaimExecutedEvent">ClaimExecutedEvent</a> {
         snapshot_id,
         claimant,
-        amount,
+        gross_amount: amount,
+        platform_fee,
+        ecosystem_fee,
+        net_amount,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>: option::none(),
         claimed_at: clock::timestamp_ms(clock),
     });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_claim_internal_with_platform"></a>
+
+## Function `claim_internal_with_platform`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_claim_internal_with_platform">claim_internal_with_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, vault: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">social_contracts::mydata::MyDataClaimVault</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, snapshot_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, amount: u64, leaf_index: u64, proof: vector&lt;vector&lt;u8&gt;&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_claim_internal_with_platform">claim_internal_with_platform</a>(
+    config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    vault: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">MyDataClaimVault</a>,
+    treasury: &EcosystemTreasury,
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> Platform,
+    snapshot_id: ID,
+    amount: u64,
+    leaf_index: u64,
+    proof: vector&lt;vector&lt;u8&gt;&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(table::contains(&vault.merkle_roots, snapshot_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqMerkleRootNotPublished">EPqMerkleRootNotPublished</a>);
+    <b>assert</b>!(table::contains(&vault.snapshot_escrow, snapshot_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqSnapshotEscrowMissing">EPqSnapshotEscrowMissing</a>);
+    <b>assert</b>!(*table::borrow(&vault.snapshot_escrow, snapshot_id) &gt;= amount, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqEscrowExceeded">EPqEscrowExceeded</a>);
+    <b>let</b> claimant = tx_context::sender(ctx);
+    <b>let</b> leaf = merkle::leaf_hash(claimant, amount, object::id_to_bytes(&snapshot_id));
+    <b>let</b> root = *table::borrow(&vault.merkle_roots, snapshot_id);
+    <b>assert</b>!(merkle::verify_proof(leaf, &proof, leaf_index, root), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqInvalidProof">EPqInvalidProof</a>);
+    <b>if</b> (table::contains(&vault.claimed, snapshot_id)) {
+        <b>assert</b>!(!table::contains(table::borrow(&vault.claimed, snapshot_id), claimant), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqAlreadyClaimed">EPqAlreadyClaimed</a>);
+    };
+    <b>let</b> escrow_remaining = table::borrow_mut(&<b>mut</b> vault.snapshot_escrow, snapshot_id);
+    *escrow_remaining = *escrow_remaining - amount;
+    <b>if</b> (!table::contains(&vault.claimed, snapshot_id)) {
+        table::add(&<b>mut</b> vault.claimed, snapshot_id, table::new(ctx));
+    };
+    <b>let</b> claimed_table = table::borrow_mut(&<b>mut</b> vault.claimed, snapshot_id);
+    table::add(claimed_table, claimant, <b>true</b>);
+    <b>let</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a> = object::uid_to_address(<a href="../social_contracts/platform.md#social_contracts_platform_id">platform::id</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>));
+    <b>let</b> (platform_fee, ecosystem_fee, net_amount) = <a href="../social_contracts/mydata.md#social_contracts_mydata_distribute_mydata_marketplace_claim_fees_with_platform">distribute_mydata_marketplace_claim_fees_with_platform</a>(
+        config,
+        treasury,
+        claimant,
+        amount,
+        <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>,
+        &<b>mut</b> vault.balance,
+        clock,
+        ctx,
+    );
+    event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_ClaimExecutedEvent">ClaimExecutedEvent</a> {
+        snapshot_id,
+        claimant,
+        gross_amount: amount,
+        platform_fee,
+        ecosystem_fee,
+        net_amount,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>: option::some(<a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>),
+        claimed_at: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_claim"></a>
+
+## Function `claim`
+
+Claim MyData marketplace pool payout from vault escrow (no platform).
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_claim">claim</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, vault: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">social_contracts::mydata::MyDataClaimVault</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, snapshot_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, amount: u64, leaf_index: u64, proof: vector&lt;vector&lt;u8&gt;&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_claim">claim</a>(
+    config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    vault: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">MyDataClaimVault</a>,
+    treasury: &EcosystemTreasury,
+    snapshot_id: ID,
+    amount: u64,
+    leaf_index: u64,
+    proof: vector&lt;vector&lt;u8&gt;&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_claim_internal_no_platform">claim_internal_no_platform</a>(
+        config,
+        vault,
+        treasury,
+        snapshot_id,
+        amount,
+        leaf_index,
+        proof,
+        clock,
+        ctx,
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_claim_with_platform"></a>
+
+## Function `claim_with_platform`
+
+Claim MyData marketplace pool payout with platform treasury routing.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_claim_with_platform">claim_with_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, vault: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">social_contracts::mydata::MyDataClaimVault</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, snapshot_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, amount: u64, leaf_index: u64, proof: vector&lt;vector&lt;u8&gt;&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_claim_with_platform">claim_with_platform</a>(
+    config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    vault: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">MyDataClaimVault</a>,
+    treasury: &EcosystemTreasury,
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> Platform,
+    snapshot_id: ID,
+    amount: u64,
+    leaf_index: u64,
+    proof: vector&lt;vector&lt;u8&gt;&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_claim_internal_with_platform">claim_internal_with_platform</a>(
+        config,
+        vault,
+        treasury,
+        <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>,
+        snapshot_id,
+        amount,
+        leaf_index,
+        proof,
+        clock,
+        ctx,
+    );
 }
 </code></pre>
 
@@ -2861,15 +3656,13 @@ Create and share MyData publicly
 
 </details>
 
-<a name="social_contracts_mydata_purchase_one_time"></a>
+<a name="social_contracts_mydata_purchase_one_time_no_platform"></a>
 
-## Function `purchase_one_time`
-
-Purchase one-time access to MyData data.
-Sub-agent buyers must satisfy <code>max_action_spend</code> for <code>price</code> on <code>account</code>.
+## Function `purchase_one_time_no_platform`
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time">purchase_one_time</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time_no_platform">purchase_one_time_no_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2878,20 +3671,19 @@ Sub-agent buyers must satisfy <code>max_action_spend</code> for <code>price</cod
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time">purchase_one_time</a>(
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time_no_platform">purchase_one_time_no_platform</a>(
     config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
     memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>,
     <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
+    treasury: &EcosystemTreasury,
     payment: Coin&lt;MYSO&gt;,
     account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
     <b>assert</b>!(config.<a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EDisabled">EDisabled</a>);
-    // Check <a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> compatibility
     <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>let</b> buyer = tx_context::sender(ctx);
-    // Check <b>if</b> one-time purchase is available
     <b>assert</b>!(option::is_some(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a>), <a href="../social_contracts/mydata.md#social_contracts_mydata_ENotForSale">ENotForSale</a>);
     <b>let</b> price = *option::borrow(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a>);
     <b>let</b> <b>mut</b> sub_agent_id = option::none();
@@ -2909,21 +3701,23 @@ Sub-agent buyers must satisfy <code>max_action_spend</code> for <code>price</cod
         sub_agent_id = <a href="../social_contracts/memory.md#social_contracts_memory_acting_sub_agent_id">social_contracts::memory::acting_sub_agent_id</a>(&acting);
         organization_id = <a href="../social_contracts/memory.md#social_contracts_memory_acting_organization_id">social_contracts::memory::acting_organization_id</a>(&acting);
     };
-    // Check payment amount
     <b>assert</b>!(coin::value(&payment) &gt;= price, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPriceMismatch">EPriceMismatch</a>);
-    // Check <b>if</b> buyer already <b>has</b> access
     <b>assert</b>!(!table::contains(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.purchasers, buyer), <a href="../social_contracts/mydata.md#social_contracts_mydata_EAlreadyPurchased">EAlreadyPurchased</a>);
-    // Prevent self-purchase
     <b>assert</b>!(buyer != <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_ESelfPurchase">ESelfPurchase</a>);
     <b>let</b> <b>mut</b> payment = payment;
-    <b>let</b> to_owner = coin::split(&<b>mut</b> payment, price, ctx);
-    transfer::public_transfer(to_owner, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>);
+    <b>let</b> price_coin = coin::split(&<b>mut</b> payment, price, ctx);
+    <b>let</b> (platform_fee, ecosystem_fee, creator_amount) = <a href="../social_contracts/mydata.md#social_contracts_mydata_distribute_p2p_fees_no_platform">distribute_p2p_fees_no_platform</a>(
+        config,
+        treasury,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>,
+        price_coin,
+        ctx,
+    );
     <b>if</b> (coin::value(&payment) &gt; 0) {
         transfer::public_transfer(payment, buyer);
     } <b>else</b> {
         coin::destroy_zero(payment);
     };
-    // Grant access
     table::add(&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.purchasers, buyer, <b>true</b>);
     event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_PurchaseEvent">PurchaseEvent</a> {
         ip_id: object::uid_to_address(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id),
@@ -2933,6 +3727,10 @@ Sub-agent buyers must satisfy <code>max_action_spend</code> for <code>price</cod
         timestamp: clock::timestamp_ms(clock),
         sub_agent_id,
         organization_id,
+        platform_fee,
+        ecosystem_fee,
+        creator_amount,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>: <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>,
     });
 }
 </code></pre>
@@ -2941,15 +3739,13 @@ Sub-agent buyers must satisfy <code>max_action_spend</code> for <code>price</cod
 
 </details>
 
-<a name="social_contracts_mydata_purchase_subscription"></a>
+<a name="social_contracts_mydata_purchase_one_time_with_platform_internal"></a>
 
-## Function `purchase_subscription`
-
-Purchase subscription access to MyData data.
-Sub-agent buyers must satisfy <code>max_action_spend</code> for <code>price</code> on <code>account</code>.
+## Function `purchase_one_time_with_platform_internal`
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription">purchase_subscription</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time_with_platform_internal">purchase_one_time_with_platform_internal</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2958,20 +3754,194 @@ Sub-agent buyers must satisfy <code>max_action_spend</code> for <code>price</cod
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription">purchase_subscription</a>(
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time_with_platform_internal">purchase_one_time_with_platform_internal</a>(
     config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
     memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>,
     <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
+    treasury: &EcosystemTreasury,
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> Platform,
     payment: Coin&lt;MYSO&gt;,
     account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
     <b>assert</b>!(config.<a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EDisabled">EDisabled</a>);
-    // Check <a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> compatibility
+    <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_platform_matches_listing">assert_platform_matches_listing</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>);
+    <b>let</b> buyer = tx_context::sender(ctx);
+    <b>assert</b>!(option::is_some(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a>), <a href="../social_contracts/mydata.md#social_contracts_mydata_ENotForSale">ENotForSale</a>);
+    <b>let</b> price = *option::borrow(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a>);
+    <b>let</b> <b>mut</b> sub_agent_id = option::none();
+    <b>let</b> <b>mut</b> organization_id = option::none();
+    <b>if</b> (<a href="../social_contracts/memory.md#social_contracts_memory_is_registered_agent">social_contracts::memory::is_registered_agent</a>(account, buyer)) {
+        <b>let</b> acting = <a href="../social_contracts/memory.md#social_contracts_memory_resolve_actor_with_cap">social_contracts::memory::resolve_actor_with_cap</a>(
+            memory_config,
+            account,
+            0,
+            <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>,
+            price,
+            clock,
+            ctx,
+        );
+        sub_agent_id = <a href="../social_contracts/memory.md#social_contracts_memory_acting_sub_agent_id">social_contracts::memory::acting_sub_agent_id</a>(&acting);
+        organization_id = <a href="../social_contracts/memory.md#social_contracts_memory_acting_organization_id">social_contracts::memory::acting_organization_id</a>(&acting);
+    };
+    <b>assert</b>!(coin::value(&payment) &gt;= price, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPriceMismatch">EPriceMismatch</a>);
+    <b>assert</b>!(!table::contains(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.purchasers, buyer), <a href="../social_contracts/mydata.md#social_contracts_mydata_EAlreadyPurchased">EAlreadyPurchased</a>);
+    <b>assert</b>!(buyer != <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_ESelfPurchase">ESelfPurchase</a>);
+    <b>let</b> <b>mut</b> payment = payment;
+    <b>let</b> price_coin = coin::split(&<b>mut</b> payment, price, ctx);
+    <b>let</b> (platform_fee, ecosystem_fee, creator_amount) = <a href="../social_contracts/mydata.md#social_contracts_mydata_distribute_p2p_fees_with_platform">distribute_p2p_fees_with_platform</a>(
+        config,
+        treasury,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>,
+        price_coin,
+        <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>,
+        clock,
+        ctx,
+    );
+    <b>if</b> (coin::value(&payment) &gt; 0) {
+        transfer::public_transfer(payment, buyer);
+    } <b>else</b> {
+        coin::destroy_zero(payment);
+    };
+    table::add(&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.purchasers, buyer, <b>true</b>);
+    event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_PurchaseEvent">PurchaseEvent</a> {
+        ip_id: object::uid_to_address(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id),
+        buyer,
+        price,
+        purchase_type: string::utf8(b"one_time"),
+        timestamp: clock::timestamp_ms(clock),
+        sub_agent_id,
+        organization_id,
+        platform_fee,
+        ecosystem_fee,
+        creator_amount,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>: option::some(object::uid_to_address(<a href="../social_contracts/platform.md#social_contracts_platform_id">platform::id</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>))),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_purchase_one_time"></a>
+
+## Function `purchase_one_time`
+
+Purchase one-time access to MyData data.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time">purchase_one_time</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time">purchase_one_time</a>(
+    config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
+    treasury: &EcosystemTreasury,
+    payment: Coin&lt;MYSO&gt;,
+    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time_no_platform">purchase_one_time_no_platform</a>(
+        config,
+        memory_config,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>,
+        treasury,
+        payment,
+        account,
+        clock,
+        ctx,
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_purchase_one_time_with_platform"></a>
+
+## Function `purchase_one_time_with_platform`
+
+Purchase one-time access with platform treasury routing.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time_with_platform">purchase_one_time_with_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time_with_platform">purchase_one_time_with_platform</a>(
+    config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
+    treasury: &EcosystemTreasury,
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> Platform,
+    payment: Coin&lt;MYSO&gt;,
+    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time_with_platform_internal">purchase_one_time_with_platform_internal</a>(
+        config,
+        memory_config,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>,
+        treasury,
+        <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>,
+        payment,
+        account,
+        clock,
+        ctx,
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_purchase_subscription_no_platform"></a>
+
+## Function `purchase_subscription_no_platform`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription_no_platform">purchase_subscription_no_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription_no_platform">purchase_subscription_no_platform</a>(
+    config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
+    treasury: &EcosystemTreasury,
+    payment: Coin&lt;MYSO&gt;,
+    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(config.<a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EDisabled">EDisabled</a>);
     <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>let</b> buyer = tx_context::sender(ctx);
-    // Check <b>if</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a> is available
     <b>assert</b>!(option::is_some(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_price">subscription_price</a>), <a href="../social_contracts/mydata.md#social_contracts_mydata_ENotForSale">ENotForSale</a>);
     <b>let</b> price = *option::borrow(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_price">subscription_price</a>);
     <b>let</b> <b>mut</b> sub_agent_id = option::none();
@@ -2989,34 +3959,32 @@ Sub-agent buyers must satisfy <code>max_action_spend</code> for <code>price</cod
         sub_agent_id = <a href="../social_contracts/memory.md#social_contracts_memory_acting_sub_agent_id">social_contracts::memory::acting_sub_agent_id</a>(&acting);
         organization_id = <a href="../social_contracts/memory.md#social_contracts_memory_acting_organization_id">social_contracts::memory::acting_organization_id</a>(&acting);
     };
-    // Check payment amount
     <b>assert</b>!(coin::value(&payment) &gt;= price, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPriceMismatch">EPriceMismatch</a>);
-    // Prevent self-purchase
     <b>assert</b>!(buyer != <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_ESelfPurchase">ESelfPurchase</a>);
-    // Validate <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a> duration to prevent overflow
     <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_duration_days">subscription_duration_days</a> &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_duration_days">subscription_duration_days</a> &lt;= config.max_subscription_days, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
-    // Calculate <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a> expiry safely with overflow protection
     <b>let</b> current_time = clock::timestamp_ms(clock);
     <b>let</b> duration_ms = (<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_duration_days">subscription_duration_days</a> <b>as</b> u128) * (<a href="../social_contracts/mydata.md#social_contracts_mydata_MILLISECONDS_PER_DAY">MILLISECONDS_PER_DAY</a> <b>as</b> u128);
     <b>let</b> expiry_time = (current_time <b>as</b> u128) + duration_ms;
-    // Ensure we don't overflow u64
     <b>assert</b>!(expiry_time &lt;= (<a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_U64">MAX_U64</a> <b>as</b> u128), <a href="../social_contracts/mydata.md#social_contracts_mydata_EOverflow">EOverflow</a>);
     <b>let</b> expiry_time_u64 = expiry_time <b>as</b> u64;
     <b>let</b> <b>mut</b> payment = payment;
-    <b>let</b> to_owner = coin::split(&<b>mut</b> payment, price, ctx);
-    transfer::public_transfer(to_owner, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>);
+    <b>let</b> price_coin = coin::split(&<b>mut</b> payment, price, ctx);
+    <b>let</b> (platform_fee, ecosystem_fee, creator_amount) = <a href="../social_contracts/mydata.md#social_contracts_mydata_distribute_p2p_fees_no_platform">distribute_p2p_fees_no_platform</a>(
+        config,
+        treasury,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>,
+        price_coin,
+        ctx,
+    );
     <b>if</b> (coin::value(&payment) &gt; 0) {
         transfer::public_transfer(payment, buyer);
     } <b>else</b> {
         coin::destroy_zero(payment);
     };
-    // Grant/extend <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a> access
     <b>if</b> (table::contains(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.subscribers, buyer)) {
-        // Extend existing <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>
         <b>let</b> current_expiry = table::remove(&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.subscribers, buyer);
         <b>let</b> new_expiry = <b>if</b> (current_expiry &gt; current_time) {
-            // Add to existing time, but check <b>for</b> overflow
             <b>let</b> extended_time = (current_expiry <b>as</b> u128) + duration_ms;
             <b>assert</b>!(extended_time &lt;= (<a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_U64">MAX_U64</a> <b>as</b> u128), <a href="../social_contracts/mydata.md#social_contracts_mydata_EOverflow">EOverflow</a>);
             extended_time <b>as</b> u64
@@ -3025,7 +3993,6 @@ Sub-agent buyers must satisfy <code>max_action_spend</code> for <code>price</cod
         };
         table::add(&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.subscribers, buyer, new_expiry);
     } <b>else</b> {
-        // New <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>
         table::add(&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.subscribers, buyer, expiry_time_u64);
     };
     event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_PurchaseEvent">PurchaseEvent</a> {
@@ -3036,7 +4003,204 @@ Sub-agent buyers must satisfy <code>max_action_spend</code> for <code>price</cod
         timestamp: clock::timestamp_ms(clock),
         sub_agent_id,
         organization_id,
+        platform_fee,
+        ecosystem_fee,
+        creator_amount,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>: <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>,
     });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_purchase_subscription_with_platform_internal"></a>
+
+## Function `purchase_subscription_with_platform_internal`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription_with_platform_internal">purchase_subscription_with_platform_internal</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription_with_platform_internal">purchase_subscription_with_platform_internal</a>(
+    config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
+    treasury: &EcosystemTreasury,
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> Platform,
+    payment: Coin&lt;MYSO&gt;,
+    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(config.<a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EDisabled">EDisabled</a>);
+    <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_platform_matches_listing">assert_platform_matches_listing</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>);
+    <b>let</b> buyer = tx_context::sender(ctx);
+    <b>assert</b>!(option::is_some(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_price">subscription_price</a>), <a href="../social_contracts/mydata.md#social_contracts_mydata_ENotForSale">ENotForSale</a>);
+    <b>let</b> price = *option::borrow(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_price">subscription_price</a>);
+    <b>let</b> <b>mut</b> sub_agent_id = option::none();
+    <b>let</b> <b>mut</b> organization_id = option::none();
+    <b>if</b> (<a href="../social_contracts/memory.md#social_contracts_memory_is_registered_agent">social_contracts::memory::is_registered_agent</a>(account, buyer)) {
+        <b>let</b> acting = <a href="../social_contracts/memory.md#social_contracts_memory_resolve_actor_with_cap">social_contracts::memory::resolve_actor_with_cap</a>(
+            memory_config,
+            account,
+            0,
+            <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>,
+            price,
+            clock,
+            ctx,
+        );
+        sub_agent_id = <a href="../social_contracts/memory.md#social_contracts_memory_acting_sub_agent_id">social_contracts::memory::acting_sub_agent_id</a>(&acting);
+        organization_id = <a href="../social_contracts/memory.md#social_contracts_memory_acting_organization_id">social_contracts::memory::acting_organization_id</a>(&acting);
+    };
+    <b>assert</b>!(coin::value(&payment) &gt;= price, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPriceMismatch">EPriceMismatch</a>);
+    <b>assert</b>!(buyer != <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_ESelfPurchase">ESelfPurchase</a>);
+    <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_duration_days">subscription_duration_days</a> &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_duration_days">subscription_duration_days</a> &lt;= config.max_subscription_days, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <b>let</b> current_time = clock::timestamp_ms(clock);
+    <b>let</b> duration_ms = (<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_duration_days">subscription_duration_days</a> <b>as</b> u128) * (<a href="../social_contracts/mydata.md#social_contracts_mydata_MILLISECONDS_PER_DAY">MILLISECONDS_PER_DAY</a> <b>as</b> u128);
+    <b>let</b> expiry_time = (current_time <b>as</b> u128) + duration_ms;
+    <b>assert</b>!(expiry_time &lt;= (<a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_U64">MAX_U64</a> <b>as</b> u128), <a href="../social_contracts/mydata.md#social_contracts_mydata_EOverflow">EOverflow</a>);
+    <b>let</b> expiry_time_u64 = expiry_time <b>as</b> u64;
+    <b>let</b> <b>mut</b> payment = payment;
+    <b>let</b> price_coin = coin::split(&<b>mut</b> payment, price, ctx);
+    <b>let</b> (platform_fee, ecosystem_fee, creator_amount) = <a href="../social_contracts/mydata.md#social_contracts_mydata_distribute_p2p_fees_with_platform">distribute_p2p_fees_with_platform</a>(
+        config,
+        treasury,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>,
+        price_coin,
+        <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>,
+        clock,
+        ctx,
+    );
+    <b>if</b> (coin::value(&payment) &gt; 0) {
+        transfer::public_transfer(payment, buyer);
+    } <b>else</b> {
+        coin::destroy_zero(payment);
+    };
+    <b>if</b> (table::contains(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.subscribers, buyer)) {
+        <b>let</b> current_expiry = table::remove(&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.subscribers, buyer);
+        <b>let</b> new_expiry = <b>if</b> (current_expiry &gt; current_time) {
+            <b>let</b> extended_time = (current_expiry <b>as</b> u128) + duration_ms;
+            <b>assert</b>!(extended_time &lt;= (<a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_U64">MAX_U64</a> <b>as</b> u128), <a href="../social_contracts/mydata.md#social_contracts_mydata_EOverflow">EOverflow</a>);
+            extended_time <b>as</b> u64
+        } <b>else</b> {
+            expiry_time_u64
+        };
+        table::add(&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.subscribers, buyer, new_expiry);
+    } <b>else</b> {
+        table::add(&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.subscribers, buyer, expiry_time_u64);
+    };
+    event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_PurchaseEvent">PurchaseEvent</a> {
+        ip_id: object::uid_to_address(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id),
+        buyer,
+        price,
+        purchase_type: string::utf8(b"<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>"),
+        timestamp: clock::timestamp_ms(clock),
+        sub_agent_id,
+        organization_id,
+        platform_fee,
+        ecosystem_fee,
+        creator_amount,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>: option::some(object::uid_to_address(<a href="../social_contracts/platform.md#social_contracts_platform_id">platform::id</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>))),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_purchase_subscription"></a>
+
+## Function `purchase_subscription`
+
+Purchase subscription access to MyData data.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription">purchase_subscription</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription">purchase_subscription</a>(
+    config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
+    treasury: &EcosystemTreasury,
+    payment: Coin&lt;MYSO&gt;,
+    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription_no_platform">purchase_subscription_no_platform</a>(
+        config,
+        memory_config,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>,
+        treasury,
+        payment,
+        account,
+        clock,
+        ctx,
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_purchase_subscription_with_platform"></a>
+
+## Function `purchase_subscription_with_platform`
+
+Purchase subscription access with platform treasury routing.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription_with_platform">purchase_subscription_with_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription_with_platform">purchase_subscription_with_platform</a>(
+    config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
+    treasury: &EcosystemTreasury,
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> Platform,
+    payment: Coin&lt;MYSO&gt;,
+    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription_with_platform_internal">purchase_subscription_with_platform_internal</a>(
+        config,
+        memory_config,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>,
+        treasury,
+        <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>,
+        payment,
+        account,
+        clock,
+        ctx,
+    );
 }
 </code></pre>
 
@@ -4511,6 +5675,12 @@ Migration function for MyDataConfig
     <b>assert</b>!(config.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> &lt; current_version, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     // Remember old <a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> and update to new <a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a>
     <b>let</b> old_version = config.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a>;
+    config.p2p_platform_fee_bps = <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_P2P_PLATFORM_FEE_BPS">DEFAULT_P2P_PLATFORM_FEE_BPS</a>;
+    config.p2p_ecosystem_fee_bps = <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_P2P_ECOSYSTEM_FEE_BPS">DEFAULT_P2P_ECOSYSTEM_FEE_BPS</a>;
+    config.mydata_marketplace_platform_fee_bps = <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MYDATA_MARKETPLACE_PLATFORM_FEE_BPS">DEFAULT_MYDATA_MARKETPLACE_PLATFORM_FEE_BPS</a>;
+    config.mydata_marketplace_ecosystem_fee_bps = <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MYDATA_MARKETPLACE_ECOSYSTEM_FEE_BPS">DEFAULT_MYDATA_MARKETPLACE_ECOSYSTEM_FEE_BPS</a>;
+    config.non_platform_platform_to_creator_bps = <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS">DEFAULT_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS</a>;
+    config.non_platform_platform_to_treasury_bps = <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS">DEFAULT_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS</a>;
     config.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> = current_version;
     // Emit event <b>for</b> object migration
     <b>let</b> config_id = object::id(config);
