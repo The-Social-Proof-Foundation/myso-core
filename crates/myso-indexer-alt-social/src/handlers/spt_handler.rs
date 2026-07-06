@@ -1381,7 +1381,6 @@ impl Handler for SptHandler {
                         birthdate: up.birthdate.clone().map(Some),
                         location: up.location.clone().map(Some),
                         x_username: up.x_username.clone().map(Some),
-                        min_offer_amount: up.min_offer_amount.map(Some),
                         username: up.username.clone(),
                         selected_badge_id: up.selected_badge_id.clone(),
                         selected_ecosystem_badge_id: up.selected_ecosystem_badge_id.clone(),

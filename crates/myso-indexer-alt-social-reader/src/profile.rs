@@ -91,7 +91,6 @@ pub struct ProfileByAddressResponse {
     pub following_count: i32,
     pub post_count: i32,
     pub blocked_count: i32,
-    pub min_offer_amount: Option<i64>,
     pub birthdate: Option<String>,
     pub location: Option<String>,
     pub x_username: Option<String>,
@@ -476,7 +475,6 @@ pub(crate) async fn get_profile_or_wallet_by_address(
                     following_count: fg,
                     post_count: 0,
                     blocked_count: bc,
-                    min_offer_amount: None,
                     birthdate: None,
                     location: None,
                     x_username: None,
@@ -504,7 +502,6 @@ pub(crate) async fn get_profile_or_wallet_by_address(
                     following_count: 0,
                     post_count: 0,
                     blocked_count: 0,
-                    min_offer_amount: None,
                     birthdate: None,
                     location: None,
                     x_username: None,
@@ -540,7 +537,6 @@ fn profile_to_response(p: Profile) -> ProfileByAddressResponse {
         following_count: p.following_count,
         post_count: p.post_count,
         blocked_count: p.blocked_count,
-        min_offer_amount: p.min_offer_amount,
         birthdate: p.birthdate,
         location: p.location,
         x_username: p.x_username,
@@ -655,7 +651,7 @@ pub struct ProfileConfigRow {
     #[diesel(sql_type = BigInt)]
     pub max_username_length: i64,
     #[diesel(sql_type = BigInt)]
-    pub profile_sale_fee_bps: i64,
+    pub username_sale_fee_bps: i64,
     #[diesel(sql_type = BigInt)]
     pub version: i64,
     #[diesel(sql_type = BigInt)]
@@ -677,7 +673,7 @@ pub(crate) async fn get_profile_config(
     let query = "
         SELECT updated_by, max_vesting_pieces, curve_factor_min, curve_factor_max, curve_precision,
                min_claim_threshold_divisor, min_username_length, max_username_length,
-               profile_sale_fee_bps, version, updated_at, time, transaction_id
+               username_sale_fee_bps, version, updated_at, time, transaction_id
         FROM profile_config
         ORDER BY time DESC
         LIMIT 1

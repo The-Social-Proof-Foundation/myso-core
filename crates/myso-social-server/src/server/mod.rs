@@ -588,8 +588,15 @@ fn make_router(state: Arc<AppState>) -> Router {
             "/profiles/:address/blocked-platforms",
             get(get_profile_blocked_platforms),
         )
-        .route("/profiles/:address/offers", get(get_profile_offers))
-        .route("/profiles/:address/sale-fees", get(get_profile_sale_fees))
+        .route("/usernames/:username/offers", get(get_username_offers))
+        .route(
+            "/profiles/:address/username-offers",
+            get(get_profile_username_offers),
+        )
+        .route(
+            "/profiles/:address/username-sale-fees",
+            get(get_username_sale_fees),
+        )
         .route("/profiles/:address/pnl", get(get_profile_pnl))
         .route(
             "/social-graph/check/:follower/:following",

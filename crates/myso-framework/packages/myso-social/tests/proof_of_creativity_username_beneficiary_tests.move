@@ -80,7 +80,7 @@ module social_contracts::proof_of_creativity_username_beneficiary_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = profile::EUsernameBeneficiaryActive, location = social_contracts::profile)]
+    #[expected_failure(abort_code = profile::EUsernameLocked, location = social_contracts::profile)]
     fun test_username_beneficiary_provision_blocks_create_profile() {
         let mut scen = test_scenario::begin(ADMIN);
         setup(&mut scen);

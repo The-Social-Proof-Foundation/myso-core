@@ -6,15 +6,21 @@ use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::schema::{
-    profile_badges, profile_config, profile_events, profile_offers, profile_sale_fees, profiles,
+    profile_badges, profile_config, profile_events, profiles, username_listings, username_offers,
+    username_sale_fees,
 };
 
-pub const PROFILE_SALE_FEE_BPS: i32 = 500;
+pub const USERNAME_SALE_FEE_BPS: i32 = 500;
 pub const CURVE_PRECISION: i64 = 1000;
 pub const MAX_BADGE_NAME_LENGTH: usize = 100;
 pub const MAX_BADGE_DESCRIPTION_LENGTH: usize = 500;
 pub const MAX_BADGE_MEDIA_URL_LENGTH: usize = 2048;
 pub const MAX_BADGE_ICON_URL_LENGTH: usize = 2048;
+
+/// `username_listings.status` values.
+pub const USERNAME_LISTING_STATUS_ACTIVE: &str = "active";
+pub const USERNAME_LISTING_STATUS_SOLD: &str = "sold";
+pub const USERNAME_LISTING_STATUS_CANCELLED: &str = "cancelled";
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
 #[diesel(table_name = profiles)]
@@ -34,7 +40,6 @@ pub struct Profile {
     pub following_count: i32,
     pub blocked_count: i32,
     pub post_count: i32,
-    pub min_offer_amount: Option<i64>,
     pub birthdate: Option<String>,
     pub location: Option<String>,
     pub x_username: Option<String>,
@@ -63,7 +68,6 @@ pub struct NewProfile {
     pub following_count: i32,
     pub blocked_count: i32,
     pub post_count: i32,
-    pub min_offer_amount: Option<i64>,
     pub birthdate: Option<String>,
     pub location: Option<String>,
     pub x_username: Option<String>,
@@ -118,7 +122,6 @@ pub struct ProfileUpdateSet {
     pub birthdate: Option<Option<String>>,
     pub location: Option<Option<String>>,
     pub x_username: Option<Option<String>>,
-    pub min_offer_amount: Option<Option<i64>>,
     pub username: Option<String>,
     pub selected_badge_id: Option<Option<String>>,
     pub selected_ecosystem_badge_id: Option<Option<String>>,
@@ -127,10 +130,40 @@ pub struct ProfileUpdateSet {
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
-#[diesel(table_name = profile_offers)]
-pub struct NewProfileOffer {
-    pub profile_id: String,
-    pub offeror_address: String,
+#[diesel(table_name = username_listings)]
+pub struct NewUsernameListing {
+    pub username: String,
+    pub seller_address: String,
+    pub seller_profile_id: String,
+    pub min_price: i64,
+    pub status: String,
+    pub created_at: i64,
+    pub cancelled_at: Option<i64>,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = username_listings)]
+pub struct UsernameListing {
+    pub id: i32,
+    pub username: String,
+    pub seller_address: String,
+    pub seller_profile_id: String,
+    pub min_price: i64,
+    pub status: String,
+    pub created_at: i64,
+    pub cancelled_at: Option<i64>,
+    pub transaction_id: String,
+    pub time: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = username_offers)]
+pub struct NewUsernameOffer {
+    pub username: String,
+    pub seller_profile_id: String,
+    pub buyer_address: String,
+    pub buyer_profile_id: String,
     pub amount: i64,
     pub status: String,
     pub created_at: i64,
@@ -140,11 +173,13 @@ pub struct NewProfileOffer {
 }
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
-#[diesel(table_name = profile_offers)]
-pub struct ProfileOffer {
+#[diesel(table_name = username_offers)]
+pub struct UsernameOffer {
     pub id: i32,
-    pub profile_id: String,
-    pub offeror_address: String,
+    pub username: String,
+    pub seller_profile_id: String,
+    pub buyer_address: String,
+    pub buyer_profile_id: String,
     pub amount: i64,
     pub status: String,
     pub created_at: i64,
@@ -155,11 +190,13 @@ pub struct ProfileOffer {
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
-#[diesel(table_name = profile_sale_fees)]
-pub struct NewProfileSaleFee {
-    pub profile_id: String,
-    pub offeror_address: String,
-    pub previous_owner_address: String,
+#[diesel(table_name = username_sale_fees)]
+pub struct NewUsernameSaleFee {
+    pub username: String,
+    pub seller_address: String,
+    pub seller_profile_id: String,
+    pub buyer_address: String,
+    pub buyer_profile_id: String,
     pub sale_amount: i64,
     pub fee_amount: i64,
     pub fee_recipient_address: String,
@@ -168,12 +205,14 @@ pub struct NewProfileSaleFee {
 }
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
-#[diesel(table_name = profile_sale_fees)]
-pub struct ProfileSaleFee {
+#[diesel(table_name = username_sale_fees)]
+pub struct UsernameSaleFee {
     pub id: i32,
-    pub profile_id: String,
-    pub offeror_address: String,
-    pub previous_owner_address: String,
+    pub username: String,
+    pub seller_address: String,
+    pub seller_profile_id: String,
+    pub buyer_address: String,
+    pub buyer_profile_id: String,
     pub sale_amount: i64,
     pub fee_amount: i64,
     pub fee_recipient_address: String,
@@ -193,7 +232,7 @@ pub struct NewProfileConfig {
     pub min_claim_threshold_divisor: i64,
     pub min_username_length: i64,
     pub max_username_length: i64,
-    pub profile_sale_fee_bps: i64,
+    pub username_sale_fee_bps: i64,
     pub version: i64,
     pub updated_at: i64,
     pub time: chrono::DateTime<chrono::Utc>,
@@ -210,7 +249,7 @@ pub fn default_profile_config() -> NewProfileConfig {
         min_claim_threshold_divisor: 1000,
         min_username_length: 2,
         max_username_length: 50,
-        profile_sale_fee_bps: PROFILE_SALE_FEE_BPS as i64,
+        username_sale_fee_bps: USERNAME_SALE_FEE_BPS as i64,
         version: 0,
         updated_at: 0,
         time: chrono::Utc::now(),
@@ -265,10 +304,10 @@ pub fn merge_profile_config(prev: &NewProfileConfig, incoming: &NewProfileConfig
         } else {
             prev.max_username_length
         },
-        profile_sale_fee_bps: if incoming.profile_sale_fee_bps > 0 {
-            incoming.profile_sale_fee_bps
+        username_sale_fee_bps: if incoming.username_sale_fee_bps > 0 {
+            incoming.username_sale_fee_bps
         } else {
-            prev.profile_sale_fee_bps
+            prev.username_sale_fee_bps
         },
         version,
         updated_at: incoming.updated_at,
@@ -287,7 +326,7 @@ impl NewProfileConfig {
         min_claim_threshold_divisor: u64,
         min_username_length: u64,
         max_username_length: u64,
-        profile_sale_fee_bps: u64,
+        username_sale_fee_bps: u64,
         version: u64,
         updated_at: u64,
         transaction_id: String,
@@ -303,7 +342,7 @@ impl NewProfileConfig {
             min_claim_threshold_divisor: min_claim_threshold_divisor as i64,
             min_username_length: min_username_length as i64,
             max_username_length: max_username_length as i64,
-            profile_sale_fee_bps: profile_sale_fee_bps as i64,
+            username_sale_fee_bps: username_sale_fee_bps as i64,
             version: version as i64,
             updated_at: updated_at as i64,
             time,
@@ -314,16 +353,16 @@ impl NewProfileConfig {
 
 #[cfg(test)]
 mod merge_profile_config_tests {
-    use super::{default_profile_config, merge_profile_config, NewProfileConfig, PROFILE_SALE_FEE_BPS};
+    use super::{default_profile_config, merge_profile_config, NewProfileConfig, USERNAME_SALE_FEE_BPS};
 
     fn sample_config(
         max_vesting_pieces: i64,
-        profile_sale_fee_bps: i64,
+        username_sale_fee_bps: i64,
         version: i64,
     ) -> NewProfileConfig {
         let mut cfg = default_profile_config();
         cfg.max_vesting_pieces = max_vesting_pieces;
-        cfg.profile_sale_fee_bps = profile_sale_fee_bps;
+        cfg.username_sale_fee_bps = username_sale_fee_bps;
         cfg.version = version;
         cfg.updated_by = "0xabc".to_string();
         cfg
@@ -331,7 +370,7 @@ mod merge_profile_config_tests {
 
     #[test]
     fn treasury_fee_update_preserves_vesting_fields() {
-        let prev = sample_config(42, PROFILE_SALE_FEE_BPS as i64, 1);
+        let prev = sample_config(42, USERNAME_SALE_FEE_BPS as i64, 1);
         let incoming = NewProfileConfig {
             updated_by: "0xdef".to_string(),
             max_vesting_pieces: 0,
@@ -341,7 +380,7 @@ mod merge_profile_config_tests {
             min_claim_threshold_divisor: 0,
             min_username_length: 0,
             max_username_length: 0,
-            profile_sale_fee_bps: 750,
+            username_sale_fee_bps: 750,
             version: 0,
             updated_at: 100,
             time: prev.time,
@@ -349,7 +388,7 @@ mod merge_profile_config_tests {
         };
         let merged = merge_profile_config(&prev, &incoming);
         assert_eq!(merged.max_vesting_pieces, 42);
-        assert_eq!(merged.profile_sale_fee_bps, 750);
+        assert_eq!(merged.username_sale_fee_bps, 750);
         assert_eq!(merged.updated_by, "0xdef");
     }
 
@@ -365,7 +404,7 @@ mod merge_profile_config_tests {
             min_claim_threshold_divisor: 0,
             min_username_length: 0,
             max_username_length: 0,
-            profile_sale_fee_bps: 0,
+            username_sale_fee_bps: 0,
             version: 0,
             updated_at: 200,
             time: prev.time,
@@ -373,6 +412,6 @@ mod merge_profile_config_tests {
         };
         let merged = merge_profile_config(&prev, &incoming);
         assert_eq!(merged.max_vesting_pieces, 99);
-        assert_eq!(merged.profile_sale_fee_bps, 600);
+        assert_eq!(merged.username_sale_fee_bps, 600);
     }
 }

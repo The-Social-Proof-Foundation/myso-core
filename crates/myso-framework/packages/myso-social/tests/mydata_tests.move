@@ -40,6 +40,14 @@ module social_contracts::mydata_tests {
     const AGENT_PUBKEY: vector<u8> = x"0101010101010101010101010101010101010101010101010101010101010101";
     const PLACEHOLDER_PUBKEY: vector<u8> = x"0303030303030303030303030303030303030303030303030303030303030303";
 
+    fun finish_purchase_payment(payment: Coin<myso::myso::MYSO>, recipient: address) {
+        if (coin::value(&payment) > 0) {
+            transfer::public_transfer(payment, recipient);
+        } else {
+            coin::destroy_zero(payment);
+        };
+    }
+
     fun take_agent(
         scenario: &test_scenario::Scenario,
         memory_account: &MemoryAccount,
@@ -202,7 +210,7 @@ module social_contracts::mydata_tests {
             test_scenario::next_tx(&mut scenario, BUYER);
             let config = test_scenario::take_shared<MyDataConfig>(&scenario);
             let mut mydata = test_scenario::take_shared<MyData>(&scenario);
-            let payment = test_scenario::take_from_sender<Coin<myso::myso::MYSO>>(&scenario);
+            let mut payment = test_scenario::take_from_sender<Coin<myso::myso::MYSO>>(&scenario);
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
@@ -212,12 +220,13 @@ module social_contracts::mydata_tests {
                 &memory_config,
                 &mut mydata,
                 &treasury,
-                payment,
+                &mut payment,
                 &memory_account,
                 &clock,
                 test_scenario::ctx(&mut scenario)
             );
-            
+            finish_purchase_payment(payment, BUYER);
+
             test_scenario::return_shared(treasury);
             test_scenario::return_shared(config);
             test_scenario::return_shared(mydata);
@@ -262,7 +271,7 @@ module social_contracts::mydata_tests {
             test_scenario::next_tx(&mut scenario, BUYER);
             let config = test_scenario::take_shared<MyDataConfig>(&scenario);
             let mut mydata = test_scenario::take_shared<MyData>(&scenario);
-            let payment = test_scenario::take_from_sender<Coin<myso::myso::MYSO>>(&scenario);
+            let mut payment = test_scenario::take_from_sender<Coin<myso::myso::MYSO>>(&scenario);
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
@@ -272,12 +281,13 @@ module social_contracts::mydata_tests {
                 &memory_config,
                 &mut mydata,
                 &treasury,
-                payment,
+                &mut payment,
                 &memory_account,
                 &clock,
                 test_scenario::ctx(&mut scenario)
             );
-            
+            finish_purchase_payment(payment, BUYER);
+
             test_scenario::return_shared(treasury);
             test_scenario::return_shared(config);
             test_scenario::return_shared(mydata);
@@ -363,7 +373,6 @@ module social_contracts::mydata_tests {
                 test_scenario::ctx(&mut scenario)
             );
             
-            test_scenario::return_shared(treasury);
             test_scenario::return_shared(config);
             test_scenario::return_shared(mydata);
             test_scenario::return_shared(clock);
@@ -450,7 +459,7 @@ module social_contracts::mydata_tests {
             let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
             let config = test_scenario::take_shared<MyDataConfig>(&scenario);
             let mut mydata = test_scenario::take_shared<MyData>(&scenario);
-            let payment = test_scenario::take_from_sender<Coin<myso::myso::MYSO>>(&scenario);
+            let mut payment = test_scenario::take_from_sender<Coin<myso::myso::MYSO>>(&scenario);
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
@@ -459,11 +468,12 @@ module social_contracts::mydata_tests {
                 &memory_config,
                 &mut mydata,
                 &treasury,
-                payment,
+                &mut payment,
                 &memory_account,
                 &clock,
                 test_scenario::ctx(&mut scenario)
             );
+            finish_purchase_payment(payment, BUYER);
 
             test_scenario::return_shared(treasury);
             test_scenario::return_shared(config);
@@ -515,7 +525,7 @@ module social_contracts::mydata_tests {
             let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
             let config = test_scenario::take_shared<MyDataConfig>(&scenario);
             let mut mydata = test_scenario::take_shared<MyData>(&scenario);
-            let payment = test_scenario::take_from_sender<Coin<myso::myso::MYSO>>(&scenario);
+            let mut payment = test_scenario::take_from_sender<Coin<myso::myso::MYSO>>(&scenario);
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
@@ -524,11 +534,12 @@ module social_contracts::mydata_tests {
                 &memory_config,
                 &mut mydata,
                 &treasury,
-                payment,
+                &mut payment,
                 &memory_account,
                 &clock,
                 test_scenario::ctx(&mut scenario)
             );
+            finish_purchase_payment(payment, BUYER);
 
             test_scenario::return_shared(treasury);
             test_scenario::return_shared(config);
@@ -610,7 +621,7 @@ module social_contracts::mydata_tests {
             let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
             let config = test_scenario::take_shared<MyDataConfig>(&scenario);
             let mut mydata = test_scenario::take_shared<MyData>(&scenario);
-            let payment = test_scenario::take_from_sender<Coin<myso::myso::MYSO>>(&scenario);
+            let mut payment = test_scenario::take_from_sender<Coin<myso::myso::MYSO>>(&scenario);
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
@@ -619,11 +630,12 @@ module social_contracts::mydata_tests {
                 &memory_config,
                 &mut mydata,
                 &treasury,
-                payment,
+                &mut payment,
                 &memory_account,
                 &clock,
                 test_scenario::ctx(&mut scenario)
             );
+            finish_purchase_payment(payment, BUYER);
             assert!(mydata::has_access(&mydata, BUYER, &clock), 0);
 
             test_scenario::return_shared(treasury);
@@ -665,7 +677,7 @@ module social_contracts::mydata_tests {
             let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
             let config = test_scenario::take_shared<MyDataConfig>(&scenario);
             let mut mydata = test_scenario::take_shared<MyData>(&scenario);
-            let payment = test_scenario::take_from_sender<Coin<myso::myso::MYSO>>(&scenario);
+            let mut payment = test_scenario::take_from_sender<Coin<myso::myso::MYSO>>(&scenario);
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
@@ -674,11 +686,12 @@ module social_contracts::mydata_tests {
                 &memory_config,
                 &mut mydata,
                 &treasury,
-                payment,
+                &mut payment,
                 &memory_account,
                 &clock,
                 test_scenario::ctx(&mut scenario)
             );
+            finish_purchase_payment(payment, BUYER);
             assert!(mydata::has_access(&mydata, BUYER, &clock), 0);
 
             test_scenario::return_shared(treasury);
@@ -721,7 +734,7 @@ module social_contracts::mydata_tests {
             let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
             let config = test_scenario::take_shared<MyDataConfig>(&scenario);
             let mut mydata = test_scenario::take_shared<MyData>(&scenario);
-            let payment = test_scenario::take_from_sender<Coin<myso::myso::MYSO>>(&scenario);
+            let mut payment = test_scenario::take_from_sender<Coin<myso::myso::MYSO>>(&scenario);
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
@@ -730,11 +743,12 @@ module social_contracts::mydata_tests {
                 &memory_config,
                 &mut mydata,
                 &treasury,
-                payment,
+                &mut payment,
                 &memory_account,
                 &clock,
                 test_scenario::ctx(&mut scenario)
             );
+            finish_purchase_payment(payment, BUYER);
 
             test_scenario::return_shared(treasury);
             test_scenario::return_shared(config);
@@ -1049,7 +1063,7 @@ module social_contracts::mydata_tests {
             let config = test_scenario::take_shared<MyDataConfig>(&scenario);
             let mut mydata = test_scenario::take_shared<MyData>(&scenario);
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
-            let payment = test_scenario::take_from_sender<Coin<myso::myso::MYSO>>(&scenario);
+            let mut payment = test_scenario::take_from_sender<Coin<myso::myso::MYSO>>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
 
             let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
@@ -1058,11 +1072,12 @@ module social_contracts::mydata_tests {
                 &memory_config,
                 &mut mydata,
                 &treasury,
-                payment,
+                &mut payment,
                 &memory_account,
                 &clock,
                 test_scenario::ctx(&mut scenario),
             );
+            finish_purchase_payment(payment, AGENT_ADDR);
             test_scenario::return_shared(treasury);
             test_scenario::return_shared(config);
             test_scenario::return_shared(mydata);

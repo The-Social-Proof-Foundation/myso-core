@@ -1158,10 +1158,27 @@ diesel::table! {
 }
 
 diesel::table! {
-    profile_offers (id, time) {
+    username_listings (id, time) {
         id -> Int4,
-        profile_id -> Text,
-        offeror_address -> Text,
+        username -> Text,
+        seller_address -> Text,
+        seller_profile_id -> Text,
+        min_price -> Int8,
+        status -> Text,
+        created_at -> Int8,
+        cancelled_at -> Nullable<Int8>,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    username_offers (id, time) {
+        id -> Int4,
+        username -> Text,
+        seller_profile_id -> Text,
+        buyer_address -> Text,
+        buyer_profile_id -> Text,
         amount -> Int8,
         status -> Text,
         created_at -> Int8,
@@ -1173,11 +1190,13 @@ diesel::table! {
 }
 
 diesel::table! {
-    profile_sale_fees (id, time) {
+    username_sale_fees (id, time) {
         id -> Int4,
-        profile_id -> Text,
-        offeror_address -> Text,
-        previous_owner_address -> Text,
+        username -> Text,
+        seller_address -> Text,
+        seller_profile_id -> Text,
+        buyer_address -> Text,
+        buyer_profile_id -> Text,
         sale_amount -> Int8,
         fee_amount -> Int8,
         fee_recipient_address -> Text,
@@ -1451,7 +1470,6 @@ diesel::table! {
         created_at -> Timestamp,
         updated_at -> Timestamp,
         post_count -> Int4,
-        min_offer_amount -> Nullable<Int8>,
         cover_photo -> Nullable<Text>,
         profile_id -> Nullable<Text>,
         birthdate -> Nullable<Text>,
@@ -2497,7 +2515,7 @@ diesel::table! {
         min_claim_threshold_divisor -> Int8,
         min_username_length -> Int8,
         max_username_length -> Int8,
-        profile_sale_fee_bps -> Int8,
+        username_sale_fee_bps -> Int8,
         version -> Int8,
         updated_at -> Int8,
         time -> Timestamptz,
@@ -2615,8 +2633,9 @@ diesel::allow_tables_to_appear_in_same_query!(
     posts_transfers,
     profile_badges,
     profile_events,
-    profile_offers,
-    profile_sale_fees,
+    username_listings,
+    username_offers,
+    username_sale_fees,
     profile_subscription_services,
     profile_subscriptions,
     profiles,

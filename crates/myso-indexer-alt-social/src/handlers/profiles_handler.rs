@@ -25,13 +25,15 @@ use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
     NewAiCreditBalance, NewEcosystemTreasury, NewMemoryAccount, NewProfile, NewProfileBadge,
-    NewProfileConfig, NewProfileEvent, NewProfileOffer, NewProfileSaleFee, NewUsernameRegistry,
-    NewVestingEvent, NewVestingWallet, ProfileUpdateSet, default_profile_config,
-    merge_profile_config,
+    NewProfileConfig, NewProfileEvent, NewUnifiedRevenue, NewUsernameListing, NewUsernameOffer,
+    NewUsernameSaleFee, NewUsernameRegistry, NewVestingEvent, NewVestingWallet, ProfileUpdateSet,
+    REVENUE_TYPE_USERNAME_MARKETPLACE_ECOSYSTEM_FEE, REVENUE_TYPE_USERNAME_MARKETPLACE_SELLER_NET,
+    default_profile_config, merge_profile_config,
 };
 use myso_indexer_alt_social_schema::schema::{
     ai_credit_balances, ecosystem_treasury, memory_accounts, profile_badges, profile_config,
-    profile_events, profile_offers, profile_sale_fees, profiles, username_registry, vesting_events,
+    profile_events, profiles, unified_revenue, username_listings, username_offers, username_registry,
+    username_sale_fees, vesting_events,
     vesting_wallets,
 };
 
@@ -39,8 +41,10 @@ use super::ai_credit;
 use super::common;
 use super::events;
 use super::memory;
+use super::organization_stats::{apply_org_revenue, resolve_organization_id_for_derived_address};
 use super::profile;
 use super::ProfileUpdate;
+use crate::metrics::SocialMetrics;
 
 const PROFILE_MODULES: &[&str] = &["profile"];
 const PROFILE_BOOTSTRAP_MODULES: &[&str] = &["memory", "ai_credit", "profile"];
@@ -71,16 +75,15 @@ pub enum ProfileRow {
         profile_id: String,
     },
     ProfileEvent(NewProfileEvent),
-    ProfileOffer(NewProfileOffer),
-    ProfileOfferStatusUpdate {
-        profile_id: String,
-        offeror_address: String,
+    UsernameListing(NewUsernameListing),
+    UsernameListingStatusUpdate {
+        username: String,
         status: String,
-        resolved_at: i64,
-        updated_at: i64,
+        cancelled_at: Option<i64>,
         transaction_id: String,
     },
-    ProfileSaleFee(NewProfileSaleFee),
+    UsernameOffer(NewUsernameOffer),
+    UsernameSaleFee(NewUsernameSaleFee),
     ProfileBadge(NewProfileBadge),
     ProfileBadgeRevoke {
         profile_id: String,
@@ -144,24 +147,23 @@ impl ProfileRow {
                 Some(ProfileRow::ProfileUsernameClear { profile_id })
             }
             crate::handlers::SocialEventRow::ProfileEvent(e) => Some(ProfileRow::ProfileEvent(e)),
-            crate::handlers::SocialEventRow::ProfileOffer(o) => Some(ProfileRow::ProfileOffer(o)),
-            crate::handlers::SocialEventRow::ProfileOfferStatusUpdate {
-                profile_id,
-                offeror_address,
+            crate::handlers::SocialEventRow::UsernameListing(l) => {
+                Some(ProfileRow::UsernameListing(l))
+            }
+            crate::handlers::SocialEventRow::UsernameListingStatusUpdate {
+                username,
                 status,
-                resolved_at,
-                updated_at,
+                cancelled_at,
                 transaction_id,
-            } => Some(ProfileRow::ProfileOfferStatusUpdate {
-                profile_id,
-                offeror_address,
+            } => Some(ProfileRow::UsernameListingStatusUpdate {
+                username,
                 status,
-                resolved_at,
-                updated_at,
+                cancelled_at,
                 transaction_id,
             }),
-            crate::handlers::SocialEventRow::ProfileSaleFee(f) => {
-                Some(ProfileRow::ProfileSaleFee(f))
+            crate::handlers::SocialEventRow::UsernameOffer(o) => Some(ProfileRow::UsernameOffer(o)),
+            crate::handlers::SocialEventRow::UsernameSaleFee(f) => {
+                Some(ProfileRow::UsernameSaleFee(f))
             }
             crate::handlers::SocialEventRow::ProfileBadge(b) => Some(ProfileRow::ProfileBadge(b)),
             crate::handlers::SocialEventRow::ProfileBadgeRevoke {
@@ -233,7 +235,18 @@ impl Processor for ProfilesHandler {
                 let event_data =
                     match events::parse_event_contents(module, event_name, &ev.contents) {
                         Ok(v) => v,
-                        Err(_) => continue,
+                        Err(e) => {
+                            tracing::warn!(
+                                tx_digest = %tx_digest,
+                                module,
+                                event_name,
+                                error = %e,
+                                hex_preview = %e.contents_hex_preview(48),
+                                "profiles pipeline: event contents parse failed; skipping event"
+                            );
+                            SocialMetrics::record_event_bcs_parse_failed(module, event_name);
+                            continue;
+                        }
                     };
                 match module {
                     "memory" if event_name == "MemoryAccountCreated" => {
@@ -295,6 +308,30 @@ impl Processor for ProfilesHandler {
     }
 }
 
+/// Commit pass for registry/profile username rows. Marketplace offer/fee rows commit before
+/// registry mutations so accept/reject snapshots persist even if registry writes fail on legacy DBs.
+const COMMIT_PASS_MARKETPLACE: u8 = 2;
+const COMMIT_PASS_REGISTRY_REASSIGN: u8 = 3;
+const COMMIT_PASS_REGISTRY_UPSERT: u8 = 4;
+const COMMIT_PASS_OTHER: u8 = 5;
+
+fn profile_row_commit_pass(row: &ProfileRow) -> u8 {
+    match row {
+        ProfileRow::UsernameOffer(_)
+        | ProfileRow::UsernameSaleFee(_)
+        | ProfileRow::UsernameListing(_)
+        | ProfileRow::UsernameListingStatusUpdate { .. } => COMMIT_PASS_MARKETPLACE,
+        ProfileRow::UsernameRegistryReassign { .. } | ProfileRow::UsernameRegistryDelete { .. } => {
+            COMMIT_PASS_REGISTRY_REASSIGN
+        }
+        ProfileRow::UsernameRegistryUpsert(_) => COMMIT_PASS_REGISTRY_UPSERT,
+        ProfileRow::Profile(_)
+        | ProfileRow::MemoryAccountBootstrap(_)
+        | ProfileRow::AiCreditBalanceBootstrap(_) => 0,
+        _ => COMMIT_PASS_OTHER,
+    }
+}
+
 #[async_trait]
 impl Handler for ProfilesHandler {
     async fn commit<'a>(values: &[Self::Value], conn: &mut Connection<'a>) -> Result<usize> {
@@ -317,13 +354,15 @@ impl Handler for ProfilesHandler {
                 total += commit_profile_insert(profile, conn).await?;
             }
         }
-        for row in values {
-            match row {
-                ProfileRow::Profile(_)
-                | ProfileRow::MemoryAccountBootstrap(_)
-                | ProfileRow::AiCreditBalanceBootstrap(_) => {}
-                other => {
-                    total += commit_profile_row(other, conn).await?;
+        for pass in [
+            COMMIT_PASS_MARKETPLACE,
+            COMMIT_PASS_REGISTRY_REASSIGN,
+            COMMIT_PASS_REGISTRY_UPSERT,
+            COMMIT_PASS_OTHER,
+        ] {
+            for row in values {
+                if profile_row_commit_pass(row) == pass {
+                    total += commit_profile_row(row, conn).await?;
                 }
             }
         }
@@ -571,7 +610,7 @@ async fn commit_profile_row<'a>(row: &ProfileRow, conn: &mut Connection<'a>) -> 
             new_profile_id,
             transaction_id,
         } => {
-            total += diesel::update(username_registry::table)
+            let updated = diesel::update(username_registry::table)
                 .filter(username_registry::username.eq(username))
                 .set((
                     username_registry::profile_id.eq(new_profile_id),
@@ -579,6 +618,14 @@ async fn commit_profile_row<'a>(row: &ProfileRow, conn: &mut Connection<'a>) -> 
                 ))
                 .execute(conn)
                 .await?;
+            if updated == 0 {
+                tracing::warn!(
+                    username = %username,
+                    new_profile_id = %new_profile_id,
+                    "UsernameRegistryReassign updated 0 rows"
+                );
+            }
+            total += updated;
         }
         ProfileRow::ProfileUsernameSet {
             profile_id,
@@ -622,7 +669,6 @@ async fn commit_profile_row<'a>(row: &ProfileRow, conn: &mut Connection<'a>) -> 
                 birthdate: up.birthdate.clone().map(Some),
                 location: up.location.clone().map(Some),
                 x_username: up.x_username.clone().map(Some),
-                min_offer_amount: up.min_offer_amount.map(Some),
                 username: up.username.clone(),
                 selected_badge_id: up.selected_badge_id.clone(),
                 selected_ecosystem_badge_id: up.selected_ecosystem_badge_id.clone(),
@@ -644,38 +690,54 @@ async fn commit_profile_row<'a>(row: &ProfileRow, conn: &mut Connection<'a>) -> 
                 .execute(conn)
                 .await?;
         }
-        ProfileRow::ProfileOffer(offer) => {
-            total += diesel::insert_into(profile_offers::table)
-                .values(offer)
+        ProfileRow::UsernameListing(listing) => {
+            total += diesel::insert_into(username_listings::table)
+                .values(listing)
                 .execute(conn)
                 .await?;
         }
-        ProfileRow::ProfileOfferStatusUpdate {
-            profile_id,
-            offeror_address,
+        ProfileRow::UsernameListingStatusUpdate {
+            username,
             status,
-            resolved_at,
-            updated_at,
+            cancelled_at,
             transaction_id,
         } => {
-            let _ = diesel::update(profile_offers::table)
-                .filter(profile_offers::profile_id.eq(profile_id))
-                .filter(profile_offers::offeror_address.eq(offeror_address))
-                .filter(profile_offers::status.eq("pending"))
+            let _ = diesel::update(username_listings::table)
+                .filter(username_listings::username.eq(username))
+                .filter(username_listings::status.eq("active"))
                 .set((
-                    profile_offers::status.eq(status),
-                    profile_offers::resolved_at.eq(Some(*resolved_at)),
-                    profile_offers::updated_at.eq(*updated_at),
-                    profile_offers::transaction_id.eq(transaction_id),
+                    username_listings::status.eq(status),
+                    username_listings::cancelled_at.eq(*cancelled_at),
+                    username_listings::transaction_id.eq(transaction_id),
                 ))
                 .execute(conn)
                 .await;
         }
-        ProfileRow::ProfileSaleFee(fee) => {
-            total += diesel::insert_into(profile_sale_fees::table)
+        ProfileRow::UsernameOffer(offer) => {
+            total += diesel::insert_into(username_offers::table)
+                .values(offer)
+                .execute(conn)
+                .await?;
+        }
+        ProfileRow::UsernameSaleFee(fee) => {
+            total += diesel::insert_into(username_sale_fees::table)
                 .values(fee)
                 .execute(conn)
                 .await?;
+            total += insert_username_marketplace_unified_revenue(conn, fee).await?;
+            let seller_net = fee.sale_amount.saturating_sub(fee.fee_amount);
+            if seller_net > 0 {
+                let org_id =
+                    resolve_organization_id_for_derived_address(conn, &fee.seller_address).await?;
+                apply_org_revenue(
+                    conn,
+                    org_id.as_deref(),
+                    seller_net,
+                    Some(fee.buyer_address.as_str()),
+                    fee.timestamp,
+                )
+                .await?;
+            }
         }
         ProfileRow::EcosystemTreasury(c) => {
             let prev = load_latest_ecosystem_treasury(conn)
@@ -762,4 +824,371 @@ async fn commit_profile_row<'a>(row: &ProfileRow, conn: &mut Connection<'a>) -> 
         ProfileRow::MemoryAccountBootstrap(_) | ProfileRow::AiCreditBalanceBootstrap(_) => {}
     }
     Ok(total)
+}
+
+async fn insert_username_marketplace_unified_revenue(
+    conn: &mut Connection<'_>,
+    fee: &NewUsernameSaleFee,
+) -> Result<usize> {
+    let seller_net = fee.sale_amount.saturating_sub(fee.fee_amount);
+    let mut total = 0usize;
+    if seller_net > 0 {
+        total += diesel::insert_into(unified_revenue::table)
+            .values(NewUnifiedRevenue::from_username_marketplace(
+                REVENUE_TYPE_USERNAME_MARKETPLACE_SELLER_NET.to_string(),
+                fee.seller_address.clone(),
+                None,
+                seller_net,
+                fee.username.clone(),
+                fee.buyer_address.clone(),
+                fee.seller_address.clone(),
+                fee.timestamp,
+                fee.transaction_id.clone(),
+            ))
+            .execute(conn)
+            .await?;
+    }
+    if fee.fee_amount > 0 {
+        total += diesel::insert_into(unified_revenue::table)
+            .values(NewUnifiedRevenue::from_username_marketplace(
+                REVENUE_TYPE_USERNAME_MARKETPLACE_ECOSYSTEM_FEE.to_string(),
+                fee.seller_address.clone(),
+                None,
+                fee.fee_amount,
+                fee.username.clone(),
+                fee.buyer_address.clone(),
+                fee.fee_recipient_address.clone(),
+                fee.timestamp,
+                fee.transaction_id.clone(),
+            ))
+            .execute(conn)
+            .await?;
+    }
+    Ok(total)
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::NaiveDateTime;
+    use move_core_types::account_address::AccountAddress;
+    use myso_indexer_alt_framework::postgres::handler::Handler;
+    use diesel::OptionalExtension;
+    use myso_indexer_alt_social_schema::MIGRATIONS;
+    use myso_indexer_alt_social_schema::models::{
+        NewProfile, NewUsernameRegistry, NewUsernameSaleFee,
+        REVENUE_TYPE_USERNAME_MARKETPLACE_ECOSYSTEM_FEE, REVENUE_TYPE_USERNAME_MARKETPLACE_SELLER_NET,
+    };
+    use myso_indexer_alt_social_schema::schema::{profile_events, profiles, unified_revenue, username_registry};
+    use myso_pg_db::temp::TempDb;
+    use myso_pg_db::Db;
+
+    use super::profile;
+    use super::ProfileRow;
+    use super::ProfilesHandler;
+    use super::profile_row_commit_pass;
+    use super::COMMIT_PASS_MARKETPLACE;
+    use super::COMMIT_PASS_REGISTRY_REASSIGN;
+    use super::COMMIT_PASS_REGISTRY_UPSERT;
+    use super::COMMIT_PASS_OTHER;
+
+    fn addr(id: u8) -> AccountAddress {
+        let mut bytes = [0u8; 32];
+        bytes[31] = id;
+        AccountAddress::new(bytes)
+    }
+
+    fn addr_hex(id: u8) -> String {
+        addr(id).to_canonical_string(true)
+    }
+
+    fn sample_profile(owner: &str, profile_id: &str, username: &str) -> NewProfile {
+        let now = NaiveDateTime::from_timestamp_opt(1_700_000_000, 0).unwrap();
+        NewProfile {
+            owner_address: owner.to_string(),
+            username: username.to_string(),
+            display_name: None,
+            bio: None,
+            profile_photo: None,
+            website: None,
+            created_at: now,
+            updated_at: now,
+            cover_photo: None,
+            profile_id: Some(profile_id.to_string()),
+            followers_count: 0,
+            following_count: 0,
+            blocked_count: 0,
+            post_count: 0,
+            birthdate: None,
+            location: None,
+            x_username: None,
+            social_proof_token_address: None,
+            reservation_pool_address: None,
+            selected_badge_id: None,
+            selected_ecosystem_badge_id: None,
+            memory_account_id: None,
+            ai_credit_balance_id: None,
+        }
+    }
+
+    async fn setup_temp_db() -> Option<Db> {
+        let temp_db = TempDb::new().ok()?;
+        let store = Db::for_write(temp_db.database().url().clone(), Default::default())
+            .await
+            .ok()?;
+        let mut probe = store.connect().await.ok()?;
+        use diesel_async::RunQueryDsl;
+        diesel::sql_query("CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE")
+            .execute(&mut probe)
+            .await
+            .ok()?;
+        store.run_migrations(Some(&MIGRATIONS)).await.ok()?;
+        Some(store)
+    }
+
+    #[test]
+    fn username_sale_rows_use_registry_safe_commit_passes() {
+        let seller_profile_id = addr_hex(1);
+        let buyer_profile_id = addr_hex(2);
+        let rows = vec![
+            ProfileRow::UsernameListingStatusUpdate {
+                username: "premium1".to_string(),
+                status: "sold".to_string(),
+                cancelled_at: None,
+                transaction_id: "tx:0".to_string(),
+            },
+            ProfileRow::UsernameRegistryDelete {
+                username: "buyer1".to_string(),
+            },
+            ProfileRow::UsernameRegistryReassign {
+                username: "premium1".to_string(),
+                new_profile_id: buyer_profile_id.clone(),
+                transaction_id: "tx:0".to_string(),
+            },
+            ProfileRow::UsernameRegistryUpsert(NewUsernameRegistry {
+                username: "seller1".to_string(),
+                profile_id: seller_profile_id.clone(),
+                transaction_id: "tx:0".to_string(),
+            }),
+            ProfileRow::ProfileUsernameSet {
+                profile_id: seller_profile_id,
+                username: "seller1".to_string(),
+            },
+            ProfileRow::ProfileUsernameSet {
+                profile_id: buyer_profile_id,
+                username: "premium1".to_string(),
+            },
+        ];
+        let passes: Vec<u8> = rows.iter().map(profile_row_commit_pass).collect();
+        let first_marketplace = passes
+            .iter()
+            .position(|pass| *pass == COMMIT_PASS_MARKETPLACE)
+            .expect("marketplace pass");
+        let first_reassign = passes
+            .iter()
+            .position(|pass| *pass == COMMIT_PASS_REGISTRY_REASSIGN)
+            .expect("reassign pass");
+        let first_upsert = passes
+            .iter()
+            .position(|pass| *pass == COMMIT_PASS_REGISTRY_UPSERT)
+            .expect("upsert pass");
+        let first_profile_set = passes
+            .iter()
+            .position(|pass| *pass == COMMIT_PASS_OTHER)
+            .expect("profile username pass");
+        assert!(first_marketplace < first_reassign);
+        assert!(first_reassign < first_upsert);
+        assert!(first_upsert < first_profile_set);
+    }
+
+    #[tokio::test]
+    async fn username_sale_commit_maintains_one_username_per_profile() {
+        let Some(store) = setup_temp_db().await else {
+            return;
+        };
+
+        let seller_profile_id = addr_hex(11);
+        let buyer_profile_id = addr_hex(12);
+        let seller_owner = addr_hex(21);
+        let buyer_owner = addr_hex(22);
+
+        let mut conn = store.connect().await.expect("connection");
+        diesel::insert_into(profiles::table)
+            .values(sample_profile(
+                &seller_owner,
+                &seller_profile_id,
+                "premium1",
+            ))
+            .execute(&mut conn)
+            .await
+            .expect("insert seller profile");
+        diesel::insert_into(profiles::table)
+            .values(sample_profile(&buyer_owner, &buyer_profile_id, "buyer1"))
+            .execute(&mut conn)
+            .await
+            .expect("insert buyer profile");
+        diesel::insert_into(username_registry::table)
+            .values(NewUsernameRegistry {
+                username: "premium1".to_string(),
+                profile_id: seller_profile_id.clone(),
+                transaction_id: "tx:seed:0".to_string(),
+            })
+            .execute(&mut conn)
+            .await
+            .expect("insert listed username");
+        diesel::insert_into(username_registry::table)
+            .values(NewUsernameRegistry {
+                username: "buyer1".to_string(),
+                profile_id: buyer_profile_id.clone(),
+                transaction_id: "tx:seed:1".to_string(),
+            })
+            .execute(&mut conn)
+            .await
+            .expect("insert buyer username");
+
+        let revoke_json = serde_json::json!({
+            "username": "buyer1",
+            "profile_id": buyer_profile_id,
+            "revoked_by": seller_owner,
+            "reason_code": 2,
+        });
+        let settle_json = serde_json::json!({
+            "listed_username": "premium1",
+            "replacement_username": "seller1",
+            "seller": seller_owner,
+            "seller_profile_id": seller_profile_id,
+            "buyer": buyer_owner,
+            "buyer_profile_id": buyer_profile_id,
+            "amount": "5000000000",
+            "settled_at": "1783238216000",
+        });
+
+        let mut rows = Vec::new();
+        for row in profile::handle_profile_event("UsernameRevokedEvent", &revoke_json, "tx:0", 0)
+            .expect("revoke handler")
+        {
+            if let Some(r) = ProfileRow::from_social(row) {
+                rows.push(r);
+            }
+        }
+        for row in profile::handle_profile_event(
+            "UsernameSaleSettledEvent",
+            &settle_json,
+            "tx:0",
+            0,
+        )
+        .expect("settle handler")
+        {
+            if let Some(r) = ProfileRow::from_social(row) {
+                rows.push(r);
+            }
+        }
+
+        ProfilesHandler::commit(&rows, &mut conn)
+            .await
+            .expect("commit username sale rows");
+
+        use diesel::ExpressionMethods;
+        use diesel::QueryDsl;
+        use diesel_async::RunQueryDsl;
+
+        let listed_owner: String = username_registry::table
+            .filter(username_registry::username.eq("premium1"))
+            .select(username_registry::profile_id)
+            .first(&mut conn)
+            .await
+            .expect("listed registry row");
+        assert_eq!(listed_owner, buyer_profile_id);
+
+        let replacement_owner: String = username_registry::table
+            .filter(username_registry::username.eq("seller1"))
+            .select(username_registry::profile_id)
+            .first(&mut conn)
+            .await
+            .expect("replacement registry row");
+        assert_eq!(replacement_owner, seller_profile_id);
+
+        let buyer_prior: Option<String> = username_registry::table
+            .filter(username_registry::username.eq("buyer1"))
+            .select(username_registry::profile_id)
+            .first(&mut conn)
+            .await
+            .optional()
+            .expect("buyer prior lookup");
+        assert!(buyer_prior.is_none(), "buyer prior username should be revoked");
+
+        let revoke_events: i64 = profile_events::table
+            .filter(profile_events::event_type.eq("UsernameRevoked"))
+            .count()
+            .get_result(&mut conn)
+            .await
+            .expect("revoke profile events");
+        assert_eq!(revoke_events, 1);
+
+        let settled_events: i64 = profile_events::table
+            .filter(profile_events::event_type.eq("UsernameSaleSettled"))
+            .count()
+            .get_result(&mut conn)
+            .await
+            .expect("settled profile events");
+        assert_eq!(settled_events, 1);
+    }
+
+    #[tokio::test]
+    async fn username_sale_fee_commit_inserts_unified_revenue_rows() {
+        let Some(store) = setup_temp_db().await else {
+            return;
+        };
+
+        let seller_owner = addr_hex(31);
+        let treasury = addr_hex(99);
+        let fee = NewUsernameSaleFee {
+            username: "premium1".to_string(),
+            seller_address: seller_owner.clone(),
+            seller_profile_id: addr_hex(41),
+            buyer_address: addr_hex(32),
+            buyer_profile_id: addr_hex(42),
+            sale_amount: 5_000_000_000,
+            fee_amount: 250_000_000,
+            fee_recipient_address: treasury.clone(),
+            timestamp: 1_783_237_181_000,
+            transaction_id: "tx:fee:0".to_string(),
+        };
+
+        let mut conn = store.connect().await.expect("connection");
+        ProfilesHandler::commit(&[ProfileRow::UsernameSaleFee(fee)], &mut conn)
+            .await
+            .expect("commit sale fee");
+
+        use diesel::ExpressionMethods;
+        use diesel::QueryDsl;
+        use diesel_async::RunQueryDsl;
+
+        let seller_net: i64 = unified_revenue::table
+            .filter(unified_revenue::recipient_address.eq(&seller_owner))
+            .filter(unified_revenue::revenue_type.eq(REVENUE_TYPE_USERNAME_MARKETPLACE_SELLER_NET))
+            .select(unified_revenue::amount)
+            .first(&mut conn)
+            .await
+            .expect("seller net unified revenue");
+        assert_eq!(seller_net, 4_750_000_000);
+
+        let ecosystem_fee: i64 = unified_revenue::table
+            .filter(unified_revenue::recipient_address.eq(&treasury))
+            .filter(
+                unified_revenue::revenue_type.eq(REVENUE_TYPE_USERNAME_MARKETPLACE_ECOSYSTEM_FEE),
+            )
+            .select(unified_revenue::amount)
+            .first(&mut conn)
+            .await
+            .expect("ecosystem fee unified revenue");
+        assert_eq!(ecosystem_fee, 250_000_000);
+
+        let unified_row_count: i64 = unified_revenue::table
+            .filter(unified_revenue::transaction_id.eq("tx:fee:0"))
+            .count()
+            .get_result(&mut conn)
+            .await
+            .expect("unified revenue row count");
+        assert_eq!(unified_row_count, 2);
+    }
 }

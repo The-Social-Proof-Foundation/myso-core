@@ -20,7 +20,8 @@ pub(crate) async fn get_platform_revenue_summary(
 
     let query = "
         SELECT platform_address, total_revenue, total_subscription_revenue, total_mydata_revenue,
-               total_spt_revenue, total_messaging_revenue, total_transactions, total_creators,
+               total_spt_revenue, total_messaging_revenue, total_username_marketplace_revenue,
+               total_transactions, total_creators,
                total_payers, avg_transaction_amount, active_months, last_active_month
         FROM platform_revenue_summary
         WHERE platform_address = $1

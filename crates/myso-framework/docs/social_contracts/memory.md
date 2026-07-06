@@ -30,9 +30,6 @@ computed off-chain (indexer/server).
 
 **SubAgentDeactivated / SubAgentRevoked:** identifiers above + <code><a href="../social_contracts/memory.md#social_contracts_memory_agent_object_id">agent_object_id</a></code>, <code>derived_address</code>
 
-**SubAgentsClearedOnTransfer:** <code>account_id</code>, <code>principal_owner</code>, <code><a href="../social_contracts/memory.md#social_contracts_memory_profile_id">profile_id</a></code>,
-<code>previous_owner</code>, <code>new_owner</code>, <code>revoked_count</code>
-
 **Social events** (post module): all include <code>actor_address</code>, <code>sub_agent_id</code> (agent object id),
 <code>action_identity_class</code> and reactions add <code>principal_owner</code>.
 
@@ -72,7 +69,6 @@ computed off-chain (indexer/server).
 -  [Struct `SubAgentUpdated`](#social_contracts_memory_SubAgentUpdated)
 -  [Struct `SubAgentDeactivated`](#social_contracts_memory_SubAgentDeactivated)
 -  [Struct `SubAgentRevoked`](#social_contracts_memory_SubAgentRevoked)
--  [Struct `SubAgentsClearedOnTransfer`](#social_contracts_memory_SubAgentsClearedOnTransfer)
 -  [Struct `MemoryAccountDeactivated`](#social_contracts_memory_MemoryAccountDeactivated)
 -  [Struct `MemoryAccountReactivated`](#social_contracts_memory_MemoryAccountReactivated)
 -  [Struct `MemoryAccountMigrated`](#social_contracts_memory_MemoryAccountMigrated)
@@ -159,7 +155,6 @@ computed off-chain (indexer/server).
 -  [Function `create_memory_admin_cap`](#social_contracts_memory_create_memory_admin_cap)
 -  [Function `update_memory_config`](#social_contracts_memory_update_memory_config)
 -  [Function `create_account_for_profile`](#social_contracts_memory_create_account_for_profile)
--  [Function `transfer_account_owner_with_profile`](#social_contracts_memory_transfer_account_owner_with_profile)
 -  [Function `create_agentic_organization`](#social_contracts_memory_create_agentic_organization)
 -  [Function `create_agentic_organization_internal`](#social_contracts_memory_create_agentic_organization_internal)
 -  [Function `update_agentic_organization_metadata`](#social_contracts_memory_update_agentic_organization_metadata)
@@ -187,7 +182,6 @@ computed off-chain (indexer/server).
 -  [Function `update_sub_agent_label`](#social_contracts_memory_update_sub_agent_label)
 -  [Function `deactivate_sub_agent`](#social_contracts_memory_deactivate_sub_agent)
 -  [Function `revoke_sub_agent`](#social_contracts_memory_revoke_sub_agent)
--  [Function `emit_sub_agents_cleared_on_transfer`](#social_contracts_memory_emit_sub_agents_cleared_on_transfer)
 -  [Function `ensure_agent_memory_vault`](#social_contracts_memory_ensure_agent_memory_vault)
 -  [Function `deactivate_account`](#social_contracts_memory_deactivate_account)
 -  [Function `reactivate_account`](#social_contracts_memory_reactivate_account)
@@ -1821,57 +1815,6 @@ Human root plus on-chain agent auth index (shared [<code><a href="../social_cont
 </dd>
 <dt>
 <code>derived_address: <b>address</b></code>
-</dt>
-<dd>
-</dd>
-</dl>
-
-
-</details>
-
-<a name="social_contracts_memory_SubAgentsClearedOnTransfer"></a>
-
-## Struct `SubAgentsClearedOnTransfer`
-
-
-
-<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_SubAgentsClearedOnTransfer">SubAgentsClearedOnTransfer</a> <b>has</b> <b>copy</b>, drop
-</code></pre>
-
-
-
-<details>
-<summary>Fields</summary>
-
-
-<dl>
-<dt>
-<code>account_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>principal_owner: <b>address</b></code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code><a href="../social_contracts/memory.md#social_contracts_memory_profile_id">profile_id</a>: <b>address</b></code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>previous_owner: <b>address</b></code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>new_owner: <b>address</b></code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>revoked_count: u64</code>
 </dt>
 <dd>
 </dd>
@@ -5479,47 +5422,6 @@ Update global memory configuration (admin only).
 
 </details>
 
-<a name="social_contracts_memory_transfer_account_owner_with_profile"></a>
-
-## Function `transfer_account_owner_with_profile`
-
-Profile transfer must revoke all sub-agent objects in the same PTB (via [<code><a href="../social_contracts/memory.md#social_contracts_memory_revoke_sub_agent">revoke_sub_agent</a></code>])
-before calling [<code><a href="../social_contracts/profile.md#social_contracts_profile_transfer_profile_with_memory">profile::transfer_profile_with_memory</a></code>].
-
-
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_transfer_account_owner_with_profile">transfer_account_owner_with_profile</a>(registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">social_contracts::memory::MemoryRegistry</a>, account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, <a href="../social_contracts/memory.md#social_contracts_memory_profile_id">profile_id</a>: <b>address</b>, old_owner: <b>address</b>, new_owner: <b>address</b>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_transfer_account_owner_with_profile">transfer_account_owner_with_profile</a>(
-    registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">MemoryRegistry</a>,
-    account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
-    <a href="../social_contracts/memory.md#social_contracts_memory_profile_id">profile_id</a>: <b>address</b>,
-    old_owner: <b>address</b>,
-    new_owner: <b>address</b>,
-) {
-    <a href="../social_contracts/memory.md#social_contracts_memory_assert_object_version">assert_object_version</a>(&registry.id);
-    <a href="../social_contracts/memory.md#social_contracts_memory_assert_object_version">assert_object_version</a>(&account.id);
-    <b>assert</b>!(account.<a href="../social_contracts/memory.md#social_contracts_memory_owner">owner</a> == old_owner, <a href="../social_contracts/memory.md#social_contracts_memory_ENotOwner">ENotOwner</a>);
-    <b>assert</b>!(account.<a href="../social_contracts/memory.md#social_contracts_memory_profile_id">profile_id</a> == <a href="../social_contracts/memory.md#social_contracts_memory_profile_id">profile_id</a>, <a href="../social_contracts/memory.md#social_contracts_memory_ENotOwner">ENotOwner</a>);
-    <b>assert</b>!(table::contains(&registry.accounts, old_owner), <a href="../social_contracts/memory.md#social_contracts_memory_ERegistryAccountMismatch">ERegistryAccountMismatch</a>);
-    <b>assert</b>!(*table::borrow(&registry.accounts, old_owner) == object::id(account), <a href="../social_contracts/memory.md#social_contracts_memory_ERegistryAccountMismatch">ERegistryAccountMismatch</a>);
-    <b>assert</b>!(!table::contains(&registry.accounts, new_owner), <a href="../social_contracts/memory.md#social_contracts_memory_ENewOwnerHasMemoryAccount">ENewOwnerHasMemoryAccount</a>);
-    table::remove(&<b>mut</b> registry.accounts, old_owner);
-    account.<a href="../social_contracts/memory.md#social_contracts_memory_owner">owner</a> = new_owner;
-    table::add(&<b>mut</b> registry.accounts, new_owner, object::id(account));
-}
-</code></pre>
-
-
-
-</details>
-
 <a name="social_contracts_memory_create_agentic_organization"></a>
 
 ## Function `create_agentic_organization`
@@ -6829,43 +6731,6 @@ Delegated agent registers a child or peer sub-agent.
     <a href="../social_contracts/memory.md#social_contracts_memory_emit_sub_agent_revoked">emit_sub_agent_revoked</a>(account, &agent);
     <a href="../social_contracts/memory.md#social_contracts_memory_remove_registry_entry">remove_registry_entry</a>(account, derived_address, <a href="../social_contracts/memory.md#social_contracts_memory_agent_object_id">agent_object_id</a>);
     <a href="../social_contracts/memory.md#social_contracts_memory_destroy_sub_agent">destroy_sub_agent</a>(agent);
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_memory_emit_sub_agents_cleared_on_transfer"></a>
-
-## Function `emit_sub_agents_cleared_on_transfer`
-
-Emit bulk-clear audit after the last agent revoke during profile transfer orchestration.
-
-
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_emit_sub_agents_cleared_on_transfer">emit_sub_agents_cleared_on_transfer</a>(account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, previous_owner: <b>address</b>, new_owner: <b>address</b>, revoked_count: u64)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_emit_sub_agents_cleared_on_transfer">emit_sub_agents_cleared_on_transfer</a>(
-    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
-    previous_owner: <b>address</b>,
-    new_owner: <b>address</b>,
-    revoked_count: u64,
-) {
-    event::emit(<a href="../social_contracts/memory.md#social_contracts_memory_SubAgentsClearedOnTransfer">SubAgentsClearedOnTransfer</a> {
-        account_id: object::id(account),
-        principal_owner: new_owner,
-        <a href="../social_contracts/memory.md#social_contracts_memory_profile_id">profile_id</a>: account.<a href="../social_contracts/memory.md#social_contracts_memory_profile_id">profile_id</a>,
-        previous_owner,
-        new_owner,
-        revoked_count,
-    });
 }
 </code></pre>
 

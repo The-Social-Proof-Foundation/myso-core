@@ -885,9 +885,9 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS location TEXT;
 
 -- Backfill SPoT governance registry ID from bootstrap governance registry (registry_type = 2).
 UPDATE spot_config sc
-SET spot_governance_registry_id = gr.object_id
+SET spot_governance_registry_id = gr.registry_id
 FROM (
-    SELECT object_id
+    SELECT registry_id
     FROM governance_registries
     WHERE registry_type = 2
     ORDER BY time DESC

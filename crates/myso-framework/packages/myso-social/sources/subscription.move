@@ -1129,6 +1129,12 @@ module social_contracts::subscription {
         }
     }
 
+    #[test_only]
+    public fun destroy_config_for_testing(config: SubscriptionConfig) {
+        let SubscriptionConfig { id, .. } = config;
+        object::delete(id);
+    }
+
     /// Migration function for ProfileSubscriptionService
     public entry fun migrate_service(
         service: &mut ProfileSubscriptionService,

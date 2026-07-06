@@ -41,8 +41,8 @@ pub use mydata::{
     MyDataSubPoolInfo, PurchaseInfo, RevenueInfo, SubscriptionInfo,
 };
 pub use myso_indexer_alt_social_schema::models::{
-    PostDeletionEventRow, PostModerationEventRow, PostReport, PostTransfer, ProfileOffer,
-    ProfilePlatformMembershipRow, ProfileSaleFee,
+    PostDeletionEventRow, PostModerationEventRow, PostReport, PostTransfer,
+    ProfilePlatformMembershipRow, UsernameOffer, UsernameSaleFee,
 };
 pub use platform::{
     PlatformApprovalRow, PlatformBlockedProfileRow, PlatformConfigInfo, PlatformEventRow,

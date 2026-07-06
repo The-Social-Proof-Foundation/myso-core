@@ -3662,7 +3662,7 @@ Create and share MyData publicly
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time_no_platform">purchase_one_time_no_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time_no_platform">purchase_one_time_no_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3676,7 +3676,7 @@ Create and share MyData publicly
     memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>,
     <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
     treasury: &EcosystemTreasury,
-    payment: Coin&lt;MYSO&gt;,
+    payment: &<b>mut</b> Coin&lt;MYSO&gt;,
     account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
@@ -3701,11 +3701,10 @@ Create and share MyData publicly
         sub_agent_id = <a href="../social_contracts/memory.md#social_contracts_memory_acting_sub_agent_id">social_contracts::memory::acting_sub_agent_id</a>(&acting);
         organization_id = <a href="../social_contracts/memory.md#social_contracts_memory_acting_organization_id">social_contracts::memory::acting_organization_id</a>(&acting);
     };
-    <b>assert</b>!(coin::value(&payment) &gt;= price, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPriceMismatch">EPriceMismatch</a>);
+    <b>assert</b>!(coin::value(payment) &gt;= price, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPriceMismatch">EPriceMismatch</a>);
     <b>assert</b>!(!table::contains(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.purchasers, buyer), <a href="../social_contracts/mydata.md#social_contracts_mydata_EAlreadyPurchased">EAlreadyPurchased</a>);
     <b>assert</b>!(buyer != <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_ESelfPurchase">ESelfPurchase</a>);
-    <b>let</b> <b>mut</b> payment = payment;
-    <b>let</b> price_coin = coin::split(&<b>mut</b> payment, price, ctx);
+    <b>let</b> price_coin = coin::split(payment, price, ctx);
     <b>let</b> (platform_fee, ecosystem_fee, creator_amount) = <a href="../social_contracts/mydata.md#social_contracts_mydata_distribute_p2p_fees_no_platform">distribute_p2p_fees_no_platform</a>(
         config,
         treasury,
@@ -3713,11 +3712,6 @@ Create and share MyData publicly
         price_coin,
         ctx,
     );
-    <b>if</b> (coin::value(&payment) &gt; 0) {
-        transfer::public_transfer(payment, buyer);
-    } <b>else</b> {
-        coin::destroy_zero(payment);
-    };
     table::add(&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.purchasers, buyer, <b>true</b>);
     event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_PurchaseEvent">PurchaseEvent</a> {
         ip_id: object::uid_to_address(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id),
@@ -3745,7 +3739,7 @@ Create and share MyData publicly
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time_with_platform_internal">purchase_one_time_with_platform_internal</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time_with_platform_internal">purchase_one_time_with_platform_internal</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3760,7 +3754,7 @@ Create and share MyData publicly
     <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
     treasury: &EcosystemTreasury,
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> Platform,
-    payment: Coin&lt;MYSO&gt;,
+    payment: &<b>mut</b> Coin&lt;MYSO&gt;,
     account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
@@ -3786,11 +3780,10 @@ Create and share MyData publicly
         sub_agent_id = <a href="../social_contracts/memory.md#social_contracts_memory_acting_sub_agent_id">social_contracts::memory::acting_sub_agent_id</a>(&acting);
         organization_id = <a href="../social_contracts/memory.md#social_contracts_memory_acting_organization_id">social_contracts::memory::acting_organization_id</a>(&acting);
     };
-    <b>assert</b>!(coin::value(&payment) &gt;= price, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPriceMismatch">EPriceMismatch</a>);
+    <b>assert</b>!(coin::value(payment) &gt;= price, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPriceMismatch">EPriceMismatch</a>);
     <b>assert</b>!(!table::contains(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.purchasers, buyer), <a href="../social_contracts/mydata.md#social_contracts_mydata_EAlreadyPurchased">EAlreadyPurchased</a>);
     <b>assert</b>!(buyer != <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_ESelfPurchase">ESelfPurchase</a>);
-    <b>let</b> <b>mut</b> payment = payment;
-    <b>let</b> price_coin = coin::split(&<b>mut</b> payment, price, ctx);
+    <b>let</b> price_coin = coin::split(payment, price, ctx);
     <b>let</b> (platform_fee, ecosystem_fee, creator_amount) = <a href="../social_contracts/mydata.md#social_contracts_mydata_distribute_p2p_fees_with_platform">distribute_p2p_fees_with_platform</a>(
         config,
         treasury,
@@ -3800,11 +3793,6 @@ Create and share MyData publicly
         clock,
         ctx,
     );
-    <b>if</b> (coin::value(&payment) &gt; 0) {
-        transfer::public_transfer(payment, buyer);
-    } <b>else</b> {
-        coin::destroy_zero(payment);
-    };
     table::add(&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.purchasers, buyer, <b>true</b>);
     event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_PurchaseEvent">PurchaseEvent</a> {
         ip_id: object::uid_to_address(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id),
@@ -3833,7 +3821,7 @@ Create and share MyData publicly
 Purchase one-time access to MyData data.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time">purchase_one_time</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time">purchase_one_time</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3847,7 +3835,7 @@ Purchase one-time access to MyData data.
     memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>,
     <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
     treasury: &EcosystemTreasury,
-    payment: Coin&lt;MYSO&gt;,
+    payment: &<b>mut</b> Coin&lt;MYSO&gt;,
     account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
@@ -3876,7 +3864,7 @@ Purchase one-time access to MyData data.
 Purchase one-time access with platform treasury routing.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time_with_platform">purchase_one_time_with_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time_with_platform">purchase_one_time_with_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3891,7 +3879,7 @@ Purchase one-time access with platform treasury routing.
     <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
     treasury: &EcosystemTreasury,
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> Platform,
-    payment: Coin&lt;MYSO&gt;,
+    payment: &<b>mut</b> Coin&lt;MYSO&gt;,
     account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
@@ -3920,7 +3908,7 @@ Purchase one-time access with platform treasury routing.
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription_no_platform">purchase_subscription_no_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription_no_platform">purchase_subscription_no_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3934,7 +3922,7 @@ Purchase one-time access with platform treasury routing.
     memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>,
     <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
     treasury: &EcosystemTreasury,
-    payment: Coin&lt;MYSO&gt;,
+    payment: &<b>mut</b> Coin&lt;MYSO&gt;,
     account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
@@ -3959,7 +3947,7 @@ Purchase one-time access with platform treasury routing.
         sub_agent_id = <a href="../social_contracts/memory.md#social_contracts_memory_acting_sub_agent_id">social_contracts::memory::acting_sub_agent_id</a>(&acting);
         organization_id = <a href="../social_contracts/memory.md#social_contracts_memory_acting_organization_id">social_contracts::memory::acting_organization_id</a>(&acting);
     };
-    <b>assert</b>!(coin::value(&payment) &gt;= price, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPriceMismatch">EPriceMismatch</a>);
+    <b>assert</b>!(coin::value(payment) &gt;= price, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPriceMismatch">EPriceMismatch</a>);
     <b>assert</b>!(buyer != <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_ESelfPurchase">ESelfPurchase</a>);
     <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_duration_days">subscription_duration_days</a> &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_duration_days">subscription_duration_days</a> &lt;= config.max_subscription_days, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
@@ -3968,8 +3956,7 @@ Purchase one-time access with platform treasury routing.
     <b>let</b> expiry_time = (current_time <b>as</b> u128) + duration_ms;
     <b>assert</b>!(expiry_time &lt;= (<a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_U64">MAX_U64</a> <b>as</b> u128), <a href="../social_contracts/mydata.md#social_contracts_mydata_EOverflow">EOverflow</a>);
     <b>let</b> expiry_time_u64 = expiry_time <b>as</b> u64;
-    <b>let</b> <b>mut</b> payment = payment;
-    <b>let</b> price_coin = coin::split(&<b>mut</b> payment, price, ctx);
+    <b>let</b> price_coin = coin::split(payment, price, ctx);
     <b>let</b> (platform_fee, ecosystem_fee, creator_amount) = <a href="../social_contracts/mydata.md#social_contracts_mydata_distribute_p2p_fees_no_platform">distribute_p2p_fees_no_platform</a>(
         config,
         treasury,
@@ -3977,11 +3964,6 @@ Purchase one-time access with platform treasury routing.
         price_coin,
         ctx,
     );
-    <b>if</b> (coin::value(&payment) &gt; 0) {
-        transfer::public_transfer(payment, buyer);
-    } <b>else</b> {
-        coin::destroy_zero(payment);
-    };
     <b>if</b> (table::contains(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.subscribers, buyer)) {
         <b>let</b> current_expiry = table::remove(&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.subscribers, buyer);
         <b>let</b> new_expiry = <b>if</b> (current_expiry &gt; current_time) {
@@ -4021,7 +4003,7 @@ Purchase one-time access with platform treasury routing.
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription_with_platform_internal">purchase_subscription_with_platform_internal</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription_with_platform_internal">purchase_subscription_with_platform_internal</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4036,7 +4018,7 @@ Purchase one-time access with platform treasury routing.
     <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
     treasury: &EcosystemTreasury,
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> Platform,
-    payment: Coin&lt;MYSO&gt;,
+    payment: &<b>mut</b> Coin&lt;MYSO&gt;,
     account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
@@ -4062,7 +4044,7 @@ Purchase one-time access with platform treasury routing.
         sub_agent_id = <a href="../social_contracts/memory.md#social_contracts_memory_acting_sub_agent_id">social_contracts::memory::acting_sub_agent_id</a>(&acting);
         organization_id = <a href="../social_contracts/memory.md#social_contracts_memory_acting_organization_id">social_contracts::memory::acting_organization_id</a>(&acting);
     };
-    <b>assert</b>!(coin::value(&payment) &gt;= price, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPriceMismatch">EPriceMismatch</a>);
+    <b>assert</b>!(coin::value(payment) &gt;= price, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPriceMismatch">EPriceMismatch</a>);
     <b>assert</b>!(buyer != <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_ESelfPurchase">ESelfPurchase</a>);
     <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_duration_days">subscription_duration_days</a> &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_duration_days">subscription_duration_days</a> &lt;= config.max_subscription_days, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
@@ -4071,8 +4053,7 @@ Purchase one-time access with platform treasury routing.
     <b>let</b> expiry_time = (current_time <b>as</b> u128) + duration_ms;
     <b>assert</b>!(expiry_time &lt;= (<a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_U64">MAX_U64</a> <b>as</b> u128), <a href="../social_contracts/mydata.md#social_contracts_mydata_EOverflow">EOverflow</a>);
     <b>let</b> expiry_time_u64 = expiry_time <b>as</b> u64;
-    <b>let</b> <b>mut</b> payment = payment;
-    <b>let</b> price_coin = coin::split(&<b>mut</b> payment, price, ctx);
+    <b>let</b> price_coin = coin::split(payment, price, ctx);
     <b>let</b> (platform_fee, ecosystem_fee, creator_amount) = <a href="../social_contracts/mydata.md#social_contracts_mydata_distribute_p2p_fees_with_platform">distribute_p2p_fees_with_platform</a>(
         config,
         treasury,
@@ -4082,11 +4063,6 @@ Purchase one-time access with platform treasury routing.
         clock,
         ctx,
     );
-    <b>if</b> (coin::value(&payment) &gt; 0) {
-        transfer::public_transfer(payment, buyer);
-    } <b>else</b> {
-        coin::destroy_zero(payment);
-    };
     <b>if</b> (table::contains(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.subscribers, buyer)) {
         <b>let</b> current_expiry = table::remove(&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.subscribers, buyer);
         <b>let</b> new_expiry = <b>if</b> (current_expiry &gt; current_time) {
@@ -4127,7 +4103,7 @@ Purchase one-time access with platform treasury routing.
 Purchase subscription access to MyData data.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription">purchase_subscription</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription">purchase_subscription</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4141,7 +4117,7 @@ Purchase subscription access to MyData data.
     memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>,
     <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
     treasury: &EcosystemTreasury,
-    payment: Coin&lt;MYSO&gt;,
+    payment: &<b>mut</b> Coin&lt;MYSO&gt;,
     account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
@@ -4170,7 +4146,7 @@ Purchase subscription access to MyData data.
 Purchase subscription access with platform treasury routing.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription_with_platform">purchase_subscription_with_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription_with_platform">purchase_subscription_with_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4185,7 +4161,7 @@ Purchase subscription access with platform treasury routing.
     <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
     treasury: &EcosystemTreasury,
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> Platform,
-    payment: Coin&lt;MYSO&gt;,
+    payment: &<b>mut</b> Coin&lt;MYSO&gt;,
     account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,

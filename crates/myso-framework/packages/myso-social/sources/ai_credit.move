@@ -374,11 +374,6 @@ module social_contracts::ai_credit {
         balance_id
     }
 
-    /// Called only from [`profile::transfer_profile_with_memory`].
-    public(package) fun transfer_balance_owner(balance: &mut AiCreditBalance, new_owner: address) {
-        balance.principal_owner = new_owner;
-    }
-
     fun new_balance(
         memory_account_id: ID,
         principal_owner: address,

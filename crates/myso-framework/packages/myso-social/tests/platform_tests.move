@@ -643,7 +643,7 @@ let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
     }
     
     #[test]
-    fun test_badges_persist_through_profile_transfer() {
+    fun test_badges_persist_on_profile() {
         let mut scenario = test_scenario::begin(ADMIN);
         
         // Initialize the clock first
@@ -697,54 +697,18 @@ let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
             test_scenario::return_shared(clock);
         test_scenario::return_shared(platform_config);
         };
-        
-        // PLATFORM_USER transfers profile to USER2
+
         test_scenario::next_tx(&mut scenario, PLATFORM_USER);
         {
-
-            let clock = test_scenario::take_shared<Clock>(&scenario);
-            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
-            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
-            let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
-            let mut linked_balance = test_scenario::take_shared<AiCreditBalance>(&scenario);
-            let profile = test_scenario::take_from_sender<Profile>(&scenario);
-
-            profile::transfer_profile_with_memory(
-                &mut registry,
-                &mut memory_registry,
-                &mut memory_account,
-                &mut linked_balance,
-                profile,
-                USER2,
-                0,
-                &clock,
-                test_scenario::ctx(&mut scenario)
-            );
-
-            test_scenario::return_shared(linked_balance);
-            test_scenario::return_shared(memory_account);
-            test_scenario::return_shared(memory_registry);
-            test_scenario::return_shared(registry);
-
-            test_scenario::return_shared(clock);
-        };
-        
-        // Verify USER2 received the profile with badge intact
-        test_scenario::next_tx(&mut scenario, USER2);
-        {
-            let profile = test_scenario::take_from_sender<Profile>(&scenario);
-            
-            // Verify badge is still on the profile after transfer
-            assert!(profile::badge_count(&profile) == 1, 2);
-            // Badge ID format changed - get the actual badge ID from the badges
-            let badges = profile::get_profile_badges(&profile);
+            let user_profile = test_scenario::take_from_sender<Profile>(&scenario);
+            assert!(profile::badge_count(&user_profile) == 1, 2);
+            let badges = profile::get_profile_badges(&user_profile);
             let badge_data = *vector::borrow(&badges, 0);
             let badge_id = profile::badge_data_id(&badge_data);
-            assert!(profile::has_badge(&profile, &badge_id), 3);
-            
-            test_scenario::return_to_sender(&scenario, profile);
+            assert!(profile::has_badge(&user_profile, &badge_id), 3);
+            test_scenario::return_to_sender(&scenario, user_profile);
         };
-        
+
         test_scenario::end(scenario);
     }
 

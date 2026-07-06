@@ -25,9 +25,6 @@
 ///
 /// **SubAgentDeactivated / SubAgentRevoked:** identifiers above + `agent_object_id`, `derived_address`
 ///
-/// **SubAgentsClearedOnTransfer:** `account_id`, `principal_owner`, `profile_id`,
-/// `previous_owner`, `new_owner`, `revoked_count`
-///
 /// **Social events** (post module): all include `actor_address`, `sub_agent_id` (agent object id),
 /// `action_identity_class` and reactions add `principal_owner`.
 
@@ -506,15 +503,6 @@ module social_contracts::memory {
         derived_address: address,
     }
 
-    public struct SubAgentsClearedOnTransfer has copy, drop {
-        account_id: ID,
-        principal_owner: address,
-        profile_id: address,
-        previous_owner: address,
-        new_owner: address,
-        revoked_count: u64,
-    }
-
     public struct MemoryAccountDeactivated has copy, drop {
         account_id: ID,
         owner: address,
@@ -888,28 +876,6 @@ module social_contracts::memory {
 
         transfer::share_object(account);
         account_id
-    }
-
-    /// Profile transfer must revoke all sub-agent objects in the same PTB (via [`revoke_sub_agent`])
-    /// before calling [`profile::transfer_profile_with_memory`].
-    public(package) fun transfer_account_owner_with_profile(
-        registry: &mut MemoryRegistry,
-        account: &mut MemoryAccount,
-        profile_id: address,
-        old_owner: address,
-        new_owner: address,
-    ) {
-        assert_object_version(&registry.id);
-        assert_object_version(&account.id);
-        assert!(account.owner == old_owner, ENotOwner);
-        assert!(account.profile_id == profile_id, ENotOwner);
-        assert!(table::contains(&registry.accounts, old_owner), ERegistryAccountMismatch);
-        assert!(*table::borrow(&registry.accounts, old_owner) == object::id(account), ERegistryAccountMismatch);
-        assert!(!table::contains(&registry.accounts, new_owner), ENewOwnerHasMemoryAccount);
-
-        table::remove(&mut registry.accounts, old_owner);
-        account.owner = new_owner;
-        table::add(&mut registry.accounts, new_owner, object::id(account));
     }
 
     // ============================================================
@@ -1737,23 +1703,6 @@ module social_contracts::memory {
         emit_sub_agent_revoked(account, &agent);
         remove_registry_entry(account, derived_address, agent_object_id);
         destroy_sub_agent(agent);
-    }
-
-    /// Emit bulk-clear audit after the last agent revoke during profile transfer orchestration.
-    public(package) fun emit_sub_agents_cleared_on_transfer(
-        account: &MemoryAccount,
-        previous_owner: address,
-        new_owner: address,
-        revoked_count: u64,
-    ) {
-        event::emit(SubAgentsClearedOnTransfer {
-            account_id: object::id(account),
-            principal_owner: new_owner,
-            profile_id: account.profile_id,
-            previous_owner,
-            new_owner,
-            revoked_count,
-        });
     }
 
     /// Lazy-create per-agent memory vault derived from the sub-agent object.

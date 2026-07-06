@@ -8,8 +8,9 @@ use serde::{Deserialize, Serialize};
 
 use super::revenue::{
     CONTENT_TYPE_DATA, CONTENT_TYPE_MESSAGING, CONTENT_TYPE_POST, CONTENT_TYPE_SERVICE,
-    CONTENT_TYPE_TOKEN, CURRENCY_MYSO, REVENUE_SOURCE_MESSAGING, REVENUE_SOURCE_MYDATA,
-    REVENUE_SOURCE_POSTS, REVENUE_SOURCE_SPT, REVENUE_SOURCE_SUBSCRIPTION, REVENUE_SOURCE_TIPS,
+    CONTENT_TYPE_TOKEN, CONTENT_TYPE_USERNAME, CURRENCY_MYSO, REVENUE_SOURCE_MESSAGING,
+    REVENUE_SOURCE_MYDATA, REVENUE_SOURCE_POSTS, REVENUE_SOURCE_SPT, REVENUE_SOURCE_SUBSCRIPTION,
+    REVENUE_SOURCE_TIPS, REVENUE_SOURCE_USERNAME_MARKETPLACE,
 };
 use crate::schema::{
     ecosystem_treasury, spt_config, spt_events, spt_holdings, spt_pools, spt_price_history,
@@ -809,6 +810,35 @@ impl NewUnifiedRevenue {
             currency: CURRENCY_MYSO.to_string(),
             content_id: Some(service_id),
             content_type: Some(CONTENT_TYPE_SERVICE.to_string()),
+            payer_address,
+            recipient_address,
+            revenue_time,
+            time: chrono::Utc::now(),
+            transaction_id,
+            organization_id: None,
+        }
+    }
+
+    pub fn from_username_marketplace(
+        revenue_type: String,
+        creator_address: String,
+        platform_address: Option<String>,
+        amount: i64,
+        username: String,
+        payer_address: String,
+        recipient_address: String,
+        revenue_time: i64,
+        transaction_id: String,
+    ) -> Self {
+        Self {
+            revenue_source: REVENUE_SOURCE_USERNAME_MARKETPLACE.to_string(),
+            revenue_type,
+            creator_address,
+            platform_address,
+            amount,
+            currency: CURRENCY_MYSO.to_string(),
+            content_id: Some(username),
+            content_type: Some(CONTENT_TYPE_USERNAME.to_string()),
             payer_address,
             recipient_address,
             revenue_time,

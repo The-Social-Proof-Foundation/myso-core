@@ -3,6 +3,7 @@
 
 use diesel::sql_query;
 use diesel::sql_types::{BigInt, Date, Text, Timestamp};
+use diesel::BoolExpressionMethods;
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
 use diesel::QueryDsl;
@@ -11,7 +12,8 @@ use diesel::SelectableHelper;
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::Profile;
 use myso_indexer_alt_social_schema::schema::{
-    profile_offers, profile_sale_fees, profiles, username_registry, wallet_social_graph,
+    profiles, username_offers, username_registry, username_sale_fees,
+    wallet_social_graph,
 };
 
 use crate::error::SocialError;
@@ -22,7 +24,7 @@ use crate::reader::types::{
     UniversalUserResult,
 };
 use crate::reader::WalletOnlyProfile;
-use myso_indexer_alt_social_schema::models::{ProfileOffer, ProfileSaleFee};
+use myso_indexer_alt_social_schema::models::{UsernameOffer, UsernameSaleFee};
 use myso_pg_db::Db;
 
 pub(crate) async fn get_profiles(
@@ -169,40 +171,71 @@ async fn resolve_profile_id(db: &Db, address: &str) -> Result<String, SocialErro
     Ok(profile_id.unwrap_or_else(|| address.to_string()))
 }
 
-pub(crate) async fn list_profile_offers(
+pub(crate) async fn list_username_offers_by_username(
     db: &Db,
-    address: &str,
+    username: &str,
     limit: i64,
     offset: i64,
-) -> Result<Vec<ProfileOffer>, SocialError> {
-    let profile_id = resolve_profile_id(db, address).await?;
+) -> Result<Vec<UsernameOffer>, SocialError> {
     let mut conn = db.connect().await?;
-    let results = profile_offers::table
-        .filter(profile_offers::profile_id.eq(&profile_id))
-        .order_by(profile_offers::created_at.desc())
+    let results = username_offers::table
+        .filter(username_offers::username.eq(username))
+        .order((
+            username_offers::updated_at.desc(),
+            username_offers::time.desc(),
+        ))
         .limit(limit)
         .offset(offset)
-        .select(ProfileOffer::as_select())
-        .load::<ProfileOffer>(&mut conn)
+        .select(UsernameOffer::as_select())
+        .load::<UsernameOffer>(&mut conn)
         .await?;
     Ok(results)
 }
 
-pub(crate) async fn list_profile_sale_fees(
+pub(crate) async fn list_username_offers_by_profile(
     db: &Db,
     address: &str,
     limit: i64,
     offset: i64,
-) -> Result<Vec<ProfileSaleFee>, SocialError> {
+) -> Result<Vec<UsernameOffer>, SocialError> {
     let profile_id = resolve_profile_id(db, address).await?;
     let mut conn = db.connect().await?;
-    let results = profile_sale_fees::table
-        .filter(profile_sale_fees::profile_id.eq(&profile_id))
-        .order_by(profile_sale_fees::timestamp.desc())
+    let results = username_offers::table
+        .filter(
+            username_offers::seller_profile_id
+                .eq(&profile_id)
+                .or(username_offers::buyer_address.eq(address)),
+        )
+        .order((
+            username_offers::updated_at.desc(),
+            username_offers::time.desc(),
+        ))
         .limit(limit)
         .offset(offset)
-        .select(ProfileSaleFee::as_select())
-        .load::<ProfileSaleFee>(&mut conn)
+        .select(UsernameOffer::as_select())
+        .load::<UsernameOffer>(&mut conn)
+        .await?;
+    Ok(results)
+}
+
+pub(crate) async fn list_username_sale_fees(
+    db: &Db,
+    address: &str,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<UsernameSaleFee>, SocialError> {
+    let mut conn = db.connect().await?;
+    let results = username_sale_fees::table
+        .filter(
+            username_sale_fees::seller_address
+                .eq(address)
+                .or(username_sale_fees::buyer_address.eq(address)),
+        )
+        .order_by(username_sale_fees::timestamp.desc())
+        .limit(limit)
+        .offset(offset)
+        .select(UsernameSaleFee::as_select())
+        .load::<UsernameSaleFee>(&mut conn)
         .await?;
     Ok(results)
 }
@@ -307,7 +340,7 @@ pub(crate) async fn get_profile_configuration(
     let query = "
         SELECT updated_by, max_vesting_pieces, curve_factor_min, curve_factor_max, curve_precision,
                min_claim_threshold_divisor, min_username_length, max_username_length,
-               profile_sale_fee_bps, version, updated_at
+               username_sale_fee_bps, version, updated_at
         FROM profile_config
         ORDER BY time DESC
         LIMIT 1

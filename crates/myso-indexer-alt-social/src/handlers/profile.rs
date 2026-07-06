@@ -9,8 +9,8 @@ use std::str::FromStr;
 use super::common;
 use super::{ProfileUpdate, SocialEventRow};
 use myso_indexer_alt_social_schema::models::{
-    NewEcosystemTreasury, NewProfile, NewProfileConfig, NewProfileEvent, NewProfileOffer,
-    NewProfileSaleFee, NewUsernameRegistry, NewVestingEvent, NewVestingWallet,
+    NewEcosystemTreasury, NewProfile, NewProfileConfig, NewProfileEvent, NewUsernameListing,
+    NewUsernameOffer, NewUsernameSaleFee, NewUsernameRegistry, NewVestingEvent, NewVestingWallet,
 };
 
 fn deserialize_number_from_string<'de, T, D>(deserializer: D) -> Result<T, D::Error>
@@ -139,9 +139,6 @@ struct ProfileUpdatedEvent {
 
     #[serde(default)]
     x_username: Option<String>,
-
-    #[serde(default, deserialize_with = "deserialize_optional_number_from_string")]
-    min_offer_amount: Option<i64>,
 }
 
 /// Emitted when an EcosystemBadgeAdminCap holder sets or clears `x_username` on-chain.
@@ -198,7 +195,6 @@ impl ProfileCreatedEvent {
             following_count: 0,
             blocked_count: 0,
             post_count: 0,
-            min_offer_amount: None,
             birthdate: None,
             location: None,
             x_username: None,
@@ -266,10 +262,13 @@ pub fn handle_profile_event(
         "ProfileConfigUpdatedEvent" => {
             process_profile_config_updated_event(data, event_id, checkpoint_timestamp_ms)
         }
-        "ProfileOfferCreatedEvent" => process_profile_offer_created_event(data, event_id),
-        "ProfileOfferAcceptedEvent" => process_profile_offer_accepted_event(data, event_id),
-        "ProfileOfferRejectedEvent" => process_profile_offer_rejected_event(data, event_id),
-        "ProfileSaleFeeEvent" => process_profile_sale_fee_event(data, event_id),
+        "UsernameListingCreatedEvent" => process_username_listing_created_event(data, event_id),
+        "UsernameListingCancelledEvent" => process_username_listing_cancelled_event(data, event_id),
+        "UsernameOfferCreatedEvent" => process_username_offer_created_event(data, event_id),
+        "UsernameOfferAcceptedEvent" => process_username_offer_accepted_event(data, event_id),
+        "UsernameOfferRejectedEvent" => process_username_offer_rejected_event(data, event_id),
+        "UsernameSaleSettledEvent" => process_username_sale_settled_event(data, event_id),
+        "UsernameSaleFeeEvent" => process_username_sale_fee_event(data, event_id),
         _ => None,
     }
 }
@@ -377,7 +376,6 @@ fn process_profile_updated_event(
         birthdate: ev.birthdate,
         location: ev.location,
         x_username: ev.x_username,
-        min_offer_amount: ev.min_offer_amount,
         username: None,
         selected_badge_id: None,
         selected_ecosystem_badge_id: None,
@@ -472,7 +470,7 @@ struct ProfileConfigUpdatedEvent {
     #[serde(default, deserialize_with = "deserialize_number_from_string")]
     max_username_length: u64,
     #[serde(default, deserialize_with = "deserialize_number_from_string")]
-    profile_sale_fee_bps: u64,
+    username_sale_fee_bps: u64,
     #[serde(default, deserialize_with = "deserialize_number_from_string")]
     timestamp: u64,
 }
@@ -501,7 +499,7 @@ fn process_profile_config_updated_event(
         min_claim_threshold_divisor: ev.min_claim_threshold_divisor as i64,
         min_username_length: ev.min_username_length as i64,
         max_username_length: ev.max_username_length as i64,
-        profile_sale_fee_bps: ev.profile_sale_fee_bps as i64,
+        username_sale_fee_bps: ev.username_sale_fee_bps as i64,
         version: 0,
         updated_at: timestamp_ms,
         time,
@@ -565,8 +563,7 @@ struct UsernameRevokedEvent {
     profile_id: String,
     #[serde(rename = "revoked_by", default)]
     _revoked_by: String,
-    #[serde(default)]
-    _reason_code: u8,
+    reason_code: u8,
 }
 
 fn process_username_revoked_event(
@@ -580,6 +577,19 @@ fn process_username_revoked_event(
         data,
         "profile UsernameRevokedEvent JSON did not match UsernameRevokedEvent",
     )?;
+    let now = chrono::Utc::now().naive_utc();
+    let audit_event = NewProfileEvent {
+        event_type: "UsernameRevoked".to_string(),
+        profile_id: ev.profile_id.clone(),
+        event_data: serde_json::json!({
+            "username": ev.username,
+            "profile_id": ev.profile_id,
+            "reason_code": ev.reason_code,
+        }),
+        event_id: Some(event_id.to_string()),
+        created_at: now,
+        updated_at: now,
+    };
     Some(vec![
         SocialEventRow::UsernameRegistryDelete {
             username: ev.username,
@@ -587,6 +597,7 @@ fn process_username_revoked_event(
         SocialEventRow::ProfileUsernameClear {
             profile_id: ev.profile_id,
         },
+        SocialEventRow::ProfileEvent(audit_event),
     ])
 }
 
@@ -850,7 +861,6 @@ fn process_badge_selected_event(
         birthdate: None,
         location: None,
         x_username: None,
-        min_offer_amount: None,
         username: None,
         selected_badge_id,
         selected_ecosystem_badge_id,
@@ -882,7 +892,6 @@ fn process_ecosystem_badge_selection_cleared_event(
         birthdate: None,
         location: None,
         x_username: None,
-        min_offer_amount: None,
         username: None,
         selected_badge_id: None,
         selected_ecosystem_badge_id: Some(None),
@@ -1128,78 +1137,83 @@ fn process_tokens_claimed_event(
 }
 
 #[derive(Debug, Clone, Deserialize)]
-struct ProfileOfferCreatedEvent {
-    #[serde(rename = "profile_id")]
-    profile_id: String,
-    #[serde(rename = "offeror")]
-    offeror: String,
+struct UsernameListingCreatedEvent {
+    username: String,
+    seller: String,
+    seller_profile_id: String,
     #[serde(default, deserialize_with = "deserialize_number_from_string")]
-    amount: u64,
-    #[serde(
-        rename = "created_at",
-        default,
-        deserialize_with = "deserialize_number_from_string"
-    )]
+    min_price: u64,
+    #[serde(default, deserialize_with = "deserialize_number_from_string")]
     created_at: u64,
 }
 
 #[derive(Debug, Clone, Deserialize)]
-struct ProfileOfferAcceptedEvent {
-    #[serde(rename = "profile_id")]
-    profile_id: String,
-    #[serde(rename = "offeror")]
-    offeror: String,
-    #[serde(rename = "previous_owner")]
-    _previous_owner: String,
+struct UsernameListingCancelledEvent {
+    username: String,
+    #[serde(rename = "seller")]
+    _seller: String,
+    #[serde(rename = "seller_profile_id")]
+    _seller_profile_id: String,
     #[serde(default, deserialize_with = "deserialize_number_from_string")]
-    _amount: u64,
-    #[serde(
-        rename = "accepted_at",
-        default,
-        deserialize_with = "deserialize_number_from_string"
-    )]
+    cancelled_at: u64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct UsernameOfferCreatedEvent {
+    username: String,
+    seller_profile_id: String,
+    buyer: String,
+    buyer_profile_id: String,
+    #[serde(default, deserialize_with = "deserialize_number_from_string")]
+    amount: u64,
+    #[serde(default, deserialize_with = "deserialize_number_from_string")]
+    created_at: u64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct UsernameOfferAcceptedEvent {
+    username: String,
+    #[serde(rename = "replacement_username")]
+    _replacement_username: String,
+    #[serde(rename = "seller")]
+    _seller: String,
+    seller_profile_id: String,
+    buyer: String,
+    buyer_profile_id: String,
+    #[serde(default, deserialize_with = "deserialize_number_from_string")]
+    amount: u64,
+    #[serde(default, deserialize_with = "deserialize_number_from_string")]
     accepted_at: u64,
 }
 
 #[derive(Debug, Clone, Deserialize)]
-struct ProfileOfferRejectedEvent {
-    #[serde(rename = "profile_id")]
-    profile_id: String,
-    #[serde(rename = "offeror")]
-    offeror: String,
-    #[serde(rename = "rejected_by")]
-    _rejected_by: String,
-    #[serde(default, deserialize_with = "deserialize_number_from_string")]
-    _amount: u64,
+struct UsernameOfferRejectedEvent {
+    username: String,
+    seller_profile_id: String,
+    buyer: String,
+    buyer_profile_id: String,
     #[serde(
-        rename = "rejected_at",
+        rename = "amount",
         default,
         deserialize_with = "deserialize_number_from_string"
     )]
+    amount: u64,
+    #[serde(default, deserialize_with = "deserialize_number_from_string")]
     rejected_at: u64,
-    #[serde(rename = "is_revoked", default)]
+    #[serde(default)]
     is_revoked: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]
-struct ProfileSaleFeeEvent {
-    #[serde(rename = "profile_id")]
-    profile_id: String,
-    #[serde(rename = "offeror")]
-    offeror: String,
-    #[serde(rename = "previous_owner")]
-    previous_owner: String,
-    #[serde(
-        rename = "sale_amount",
-        default,
-        deserialize_with = "deserialize_number_from_string"
-    )]
+struct UsernameSaleFeeEvent {
+    username: String,
+    seller: String,
+    seller_profile_id: String,
+    buyer: String,
+    buyer_profile_id: String,
+    #[serde(default, deserialize_with = "deserialize_number_from_string")]
     sale_amount: u64,
-    #[serde(
-        rename = "fee_amount",
-        default,
-        deserialize_with = "deserialize_number_from_string"
-    )]
+    #[serde(default, deserialize_with = "deserialize_number_from_string")]
     fee_amount: u64,
     #[serde(rename = "fee_recipient")]
     fee_recipient: String,
@@ -1221,21 +1235,66 @@ struct VestingWalletDeletedEvent {
     deleted_at: Option<u64>,
 }
 
-fn process_profile_offer_created_event(
+fn process_username_listing_created_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: ProfileOfferCreatedEvent = common::deserialize_social_event_json(
+    let ev: UsernameListingCreatedEvent = common::deserialize_social_event_json(
         "profile",
-        "ProfileOfferCreatedEvent",
+        "UsernameListingCreatedEvent",
         event_id,
         data,
-        "profile ProfileOfferCreatedEvent JSON did not match ProfileOfferCreatedEvent",
+        "profile UsernameListingCreatedEvent JSON did not match UsernameListingCreatedEvent",
+    )?;
+    let listing = NewUsernameListing {
+        username: ev.username,
+        seller_address: ev.seller,
+        seller_profile_id: ev.seller_profile_id,
+        min_price: ev.min_price as i64,
+        status: "active".to_string(),
+        created_at: ev.created_at as i64,
+        cancelled_at: None,
+        transaction_id: event_id.to_string(),
+    };
+    Some(vec![SocialEventRow::UsernameListing(listing)])
+}
+
+fn process_username_listing_cancelled_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: UsernameListingCancelledEvent = common::deserialize_social_event_json(
+        "profile",
+        "UsernameListingCancelledEvent",
+        event_id,
+        data,
+        "profile UsernameListingCancelledEvent JSON did not match UsernameListingCancelledEvent",
+    )?;
+    Some(vec![SocialEventRow::UsernameListingStatusUpdate {
+        username: ev.username,
+        status: "cancelled".to_string(),
+        cancelled_at: Some(ev.cancelled_at as i64),
+        transaction_id: event_id.to_string(),
+    }])
+}
+
+fn process_username_offer_created_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: UsernameOfferCreatedEvent = common::deserialize_social_event_json(
+        "profile",
+        "UsernameOfferCreatedEvent",
+        event_id,
+        data,
+        "profile UsernameOfferCreatedEvent JSON did not match UsernameOfferCreatedEvent",
     )?;
     let created_at = ev.created_at as i64;
-    let offer = NewProfileOffer {
-        profile_id: ev.profile_id,
-        offeror_address: ev.offeror,
+    let offer = NewUsernameOffer {
+        username: ev.username,
+        seller_profile_id: ev.seller_profile_id,
+        buyer_address: ev.buyer,
+        buyer_profile_id: ev.buyer_profile_id,
         amount: ev.amount as i64,
         status: "pending".to_string(),
         created_at,
@@ -1243,41 +1302,55 @@ fn process_profile_offer_created_event(
         resolved_at: None,
         transaction_id: event_id.to_string(),
     };
-    Some(vec![SocialEventRow::ProfileOffer(offer)])
+    Some(vec![SocialEventRow::UsernameOffer(offer)])
 }
 
-fn process_profile_offer_accepted_event(
+fn process_username_offer_accepted_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: ProfileOfferAcceptedEvent = common::deserialize_social_event_json(
+    let ev: UsernameOfferAcceptedEvent = common::deserialize_social_event_json(
         "profile",
-        "ProfileOfferAcceptedEvent",
+        "UsernameOfferAcceptedEvent",
         event_id,
         data,
-        "profile ProfileOfferAcceptedEvent JSON did not match ProfileOfferAcceptedEvent",
+        "profile UsernameOfferAcceptedEvent JSON did not match UsernameOfferAcceptedEvent",
     )?;
     let accepted_at = ev.accepted_at as i64;
-    Some(vec![SocialEventRow::ProfileOfferStatusUpdate {
-        profile_id: ev.profile_id,
-        offeror_address: ev.offeror,
+    // Hypertable rows are append-only; insert a resolved snapshot instead of UPDATE pending.
+    let offer = NewUsernameOffer {
+        username: ev.username.clone(),
+        seller_profile_id: ev.seller_profile_id,
+        buyer_address: ev.buyer.clone(),
+        buyer_profile_id: ev.buyer_profile_id,
+        amount: ev.amount as i64,
         status: "accepted".to_string(),
-        resolved_at: accepted_at,
+        created_at: accepted_at,
         updated_at: accepted_at,
+        resolved_at: Some(accepted_at),
         transaction_id: event_id.to_string(),
-    }])
+    };
+    Some(vec![
+        SocialEventRow::UsernameOffer(offer),
+        SocialEventRow::UsernameListingStatusUpdate {
+            username: ev.username,
+            status: "sold".to_string(),
+            cancelled_at: None,
+            transaction_id: event_id.to_string(),
+        },
+    ])
 }
 
-fn process_profile_offer_rejected_event(
+fn process_username_offer_rejected_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: ProfileOfferRejectedEvent = common::deserialize_social_event_json(
+    let ev: UsernameOfferRejectedEvent = common::deserialize_social_event_json(
         "profile",
-        "ProfileOfferRejectedEvent",
+        "UsernameOfferRejectedEvent",
         event_id,
         data,
-        "profile ProfileOfferRejectedEvent JSON did not match ProfileOfferRejectedEvent",
+        "profile UsernameOfferRejectedEvent JSON did not match UsernameOfferRejectedEvent",
     )?;
     let rejected_at = ev.rejected_at as i64;
     let status = if ev.is_revoked {
@@ -1285,38 +1358,113 @@ fn process_profile_offer_rejected_event(
     } else {
         "rejected".to_string()
     };
-    Some(vec![SocialEventRow::ProfileOfferStatusUpdate {
-        profile_id: ev.profile_id,
-        offeror_address: ev.offeror,
+    // Hypertable rows are append-only; insert a resolved snapshot from on-chain fields.
+    let offer = NewUsernameOffer {
+        username: ev.username,
+        seller_profile_id: ev.seller_profile_id,
+        buyer_address: ev.buyer,
+        buyer_profile_id: ev.buyer_profile_id,
+        amount: ev.amount as i64,
         status,
-        resolved_at: rejected_at,
+        created_at: rejected_at,
         updated_at: rejected_at,
+        resolved_at: Some(rejected_at),
         transaction_id: event_id.to_string(),
-    }])
+    };
+    Some(vec![SocialEventRow::UsernameOffer(offer)])
 }
 
-fn process_profile_sale_fee_event(
+#[derive(Debug, Clone, Deserialize)]
+struct UsernameSaleSettledEvent {
+    listed_username: String,
+    replacement_username: String,
+    #[serde(rename = "seller")]
+    _seller: String,
+    seller_profile_id: String,
+    #[serde(rename = "buyer")]
+    _buyer: String,
+    buyer_profile_id: String,
+    #[serde(default, deserialize_with = "deserialize_number_from_string")]
+    amount: u64,
+    #[serde(default, deserialize_with = "deserialize_number_from_string")]
+    settled_at: u64,
+}
+
+fn process_username_sale_settled_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: ProfileSaleFeeEvent = common::deserialize_social_event_json(
+    let ev: UsernameSaleSettledEvent = common::deserialize_social_event_json(
         "profile",
-        "ProfileSaleFeeEvent",
+        "UsernameSaleSettledEvent",
         event_id,
         data,
-        "profile ProfileSaleFeeEvent JSON did not match ProfileSaleFeeEvent",
+        "profile UsernameSaleSettledEvent JSON did not match UsernameSaleSettledEvent",
     )?;
-    let fee = NewProfileSaleFee {
-        profile_id: ev.profile_id,
-        offeror_address: ev.offeror,
-        previous_owner_address: ev.previous_owner,
+    let tx_id = event_id.to_string();
+    let now = chrono::Utc::now().naive_utc();
+    let audit_event = NewProfileEvent {
+        event_type: "UsernameSaleSettled".to_string(),
+        profile_id: ev.seller_profile_id.clone(),
+        event_data: serde_json::json!({
+            "listed_username": ev.listed_username,
+            "replacement_username": ev.replacement_username,
+            "seller_profile_id": ev.seller_profile_id,
+            "buyer_profile_id": ev.buyer_profile_id,
+            "amount": ev.amount,
+            "settled_at": ev.settled_at,
+        }),
+        event_id: Some(event_id.to_string()),
+        created_at: now,
+        updated_at: now,
+    };
+    Some(vec![
+        SocialEventRow::UsernameRegistryReassign {
+            username: ev.listed_username.clone(),
+            new_profile_id: ev.buyer_profile_id.clone(),
+            transaction_id: tx_id.clone(),
+        },
+        SocialEventRow::UsernameRegistryUpsert(NewUsernameRegistry {
+            username: ev.replacement_username.clone(),
+            profile_id: ev.seller_profile_id.clone(),
+            transaction_id: tx_id.clone(),
+        }),
+        SocialEventRow::ProfileUsernameSet {
+            profile_id: ev.seller_profile_id,
+            username: ev.replacement_username,
+        },
+        SocialEventRow::ProfileUsernameSet {
+            profile_id: ev.buyer_profile_id,
+            username: ev.listed_username,
+        },
+        SocialEventRow::ProfileEvent(audit_event),
+    ])
+}
+
+fn process_username_sale_fee_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: UsernameSaleFeeEvent = common::deserialize_social_event_json(
+        "profile",
+        "UsernameSaleFeeEvent",
+        event_id,
+        data,
+        "profile UsernameSaleFeeEvent JSON did not match UsernameSaleFeeEvent",
+    )?;
+    let fee = NewUsernameSaleFee {
+        username: ev.username,
+        seller_address: ev.seller,
+        seller_profile_id: ev.seller_profile_id,
+        buyer_address: ev.buyer,
+        buyer_profile_id: ev.buyer_profile_id,
         sale_amount: ev.sale_amount as i64,
         fee_amount: ev.fee_amount as i64,
         fee_recipient_address: ev.fee_recipient,
         timestamp: ev.timestamp as i64,
         transaction_id: event_id.to_string(),
     };
-    Some(vec![SocialEventRow::ProfileSaleFee(fee)])
+    Some(vec![SocialEventRow::UsernameSaleFee(fee)])
 }
 
 fn process_vesting_wallet_deleted_event(
@@ -1634,5 +1782,110 @@ mod tests {
         );
         assert_eq!(profile.memory_account_id.as_deref(), Some("0x45351697"));
         assert_eq!(profile.ai_credit_balance_id.as_deref(), Some("0xb472ecb4"));
+    }
+
+    #[test]
+    fn test_username_offer_accepted_inserts_resolved_offer_row() {
+        let seller_profile_id = move_core_types::account_address::AccountAddress::random();
+        let buyer = move_core_types::account_address::AccountAddress::random();
+        let buyer_profile_id = move_core_types::account_address::AccountAddress::random();
+        let ev = crate::handlers::events::BcsUsernameOfferAcceptedEvent {
+            username: "premium1".to_string(),
+            replacement_username: "seller1".to_string(),
+            seller: seller_profile_id,
+            seller_profile_id,
+            buyer,
+            buyer_profile_id,
+            amount: 5_000_000_000,
+            accepted_at: 1_783_236_200_000,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs serialize");
+        let json = parse_event_contents("profile", "UsernameOfferAcceptedEvent", &bytes)
+            .expect("parse_event_contents");
+        let rows = handle_profile_event("UsernameOfferAcceptedEvent", &json, "tx:accept:0", CK_MS)
+            .expect("handler");
+        let offer = rows.iter().find_map(|r| match r {
+            SocialEventRow::UsernameOffer(o) => Some(o.clone()),
+            _ => None,
+        });
+        assert!(offer.is_some(), "expected UsernameOffer insert");
+        let offer = offer.unwrap();
+        assert_eq!(offer.status, "accepted");
+        assert_eq!(offer.amount, 5_000_000_000);
+        assert_eq!(offer.resolved_at, Some(1_783_236_200_000));
+        assert!(rows.iter().any(|r| matches!(
+            r,
+            SocialEventRow::UsernameListingStatusUpdate { status, .. } if status == "sold"
+        )));
+    }
+
+    #[test]
+    fn test_username_sale_settled_updates_registry_and_profile_usernames() {
+        let seller_profile_id = move_core_types::account_address::AccountAddress::random();
+        let buyer = move_core_types::account_address::AccountAddress::random();
+        let buyer_profile_id = move_core_types::account_address::AccountAddress::random();
+        let ev = crate::handlers::events::BcsUsernameSaleSettledEvent {
+            listed_username: "premium1".to_string(),
+            replacement_username: "seller1".to_string(),
+            seller: seller_profile_id,
+            seller_profile_id,
+            buyer,
+            buyer_profile_id,
+            amount: 5_000_000_000,
+            settled_at: 1_783_237_181_000,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs serialize");
+        let json = parse_event_contents("profile", "UsernameSaleSettledEvent", &bytes)
+            .expect("parse_event_contents");
+        let rows = handle_profile_event("UsernameSaleSettledEvent", &json, "tx:settle:0", CK_MS)
+            .expect("handler");
+        assert!(rows.iter().any(|r| matches!(
+            r,
+            SocialEventRow::UsernameRegistryReassign { username, new_profile_id, .. }
+                if username == "premium1"
+                    && *new_profile_id == buyer_profile_id.to_canonical_string(true)
+        )));
+        assert!(rows.iter().any(|r| matches!(
+            r,
+            SocialEventRow::UsernameRegistryUpsert(reg)
+                if reg.username == "seller1"
+                    && reg.profile_id == seller_profile_id.to_canonical_string(true)
+        )));
+        assert!(rows.iter().any(|r| matches!(
+            r,
+            SocialEventRow::ProfileUsernameSet { profile_id, username }
+                if *profile_id == seller_profile_id.to_canonical_string(true) && username == "seller1"
+        )));
+        assert!(rows.iter().any(|r| matches!(
+            r,
+            SocialEventRow::ProfileUsernameSet { profile_id, username }
+                if *profile_id == buyer_profile_id.to_canonical_string(true) && username == "premium1"
+        )));
+        assert!(rows.iter().any(|r| matches!(
+            r,
+            SocialEventRow::ProfileEvent(e)
+                if e.event_type == "UsernameSaleSettled"
+                    && e.event_data.get("listed_username").and_then(|v| v.as_str()) == Some("premium1")
+                    && e.event_data.get("replacement_username").and_then(|v| v.as_str()) == Some("seller1")
+        )));
+    }
+
+    #[test]
+    fn test_username_revoked_emits_profile_event() {
+        let buyer_profile_id = move_core_types::account_address::AccountAddress::random();
+        let json = serde_json::json!({
+            "username": "buyer1",
+            "profile_id": buyer_profile_id.to_canonical_string(true),
+            "revoked_by": "0x1",
+            "reason_code": 2,
+        });
+        let rows = handle_profile_event("UsernameRevokedEvent", &json, "tx:revoke:0", CK_MS)
+            .expect("handler");
+        assert!(rows.iter().any(|r| matches!(
+            r,
+            SocialEventRow::ProfileEvent(e)
+                if e.event_type == "UsernameRevoked"
+                    && e.event_data.get("reason_code").and_then(|v| v.as_u64()) == Some(2)
+        )));
     }
 }

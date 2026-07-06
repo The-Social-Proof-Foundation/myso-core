@@ -7387,9 +7387,6 @@ SubAgentDeactivated
 SubAgentRevoked
 	public struct
 	0x50c1::memory
-SubAgentsClearedOnTransfer
-	public struct
-	0x50c1::memory
 MemoryAccountDeactivated
 	public struct
 	0x50c1::memory
@@ -7645,9 +7642,6 @@ update_memory_config
 create_account_for_profile
 	public(package) fun
 	0x50c1::memory
-transfer_account_owner_with_profile
-	public(package) fun
-	0x50c1::memory
 create_agentic_organization
 	public entry fun
 	0x50c1::memory
@@ -7728,9 +7722,6 @@ deactivate_sub_agent
 	0x50c1::memory
 revoke_sub_agent
 	public entry fun
-	0x50c1::memory
-emit_sub_agents_cleared_on_transfer
-	public(package) fun
 	0x50c1::memory
 ensure_agent_memory_vault
 	public entry fun
@@ -8116,9 +8107,6 @@ create_oracle_admin_cap
 create_and_share_balance
 	public(package) fun
 	0x50c1::ai_credit
-transfer_balance_owner
-	public(package) fun
-	0x50c1::ai_credit
 new_balance
 	fun
 	0x50c1::ai_credit
@@ -8437,6 +8425,15 @@ EcosystemTreasury
 UsernameRegistry
 	public struct
 	0x50c1::profile
+UsernameMarketplace
+	public struct
+	0x50c1::profile
+UsernameListing
+	public struct
+	0x50c1::profile
+UsernameOffer
+	public struct
+	0x50c1::profile
 Profile
 	public struct
 	0x50c1::profile
@@ -8482,22 +8479,34 @@ UsernameRevokedEvent
 UsernameReassignedEvent
 	public struct
 	0x50c1::profile
+UsernameReservedEvent
+	public struct
+	0x50c1::profile
+UsernameReleasedEvent
+	public struct
+	0x50c1::profile
 ProfileXUsernameUpdatedEvent
 	public struct
 	0x50c1::profile
-ProfileOfferCreatedEvent
+UsernameListingCreatedEvent
 	public struct
 	0x50c1::profile
-ProfileOfferAcceptedEvent
+UsernameListingCancelledEvent
 	public struct
 	0x50c1::profile
-ProfileOfferRejectedEvent
+UsernameOfferCreatedEvent
 	public struct
 	0x50c1::profile
-ProfileOffer
+UsernameOfferAcceptedEvent
 	public struct
 	0x50c1::profile
-ProfileSaleFeeEvent
+UsernameOfferRejectedEvent
+	public struct
+	0x50c1::profile
+UsernameSaleSettledEvent
+	public struct
+	0x50c1::profile
+UsernameSaleFeeEvent
 	public struct
 	0x50c1::profile
 VestingPieceEvent
@@ -8530,6 +8539,12 @@ to_lowercase_byte
 canonical_registry_username
 	fun
 	0x50c1::profile
+validate_username_format
+	fun
+	0x50c1::profile
+normalize_username
+	fun
+	0x50c1::profile
 ascii_to_string
 	fun
 	0x50c1::profile
@@ -8541,6 +8556,24 @@ copy_string
 	0x50c1::profile
 canonical_registry_username_from_bytes
 	public(package) fun
+	0x50c1::profile
+lock_username_internal
+	fun
+	0x50c1::profile
+unlock_username_internal
+	fun
+	0x50c1::profile
+lock_username
+	public(package) fun
+	0x50c1::profile
+unlock_username
+	public(package) fun
+	0x50c1::profile
+is_username_locked
+	public fun
+	0x50c1::profile
+username_lock_reason
+	public fun
 	0x50c1::profile
 lock_username_for_beneficiary
 	public(package) fun
@@ -8579,12 +8612,6 @@ create_profile_from_beneficiary_claim
 	public(package) fun
 	0x50c1::profile
 ensure_memory_account
-	public entry fun
-	0x50c1::profile
-transfer_profile
-	public entry fun
-	0x50c1::profile
-transfer_profile_with_memory
 	public entry fun
 	0x50c1::profile
 update_profile
@@ -8635,22 +8662,46 @@ get_id_address
 get_owner
 	public fun
 	0x50c1::profile
-create_offer
+remove_offeror_from_vector
+	fun
+	0x50c1::profile
+refund_username_offer
+	fun
+	0x50c1::profile
+refund_all_offers_except
+	fun
+	0x50c1::profile
+destroy_username_listing
+	fun
+	0x50c1::profile
+execute_username_sale
+	fun
+	0x50c1::profile
+create_username_listing
 	public entry fun
 	0x50c1::profile
-accept_offer
+cancel_username_listing
 	public entry fun
 	0x50c1::profile
-accept_offer_with_memory
+create_username_offer
 	public entry fun
 	0x50c1::profile
-reject_or_revoke_offer
+accept_username_offer
 	public entry fun
 	0x50c1::profile
-has_offer_from
+reject_or_revoke_username_offer
+	public entry fun
+	0x50c1::profile
+has_username_offer_from
 	public fun
 	0x50c1::profile
-has_offers
+has_username_offers
+	public fun
+	0x50c1::profile
+is_username_listed
+	public fun
+	0x50c1::profile
+listing_min_price
 	public fun
 	0x50c1::profile
 get_treasury_address
@@ -8662,7 +8713,7 @@ update_treasury_address
 update_ecosystem_treasury_config
 	public entry fun
 	0x50c1::profile
-profile_sale_fee_bps
+username_sale_fee_bps
 	public fun
 	0x50c1::profile
 treasury_version
@@ -8722,13 +8773,7 @@ linked_memory_account_id
 linked_ai_credit_balance_id
 	public fun
 	0x50c1::profile
-min_offer_amount
-	public fun
-	0x50c1::profile
 x_username
-	public fun
-	0x50c1::profile
-is_for_sale
 	public fun
 	0x50c1::profile
 add_badge_to_profile

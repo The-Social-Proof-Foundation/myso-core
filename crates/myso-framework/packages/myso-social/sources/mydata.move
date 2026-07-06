@@ -1315,7 +1315,7 @@ module social_contracts::mydata {
         memory_config: &social_contracts::memory::MemoryConfig,
         mydata: &mut MyData,
         treasury: &EcosystemTreasury,
-        payment: Coin<MYSO>,
+        payment: &mut Coin<MYSO>,
         account: &social_contracts::memory::MemoryAccount,
         clock: &Clock,
         ctx: &mut TxContext,
@@ -1343,12 +1343,11 @@ module social_contracts::mydata {
             organization_id = social_contracts::memory::acting_organization_id(&acting);
         };
 
-        assert!(coin::value(&payment) >= price, EPriceMismatch);
+        assert!(coin::value(payment) >= price, EPriceMismatch);
         assert!(!table::contains(&mydata.purchasers, buyer), EAlreadyPurchased);
         assert!(buyer != mydata.owner, ESelfPurchase);
 
-        let mut payment = payment;
-        let price_coin = coin::split(&mut payment, price, ctx);
+        let price_coin = coin::split(payment, price, ctx);
         let (platform_fee, ecosystem_fee, creator_amount) = distribute_p2p_fees_no_platform(
             config,
             treasury,
@@ -1356,12 +1355,6 @@ module social_contracts::mydata {
             price_coin,
             ctx,
         );
-
-        if (coin::value(&payment) > 0) {
-            transfer::public_transfer(payment, buyer);
-        } else {
-            coin::destroy_zero(payment);
-        };
 
         table::add(&mut mydata.purchasers, buyer, true);
 
@@ -1386,7 +1379,7 @@ module social_contracts::mydata {
         mydata: &mut MyData,
         treasury: &EcosystemTreasury,
         platform: &mut Platform,
-        payment: Coin<MYSO>,
+        payment: &mut Coin<MYSO>,
         account: &social_contracts::memory::MemoryAccount,
         clock: &Clock,
         ctx: &mut TxContext,
@@ -1415,12 +1408,11 @@ module social_contracts::mydata {
             organization_id = social_contracts::memory::acting_organization_id(&acting);
         };
 
-        assert!(coin::value(&payment) >= price, EPriceMismatch);
+        assert!(coin::value(payment) >= price, EPriceMismatch);
         assert!(!table::contains(&mydata.purchasers, buyer), EAlreadyPurchased);
         assert!(buyer != mydata.owner, ESelfPurchase);
 
-        let mut payment = payment;
-        let price_coin = coin::split(&mut payment, price, ctx);
+        let price_coin = coin::split(payment, price, ctx);
         let (platform_fee, ecosystem_fee, creator_amount) = distribute_p2p_fees_with_platform(
             config,
             treasury,
@@ -1430,12 +1422,6 @@ module social_contracts::mydata {
             clock,
             ctx,
         );
-
-        if (coin::value(&payment) > 0) {
-            transfer::public_transfer(payment, buyer);
-        } else {
-            coin::destroy_zero(payment);
-        };
 
         table::add(&mut mydata.purchasers, buyer, true);
 
@@ -1460,7 +1446,7 @@ module social_contracts::mydata {
         memory_config: &social_contracts::memory::MemoryConfig,
         mydata: &mut MyData,
         treasury: &EcosystemTreasury,
-        payment: Coin<MYSO>,
+        payment: &mut Coin<MYSO>,
         account: &social_contracts::memory::MemoryAccount,
         clock: &Clock,
         ctx: &mut TxContext,
@@ -1484,7 +1470,7 @@ module social_contracts::mydata {
         mydata: &mut MyData,
         treasury: &EcosystemTreasury,
         platform: &mut Platform,
-        payment: Coin<MYSO>,
+        payment: &mut Coin<MYSO>,
         account: &social_contracts::memory::MemoryAccount,
         clock: &Clock,
         ctx: &mut TxContext,
@@ -1507,7 +1493,7 @@ module social_contracts::mydata {
         memory_config: &social_contracts::memory::MemoryConfig,
         mydata: &mut MyData,
         treasury: &EcosystemTreasury,
-        payment: Coin<MYSO>,
+        payment: &mut Coin<MYSO>,
         account: &social_contracts::memory::MemoryAccount,
         clock: &Clock,
         ctx: &mut TxContext,
@@ -1535,7 +1521,7 @@ module social_contracts::mydata {
             organization_id = social_contracts::memory::acting_organization_id(&acting);
         };
 
-        assert!(coin::value(&payment) >= price, EPriceMismatch);
+        assert!(coin::value(payment) >= price, EPriceMismatch);
         assert!(buyer != mydata.owner, ESelfPurchase);
         assert!(mydata.subscription_duration_days > 0, EInvalidInput);
         assert!(mydata.subscription_duration_days <= config.max_subscription_days, EInvalidInput);
@@ -1546,8 +1532,7 @@ module social_contracts::mydata {
         assert!(expiry_time <= (MAX_U64 as u128), EOverflow);
         let expiry_time_u64 = expiry_time as u64;
 
-        let mut payment = payment;
-        let price_coin = coin::split(&mut payment, price, ctx);
+        let price_coin = coin::split(payment, price, ctx);
         let (platform_fee, ecosystem_fee, creator_amount) = distribute_p2p_fees_no_platform(
             config,
             treasury,
@@ -1555,12 +1540,6 @@ module social_contracts::mydata {
             price_coin,
             ctx,
         );
-
-        if (coin::value(&payment) > 0) {
-            transfer::public_transfer(payment, buyer);
-        } else {
-            coin::destroy_zero(payment);
-        };
 
         if (table::contains(&mydata.subscribers, buyer)) {
             let current_expiry = table::remove(&mut mydata.subscribers, buyer);
@@ -1597,7 +1576,7 @@ module social_contracts::mydata {
         mydata: &mut MyData,
         treasury: &EcosystemTreasury,
         platform: &mut Platform,
-        payment: Coin<MYSO>,
+        payment: &mut Coin<MYSO>,
         account: &social_contracts::memory::MemoryAccount,
         clock: &Clock,
         ctx: &mut TxContext,
@@ -1626,7 +1605,7 @@ module social_contracts::mydata {
             organization_id = social_contracts::memory::acting_organization_id(&acting);
         };
 
-        assert!(coin::value(&payment) >= price, EPriceMismatch);
+        assert!(coin::value(payment) >= price, EPriceMismatch);
         assert!(buyer != mydata.owner, ESelfPurchase);
         assert!(mydata.subscription_duration_days > 0, EInvalidInput);
         assert!(mydata.subscription_duration_days <= config.max_subscription_days, EInvalidInput);
@@ -1637,8 +1616,7 @@ module social_contracts::mydata {
         assert!(expiry_time <= (MAX_U64 as u128), EOverflow);
         let expiry_time_u64 = expiry_time as u64;
 
-        let mut payment = payment;
-        let price_coin = coin::split(&mut payment, price, ctx);
+        let price_coin = coin::split(payment, price, ctx);
         let (platform_fee, ecosystem_fee, creator_amount) = distribute_p2p_fees_with_platform(
             config,
             treasury,
@@ -1648,12 +1626,6 @@ module social_contracts::mydata {
             clock,
             ctx,
         );
-
-        if (coin::value(&payment) > 0) {
-            transfer::public_transfer(payment, buyer);
-        } else {
-            coin::destroy_zero(payment);
-        };
 
         if (table::contains(&mydata.subscribers, buyer)) {
             let current_expiry = table::remove(&mut mydata.subscribers, buyer);
@@ -1690,7 +1662,7 @@ module social_contracts::mydata {
         memory_config: &social_contracts::memory::MemoryConfig,
         mydata: &mut MyData,
         treasury: &EcosystemTreasury,
-        payment: Coin<MYSO>,
+        payment: &mut Coin<MYSO>,
         account: &social_contracts::memory::MemoryAccount,
         clock: &Clock,
         ctx: &mut TxContext,
@@ -1714,7 +1686,7 @@ module social_contracts::mydata {
         mydata: &mut MyData,
         treasury: &EcosystemTreasury,
         platform: &mut Platform,
-        payment: Coin<MYSO>,
+        payment: &mut Coin<MYSO>,
         account: &social_contracts::memory::MemoryAccount,
         clock: &Clock,
         ctx: &mut TxContext,

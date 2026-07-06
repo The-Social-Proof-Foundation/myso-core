@@ -996,9 +996,9 @@ impl ProfileConfig {
         self.inner.max_username_length
     }
 
-    /// Fee in basis points taken on profile sales (10000 = 100%).
-    async fn profile_sale_fee_bps(&self) -> i64 {
-        self.inner.profile_sale_fee_bps
+    /// Fee in basis points taken on username marketplace sales (10000 = 100%).
+    async fn username_sale_fee_bps(&self) -> i64 {
+        self.inner.username_sale_fee_bps
     }
 
     /// Configuration version.

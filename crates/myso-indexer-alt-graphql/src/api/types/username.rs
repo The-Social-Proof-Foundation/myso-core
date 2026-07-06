@@ -32,11 +32,27 @@ impl UsernameRegistry {
     }
 }
 
+/// Active on-chain reservation for a username (PoC beneficiary provision or marketplace listing).
+#[derive(Enum, Copy, Clone, Eq, PartialEq)]
+pub enum UsernameLockReason {
+    Beneficiary,
+    Marketplace,
+}
+
+fn lock_reason_from_str(reason: &str) -> Option<UsernameLockReason> {
+    match reason {
+        "beneficiary" => Some(UsernameLockReason::Beneficiary),
+        "marketplace" => Some(UsernameLockReason::Marketplace),
+        _ => None,
+    }
+}
+
 /// Why a username is unavailable for registration.
 #[derive(Enum, Copy, Clone, Eq, PartialEq)]
 pub enum UsernameUnavailableReason {
     RegistryClaimed,
     BeneficiaryProvisioned,
+    MarketplaceListed,
 }
 
 /// Whether a username is available for registration.
@@ -68,12 +84,28 @@ impl UsernameAvailability {
         self.inner.beneficiary_provisioned
     }
 
+    async fn marketplace_listed(&self) -> bool {
+        self.inner.marketplace_listed
+    }
+
     async fn registry_profile_id(&self) -> Option<&str> {
         self.inner.registry_profile_id.as_deref()
     }
 
     async fn beneficiary_id(&self) -> Option<&str> {
         self.inner.beneficiary_id.as_deref()
+    }
+
+    async fn listing_seller_profile_id(&self) -> Option<&str> {
+        self.inner.listing_seller_profile_id.as_deref()
+    }
+
+    async fn lock_reasons(&self) -> Vec<UsernameLockReason> {
+        self.inner
+            .lock_reasons
+            .iter()
+            .filter_map(|reason| lock_reason_from_str(reason))
+            .collect()
     }
 
     async fn unavailable_reasons(&self) -> Vec<UsernameUnavailableReason> {
@@ -83,6 +115,9 @@ impl UsernameAvailability {
         }
         if self.inner.beneficiary_provisioned {
             reasons.push(UsernameUnavailableReason::BeneficiaryProvisioned);
+        }
+        if self.inner.marketplace_listed {
+            reasons.push(UsernameUnavailableReason::MarketplaceListed);
         }
         reasons
     }

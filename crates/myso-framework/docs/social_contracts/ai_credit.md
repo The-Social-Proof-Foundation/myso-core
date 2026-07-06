@@ -40,7 +40,6 @@ Credits display: <code>credits = <a href="../social_contracts/ai_credit.md#socia
 -  [Function `bootstrap_init`](#social_contracts_ai_credit_bootstrap_init)
 -  [Function `create_oracle_admin_cap`](#social_contracts_ai_credit_create_oracle_admin_cap)
 -  [Function `create_and_share_balance`](#social_contracts_ai_credit_create_and_share_balance)
--  [Function `transfer_balance_owner`](#social_contracts_ai_credit_transfer_balance_owner)
 -  [Function `new_balance`](#social_contracts_ai_credit_new_balance)
 -  [Function `deposit`](#social_contracts_ai_credit_deposit)
 -  [Function `withdraw`](#social_contracts_ai_credit_withdraw)
@@ -1882,31 +1881,6 @@ Called only from [<code><a href="../social_contracts/profile.md#social_contracts
     });
     transfer::share_object(balance);
     balance_id
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_ai_credit_transfer_balance_owner"></a>
-
-## Function `transfer_balance_owner`
-
-Called only from [<code><a href="../social_contracts/profile.md#social_contracts_profile_transfer_profile_with_memory">profile::transfer_profile_with_memory</a></code>].
-
-
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_transfer_balance_owner">transfer_balance_owner</a>(balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, new_owner: <b>address</b>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_transfer_balance_owner">transfer_balance_owner</a>(balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>, new_owner: <b>address</b>) {
-    balance.principal_owner = new_owner;
 }
 </code></pre>
 

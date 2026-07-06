@@ -236,7 +236,7 @@ pub struct BcsProfileConfigUpdatedEvent {
     min_claim_threshold_divisor: u64,
     min_username_length: u64,
     max_username_length: u64,
-    profile_sale_fee_bps: u64,
+    username_sale_fee_bps: u64,
     timestamp: u64,
 }
 
@@ -448,7 +448,6 @@ pub struct BcsProfileUpdatedEvent {
     owner: AccountAddress,
     updated_at: u64,
     x_username: Option<String>,
-    min_offer_amount: Option<u64>,
     website: Option<String>,
     birthdate: Option<String>,
     location: Option<String>,
@@ -475,6 +474,82 @@ pub struct BcsUsernameReassignedEvent {
     new_profile_id: AccountAddress,
     admin: AccountAddress,
     reason_code: u8,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsUsernameListingCreatedEvent {
+    username: String,
+    seller: AccountAddress,
+    seller_profile_id: AccountAddress,
+    min_price: u64,
+    created_at: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsUsernameListingCancelledEvent {
+    username: String,
+    seller: AccountAddress,
+    seller_profile_id: AccountAddress,
+    cancelled_at: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsUsernameOfferCreatedEvent {
+    username: String,
+    seller_profile_id: AccountAddress,
+    buyer: AccountAddress,
+    buyer_profile_id: AccountAddress,
+    amount: u64,
+    created_at: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsUsernameOfferAcceptedEvent {
+    pub(crate) username: String,
+    pub(crate) replacement_username: String,
+    pub(crate) seller: AccountAddress,
+    pub(crate) seller_profile_id: AccountAddress,
+    pub(crate) buyer: AccountAddress,
+    pub(crate) buyer_profile_id: AccountAddress,
+    pub(crate) amount: u64,
+    pub(crate) accepted_at: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsUsernameOfferRejectedEvent {
+    username: String,
+    seller_profile_id: AccountAddress,
+    buyer: AccountAddress,
+    buyer_profile_id: AccountAddress,
+    rejected_by: AccountAddress,
+    amount: u64,
+    rejected_at: u64,
+    is_revoked: bool,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsUsernameSaleSettledEvent {
+    pub(crate) listed_username: String,
+    pub(crate) replacement_username: String,
+    pub(crate) seller: AccountAddress,
+    pub(crate) seller_profile_id: AccountAddress,
+    pub(crate) buyer: AccountAddress,
+    pub(crate) buyer_profile_id: AccountAddress,
+    pub(crate) amount: u64,
+    pub(crate) settled_at: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsUsernameSaleFeeEvent {
+    username: String,
+    seller: AccountAddress,
+    seller_profile_id: AccountAddress,
+    buyer: AccountAddress,
+    buyer_profile_id: AccountAddress,
+    sale_amount: u64,
+    fee_amount: u64,
+    fee_recipient: AccountAddress,
+    timestamp: u64,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -2847,7 +2922,6 @@ fn parse_profile_event(
                 "cover_photo": ev.cover_photo,
                 "updated_at": ev.updated_at,
                 "x_username": ev.x_username,
-                "min_offer_amount": ev.min_offer_amount,
                 "website": ev.website,
                 "birthdate": ev.birthdate,
                 "location": ev.location,
@@ -3010,7 +3084,97 @@ fn parse_profile_event(
                 "min_claim_threshold_divisor": ev.min_claim_threshold_divisor,
                 "min_username_length": ev.min_username_length,
                 "max_username_length": ev.max_username_length,
-                "profile_sale_fee_bps": ev.profile_sale_fee_bps,
+                "username_sale_fee_bps": ev.username_sale_fee_bps,
+                "timestamp": ev.timestamp,
+            })))
+        }
+        "UsernameListingCreatedEvent" => {
+            let ev = bcs::from_bytes::<BcsUsernameListingCreatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "username": ev.username,
+                "seller": addr_to_string(&ev.seller),
+                "seller_profile_id": addr_to_string(&ev.seller_profile_id),
+                "min_price": ev.min_price,
+                "created_at": ev.created_at,
+            })))
+        }
+        "UsernameListingCancelledEvent" => {
+            let ev = bcs::from_bytes::<BcsUsernameListingCancelledEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "username": ev.username,
+                "seller": addr_to_string(&ev.seller),
+                "seller_profile_id": addr_to_string(&ev.seller_profile_id),
+                "cancelled_at": ev.cancelled_at,
+            })))
+        }
+        "UsernameOfferCreatedEvent" => {
+            let ev = bcs::from_bytes::<BcsUsernameOfferCreatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "username": ev.username,
+                "seller_profile_id": addr_to_string(&ev.seller_profile_id),
+                "buyer": addr_to_string(&ev.buyer),
+                "buyer_profile_id": addr_to_string(&ev.buyer_profile_id),
+                "amount": ev.amount,
+                "created_at": ev.created_at,
+            })))
+        }
+        "UsernameOfferAcceptedEvent" => {
+            let ev = bcs::from_bytes::<BcsUsernameOfferAcceptedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "username": ev.username,
+                "replacement_username": ev.replacement_username,
+                "seller": addr_to_string(&ev.seller),
+                "seller_profile_id": addr_to_string(&ev.seller_profile_id),
+                "buyer": addr_to_string(&ev.buyer),
+                "buyer_profile_id": addr_to_string(&ev.buyer_profile_id),
+                "amount": ev.amount,
+                "accepted_at": ev.accepted_at,
+            })))
+        }
+        "UsernameOfferRejectedEvent" => {
+            let ev = bcs::from_bytes::<BcsUsernameOfferRejectedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "username": ev.username,
+                "seller_profile_id": addr_to_string(&ev.seller_profile_id),
+                "buyer": addr_to_string(&ev.buyer),
+                "buyer_profile_id": addr_to_string(&ev.buyer_profile_id),
+                "rejected_by": addr_to_string(&ev.rejected_by),
+                "amount": ev.amount,
+                "rejected_at": ev.rejected_at,
+                "is_revoked": ev.is_revoked,
+            })))
+        }
+        "UsernameSaleSettledEvent" => {
+            let ev = bcs::from_bytes::<BcsUsernameSaleSettledEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "listed_username": ev.listed_username,
+                "replacement_username": ev.replacement_username,
+                "seller": addr_to_string(&ev.seller),
+                "seller_profile_id": addr_to_string(&ev.seller_profile_id),
+                "buyer": addr_to_string(&ev.buyer),
+                "buyer_profile_id": addr_to_string(&ev.buyer_profile_id),
+                "amount": ev.amount,
+                "settled_at": ev.settled_at,
+            })))
+        }
+        "UsernameSaleFeeEvent" => {
+            let ev = bcs::from_bytes::<BcsUsernameSaleFeeEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "username": ev.username,
+                "seller": addr_to_string(&ev.seller),
+                "seller_profile_id": addr_to_string(&ev.seller_profile_id),
+                "buyer": addr_to_string(&ev.buyer),
+                "buyer_profile_id": addr_to_string(&ev.buyer_profile_id),
+                "sale_amount": ev.sale_amount,
+                "fee_amount": ev.fee_amount,
+                "fee_recipient": addr_to_string(&ev.fee_recipient),
                 "timestamp": ev.timestamp,
             })))
         }

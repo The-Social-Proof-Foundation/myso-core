@@ -3,7 +3,7 @@
 module social_contracts::subscription_fee_tests {
     use std::unit_test::assert_eq;
     use myso::test_scenario;
-    use social_contracts::subscription::{Self, SubscriptionConfig};
+    use social_contracts::subscription;
 
     #[test]
     fun test_default_fee_breakdown() {
@@ -16,8 +16,7 @@ module social_contracts::subscription_fee_tests {
         assert_eq!(ecosystem_fee, 250);
         assert_eq!(creator_amount, 9_500);
 
-        let SubscriptionConfig { id, .. } = config;
-        myso::object::delete(id);
+        subscription::destroy_config_for_testing(config);
         test_scenario::end(scenario);
     }
 
@@ -32,8 +31,7 @@ module social_contracts::subscription_fee_tests {
         assert_eq!(ecosystem_fee, 0);
         assert_eq!(creator_amount, 0);
 
-        let SubscriptionConfig { id, .. } = config;
-        myso::object::delete(id);
+        subscription::destroy_config_for_testing(config);
         test_scenario::end(scenario);
     }
 }

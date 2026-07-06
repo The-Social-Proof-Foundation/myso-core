@@ -6245,10 +6245,6 @@ type Profile implements Node {
 	"""
 	memoryAccountId: String
 	"""
-	Minimum offer amount for profile sales.
-	"""
-	minOfferAmount: Int
-	"""
 	MyData records owned by this profile (paginated).
 	"""
 	mydataRecords(limit: Int, offset: Int): [MyDataRecord!]
@@ -6436,10 +6432,6 @@ type ProfileConfig {
 	"""
 	minUsernameLength: Int!
 	"""
-	Fee in basis points taken on profile sales (10000 = 100%).
-	"""
-	profileSaleFeeBps: Int!
-	"""
 	When the configuration was last updated.
 	"""
 	time: DateTime!
@@ -6455,6 +6447,10 @@ type ProfileConfig {
 	Address that last updated the configuration.
 	"""
 	updatedBy: String!
+	"""
+	Fee in basis points taken on username marketplace sales (10000 = 100%).
+	"""
+	usernameSaleFeeBps: Int!
 	"""
 	Configuration version.
 	"""
@@ -6478,6 +6474,7 @@ Per-window cash-flow breakdown for the profile owner wallet.
 type ProfilePnLWindowStats {
 	grossInboundMyso: Int!
 	messagingMyso: Int!
+	usernameMarketplaceMyso: Int!
 	mydataMyso: Int!
 	netCashFlowMyso: Int!
 	otherInboundMyso: Int!

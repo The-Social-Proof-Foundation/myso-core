@@ -14,6 +14,9 @@ Handles user identity, profile creation, management, and username registration
 -  [Struct `UsernameAdminCap`](#social_contracts_profile_UsernameAdminCap)
 -  [Struct `EcosystemTreasury`](#social_contracts_profile_EcosystemTreasury)
 -  [Struct `UsernameRegistry`](#social_contracts_profile_UsernameRegistry)
+-  [Struct `UsernameMarketplace`](#social_contracts_profile_UsernameMarketplace)
+-  [Struct `UsernameListing`](#social_contracts_profile_UsernameListing)
+-  [Struct `UsernameOffer`](#social_contracts_profile_UsernameOffer)
 -  [Struct `Profile`](#social_contracts_profile_Profile)
 -  [Struct `ProfileBadge`](#social_contracts_profile_ProfileBadge)
 -  [Struct `BadgeData`](#social_contracts_profile_BadgeData)
@@ -29,12 +32,16 @@ Handles user identity, profile creation, management, and username registration
 -  [Struct `UsernameClaimedEvent`](#social_contracts_profile_UsernameClaimedEvent)
 -  [Struct `UsernameRevokedEvent`](#social_contracts_profile_UsernameRevokedEvent)
 -  [Struct `UsernameReassignedEvent`](#social_contracts_profile_UsernameReassignedEvent)
+-  [Struct `UsernameReservedEvent`](#social_contracts_profile_UsernameReservedEvent)
+-  [Struct `UsernameReleasedEvent`](#social_contracts_profile_UsernameReleasedEvent)
 -  [Struct `ProfileXUsernameUpdatedEvent`](#social_contracts_profile_ProfileXUsernameUpdatedEvent)
--  [Struct `ProfileOfferCreatedEvent`](#social_contracts_profile_ProfileOfferCreatedEvent)
--  [Struct `ProfileOfferAcceptedEvent`](#social_contracts_profile_ProfileOfferAcceptedEvent)
--  [Struct `ProfileOfferRejectedEvent`](#social_contracts_profile_ProfileOfferRejectedEvent)
--  [Struct `ProfileOffer`](#social_contracts_profile_ProfileOffer)
--  [Struct `ProfileSaleFeeEvent`](#social_contracts_profile_ProfileSaleFeeEvent)
+-  [Struct `UsernameListingCreatedEvent`](#social_contracts_profile_UsernameListingCreatedEvent)
+-  [Struct `UsernameListingCancelledEvent`](#social_contracts_profile_UsernameListingCancelledEvent)
+-  [Struct `UsernameOfferCreatedEvent`](#social_contracts_profile_UsernameOfferCreatedEvent)
+-  [Struct `UsernameOfferAcceptedEvent`](#social_contracts_profile_UsernameOfferAcceptedEvent)
+-  [Struct `UsernameOfferRejectedEvent`](#social_contracts_profile_UsernameOfferRejectedEvent)
+-  [Struct `UsernameSaleSettledEvent`](#social_contracts_profile_UsernameSaleSettledEvent)
+-  [Struct `UsernameSaleFeeEvent`](#social_contracts_profile_UsernameSaleFeeEvent)
 -  [Struct `VestingPieceEvent`](#social_contracts_profile_VestingPieceEvent)
 -  [Struct `TokensVestedEvent`](#social_contracts_profile_TokensVestedEvent)
 -  [Struct `TokensClaimedEvent`](#social_contracts_profile_TokensClaimedEvent)
@@ -46,10 +53,18 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `to_lowercase_bytes`](#social_contracts_profile_to_lowercase_bytes)
 -  [Function `to_lowercase_byte`](#social_contracts_profile_to_lowercase_byte)
 -  [Function `canonical_registry_username`](#social_contracts_profile_canonical_registry_username)
+-  [Function `validate_username_format`](#social_contracts_profile_validate_username_format)
+-  [Function `normalize_username`](#social_contracts_profile_normalize_username)
 -  [Function `ascii_to_string`](#social_contracts_profile_ascii_to_string)
 -  [Function `is_ecosystem_badge`](#social_contracts_profile_is_ecosystem_badge)
 -  [Function `copy_string`](#social_contracts_profile_copy_string)
 -  [Function `canonical_registry_username_from_bytes`](#social_contracts_profile_canonical_registry_username_from_bytes)
+-  [Function `lock_username_internal`](#social_contracts_profile_lock_username_internal)
+-  [Function `unlock_username_internal`](#social_contracts_profile_unlock_username_internal)
+-  [Function `lock_username`](#social_contracts_profile_lock_username)
+-  [Function `unlock_username`](#social_contracts_profile_unlock_username)
+-  [Function `is_username_locked`](#social_contracts_profile_is_username_locked)
+-  [Function `username_lock_reason`](#social_contracts_profile_username_lock_reason)
 -  [Function `lock_username_for_beneficiary`](#social_contracts_profile_lock_username_for_beneficiary)
 -  [Function `unlock_username_for_beneficiary`](#social_contracts_profile_unlock_username_for_beneficiary)
 -  [Function `claim_username`](#social_contracts_profile_claim_username)
@@ -63,8 +78,6 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `create_profile`](#social_contracts_profile_create_profile)
 -  [Function `create_profile_from_beneficiary_claim`](#social_contracts_profile_create_profile_from_beneficiary_claim)
 -  [Function `ensure_memory_account`](#social_contracts_profile_ensure_memory_account)
--  [Function `transfer_profile`](#social_contracts_profile_transfer_profile)
--  [Function `transfer_profile_with_memory`](#social_contracts_profile_transfer_profile_with_memory)
 -  [Function `update_profile`](#social_contracts_profile_update_profile)
 -  [Function `display_name`](#social_contracts_profile_display_name)
 -  [Function `bio`](#social_contracts_profile_bio)
@@ -81,16 +94,24 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `lookup_profile_by_owner`](#social_contracts_profile_lookup_profile_by_owner)
 -  [Function `get_id_address`](#social_contracts_profile_get_id_address)
 -  [Function `get_owner`](#social_contracts_profile_get_owner)
--  [Function `create_offer`](#social_contracts_profile_create_offer)
--  [Function `accept_offer`](#social_contracts_profile_accept_offer)
--  [Function `accept_offer_with_memory`](#social_contracts_profile_accept_offer_with_memory)
--  [Function `reject_or_revoke_offer`](#social_contracts_profile_reject_or_revoke_offer)
--  [Function `has_offer_from`](#social_contracts_profile_has_offer_from)
--  [Function `has_offers`](#social_contracts_profile_has_offers)
+-  [Function `remove_offeror_from_vector`](#social_contracts_profile_remove_offeror_from_vector)
+-  [Function `refund_username_offer`](#social_contracts_profile_refund_username_offer)
+-  [Function `refund_all_offers_except`](#social_contracts_profile_refund_all_offers_except)
+-  [Function `destroy_username_listing`](#social_contracts_profile_destroy_username_listing)
+-  [Function `execute_username_sale`](#social_contracts_profile_execute_username_sale)
+-  [Function `create_username_listing`](#social_contracts_profile_create_username_listing)
+-  [Function `cancel_username_listing`](#social_contracts_profile_cancel_username_listing)
+-  [Function `create_username_offer`](#social_contracts_profile_create_username_offer)
+-  [Function `accept_username_offer`](#social_contracts_profile_accept_username_offer)
+-  [Function `reject_or_revoke_username_offer`](#social_contracts_profile_reject_or_revoke_username_offer)
+-  [Function `has_username_offer_from`](#social_contracts_profile_has_username_offer_from)
+-  [Function `has_username_offers`](#social_contracts_profile_has_username_offers)
+-  [Function `is_username_listed`](#social_contracts_profile_is_username_listed)
+-  [Function `listing_min_price`](#social_contracts_profile_listing_min_price)
 -  [Function `get_treasury_address`](#social_contracts_profile_get_treasury_address)
 -  [Function `update_treasury_address`](#social_contracts_profile_update_treasury_address)
 -  [Function `update_ecosystem_treasury_config`](#social_contracts_profile_update_ecosystem_treasury_config)
--  [Function `profile_sale_fee_bps`](#social_contracts_profile_profile_sale_fee_bps)
+-  [Function `username_sale_fee_bps`](#social_contracts_profile_username_sale_fee_bps)
 -  [Function `treasury_version`](#social_contracts_profile_treasury_version)
 -  [Function `migrate_ecosystem_treasury`](#social_contracts_profile_migrate_ecosystem_treasury)
 -  [Function `create_profile_admin_cap`](#social_contracts_profile_create_profile_admin_cap)
@@ -110,9 +131,7 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `migrate_registry`](#social_contracts_profile_migrate_registry)
 -  [Function `linked_memory_account_id`](#social_contracts_profile_linked_memory_account_id)
 -  [Function `linked_ai_credit_balance_id`](#social_contracts_profile_linked_ai_credit_balance_id)
--  [Function `min_offer_amount`](#social_contracts_profile_min_offer_amount)
 -  [Function `x_username`](#social_contracts_profile_x_username)
--  [Function `is_for_sale`](#social_contracts_profile_is_for_sale)
 -  [Function `add_badge_to_profile`](#social_contracts_profile_add_badge_to_profile)
 -  [Function `remove_badge_from_profile`](#social_contracts_profile_remove_badge_from_profile)
 -  [Function `remove_own_badge`](#social_contracts_profile_remove_own_badge)
@@ -303,10 +322,10 @@ Global profile feature configuration
 <dd>
 </dd>
 <dt>
-<code><a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>: u64</code>
+<code><a href="../social_contracts/profile.md#social_contracts_profile_username_sale_fee_bps">username_sale_fee_bps</a>: u64</code>
 </dt>
 <dd>
- Fee (bps) taken on profile sales (<code>10_000</code> = 100%)
+ Fee (bps) taken on username marketplace sales (<code>10_000</code> = 100%)
 </dd>
 <dt>
 <code><a href="../social_contracts/profile.md#social_contracts_profile_version">version</a>: u64</code>
@@ -375,7 +394,7 @@ Global profile feature configuration
 <dd>
 </dd>
 <dt>
-<code><a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>: u64</code>
+<code><a href="../social_contracts/profile.md#social_contracts_profile_username_sale_fee_bps">username_sale_fee_bps</a>: u64</code>
 </dt>
 <dd>
 </dd>
@@ -474,7 +493,7 @@ Admin capability for username registry management (reserve, revoke, reassign)
 
 ## Struct `EcosystemTreasury`
 
-Social Ecosystem Treasury that receives fees from profile sales
+Social Ecosystem Treasury that receives fees from username marketplace sales
 
 
 <pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">EcosystemTreasury</a> <b>has</b> key
@@ -544,13 +563,160 @@ Username Registry — sole on-chain store for username ownership
  Owner wallet → profile_id
 </dd>
 <dt>
-<code>beneficiary_usernames: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>, bool&gt;</code>
+<code>profile_username: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<b>address</b>, <a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
 </dt>
 <dd>
- Usernames provisioned for PoC username beneficiary vaults (ACTIVE only)
+ profile_id → canonical username (enforces one username per profile)
+</dd>
+<dt>
+<code>username_locks: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>, u8&gt;</code>
+</dt>
+<dd>
+ Canonical username → lock reason while reserved in escrow (PoC/marketplace)
 </dd>
 <dt>
 <code><a href="../social_contracts/profile.md#social_contracts_profile_version">version</a>: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_profile_UsernameMarketplace"></a>
+
+## Struct `UsernameMarketplace`
+
+Shared escrow for username listings and locked purchase offers
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameMarketplace">UsernameMarketplace</a> <b>has</b> key
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code><a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>: <a href="../myso/object.md#myso_object_UID">myso::object::UID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>listings: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/profile.md#social_contracts_profile_UsernameListing">social_contracts::profile::UsernameListing</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/profile.md#social_contracts_profile_version">version</a>: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_profile_UsernameListing"></a>
+
+## Struct `UsernameListing`
+
+Active listing for a canonical username
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameListing">UsernameListing</a> <b>has</b> store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>seller: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>seller_profile_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>username: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>min_price: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>created_at: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>offerors: vector&lt;<b>address</b>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>offers: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<b>address</b>, <a href="../social_contracts/profile.md#social_contracts_profile_UsernameOffer">social_contracts::profile::UsernameOffer</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_profile_UsernameOffer"></a>
+
+## Struct `UsernameOffer`
+
+Locked bid on a username listing
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameOffer">UsernameOffer</a> <b>has</b> store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>buyer: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>buyer_profile_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>amount: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>created_at: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>locked_myso: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;</code>
 </dt>
 <dd>
 </dd>
@@ -622,12 +788,6 @@ Profile object that contains user information
 </dt>
 <dd>
  X/Twitter username as encrypted string (optional)
-</dd>
-<dt>
-<code><a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
-</dt>
-<dd>
- Minimum offer amount in MYSO tokens the owner is willing to accept (optional)
 </dd>
 <dt>
 <code><a href="../social_contracts/profile.md#social_contracts_profile_website">website</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
@@ -1334,11 +1494,6 @@ Profile updated event with all profile details (username lives in registry)
 <dd>
 </dd>
 <dt>
-<code><a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
 <code><a href="../social_contracts/profile.md#social_contracts_profile_website">website</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
 </dt>
 <dd>
@@ -1479,6 +1634,81 @@ Emitted when an admin reassigns a username to a different profile
 
 </details>
 
+<a name="social_contracts_profile_UsernameReservedEvent"></a>
+
+## Struct `UsernameReservedEvent`
+
+Emitted when a username string is reserved via [<code>UsernameRegistry::username_locks</code>]
+(PoC beneficiary provision or marketplace listing escrow).
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameReservedEvent">UsernameReservedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>username: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>reason: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>reserved_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_profile_UsernameReleasedEvent"></a>
+
+## Struct `UsernameReleasedEvent`
+
+Emitted when a username reservation is released (PoC claim/end, listing cancel, sale settle).
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameReleasedEvent">UsernameReleasedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>username: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>reason: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>released_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="social_contracts_profile_ProfileXUsernameUpdatedEvent"></a>
 
 ## Struct `ProfileXUsernameUpdatedEvent`
@@ -1526,14 +1756,14 @@ X username set or cleared by an EcosystemBadgeAdminCap holder (audit trail).
 
 </details>
 
-<a name="social_contracts_profile_ProfileOfferCreatedEvent"></a>
+<a name="social_contracts_profile_UsernameListingCreatedEvent"></a>
 
-## Struct `ProfileOfferCreatedEvent`
+## Struct `UsernameListingCreatedEvent`
 
-Event emitted when an offer is created for a profile
+Emitted when a username listing is created on the marketplace
 
 
-<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_ProfileOfferCreatedEvent">ProfileOfferCreatedEvent</a> <b>has</b> <b>copy</b>, drop
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameListingCreatedEvent">UsernameListingCreatedEvent</a> <b>has</b> <b>copy</b>, drop
 </code></pre>
 
 
@@ -1544,12 +1774,111 @@ Event emitted when an offer is created for a profile
 
 <dl>
 <dt>
-<code>profile_id: <b>address</b></code>
+<code>username: <a href="../std/string.md#std_string_String">std::string::String</a></code>
 </dt>
 <dd>
 </dd>
 <dt>
-<code>offeror: <b>address</b></code>
+<code>seller: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>seller_profile_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>min_price: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>created_at: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_profile_UsernameListingCancelledEvent"></a>
+
+## Struct `UsernameListingCancelledEvent`
+
+Emitted when a username listing is cancelled
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameListingCancelledEvent">UsernameListingCancelledEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>username: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>seller: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>seller_profile_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>cancelled_at: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_profile_UsernameOfferCreatedEvent"></a>
+
+## Struct `UsernameOfferCreatedEvent`
+
+Emitted when a buyer locks MYSO on a username listing
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameOfferCreatedEvent">UsernameOfferCreatedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>username: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>seller_profile_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>buyer: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>buyer_profile_id: <b>address</b></code>
 </dt>
 <dd>
 </dd>
@@ -1568,14 +1897,14 @@ Event emitted when an offer is created for a profile
 
 </details>
 
-<a name="social_contracts_profile_ProfileOfferAcceptedEvent"></a>
+<a name="social_contracts_profile_UsernameOfferAcceptedEvent"></a>
 
-## Struct `ProfileOfferAcceptedEvent`
+## Struct `UsernameOfferAcceptedEvent`
 
-Event emitted when an offer is accepted
+Emitted when a seller accepts a username offer
 
 
-<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_ProfileOfferAcceptedEvent">ProfileOfferAcceptedEvent</a> <b>has</b> <b>copy</b>, drop
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameOfferAcceptedEvent">UsernameOfferAcceptedEvent</a> <b>has</b> <b>copy</b>, drop
 </code></pre>
 
 
@@ -1586,17 +1915,32 @@ Event emitted when an offer is accepted
 
 <dl>
 <dt>
-<code>profile_id: <b>address</b></code>
+<code>username: <a href="../std/string.md#std_string_String">std::string::String</a></code>
 </dt>
 <dd>
 </dd>
 <dt>
-<code>offeror: <b>address</b></code>
+<code>replacement_username: <a href="../std/string.md#std_string_String">std::string::String</a></code>
 </dt>
 <dd>
 </dd>
 <dt>
-<code>previous_owner: <b>address</b></code>
+<code>seller: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>seller_profile_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>buyer: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>buyer_profile_id: <b>address</b></code>
 </dt>
 <dd>
 </dd>
@@ -1615,14 +1959,14 @@ Event emitted when an offer is accepted
 
 </details>
 
-<a name="social_contracts_profile_ProfileOfferRejectedEvent"></a>
+<a name="social_contracts_profile_UsernameOfferRejectedEvent"></a>
 
-## Struct `ProfileOfferRejectedEvent`
+## Struct `UsernameOfferRejectedEvent`
 
-Event emitted when an offer is rejected or revoked
+Emitted when a username offer is rejected or revoked
 
 
-<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_ProfileOfferRejectedEvent">ProfileOfferRejectedEvent</a> <b>has</b> <b>copy</b>, drop
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameOfferRejectedEvent">UsernameOfferRejectedEvent</a> <b>has</b> <b>copy</b>, drop
 </code></pre>
 
 
@@ -1633,12 +1977,22 @@ Event emitted when an offer is rejected or revoked
 
 <dl>
 <dt>
-<code>profile_id: <b>address</b></code>
+<code>username: <a href="../std/string.md#std_string_String">std::string::String</a></code>
 </dt>
 <dd>
 </dd>
 <dt>
-<code>offeror: <b>address</b></code>
+<code>seller_profile_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>buyer: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>buyer_profile_id: <b>address</b></code>
 </dt>
 <dd>
 </dd>
@@ -1667,14 +2021,14 @@ Event emitted when an offer is rejected or revoked
 
 </details>
 
-<a name="social_contracts_profile_ProfileOffer"></a>
+<a name="social_contracts_profile_UsernameSaleSettledEvent"></a>
 
-## Struct `ProfileOffer`
+## Struct `UsernameSaleSettledEvent`
 
-Represents an offer to purchase a profile
+Emitted when registry username mappings are swapped during marketplace settlement
 
 
-<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_ProfileOffer">ProfileOffer</a> <b>has</b> store
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameSaleSettledEvent">UsernameSaleSettledEvent</a> <b>has</b> <b>copy</b>, drop
 </code></pre>
 
 
@@ -1685,7 +2039,32 @@ Represents an offer to purchase a profile
 
 <dl>
 <dt>
-<code>offeror: <b>address</b></code>
+<code>listed_username: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>replacement_username: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>seller: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>seller_profile_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>buyer: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>buyer_profile_id: <b>address</b></code>
 </dt>
 <dd>
 </dd>
@@ -1695,12 +2074,7 @@ Represents an offer to purchase a profile
 <dd>
 </dd>
 <dt>
-<code>created_at: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>locked_myso: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;</code>
+<code>settled_at: u64</code>
 </dt>
 <dd>
 </dd>
@@ -1709,14 +2083,14 @@ Represents an offer to purchase a profile
 
 </details>
 
-<a name="social_contracts_profile_ProfileSaleFeeEvent"></a>
+<a name="social_contracts_profile_UsernameSaleFeeEvent"></a>
 
-## Struct `ProfileSaleFeeEvent`
+## Struct `UsernameSaleFeeEvent`
 
-Event emitted when a fee is collected from a profile sale
+Emitted when a fee is collected from a username marketplace sale
 
 
-<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_ProfileSaleFeeEvent">ProfileSaleFeeEvent</a> <b>has</b> <b>copy</b>, drop
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameSaleFeeEvent">UsernameSaleFeeEvent</a> <b>has</b> <b>copy</b>, drop
 </code></pre>
 
 
@@ -1727,17 +2101,27 @@ Event emitted when a fee is collected from a profile sale
 
 <dl>
 <dt>
-<code>profile_id: <b>address</b></code>
+<code>username: <a href="../std/string.md#std_string_String">std::string::String</a></code>
 </dt>
 <dd>
 </dd>
 <dt>
-<code>offeror: <b>address</b></code>
+<code>seller: <b>address</b></code>
 </dt>
 <dd>
 </dd>
 <dt>
-<code>previous_owner: <b>address</b></code>
+<code>seller_profile_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>buyer: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>buyer_profile_id: <b>address</b></code>
 </dt>
 <dd>
 </dd>
@@ -2213,33 +2597,6 @@ Error codes
 
 
 
-<a name="social_contracts_profile_EMemoryAccountMismatch"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_EMemoryAccountMismatch">EMemoryAccountMismatch</a>: u64 = 26;
-</code></pre>
-
-
-
-<a name="social_contracts_profile_EMustUseLinkedMemoryTransfer"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_EMustUseLinkedMemoryTransfer">EMustUseLinkedMemoryTransfer</a>: u64 = 27;
-</code></pre>
-
-
-
-<a name="social_contracts_profile_ERequiresMemoryLinkedProfile"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_ERequiresMemoryLinkedProfile">ERequiresMemoryLinkedProfile</a>: u64 = 28;
-</code></pre>
-
-
-
 <a name="social_contracts_profile_EUsernameNotFound"></a>
 
 
@@ -2249,20 +2606,65 @@ Error codes
 
 
 
+<a name="social_contracts_profile_EListingAlreadyExists"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_EListingAlreadyExists">EListingAlreadyExists</a>: u64 = 37;
+</code></pre>
+
+
+
+<a name="social_contracts_profile_EListingNotFound"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_EListingNotFound">EListingNotFound</a>: u64 = 38;
+</code></pre>
+
+
+
+<a name="social_contracts_profile_EListingHasOffers"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_EListingHasOffers">EListingHasOffers</a>: u64 = 39;
+</code></pre>
+
+
+
+<a name="social_contracts_profile_EBuyerHasNoProfile"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_EBuyerHasNoProfile">EBuyerHasNoProfile</a>: u64 = 40;
+</code></pre>
+
+
+
+<a name="social_contracts_profile_EUsernameLocked"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameLocked">EUsernameLocked</a>: u64 = 41;
+</code></pre>
+
+
+
+<a name="social_contracts_profile_EProfileAlreadyHasUsername"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_EProfileAlreadyHasUsername">EProfileAlreadyHasUsername</a>: u64 = 42;
+</code></pre>
+
+
+
 <a name="social_contracts_profile_EUsernameProfileMismatch"></a>
 
 
 
 <pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameProfileMismatch">EUsernameProfileMismatch</a>: u64 = 31;
-</code></pre>
-
-
-
-<a name="social_contracts_profile_EUsernameBeneficiaryActive"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameBeneficiaryActive">EUsernameBeneficiaryActive</a>: u64 = 32;
 </code></pre>
 
 
@@ -2321,11 +2723,41 @@ Error codes
 
 
 
-<a name="social_contracts_profile_PROFILE_SALE_FEE_BPS"></a>
+<a name="social_contracts_profile_USERNAME_SALE_FEE_BPS"></a>
 
 
 
-<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_PROFILE_SALE_FEE_BPS">PROFILE_SALE_FEE_BPS</a>: u64 = 500;
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_USERNAME_SALE_FEE_BPS">USERNAME_SALE_FEE_BPS</a>: u64 = 500;
+</code></pre>
+
+
+
+<a name="social_contracts_profile_USERNAME_LOCK_BENEFICIARY"></a>
+
+Username lock reasons (stored in [<code>UsernameRegistry::username_locks</code>]).
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_USERNAME_LOCK_BENEFICIARY">USERNAME_LOCK_BENEFICIARY</a>: u8 = 1;
+</code></pre>
+
+
+
+<a name="social_contracts_profile_USERNAME_LOCK_MARKETPLACE"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_USERNAME_LOCK_MARKETPLACE">USERNAME_LOCK_MARKETPLACE</a>: u8 = 2;
+</code></pre>
+
+
+
+<a name="social_contracts_profile_USERNAME_REVOKE_REASON_SALE"></a>
+
+<code><a href="../social_contracts/profile.md#social_contracts_profile_UsernameRevokedEvent">UsernameRevokedEvent</a></code> reason code used when a buyer's prior username is freed
+as part of a marketplace sale (distinct from admin-supplied reason codes).
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_USERNAME_REVOKE_REASON_SALE">USERNAME_REVOKE_REASON_SALE</a>: u8 = 2;
 </code></pre>
 
 
@@ -2440,15 +2872,6 @@ Reserved usernames that cannot be registered
 
 
 
-<a name="social_contracts_profile_OFFERS_FIELD"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_OFFERS_FIELD">OFFERS_FIELD</a>: vector&lt;u8&gt; = vector[112, 114, 111, 102, 105, 108, 101, 95, 111, 102, 102, 101, 114, 115];
-</code></pre>
-
-
-
 <a name="social_contracts_profile_MAX_BADGE_NAME_LENGTH"></a>
 
 
@@ -2517,7 +2940,8 @@ Bootstrap initialization function - creates the username registry and treasury
         <a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>: object::new(ctx),
         usernames: table::new(ctx),
         address_profiles: table::new(ctx),
-        beneficiary_usernames: table::new(ctx),
+        profile_username: table::new(ctx),
+        username_locks: table::new(ctx),
         <a href="../social_contracts/profile.md#social_contracts_profile_version">version</a>: current_version,
     };
     // Create the Ecosystem treasury owned by the contract deployer
@@ -2546,7 +2970,7 @@ Bootstrap initialization function - creates the username registry and treasury
         min_claim_threshold_divisor: <a href="../social_contracts/profile.md#social_contracts_profile_MIN_CLAIM_THRESHOLD_DIVISOR">MIN_CLAIM_THRESHOLD_DIVISOR</a>,
         min_username_length: <a href="../social_contracts/profile.md#social_contracts_profile_MIN_USERNAME_LENGTH">MIN_USERNAME_LENGTH</a>,
         max_username_length: <a href="../social_contracts/profile.md#social_contracts_profile_MAX_USERNAME_LENGTH">MAX_USERNAME_LENGTH</a>,
-        <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>: <a href="../social_contracts/profile.md#social_contracts_profile_PROFILE_SALE_FEE_BPS">PROFILE_SALE_FEE_BPS</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_username_sale_fee_bps">username_sale_fee_bps</a>: <a href="../social_contracts/profile.md#social_contracts_profile_USERNAME_SALE_FEE_BPS">USERNAME_SALE_FEE_BPS</a>,
         <a href="../social_contracts/profile.md#social_contracts_profile_version">version</a>: current_version,
     };
     event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfigUpdatedEvent">ProfileConfigUpdatedEvent</a> {
@@ -2558,10 +2982,16 @@ Bootstrap initialization function - creates the username registry and treasury
         min_claim_threshold_divisor: <a href="../social_contracts/profile.md#social_contracts_profile_MIN_CLAIM_THRESHOLD_DIVISOR">MIN_CLAIM_THRESHOLD_DIVISOR</a>,
         min_username_length: <a href="../social_contracts/profile.md#social_contracts_profile_MIN_USERNAME_LENGTH">MIN_USERNAME_LENGTH</a>,
         max_username_length: <a href="../social_contracts/profile.md#social_contracts_profile_MAX_USERNAME_LENGTH">MAX_USERNAME_LENGTH</a>,
-        <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>: <a href="../social_contracts/profile.md#social_contracts_profile_PROFILE_SALE_FEE_BPS">PROFILE_SALE_FEE_BPS</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_username_sale_fee_bps">username_sale_fee_bps</a>: <a href="../social_contracts/profile.md#social_contracts_profile_USERNAME_SALE_FEE_BPS">USERNAME_SALE_FEE_BPS</a>,
         timestamp: clock::timestamp_ms(clock),
     });
     transfer::share_object(config);
+    <b>let</b> marketplace = <a href="../social_contracts/profile.md#social_contracts_profile_UsernameMarketplace">UsernameMarketplace</a> {
+        <a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>: object::new(ctx),
+        listings: table::new(ctx),
+        <a href="../social_contracts/profile.md#social_contracts_profile_version">version</a>: current_version,
+    };
+    transfer::share_object(marketplace);
 }
 </code></pre>
 
@@ -2708,6 +3138,73 @@ Folds ASCII <code>A–Z</code> to <code>a–z</code> only; does not apply Unicod
 
 </details>
 
+<a name="social_contracts_profile_validate_username_format"></a>
+
+## Function `validate_username_format`
+
+Validate that a canonical username contains only allowed bytes:
+<code>a-z</code>, <code>0-9</code>, <code>_</code>, <code>.</code>. Aborts with [<code><a href="../social_contracts/profile.md#social_contracts_profile_EInvalidUsername">EInvalidUsername</a></code>] on any other byte
+(rejects Unicode lookalikes, spaces, <code>@</code>, <code>-</code>, <code>/</code>, emoji, etc.).
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_validate_username_format">validate_username_format</a>(username: &<a href="../std/string.md#std_string_String">std::string::String</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_validate_username_format">validate_username_format</a>(username: &String) {
+    <b>let</b> bytes = string::as_bytes(username);
+    <b>let</b> len = vector::length(bytes);
+    <b>let</b> <b>mut</b> i = 0;
+    <b>while</b> (i &lt; len) {
+        <b>let</b> b = *vector::borrow(bytes, i);
+        <b>let</b> is_lower = b &gt;= 97 && b &lt;= 122; // a-z
+        <b>let</b> is_digit = b &gt;= 48 && b &lt;= 57;  // 0-9
+        <b>let</b> is_underscore = b == 95;         // _
+        <b>let</b> is_dot = b == 46;                // .
+        <b>assert</b>!(is_lower || is_digit || is_underscore || is_dot, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidUsername">EInvalidUsername</a>);
+        i = i + 1;
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_normalize_username"></a>
+
+## Function `normalize_username`
+
+Canonicalize and validate a username: ASCII lowercase + charset check.
+Use this at every registry/marketplace entry point so <code>Brandon</code> and <code>brandon</code>
+collide and disallowed characters abort before any state mutation.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_normalize_username">normalize_username</a>(raw: &<a href="../std/string.md#std_string_String">std::string::String</a>): <a href="../std/string.md#std_string_String">std::string::String</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_normalize_username">normalize_username</a>(raw: &String): String {
+    <b>let</b> canonical = <a href="../social_contracts/profile.md#social_contracts_profile_canonical_registry_username">canonical_registry_username</a>(raw);
+    <a href="../social_contracts/profile.md#social_contracts_profile_validate_username_format">validate_username_format</a>(&canonical);
+    canonical
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_profile_ascii_to_string"></a>
 
 ## Function `ascii_to_string`
@@ -2807,6 +3304,7 @@ Convert an ASCII String to a String
 ## Function `canonical_registry_username_from_bytes`
 
 Canonical username for [<code><a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a></code>] keys (package helper for PoC beneficiary flows).
+Lowercases ASCII <code>A–Z</code> then validates charset (<code>a-z</code>, <code>0-9</code>, <code>_</code>, <code>.</code>).
 
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_canonical_registry_username_from_bytes">canonical_registry_username_from_bytes</a>(username: vector&lt;u8&gt;): <a href="../std/string.md#std_string_String">std::string::String</a>
@@ -2819,7 +3317,194 @@ Canonical username for [<code><a href="../social_contracts/profile.md#social_con
 
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_canonical_registry_username_from_bytes">canonical_registry_username_from_bytes</a>(username: vector&lt;u8&gt;): String {
-    string::utf8(<a href="../social_contracts/profile.md#social_contracts_profile_to_lowercase_bytes">to_lowercase_bytes</a>(&username))
+    <b>let</b> canonical = string::utf8(<a href="../social_contracts/profile.md#social_contracts_profile_to_lowercase_bytes">to_lowercase_bytes</a>(&username));
+    <a href="../social_contracts/profile.md#social_contracts_profile_validate_username_format">validate_username_format</a>(&canonical);
+    canonical
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_lock_username_internal"></a>
+
+## Function `lock_username_internal`
+
+Lock a username string in [<code>UsernameRegistry::username_locks</code>] with <code>reason</code>.
+Aborts with [<code><a href="../social_contracts/profile.md#social_contracts_profile_EUsernameLocked">EUsernameLocked</a></code>] if already reserved (mutual exclusion: PoC vs marketplace).
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_lock_username_internal">lock_username_internal</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, username: <a href="../std/string.md#std_string_String">std::string::String</a>, reason: u8)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_lock_username_internal">lock_username_internal</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>, username: String, reason: u8) {
+    <b>let</b> username = <a href="../social_contracts/profile.md#social_contracts_profile_normalize_username">normalize_username</a>(&username);
+    <b>assert</b>!(
+        !table::contains(&registry.username_locks, username),
+        <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameLocked">EUsernameLocked</a>,
+    );
+    table::add(&<b>mut</b> registry.username_locks, username, reason);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_unlock_username_internal"></a>
+
+## Function `unlock_username_internal`
+
+Release a username reservation if present (idempotent).
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_unlock_username_internal">unlock_username_internal</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, username: <a href="../std/string.md#std_string_String">std::string::String</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_unlock_username_internal">unlock_username_internal</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>, username: String) {
+    <b>let</b> username = <a href="../social_contracts/profile.md#social_contracts_profile_normalize_username">normalize_username</a>(&username);
+    <b>if</b> (table::contains(&registry.username_locks, username)) {
+        table::remove(&<b>mut</b> registry.username_locks, username);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_lock_username"></a>
+
+## Function `lock_username`
+
+Reserve a username with <code>reason</code> and emit [<code><a href="../social_contracts/profile.md#social_contracts_profile_UsernameReservedEvent">UsernameReservedEvent</a></code>].
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_lock_username">lock_username</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, username: <a href="../std/string.md#std_string_String">std::string::String</a>, reason: u8, reserved_by: <b>address</b>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_lock_username">lock_username</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>,
+    username: String,
+    reason: u8,
+    reserved_by: <b>address</b>,
+) {
+    <a href="../social_contracts/profile.md#social_contracts_profile_lock_username_internal">lock_username_internal</a>(registry, username, reason);
+    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_UsernameReservedEvent">UsernameReservedEvent</a> {
+        username: <a href="../social_contracts/profile.md#social_contracts_profile_normalize_username">normalize_username</a>(&username),
+        reason,
+        reserved_by,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_unlock_username"></a>
+
+## Function `unlock_username`
+
+Release a username reservation and emit [<code><a href="../social_contracts/profile.md#social_contracts_profile_UsernameReleasedEvent">UsernameReleasedEvent</a></code>].
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_unlock_username">unlock_username</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, username: <a href="../std/string.md#std_string_String">std::string::String</a>, reason: u8, released_by: <b>address</b>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_unlock_username">unlock_username</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>,
+    username: String,
+    reason: u8,
+    released_by: <b>address</b>,
+) {
+    <a href="../social_contracts/profile.md#social_contracts_profile_unlock_username_internal">unlock_username_internal</a>(registry, username);
+    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_UsernameReleasedEvent">UsernameReleasedEvent</a> {
+        username: <a href="../social_contracts/profile.md#social_contracts_profile_normalize_username">normalize_username</a>(&username),
+        reason,
+        released_by,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_is_username_locked"></a>
+
+## Function `is_username_locked`
+
+True when the canonical username is currently reserved in escrow.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_is_username_locked">is_username_locked</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, username: <a href="../std/string.md#std_string_String">std::string::String</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_is_username_locked">is_username_locked</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>, username: String): bool {
+    <b>let</b> username = <a href="../social_contracts/profile.md#social_contracts_profile_normalize_username">normalize_username</a>(&username);
+    table::contains(&registry.username_locks, username)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_username_lock_reason"></a>
+
+## Function `username_lock_reason`
+
+Active lock reason for a canonical username, if any.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_username_lock_reason">username_lock_reason</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, username: <a href="../std/string.md#std_string_String">std::string::String</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u8&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_username_lock_reason">username_lock_reason</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>, username: String): Option&lt;u8&gt; {
+    <b>let</b> username = <a href="../social_contracts/profile.md#social_contracts_profile_normalize_username">normalize_username</a>(&username);
+    <b>if</b> (table::contains(&registry.username_locks, username)) {
+        option::some(*table::borrow(&registry.username_locks, username))
+    } <b>else</b> {
+        option::none()
+    }
 }
 </code></pre>
 
@@ -2847,10 +3532,7 @@ Lock a username while an ACTIVE PoC username beneficiary provision exists.
     registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>,
     username: String,
 ) {
-    <b>let</b> username = <a href="../social_contracts/profile.md#social_contracts_profile_canonical_registry_username">canonical_registry_username</a>(&username);
-    <b>if</b> (!table::contains(&registry.beneficiary_usernames, username)) {
-        table::add(&<b>mut</b> registry.beneficiary_usernames, username, <b>true</b>);
-    };
+    <a href="../social_contracts/profile.md#social_contracts_profile_lock_username_internal">lock_username_internal</a>(registry, username, <a href="../social_contracts/profile.md#social_contracts_profile_USERNAME_LOCK_BENEFICIARY">USERNAME_LOCK_BENEFICIARY</a>);
 }
 </code></pre>
 
@@ -2878,10 +3560,7 @@ Release a username beneficiary lock after claim or admin end.
     registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>,
     username: String,
 ) {
-    <b>let</b> username = <a href="../social_contracts/profile.md#social_contracts_profile_canonical_registry_username">canonical_registry_username</a>(&username);
-    <b>if</b> (table::contains(&registry.beneficiary_usernames, username)) {
-        table::remove(&<b>mut</b> registry.beneficiary_usernames, username);
-    };
+    <a href="../social_contracts/profile.md#social_contracts_profile_unlock_username_internal">unlock_username_internal</a>(registry, username);
 }
 </code></pre>
 
@@ -2910,7 +3589,16 @@ Release a username beneficiary lock after claim or admin end.
     profile_id: <b>address</b>,
 ) {
     <b>assert</b>!(!table::contains(&registry.usernames, username), <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameNotAvailable">EUsernameNotAvailable</a>);
+    <b>assert</b>!(
+        !table::contains(&registry.profile_username, profile_id),
+        <a href="../social_contracts/profile.md#social_contracts_profile_EProfileAlreadyHasUsername">EProfileAlreadyHasUsername</a>,
+    );
+    <b>assert</b>!(
+        !table::contains(&registry.username_locks, username),
+        <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameLocked">EUsernameLocked</a>,
+    );
     table::add(&<b>mut</b> registry.usernames, username, profile_id);
+    table::add(&<b>mut</b> registry.profile_username, profile_id, username);
     event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_UsernameClaimedEvent">UsernameClaimedEvent</a> {
         username,
         profile_id,
@@ -2963,7 +3651,15 @@ Release a username beneficiary lock after claim or admin end.
 
 <pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_revoke_username">revoke_username</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>, username: String): <b>address</b> {
     <b>assert</b>!(table::contains(&registry.usernames, username), <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameNotFound">EUsernameNotFound</a>);
-    table::remove(&<b>mut</b> registry.usernames, username)
+    <b>assert</b>!(
+        !table::contains(&registry.username_locks, username),
+        <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameLocked">EUsernameLocked</a>,
+    );
+    <b>let</b> profile_id = table::remove(&<b>mut</b> registry.usernames, username);
+    <b>if</b> (table::contains(&registry.profile_username, profile_id)) {
+        table::remove(&<b>mut</b> registry.profile_username, profile_id);
+    };
+    profile_id
 }
 </code></pre>
 
@@ -2995,6 +3691,10 @@ Release a username beneficiary lock after claim or admin end.
     <b>let</b> from_profile_id = *table::borrow(&registry.usernames, username);
     <b>assert</b>!(from_profile_id != to_profile_id, <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameProfileMismatch">EUsernameProfileMismatch</a>);
     *table::borrow_mut(&<b>mut</b> registry.usernames, username) = to_profile_id;
+    <b>if</b> (table::contains(&registry.profile_username, from_profile_id)) {
+        table::remove(&<b>mut</b> registry.profile_username, from_profile_id);
+    };
+    table::add(&<b>mut</b> registry.profile_username, to_profile_id, username);
     from_profile_id
 }
 </code></pre>
@@ -3117,7 +3817,6 @@ Release a username beneficiary lock after claim or admin end.
         <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>,
         updated_at: clock::timestamp_ms(clock),
         <a href="../social_contracts/profile.md#social_contracts_profile_x_username">x_username</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_x_username">x_username</a>,
-        <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>,
         <a href="../social_contracts/profile.md#social_contracts_profile_website">website</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_website">website</a>,
         <a href="../social_contracts/profile.md#social_contracts_profile_birthdate">birthdate</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_birthdate">birthdate</a>,
         <a href="../social_contracts/profile.md#social_contracts_profile_location">location</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_location">location</a>,
@@ -3165,7 +3864,7 @@ Main entry: also creates a linked [<code><a href="../social_contracts/memory.md#
     <b>let</b> now = clock::timestamp_ms(clock);
     // Check that the sender doesn't already have a <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>
     <b>assert</b>!(!table::contains(&registry.address_profiles, <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>), <a href="../social_contracts/profile.md#social_contracts_profile_EProfileAlreadyExists">EProfileAlreadyExists</a>);
-    <b>let</b> username = <a href="../social_contracts/profile.md#social_contracts_profile_canonical_registry_username">canonical_registry_username</a>(&username);
+    <b>let</b> username = <a href="../social_contracts/profile.md#social_contracts_profile_normalize_username">normalize_username</a>(&username);
     // Validate the username
     <b>let</b> username_bytes = string::as_bytes(&username);
     <b>let</b> username_length = vector::length(username_bytes);
@@ -3177,7 +3876,7 @@ Main entry: also creates a linked [<code><a href="../social_contracts/memory.md#
     <b>assert</b>!(!<a href="../social_contracts/profile.md#social_contracts_profile_is_reserved_name">is_reserved_name</a>(&username), <a href="../social_contracts/profile.md#social_contracts_profile_EReservedName">EReservedName</a>);
     // Check that the username isn't already registered
     <b>assert</b>!(!table::contains(&registry.usernames, username), <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameNotAvailable">EUsernameNotAvailable</a>);
-    <b>assert</b>!(!table::contains(&registry.beneficiary_usernames, username), <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameBeneficiaryActive">EUsernameBeneficiaryActive</a>);
+    <b>assert</b>!(!table::contains(&registry.username_locks, username), <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameLocked">EUsernameLocked</a>);
     // Create the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> object
     <b>let</b> <a href="../social_contracts/profile.md#social_contracts_profile_profile_picture">profile_picture</a> = <b>if</b> (vector::length(&profile_picture_url) &gt; 0) {
         option::some(url::new_unsafe_from_bytes(profile_picture_url))
@@ -3203,7 +3902,6 @@ Main entry: also creates a linked [<code><a href="../social_contracts/memory.md#
         created_at: now,
         <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>,
         <a href="../social_contracts/profile.md#social_contracts_profile_x_username">x_username</a>: option::none(),
-        <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: option::none(),
         <a href="../social_contracts/profile.md#social_contracts_profile_website">website</a>: option::none(),
         <a href="../social_contracts/profile.md#social_contracts_profile_birthdate">birthdate</a>: option::none(),
         <a href="../social_contracts/profile.md#social_contracts_profile_location">location</a>: option::none(),
@@ -3285,7 +3983,7 @@ Create a profile from an oracle-verified PoC username beneficiary claim.
     ctx: &<b>mut</b> TxContext,
 ): <b>address</b> {
     <b>assert</b>!(registry.<a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), 1);
-    <b>let</b> username = <a href="../social_contracts/profile.md#social_contracts_profile_canonical_registry_username">canonical_registry_username</a>(&username);
+    <b>let</b> username = <a href="../social_contracts/profile.md#social_contracts_profile_normalize_username">normalize_username</a>(&username);
     <b>let</b> username_length = vector::length(string::as_bytes(&username));
     <b>assert</b>!(
         username_length &gt;= config.min_username_length && username_length &lt;= config.max_username_length,
@@ -3321,7 +4019,6 @@ Create a profile from an oracle-verified PoC username beneficiary claim.
         created_at: now,
         <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>,
         <a href="../social_contracts/profile.md#social_contracts_profile_x_username">x_username</a>: option::none(),
-        <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: option::none(),
         <a href="../social_contracts/profile.md#social_contracts_profile_website">website</a>: option::none(),
         <a href="../social_contracts/profile.md#social_contracts_profile_birthdate">birthdate</a>: option::none(),
         <a href="../social_contracts/profile.md#social_contracts_profile_location">location</a>: option::none(),
@@ -3344,10 +4041,10 @@ Create a profile from an oracle-verified PoC username beneficiary claim.
         ctx,
     );
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.ai_credit_balance_id = option::some(balance_id);
+    // Release the PoC beneficiary reservation before claiming so `<a href="../social_contracts/profile.md#social_contracts_profile_claim_username">claim_username</a>`
+    // does not <b>abort</b> on the lock assertion (1 username per <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> enforced inside).
+    <a href="../social_contracts/profile.md#social_contracts_profile_unlock_username_for_beneficiary">unlock_username_for_beneficiary</a>(registry, username);
     <a href="../social_contracts/profile.md#social_contracts_profile_claim_username">claim_username</a>(registry, username, profile_id);
-    <b>if</b> (table::contains(&registry.beneficiary_usernames, username)) {
-        table::remove(&<b>mut</b> registry.beneficiary_usernames, username);
-    };
     table::add(&<b>mut</b> registry.address_profiles, <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>, profile_id);
     <b>let</b> display_name_value = <b>if</b> (option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_display_name">display_name</a>)) {
         *option::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_display_name">display_name</a>)
@@ -3410,130 +4107,6 @@ Transfers the same <code><a href="../social_contracts/profile.md#social_contract
 
 </details>
 
-<a name="social_contracts_profile_transfer_profile"></a>
-
-## Function `transfer_profile`
-
-Transfer profile when there is **no** linked Memory account (<code>memory_account_id</code> is <code>None</code>).
-Profiles created via [<code><a href="../social_contracts/profile.md#social_contracts_profile_create_profile">create_profile</a></code>] have a Memory link — use [<code><a href="../social_contracts/profile.md#social_contracts_profile_transfer_profile_with_memory">transfer_profile_with_memory</a></code>].
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_transfer_profile">transfer_profile</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, new_owner: <b>address</b>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_transfer_profile">transfer_profile</a>(
-    registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>,
-    <b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
-    new_owner: <b>address</b>,
-    clock: &Clock,
-    ctx: &<b>mut</b> TxContext
-) {
-    // Check <a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> compatibility
-    <b>assert</b>!(registry.<a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), 1);
-    <b>assert</b>!(option::is_none(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.memory_account_id), <a href="../social_contracts/profile.md#social_contracts_profile_EMustUseLinkedMemoryTransfer">EMustUseLinkedMemoryTransfer</a>);
-    <b>let</b> sender = tx_context::sender(ctx);
-    // Verify sender is the <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
-    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == sender, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
-    // Get the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> ID
-    <b>let</b> profile_id = object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
-    // Update registry mappings
-    table::remove(&<b>mut</b> registry.address_profiles, sender);
-    // Check <b>if</b> the offeror already <b>has</b> a <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> in the registry
-    // If so, remove it before adding the new mapping (allows <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> swapping)
-    <b>if</b> (table::contains(&registry.address_profiles, new_owner)) {
-        table::remove(&<b>mut</b> registry.address_profiles, new_owner);
-    };
-    table::add(&<b>mut</b> registry.address_profiles, new_owner, profile_id);
-    // Update the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> = new_owner;
-    <a href="../social_contracts/profile.md#social_contracts_profile_emit_profile_updated_event">emit_profile_updated_event</a>(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, clock, ctx);
-    // Transfer <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> to new <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
-    transfer::transfer(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, new_owner);
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_profile_transfer_profile_with_memory"></a>
-
-## Function `transfer_profile_with_memory`
-
-Same as [<code><a href="../social_contracts/profile.md#social_contracts_profile_transfer_profile">transfer_profile</a></code>], but keeps [<code><a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">memory::MemoryRegistry</a></code>] and linked [<code><a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">memory::MemoryAccount</a></code>] in sync.
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_transfer_profile_with_memory">transfer_profile_with_memory</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, memory_registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">social_contracts::memory::MemoryRegistry</a>, linked_account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, linked_balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, new_owner: <b>address</b>, revoked_count: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_transfer_profile_with_memory">transfer_profile_with_memory</a>(
-    registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>,
-    memory_registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">memory::MemoryRegistry</a>,
-    linked_account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">memory::MemoryAccount</a>,
-    linked_balance: &<b>mut</b> AiCreditBalance,
-    <b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
-    new_owner: <b>address</b>,
-    revoked_count: u64,
-    clock: &Clock,
-    ctx: &<b>mut</b> TxContext,
-) {
-    <b>assert</b>!(registry.<a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), 1);
-    <b>assert</b>!(option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.memory_account_id), <a href="../social_contracts/profile.md#social_contracts_profile_ERequiresMemoryLinkedProfile">ERequiresMemoryLinkedProfile</a>);
-    <b>assert</b>!(
-        *option::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.memory_account_id) == object::id(linked_account),
-        <a href="../social_contracts/profile.md#social_contracts_profile_EMemoryAccountMismatch">EMemoryAccountMismatch</a>,
-    );
-    <b>assert</b>!(option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.ai_credit_balance_id), <a href="../social_contracts/profile.md#social_contracts_profile_ERequiresMemoryLinkedProfile">ERequiresMemoryLinkedProfile</a>);
-    <b>assert</b>!(
-        *option::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.ai_credit_balance_id) == object::id(linked_balance),
-        <a href="../social_contracts/profile.md#social_contracts_profile_EMemoryAccountMismatch">EMemoryAccountMismatch</a>,
-    );
-    <b>let</b> sender = tx_context::sender(ctx);
-    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == sender, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
-    <b>let</b> profile_id = object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
-    <b>if</b> (revoked_count &gt; 0) {
-        <a href="../social_contracts/memory.md#social_contracts_memory_emit_sub_agents_cleared_on_transfer">memory::emit_sub_agents_cleared_on_transfer</a>(
-            linked_account,
-            sender,
-            new_owner,
-            revoked_count,
-        );
-    };
-    <a href="../social_contracts/memory.md#social_contracts_memory_transfer_account_owner_with_profile">memory::transfer_account_owner_with_profile</a>(
-        memory_registry,
-        linked_account,
-        profile_id,
-        sender,
-        new_owner,
-    );
-    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_transfer_balance_owner">ai_credit::transfer_balance_owner</a>(linked_balance, new_owner);
-    table::remove(&<b>mut</b> registry.address_profiles, sender);
-    <b>if</b> (table::contains(&registry.address_profiles, new_owner)) {
-        table::remove(&<b>mut</b> registry.address_profiles, new_owner);
-    };
-    table::add(&<b>mut</b> registry.address_profiles, new_owner, profile_id);
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> = new_owner;
-    <a href="../social_contracts/profile.md#social_contracts_profile_emit_profile_updated_event">emit_profile_updated_event</a>(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, clock, ctx);
-    transfer::transfer(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, new_owner);
-}
-</code></pre>
-
-
-
-</details>
-
 <a name="social_contracts_profile_update_profile"></a>
 
 ## Function `update_profile`
@@ -3541,7 +4114,7 @@ Same as [<code><a href="../social_contracts/profile.md#social_contracts_profile_
 Only the profile owner can update profile information
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_update_profile">update_profile</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, new_display_name: <a href="../std/string.md#std_string_String">std::string::String</a>, new_bio: <a href="../std/string.md#std_string_String">std::string::String</a>, new_profile_picture_url: vector&lt;u8&gt;, new_cover_photo_url: vector&lt;u8&gt;, <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, new_website: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, new_birthdate: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, new_location: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_update_profile">update_profile</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, new_display_name: <a href="../std/string.md#std_string_String">std::string::String</a>, new_bio: <a href="../std/string.md#std_string_String">std::string::String</a>, new_profile_picture_url: vector&lt;u8&gt;, new_cover_photo_url: vector&lt;u8&gt;, new_website: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, new_birthdate: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, new_location: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3557,7 +4130,6 @@ Only the profile owner can update profile information
     new_bio: String,
     new_profile_picture_url: vector&lt;u8&gt;,
     new_cover_photo_url: vector&lt;u8&gt;,
-    <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: Option&lt;u64&gt;,
     new_website: Option&lt;String&gt;,
     new_birthdate: Option&lt;String&gt;,
     new_location: Option&lt;String&gt;,
@@ -3577,9 +4149,6 @@ Only the profile owner can update profile information
     };
     <b>if</b> (vector::length(&new_cover_photo_url) &gt; 0) {
         <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_cover_photo">cover_photo</a> = option::some(url::new_unsafe_from_bytes(new_cover_photo_url));
-    };
-    <b>if</b> (option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>)) {
-        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a> = <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>;
     };
     <a href="../social_contracts/profile.md#social_contracts_profile_apply_optional_string_update">apply_optional_string_update</a>(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_website">website</a>, new_website);
     <a href="../social_contracts/profile.md#social_contracts_profile_apply_optional_string_update">apply_optional_string_update</a>(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_birthdate">birthdate</a>, new_birthdate);
@@ -3834,7 +4403,7 @@ Lookup profile ID by username in the registry
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_lookup_profile_by_username">lookup_profile_by_username</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>, username: String): Option&lt;<b>address</b>&gt; {
-    <b>let</b> username = <a href="../social_contracts/profile.md#social_contracts_profile_canonical_registry_username">canonical_registry_username</a>(&username);
+    <b>let</b> username = <a href="../social_contracts/profile.md#social_contracts_profile_normalize_username">normalize_username</a>(&username);
     <b>if</b> (table::contains(&registry.usernames, username)) {
         option::some(*table::borrow(&registry.usernames, username))
     } <b>else</b> {
@@ -3851,8 +4420,7 @@ Lookup profile ID by username in the registry
 
 ## Function `is_username_beneficiary_locked`
 
-True when the canonical username is not currently claimed
-Returns true when username is locked for an ACTIVE PoC username beneficiary provision.
+True when the canonical username is currently reserved in escrow (PoC or marketplace).
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_is_username_beneficiary_locked">is_username_beneficiary_locked</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, username: &<a href="../std/string.md#std_string_String">std::string::String</a>): bool
@@ -3865,7 +4433,8 @@ Returns true when username is locked for an ACTIVE PoC username beneficiary prov
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_is_username_beneficiary_locked">is_username_beneficiary_locked</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>, username: &String): bool {
-    table::contains(&registry.beneficiary_usernames, *username)
+    <b>let</b> canonical = <a href="../social_contracts/profile.md#social_contracts_profile_normalize_username">normalize_username</a>(username);
+    table::contains(&registry.username_locks, canonical)
 }
 </code></pre>
 
@@ -3889,8 +4458,9 @@ Returns true when username is locked for an ACTIVE PoC username beneficiary prov
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_is_username_available">is_username_available</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>, username: String): bool {
-    <b>let</b> username = <a href="../social_contracts/profile.md#social_contracts_profile_canonical_registry_username">canonical_registry_username</a>(&username);
+    <b>let</b> username = <a href="../social_contracts/profile.md#social_contracts_profile_normalize_username">normalize_username</a>(&username);
     !table::contains(&registry.usernames, username)
+        && !table::contains(&registry.username_locks, username)
 }
 </code></pre>
 
@@ -3977,15 +4547,13 @@ Get the owner of a profile
 
 </details>
 
-<a name="social_contracts_profile_create_offer"></a>
+<a name="social_contracts_profile_remove_offeror_from_vector"></a>
 
-## Function `create_offer`
-
-Create an offer to purchase a profile
-Locks MYSO tokens in the offer
+## Function `remove_offeror_from_vector`
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_create_offer">create_offer</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, coin: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, amount: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_remove_offeror_from_vector">remove_offeror_from_vector</a>(offerors: &<b>mut</b> vector&lt;<b>address</b>&gt;, buyer: <b>address</b>)
 </code></pre>
 
 
@@ -3994,51 +4562,361 @@ Locks MYSO tokens in the offer
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_create_offer">create_offer</a>(
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_remove_offeror_from_vector">remove_offeror_from_vector</a>(offerors: &<b>mut</b> vector&lt;<b>address</b>&gt;, buyer: <b>address</b>) {
+    <b>let</b> <b>mut</b> i = 0;
+    <b>let</b> len = vector::length(offerors);
+    <b>while</b> (i &lt; len) {
+        <b>if</b> (*vector::borrow(offerors, i) == buyer) {
+            vector::remove(offerors, i);
+            <b>return</b>
+        };
+        i = i + 1;
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_refund_username_offer"></a>
+
+## Function `refund_username_offer`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_refund_username_offer">refund_username_offer</a>(offer: <a href="../social_contracts/profile.md#social_contracts_profile_UsernameOffer">social_contracts::profile::UsernameOffer</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_refund_username_offer">refund_username_offer</a>(offer: <a href="../social_contracts/profile.md#social_contracts_profile_UsernameOffer">UsernameOffer</a>, ctx: &<b>mut</b> TxContext) {
+    <b>let</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameOffer">UsernameOffer</a> { buyer, buyer_profile_id: _, amount: _, created_at: _, locked_myso } = offer;
+    <b>let</b> refund = coin::from_balance(locked_myso, ctx);
+    transfer::public_transfer(refund, buyer);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_refund_all_offers_except"></a>
+
+## Function `refund_all_offers_except`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_refund_all_offers_except">refund_all_offers_except</a>(offerors: &vector&lt;<b>address</b>&gt;, offers: &<b>mut</b> <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<b>address</b>, <a href="../social_contracts/profile.md#social_contracts_profile_UsernameOffer">social_contracts::profile::UsernameOffer</a>&gt;, except_buyer: <b>address</b>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_refund_all_offers_except">refund_all_offers_except</a>(
+    offerors: &vector&lt;<b>address</b>&gt;,
+    offers: &<b>mut</b> Table&lt;<b>address</b>, <a href="../social_contracts/profile.md#social_contracts_profile_UsernameOffer">UsernameOffer</a>&gt;,
+    except_buyer: <b>address</b>,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>let</b> <b>mut</b> i = 0;
+    <b>let</b> len = vector::length(offerors);
+    <b>while</b> (i &lt; len) {
+        <b>let</b> buyer = *vector::borrow(offerors, i);
+        <b>if</b> (buyer != except_buyer && table::contains(offers, buyer)) {
+            <b>let</b> offer = table::remove(offers, buyer);
+            <a href="../social_contracts/profile.md#social_contracts_profile_refund_username_offer">refund_username_offer</a>(offer, ctx);
+        };
+        i = i + 1;
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_destroy_username_listing"></a>
+
+## Function `destroy_username_listing`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_destroy_username_listing">destroy_username_listing</a>(listing: <a href="../social_contracts/profile.md#social_contracts_profile_UsernameListing">social_contracts::profile::UsernameListing</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_destroy_username_listing">destroy_username_listing</a>(listing: <a href="../social_contracts/profile.md#social_contracts_profile_UsernameListing">UsernameListing</a>) {
+    <b>let</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameListing">UsernameListing</a> {
+        seller: _,
+        seller_profile_id: _,
+        username: _,
+        min_price: _,
+        created_at: _,
+        offerors: _,
+        offers,
+    } = listing;
+    table::destroy_empty(offers);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_execute_username_sale"></a>
+
+## Function `execute_username_sale`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_execute_username_sale">execute_username_sale</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, listed_username: <a href="../std/string.md#std_string_String">std::string::String</a>, replacement_username: <a href="../std/string.md#std_string_String">std::string::String</a>, seller_profile_id: <b>address</b>, buyer_profile_id: <b>address</b>, seller: <b>address</b>, buyer: <b>address</b>, amount: u64, now: u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_execute_username_sale">execute_username_sale</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>,
+    listed_username: String,
+    replacement_username: String,
+    seller_profile_id: <b>address</b>,
+    buyer_profile_id: <b>address</b>,
+    seller: <b>address</b>,
+    buyer: <b>address</b>,
+    amount: u64,
+    now: u64,
+) {
+    <b>assert</b>!(table::contains(&registry.usernames, listed_username), <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameNotFound">EUsernameNotFound</a>);
+    <b>assert</b>!(
+        *table::borrow(&registry.usernames, listed_username) == seller_profile_id,
+        <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameProfileMismatch">EUsernameProfileMismatch</a>,
+    );
+    <b>assert</b>!(!table::contains(&registry.usernames, replacement_username), <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameNotAvailable">EUsernameNotAvailable</a>);
+    <b>assert</b>!(
+        !table::contains(&registry.username_locks, replacement_username),
+        <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameLocked">EUsernameLocked</a>,
+    );
+    // 1. Free buyer's prior username so the buyer ends with exactly one username
+    //    (one-per-wallet <b>invariant</b>). The buyer's prior username is never the listed
+    //    (marketplace-locked) string, so `<a href="../social_contracts/profile.md#social_contracts_profile_revoke_username">revoke_username</a>` does not trip the lock <b>assert</b>.
+    <b>if</b> (table::contains(&registry.profile_username, buyer_profile_id)) {
+        <b>let</b> old_buyer_username = *table::borrow(&registry.profile_username, buyer_profile_id);
+        <a href="../social_contracts/profile.md#social_contracts_profile_revoke_username">revoke_username</a>(registry, old_buyer_username);
+        event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRevokedEvent">UsernameRevokedEvent</a> {
+            username: old_buyer_username,
+            profile_id: buyer_profile_id,
+            revoked_by: seller,
+            reason_code: <a href="../social_contracts/profile.md#social_contracts_profile_USERNAME_REVOKE_REASON_SALE">USERNAME_REVOKE_REASON_SALE</a>,
+        });
+    };
+    // 2. Move the listed username to the buyer.
+    <a href="../social_contracts/profile.md#social_contracts_profile_move_username">move_username</a>(registry, listed_username, buyer_profile_id);
+    // 3. Claim the replacement <b>for</b> the seller (seller <b>has</b> zero usernames after step 2).
+    <a href="../social_contracts/profile.md#social_contracts_profile_claim_username_internal">claim_username_internal</a>(registry, replacement_username, seller_profile_id);
+    // 4. Release the marketplace reservation on the listed username.
+    <a href="../social_contracts/profile.md#social_contracts_profile_unlock_username">unlock_username</a>(registry, listed_username, <a href="../social_contracts/profile.md#social_contracts_profile_USERNAME_LOCK_MARKETPLACE">USERNAME_LOCK_MARKETPLACE</a>, seller);
+    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_UsernameSaleSettledEvent">UsernameSaleSettledEvent</a> {
+        listed_username,
+        replacement_username,
+        seller,
+        seller_profile_id,
+        buyer,
+        buyer_profile_id,
+        amount,
+        settled_at: now,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_create_username_listing"></a>
+
+## Function `create_username_listing`
+
+List a username for sale on the marketplace
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_create_username_listing">create_username_listing</a>(marketplace: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameMarketplace">social_contracts::profile::UsernameMarketplace</a>, registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, username: <a href="../std/string.md#std_string_String">std::string::String</a>, min_price: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_create_username_listing">create_username_listing</a>(
+    marketplace: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameMarketplace">UsernameMarketplace</a>,
+    registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>,
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
+    username: String,
+    min_price: u64,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(marketplace.<a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), 1);
+    <b>let</b> sender = tx_context::sender(ctx);
+    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == sender, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
+    <b>assert</b>!(min_price &gt; 0, <a href="../social_contracts/profile.md#social_contracts_profile_EInsufficientTokens">EInsufficientTokens</a>);
+    <b>let</b> username = <a href="../social_contracts/profile.md#social_contracts_profile_normalize_username">normalize_username</a>(&username);
+    <b>let</b> seller_profile_id = object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
+    <b>assert</b>!(table::contains(&registry.usernames, username), <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameNotFound">EUsernameNotFound</a>);
+    <b>assert</b>!(
+        *table::borrow(&registry.usernames, username) == seller_profile_id,
+        <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameProfileMismatch">EUsernameProfileMismatch</a>,
+    );
+    <b>assert</b>!(!table::contains(&marketplace.listings, username), <a href="../social_contracts/profile.md#social_contracts_profile_EListingAlreadyExists">EListingAlreadyExists</a>);
+    // Reserve the username in the registry so no second claim, PoC provision, or admin
+    // revoke/reassign can mutate it <b>while</b> listed. Aborts with <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameLocked">EUsernameLocked</a> <b>if</b> already held.
+    <a href="../social_contracts/profile.md#social_contracts_profile_lock_username">lock_username</a>(registry, username, <a href="../social_contracts/profile.md#social_contracts_profile_USERNAME_LOCK_MARKETPLACE">USERNAME_LOCK_MARKETPLACE</a>, sender);
+    <b>let</b> listing = <a href="../social_contracts/profile.md#social_contracts_profile_UsernameListing">UsernameListing</a> {
+        seller: sender,
+        seller_profile_id,
+        username,
+        min_price,
+        created_at: clock::timestamp_ms(clock),
+        offerors: vector::empty(),
+        offers: table::new(ctx),
+    };
+    table::add(&<b>mut</b> marketplace.listings, username, listing);
+    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_UsernameListingCreatedEvent">UsernameListingCreatedEvent</a> {
+        username,
+        seller: sender,
+        seller_profile_id,
+        min_price,
+        created_at: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_cancel_username_listing"></a>
+
+## Function `cancel_username_listing`
+
+Cancel a username listing when there are no pending offers
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_cancel_username_listing">cancel_username_listing</a>(marketplace: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameMarketplace">social_contracts::profile::UsernameMarketplace</a>, registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, username: <a href="../std/string.md#std_string_String">std::string::String</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_cancel_username_listing">cancel_username_listing</a>(
+    marketplace: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameMarketplace">UsernameMarketplace</a>,
+    registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>,
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
+    username: String,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(marketplace.<a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), 1);
+    <b>let</b> sender = tx_context::sender(ctx);
+    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == sender, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
+    <b>let</b> username = <a href="../social_contracts/profile.md#social_contracts_profile_normalize_username">normalize_username</a>(&username);
+    <b>assert</b>!(table::contains(&marketplace.listings, username), <a href="../social_contracts/profile.md#social_contracts_profile_EListingNotFound">EListingNotFound</a>);
+    <b>let</b> listing = table::borrow(&marketplace.listings, username);
+    <b>assert</b>!(listing.seller_profile_id == object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>), <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
+    <b>assert</b>!(vector::length(&listing.offerors) == 0, <a href="../social_contracts/profile.md#social_contracts_profile_EListingHasOffers">EListingHasOffers</a>);
+    <b>let</b> listing = table::remove(&<b>mut</b> marketplace.listings, username);
+    <b>let</b> seller_profile_id = listing.seller_profile_id;
+    <a href="../social_contracts/profile.md#social_contracts_profile_destroy_username_listing">destroy_username_listing</a>(listing);
+    // Release the marketplace reservation so the username can be claimed/listed again.
+    <a href="../social_contracts/profile.md#social_contracts_profile_unlock_username">unlock_username</a>(registry, username, <a href="../social_contracts/profile.md#social_contracts_profile_USERNAME_LOCK_MARKETPLACE">USERNAME_LOCK_MARKETPLACE</a>, sender);
+    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_UsernameListingCancelledEvent">UsernameListingCancelledEvent</a> {
+        username,
+        seller: sender,
+        seller_profile_id,
+        cancelled_at: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_create_username_offer"></a>
+
+## Function `create_username_offer`
+
+Lock MYSO to bid on a listed username
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_create_username_offer">create_username_offer</a>(marketplace: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameMarketplace">social_contracts::profile::UsernameMarketplace</a>, registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, username: <a href="../std/string.md#std_string_String">std::string::String</a>, coin: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, amount: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_create_username_offer">create_username_offer</a>(
+    marketplace: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameMarketplace">UsernameMarketplace</a>,
+    registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>,
+    username: String,
     coin: &<b>mut</b> Coin&lt;MYSO&gt;,
     amount: u64,
     clock: &Clock,
-    ctx: &<b>mut</b> TxContext
+    ctx: &<b>mut</b> TxContext,
 ) {
-    <b>let</b> sender = tx_context::sender(ctx);
-    <b>let</b> profile_owner = <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>;
-    <b>let</b> profile_id = object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
-    <b>let</b> now = clock::timestamp_ms(clock);
-    // Cannot offer on your own <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>
-    <b>assert</b>!(sender != profile_owner, <a href="../social_contracts/profile.md#social_contracts_profile_ECannotOfferOwnProfile">ECannotOfferOwnProfile</a>);
-    // Check <b>if</b> there's sufficient tokens
+    <b>assert</b>!(marketplace.<a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), 1);
+    <b>let</b> buyer = tx_context::sender(ctx);
     <b>assert</b>!(coin::value(coin) &gt;= amount && amount &gt; 0, <a href="../social_contracts/profile.md#social_contracts_profile_EInsufficientTokens">EInsufficientTokens</a>);
-    // Check <b>if</b> the offer meets the minimum amount requirement (<b>if</b> set)
-    <b>if</b> (option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>)) {
-        <b>let</b> min_amount = *option::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>);
-        <b>assert</b>!(amount &gt;= min_amount, <a href="../social_contracts/profile.md#social_contracts_profile_EOfferBelowMinimum">EOfferBelowMinimum</a>);
-    };
-    // Initialize offers table <b>if</b> it doesn't exist
-    <b>if</b> (!dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_OFFERS_FIELD">OFFERS_FIELD</a>)) {
-        <b>let</b> offers = table::new&lt;<b>address</b>, <a href="../social_contracts/profile.md#social_contracts_profile_ProfileOffer">ProfileOffer</a>&gt;(ctx);
-        dynamic_field::add(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_OFFERS_FIELD">OFFERS_FIELD</a>, offers);
-    };
-    // Get the offers table
-    <b>let</b> offers = dynamic_field::borrow_mut&lt;vector&lt;u8&gt;, Table&lt;<b>address</b>, <a href="../social_contracts/profile.md#social_contracts_profile_ProfileOffer">ProfileOffer</a>&gt;&gt;(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_OFFERS_FIELD">OFFERS_FIELD</a>);
-    // Check <b>if</b> the sender already <b>has</b> an offer
-    <b>assert</b>!(!table::contains(offers, sender), <a href="../social_contracts/profile.md#social_contracts_profile_EOfferAlreadyExists">EOfferAlreadyExists</a>);
-    // Split tokens from the coin and convert to a balance <b>for</b> secure storage
+    <b>assert</b>!(table::contains(&registry.address_profiles, buyer), <a href="../social_contracts/profile.md#social_contracts_profile_EBuyerHasNoProfile">EBuyerHasNoProfile</a>);
+    <b>let</b> username = <a href="../social_contracts/profile.md#social_contracts_profile_normalize_username">normalize_username</a>(&username);
+    <b>assert</b>!(table::contains(&marketplace.listings, username), <a href="../social_contracts/profile.md#social_contracts_profile_EListingNotFound">EListingNotFound</a>);
+    <b>let</b> listing = table::borrow(&marketplace.listings, username);
+    <b>assert</b>!(buyer != listing.seller, <a href="../social_contracts/profile.md#social_contracts_profile_ECannotOfferOwnProfile">ECannotOfferOwnProfile</a>);
+    <b>assert</b>!(amount &gt;= listing.min_price, <a href="../social_contracts/profile.md#social_contracts_profile_EOfferBelowMinimum">EOfferBelowMinimum</a>);
+    <b>assert</b>!(!table::contains(&listing.offers, buyer), <a href="../social_contracts/profile.md#social_contracts_profile_EOfferAlreadyExists">EOfferAlreadyExists</a>);
+    <b>let</b> buyer_profile_id = *table::borrow(&registry.address_profiles, buyer);
+    <b>let</b> seller_profile_id = listing.seller_profile_id;
+    <b>let</b> now = clock::timestamp_ms(clock);
     <b>let</b> offer_coin = coin::split(coin, amount, ctx);
-    // Convert to balance to lock tokens in the offer
     <b>let</b> locked_myso = coin::into_balance(offer_coin);
-    // Create and store the offer with locked tokens
-    <b>let</b> offer = <a href="../social_contracts/profile.md#social_contracts_profile_ProfileOffer">ProfileOffer</a> {
-        offeror: sender,
+    <b>let</b> offer = <a href="../social_contracts/profile.md#social_contracts_profile_UsernameOffer">UsernameOffer</a> {
+        buyer,
+        buyer_profile_id,
         amount,
         created_at: now,
         locked_myso,
     };
-    table::add(offers, sender, offer);
-    // Emit an event to track offer creation
-    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_ProfileOfferCreatedEvent">ProfileOfferCreatedEvent</a> {
-        profile_id,
-        offeror: sender,
+    <b>let</b> listing = table::borrow_mut(&<b>mut</b> marketplace.listings, username);
+    vector::push_back(&<b>mut</b> listing.offerors, buyer);
+    table::add(&<b>mut</b> listing.offers, buyer, offer);
+    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_UsernameOfferCreatedEvent">UsernameOfferCreatedEvent</a> {
+        username,
+        seller_profile_id,
+        buyer,
+        buyer_profile_id,
         amount,
         created_at: now,
     });
@@ -4049,14 +4927,14 @@ Locks MYSO tokens in the offer
 
 </details>
 
-<a name="social_contracts_profile_accept_offer"></a>
+<a name="social_contracts_profile_accept_username_offer"></a>
 
-## Function `accept_offer`
+## Function `accept_username_offer`
 
-Accept an offer when there is **no** linked Memory account. Use [<code><a href="../social_contracts/profile.md#social_contracts_profile_accept_offer_with_memory">accept_offer_with_memory</a></code>] for profiles created via [<code><a href="../social_contracts/profile.md#social_contracts_profile_create_profile">create_profile</a></code>].
+Accept a buyer offer and atomically swap username registry mappings
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_accept_offer">accept_offer</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, offeror: <b>address</b>, new_main_profile: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_accept_username_offer">accept_username_offer</a>(marketplace: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameMarketplace">social_contracts::profile::UsernameMarketplace</a>, registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, username: <a href="../std/string.md#std_string_String">std::string::String</a>, buyer: <b>address</b>, replacement_username: <a href="../std/string.md#std_string_String">std::string::String</a>, config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4065,169 +4943,89 @@ Accept an offer when there is **no** linked Memory account. Use [<code><a href="
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_accept_offer">accept_offer</a>(
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_accept_username_offer">accept_username_offer</a>(
+    marketplace: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameMarketplace">UsernameMarketplace</a>,
     registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>,
-    <b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
+    username: String,
+    buyer: <b>address</b>,
+    replacement_username: String,
     config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">ProfileConfig</a>,
     treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">EcosystemTreasury</a>,
-    offeror: <b>address</b>,
-    new_main_profile: Option&lt;<b>address</b>&gt;,
-    clock: &Clock,
-    ctx: &<b>mut</b> TxContext
-) {
-    <b>let</b> sender = tx_context::sender(ctx);
-    <b>let</b> profile_id = object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
-    <b>let</b> now = clock::timestamp_ms(clock);
-    // Verify sender is the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
-    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == sender, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
-    <b>assert</b>!(option::is_none(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.memory_account_id), <a href="../social_contracts/profile.md#social_contracts_profile_EMustUseLinkedMemoryTransfer">EMustUseLinkedMemoryTransfer</a>);
-    // Check <b>if</b> offers table exists
-    <b>assert</b>!(dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_OFFERS_FIELD">OFFERS_FIELD</a>), <a href="../social_contracts/profile.md#social_contracts_profile_EOfferDoesNotExist">EOfferDoesNotExist</a>);
-    // Get the offers table
-    <b>let</b> offers = dynamic_field::borrow_mut&lt;vector&lt;u8&gt;, Table&lt;<b>address</b>, <a href="../social_contracts/profile.md#social_contracts_profile_ProfileOffer">ProfileOffer</a>&gt;&gt;(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_OFFERS_FIELD">OFFERS_FIELD</a>);
-    // Check <b>if</b> the offer exists
-    <b>assert</b>!(table::contains(offers, offeror), <a href="../social_contracts/profile.md#social_contracts_profile_EOfferDoesNotExist">EOfferDoesNotExist</a>);
-    // Remove the offer from the table and get the locked tokens
-    <b>let</b> <a href="../social_contracts/profile.md#social_contracts_profile_ProfileOffer">ProfileOffer</a> { offeror: _, amount, created_at: _, locked_myso } = table::remove(offers, offeror);
-    // Calculate the fee amount (5% of the total)
-    <b>let</b> fee_amount = (amount * config.<a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>) / 10000;
-    // Convert the locked balance to a coin
-    <b>let</b> <b>mut</b> payment = coin::from_balance(locked_myso, ctx);
-    // Split the fee amount to send to the treasury
-    <b>let</b> fee_payment = coin::split(&<b>mut</b> payment, fee_amount, ctx);
-    // Send the fee to the treasury treasury
-    transfer::public_transfer(fee_payment, <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">get_treasury_address</a>(treasury));
-    // Send the remaining amount to the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
-    transfer::public_transfer(payment, sender);
-    // Update registry mappings to reflect new ownership
-    table::remove(&<b>mut</b> registry.address_profiles, sender);
-    // Check <b>if</b> the offeror already <b>has</b> a <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> in the registry
-    // If so, remove it before adding the new mapping (allows <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> swapping)
-    <b>if</b> (table::contains(&registry.address_profiles, offeror)) {
-        table::remove(&<b>mut</b> registry.address_profiles, offeror);
-    };
-    // Add new mapping <b>for</b> buyer
-    table::add(&<b>mut</b> registry.address_profiles, offeror, profile_id);
-    // If the seller provided a new main <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, register it <b>as</b> their main <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>
-    <b>if</b> (option::is_some(&new_main_profile)) {
-        <b>let</b> new_profile_id = *option::borrow(&new_main_profile);
-        // Add the new <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> mapping <b>for</b> the seller
-        table::add(&<b>mut</b> registry.address_profiles, sender, new_profile_id);
-    };
-    // Update the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
-    <b>let</b> previous_owner = <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>;
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> = offeror;
-    // Emit an event to track offer acceptance and token transfer
-    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_ProfileOfferAcceptedEvent">ProfileOfferAcceptedEvent</a> {
-        profile_id,
-        offeror,
-        previous_owner,
-        amount,
-        accepted_at: now,
-    });
-    // Emit a comprehensive <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> updated event to indicate ownership change
-    <a href="../social_contracts/profile.md#social_contracts_profile_emit_profile_updated_event">emit_profile_updated_event</a>(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, clock, ctx);
-    // Emit a fee event
-    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_ProfileSaleFeeEvent">ProfileSaleFeeEvent</a> {
-        profile_id,
-        offeror,
-        previous_owner,
-        sale_amount: amount,
-        fee_amount,
-        fee_recipient: <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">get_treasury_address</a>(treasury),
-        timestamp: now,
-    });
-    // Transfer the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> object to the new <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
-    transfer::transfer(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, offeror);
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_profile_accept_offer_with_memory"></a>
-
-## Function `accept_offer_with_memory`
-
-Same as [<code><a href="../social_contracts/profile.md#social_contracts_profile_accept_offer">accept_offer</a></code>] but synchronizes Memory ownership with the buyer.
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_accept_offer_with_memory">accept_offer_with_memory</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, memory_registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">social_contracts::memory::MemoryRegistry</a>, linked_account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, offeror: <b>address</b>, new_main_profile: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_accept_offer_with_memory">accept_offer_with_memory</a>(
-    registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>,
-    memory_registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">memory::MemoryRegistry</a>,
-    linked_account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">memory::MemoryAccount</a>,
-    <b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
-    config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">ProfileConfig</a>,
-    treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">EcosystemTreasury</a>,
-    offeror: <b>address</b>,
-    new_main_profile: Option&lt;<b>address</b>&gt;,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
+    <b>assert</b>!(marketplace.<a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), 1);
     <b>let</b> sender = tx_context::sender(ctx);
-    <b>let</b> profile_id = object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
-    <b>let</b> now = clock::timestamp_ms(clock);
     <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == sender, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
-    <b>assert</b>!(option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.memory_account_id), <a href="../social_contracts/profile.md#social_contracts_profile_ERequiresMemoryLinkedProfile">ERequiresMemoryLinkedProfile</a>);
-    <b>assert</b>!(
-        *option::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.memory_account_id) == object::id(linked_account),
-        <a href="../social_contracts/profile.md#social_contracts_profile_EMemoryAccountMismatch">EMemoryAccountMismatch</a>,
+    <b>let</b> username = <a href="../social_contracts/profile.md#social_contracts_profile_normalize_username">normalize_username</a>(&username);
+    <b>let</b> replacement_username = <a href="../social_contracts/profile.md#social_contracts_profile_normalize_username">normalize_username</a>(&replacement_username);
+    <b>assert</b>!(table::contains(&marketplace.listings, username), <a href="../social_contracts/profile.md#social_contracts_profile_EListingNotFound">EListingNotFound</a>);
+    <b>let</b> seller_profile_id;
+    <b>let</b> seller;
+    <b>let</b> buyer_profile_id;
+    <b>let</b> amount;
+    {
+        <b>let</b> listing = table::borrow(&marketplace.listings, username);
+        <b>assert</b>!(listing.seller_profile_id == object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>), <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
+        <b>assert</b>!(table::contains(&listing.offers, buyer), <a href="../social_contracts/profile.md#social_contracts_profile_EOfferDoesNotExist">EOfferDoesNotExist</a>);
+        seller_profile_id = listing.seller_profile_id;
+        seller = listing.seller;
+        <b>let</b> offer = table::borrow(&listing.offers, buyer);
+        buyer_profile_id = offer.buyer_profile_id;
+        amount = offer.amount;
+    };
+    <b>let</b> now = clock::timestamp_ms(clock);
+    <a href="../social_contracts/profile.md#social_contracts_profile_execute_username_sale">execute_username_sale</a>(
+        registry,
+        username,
+        replacement_username,
+        seller_profile_id,
+        buyer_profile_id,
+        seller,
+        buyer,
+        amount,
+        now,
     );
-    <b>assert</b>!(dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_OFFERS_FIELD">OFFERS_FIELD</a>), <a href="../social_contracts/profile.md#social_contracts_profile_EOfferDoesNotExist">EOfferDoesNotExist</a>);
-    <b>let</b> offers = dynamic_field::borrow_mut&lt;vector&lt;u8&gt;, Table&lt;<b>address</b>, <a href="../social_contracts/profile.md#social_contracts_profile_ProfileOffer">ProfileOffer</a>&gt;&gt;(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_OFFERS_FIELD">OFFERS_FIELD</a>);
-    <b>assert</b>!(table::contains(offers, offeror), <a href="../social_contracts/profile.md#social_contracts_profile_EOfferDoesNotExist">EOfferDoesNotExist</a>);
-    <b>let</b> <a href="../social_contracts/profile.md#social_contracts_profile_ProfileOffer">ProfileOffer</a> { offeror: _, amount, created_at: _, locked_myso } = table::remove(offers, offeror);
-    <b>let</b> fee_amount = (amount * config.<a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>) / 10000;
+    <b>let</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameListing">UsernameListing</a> {
+        seller: _,
+        seller_profile_id: _,
+        username: listed_username,
+        min_price: _,
+        created_at: _,
+        offerors,
+        <b>mut</b> offers,
+    } = table::remove(&<b>mut</b> marketplace.listings, username);
+    <b>let</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameOffer">UsernameOffer</a> { buyer: _, buyer_profile_id: _, amount, created_at: _, locked_myso } =
+        table::remove(&<b>mut</b> offers, buyer);
+    <b>let</b> fee_amount = (amount * config.<a href="../social_contracts/profile.md#social_contracts_profile_username_sale_fee_bps">username_sale_fee_bps</a>) / <a href="../social_contracts/profile.md#social_contracts_profile_BPS_DENOMINATOR">BPS_DENOMINATOR</a>;
     <b>let</b> <b>mut</b> payment = coin::from_balance(locked_myso, ctx);
     <b>let</b> fee_payment = coin::split(&<b>mut</b> payment, fee_amount, ctx);
     transfer::public_transfer(fee_payment, <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">get_treasury_address</a>(treasury));
-    transfer::public_transfer(payment, sender);
-    <a href="../social_contracts/memory.md#social_contracts_memory_transfer_account_owner_with_profile">memory::transfer_account_owner_with_profile</a>(
-        memory_registry,
-        linked_account,
-        profile_id,
-        sender,
-        offeror,
-    );
-    table::remove(&<b>mut</b> registry.address_profiles, sender);
-    <b>if</b> (table::contains(&registry.address_profiles, offeror)) {
-        table::remove(&<b>mut</b> registry.address_profiles, offeror);
-    };
-    table::add(&<b>mut</b> registry.address_profiles, offeror, profile_id);
-    <b>if</b> (option::is_some(&new_main_profile)) {
-        <b>let</b> new_profile_id = *option::borrow(&new_main_profile);
-        table::add(&<b>mut</b> registry.address_profiles, sender, new_profile_id);
-    };
-    <b>let</b> previous_owner = <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>;
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> = offeror;
-    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_ProfileOfferAcceptedEvent">ProfileOfferAcceptedEvent</a> {
-        profile_id,
-        offeror,
-        previous_owner,
+    transfer::public_transfer(payment, seller);
+    <a href="../social_contracts/profile.md#social_contracts_profile_refund_all_offers_except">refund_all_offers_except</a>(&offerors, &<b>mut</b> offers, buyer, ctx);
+    table::destroy_empty(offers);
+    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_UsernameOfferAcceptedEvent">UsernameOfferAcceptedEvent</a> {
+        username: listed_username,
+        replacement_username,
+        seller,
+        seller_profile_id,
+        buyer,
+        buyer_profile_id,
         amount,
         accepted_at: now,
     });
-    <a href="../social_contracts/profile.md#social_contracts_profile_emit_profile_updated_event">emit_profile_updated_event</a>(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, clock, ctx);
-    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_ProfileSaleFeeEvent">ProfileSaleFeeEvent</a> {
-        profile_id,
-        offeror,
-        previous_owner,
+    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_UsernameSaleFeeEvent">UsernameSaleFeeEvent</a> {
+        username: listed_username,
+        seller,
+        seller_profile_id,
+        buyer,
+        buyer_profile_id,
         sale_amount: amount,
         fee_amount,
         fee_recipient: <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">get_treasury_address</a>(treasury),
         timestamp: now,
     });
-    transfer::transfer(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, offeror);
 }
 </code></pre>
 
@@ -4235,16 +5033,14 @@ Same as [<code><a href="../social_contracts/profile.md#social_contracts_profile_
 
 </details>
 
-<a name="social_contracts_profile_reject_or_revoke_offer"></a>
+<a name="social_contracts_profile_reject_or_revoke_username_offer"></a>
 
-## Function `reject_or_revoke_offer`
+## Function `reject_or_revoke_username_offer`
 
-Reject or revoke an offer on a profile
-Can be called by the profile owner to reject or the offeror to revoke
-Returns locked MYSO tokenv s to the offeror
+Reject or revoke a username marketplace offer
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_reject_or_revoke_offer">reject_or_revoke_offer</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, offeror: <b>address</b>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_reject_or_revoke_username_offer">reject_or_revoke_username_offer</a>(marketplace: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameMarketplace">social_contracts::profile::UsernameMarketplace</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, username: <a href="../std/string.md#std_string_String">std::string::String</a>, buyer: <b>address</b>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4253,38 +5049,40 @@ Returns locked MYSO tokenv s to the offeror
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_reject_or_revoke_offer">reject_or_revoke_offer</a>(
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
-    offeror: <b>address</b>,
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_reject_or_revoke_username_offer">reject_or_revoke_username_offer</a>(
+    marketplace: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameMarketplace">UsernameMarketplace</a>,
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
+    username: String,
+    buyer: <b>address</b>,
     clock: &Clock,
-    ctx: &<b>mut</b> TxContext
+    ctx: &<b>mut</b> TxContext,
 ) {
+    <b>assert</b>!(marketplace.<a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), 1);
     <b>let</b> sender = tx_context::sender(ctx);
-    <b>let</b> profile_id = object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
-    <b>let</b> now = clock::timestamp_ms(clock);
-    // Check <b>if</b> offers table exists
-    <b>assert</b>!(dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_OFFERS_FIELD">OFFERS_FIELD</a>), <a href="../social_contracts/profile.md#social_contracts_profile_EOfferDoesNotExist">EOfferDoesNotExist</a>);
-    // Get the offers table
-    <b>let</b> offers = dynamic_field::borrow_mut&lt;vector&lt;u8&gt;, Table&lt;<b>address</b>, <a href="../social_contracts/profile.md#social_contracts_profile_ProfileOffer">ProfileOffer</a>&gt;&gt;(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_OFFERS_FIELD">OFFERS_FIELD</a>);
-    // Check <b>if</b> the offer exists
-    <b>assert</b>!(table::contains(offers, offeror), <a href="../social_contracts/profile.md#social_contracts_profile_EOfferDoesNotExist">EOfferDoesNotExist</a>);
-    // Verify sender is either the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> or the offeror
-    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == sender || offeror == sender, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorizedOfferAction">EUnauthorizedOfferAction</a>);
-    // Remove the offer from the table and get the locked tokens
-    <b>let</b> <a href="../social_contracts/profile.md#social_contracts_profile_ProfileOffer">ProfileOffer</a> { offeror, amount, created_at: _, locked_myso } = table::remove(offers, offeror);
-    // Convert the locked balance back to a coin and <b>return</b> to the offeror
-    // This unlocks the tokens and returns them to the original offeror
-    <b>let</b> refund = coin::from_balance(locked_myso, ctx);
-    transfer::public_transfer(refund, offeror);
-    // Determine <b>if</b> this is a rejection (by <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>) or revocation (by offeror)
-    <b>let</b> is_revoked = offeror == sender;
-    // Emit an event to track offer rejection/revocation and token <b>return</b>
-    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_ProfileOfferRejectedEvent">ProfileOfferRejectedEvent</a> {
-        profile_id,
-        offeror,
+    <b>let</b> username = <a href="../social_contracts/profile.md#social_contracts_profile_normalize_username">normalize_username</a>(&username);
+    <b>assert</b>!(table::contains(&marketplace.listings, username), <a href="../social_contracts/profile.md#social_contracts_profile_EListingNotFound">EListingNotFound</a>);
+    <b>let</b> listing = table::borrow_mut(&<b>mut</b> marketplace.listings, username);
+    <b>let</b> seller_profile_id = listing.seller_profile_id;
+    <b>if</b> (sender != buyer) {
+        <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == sender, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorizedOfferAction">EUnauthorizedOfferAction</a>);
+        <b>assert</b>!(seller_profile_id == object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>), <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorizedOfferAction">EUnauthorizedOfferAction</a>);
+    } <b>else</b> {
+        <b>assert</b>!(table::contains(&listing.offers, buyer), <a href="../social_contracts/profile.md#social_contracts_profile_EOfferDoesNotExist">EOfferDoesNotExist</a>);
+    };
+    <b>let</b> offer = table::remove(&<b>mut</b> listing.offers, buyer);
+    <a href="../social_contracts/profile.md#social_contracts_profile_remove_offeror_from_vector">remove_offeror_from_vector</a>(&<b>mut</b> listing.offerors, buyer);
+    <b>let</b> buyer_profile_id = offer.buyer_profile_id;
+    <b>let</b> amount = offer.amount;
+    <a href="../social_contracts/profile.md#social_contracts_profile_refund_username_offer">refund_username_offer</a>(offer, ctx);
+    <b>let</b> is_revoked = buyer == sender;
+    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_UsernameOfferRejectedEvent">UsernameOfferRejectedEvent</a> {
+        username,
+        seller_profile_id,
+        buyer,
+        buyer_profile_id,
         rejected_by: sender,
         amount,
-        rejected_at: now,
+        rejected_at: clock::timestamp_ms(clock),
         is_revoked,
     });
 }
@@ -4294,14 +5092,14 @@ Returns locked MYSO tokenv s to the offeror
 
 </details>
 
-<a name="social_contracts_profile_has_offer_from"></a>
+<a name="social_contracts_profile_has_username_offer_from"></a>
 
-## Function `has_offer_from`
+## Function `has_username_offer_from`
 
-Check if a profile has an offer from a specific address
+Check if a username listing has an offer from a specific buyer
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_has_offer_from">has_offer_from</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, offeror: <b>address</b>): bool
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_has_username_offer_from">has_username_offer_from</a>(marketplace: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameMarketplace">social_contracts::profile::UsernameMarketplace</a>, username: <a href="../std/string.md#std_string_String">std::string::String</a>, buyer: <b>address</b>): bool
 </code></pre>
 
 
@@ -4310,12 +5108,17 @@ Check if a profile has an offer from a specific address
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_has_offer_from">has_offer_from</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>, offeror: <b>address</b>): bool {
-    <b>if</b> (!dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_OFFERS_FIELD">OFFERS_FIELD</a>)) {
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_has_username_offer_from">has_username_offer_from</a>(
+    marketplace: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameMarketplace">UsernameMarketplace</a>,
+    username: String,
+    buyer: <b>address</b>,
+): bool {
+    <b>let</b> username = <a href="../social_contracts/profile.md#social_contracts_profile_normalize_username">normalize_username</a>(&username);
+    <b>if</b> (!table::contains(&marketplace.listings, username)) {
         <b>return</b> <b>false</b>
     };
-    <b>let</b> offers = dynamic_field::borrow&lt;vector&lt;u8&gt;, Table&lt;<b>address</b>, <a href="../social_contracts/profile.md#social_contracts_profile_ProfileOffer">ProfileOffer</a>&gt;&gt;(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_OFFERS_FIELD">OFFERS_FIELD</a>);
-    table::contains(offers, offeror)
+    <b>let</b> listing = table::borrow(&marketplace.listings, username);
+    table::contains(&listing.offers, buyer)
 }
 </code></pre>
 
@@ -4323,14 +5126,14 @@ Check if a profile has an offer from a specific address
 
 </details>
 
-<a name="social_contracts_profile_has_offers"></a>
+<a name="social_contracts_profile_has_username_offers"></a>
 
-## Function `has_offers`
+## Function `has_username_offers`
 
-Check if a profile has any active offers
+Check if a username has any active marketplace offers
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_has_offers">has_offers</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): bool
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_has_username_offers">has_username_offers</a>(marketplace: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameMarketplace">social_contracts::profile::UsernameMarketplace</a>, username: <a href="../std/string.md#std_string_String">std::string::String</a>): bool
 </code></pre>
 
 
@@ -4339,12 +5142,78 @@ Check if a profile has any active offers
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_has_offers">has_offers</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): bool {
-    <b>if</b> (!dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_OFFERS_FIELD">OFFERS_FIELD</a>)) {
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_has_username_offers">has_username_offers</a>(
+    marketplace: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameMarketplace">UsernameMarketplace</a>,
+    username: String,
+): bool {
+    <b>let</b> username = <a href="../social_contracts/profile.md#social_contracts_profile_normalize_username">normalize_username</a>(&username);
+    <b>if</b> (!table::contains(&marketplace.listings, username)) {
         <b>return</b> <b>false</b>
     };
-    <b>let</b> offers = dynamic_field::borrow&lt;vector&lt;u8&gt;, Table&lt;<b>address</b>, <a href="../social_contracts/profile.md#social_contracts_profile_ProfileOffer">ProfileOffer</a>&gt;&gt;(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_OFFERS_FIELD">OFFERS_FIELD</a>);
-    table::length(offers) &gt; 0
+    <b>let</b> listing = table::borrow(&marketplace.listings, username);
+    vector::length(&listing.offerors) &gt; 0
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_is_username_listed"></a>
+
+## Function `is_username_listed`
+
+Check if a username is actively listed on the marketplace
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_is_username_listed">is_username_listed</a>(marketplace: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameMarketplace">social_contracts::profile::UsernameMarketplace</a>, username: <a href="../std/string.md#std_string_String">std::string::String</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_is_username_listed">is_username_listed</a>(
+    marketplace: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameMarketplace">UsernameMarketplace</a>,
+    username: String,
+): bool {
+    <b>let</b> username = <a href="../social_contracts/profile.md#social_contracts_profile_normalize_username">normalize_username</a>(&username);
+    table::contains(&marketplace.listings, username)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_listing_min_price"></a>
+
+## Function `listing_min_price`
+
+Minimum price for a listed username
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_listing_min_price">listing_min_price</a>(marketplace: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameMarketplace">social_contracts::profile::UsernameMarketplace</a>, username: <a href="../std/string.md#std_string_String">std::string::String</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_listing_min_price">listing_min_price</a>(
+    marketplace: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameMarketplace">UsernameMarketplace</a>,
+    username: String,
+): Option&lt;u64&gt; {
+    <b>let</b> username = <a href="../social_contracts/profile.md#social_contracts_profile_normalize_username">normalize_username</a>(&username);
+    <b>if</b> (table::contains(&marketplace.listings, username)) {
+        option::some(table::borrow(&marketplace.listings, username).min_price)
+    } <b>else</b> {
+        option::none()
+    }
 }
 </code></pre>
 
@@ -4445,14 +5314,14 @@ Update Ecosystem Treasury address (admin only).
 
 </details>
 
-<a name="social_contracts_profile_profile_sale_fee_bps"></a>
+<a name="social_contracts_profile_username_sale_fee_bps"></a>
 
-## Function `profile_sale_fee_bps`
+## Function `username_sale_fee_bps`
 
-Read the configured profile sale fee (bps).
+Read the configured username marketplace sale fee (bps).
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>): u64
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_username_sale_fee_bps">username_sale_fee_bps</a>(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>): u64
 </code></pre>
 
 
@@ -4461,8 +5330,8 @@ Read the configured profile sale fee (bps).
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">ProfileConfig</a>): u64 {
-    config.<a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_username_sale_fee_bps">username_sale_fee_bps</a>(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">ProfileConfig</a>): u64 {
+    config.<a href="../social_contracts/profile.md#social_contracts_profile_username_sale_fee_bps">username_sale_fee_bps</a>
 }
 </code></pre>
 
@@ -4571,7 +5440,7 @@ Create a ProfileAdminCap for bootstrap (package visibility only)
 Update profile configuration (admin only)
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_update_profile_config">update_profile_config</a>(_: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileAdminCap">social_contracts::profile::ProfileAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, max_vesting_pieces: u64, curve_factor_min: u64, curve_factor_max: u64, curve_precision: u64, min_claim_threshold_divisor: u64, min_username_length: u64, max_username_length: u64, <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_update_profile_config">update_profile_config</a>(_: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileAdminCap">social_contracts::profile::ProfileAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, max_vesting_pieces: u64, curve_factor_min: u64, curve_factor_max: u64, curve_precision: u64, min_claim_threshold_divisor: u64, min_username_length: u64, max_username_length: u64, <a href="../social_contracts/profile.md#social_contracts_profile_username_sale_fee_bps">username_sale_fee_bps</a>: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4590,7 +5459,7 @@ Update profile configuration (admin only)
     min_claim_threshold_divisor: u64,
     min_username_length: u64,
     max_username_length: u64,
-    <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>: u64,
+    <a href="../social_contracts/profile.md#social_contracts_profile_username_sale_fee_bps">username_sale_fee_bps</a>: u64,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
@@ -4599,7 +5468,7 @@ Update profile configuration (admin only)
     <b>assert</b>!(curve_factor_min &gt; 0 && curve_factor_max &gt;= curve_factor_min, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidConfig">EInvalidConfig</a>);
     <b>assert</b>!(min_claim_threshold_divisor &gt; 0, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidConfig">EInvalidConfig</a>);
     <b>assert</b>!(min_username_length &gt; 0 && max_username_length &gt;= min_username_length, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidConfig">EInvalidConfig</a>);
-    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a> &lt;= 10000, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidConfig">EInvalidConfig</a>);
+    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile_username_sale_fee_bps">username_sale_fee_bps</a> &lt;= 10000, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidConfig">EInvalidConfig</a>);
     config.max_vesting_pieces = max_vesting_pieces;
     config.curve_factor_min = curve_factor_min;
     config.curve_factor_max = curve_factor_max;
@@ -4607,7 +5476,7 @@ Update profile configuration (admin only)
     config.min_claim_threshold_divisor = min_claim_threshold_divisor;
     config.min_username_length = min_username_length;
     config.max_username_length = max_username_length;
-    config.<a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a> = <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>;
+    config.<a href="../social_contracts/profile.md#social_contracts_profile_username_sale_fee_bps">username_sale_fee_bps</a> = <a href="../social_contracts/profile.md#social_contracts_profile_username_sale_fee_bps">username_sale_fee_bps</a>;
     event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfigUpdatedEvent">ProfileConfigUpdatedEvent</a> {
         updated_by: tx_context::sender(ctx),
         max_vesting_pieces,
@@ -4617,7 +5486,7 @@ Update profile configuration (admin only)
         min_claim_threshold_divisor,
         min_username_length,
         max_username_length,
-        <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_username_sale_fee_bps">username_sale_fee_bps</a>,
         timestamp: clock::timestamp_ms(clock),
     });
 }
@@ -4631,10 +5500,10 @@ Update profile configuration (admin only)
 
 ## Function `migrate_profile_config`
 
-Migration function for ProfileConfig — copies the profile sale fee from the pre-upgrade value.
+Migration function for ProfileConfig — copies the username sale fee from the pre-upgrade value.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_migrate_profile_config">migrate_profile_config</a>(config: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>: u64, _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_migrate_profile_config">migrate_profile_config</a>(config: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, <a href="../social_contracts/profile.md#social_contracts_profile_username_sale_fee_bps">username_sale_fee_bps</a>: u64, _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4645,16 +5514,16 @@ Migration function for ProfileConfig — copies the profile sale fee from the pr
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_migrate_profile_config">migrate_profile_config</a>(
     config: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">ProfileConfig</a>,
-    <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>: u64,
+    <a href="../social_contracts/profile.md#social_contracts_profile_username_sale_fee_bps">username_sale_fee_bps</a>: u64,
     _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">upgrade::UpgradeAdminCap</a>,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
     <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
     <b>assert</b>!(config.<a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> &lt; current_version, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidConfig">EInvalidConfig</a>);
-    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a> &lt;= 10000, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidConfig">EInvalidConfig</a>);
+    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile_username_sale_fee_bps">username_sale_fee_bps</a> &lt;= 10000, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidConfig">EInvalidConfig</a>);
     <b>let</b> old_version = config.<a href="../social_contracts/profile.md#social_contracts_profile_version">version</a>;
-    config.<a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a> = <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>;
+    config.<a href="../social_contracts/profile.md#social_contracts_profile_username_sale_fee_bps">username_sale_fee_bps</a> = <a href="../social_contracts/profile.md#social_contracts_profile_username_sale_fee_bps">username_sale_fee_bps</a>;
     config.<a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> = current_version;
     <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
         object::id(config),
@@ -4671,7 +5540,7 @@ Migration function for ProfileConfig — copies the profile sale fee from the pr
         min_claim_threshold_divisor: config.min_claim_threshold_divisor,
         min_username_length: config.min_username_length,
         max_username_length: config.max_username_length,
-        <a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>: config.<a href="../social_contracts/profile.md#social_contracts_profile_profile_sale_fee_bps">profile_sale_fee_bps</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_username_sale_fee_bps">username_sale_fee_bps</a>: config.<a href="../social_contracts/profile.md#social_contracts_profile_username_sale_fee_bps">username_sale_fee_bps</a>,
         timestamp: clock::timestamp_ms(clock),
     });
 }
@@ -4963,7 +5832,7 @@ Revoke a username — removes claim; username becomes available immediately.
     ctx: &<b>mut</b> TxContext,
 ) {
     <b>assert</b>!(registry.<a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), 1);
-    <b>let</b> canonical = <a href="../social_contracts/profile.md#social_contracts_profile_canonical_registry_username">canonical_registry_username</a>(&username);
+    <b>let</b> canonical = <a href="../social_contracts/profile.md#social_contracts_profile_normalize_username">normalize_username</a>(&username);
     <b>let</b> profile_id = <a href="../social_contracts/profile.md#social_contracts_profile_revoke_username">revoke_username</a>(registry, canonical);
     <b>let</b> admin = tx_context::sender(ctx);
     event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRevokedEvent">UsernameRevokedEvent</a> {
@@ -5004,7 +5873,21 @@ Reassign an existing username to a different profile.
     ctx: &<b>mut</b> TxContext,
 ) {
     <b>assert</b>!(registry.<a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), 1);
-    <b>let</b> canonical = <a href="../social_contracts/profile.md#social_contracts_profile_canonical_registry_username">canonical_registry_username</a>(&username);
+    <b>let</b> canonical = <a href="../social_contracts/profile.md#social_contracts_profile_normalize_username">normalize_username</a>(&username);
+    <b>assert</b>!(table::contains(&registry.usernames, canonical), <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameNotFound">EUsernameNotFound</a>);
+    <b>let</b> from_profile_id = *table::borrow(&registry.usernames, canonical);
+    <b>assert</b>!(from_profile_id != to_profile_id, <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameProfileMismatch">EUsernameProfileMismatch</a>);
+    <b>assert</b>!(
+        !table::contains(&registry.username_locks, canonical),
+        <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameLocked">EUsernameLocked</a>,
+    );
+    // Preserve the one-username-per-<a href="../social_contracts/profile.md#social_contracts_profile">profile</a> <b>invariant</b>: <b>if</b> the target <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> already owns a
+    // username, revoke it first (mirrors the marketplace sale flow). Aborts with <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameLocked">EUsernameLocked</a>
+    // <b>if</b> the target's current username is marketplace-listed.
+    <b>if</b> (table::contains(&registry.profile_username, to_profile_id)) {
+        <b>let</b> old_target_username = *table::borrow(&registry.profile_username, to_profile_id);
+        <a href="../social_contracts/profile.md#social_contracts_profile_revoke_username">revoke_username</a>(registry, old_target_username);
+    };
     <b>let</b> admin = tx_context::sender(ctx);
     <b>let</b> old_profile_id = <a href="../social_contracts/profile.md#social_contracts_profile_move_username">move_username</a>(registry, canonical, to_profile_id);
     event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_UsernameReassignedEvent">UsernameReassignedEvent</a> {
@@ -5162,31 +6045,6 @@ Linked [<code><a href="../social_contracts/ai_credit.md#social_contracts_ai_cred
 
 </details>
 
-<a name="social_contracts_profile_min_offer_amount"></a>
-
-## Function `min_offer_amount`
-
-Get the minimum offer amount for a profile
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): &<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): &Option&lt;u64&gt; {
-    &<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>
-}
-</code></pre>
-
-
-
-</details>
-
 <a name="social_contracts_profile_x_username"></a>
 
 ## Function `x_username`
@@ -5205,31 +6063,6 @@ X/Twitter username on the profile (set or cleared only via admin entry).
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_x_username">x_username</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): &Option&lt;String&gt; {
     &<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_x_username">x_username</a>
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_profile_is_for_sale"></a>
-
-## Function `is_for_sale`
-
-Check if a profile is for sale (has a minimum offer amount set)
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_is_for_sale">is_for_sale</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): bool
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_is_for_sale">is_for_sale</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): bool {
-    option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>)
 }
 </code></pre>
 

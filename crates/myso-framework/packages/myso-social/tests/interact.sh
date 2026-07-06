@@ -232,10 +232,10 @@ profile_menu() {
     echo "1. Create Profile (registers username)"
     echo "2. About usernames"
     echo "3. Update Profile"
-    echo "4. Create Profile Offer"
-    echo "5. Accept Profile Offer"
-    echo "6. Reject/Revoke Profile Offer"
-    echo "7. Transfer Profile"
+    echo "4. Create Username Listing"
+    echo "5. Create Username Offer"
+    echo "6. Accept Username Offer"
+    echo "7. Reject/Revoke Username Offer"
     echo "8. Back to Main Menu"
     echo ""
     read -r -p "Select an option [1-8]: " choice
@@ -244,10 +244,10 @@ profile_menu() {
         1) create_profile ;;
         2) about_usernames ;;
         3) update_profile ;;
-        4) create_profile_offer ;;
-        5) accept_profile_offer ;;
-        6) reject_profile_offer ;;
-        7) transfer_profile ;;
+        4) create_username_listing ;;
+        5) create_username_offer ;;
+        6) accept_username_offer ;;
+        7) reject_username_offer ;;
         8) show_menu ;;
         *) echo "Invalid option" && profile_menu ;;
     esac
@@ -304,69 +304,85 @@ update_profile() {
     profile_menu
 }
 
-create_profile_offer() {
-    print_header "Creating Profile Offer"
+create_username_listing() {
+    print_header "Creating Username Listing"
 
-    read -r -p "Enter profile object ID: " profile_id
+    read -r -p "Enter UsernameMarketplace object ID [${USERNAME_MARKETPLACE_ID:-}]: " marketplace_id
+    marketplace_id="${marketplace_id:-$USERNAME_MARKETPLACE_ID}"
+    read -r -p "Enter UsernameRegistry object ID [${USERNAME_REGISTRY_ID:-}]: " registry_id
+    registry_id="${registry_id:-$USERNAME_REGISTRY_ID}"
+    read -r -p "Enter seller profile object ID: " profile_id
+    read -r -p "Enter username to list: " username
+    read -r -p "Enter minimum offer amount (MYSO base units): " min_price
+
+    print_info "Creating username listing..."
+    myso client call --package "$PACKAGE_ID" --module profile --function create_username_listing \
+        --args "$marketplace_id" "$registry_id" "$profile_id" "$username" "$min_price" --gas-budget "$GAS_BUDGET"
+
+    print_success "Username listing created."
+    press_enter
+    profile_menu
+}
+
+create_username_offer() {
+    print_header "Creating Username Offer"
+
+    read -r -p "Enter UsernameMarketplace object ID [${USERNAME_MARKETPLACE_ID:-}]: " marketplace_id
+    marketplace_id="${marketplace_id:-$USERNAME_MARKETPLACE_ID}"
+    read -r -p "Enter UsernameRegistry ID [${USERNAME_REGISTRY_ID:-}]: " registry_id
+    registry_id="${registry_id:-$USERNAME_REGISTRY_ID}"
+    read -r -p "Enter listed username: " username
     read -r -p "Enter coin object ID for payment: " coin_id
     read -r -p "Enter offer amount (MYSO base units): " amount
 
-    print_info "Creating profile offer..."
-    myso client call --package "$PACKAGE_ID" --module profile --function create_offer \
-        --args "$profile_id" "$coin_id" "$amount" --gas-budget "$GAS_BUDGET"
+    print_info "Creating username offer..."
+    myso client call --package "$PACKAGE_ID" --module profile --function create_username_offer \
+        --args "$marketplace_id" "$registry_id" "$username" "$coin_id" "$amount" --gas-budget "$GAS_BUDGET"
 
-    print_success "Offer created."
+    print_success "Username offer created."
     press_enter
     profile_menu
 }
 
-accept_profile_offer() {
-    print_header "Accepting Profile Offer"
+accept_username_offer() {
+    print_header "Accepting Username Offer"
 
+    read -r -p "Enter UsernameMarketplace object ID [${USERNAME_MARKETPLACE_ID:-}]: " marketplace_id
+    marketplace_id="${marketplace_id:-$USERNAME_MARKETPLACE_ID}"
     read -r -p "Enter UsernameRegistry ID [${USERNAME_REGISTRY_ID:-}]: " registry_id
     registry_id="${registry_id:-$USERNAME_REGISTRY_ID}"
-    read -r -p "Enter profile object ID: " profile_id
+    read -r -p "Enter seller profile object ID: " profile_id
+    read -r -p "Enter listed username: " username
+    read -r -p "Enter buyer address: " buyer_address
+    read -r -p "Enter replacement username for seller: " replacement_username
+    read -r -p "Enter ProfileConfig object ID [${PROFILE_CONFIG_ID:-}]: " config_id
+    config_id="${config_id:-$PROFILE_CONFIG_ID}"
     read -r -p "Enter EcosystemTreasury object ID [${ECOSYSTEM_TREASURY_ID:-}]: " treasury_id
     treasury_id="${treasury_id:-$ECOSYSTEM_TREASURY_ID}"
-    read -r -p "Enter buyer (offeror) address: " buyer_address
 
-    print_info "Accepting offer..."
-    myso client call --package "$PACKAGE_ID" --module profile --function accept_offer \
-        --args "$registry_id" "$profile_id" "$treasury_id" "$buyer_address" "option::none()" --gas-budget "$GAS_BUDGET"
+    print_info "Accepting username offer..."
+    myso client call --package "$PACKAGE_ID" --module profile --function accept_username_offer \
+        --args "$marketplace_id" "$registry_id" "$profile_id" "$username" "$buyer_address" "$replacement_username" "$config_id" "$treasury_id" --gas-budget "$GAS_BUDGET"
 
-    print_success "Offer accepted."
+    print_success "Username offer accepted."
     press_enter
     profile_menu
 }
 
-reject_profile_offer() {
-    print_header "Rejecting/Revoking Profile Offer"
+reject_username_offer() {
+    print_header "Rejecting/Revoking Username Offer"
 
-    read -r -p "Enter profile object ID: " profile_id
-    read -r -p "Enter offer creator address: " offer_creator
+    read -r -p "Enter UsernameMarketplace object ID [${USERNAME_MARKETPLACE_ID:-}]: " marketplace_id
+    marketplace_id="${marketplace_id:-$USERNAME_MARKETPLACE_ID}"
+    read -r -p "Enter seller profile object ID: " profile_id
+    read -r -p "Enter listed username: " username
+    read -r -p "Enter buyer address: " buyer_address
 
-    print_info "Rejecting/revoking profile offer..."
-    myso client call --package "$PACKAGE_ID" --module profile --function reject_or_revoke_offer \
-        --args "$profile_id" "$offer_creator" --gas-budget "$GAS_BUDGET"
+    print_info "Rejecting/revoking username offer..."
+    myso client call --package "$PACKAGE_ID" --module profile --function reject_or_revoke_username_offer \
+        --args "$marketplace_id" "$profile_id" "$username" "$buyer_address" --gas-budget "$GAS_BUDGET"
 
     print_success "Done."
-    press_enter
-    profile_menu
-}
-
-transfer_profile() {
-    print_header "Transferring Profile"
-
-    read -r -p "Enter UsernameRegistry ID [${USERNAME_REGISTRY_ID:-}]: " registry_id
-    registry_id="${registry_id:-$USERNAME_REGISTRY_ID}"
-    read -r -p "Enter profile object ID: " profile_id
-    read -r -p "Enter recipient address: " recipient
-
-    print_info "Transferring profile..."
-    myso client call --package "$PACKAGE_ID" --module profile --function transfer_profile \
-        --args "$registry_id" "$profile_id" "$recipient" --gas-budget "$GAS_BUDGET"
-
-    print_success "Profile transferred."
     press_enter
     profile_menu
 }

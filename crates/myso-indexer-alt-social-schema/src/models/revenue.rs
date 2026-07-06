@@ -18,6 +18,7 @@ pub const REVENUE_SOURCE_SPT: &str = "spt";
 pub const REVENUE_SOURCE_TIPS: &str = "tips";
 pub const REVENUE_SOURCE_POSTS: &str = "posts";
 pub const REVENUE_SOURCE_MESSAGING: &str = "messaging";
+pub const REVENUE_SOURCE_USERNAME_MARKETPLACE: &str = "username_marketplace";
 
 pub const REVENUE_TYPE_SUBSCRIPTION_MONTHLY: &str = "monthly";
 pub const REVENUE_TYPE_SUBSCRIPTION_RENEWAL: &str = "renewal";
@@ -53,6 +54,9 @@ pub const REVENUE_TYPE_MESSAGING_PLATFORM_FEE: &str = "messaging_platform_fee";
 pub const REVENUE_TYPE_MESSAGING_TREASURY_FEE: &str = "messaging_treasury_fee";
 pub const REVENUE_TYPE_MESSAGING_REFUND: &str = "messaging_refund";
 
+pub const REVENUE_TYPE_USERNAME_MARKETPLACE_SELLER_NET: &str = "seller_net";
+pub const REVENUE_TYPE_USERNAME_MARKETPLACE_ECOSYSTEM_FEE: &str = "ecosystem_fee";
+
 pub const CONTENT_TYPE_POST: &str = "post";
 pub const CONTENT_TYPE_PROFILE: &str = "profile";
 pub const CONTENT_TYPE_SERVICE: &str = "service";
@@ -60,6 +64,7 @@ pub const CONTENT_TYPE_DATA: &str = "data";
 pub const CONTENT_TYPE_TOKEN: &str = "token";
 pub const CONTENT_TYPE_COMMENT: &str = "comment";
 pub const CONTENT_TYPE_MESSAGING: &str = "messaging";
+pub const CONTENT_TYPE_USERNAME: &str = "username";
 
 pub const CURRENCY_MYSO: &str = "MYSO";
 
@@ -131,6 +136,8 @@ pub struct PlatformRevenueSummaryRow {
     pub total_spt_revenue: i64,
     #[diesel(sql_type = BigInt)]
     pub total_messaging_revenue: i64,
+    #[diesel(sql_type = BigInt)]
+    pub total_username_marketplace_revenue: i64,
     #[diesel(sql_type = BigInt)]
     pub total_transactions: i64,
     #[diesel(sql_type = BigInt)]

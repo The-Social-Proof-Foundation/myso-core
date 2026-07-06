@@ -116,22 +116,31 @@ impl Reader {
         profile::get_profile_daily_stats_chart(&self.db, query).await
     }
 
-    pub async fn list_profile_offers(
+    pub async fn list_username_offers_by_username(
         &self,
-        address: &str,
+        username: &str,
         limit: i64,
         offset: i64,
-    ) -> Result<Vec<ProfileOffer>, crate::error::SocialError> {
-        profile::list_profile_offers(&self.db, address, limit, offset).await
+    ) -> Result<Vec<UsernameOffer>, crate::error::SocialError> {
+        profile::list_username_offers_by_username(&self.db, username, limit, offset).await
     }
 
-    pub async fn list_profile_sale_fees(
+    pub async fn list_username_offers_by_profile(
         &self,
         address: &str,
         limit: i64,
         offset: i64,
-    ) -> Result<Vec<ProfileSaleFee>, crate::error::SocialError> {
-        profile::list_profile_sale_fees(&self.db, address, limit, offset).await
+    ) -> Result<Vec<UsernameOffer>, crate::error::SocialError> {
+        profile::list_username_offers_by_profile(&self.db, address, limit, offset).await
+    }
+
+    pub async fn list_username_sale_fees(
+        &self,
+        address: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<UsernameSaleFee>, crate::error::SocialError> {
+        profile::list_username_sale_fees(&self.db, address, limit, offset).await
     }
 
     pub async fn list_post_transfers(

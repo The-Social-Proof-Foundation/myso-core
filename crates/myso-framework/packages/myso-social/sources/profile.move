@@ -14,7 +14,6 @@ module social_contracts::profile {
         object::{Self, UID, ID},
         tx_context::{Self, TxContext},
         transfer,
-        dynamic_field,
         event,
         table::{Self, Table},
         coin::{Self, Coin},
@@ -27,7 +26,7 @@ module social_contracts::profile {
 
     use social_contracts::upgrade;
     use social_contracts::memory as memory;
-    use social_contracts::ai_credit::{Self, AiCreditBalance, AiCreditConfig};
+    use social_contracts::ai_credit::{Self, AiCreditConfig};
 
     /// Error codes
     const EProfileAlreadyExists: u64 = 0;
@@ -54,12 +53,14 @@ module social_contracts::profile {
     const ENotVestingWalletOwner: u64 = 16;
     const EOverflow: u64 = 17;
     const EMemoryAlreadyLinked: u64 = 25;
-    const EMemoryAccountMismatch: u64 = 26;
-    const EMustUseLinkedMemoryTransfer: u64 = 27;
-    const ERequiresMemoryLinkedProfile: u64 = 28;
     const EUsernameNotFound: u64 = 29;
+    const EListingAlreadyExists: u64 = 37;
+    const EListingNotFound: u64 = 38;
+    const EListingHasOffers: u64 = 39;
+    const EBuyerHasNoProfile: u64 = 40;
+    const EUsernameLocked: u64 = 41;
+    const EProfileAlreadyHasUsername: u64 = 42;
     const EUsernameProfileMismatch: u64 = 31;
-    const EUsernameBeneficiaryActive: u64 = 32;
     const EInvalidSchedule: u64 = 30;
     const EInvalidPieceDuration: u64 = 32;
     const EInvalidPieceKind: u64 = 33;
@@ -67,7 +68,15 @@ module social_contracts::profile {
     const EScheduleOverflow: u64 = 35;
     const EInvalidConfig: u64 = 36;
 
-    const PROFILE_SALE_FEE_BPS: u64 = 500;
+    const USERNAME_SALE_FEE_BPS: u64 = 500;
+
+    /// Username lock reasons (stored in [`UsernameRegistry::username_locks`]).
+    const USERNAME_LOCK_BENEFICIARY: u8 = 1;
+    const USERNAME_LOCK_MARKETPLACE: u8 = 2;
+
+    /// `UsernameRevokedEvent` reason code used when a buyer's prior username is freed
+    /// as part of a marketplace sale (distinct from admin-supplied reason codes).
+    const USERNAME_REVOKE_REASON_SALE: u8 = 2;
 
     /// Default bootstrap values for ProfileConfig
     const CURVE_PRECISION: u64 = 1000;
@@ -99,9 +108,6 @@ module social_contracts::profile {
         b"foundation",
     ];
 
-    // Field name for offers dynamic field
-    const OFFERS_FIELD: vector<u8> = b"profile_offers";
-
     const MAX_BADGE_NAME_LENGTH: u64 = 100;
     const MAX_BADGE_DESCRIPTION_LENGTH: u64 = 500;
     const MAX_BADGE_MEDIA_URL_LENGTH: u64 = 2048;
@@ -123,8 +129,8 @@ module social_contracts::profile {
         min_claim_threshold_divisor: u64,
         min_username_length: u64,
         max_username_length: u64,
-        /// Fee (bps) taken on profile sales (`10_000` = 100%)
-        profile_sale_fee_bps: u64,
+        /// Fee (bps) taken on username marketplace sales (`10_000` = 100%)
+        username_sale_fee_bps: u64,
         version: u64,
     }
 
@@ -137,7 +143,7 @@ module social_contracts::profile {
         min_claim_threshold_divisor: u64,
         min_username_length: u64,
         max_username_length: u64,
-        profile_sale_fee_bps: u64,
+        username_sale_fee_bps: u64,
         timestamp: u64,
     }
 
@@ -156,7 +162,7 @@ module social_contracts::profile {
         id: UID,
     }
 
-    /// Social Ecosystem Treasury that receives fees from profile sales
+    /// Social Ecosystem Treasury that receives fees from username marketplace sales
     public struct EcosystemTreasury has key {
         id: UID,
         /// Treasury address that receives fees
@@ -172,9 +178,38 @@ module social_contracts::profile {
         usernames: Table<String, address>,
         /// Owner wallet → profile_id
         address_profiles: Table<address, address>,
-        /// Usernames provisioned for PoC username beneficiary vaults (ACTIVE only)
-        beneficiary_usernames: Table<String, bool>,
+        /// profile_id → canonical username (enforces one username per profile)
+        profile_username: Table<address, String>,
+        /// Canonical username → lock reason while reserved in escrow (PoC/marketplace)
+        username_locks: Table<String, u8>,
         version: u64,
+    }
+
+    /// Shared escrow for username listings and locked purchase offers
+    public struct UsernameMarketplace has key {
+        id: UID,
+        listings: Table<String, UsernameListing>,
+        version: u64,
+    }
+
+    /// Active listing for a canonical username
+    public struct UsernameListing has store {
+        seller: address,
+        seller_profile_id: address,
+        username: String,
+        min_price: u64,
+        created_at: u64,
+        offerors: vector<address>,
+        offers: Table<address, UsernameOffer>,
+    }
+
+    /// Locked bid on a username listing
+    public struct UsernameOffer has store {
+        buyer: address,
+        buyer_profile_id: address,
+        amount: u64,
+        created_at: u64,
+        locked_myso: Balance<MYSO>,
     }
     
     /// Profile object that contains user information
@@ -194,8 +229,6 @@ module social_contracts::profile {
         owner: address,
         /// X/Twitter username as encrypted string (optional)
         x_username: Option<String>,
-        /// Minimum offer amount in MYSO tokens the owner is willing to accept (optional)
-        min_offer_amount: Option<u64>,
         /// Profile website URL (optional)
         website: Option<String>,
         /// Birthdate as opaque string, e.g. ISO-8601 (optional)
@@ -376,7 +409,6 @@ module social_contracts::profile {
         owner: address,
         updated_at: u64,
         x_username: Option<String>,
-        min_offer_amount: Option<u64>,
         website: Option<String>,
         birthdate: Option<String>,
         location: Option<String>,
@@ -405,6 +437,21 @@ module social_contracts::profile {
         reason_code: u8,
     }
 
+    /// Emitted when a username string is reserved via [`UsernameRegistry::username_locks`]
+    /// (PoC beneficiary provision or marketplace listing escrow).
+    public struct UsernameReservedEvent has copy, drop {
+        username: String,
+        reason: u8,
+        reserved_by: address,
+    }
+
+    /// Emitted when a username reservation is released (PoC claim/end, listing cancel, sale settle).
+    public struct UsernameReleasedEvent has copy, drop {
+        username: String,
+        reason: u8,
+        released_by: address,
+    }
+
     /// X username set or cleared by an EcosystemBadgeAdminCap holder (audit trail).
     public struct ProfileXUsernameUpdatedEvent has copy, drop {
         profile_id: address,
@@ -414,46 +461,76 @@ module social_contracts::profile {
         updated_at: u64,
     }
 
-    /// Event emitted when an offer is created for a profile
-    public struct ProfileOfferCreatedEvent has copy, drop {
-        profile_id: address,
-        offeror: address,
+    /// Emitted when a username listing is created on the marketplace
+    public struct UsernameListingCreatedEvent has copy, drop {
+        username: String,
+        seller: address,
+        seller_profile_id: address,
+        min_price: u64,
+        created_at: u64,
+    }
+
+    /// Emitted when a username listing is cancelled
+    public struct UsernameListingCancelledEvent has copy, drop {
+        username: String,
+        seller: address,
+        seller_profile_id: address,
+        cancelled_at: u64,
+    }
+
+    /// Emitted when a buyer locks MYSO on a username listing
+    public struct UsernameOfferCreatedEvent has copy, drop {
+        username: String,
+        seller_profile_id: address,
+        buyer: address,
+        buyer_profile_id: address,
         amount: u64,
         created_at: u64,
     }
 
-    /// Event emitted when an offer is accepted
-    public struct ProfileOfferAcceptedEvent has copy, drop {
-        profile_id: address,
-        offeror: address,
-        previous_owner: address,
+    /// Emitted when a seller accepts a username offer
+    public struct UsernameOfferAcceptedEvent has copy, drop {
+        username: String,
+        replacement_username: String,
+        seller: address,
+        seller_profile_id: address,
+        buyer: address,
+        buyer_profile_id: address,
         amount: u64,
         accepted_at: u64,
     }
 
-    /// Event emitted when an offer is rejected or revoked
-    public struct ProfileOfferRejectedEvent has copy, drop {
-        profile_id: address,
-        offeror: address,
+    /// Emitted when a username offer is rejected or revoked
+    public struct UsernameOfferRejectedEvent has copy, drop {
+        username: String,
+        seller_profile_id: address,
+        buyer: address,
+        buyer_profile_id: address,
         rejected_by: address,
         amount: u64,
         rejected_at: u64,
         is_revoked: bool,
     }
 
-    /// Represents an offer to purchase a profile
-    public struct ProfileOffer has store {
-        offeror: address,
+    /// Emitted when registry username mappings are swapped during marketplace settlement
+    public struct UsernameSaleSettledEvent has copy, drop {
+        listed_username: String,
+        replacement_username: String,
+        seller: address,
+        seller_profile_id: address,
+        buyer: address,
+        buyer_profile_id: address,
         amount: u64,
-        created_at: u64,
-        locked_myso: Balance<MYSO>,
+        settled_at: u64,
     }
 
-    /// Event emitted when a fee is collected from a profile sale
-    public struct ProfileSaleFeeEvent has copy, drop {
-        profile_id: address,
-        offeror: address,
-        previous_owner: address,
+    /// Emitted when a fee is collected from a username marketplace sale
+    public struct UsernameSaleFeeEvent has copy, drop {
+        username: String,
+        seller: address,
+        seller_profile_id: address,
+        buyer: address,
+        buyer_profile_id: address,
         sale_amount: u64,
         fee_amount: u64,
         fee_recipient: address,
@@ -512,7 +589,8 @@ module social_contracts::profile {
             id: object::new(ctx),
             usernames: table::new(ctx),
             address_profiles: table::new(ctx),
-            beneficiary_usernames: table::new(ctx),
+            profile_username: table::new(ctx),
+            username_locks: table::new(ctx),
             version: current_version,
         };
         
@@ -546,7 +624,7 @@ module social_contracts::profile {
             min_claim_threshold_divisor: MIN_CLAIM_THRESHOLD_DIVISOR,
             min_username_length: MIN_USERNAME_LENGTH,
             max_username_length: MAX_USERNAME_LENGTH,
-            profile_sale_fee_bps: PROFILE_SALE_FEE_BPS,
+            username_sale_fee_bps: USERNAME_SALE_FEE_BPS,
             version: current_version,
         };
         event::emit(ProfileConfigUpdatedEvent {
@@ -558,10 +636,17 @@ module social_contracts::profile {
             min_claim_threshold_divisor: MIN_CLAIM_THRESHOLD_DIVISOR,
             min_username_length: MIN_USERNAME_LENGTH,
             max_username_length: MAX_USERNAME_LENGTH,
-            profile_sale_fee_bps: PROFILE_SALE_FEE_BPS,
+            username_sale_fee_bps: USERNAME_SALE_FEE_BPS,
             timestamp: clock::timestamp_ms(clock),
         });
         transfer::share_object(config);
+
+        let marketplace = UsernameMarketplace {
+            id: object::new(ctx),
+            listings: table::new(ctx),
+            version: current_version,
+        };
+        transfer::share_object(marketplace);
     }
 
     // === Username Management Functions ===
@@ -633,6 +718,33 @@ module social_contracts::profile {
         string::utf8(lowered)
     }
 
+    /// Validate that a canonical username contains only allowed bytes:
+    /// `a-z`, `0-9`, `_`, `.`. Aborts with [`EInvalidUsername`] on any other byte
+    /// (rejects Unicode lookalikes, spaces, `@`, `-`, `/`, emoji, etc.).
+    fun validate_username_format(username: &String) {
+        let bytes = string::as_bytes(username);
+        let len = vector::length(bytes);
+        let mut i = 0;
+        while (i < len) {
+            let b = *vector::borrow(bytes, i);
+            let is_lower = b >= 97 && b <= 122; // a-z
+            let is_digit = b >= 48 && b <= 57;  // 0-9
+            let is_underscore = b == 95;         // _
+            let is_dot = b == 46;                // .
+            assert!(is_lower || is_digit || is_underscore || is_dot, EInvalidUsername);
+            i = i + 1;
+        };
+    }
+
+    /// Canonicalize and validate a username: ASCII lowercase + charset check.
+    /// Use this at every registry/marketplace entry point so `Brandon` and `brandon`
+    /// collide and disallowed characters abort before any state mutation.
+    fun normalize_username(raw: &String): String {
+        let canonical = canonical_registry_username(raw);
+        validate_username_format(&canonical);
+        canonical
+    }
+
     /// Convert an ASCII String to a String
     fun ascii_to_string(ascii_str: ascii::String): String {
         string::utf8(ascii::into_bytes(ascii_str))
@@ -668,8 +780,76 @@ module social_contracts::profile {
     }
 
     /// Canonical username for [`UsernameRegistry`] keys (package helper for PoC beneficiary flows).
+    /// Lowercases ASCII `A–Z` then validates charset (`a-z`, `0-9`, `_`, `.`).
     public(package) fun canonical_registry_username_from_bytes(username: vector<u8>): String {
-        string::utf8(to_lowercase_bytes(&username))
+        let canonical = string::utf8(to_lowercase_bytes(&username));
+        validate_username_format(&canonical);
+        canonical
+    }
+
+    /// Lock a username string in [`UsernameRegistry::username_locks`] with `reason`.
+    /// Aborts with [`EUsernameLocked`] if already reserved (mutual exclusion: PoC vs marketplace).
+    fun lock_username_internal(registry: &mut UsernameRegistry, username: String, reason: u8) {
+        let username = normalize_username(&username);
+        assert!(
+            !table::contains(&registry.username_locks, username),
+            EUsernameLocked,
+        );
+        table::add(&mut registry.username_locks, username, reason);
+    }
+
+    /// Release a username reservation if present (idempotent).
+    fun unlock_username_internal(registry: &mut UsernameRegistry, username: String) {
+        let username = normalize_username(&username);
+        if (table::contains(&registry.username_locks, username)) {
+            table::remove(&mut registry.username_locks, username);
+        };
+    }
+
+    /// Reserve a username with `reason` and emit [`UsernameReservedEvent`].
+    public(package) fun lock_username(
+        registry: &mut UsernameRegistry,
+        username: String,
+        reason: u8,
+        reserved_by: address,
+    ) {
+        lock_username_internal(registry, username, reason);
+        event::emit(UsernameReservedEvent {
+            username: normalize_username(&username),
+            reason,
+            reserved_by,
+        });
+    }
+
+    /// Release a username reservation and emit [`UsernameReleasedEvent`].
+    public(package) fun unlock_username(
+        registry: &mut UsernameRegistry,
+        username: String,
+        reason: u8,
+        released_by: address,
+    ) {
+        unlock_username_internal(registry, username);
+        event::emit(UsernameReleasedEvent {
+            username: normalize_username(&username),
+            reason,
+            released_by,
+        });
+    }
+
+    /// True when the canonical username is currently reserved in escrow.
+    public fun is_username_locked(registry: &UsernameRegistry, username: String): bool {
+        let username = normalize_username(&username);
+        table::contains(&registry.username_locks, username)
+    }
+
+    /// Active lock reason for a canonical username, if any.
+    public fun username_lock_reason(registry: &UsernameRegistry, username: String): Option<u8> {
+        let username = normalize_username(&username);
+        if (table::contains(&registry.username_locks, username)) {
+            option::some(*table::borrow(&registry.username_locks, username))
+        } else {
+            option::none()
+        }
     }
 
     /// Lock a username while an ACTIVE PoC username beneficiary provision exists.
@@ -677,10 +857,7 @@ module social_contracts::profile {
         registry: &mut UsernameRegistry,
         username: String,
     ) {
-        let username = canonical_registry_username(&username);
-        if (!table::contains(&registry.beneficiary_usernames, username)) {
-            table::add(&mut registry.beneficiary_usernames, username, true);
-        };
+        lock_username_internal(registry, username, USERNAME_LOCK_BENEFICIARY);
     }
 
     /// Release a username beneficiary lock after claim or admin end.
@@ -688,10 +865,25 @@ module social_contracts::profile {
         registry: &mut UsernameRegistry,
         username: String,
     ) {
-        let username = canonical_registry_username(&username);
-        if (table::contains(&registry.beneficiary_usernames, username)) {
-            table::remove(&mut registry.beneficiary_usernames, username);
-        };
+        unlock_username_internal(registry, username);
+    }
+
+    public(package) fun assign_username(
+        registry: &mut UsernameRegistry,
+        username: String,
+        profile_id: address,
+    ) {
+        assert!(!table::contains(&registry.usernames, username), EUsernameNotAvailable);
+        assert!(
+            !table::contains(&registry.profile_username, profile_id),
+            EProfileAlreadyHasUsername,
+        );
+        assert!(
+            !table::contains(&registry.username_locks, username),
+            EUsernameLocked,
+        );
+        table::add(&mut registry.usernames, username, profile_id);
+        table::add(&mut registry.profile_username, profile_id, username);
     }
 
     public(package) fun claim_username(
@@ -699,8 +891,7 @@ module social_contracts::profile {
         username: String,
         profile_id: address,
     ) {
-        assert!(!table::contains(&registry.usernames, username), EUsernameNotAvailable);
-        table::add(&mut registry.usernames, username, profile_id);
+        assign_username(registry, username, profile_id);
         event::emit(UsernameClaimedEvent {
             username,
             profile_id,
@@ -713,7 +904,15 @@ module social_contracts::profile {
 
     fun revoke_username(registry: &mut UsernameRegistry, username: String): address {
         assert!(table::contains(&registry.usernames, username), EUsernameNotFound);
-        table::remove(&mut registry.usernames, username)
+        assert!(
+            !table::contains(&registry.username_locks, username),
+            EUsernameLocked,
+        );
+        let profile_id = table::remove(&mut registry.usernames, username);
+        if (table::contains(&registry.profile_username, profile_id)) {
+            table::remove(&mut registry.profile_username, profile_id);
+        };
+        profile_id
     }
 
     fun move_username(
@@ -725,6 +924,10 @@ module social_contracts::profile {
         let from_profile_id = *table::borrow(&registry.usernames, username);
         assert!(from_profile_id != to_profile_id, EUsernameProfileMismatch);
         *table::borrow_mut(&mut registry.usernames, username) = to_profile_id;
+        if (table::contains(&registry.profile_username, from_profile_id)) {
+            table::remove(&mut registry.profile_username, from_profile_id);
+        };
+        table::add(&mut registry.profile_username, to_profile_id, username);
         from_profile_id
     }
 
@@ -767,7 +970,6 @@ module social_contracts::profile {
             owner: profile.owner,
             updated_at: clock::timestamp_ms(clock),
             x_username: profile.x_username,
-            min_offer_amount: profile.min_offer_amount,
             website: profile.website,
             birthdate: profile.birthdate,
             location: profile.location,
@@ -800,7 +1002,7 @@ module social_contracts::profile {
         // Check that the sender doesn't already have a profile
         assert!(!table::contains(&registry.address_profiles, owner), EProfileAlreadyExists);
 
-        let username = canonical_registry_username(&username);
+        let username = normalize_username(&username);
         
         // Validate the username
         let username_bytes = string::as_bytes(&username);
@@ -816,7 +1018,7 @@ module social_contracts::profile {
         
         // Check that the username isn't already registered
         assert!(!table::contains(&registry.usernames, username), EUsernameNotAvailable);
-        assert!(!table::contains(&registry.beneficiary_usernames, username), EUsernameBeneficiaryActive);
+        assert!(!table::contains(&registry.username_locks, username), EUsernameLocked);
         
         // Create the profile object
         let profile_picture = if (vector::length(&profile_picture_url) > 0) {
@@ -846,7 +1048,6 @@ module social_contracts::profile {
             created_at: now,
             owner,
             x_username: option::none(),
-            min_offer_amount: option::none(),
             website: option::none(),
             birthdate: option::none(),
             location: option::none(),
@@ -914,7 +1115,7 @@ module social_contracts::profile {
     ): address {
         assert!(registry.version == upgrade::current_version(), 1);
 
-        let username = canonical_registry_username(&username);
+        let username = normalize_username(&username);
         let username_length = vector::length(string::as_bytes(&username));
         assert!(
             username_length >= config.min_username_length && username_length <= config.max_username_length,
@@ -953,7 +1154,6 @@ module social_contracts::profile {
             created_at: now,
             owner,
             x_username: option::none(),
-            min_offer_amount: option::none(),
             website: option::none(),
             birthdate: option::none(),
             location: option::none(),
@@ -978,10 +1178,10 @@ module social_contracts::profile {
         );
         profile.ai_credit_balance_id = option::some(balance_id);
 
+        // Release the PoC beneficiary reservation before claiming so `claim_username`
+        // does not abort on the lock assertion (1 username per profile enforced inside).
+        unlock_username_for_beneficiary(registry, username);
         claim_username(registry, username, profile_id);
-        if (table::contains(&registry.beneficiary_usernames, username)) {
-            table::remove(&mut registry.beneficiary_usernames, username);
-        };
         table::add(&mut registry.address_profiles, owner, profile_id);
 
         let display_name_value = if (option::is_some(&profile.display_name)) {
@@ -1023,109 +1223,6 @@ module social_contracts::profile {
         transfer::transfer(profile, sender);
     }
 
-    /// Transfer profile when there is **no** linked Memory account (`memory_account_id` is `None`).
-    /// Profiles created via [`create_profile`] have a Memory link — use [`transfer_profile_with_memory`].
-    public entry fun transfer_profile(
-        registry: &mut UsernameRegistry,
-        mut profile: Profile,
-        new_owner: address,
-        clock: &Clock,
-        ctx: &mut TxContext
-    ) {
-        // Check version compatibility
-        assert!(registry.version == upgrade::current_version(), 1);
-
-        assert!(option::is_none(&profile.memory_account_id), EMustUseLinkedMemoryTransfer);
-        
-        let sender = tx_context::sender(ctx);
-        
-        // Verify sender is the owner
-        assert!(profile.owner == sender, EUnauthorized);
-        
-        // Get the profile ID
-        let profile_id = object::uid_to_address(&profile.id);
-        
-        // Update registry mappings
-        table::remove(&mut registry.address_profiles, sender);
-        
-        // Check if the offeror already has a profile in the registry
-        // If so, remove it before adding the new mapping (allows profile swapping)
-        if (table::contains(&registry.address_profiles, new_owner)) {
-            table::remove(&mut registry.address_profiles, new_owner);
-        };
-        
-        table::add(&mut registry.address_profiles, new_owner, profile_id);
-        
-        // Update the profile owner
-        profile.owner = new_owner;
-        
-        emit_profile_updated_event(&profile, clock, ctx);
-        
-        // Transfer profile to new owner
-        transfer::transfer(profile, new_owner);
-    }
-
-    /// Same as [`transfer_profile`], but keeps [`memory::MemoryRegistry`] and linked [`memory::MemoryAccount`] in sync.
-    public entry fun transfer_profile_with_memory(
-        registry: &mut UsernameRegistry,
-        memory_registry: &mut memory::MemoryRegistry,
-        linked_account: &mut memory::MemoryAccount,
-        linked_balance: &mut AiCreditBalance,
-        mut profile: Profile,
-        new_owner: address,
-        revoked_count: u64,
-        clock: &Clock,
-        ctx: &mut TxContext,
-    ) {
-        assert!(registry.version == upgrade::current_version(), 1);
-        assert!(option::is_some(&profile.memory_account_id), ERequiresMemoryLinkedProfile);
-        assert!(
-            *option::borrow(&profile.memory_account_id) == object::id(linked_account),
-            EMemoryAccountMismatch,
-        );
-        assert!(option::is_some(&profile.ai_credit_balance_id), ERequiresMemoryLinkedProfile);
-        assert!(
-            *option::borrow(&profile.ai_credit_balance_id) == object::id(linked_balance),
-            EMemoryAccountMismatch,
-        );
-
-        let sender = tx_context::sender(ctx);
-        assert!(profile.owner == sender, EUnauthorized);
-
-        let profile_id = object::uid_to_address(&profile.id);
-
-        if (revoked_count > 0) {
-            memory::emit_sub_agents_cleared_on_transfer(
-                linked_account,
-                sender,
-                new_owner,
-                revoked_count,
-            );
-        };
-
-        memory::transfer_account_owner_with_profile(
-            memory_registry,
-            linked_account,
-            profile_id,
-            sender,
-            new_owner,
-        );
-
-        ai_credit::transfer_balance_owner(linked_balance, new_owner);
-
-        table::remove(&mut registry.address_profiles, sender);
-        if (table::contains(&registry.address_profiles, new_owner)) {
-            table::remove(&mut registry.address_profiles, new_owner);
-        };
-        table::add(&mut registry.address_profiles, new_owner, profile_id);
-
-        profile.owner = new_owner;
-
-        emit_profile_updated_event(&profile, clock, ctx);
-
-        transfer::transfer(profile, new_owner);
-    }
-
     /// Only the profile owner can update profile information
     public entry fun update_profile(
         profile: &mut Profile,
@@ -1134,7 +1231,6 @@ module social_contracts::profile {
         new_bio: String,
         new_profile_picture_url: vector<u8>,
         new_cover_photo_url: vector<u8>,
-        min_offer_amount: Option<u64>,
         new_website: Option<String>,
         new_birthdate: Option<String>,
         new_location: Option<String>,
@@ -1158,10 +1254,6 @@ module social_contracts::profile {
         
         if (vector::length(&new_cover_photo_url) > 0) {
             profile.cover_photo = option::some(url::new_unsafe_from_bytes(new_cover_photo_url));
-        };
-
-        if (option::is_some(&min_offer_amount)) {
-            profile.min_offer_amount = min_offer_amount;
         };
 
         apply_optional_string_update(&mut profile.website, new_website);
@@ -1220,7 +1312,7 @@ module social_contracts::profile {
 
     /// Lookup profile ID by username in the registry
     public fun lookup_profile_by_username(registry: &UsernameRegistry, username: String): Option<address> {
-        let username = canonical_registry_username(&username);
+        let username = normalize_username(&username);
         if (table::contains(&registry.usernames, username)) {
             option::some(*table::borrow(&registry.usernames, username))
         } else {
@@ -1228,15 +1320,16 @@ module social_contracts::profile {
         }
     }
 
-    /// True when the canonical username is not currently claimed
-    /// Returns true when username is locked for an ACTIVE PoC username beneficiary provision.
+    /// True when the canonical username is currently reserved in escrow (PoC or marketplace).
     public fun is_username_beneficiary_locked(registry: &UsernameRegistry, username: &String): bool {
-        table::contains(&registry.beneficiary_usernames, *username)
+        let canonical = normalize_username(username);
+        table::contains(&registry.username_locks, canonical)
     }
 
     public fun is_username_available(registry: &UsernameRegistry, username: String): bool {
-        let username = canonical_registry_username(&username);
+        let username = normalize_username(&username);
         !table::contains(&registry.usernames, username)
+            && !table::contains(&registry.username_locks, username)
     }
     
     /// Lookup profile ID by owner address
@@ -1258,313 +1351,430 @@ module social_contracts::profile {
         profile.owner
     }
 
-    /// Create an offer to purchase a profile
-    /// Locks MYSO tokens in the offer
-    public entry fun create_offer(
-        profile: &mut Profile,
+    // === Username Marketplace ===
+
+    fun remove_offeror_from_vector(offerors: &mut vector<address>, buyer: address) {
+        let mut i = 0;
+        let len = vector::length(offerors);
+        while (i < len) {
+            if (*vector::borrow(offerors, i) == buyer) {
+                vector::remove(offerors, i);
+                return
+            };
+            i = i + 1;
+        };
+    }
+
+    fun refund_username_offer(offer: UsernameOffer, ctx: &mut TxContext) {
+        let UsernameOffer { buyer, buyer_profile_id: _, amount: _, created_at: _, locked_myso } = offer;
+        let refund = coin::from_balance(locked_myso, ctx);
+        transfer::public_transfer(refund, buyer);
+    }
+
+    fun refund_all_offers_except(
+        offerors: &vector<address>,
+        offers: &mut Table<address, UsernameOffer>,
+        except_buyer: address,
+        ctx: &mut TxContext,
+    ) {
+        let mut i = 0;
+        let len = vector::length(offerors);
+        while (i < len) {
+            let buyer = *vector::borrow(offerors, i);
+            if (buyer != except_buyer && table::contains(offers, buyer)) {
+                let offer = table::remove(offers, buyer);
+                refund_username_offer(offer, ctx);
+            };
+            i = i + 1;
+        };
+    }
+
+    fun destroy_username_listing(listing: UsernameListing) {
+        let UsernameListing {
+            seller: _,
+            seller_profile_id: _,
+            username: _,
+            min_price: _,
+            created_at: _,
+            offerors: _,
+            offers,
+        } = listing;
+        table::destroy_empty(offers);
+    }
+
+    fun execute_username_sale(
+        registry: &mut UsernameRegistry,
+        listed_username: String,
+        replacement_username: String,
+        seller_profile_id: address,
+        buyer_profile_id: address,
+        seller: address,
+        buyer: address,
+        amount: u64,
+        now: u64,
+    ) {
+        assert!(table::contains(&registry.usernames, listed_username), EUsernameNotFound);
+        assert!(
+            *table::borrow(&registry.usernames, listed_username) == seller_profile_id,
+            EUsernameProfileMismatch,
+        );
+        assert!(!table::contains(&registry.usernames, replacement_username), EUsernameNotAvailable);
+        assert!(
+            !table::contains(&registry.username_locks, replacement_username),
+            EUsernameLocked,
+        );
+
+        // 1. Free buyer's prior username so the buyer ends with exactly one username
+        //    (one-per-wallet invariant). The buyer's prior username is never the listed
+        //    (marketplace-locked) string, so `revoke_username` does not trip the lock assert.
+        if (table::contains(&registry.profile_username, buyer_profile_id)) {
+            let old_buyer_username = *table::borrow(&registry.profile_username, buyer_profile_id);
+            revoke_username(registry, old_buyer_username);
+            event::emit(UsernameRevokedEvent {
+                username: old_buyer_username,
+                profile_id: buyer_profile_id,
+                revoked_by: seller,
+                reason_code: USERNAME_REVOKE_REASON_SALE,
+            });
+        };
+
+        // 2. Move the listed username to the buyer.
+        move_username(registry, listed_username, buyer_profile_id);
+
+        // 3. Assign the replacement for the seller (seller has zero usernames after step 2).
+        //    Silent registry update: UsernameSaleSettledEvent is the audit record.
+        assign_username(registry, replacement_username, seller_profile_id);
+
+        // 4. Release the marketplace reservation on the listed username.
+        unlock_username(registry, listed_username, USERNAME_LOCK_MARKETPLACE, seller);
+
+        event::emit(UsernameSaleSettledEvent {
+            listed_username,
+            replacement_username,
+            seller,
+            seller_profile_id,
+            buyer,
+            buyer_profile_id,
+            amount,
+            settled_at: now,
+        });
+    }
+
+    /// List a username for sale on the marketplace
+    public entry fun create_username_listing(
+        marketplace: &mut UsernameMarketplace,
+        registry: &mut UsernameRegistry,
+        profile: &Profile,
+        username: String,
+        min_price: u64,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(marketplace.version == upgrade::current_version(), 1);
+        let sender = tx_context::sender(ctx);
+        assert!(profile.owner == sender, EUnauthorized);
+        assert!(min_price > 0, EInsufficientTokens);
+
+        let username = normalize_username(&username);
+        let seller_profile_id = object::uid_to_address(&profile.id);
+        assert!(table::contains(&registry.usernames, username), EUsernameNotFound);
+        assert!(
+            *table::borrow(&registry.usernames, username) == seller_profile_id,
+            EUsernameProfileMismatch,
+        );
+        assert!(!table::contains(&marketplace.listings, username), EListingAlreadyExists);
+
+        // Reserve the username in the registry so no second claim, PoC provision, or admin
+        // revoke/reassign can mutate it while listed. Aborts with EUsernameLocked if already held.
+        lock_username(registry, username, USERNAME_LOCK_MARKETPLACE, sender);
+
+        let listing = UsernameListing {
+            seller: sender,
+            seller_profile_id,
+            username,
+            min_price,
+            created_at: clock::timestamp_ms(clock),
+            offerors: vector::empty(),
+            offers: table::new(ctx),
+        };
+        table::add(&mut marketplace.listings, username, listing);
+
+        event::emit(UsernameListingCreatedEvent {
+            username,
+            seller: sender,
+            seller_profile_id,
+            min_price,
+            created_at: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// Cancel a username listing when there are no pending offers
+    public entry fun cancel_username_listing(
+        marketplace: &mut UsernameMarketplace,
+        registry: &mut UsernameRegistry,
+        profile: &Profile,
+        username: String,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(marketplace.version == upgrade::current_version(), 1);
+        let sender = tx_context::sender(ctx);
+        assert!(profile.owner == sender, EUnauthorized);
+
+        let username = normalize_username(&username);
+        assert!(table::contains(&marketplace.listings, username), EListingNotFound);
+        let listing = table::borrow(&marketplace.listings, username);
+        assert!(listing.seller_profile_id == object::uid_to_address(&profile.id), EUnauthorized);
+        assert!(vector::length(&listing.offerors) == 0, EListingHasOffers);
+
+        let listing = table::remove(&mut marketplace.listings, username);
+        let seller_profile_id = listing.seller_profile_id;
+        destroy_username_listing(listing);
+
+        // Release the marketplace reservation so the username can be claimed/listed again.
+        unlock_username(registry, username, USERNAME_LOCK_MARKETPLACE, sender);
+
+        event::emit(UsernameListingCancelledEvent {
+            username,
+            seller: sender,
+            seller_profile_id,
+            cancelled_at: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// Lock MYSO to bid on a listed username
+    public entry fun create_username_offer(
+        marketplace: &mut UsernameMarketplace,
+        registry: &UsernameRegistry,
+        username: String,
         coin: &mut Coin<MYSO>,
         amount: u64,
         clock: &Clock,
-        ctx: &mut TxContext
+        ctx: &mut TxContext,
     ) {
-        let sender = tx_context::sender(ctx);
-        let profile_owner = profile.owner;
-        let profile_id = object::uid_to_address(&profile.id);
-        let now = clock::timestamp_ms(clock);
-        
-        // Cannot offer on your own profile
-        assert!(sender != profile_owner, ECannotOfferOwnProfile);
-        
-        // Check if there's sufficient tokens
+        assert!(marketplace.version == upgrade::current_version(), 1);
+        let buyer = tx_context::sender(ctx);
         assert!(coin::value(coin) >= amount && amount > 0, EInsufficientTokens);
-        
-        // Check if the offer meets the minimum amount requirement (if set)
-        if (option::is_some(&profile.min_offer_amount)) {
-            let min_amount = *option::borrow(&profile.min_offer_amount);
-            assert!(amount >= min_amount, EOfferBelowMinimum);
-        };
-        
-        // Initialize offers table if it doesn't exist
-        if (!dynamic_field::exists_(&profile.id, OFFERS_FIELD)) {
-            let offers = table::new<address, ProfileOffer>(ctx);
-            dynamic_field::add(&mut profile.id, OFFERS_FIELD, offers);
-        };
-        
-        // Get the offers table
-        let offers = dynamic_field::borrow_mut<vector<u8>, Table<address, ProfileOffer>>(&mut profile.id, OFFERS_FIELD);
-        
-        // Check if the sender already has an offer
-        assert!(!table::contains(offers, sender), EOfferAlreadyExists);
-        
-        // Split tokens from the coin and convert to a balance for secure storage
+        assert!(table::contains(&registry.address_profiles, buyer), EBuyerHasNoProfile);
+
+        let username = normalize_username(&username);
+        assert!(table::contains(&marketplace.listings, username), EListingNotFound);
+        let listing = table::borrow(&marketplace.listings, username);
+        assert!(buyer != listing.seller, ECannotOfferOwnProfile);
+        assert!(amount >= listing.min_price, EOfferBelowMinimum);
+        assert!(!table::contains(&listing.offers, buyer), EOfferAlreadyExists);
+
+        let buyer_profile_id = *table::borrow(&registry.address_profiles, buyer);
+        let seller_profile_id = listing.seller_profile_id;
+        let now = clock::timestamp_ms(clock);
+
         let offer_coin = coin::split(coin, amount, ctx);
-        // Convert to balance to lock tokens in the offer
         let locked_myso = coin::into_balance(offer_coin);
-        
-        // Create and store the offer with locked tokens
-        let offer = ProfileOffer {
-            offeror: sender,
+        let offer = UsernameOffer {
+            buyer,
+            buyer_profile_id,
             amount,
             created_at: now,
             locked_myso,
         };
-        
-        table::add(offers, sender, offer);
-        
-        // Emit an event to track offer creation
-        event::emit(ProfileOfferCreatedEvent {
-            profile_id,
-            offeror: sender,
+
+        let listing = table::borrow_mut(&mut marketplace.listings, username);
+        vector::push_back(&mut listing.offerors, buyer);
+        table::add(&mut listing.offers, buyer, offer);
+
+        event::emit(UsernameOfferCreatedEvent {
+            username,
+            seller_profile_id,
+            buyer,
+            buyer_profile_id,
             amount,
             created_at: now,
         });
     }
-    
-    /// Accept an offer when there is **no** linked Memory account. Use [`accept_offer_with_memory`] for profiles created via [`create_profile`].
-    public entry fun accept_offer(
+
+    /// Accept a buyer offer and atomically swap username registry mappings
+    public entry fun accept_username_offer(
+        marketplace: &mut UsernameMarketplace,
         registry: &mut UsernameRegistry,
-        mut profile: Profile,
+        profile: &Profile,
+        username: String,
+        buyer: address,
+        replacement_username: String,
         config: &ProfileConfig,
         treasury: &EcosystemTreasury,
-        offeror: address,
-        new_main_profile: Option<address>,
-        clock: &Clock,
-        ctx: &mut TxContext
-    ) {
-        let sender = tx_context::sender(ctx);
-        let profile_id = object::uid_to_address(&profile.id);
-        let now = clock::timestamp_ms(clock);
-        
-        // Verify sender is the profile owner
-        assert!(profile.owner == sender, EUnauthorized);
-
-        assert!(option::is_none(&profile.memory_account_id), EMustUseLinkedMemoryTransfer);
-        
-        // Check if offers table exists
-        assert!(dynamic_field::exists_(&profile.id, OFFERS_FIELD), EOfferDoesNotExist);
-        
-        // Get the offers table
-        let offers = dynamic_field::borrow_mut<vector<u8>, Table<address, ProfileOffer>>(&mut profile.id, OFFERS_FIELD);
-        
-        // Check if the offer exists
-        assert!(table::contains(offers, offeror), EOfferDoesNotExist);
-        
-        // Remove the offer from the table and get the locked tokens
-        let ProfileOffer { offeror: _, amount, created_at: _, locked_myso } = table::remove(offers, offeror);
-        
-        // Calculate the fee amount (5% of the total)
-        let fee_amount = (amount * config.profile_sale_fee_bps) / 10000;
-        
-        // Convert the locked balance to a coin
-        let mut payment = coin::from_balance(locked_myso, ctx);
-        
-        // Split the fee amount to send to the treasury
-        let fee_payment = coin::split(&mut payment, fee_amount, ctx);
-        
-        // Send the fee to the treasury treasury
-        transfer::public_transfer(fee_payment, get_treasury_address(treasury));
-        
-        // Send the remaining amount to the profile owner
-        transfer::public_transfer(payment, sender);
-        
-        // Update registry mappings to reflect new ownership
-        table::remove(&mut registry.address_profiles, sender);
-        
-        // Check if the offeror already has a profile in the registry
-        // If so, remove it before adding the new mapping (allows profile swapping)
-        if (table::contains(&registry.address_profiles, offeror)) {
-            table::remove(&mut registry.address_profiles, offeror);
-        };
-        
-        // Add new mapping for buyer
-        table::add(&mut registry.address_profiles, offeror, profile_id);
-        
-        // If the seller provided a new main profile, register it as their main profile
-        if (option::is_some(&new_main_profile)) {
-            let new_profile_id = *option::borrow(&new_main_profile);
-            // Add the new profile mapping for the seller
-            table::add(&mut registry.address_profiles, sender, new_profile_id);
-        };
-        
-        // Update the profile owner
-        let previous_owner = profile.owner;
-        profile.owner = offeror;
-        
-        // Emit an event to track offer acceptance and token transfer
-        event::emit(ProfileOfferAcceptedEvent {
-            profile_id,
-            offeror,
-            previous_owner,
-            amount,
-            accepted_at: now,
-        });
-        
-        // Emit a comprehensive profile updated event to indicate ownership change
-        emit_profile_updated_event(&profile, clock, ctx);
-        
-        // Emit a fee event
-        event::emit(ProfileSaleFeeEvent {
-            profile_id,
-            offeror,
-            previous_owner,
-            sale_amount: amount,
-            fee_amount,
-            fee_recipient: get_treasury_address(treasury),
-            timestamp: now,
-        });
-        
-        // Transfer the profile object to the new owner
-        transfer::transfer(profile, offeror);
-    }
-
-    /// Same as [`accept_offer`] but synchronizes Memory ownership with the buyer.
-    public entry fun accept_offer_with_memory(
-        registry: &mut UsernameRegistry,
-        memory_registry: &mut memory::MemoryRegistry,
-        linked_account: &mut memory::MemoryAccount,
-        mut profile: Profile,
-        config: &ProfileConfig,
-        treasury: &EcosystemTreasury,
-        offeror: address,
-        new_main_profile: Option<address>,
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
+        assert!(marketplace.version == upgrade::current_version(), 1);
         let sender = tx_context::sender(ctx);
-        let profile_id = object::uid_to_address(&profile.id);
-        let now = clock::timestamp_ms(clock);
-
         assert!(profile.owner == sender, EUnauthorized);
 
-        assert!(option::is_some(&profile.memory_account_id), ERequiresMemoryLinkedProfile);
-        assert!(
-            *option::borrow(&profile.memory_account_id) == object::id(linked_account),
-            EMemoryAccountMismatch,
+        let username = normalize_username(&username);
+        let replacement_username = normalize_username(&replacement_username);
+        assert!(table::contains(&marketplace.listings, username), EListingNotFound);
+
+        let seller_profile_id;
+        let seller;
+        let buyer_profile_id;
+        let amount;
+        {
+            let listing = table::borrow(&marketplace.listings, username);
+            assert!(listing.seller_profile_id == object::uid_to_address(&profile.id), EUnauthorized);
+            assert!(table::contains(&listing.offers, buyer), EOfferDoesNotExist);
+            seller_profile_id = listing.seller_profile_id;
+            seller = listing.seller;
+            let offer = table::borrow(&listing.offers, buyer);
+            buyer_profile_id = offer.buyer_profile_id;
+            amount = offer.amount;
+        };
+        let now = clock::timestamp_ms(clock);
+
+        execute_username_sale(
+            registry,
+            username,
+            replacement_username,
+            seller_profile_id,
+            buyer_profile_id,
+            seller,
+            buyer,
+            amount,
+            now,
         );
 
-        assert!(dynamic_field::exists_(&profile.id, OFFERS_FIELD), EOfferDoesNotExist);
+        let UsernameListing {
+            seller: _,
+            seller_profile_id: _,
+            username: listed_username,
+            min_price: _,
+            created_at: _,
+            offerors,
+            mut offers,
+        } = table::remove(&mut marketplace.listings, username);
 
-        let offers = dynamic_field::borrow_mut<vector<u8>, Table<address, ProfileOffer>>(&mut profile.id, OFFERS_FIELD);
-        assert!(table::contains(offers, offeror), EOfferDoesNotExist);
+        let UsernameOffer { buyer: _, buyer_profile_id: _, amount, created_at: _, locked_myso } =
+            table::remove(&mut offers, buyer);
 
-        let ProfileOffer { offeror: _, amount, created_at: _, locked_myso } = table::remove(offers, offeror);
-
-        let fee_amount = (amount * config.profile_sale_fee_bps) / 10000;
+        let fee_amount = (amount * config.username_sale_fee_bps) / BPS_DENOMINATOR;
         let mut payment = coin::from_balance(locked_myso, ctx);
         let fee_payment = coin::split(&mut payment, fee_amount, ctx);
         transfer::public_transfer(fee_payment, get_treasury_address(treasury));
-        transfer::public_transfer(payment, sender);
+        transfer::public_transfer(payment, seller);
 
-        memory::transfer_account_owner_with_profile(
-            memory_registry,
-            linked_account,
-            profile_id,
-            sender,
-            offeror,
-        );
+        refund_all_offers_except(&offerors, &mut offers, buyer, ctx);
+        table::destroy_empty(offers);
 
-        table::remove(&mut registry.address_profiles, sender);
-        if (table::contains(&registry.address_profiles, offeror)) {
-            table::remove(&mut registry.address_profiles, offeror);
-        };
-        table::add(&mut registry.address_profiles, offeror, profile_id);
-
-        if (option::is_some(&new_main_profile)) {
-            let new_profile_id = *option::borrow(&new_main_profile);
-            table::add(&mut registry.address_profiles, sender, new_profile_id);
-        };
-
-        let previous_owner = profile.owner;
-        profile.owner = offeror;
-
-        event::emit(ProfileOfferAcceptedEvent {
-            profile_id,
-            offeror,
-            previous_owner,
+        event::emit(UsernameOfferAcceptedEvent {
+            username: listed_username,
+            replacement_username,
+            seller,
+            seller_profile_id,
+            buyer,
+            buyer_profile_id,
             amount,
             accepted_at: now,
         });
 
-        emit_profile_updated_event(&profile, clock, ctx);
-
-        event::emit(ProfileSaleFeeEvent {
-            profile_id,
-            offeror,
-            previous_owner,
+        event::emit(UsernameSaleFeeEvent {
+            username: listed_username,
+            seller,
+            seller_profile_id,
+            buyer,
+            buyer_profile_id,
             sale_amount: amount,
             fee_amount,
             fee_recipient: get_treasury_address(treasury),
             timestamp: now,
         });
-
-        transfer::transfer(profile, offeror);
     }
-    
-    /// Reject or revoke an offer on a profile
-    /// Can be called by the profile owner to reject or the offeror to revoke
-    /// Returns locked MYSO tokenv s to the offeror
-    public entry fun reject_or_revoke_offer(
-        profile: &mut Profile,
-        offeror: address,
+
+    /// Reject or revoke a username marketplace offer
+    public entry fun reject_or_revoke_username_offer(
+        marketplace: &mut UsernameMarketplace,
+        profile: &Profile,
+        username: String,
+        buyer: address,
         clock: &Clock,
-        ctx: &mut TxContext
+        ctx: &mut TxContext,
     ) {
+        assert!(marketplace.version == upgrade::current_version(), 1);
         let sender = tx_context::sender(ctx);
-        let profile_id = object::uid_to_address(&profile.id);
-        let now = clock::timestamp_ms(clock);
-        
-        // Check if offers table exists
-        assert!(dynamic_field::exists_(&profile.id, OFFERS_FIELD), EOfferDoesNotExist);
-        
-        // Get the offers table
-        let offers = dynamic_field::borrow_mut<vector<u8>, Table<address, ProfileOffer>>(&mut profile.id, OFFERS_FIELD);
-        
-        // Check if the offer exists
-        assert!(table::contains(offers, offeror), EOfferDoesNotExist);
-        
-        // Verify sender is either the profile owner or the offeror
-        assert!(profile.owner == sender || offeror == sender, EUnauthorizedOfferAction);
-        
-        // Remove the offer from the table and get the locked tokens
-        let ProfileOffer { offeror, amount, created_at: _, locked_myso } = table::remove(offers, offeror);
-        
-        // Convert the locked balance back to a coin and return to the offeror
-        // This unlocks the tokens and returns them to the original offeror
-        let refund = coin::from_balance(locked_myso, ctx);
-        transfer::public_transfer(refund, offeror);
-        
-        // Determine if this is a rejection (by owner) or revocation (by offeror)
-        let is_revoked = offeror == sender;
-        
-        // Emit an event to track offer rejection/revocation and token return
-        event::emit(ProfileOfferRejectedEvent {
-            profile_id,
-            offeror,
+        let username = normalize_username(&username);
+        assert!(table::contains(&marketplace.listings, username), EListingNotFound);
+
+        let listing = table::borrow_mut(&mut marketplace.listings, username);
+        let seller_profile_id = listing.seller_profile_id;
+        if (sender != buyer) {
+            assert!(profile.owner == sender, EUnauthorizedOfferAction);
+            assert!(seller_profile_id == object::uid_to_address(&profile.id), EUnauthorizedOfferAction);
+        } else {
+            assert!(table::contains(&listing.offers, buyer), EOfferDoesNotExist);
+        };
+        let offer = table::remove(&mut listing.offers, buyer);
+        remove_offeror_from_vector(&mut listing.offerors, buyer);
+        let buyer_profile_id = offer.buyer_profile_id;
+        let amount = offer.amount;
+        refund_username_offer(offer, ctx);
+
+        let is_revoked = buyer == sender;
+        event::emit(UsernameOfferRejectedEvent {
+            username,
+            seller_profile_id,
+            buyer,
+            buyer_profile_id,
             rejected_by: sender,
             amount,
-            rejected_at: now,
+            rejected_at: clock::timestamp_ms(clock),
             is_revoked,
         });
     }
 
-    /// Check if a profile has an offer from a specific address
-    public fun has_offer_from(profile: &Profile, offeror: address): bool {
-        if (!dynamic_field::exists_(&profile.id, OFFERS_FIELD)) {
+    /// Check if a username listing has an offer from a specific buyer
+    public fun has_username_offer_from(
+        marketplace: &UsernameMarketplace,
+        username: String,
+        buyer: address,
+    ): bool {
+        let username = normalize_username(&username);
+        if (!table::contains(&marketplace.listings, username)) {
             return false
         };
-        
-        let offers = dynamic_field::borrow<vector<u8>, Table<address, ProfileOffer>>(&profile.id, OFFERS_FIELD);
-        table::contains(offers, offeror)
+        let listing = table::borrow(&marketplace.listings, username);
+        table::contains(&listing.offers, buyer)
     }
-    
-    /// Check if a profile has any active offers
-    public fun has_offers(profile: &Profile): bool {
-        if (!dynamic_field::exists_(&profile.id, OFFERS_FIELD)) {
+
+    /// Check if a username has any active marketplace offers
+    public fun has_username_offers(
+        marketplace: &UsernameMarketplace,
+        username: String,
+    ): bool {
+        let username = normalize_username(&username);
+        if (!table::contains(&marketplace.listings, username)) {
             return false
         };
-        
-        let offers = dynamic_field::borrow<vector<u8>, Table<address, ProfileOffer>>(&profile.id, OFFERS_FIELD);
-        table::length(offers) > 0
+        let listing = table::borrow(&marketplace.listings, username);
+        vector::length(&listing.offerors) > 0
+    }
+
+    /// Check if a username is actively listed on the marketplace
+    public fun is_username_listed(
+        marketplace: &UsernameMarketplace,
+        username: String,
+    ): bool {
+        let username = normalize_username(&username);
+        table::contains(&marketplace.listings, username)
+    }
+
+    /// Minimum price for a listed username
+    public fun listing_min_price(
+        marketplace: &UsernameMarketplace,
+        username: String,
+    ): Option<u64> {
+        let username = normalize_username(&username);
+        if (table::contains(&marketplace.listings, username)) {
+            option::some(table::borrow(&marketplace.listings, username).min_price)
+        } else {
+            option::none()
+        }
     }
 
     /// Get the treasury address from the EcosystemTreasury
@@ -1601,9 +1811,9 @@ module social_contracts::profile {
         update_treasury_address(admin_cap, treasury, new_address, clock, ctx);
     }
 
-    /// Read the configured profile sale fee (bps).
-    public fun profile_sale_fee_bps(config: &ProfileConfig): u64 {
-        config.profile_sale_fee_bps
+    /// Read the configured username marketplace sale fee (bps).
+    public fun username_sale_fee_bps(config: &ProfileConfig): u64 {
+        config.username_sale_fee_bps
     }
 
     /// Get the version of the EcosystemTreasury
@@ -1654,7 +1864,7 @@ module social_contracts::profile {
         min_claim_threshold_divisor: u64,
         min_username_length: u64,
         max_username_length: u64,
-        profile_sale_fee_bps: u64,
+        username_sale_fee_bps: u64,
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
@@ -1663,7 +1873,7 @@ module social_contracts::profile {
         assert!(curve_factor_min > 0 && curve_factor_max >= curve_factor_min, EInvalidConfig);
         assert!(min_claim_threshold_divisor > 0, EInvalidConfig);
         assert!(min_username_length > 0 && max_username_length >= min_username_length, EInvalidConfig);
-        assert!(profile_sale_fee_bps <= 10000, EInvalidConfig);
+        assert!(username_sale_fee_bps <= 10000, EInvalidConfig);
 
         config.max_vesting_pieces = max_vesting_pieces;
         config.curve_factor_min = curve_factor_min;
@@ -1672,7 +1882,7 @@ module social_contracts::profile {
         config.min_claim_threshold_divisor = min_claim_threshold_divisor;
         config.min_username_length = min_username_length;
         config.max_username_length = max_username_length;
-        config.profile_sale_fee_bps = profile_sale_fee_bps;
+        config.username_sale_fee_bps = username_sale_fee_bps;
 
         event::emit(ProfileConfigUpdatedEvent {
             updated_by: tx_context::sender(ctx),
@@ -1683,25 +1893,25 @@ module social_contracts::profile {
             min_claim_threshold_divisor,
             min_username_length,
             max_username_length,
-            profile_sale_fee_bps,
+            username_sale_fee_bps,
             timestamp: clock::timestamp_ms(clock),
         });
     }
 
-    /// Migration function for ProfileConfig — copies the profile sale fee from the pre-upgrade value.
+    /// Migration function for ProfileConfig — copies the username sale fee from the pre-upgrade value.
     public entry fun migrate_profile_config(
         config: &mut ProfileConfig,
-        profile_sale_fee_bps: u64,
+        username_sale_fee_bps: u64,
         _: &upgrade::UpgradeAdminCap,
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
         let current_version = upgrade::current_version();
         assert!(config.version < current_version, EInvalidConfig);
-        assert!(profile_sale_fee_bps <= 10000, EInvalidConfig);
+        assert!(username_sale_fee_bps <= 10000, EInvalidConfig);
 
         let old_version = config.version;
-        config.profile_sale_fee_bps = profile_sale_fee_bps;
+        config.username_sale_fee_bps = username_sale_fee_bps;
         config.version = current_version;
 
         upgrade::emit_migration_event(
@@ -1720,7 +1930,7 @@ module social_contracts::profile {
             min_claim_threshold_divisor: config.min_claim_threshold_divisor,
             min_username_length: config.min_username_length,
             max_username_length: config.max_username_length,
-            profile_sale_fee_bps: config.profile_sale_fee_bps,
+            username_sale_fee_bps: config.username_sale_fee_bps,
             timestamp: clock::timestamp_ms(clock),
         });
     }
@@ -1861,7 +2071,7 @@ module social_contracts::profile {
         ctx: &mut TxContext,
     ) {
         assert!(registry.version == upgrade::current_version(), 1);
-        let canonical = canonical_registry_username(&username);
+        let canonical = normalize_username(&username);
         let profile_id = revoke_username(registry, canonical);
         let admin = tx_context::sender(ctx);
         event::emit(UsernameRevokedEvent {
@@ -1882,7 +2092,21 @@ module social_contracts::profile {
         ctx: &mut TxContext,
     ) {
         assert!(registry.version == upgrade::current_version(), 1);
-        let canonical = canonical_registry_username(&username);
+        let canonical = normalize_username(&username);
+        assert!(table::contains(&registry.usernames, canonical), EUsernameNotFound);
+        let from_profile_id = *table::borrow(&registry.usernames, canonical);
+        assert!(from_profile_id != to_profile_id, EUsernameProfileMismatch);
+        assert!(
+            !table::contains(&registry.username_locks, canonical),
+            EUsernameLocked,
+        );
+        // Preserve the one-username-per-profile invariant: if the target profile already owns a
+        // username, revoke it first (mirrors the marketplace sale flow). Aborts with EUsernameLocked
+        // if the target's current username is marketplace-listed.
+        if (table::contains(&registry.profile_username, to_profile_id)) {
+            let old_target_username = *table::borrow(&registry.profile_username, to_profile_id);
+            revoke_username(registry, old_target_username);
+        };
         let admin = tx_context::sender(ctx);
         let old_profile_id = move_username(registry, canonical, to_profile_id);
         event::emit(UsernameReassignedEvent {
@@ -1938,7 +2162,8 @@ module social_contracts::profile {
             id: object::new(ctx),
             usernames: table::new(ctx),
             address_profiles: table::new(ctx),
-            beneficiary_usernames: table::new(ctx),
+            profile_username: table::new(ctx),
+            username_locks: table::new(ctx),
             version: 1,
         };
         
@@ -1969,7 +2194,7 @@ module social_contracts::profile {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        let username = canonical_registry_username(&username);
+        let username = normalize_username(&username);
         let owner = tx_context::sender(ctx);
         let epoch = clock::timestamp_ms(clock);
         
@@ -1983,7 +2208,6 @@ module social_contracts::profile {
             created_at: epoch,
             owner,
             x_username: option::none(),
-            min_offer_amount: option::none(),
             website: option::none(),
             birthdate: option::none(),
             location: option::none(),
@@ -2015,19 +2239,9 @@ module social_contracts::profile {
         &profile.ai_credit_balance_id
     }
 
-    /// Get the minimum offer amount for a profile
-    public fun min_offer_amount(profile: &Profile): &Option<u64> {
-        &profile.min_offer_amount
-    }
-
     /// X/Twitter username on the profile (set or cleared only via admin entry).
     public fun x_username(profile: &Profile): &Option<String> {
         &profile.x_username
-    }
-
-    /// Check if a profile is for sale (has a minimum offer amount set)
-    public fun is_for_sale(profile: &Profile): bool {
-        option::is_some(&profile.min_offer_amount)
     }
 
     /// Adds a badge to a profile - called by platform module

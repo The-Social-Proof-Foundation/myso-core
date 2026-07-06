@@ -19,11 +19,14 @@ module social_contracts::profile_tests {
         VestingWallet,
         EcosystemBadgeAdminCap,
         UsernameAdminCap,
-        ProfileConfig};
+        ProfileConfig,
+        UsernameMarketplace,
+    };
     use myso::url;
     use myso::coin::{Self, Coin};
     use myso::myso::MYSO;
     use myso::clock::{Self, Clock};
+    use myso::event;
     use myso::transfer;
     
     const ADMIN: address = @0xAD;
@@ -160,6 +163,152 @@ module social_contracts::profile_tests {
     }
 
     #[test]
+    fun test_username_accepts_dot_underscore_digit() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        {
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+
+            clock::share_for_testing(clock);
+            let coins = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
+            transfer::public_transfer(coins, USER1);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+
+            profile::create_profile(
+                &mut registry,
+                &profile_config,
+                &mut memory_registry,
+                &mut ai_credit_config,
+                string::utf8(b"Dot User"),
+                string::utf8(b"user.name_1"),
+                string::utf8(b"bio"),
+                b"",
+                b"",
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(ai_credit_config);
+            test_scenario::return_shared(clock);
+        test_scenario::return_shared(profile_config);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let profile = test_scenario::take_from_sender<Profile>(&scenario);
+            let profile_id = object::uid_to_address(profile::id(&profile));
+            let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let opt = profile::lookup_profile_by_username(&registry, string::utf8(b"user.name_1"));
+            assert!(option::is_some(&opt), 0);
+            assert!(*option::borrow(&opt) == profile_id, 0);
+            test_scenario::return_shared(registry);
+            test_scenario::return_to_sender(&scenario, profile);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = profile::EInvalidUsername, location = social_contracts::profile)]
+    fun test_username_rejects_at_sign() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        {
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+
+            clock::share_for_testing(clock);
+            let coins = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
+            transfer::public_transfer(coins, USER1);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+
+            profile::create_profile(
+                &mut registry,
+                &profile_config,
+                &mut memory_registry,
+                &mut ai_credit_config,
+                string::utf8(b"Bad"),
+                string::utf8(b"user@name"),
+                string::utf8(b""),
+                b"",
+                b"",
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(ai_credit_config);
+            test_scenario::return_shared(clock);
+        test_scenario::return_shared(profile_config);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = profile::EInvalidUsername, location = social_contracts::profile)]
+    fun test_username_rejects_hyphen_and_slash() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        {
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+
+            clock::share_for_testing(clock);
+            let coins = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
+            transfer::public_transfer(coins, USER1);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+
+            profile::create_profile(
+                &mut registry,
+                &profile_config,
+                &mut memory_registry,
+                &mut ai_credit_config,
+                string::utf8(b"Bad"),
+                string::utf8(b"user-name/1"),
+                string::utf8(b""),
+                b"",
+                b"",
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(ai_credit_config);
+            test_scenario::return_shared(clock);
+        test_scenario::return_shared(profile_config);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
     fun test_admin_revoke_username() {
         let mut scenario = test_scenario::begin(ADMIN);
         {
@@ -212,6 +361,87 @@ module social_contracts::profile_tests {
                 test_scenario::ctx(&mut scenario),
             );
             assert!(profile::is_username_available(&registry, string::utf8(b"revokeme")), 0);
+            test_scenario::return_shared(registry);
+            test_scenario::return_to_sender(&scenario, cap);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = profile::EUsernameLocked, location = social_contracts::profile)]
+    fun test_admin_revoke_marketplace_locked_username_aborts() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        {
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+
+            let cap = profile::create_username_admin_cap(test_scenario::ctx(&mut scenario));
+            transfer::public_transfer(cap, ADMIN);
+            clock::share_for_testing(clock);
+            let coins = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
+            transfer::public_transfer(coins, USER1);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            profile::create_profile(
+                &mut registry,
+                &profile_config,
+                &mut memory_registry,
+                &mut ai_credit_config,
+                string::utf8(b"Seller"),
+                string::utf8(b"lockme"),
+                string::utf8(b""),
+                b"",
+                b"",
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(ai_credit_config);
+            test_scenario::return_shared(clock);
+        test_scenario::return_shared(profile_config);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut marketplace = test_scenario::take_shared<UsernameMarketplace>(&scenario);
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let profile = test_scenario::take_from_sender<Profile>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            profile::create_username_listing(
+                &mut marketplace,
+                &mut registry,
+                &profile,
+                string::utf8(b"lockme"),
+                5_000_000_000,
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            test_scenario::return_shared(clock);
+            test_scenario::return_to_sender(&scenario, profile);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(marketplace);
+        };
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let cap = test_scenario::take_from_sender<UsernameAdminCap>(&scenario);
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            profile::admin_revoke_username(
+                &cap,
+                &mut registry,
+                string::utf8(b"lockme"),
+                1,
+                test_scenario::ctx(&mut scenario),
+            );
             test_scenario::return_shared(registry);
             test_scenario::return_to_sender(&scenario, cap);
         };
@@ -509,7 +739,6 @@ module social_contracts::profile_tests {
                 string::utf8(b"Updated bio"),
                 b"https://example.com/new_image.png",
                 b"https://example.com/new_cover.png",
-                option::none<u64>(),
                 option::none(),
                 option::none(),
                 option::none(),
@@ -582,7 +811,6 @@ module social_contracts::profile_tests {
                 string::utf8(b""),
                 b"",
                 b"",
-                option::none(),
                 option::some(string::utf8(b"https://example.com")),
                 option::some(string::utf8(b"1990-01-01")),
                 option::some(string::utf8(b"New York")),
@@ -591,16 +819,16 @@ module social_contracts::profile_tests {
             );
 
             let website = profile::website(&profile);
-            assert!(option::is_some(website), 0);
-            assert!(option::borrow(website) == &string::utf8(b"https://example.com"), 1);
+            assert!(option::is_some(&website), 0);
+            assert!(option::borrow(&website) == &string::utf8(b"https://example.com"), 1);
 
             let birthdate = profile::birthdate(&profile);
-            assert!(option::is_some(birthdate), 2);
-            assert!(option::borrow(birthdate) == &string::utf8(b"1990-01-01"), 3);
+            assert!(option::is_some(&birthdate), 2);
+            assert!(option::borrow(&birthdate) == &string::utf8(b"1990-01-01"), 3);
 
             let location = profile::location(&profile);
-            assert!(option::is_some(location), 4);
-            assert!(option::borrow(location) == &string::utf8(b"New York"), 5);
+            assert!(option::is_some(&location), 4);
+            assert!(option::borrow(&location) == &string::utf8(b"New York"), 5);
 
             profile::update_profile(
                 &mut profile,
@@ -608,7 +836,6 @@ module social_contracts::profile_tests {
                 string::utf8(b""),
                 b"",
                 b"",
-                option::none(),
                 option::some(string::utf8(b"")),
                 option::some(string::utf8(b"")),
                 option::some(string::utf8(b"")),
@@ -616,9 +843,12 @@ module social_contracts::profile_tests {
                 test_scenario::ctx(&mut scenario)
             );
 
-            assert!(option::is_none(profile::website(&profile)), 6);
-            assert!(option::is_none(profile::birthdate(&profile)), 7);
-            assert!(option::is_none(profile::location(&profile)), 8);
+            let website = profile::website(&profile);
+            let birthdate = profile::birthdate(&profile);
+            let location = profile::location(&profile);
+            assert!(option::is_none(&website), 6);
+            assert!(option::is_none(&birthdate), 7);
+            assert!(option::is_none(&location), 8);
 
             test_scenario::return_to_sender(&scenario, profile);
             test_scenario::return_shared(clock);
@@ -688,7 +918,6 @@ module social_contracts::profile_tests {
                 string::utf8(b"Hacked bio"),
                 b"https://example.com/hacked.png",
                 b"https://example.com/hacked_cover.png",
-                option::none<u64>(),
                 option::none(),
                 option::none(),
                 option::none(),
@@ -936,7 +1165,6 @@ module social_contracts::profile_tests {
                 string::utf8(b"new bio from owner"),
                 b"",
                 b"",
-                option::none<u64>(),
                 option::none(),
                 option::none(),
                 option::none(),
@@ -955,854 +1183,782 @@ module social_contracts::profile_tests {
         test_scenario::end(scenario);
     }
 
-    // === Profile Offer Tests ===
+    // === Username Marketplace Tests ===
 
-    #[test]
-    fun test_create_offer() {
-        let mut scenario = test_scenario::begin(ADMIN);
+    fun setup_marketplace_seller(
+        scenario: &mut test_scenario::Scenario,
+        seller: address,
+        username: String,
+    ) {
+        test_scenario::next_tx(scenario, seller);
         {
-            // Initialize modules
-            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
-            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
-
-            clock::share_for_testing(clock);
-            
-            // Mint coins for both users
-            let coins1 = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
-            transfer::public_transfer(coins1, USER1);
-            
-            let coins2 = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
-            transfer::public_transfer(coins2, USER2);
-        };
-        
-        // User1 creates a profile
-        test_scenario::next_tx(&mut scenario, USER1);
-        {
-            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
-            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
-            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
-            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
-            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let profile_config = test_scenario::take_shared<ProfileConfig>(scenario);
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
 
             profile::create_profile(
                 &mut registry,
                 &profile_config,
                 &mut memory_registry,
                 &mut ai_credit_config,
-                string::utf8(b"Profile Owner"),
-                string::utf8(b"user1"),
-                string::utf8(b"This is User1's profile"),
-                b"https://example.com/image.png",
+                string::utf8(b"Seller"),
+                username,
+                string::utf8(b"seller bio"),
+                b"",
                 b"",
                 &clock,
-                test_scenario::ctx(&mut scenario)
+                test_scenario::ctx(scenario),
             );
-            
+
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(clock);
             test_scenario::return_shared(ai_credit_config);
-            test_scenario::return_shared(registry);
-        test_scenario::return_shared(profile_config);
-        };
-
-        // User2 creates an offer on User1's profile
-        test_scenario::next_tx(&mut scenario, USER2);
-        {
-
-            let clock = test_scenario::take_shared<Clock>(&scenario);
-            let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
-            let mut profile = test_scenario::take_from_address<Profile>(&scenario, USER1);
-            let mut coins = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
-            
-            let offer_amount = 5_000_000_000; // 5 MYSO
-            
-            // Create offer
-            profile::create_offer(
-                &mut profile,
-                &mut coins,
-                offer_amount,
-                &clock,
-                test_scenario::ctx(&mut scenario)
-            );
-            
-            // Verify offer exists
-            assert!(profile::has_offer_from(&profile, USER2), 1);
-            assert!(profile::has_offers(&profile), 2);
-            
-            // Return all objects
-            test_scenario::return_shared(registry);
-            test_scenario::return_to_address(USER1, profile);
-            test_scenario::return_to_sender(&scenario, coins);
-
-            test_scenario::return_shared(clock);
-        };
-        
-        test_scenario::end(scenario);
-    }
-    
-    #[test]
-    fun test_accept_offer() {
-        let mut scenario = test_scenario::begin(ADMIN);
-        {
-            // Initialize modules
-            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
-            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
-
-            clock::share_for_testing(clock);
-            
-            // Mint coins for both users
-            let coins1 = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
-            transfer::public_transfer(coins1, USER1);
-            
-            let coins2 = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
-            transfer::public_transfer(coins2, USER2);
-        };
-        
-        // User1 creates a profile
-        test_scenario::next_tx(&mut scenario, USER1);
-        {
-            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
-            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
-            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
-            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
-            let clock = test_scenario::take_shared<Clock>(&scenario);
-
-            profile::create_profile(
-                &mut registry,
-                &profile_config,
-                &mut memory_registry,
-                &mut ai_credit_config,
-                string::utf8(b"Profile Owner"),
-                string::utf8(b"user1"),
-                string::utf8(b"This is User1's profile"),
-                b"https://example.com/image.png",
-                b"",
-                &clock,
-                test_scenario::ctx(&mut scenario)
-            );
-            
-            test_scenario::return_shared(memory_registry);
-            test_scenario::return_shared(clock);
-            test_scenario::return_shared(ai_credit_config);
-            test_scenario::return_shared(registry);
-        test_scenario::return_shared(profile_config);
-        };
-
-        // User2 creates an offer on User1's profile
-        test_scenario::next_tx(&mut scenario, USER2);
-        {
-
-            let clock = test_scenario::take_shared<Clock>(&scenario);
-            let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
-            let mut profile = test_scenario::take_from_address<Profile>(&scenario, USER1);
-            let mut coins = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
-            
-            let offer_amount = 5_000_000_000; // 5 MYSO
-            
-            // Create offer
-            profile::create_offer(
-                &mut profile,
-                &mut coins,
-                offer_amount,
-                &clock,
-                test_scenario::ctx(&mut scenario)
-            );
-            
-            // Check the coin was actually debited
-            assert!(coin::value(&coins) == 15_000_000_000, 3);
-            
-            // Return all objects
-            test_scenario::return_shared(registry);
-            test_scenario::return_to_address(USER1, profile);
-            test_scenario::return_to_sender(&scenario, coins);
-
-            test_scenario::return_shared(clock);
-        };
-        
-        // User1 accepts the offer
-        test_scenario::next_tx(&mut scenario, USER1);
-        {
-
-            let clock = test_scenario::take_shared<Clock>(&scenario);
-            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
-            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
-            let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
-            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
-            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
-            let profile = test_scenario::take_from_sender<Profile>(&scenario);
-
-            profile::accept_offer_with_memory(
-                &mut registry,
-                &mut memory_registry,
-                &mut memory_account,
-                profile,
-                &profile_config,
-                &treasury,
-                USER2,
-                option::none(),
-                &clock,
-                test_scenario::ctx(&mut scenario)
-            );
-
-            test_scenario::return_shared(memory_account);
-            test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(registry);
             test_scenario::return_shared(profile_config);
-            test_scenario::return_shared(treasury);
-
-            test_scenario::return_shared(clock);
         };
-        
-        // Check that USER1 received payment (minus fees)
+    }
+
+    fun setup_marketplace_buyer(
+        scenario: &mut test_scenario::Scenario,
+        buyer: address,
+        username: String,
+    ) {
+        test_scenario::next_tx(scenario, buyer);
+        {
+            let profile_config = test_scenario::take_shared<ProfileConfig>(scenario);
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+
+            profile::create_profile(
+                &mut registry,
+                &profile_config,
+                &mut memory_registry,
+                &mut ai_credit_config,
+                string::utf8(b"Buyer"),
+                username,
+                string::utf8(b"buyer bio"),
+                b"",
+                b"",
+                &clock,
+                test_scenario::ctx(scenario),
+            );
+
+            test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(ai_credit_config);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(profile_config);
+        };
+    }
+
+    #[test]
+    fun test_create_username_offer() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        {
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
+            transfer::public_transfer(
+                coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario)),
+                USER1,
+            );
+            transfer::public_transfer(
+                coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario)),
+                USER2,
+            );
+        };
+
+        setup_marketplace_seller(&mut scenario, USER1, string::utf8(b"user1"));
+        setup_marketplace_buyer(&mut scenario, USER2, string::utf8(b"user2"));
+
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let coins = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
-            
-            // Calculate expected payment (5 MYSO minus 2.5% fee)
-            // let offer_amount = 5_000_000_000;
-            // let fee_amount = (offer_amount * 250) / 10000; // 2.5% fee
-            // let expected_payment = offer_amount - fee_amount;
-            
-            // Instead of exact match, verify it's within a reasonable range
-            // or skip the exact verification since fee structure might have changed
-            let actual_amount = coin::value(&coins);
-            assert!(actual_amount > 0, 6); // Verify user received some payment
-            
-            test_scenario::return_to_sender(&scenario, coins);
-        };
-        
-        // Check that USER2 now owns the profile
-        test_scenario::next_tx(&mut scenario, USER2);
-        {
+            let mut marketplace = test_scenario::take_shared<UsernameMarketplace>(&scenario);
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let profile = test_scenario::take_from_sender<Profile>(&scenario);
-            
-            // Verify USER2 is the new owner
-            assert!(profile::owner(&profile) == USER2, 7);
-            
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+
+            profile::create_username_listing(
+                &mut marketplace,
+                &mut registry,
+                &profile,
+                string::utf8(b"user1"),
+                5_000_000_000,
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+
+            assert!(profile::is_username_listed(&marketplace, string::utf8(b"user1")), 0);
+
+            test_scenario::return_shared(clock);
             test_scenario::return_to_sender(&scenario, profile);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(marketplace);
         };
-        
+
+        test_scenario::next_tx(&mut scenario, USER2);
+        {
+            let mut marketplace = test_scenario::take_shared<UsernameMarketplace>(&scenario);
+            let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let mut coins = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+
+            profile::create_username_offer(
+                &mut marketplace,
+                &registry,
+                string::utf8(b"user1"),
+                &mut coins,
+                5_000_000_000,
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+
+            assert!(profile::has_username_offer_from(&marketplace, string::utf8(b"user1"), USER2), 1);
+            assert!(profile::has_username_offers(&marketplace, string::utf8(b"user1")), 2);
+
+            test_scenario::return_shared(clock);
+            test_scenario::return_to_sender(&scenario, coins);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(marketplace);
+        };
+
         test_scenario::end(scenario);
     }
-    
+
     #[test]
-    fun test_reject_offer() {
+    fun test_accept_username_offer() {
         let mut scenario = test_scenario::begin(ADMIN);
         {
-            // Initialize modules
             let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
             profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
-
             clock::share_for_testing(clock);
-            
-            // Mint coins for both users
-            let coins1 = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
-            transfer::public_transfer(coins1, USER1);
-            
-            let coins2 = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
-            transfer::public_transfer(coins2, USER2);
+            transfer::public_transfer(
+                coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario)),
+                USER1,
+            );
+            transfer::public_transfer(
+                coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario)),
+                USER2,
+            );
         };
-        
-        // User1 creates a profile
+
+        setup_marketplace_seller(&mut scenario, USER1, string::utf8(b"user1"));
+        setup_marketplace_buyer(&mut scenario, USER2, string::utf8(b"user2"));
+
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
+            let mut marketplace = test_scenario::take_shared<UsernameMarketplace>(&scenario);
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
-            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
-            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
+            let profile = test_scenario::take_from_sender<Profile>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
 
-            profile::create_profile(
+            profile::create_username_listing(
+                &mut marketplace,
                 &mut registry,
-                &profile_config,
-                &mut memory_registry,
-                &mut ai_credit_config,
-                string::utf8(b"Profile Owner"),
+                &profile,
                 string::utf8(b"user1"),
-                string::utf8(b"This is User1's profile"),
-                b"https://example.com/image.png",
-                b"",
+                5_000_000_000,
                 &clock,
-                test_scenario::ctx(&mut scenario)
+                test_scenario::ctx(&mut scenario),
             );
-            
-            test_scenario::return_shared(memory_registry);
+
             test_scenario::return_shared(clock);
-            test_scenario::return_shared(ai_credit_config);
+            test_scenario::return_to_sender(&scenario, profile);
             test_scenario::return_shared(registry);
-        test_scenario::return_shared(profile_config);
+            test_scenario::return_shared(marketplace);
         };
 
-        // User2 creates an offer on User1's profile
         test_scenario::next_tx(&mut scenario, USER2);
         {
-
-            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let mut marketplace = test_scenario::take_shared<UsernameMarketplace>(&scenario);
             let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
-            let mut profile = test_scenario::take_from_address<Profile>(&scenario, USER1);
             let mut coins = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
-            
-            let offer_amount = 5_000_000_000; // 5 MYSO
-            
-            // Create offer
-            profile::create_offer(
-                &mut profile,
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+
+            profile::create_username_offer(
+                &mut marketplace,
+                &registry,
+                string::utf8(b"user1"),
                 &mut coins,
-                offer_amount,
+                5_000_000_000,
                 &clock,
-                test_scenario::ctx(&mut scenario)
+                test_scenario::ctx(&mut scenario),
             );
-            
-            // Return all objects
-            test_scenario::return_shared(registry);
-            test_scenario::return_to_address(USER1, profile);
-            test_scenario::return_to_sender(&scenario, coins);
 
             test_scenario::return_shared(clock);
+            test_scenario::return_to_sender(&scenario, coins);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(marketplace);
         };
-        
-        // User1 rejects the offer
+
         test_scenario::next_tx(&mut scenario, USER1);
         {
-
             let clock = test_scenario::take_shared<Clock>(&scenario);
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let mut marketplace = test_scenario::take_shared<UsernameMarketplace>(&scenario);
+            let profile = test_scenario::take_from_sender<Profile>(&scenario);
+            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
+
+            let seller_profile_id = profile::get_id_address(&profile);
+            let seller_memory_id = *option::borrow(profile::linked_memory_account_id(&profile));
+            let buyer_profile_id = *option::borrow(&profile::lookup_profile_by_owner(&registry, USER2));
+
+            let events_before = event::num_events();
+            profile::accept_username_offer(
+                &mut marketplace,
+                &mut registry,
+                &profile,
+                string::utf8(b"user1"),
+                USER2,
+                string::utf8(b"user1_legacy"),
+                &profile_config,
+                &treasury,
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            // Revoke buyer prior, marketplace unlock release, sale settled, offer accepted,
+            // sale fee — no replacement UsernameClaimedEvent (would be 6 with claim_username).
+            assert!(event::num_events() - events_before == 5, 11);
+
+            let listed_owner = *option::borrow(&profile::lookup_profile_by_username(
+                &registry,
+                string::utf8(b"user1"),
+            ));
+            let replacement_owner = *option::borrow(&profile::lookup_profile_by_username(
+                &registry,
+                string::utf8(b"user1_legacy"),
+            ));
+            assert!(listed_owner == buyer_profile_id, 1);
+            assert!(replacement_owner == seller_profile_id, 2);
+            assert!(
+                *option::borrow(&profile::lookup_profile_by_owner(&registry, USER1)) == seller_profile_id,
+                3,
+            );
+            assert!(
+                *option::borrow(&profile::lookup_profile_by_owner(&registry, USER2)) == buyer_profile_id,
+                4,
+            );
+            assert!(profile::owner(&profile) == USER1, 5);
+            assert!(*option::borrow(profile::linked_memory_account_id(&profile)) == seller_memory_id, 6);
+
+            // 1:1 invariant: buyer's prior username `user2` is freed (one username per wallet),
+            // and the marketplace reservation on `user1` is released post-settlement.
+            assert!(option::is_none(&profile::lookup_profile_by_username(&registry, string::utf8(b"user2"))), 8);
+            assert!(!profile::is_username_locked(&registry, string::utf8(b"user1")), 9);
+            assert!(profile::is_username_available(&registry, string::utf8(b"user2")), 10);
+
+            test_scenario::return_to_sender(&scenario, profile);
+            test_scenario::return_shared(treasury);
+            test_scenario::return_shared(profile_config);
+            test_scenario::return_shared(marketplace);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER2);
+        {
+            let buyer_profile = test_scenario::take_from_sender<Profile>(&scenario);
+            assert!(profile::owner(&buyer_profile) == USER2, 7);
+            test_scenario::return_to_sender(&scenario, buyer_profile);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_reject_username_offer() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        {
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
+            transfer::public_transfer(
+                coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario)),
+                USER1,
+            );
+            transfer::public_transfer(
+                coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario)),
+                USER2,
+            );
+        };
+
+        setup_marketplace_seller(&mut scenario, USER1, string::utf8(b"user1"));
+        setup_marketplace_buyer(&mut scenario, USER2, string::utf8(b"user2"));
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut marketplace = test_scenario::take_shared<UsernameMarketplace>(&scenario);
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let profile = test_scenario::take_from_sender<Profile>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+
+            profile::create_username_listing(
+                &mut marketplace,
+                &mut registry,
+                &profile,
+                string::utf8(b"user1"),
+                5_000_000_000,
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+
+            test_scenario::return_shared(clock);
+            test_scenario::return_to_sender(&scenario, profile);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(marketplace);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER2);
+        {
+            let mut marketplace = test_scenario::take_shared<UsernameMarketplace>(&scenario);
             let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
-            let mut profile = test_scenario::take_from_sender<Profile>(&scenario);
-            
-            // Reject offer from User2
-            profile::reject_or_revoke_offer(
-                &mut profile,
+            let mut coins = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+
+            profile::create_username_offer(
+                &mut marketplace,
+                &registry,
+                string::utf8(b"user1"),
+                &mut coins,
+                5_000_000_000,
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+
+            test_scenario::return_shared(clock);
+            test_scenario::return_to_sender(&scenario, coins);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(marketplace);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut marketplace = test_scenario::take_shared<UsernameMarketplace>(&scenario);
+            let profile = test_scenario::take_from_sender<Profile>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+
+            profile::reject_or_revoke_username_offer(
+                &mut marketplace,
+                &profile,
+                string::utf8(b"user1"),
                 USER2,
                 &clock,
-                test_scenario::ctx(&mut scenario)
+                test_scenario::ctx(&mut scenario),
             );
-            
-            // Verify offer is gone
-            assert!(!profile::has_offers(&profile), 1);
-            
-            // Verify owner hasn't changed
+
+            assert!(!profile::has_username_offers(&marketplace, string::utf8(b"user1")), 1);
             assert!(profile::owner(&profile) == USER1, 2);
-            
-            // Return shared objects
-            test_scenario::return_shared(registry);
-            test_scenario::return_to_sender(&scenario, profile);
 
             test_scenario::return_shared(clock);
+            test_scenario::return_to_sender(&scenario, profile);
+            test_scenario::return_shared(marketplace);
         };
-        
-        // Skip checking the refund amount since it may vary
+
         test_scenario::next_tx(&mut scenario, USER2);
         {
-            // Just take and return the coins without checking the amount
             let coins = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
             test_scenario::return_to_sender(&scenario, coins);
         };
-        
+
         test_scenario::end(scenario);
     }
-    
+
     #[test]
-    fun test_revoke_offer() {
+    fun test_revoke_username_offer() {
         let mut scenario = test_scenario::begin(ADMIN);
         {
-            // Initialize modules
             let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
             profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
-
             clock::share_for_testing(clock);
-            
-            // Mint coins for both users
-            let coins1 = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
-            transfer::public_transfer(coins1, USER1);
-            
-            let coins2 = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
-            transfer::public_transfer(coins2, USER2);
+            transfer::public_transfer(
+                coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario)),
+                USER1,
+            );
+            transfer::public_transfer(
+                coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario)),
+                USER2,
+            );
         };
-        
-        // User1 creates a profile
+
+        setup_marketplace_seller(&mut scenario, USER1, string::utf8(b"user1"));
+        setup_marketplace_buyer(&mut scenario, USER2, string::utf8(b"user2"));
+
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
+            let mut marketplace = test_scenario::take_shared<UsernameMarketplace>(&scenario);
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
-            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
-            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
+            let profile = test_scenario::take_from_sender<Profile>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
 
-            profile::create_profile(
+            profile::create_username_listing(
+                &mut marketplace,
                 &mut registry,
-                &profile_config,
-                &mut memory_registry,
-                &mut ai_credit_config,
-                string::utf8(b"Profile Owner"),
+                &profile,
                 string::utf8(b"user1"),
-                string::utf8(b"This is User1's profile"),
-                b"https://example.com/image.png",
-                b"",
+                5_000_000_000,
                 &clock,
-                test_scenario::ctx(&mut scenario)
+                test_scenario::ctx(&mut scenario),
             );
-            
-            test_scenario::return_shared(memory_registry);
+
             test_scenario::return_shared(clock);
-            test_scenario::return_shared(ai_credit_config);
+            test_scenario::return_to_sender(&scenario, profile);
             test_scenario::return_shared(registry);
-        test_scenario::return_shared(profile_config);
+            test_scenario::return_shared(marketplace);
         };
 
-        // User2 creates an offer on User1's profile
         test_scenario::next_tx(&mut scenario, USER2);
         {
-
-            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let mut marketplace = test_scenario::take_shared<UsernameMarketplace>(&scenario);
             let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
-            let mut profile = test_scenario::take_from_address<Profile>(&scenario, USER1);
             let mut coins = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
-            
-            let offer_amount = 5_000_000_000; // 5 MYSO
-            
-            // Create offer
-            profile::create_offer(
-                &mut profile,
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+
+            profile::create_username_offer(
+                &mut marketplace,
+                &registry,
+                string::utf8(b"user1"),
                 &mut coins,
-                offer_amount,
+                5_000_000_000,
                 &clock,
-                test_scenario::ctx(&mut scenario)
+                test_scenario::ctx(&mut scenario),
             );
-            
-            // Return all objects
-            test_scenario::return_shared(registry);
-            test_scenario::return_to_address(USER1, profile);
-            test_scenario::return_to_sender(&scenario, coins);
 
             test_scenario::return_shared(clock);
+            test_scenario::return_to_sender(&scenario, coins);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(marketplace);
         };
-        
-        // User2 revokes their own offer
+
         test_scenario::next_tx(&mut scenario, USER2);
         {
-
+            let mut marketplace = test_scenario::take_shared<UsernameMarketplace>(&scenario);
+            let profile = test_scenario::take_from_address<Profile>(&scenario, USER1);
             let clock = test_scenario::take_shared<Clock>(&scenario);
-            let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
-            let mut profile = test_scenario::take_from_address<Profile>(&scenario, USER1);
-            
-            // Revoke own offer
-            profile::reject_or_revoke_offer(
-                &mut profile,
+
+            profile::reject_or_revoke_username_offer(
+                &mut marketplace,
+                &profile,
+                string::utf8(b"user1"),
                 USER2,
                 &clock,
-                test_scenario::ctx(&mut scenario)
+                test_scenario::ctx(&mut scenario),
             );
-            
-            // Verify offer is gone
-            assert!(!profile::has_offers(&profile), 1);
-            
-            // Verify owner hasn't changed
-            assert!(profile::owner(&profile) == USER1, 2);
-            
-            // Return shared objects
-            test_scenario::return_shared(registry);
-            test_scenario::return_to_address(USER1, profile);
+
+            assert!(!profile::has_username_offers(&marketplace, string::utf8(b"user1")), 1);
 
             test_scenario::return_shared(clock);
+            test_scenario::return_to_address(USER1, profile);
+            test_scenario::return_shared(marketplace);
         };
-        
-        // Skip checking the refund amount since it may vary
-        test_scenario::next_tx(&mut scenario, USER2);
-        {
-            // Just take and return the coins without checking the amount
-            let coins = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
-            test_scenario::return_to_sender(&scenario, coins);
-        };
-        
+
         test_scenario::end(scenario);
     }
-    
+
     #[test]
     #[expected_failure(abort_code = profile::ECannotOfferOwnProfile, location = social_contracts::profile)]
-    fun test_cannot_offer_own_profile() {
+    fun test_cannot_offer_own_username() {
         let mut scenario = test_scenario::begin(ADMIN);
         {
-            // Initialize modules
             let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
             profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
-
             clock::share_for_testing(clock);
-            
-            // Mint coins for the user
-            let coins = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
-            transfer::public_transfer(coins, USER1);
+            transfer::public_transfer(
+                coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario)),
+                USER1,
+            );
         };
-        
-        // User1 creates a profile
+
+        setup_marketplace_seller(&mut scenario, USER1, string::utf8(b"user1"));
+
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
+            let mut marketplace = test_scenario::take_shared<UsernameMarketplace>(&scenario);
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
-            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
-            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
+            let profile = test_scenario::take_from_sender<Profile>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
 
-            profile::create_profile(
+            profile::create_username_listing(
+                &mut marketplace,
                 &mut registry,
-                &profile_config,
-                &mut memory_registry,
-                &mut ai_credit_config,
-                string::utf8(b"Profile Owner"),
+                &profile,
                 string::utf8(b"user1"),
-                string::utf8(b"This is User1's profile"),
-                b"https://example.com/image.png",
-                b"",
+                5_000_000_000,
                 &clock,
-                test_scenario::ctx(&mut scenario)
+                test_scenario::ctx(&mut scenario),
             );
-            
-            test_scenario::return_shared(memory_registry);
+
             test_scenario::return_shared(clock);
-            test_scenario::return_shared(ai_credit_config);
+            test_scenario::return_to_sender(&scenario, profile);
             test_scenario::return_shared(registry);
-        test_scenario::return_shared(profile_config);
+            test_scenario::return_shared(marketplace);
         };
-        
-        // User1 tries to create an offer on their own profile
+
         test_scenario::next_tx(&mut scenario, USER1);
         {
-
-            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let mut marketplace = test_scenario::take_shared<UsernameMarketplace>(&scenario);
             let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
-            let mut profile = test_scenario::take_from_sender<Profile>(&scenario);
             let mut coins = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
-            
-            let offer_amount = 5_000_000_000; // 5 MYSO
-            
-            // Try to create offer on own profile (should fail)
-            profile::create_offer(
-                &mut profile,
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+
+            profile::create_username_offer(
+                &mut marketplace,
+                &registry,
+                string::utf8(b"user1"),
                 &mut coins,
-                offer_amount,
+                5_000_000_000,
                 &clock,
-                test_scenario::ctx(&mut scenario)
+                test_scenario::ctx(&mut scenario),
             );
-            
-            // These won't be reached due to the expected failure
-            test_scenario::return_shared(registry);
-            test_scenario::return_to_sender(&scenario, profile);
-            test_scenario::return_to_sender(&scenario, coins);
 
             test_scenario::return_shared(clock);
+            test_scenario::return_to_sender(&scenario, coins);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(marketplace);
         };
-        
+
         test_scenario::end(scenario);
     }
-    
+
     #[test]
     #[expected_failure(abort_code = profile::EOfferDoesNotExist, location = social_contracts::profile)]
-    fun test_accept_nonexistent_offer() {
+    fun test_accept_nonexistent_username_offer() {
         let mut scenario = test_scenario::begin(ADMIN);
         {
-            // Initialize modules
             let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
             profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
-
             clock::share_for_testing(clock);
-            
-            // Mint coins for both users
-            let coins1 = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
-            transfer::public_transfer(coins1, USER1);
-            
-            let coins2 = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
-            transfer::public_transfer(coins2, USER2);
-        };
-        
-        // User1 creates a profile
-        test_scenario::next_tx(&mut scenario, USER1);
-        {
-            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
-            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
-            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
-            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
-            let clock = test_scenario::take_shared<Clock>(&scenario);
-
-            profile::create_profile(
-                &mut registry,
-                &profile_config,
-                &mut memory_registry,
-                &mut ai_credit_config,
-                string::utf8(b"Profile Owner"),
-                string::utf8(b"user1"),
-                string::utf8(b"This is User1's profile"),
-                b"https://example.com/image.png",
-                b"",
-                &clock,
-                test_scenario::ctx(&mut scenario)
+            transfer::public_transfer(
+                coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario)),
+                USER1,
             );
-            
-            test_scenario::return_shared(memory_registry);
-            test_scenario::return_shared(clock);
-            test_scenario::return_shared(ai_credit_config);
-            test_scenario::return_shared(registry);
-        test_scenario::return_shared(profile_config);
         };
-        
-        // User1 tries to accept a non-existent offer
+
+        setup_marketplace_seller(&mut scenario, USER1, string::utf8(b"user1"));
+
         test_scenario::next_tx(&mut scenario, USER1);
         {
+            let mut marketplace = test_scenario::take_shared<UsernameMarketplace>(&scenario);
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let profile = test_scenario::take_from_sender<Profile>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
 
+            profile::create_username_listing(
+                &mut marketplace,
+                &mut registry,
+                &profile,
+                string::utf8(b"user1"),
+                5_000_000_000,
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+
+            test_scenario::return_shared(clock);
+            test_scenario::return_to_sender(&scenario, profile);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(marketplace);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
             let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
-            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
-            let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
+            let mut marketplace = test_scenario::take_shared<UsernameMarketplace>(&scenario);
+            let profile = test_scenario::take_from_sender<Profile>(&scenario);
             let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
             let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
-            let profile = test_scenario::take_from_sender<Profile>(&scenario);
-            
-            profile::accept_offer_with_memory(
+
+            profile::accept_username_offer(
+                &mut marketplace,
                 &mut registry,
-                &mut memory_registry,
-                &mut memory_account,
-                profile,
+                &profile,
+                string::utf8(b"user1"),
+                USER2,
+                string::utf8(b"user1_legacy"),
                 &profile_config,
                 &treasury,
-                USER2,
-                option::none(),
                 &clock,
-                test_scenario::ctx(&mut scenario)
+                test_scenario::ctx(&mut scenario),
             );
-            
-            test_scenario::return_shared(memory_account);
-            test_scenario::return_shared(memory_registry);
-            test_scenario::return_shared(registry);
-            test_scenario::return_shared(profile_config);
-            test_scenario::return_shared(treasury);
 
+            test_scenario::return_shared(treasury);
+            test_scenario::return_shared(profile_config);
+            test_scenario::return_to_sender(&scenario, profile);
+            test_scenario::return_shared(marketplace);
+            test_scenario::return_shared(registry);
             test_scenario::return_shared(clock);
         };
-        
+
         test_scenario::end(scenario);
     }
-    
+
     #[test]
     #[expected_failure(abort_code = profile::EUnauthorizedOfferAction, location = social_contracts::profile)]
-    fun test_unauthorized_offer_rejection() {
+    fun test_unauthorized_username_offer_rejection() {
         let mut scenario = test_scenario::begin(ADMIN);
         {
-            // Initialize modules
             let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
             profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
-
             clock::share_for_testing(clock);
-            
-            // Mint coins for all users
-            let coins1 = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
-            transfer::public_transfer(coins1, USER1);
-            
-            let coins2 = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
-            transfer::public_transfer(coins2, USER2);
-            
-            let coins3 = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
-            transfer::public_transfer(coins3, USER3);
+            transfer::public_transfer(
+                coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario)),
+                USER1,
+            );
+            transfer::public_transfer(
+                coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario)),
+                USER2,
+            );
+            transfer::public_transfer(
+                coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario)),
+                USER3,
+            );
         };
-        
-        // User1 creates a profile
+
+        setup_marketplace_seller(&mut scenario, USER1, string::utf8(b"user1"));
+        setup_marketplace_buyer(&mut scenario, USER2, string::utf8(b"user2"));
+
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
+            let mut marketplace = test_scenario::take_shared<UsernameMarketplace>(&scenario);
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
-            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
-            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
+            let profile = test_scenario::take_from_sender<Profile>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
 
-            profile::create_profile(
+            profile::create_username_listing(
+                &mut marketplace,
                 &mut registry,
-                &profile_config,
-                &mut memory_registry,
-                &mut ai_credit_config,
-                string::utf8(b"Profile Owner"),
+                &profile,
                 string::utf8(b"user1"),
-                string::utf8(b"This is User1's profile"),
-                b"https://example.com/image.png",
-                b"",
+                5_000_000_000,
                 &clock,
-                test_scenario::ctx(&mut scenario)
+                test_scenario::ctx(&mut scenario),
             );
-            
-            test_scenario::return_shared(memory_registry);
+
             test_scenario::return_shared(clock);
-            test_scenario::return_shared(ai_credit_config);
+            test_scenario::return_to_sender(&scenario, profile);
             test_scenario::return_shared(registry);
-        test_scenario::return_shared(profile_config);
+            test_scenario::return_shared(marketplace);
         };
 
-        // User2 creates an offer on User1's profile
         test_scenario::next_tx(&mut scenario, USER2);
         {
-
-            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let mut marketplace = test_scenario::take_shared<UsernameMarketplace>(&scenario);
             let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
-            let mut profile = test_scenario::take_from_address<Profile>(&scenario, USER1);
             let mut coins = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
-            
-            let offer_amount = 5_000_000_000; // 5 MYSO
-            
-            // Create offer
-            profile::create_offer(
-                &mut profile,
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+
+            profile::create_username_offer(
+                &mut marketplace,
+                &registry,
+                string::utf8(b"user1"),
                 &mut coins,
-                offer_amount,
+                5_000_000_000,
                 &clock,
-                test_scenario::ctx(&mut scenario)
+                test_scenario::ctx(&mut scenario),
             );
-            
-            // Return all objects
-            test_scenario::return_shared(registry);
-            test_scenario::return_to_address(USER1, profile);
-            test_scenario::return_to_sender(&scenario, coins);
 
             test_scenario::return_shared(clock);
+            test_scenario::return_to_sender(&scenario, coins);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(marketplace);
         };
-        
-        // User3 (unauthorized) tries to reject the offer
+
         test_scenario::next_tx(&mut scenario, USER3);
         {
-
+            let mut marketplace = test_scenario::take_shared<UsernameMarketplace>(&scenario);
+            let profile = test_scenario::take_from_address<Profile>(&scenario, USER1);
             let clock = test_scenario::take_shared<Clock>(&scenario);
-            let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
-            let mut profile = test_scenario::take_from_address<Profile>(&scenario, USER1);
-            
-            // Unauthorized attempt to reject User2's offer (should fail)
-            profile::reject_or_revoke_offer(
-                &mut profile,
+
+            profile::reject_or_revoke_username_offer(
+                &mut marketplace,
+                &profile,
+                string::utf8(b"user1"),
                 USER2,
                 &clock,
-                test_scenario::ctx(&mut scenario)
+                test_scenario::ctx(&mut scenario),
             );
-            
-            // These won't be reached due to the expected failure
-            test_scenario::return_shared(registry);
-            test_scenario::return_to_address(USER1, profile);
 
             test_scenario::return_shared(clock);
+            test_scenario::return_to_address(USER1, profile);
+            test_scenario::return_shared(marketplace);
         };
-        
+
         test_scenario::end(scenario);
     }
-    
+
     #[test]
     #[expected_failure(abort_code = profile::EOfferBelowMinimum, location = social_contracts::profile)]
-    fun test_offer_below_minimum() {
+    fun test_username_offer_below_minimum() {
         let mut scenario = test_scenario::begin(ADMIN);
         {
-            // Initialize modules
             let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
             profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
-
             clock::share_for_testing(clock);
-            
-            // Mint coins for both users
-            let coins1 = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
-            transfer::public_transfer(coins1, USER1);
-            
-            let coins2 = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
-            transfer::public_transfer(coins2, USER2);
+            transfer::public_transfer(
+                coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario)),
+                USER1,
+            );
+            transfer::public_transfer(
+                coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario)),
+                USER2,
+            );
         };
-        
-        // User1 creates a profile
+
+        setup_marketplace_seller(&mut scenario, USER1, string::utf8(b"user1"));
+        setup_marketplace_buyer(&mut scenario, USER2, string::utf8(b"user2"));
+
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
+            let mut marketplace = test_scenario::take_shared<UsernameMarketplace>(&scenario);
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
-            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
-            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
+            let profile = test_scenario::take_from_sender<Profile>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
 
-            profile::create_profile(
+            profile::create_username_listing(
+                &mut marketplace,
                 &mut registry,
-                &profile_config,
-                &mut memory_registry,
-                &mut ai_credit_config,
-                string::utf8(b"Profile Owner"),
+                &profile,
                 string::utf8(b"user1"),
-                string::utf8(b"This is User1's profile"),
-                b"https://example.com/image.png",
-                b"",
+                10_000_000_000,
                 &clock,
-                test_scenario::ctx(&mut scenario)
+                test_scenario::ctx(&mut scenario),
             );
-            
-            test_scenario::return_shared(memory_registry);
+
             test_scenario::return_shared(clock);
-            test_scenario::return_shared(ai_credit_config);
-            test_scenario::return_shared(registry);
-        test_scenario::return_shared(profile_config);
-        };
-
-        // User1 sets minimum offer amount
-        test_scenario::next_tx(&mut scenario, USER1);
-        {
-
-            let clock = test_scenario::take_shared<Clock>(&scenario);
-            let mut profile = test_scenario::take_from_sender<Profile>(&scenario);
-            
-            // Set minimum offer amount to 10 MYSO
-            let min_offer = option::some(10_000_000_000u64);
-            
-            profile::update_profile(
-                &mut profile,
-                string::utf8(b"Profile Owner"),
-                string::utf8(b"This is User1's profile"),
-                b"https://example.com/image.png",
-                b"",
-                min_offer,
-                option::none(),
-                option::none(),
-                option::none(),
-                &clock,
-                test_scenario::ctx(&mut scenario)
-            );
-            
-            // Verify profile is for sale
-            assert!(profile::is_for_sale(&profile), 1);
-            
-            // Verify minimum offer amount
-            let min_amount = profile::min_offer_amount(&profile);
-            assert!(option::is_some(min_amount), 2);
-            assert!(*option::borrow(min_amount) == 10_000_000_000, 3);
-            
             test_scenario::return_to_sender(&scenario, profile);
-
-            test_scenario::return_shared(clock);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(marketplace);
         };
-        
-        // User2 tries to create an offer below the minimum
+
         test_scenario::next_tx(&mut scenario, USER2);
         {
-
-            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let mut marketplace = test_scenario::take_shared<UsernameMarketplace>(&scenario);
             let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
-            let mut profile = test_scenario::take_from_address<Profile>(&scenario, USER1);
             let mut coins = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
-            
-            let low_offer_amount = 5_000_000_000; // 5 MYSO (below 10 MYSO minimum)
-            
-            // Try to create offer below minimum (should fail)
-            profile::create_offer(
-                &mut profile,
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+
+            profile::create_username_offer(
+                &mut marketplace,
+                &registry,
+                string::utf8(b"user1"),
                 &mut coins,
-                low_offer_amount,
+                5_000_000_000,
                 &clock,
-                test_scenario::ctx(&mut scenario)
+                test_scenario::ctx(&mut scenario),
             );
-            
-            // These won't be reached due to the expected failure
-            test_scenario::return_shared(registry);
-            test_scenario::return_to_address(USER1, profile);
-            test_scenario::return_to_sender(&scenario, coins);
 
             test_scenario::return_shared(clock);
+            test_scenario::return_to_sender(&scenario, coins);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(marketplace);
         };
-        
+
         test_scenario::end(scenario);
     }
-
     // === Vesting Tests ===
 
     fun linear_piece_vectors(duration: u64): (

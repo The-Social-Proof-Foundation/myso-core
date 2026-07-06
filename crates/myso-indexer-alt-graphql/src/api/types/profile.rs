@@ -70,7 +70,6 @@ impl Profile {
             following_count: inner.following_count,
             post_count: inner.post_count,
             blocked_count: inner.blocked_count,
-            min_offer_amount: inner.min_offer_amount,
             birthdate: inner.birthdate,
             location: inner.location,
             x_username: inner.x_username,
@@ -163,11 +162,6 @@ impl Profile {
     /// Number of posts.
     async fn post_count(&self) -> i32 {
         self.inner.post_count
-    }
-
-    /// Minimum offer amount for profile sales.
-    async fn min_offer_amount(&self) -> Option<i64> {
-        self.inner.min_offer_amount
     }
 
     /// Birthdate.

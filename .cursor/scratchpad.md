@@ -230,3 +230,43 @@ Suggested order: MyData → SPT → PoC → Insurance → SPOT
 - Insurance route flattens `insuranceConfiguration { pricing, router }` for existing admin normalizers
 
 **Verification:** `npx tsc --noEmit` — **PASS**
+
+---
+
+## Username Marketplace + Post Promotion E2E Scripts (2026-07-05)
+
+Plan: `.cursor/plans/username_marketplace_e2e_scripts_fb85eb6e.plan.md` (scripts-only; Move + indexer already shipped).
+
+### Deliverables
+- [x] `scripts/lib/social-runtime-common.sh` — GraphQL session refresh (incl. `UsernameMarketplace`), PTB/call helpers, `create_profile_for_address` (current sig), wallet/faucet, promotion helpers
+- [x] `scripts/username-marketplace-runnable.sh` — list → offer → accept + REST/GraphQL asserts; optional `--reject-flow`
+- [x] `scripts/post-promotion-runnable.sh` — platform + promoted post + activate + confirm view + GraphQL asserts
+
+### Fix applied during validation
+- Both runnable scripts now set `SOCIAL_SESSION_SAVE_PATH` **before** sourcing `social-runtime-common.sh` (required by lib guard).
+
+### Automated validation (this session)
+| Check | Result |
+|-------|--------|
+| `bash -n` on all three scripts | **PASS** |
+| `myso move test -e testnet … profile_tests` | **PASS** (32 tests) |
+| `myso move test -e testnet … test_accept_username_offer` | **PASS** |
+| `myso move test -e testnet … test_promoted_post_creation` | **PASS** (if run) |
+| `ASSUME_YES=1 ./scripts/username-marketplace-runnable.sh --refresh-session` | **BLOCKED** — GraphQL :9125 not reachable |
+| `ASSUME_YES=1 ./scripts/*-runnable.sh --run-all` on localnet | **BLOCKED** — localnet could not be started |
+
+### Localnet blocker (environment)
+- Default `~/.myso/myso_config` binds validators to `69.10.63.78` → `Can't assign requested address (os error 49)`.
+- `--force-regenesis` fails genesis publish unless `MYSO_PROTOCOL_CONFIG_OVERRIDE_max_move_package_size>=512000` (social package ~255 KiB > 200 KiB default).
+- Fresh genesis + start still hit `Address already in use (os error 48)` in swarm container bind (multi-validator local start).
+
+### Manual E2E when localnet is up
+Prerequisites: `myso start --with-faucet --with-graphql --with-social-indexer` (with package size override if regenesis), then `./scripts/bootstrap.sh`.
+
+```bash
+ASSUME_YES=1 ./scripts/username-marketplace-runnable.sh --refresh-session --run-all
+ASSUME_YES=1 ./scripts/post-promotion-runnable.sh --refresh-session --run-all
+```
+
+Session files: `network.config/username-marketplace/marketplace-session.env`, `network.config/post-promotion/promotion-session.env`.
+

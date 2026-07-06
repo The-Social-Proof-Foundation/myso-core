@@ -246,30 +246,44 @@ pub async fn get_profile_blocked_platforms(
     Ok(Json(platforms))
 }
 
-pub async fn get_profile_offers(
+pub async fn get_username_offers(
     State(state): State<Arc<AppState>>,
-    Path(address): Path<String>,
+    Path(username): Path<String>,
     Query(params): Query<PageParams>,
-) -> Result<Json<Vec<crate::reader::ProfileOffer>>, SocialError> {
+) -> Result<Json<Vec<crate::reader::UsernameOffer>>, SocialError> {
     let limit = params.limit();
     let offset = params.offset();
     let offers = state
         .reader
-        .list_profile_offers(&address, limit, offset)
+        .list_username_offers_by_username(&username, limit, offset)
         .await?;
     Ok(Json(offers))
 }
 
-pub async fn get_profile_sale_fees(
+pub async fn get_profile_username_offers(
     State(state): State<Arc<AppState>>,
     Path(address): Path<String>,
     Query(params): Query<PageParams>,
-) -> Result<Json<Vec<crate::reader::ProfileSaleFee>>, SocialError> {
+) -> Result<Json<Vec<crate::reader::UsernameOffer>>, SocialError> {
+    let limit = params.limit();
+    let offset = params.offset();
+    let offers = state
+        .reader
+        .list_username_offers_by_profile(&address, limit, offset)
+        .await?;
+    Ok(Json(offers))
+}
+
+pub async fn get_username_sale_fees(
+    State(state): State<Arc<AppState>>,
+    Path(address): Path<String>,
+    Query(params): Query<PageParams>,
+) -> Result<Json<Vec<crate::reader::UsernameSaleFee>>, SocialError> {
     let limit = params.limit();
     let offset = params.offset();
     let fees = state
         .reader
-        .list_profile_sale_fees(&address, limit, offset)
+        .list_username_sale_fees(&address, limit, offset)
         .await?;
     Ok(Json(fees))
 }

@@ -4322,9 +4322,6 @@ Profile.followingCount
 Profile.postCount
   => {}
 
-Profile.minOfferAmount
-  => {}
-
 Profile.birthdate
   => {}
 
@@ -4487,7 +4484,7 @@ ProfileConfig.minUsernameLength
 ProfileConfig.maxUsernameLength
   => {}
 
-ProfileConfig.profileSaleFeeBps
+ProfileConfig.usernameSaleFeeBps
   => {}
 
 ProfileConfig.version
@@ -4527,6 +4524,9 @@ ProfilePnLWindowStats.postsMonetizationMyso
   => {}
 
 ProfilePnLWindowStats.messagingMyso
+  => {}
+
+ProfilePnLWindowStats.usernameMarketplaceMyso
   => {}
 
 ProfilePnLWindowStats.otherInboundMyso
@@ -6329,10 +6329,19 @@ UsernameAvailability.registryClaimed
 UsernameAvailability.beneficiaryProvisioned
   => {}
 
+UsernameAvailability.marketplaceListed
+  => {}
+
 UsernameAvailability.registryProfileId
   => {}
 
 UsernameAvailability.beneficiaryId
+  => {}
+
+UsernameAvailability.listingSellerProfileId
+  => {}
+
+UsernameAvailability.lockReasons
   => {}
 
 UsernameAvailability.unavailableReasons

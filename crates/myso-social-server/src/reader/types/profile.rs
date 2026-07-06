@@ -89,7 +89,7 @@ pub struct ProfileConfigInfo {
     #[diesel(sql_type = BigInt)]
     pub max_username_length: i64,
     #[diesel(sql_type = BigInt)]
-    pub profile_sale_fee_bps: i64,
+    pub username_sale_fee_bps: i64,
     #[diesel(sql_type = BigInt)]
     pub version: i64,
     #[diesel(sql_type = BigInt)]
