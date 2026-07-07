@@ -32,7 +32,8 @@ pub use insurance::{
 };
 pub use memory::MemoryConfigInfo;
 pub use messaging::{
-    MessagingAgentGroupInfo, MessagingConfigInfo, MessagingRevenueSummaryInfo, PaidMessageEscrowInfo,
+    MessagingAgentGroupInfo, MessagingConfigInfo, MessagingRevenueSummaryInfo,
+    PaidMessageEscrowInfo,
 };
 pub use mydata::{
     AccessAnalytics, AccessLogInfo, DailyRevenue, MyDataBasic, MyDataBroadPoolInfo,

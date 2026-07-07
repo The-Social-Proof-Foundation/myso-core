@@ -6,8 +6,8 @@ use std::str::FromStr;
 
 use myso_indexer_alt_social_reader::{MessagingAgentGroupRow, PaidMessageEscrowRow};
 
-use crate::api::scalars::myso_address::MySoAddress;
 use crate::api::resolve_profile::resolve_profile_summary;
+use crate::api::scalars::myso_address::MySoAddress;
 use crate::api::types::profile_summary::ProfileSummary;
 
 #[derive(Enum, Copy, Clone, Eq, PartialEq)]

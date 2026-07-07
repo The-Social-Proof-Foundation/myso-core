@@ -967,7 +967,6 @@ impl NewUnifiedRevenue {
     }
 }
 
-
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
 #[diesel(table_name = spt_events)]
 pub struct NewSocialProofTokensEvent {
@@ -979,7 +978,7 @@ pub struct NewSocialProofTokensEvent {
 
 #[cfg(test)]
 mod spt_config_merge_tests {
-    use super::{default_spt_config, merge_spt_config, NewSptConfigEvent};
+    use super::{NewSptConfigEvent, default_spt_config, merge_spt_config};
 
     #[test]
     fn kill_switch_preserves_fee_fields() {
@@ -1065,8 +1064,10 @@ mod spt_config_merge_tests {
 
 #[cfg(test)]
 mod new_spt_transaction_from_reservation_tests {
-    use super::{NewSptReservation, NewSptTransaction, TRANSACTION_TYPE_RESERVATION,
-                TRANSACTION_TYPE_RESERVATION_WITHDRAW};
+    use super::{
+        NewSptReservation, NewSptTransaction, TRANSACTION_TYPE_RESERVATION,
+        TRANSACTION_TYPE_RESERVATION_WITHDRAW,
+    };
 
     fn sample_reservation(amount: i64) -> NewSptReservation {
         NewSptReservation {

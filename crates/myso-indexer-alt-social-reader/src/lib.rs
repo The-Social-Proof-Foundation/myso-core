@@ -103,7 +103,9 @@ pub use spt::{
     SptReservationVolumeBucket, SptReservationVolumeInterval, SptSortBy, SptTransactionsWithViewer,
 };
 pub use subscription::SubscriptionConfigRow;
-pub use username::{InvalidUsername, UsernameAvailabilityDetail, UsernameRegistryEntry, canonical_username_key};
+pub use username::{
+    InvalidUsername, UsernameAvailabilityDetail, UsernameRegistryEntry, canonical_username_key,
+};
 
 /// Combined username registry + PoC beneficiary availability for REST services.
 pub async fn get_username_availability_for_db(

@@ -231,9 +231,7 @@ fn process_subscription_created_event(
         creator_amount: if event.creator_amount > 0 {
             event.creator_amount as i64
         } else {
-            event.monthly_fee as i64
-                - event.platform_fee as i64
-                - event.ecosystem_fee as i64
+            event.monthly_fee as i64 - event.platform_fee as i64 - event.ecosystem_fee as i64
         },
         platform_address: event.platform_id.clone(),
         revenue_type: "subscription".to_string(),

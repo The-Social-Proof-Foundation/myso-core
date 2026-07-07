@@ -121,12 +121,9 @@ pub fn handle_message_log_event(
             process_paid_message_sent_event(data, event_id, checkpoint_timestamp_ms)
         }
         "PaidMessageReplied" => None,
-        "PaymentClaimed" => process_payment_claimed_event(
-            data,
-            event_id,
-            checkpoint_timestamp_ms,
-            reply_char_count,
-        ),
+        "PaymentClaimed" => {
+            process_payment_claimed_event(data, event_id, checkpoint_timestamp_ms, reply_char_count)
+        }
         "PaymentClaimedSettled" => process_payment_claimed_settled_event(
             data,
             event_id,
@@ -474,10 +471,7 @@ fn process_payment_refunded_event(
     ])
 }
 
-pub fn stash_paid_message_reply(
-    data: &serde_json::Value,
-    event_id: &str,
-) -> Option<(String, u32)> {
+pub fn stash_paid_message_reply(data: &serde_json::Value, event_id: &str) -> Option<(String, u32)> {
     let ev: PaidMessageRepliedEvent = common::deserialize_social_event_json(
         "message_log",
         "PaidMessageReplied",
@@ -485,7 +479,10 @@ pub fn stash_paid_message_reply(
         data,
         "message_log PaidMessageReplied JSON did not match PaidMessageRepliedEvent",
     )?;
-    Some((content_id(&ev.group_id, ev.paid_msg_seq), ev.reply_char_count))
+    Some((
+        content_id(&ev.group_id, ev.paid_msg_seq),
+        ev.reply_char_count,
+    ))
 }
 
 pub fn handle_paid_messaging_policy_event(

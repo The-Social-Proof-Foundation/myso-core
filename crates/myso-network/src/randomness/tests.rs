@@ -13,10 +13,22 @@ use myso_types::{
     crypto::{AuthorityPublicKeyBytes, ToFromBytes},
 };
 use std::collections::BTreeSet;
+use tokio::sync::mpsc;
 use tracing::Instrument;
 
 type PkG = bls12381::G2Element;
 type EncG = bls12381::G2Element;
+
+#[test]
+fn handle_methods_ignore_closed_mailbox() {
+    let (sender, receiver) = mpsc::channel(1);
+    drop(receiver);
+
+    let handle = Handle { sender };
+
+    handle.send_partial_signatures(0, RandomnessRound(0));
+    handle.complete_round(0, RandomnessRound(0));
+}
 
 #[sim_test]
 async fn test_multiple_epochs() {

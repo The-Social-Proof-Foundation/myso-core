@@ -208,11 +208,7 @@ pub struct OracleArgs {
     #[arg(long, env = "AI_CREDIT_AGENT_AUTH_ENABLED", default_value = "true")]
     pub agent_auth_enabled: bool,
 
-    #[arg(
-        long,
-        env = "AI_CREDIT_AGENT_AUTH_TTL_SECS",
-        default_value = "300"
-    )]
+    #[arg(long, env = "AI_CREDIT_AGENT_AUTH_TTL_SECS", default_value = "300")]
     pub agent_auth_ttl_secs: i64,
 
     /// Require `AI_CREDIT_SETTLEMENT_SECRET` at startup and on `/internal/ai-credit/settle`.

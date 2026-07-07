@@ -115,14 +115,11 @@ impl Processor for MessagingHandler {
                 }
 
                 if module == MESSAGING_CONFIG_MODULE {
-                    let event_data = match events::parse_event_contents(
-                        module,
-                        event_name,
-                        &ev.contents,
-                    ) {
-                        Ok(v) => v,
-                        Err(_) => continue,
-                    };
+                    let event_data =
+                        match events::parse_event_contents(module, event_name, &ev.contents) {
+                            Ok(v) => v,
+                            Err(_) => continue,
+                        };
                     if let Some(rows) = messaging::handle_messaging_event(
                         event_name,
                         &event_data,

@@ -724,10 +724,7 @@ pub fn handle_ai_credit_event(
                 data.get("oracle_markup_bps")
                     .unwrap_or(&serde_json::Value::Null),
             );
-            let version = data
-                .get("version")
-                .and_then(json_opt_i64)
-                .unwrap_or(0);
+            let version = data.get("version").and_then(json_opt_i64).unwrap_or(0);
             let updated_at = config_updated_at(data, now);
             Some(vec![
                 SocialEventRow::AiCreditConfigUpsert(NewAiCreditConfig {

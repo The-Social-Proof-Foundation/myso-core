@@ -21,10 +21,10 @@ use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
-    default_spt_config, InsertSptConfig, merge_spt_config, NewSocialProofTokensEvent,
+    default_spt_config, merge_spt_config, InsertSptConfig, NewSocialProofTokensEvent,
     NewSptConfigEvent, NewSptHolding, NewSptPool, NewSptPriceHistory, NewSptReservation,
-    NewSptReservationPool, NewSptRevenue, NewSptTransaction, NewUnifiedRevenue,
-    ProfileUpdateSet, RESERVATION_POOL_STATUS_ACTIVE, RESERVATION_POOL_STATUS_THRESHOLD_MET,
+    NewSptReservationPool, NewSptRevenue, NewSptTransaction, NewUnifiedRevenue, ProfileUpdateSet,
+    RESERVATION_POOL_STATUS_ACTIVE, RESERVATION_POOL_STATUS_THRESHOLD_MET,
     REVENUE_TYPE_SPT_CREATOR_FEE, REVENUE_TYPE_SPT_PLATFORM_FEE, REVENUE_TYPE_SPT_TREASURY_FEE,
     TOKEN_TYPE_POST, TOKEN_TYPE_PROFILE, TRANSACTION_TYPE_BUY,
 };

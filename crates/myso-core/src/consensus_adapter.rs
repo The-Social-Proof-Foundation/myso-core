@@ -702,7 +702,7 @@ impl ConsensusAdapter {
     fn check_limits(&self) -> bool {
         // First check total transactions (waiting and in submission)
         if self.num_inflight_transactions.load(Ordering::Relaxed) as usize
-            > self.max_pending_transactions
+            >= self.max_pending_transactions
         {
             return false;
         }
@@ -838,7 +838,7 @@ impl ConsensusAdapter {
         tracing::Span::current().record("tx_type", tx_type);
         tracing::Span::current().record("tx_keys", tracing::field::debug(&transaction_keys));
 
-        let mut guard = InflightDropGuard::acquire(&self, tx_type);
+        let mut guard = InflightDropGuard::acquire(&self, tx_type, transactions.len() as u64);
 
         // Create the waiter until the node's turn comes to submit to consensus
         let (await_submit, position, positions_moved, preceding_disconnected, amplification_factor) =
@@ -1305,6 +1305,7 @@ impl<T> Drop for CancelOnDrop<T> {
 struct InflightDropGuard<'a> {
     adapter: &'a ConsensusAdapter,
     start: Instant,
+    transaction_count: u64,
     position: Option<usize>,
     positions_moved: Option<usize>,
     preceding_disconnected: Option<usize>,
@@ -1320,15 +1321,21 @@ enum ProcessedMethod {
 }
 
 impl<'a> InflightDropGuard<'a> {
-    pub fn acquire(adapter: &'a ConsensusAdapter, tx_type: &'static str) -> Self {
+    pub fn acquire(
+        adapter: &'a ConsensusAdapter,
+        tx_type: &'static str,
+        transaction_count: u64,
+    ) -> Self {
         adapter
             .num_inflight_transactions
-            .fetch_add(1, Ordering::SeqCst);
-        adapter
-            .metrics
-            .sequencing_certificate_inflight
-            .with_label_values(&[tx_type])
-            .inc();
+            .fetch_add(transaction_count, Ordering::SeqCst);
+        for _ in 0..transaction_count {
+            adapter
+                .metrics
+                .sequencing_certificate_inflight
+                .with_label_values(&[tx_type])
+                .inc();
+        }
         adapter
             .metrics
             .sequencing_certificate_attempt
@@ -1337,6 +1344,7 @@ impl<'a> InflightDropGuard<'a> {
         Self {
             adapter,
             start: Instant::now(),
+            transaction_count,
             position: None,
             positions_moved: None,
             preceding_disconnected: None,
@@ -1351,12 +1359,14 @@ impl Drop for InflightDropGuard<'_> {
     fn drop(&mut self) {
         self.adapter
             .num_inflight_transactions
-            .fetch_sub(1, Ordering::SeqCst);
-        self.adapter
-            .metrics
-            .sequencing_certificate_inflight
-            .with_label_values(&[self.tx_type])
-            .dec();
+            .fetch_sub(self.transaction_count, Ordering::SeqCst);
+        for _ in 0..self.transaction_count {
+            self.adapter
+                .metrics
+                .sequencing_certificate_inflight
+                .with_label_values(&[self.tx_type])
+                .dec();
+        }
 
         let position = if let Some(position) = self.position {
             self.adapter

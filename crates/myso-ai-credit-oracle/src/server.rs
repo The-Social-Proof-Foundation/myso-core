@@ -210,10 +210,8 @@ pub async fn serve(args: OracleArgs) -> anyhow::Result<()> {
         catalog.read().await.clone(),
         initial_margin_pct,
     )));
-    let markup_client = MarkupConfigClient::new(
-        args.graphql_url.clone(),
-        args.social_server_url.clone(),
-    );
+    let markup_client =
+        MarkupConfigClient::new(args.graphql_url.clone(), args.social_server_url.clone());
     startup_markup_refresh(&args, &pricing, &markup_client).await;
     let myso_price_client = MysoPriceClient::new(args.myso_price_oracle_url.clone());
     startup_price_refresh(&args, &pricing, &myso_price_client).await;
@@ -330,20 +328,14 @@ pub async fn serve(args: OracleArgs) -> anyhow::Result<()> {
 async fn health(State(state): State<AppState>) -> Json<HealthResponse> {
     let pricing = state.pricing.read().await;
     let max_stale = state.oracle_args.myso_price_max_stale_secs;
-    let price_stale =
-        state.oracle_args.myso_price_enabled && pricing.is_price_stale(max_stale);
+    let price_stale = state.oracle_args.myso_price_enabled && pricing.is_price_stale(max_stale);
     drop(pricing);
 
     let store = state.store.lock().await;
-    let pending_receipts = store
-        .lines
-        .iter()
-        .filter(|l| !l.settled && !l.void)
-        .count() as u64;
+    let pending_receipts = store.lines.iter().filter(|l| !l.settled && !l.void).count() as u64;
     let ingest_backlog = store.ingest_backlog_count();
     if let Some(oldest) = store.oldest_ingest_backlog_ms() {
-        let age_secs =
-            (chrono::Utc::now().timestamp_millis() as u64 - oldest) / 1000;
+        let age_secs = (chrono::Utc::now().timestamp_millis() as u64 - oldest) / 1000;
         if age_secs >= state.oracle_args.ingest_backlog_warn_age_secs {
             tracing::warn!(
                 ingest_backlog,
@@ -382,7 +374,8 @@ fn validate_idempotency_key(key: &str) -> Result<(), StatusCode> {
 
 fn usage_response_from_line(line: &UsageLine) -> Result<UsageResponse, StatusCode> {
     let receipt = UsageReceipt {
-        balance_id: parse_object_id_hex(&line.balance_id).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+        balance_id: parse_object_id_hex(&line.balance_id)
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
         agent_object_id: parse_object_id_hex(&line.agent_object_id)
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
         receipt_id: line.receipt_id,
@@ -460,8 +453,7 @@ fn inference_response_from_usage(
 fn spawn_ingest_reconcile_worker(state: AppState) {
     let interval_secs = state.oracle_args.ingest_reconcile_interval_secs;
     tokio::spawn(async move {
-        let mut ticker =
-            tokio::time::interval(std::time::Duration::from_secs(interval_secs));
+        let mut ticker = tokio::time::interval(std::time::Duration::from_secs(interval_secs));
         loop {
             ticker.tick().await;
             run_ingest_reconcile_cycle(&state).await;
@@ -983,11 +975,9 @@ async fn run_inference(
 
     {
         let store = state.store.lock().await;
-        if let Some(existing) = store.find_by_idempotency(
-            &req.balance_id,
-            &req.agent_object_id,
-            &req.idempotency_key,
-        ) {
+        if let Some(existing) =
+            store.find_by_idempotency(&req.balance_id, &req.agent_object_id, &req.idempotency_key)
+        {
             return Ok(Json(inference_response_from_line(existing)?));
         }
     }
@@ -1093,10 +1083,7 @@ async fn run_inference(
         "prompt".to_string(),
         serde_json::Value::String(req.prompt.clone()),
     );
-    extra_metadata.insert(
-        "inference".to_string(),
-        serde_json::Value::Bool(true),
-    );
+    extra_metadata.insert("inference".to_string(), serde_json::Value::Bool(true));
 
     let usage_req = UsageRequest {
         owner: req.owner,
@@ -1128,11 +1115,9 @@ async fn record_usage_core(
 ) -> Result<UsageResponse, StatusCode> {
     {
         let store = state.store.lock().await;
-        if let Some(existing) = store.find_by_idempotency(
-            &req.balance_id,
-            &req.agent_object_id,
-            &req.idempotency_key,
-        ) {
+        if let Some(existing) =
+            store.find_by_idempotency(&req.balance_id, &req.agent_object_id, &req.idempotency_key)
+        {
             return usage_response_from_line(existing);
         }
     }
@@ -1229,11 +1214,8 @@ async fn record_usage_core(
         let settlement_nonce =
             BalanceLedger::next_settlement_nonce(&balance_resp, &store_guard, Some(on_chain_nonce));
 
-        let receipt_id = derive_receipt_id(
-            &req.idempotency_key,
-            &req.balance_id,
-            &req.agent_object_id,
-        );
+        let receipt_id =
+            derive_receipt_id(&req.idempotency_key, &req.balance_id, &req.agent_object_id);
         let timestamp_ms = chrono::Utc::now().timestamp_millis() as u64;
         let receipt = UsageReceipt {
             balance_id: parse_object_id_hex(&req.balance_id)
@@ -1276,10 +1258,7 @@ async fn record_usage_core(
             "ecosystem_margin_pct".to_string(),
             serde_json::json!(ecosystem_margin_pct),
         );
-        metadata.insert(
-            "myso_usd".to_string(),
-            serde_json::json!(myso_usd),
-        );
+        metadata.insert("myso_usd".to_string(), serde_json::json!(myso_usd));
         metadata.append(&mut extra_metadata);
         let metadata = serde_json::Value::Object(metadata);
 

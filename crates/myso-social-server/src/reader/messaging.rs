@@ -1,12 +1,12 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use diesel::sql_types::{BigInt, Text};
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
-use diesel::QueryableByName;
 use diesel::QueryDsl;
+use diesel::QueryableByName;
 use diesel::SelectableHelper;
-use diesel::sql_types::{BigInt, Text};
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::WalletMessagingPolicy;
 use myso_indexer_alt_social_schema::schema::wallet_messaging_policies;

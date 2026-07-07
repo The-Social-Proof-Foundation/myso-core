@@ -72,6 +72,15 @@ pub struct Handle {
 }
 
 impl Handle {
+    fn try_send(&self, message: RandomnessMessage) {
+        match self.sender.try_send(message) {
+            Ok(()) | Err(mpsc::error::TrySendError::Closed(_)) => {}
+            Err(mpsc::error::TrySendError::Full(_)) => {
+                panic!("RandomnessEventLoop mailbox should not overflow")
+            }
+        }
+    }
+
     /// Transitions the Randomness system to a new epoch. Cancels all partial signature sends for
     /// prior epochs.
     pub fn update_epoch(
@@ -82,29 +91,23 @@ impl Handle {
         aggregation_threshold: u16,
         recovered_last_completed_round: Option<RandomnessRound>, // set to None if not starting up mid-epoch
     ) {
-        self.sender
-            .try_send(RandomnessMessage::UpdateEpoch(
-                new_epoch,
-                authority_info,
-                dkg_output,
-                aggregation_threshold,
-                recovered_last_completed_round,
-            ))
-            .expect("RandomnessEventLoop mailbox should not overflow or be closed")
+        self.try_send(RandomnessMessage::UpdateEpoch(
+            new_epoch,
+            authority_info,
+            dkg_output,
+            aggregation_threshold,
+            recovered_last_completed_round,
+        ))
     }
 
     /// Begins transmitting partial signatures for the given epoch and round until completed.
     pub fn send_partial_signatures(&self, epoch: EpochId, round: RandomnessRound) {
-        self.sender
-            .try_send(RandomnessMessage::SendPartialSignatures(epoch, round))
-            .expect("RandomnessEventLoop mailbox should not overflow or be closed")
+        self.try_send(RandomnessMessage::SendPartialSignatures(epoch, round))
     }
 
     /// Records the given round as complete, stopping any partial signature sends.
     pub fn complete_round(&self, epoch: EpochId, round: RandomnessRound) {
-        self.sender
-            .try_send(RandomnessMessage::CompleteRound(epoch, round))
-            .expect("RandomnessEventLoop mailbox should not overflow or be closed")
+        self.try_send(RandomnessMessage::CompleteRound(epoch, round))
     }
 
     /// Admin interface handler: generates partial signatures for the given round at the
@@ -114,9 +117,7 @@ impl Handle {
         round: RandomnessRound,
         tx: oneshot::Sender<Vec<u8>>,
     ) {
-        self.sender
-            .try_send(RandomnessMessage::AdminGetPartialSignatures(round, tx))
-            .expect("RandomnessEventLoop mailbox should not overflow or be closed")
+        self.try_send(RandomnessMessage::AdminGetPartialSignatures(round, tx))
     }
 
     /// Admin interface handler: injects partial signatures for the given round at the
@@ -128,14 +129,12 @@ impl Handle {
         sigs: Vec<RandomnessPartialSignature>,
         result_channel: oneshot::Sender<Result<()>>,
     ) {
-        self.sender
-            .try_send(RandomnessMessage::AdminInjectPartialSignatures(
-                authority_name,
-                round,
-                sigs,
-                result_channel,
-            ))
-            .expect("RandomnessEventLoop mailbox should not overflow or be closed")
+        self.try_send(RandomnessMessage::AdminInjectPartialSignatures(
+            authority_name,
+            round,
+            sigs,
+            result_channel,
+        ))
     }
 
     /// Admin interface handler: injects full signature for the given round at the
@@ -146,13 +145,11 @@ impl Handle {
         sig: RandomnessSignature,
         result_channel: oneshot::Sender<Result<()>>,
     ) {
-        self.sender
-            .try_send(RandomnessMessage::AdminInjectFullSignature(
-                round,
-                sig,
-                result_channel,
-            ))
-            .expect("RandomnessEventLoop mailbox should not overflow or be closed")
+        self.try_send(RandomnessMessage::AdminInjectFullSignature(
+            round,
+            sig,
+            result_channel,
+        ))
     }
 
     // For testing.
@@ -171,6 +168,17 @@ impl Handle {
             }
         });
         Self { sender }
+    }
+}
+
+fn try_send_weak(sender: &mpsc::WeakSender<RandomnessMessage>, message: RandomnessMessage) {
+    if let Some(sender) = sender.upgrade() {
+        match sender.try_send(message) {
+            Ok(()) | Err(mpsc::error::TrySendError::Closed(_)) => {}
+            Err(mpsc::error::TrySendError::Full(_)) => {
+                panic!("RandomnessEventLoop mailbox should not overflow")
+            }
+        }
     }
 }
 
@@ -652,13 +660,10 @@ impl RandomnessEventLoop {
                         warn!(
                             "received invalid partial signatures from possibly-Byzantine peer {peer_id}"
                         );
-                        if let Some(sender) = self.mailbox_sender.upgrade() {
-                            sender.try_send(RandomnessMessage::MaybeIgnoreByzantinePeer(
-                                epoch,
-                                peer_id,
-                            ))
-                            .expect("RandomnessEventLoop mailbox should not overflow or be closed");
-                        }
+                        try_send_weak(
+                            &self.mailbox_sender,
+                            RandomnessMessage::MaybeIgnoreByzantinePeer(epoch, peer_id),
+                        );
                         return false;
                     }
                     true
@@ -739,11 +744,10 @@ impl RandomnessEventLoop {
             ThresholdBls12381MinSig::verify(vss_pk.c0(), &round.signature_message(), &sig)
         {
             info!("received invalid full signature from peer {peer_id}: {e:?}");
-            if let Some(sender) = self.mailbox_sender.upgrade() {
-                sender
-                    .try_send(RandomnessMessage::MaybeIgnoreByzantinePeer(epoch, peer_id))
-                    .expect("RandomnessEventLoop mailbox should not overflow or be closed");
-            }
+            try_send_weak(
+                &self.mailbox_sender,
+                RandomnessMessage::MaybeIgnoreByzantinePeer(epoch, peer_id),
+            );
             return;
         }
 

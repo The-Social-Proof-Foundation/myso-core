@@ -5,12 +5,12 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use async_trait::async_trait;
+use diesel::sql_types::{BigInt, Nullable, Text, Timestamptz};
 use diesel::BoolExpressionMethods;
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
 use diesel::QueryDsl;
 use diesel::QueryableByName;
-use diesel::sql_types::{BigInt, Nullable, Text, Timestamptz};
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_framework::pipeline::Processor;
 use myso_indexer_alt_framework::postgres::handler::Handler;
@@ -417,7 +417,10 @@ fn next_ai_credit_version(prev: &NewAiCreditConfig, incoming_version: Option<i64
     incoming_version.unwrap_or(prev.version + 1)
 }
 
-fn finalize_ai_credit_config(prev: &NewAiCreditConfig, row: &AiCreditRow) -> Option<NewAiCreditConfig> {
+fn finalize_ai_credit_config(
+    prev: &NewAiCreditConfig,
+    row: &AiCreditRow,
+) -> Option<NewAiCreditConfig> {
     match row {
         AiCreditRow::ConfigUpsert(config) => Some(config.clone()),
         AiCreditRow::ConfigLimitsUpdate {

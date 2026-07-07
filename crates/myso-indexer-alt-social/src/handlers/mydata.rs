@@ -183,14 +183,8 @@ fn process_mydata_purchase_event(
     let ip_id = data.get("ip_id")?.as_str()?.to_string();
     let buyer = data.get("buyer")?.as_str()?.to_string();
     let price = json_to_i64(data.get("price")?);
-    let platform_fee = data
-        .get("platform_fee")
-        .map(json_to_i64)
-        .unwrap_or(0);
-    let ecosystem_fee = data
-        .get("ecosystem_fee")
-        .map(json_to_i64)
-        .unwrap_or(0);
+    let platform_fee = data.get("platform_fee").map(json_to_i64).unwrap_or(0);
+    let ecosystem_fee = data.get("ecosystem_fee").map(json_to_i64).unwrap_or(0);
     let creator_amount = data
         .get("creator_amount")
         .map(json_to_i64)
@@ -553,19 +547,9 @@ fn process_query_claim_executed(
     let gross_amount = data
         .get("gross_amount")
         .map(json_to_i64)
-        .unwrap_or_else(|| {
-            data.get("amount")
-                .map(json_to_i64)
-                .unwrap_or(0)
-        });
-    let platform_fee = data
-        .get("platform_fee")
-        .map(json_to_i64)
-        .unwrap_or(0);
-    let ecosystem_fee = data
-        .get("ecosystem_fee")
-        .map(json_to_i64)
-        .unwrap_or(0);
+        .unwrap_or_else(|| data.get("amount").map(json_to_i64).unwrap_or(0));
+    let platform_fee = data.get("platform_fee").map(json_to_i64).unwrap_or(0);
+    let ecosystem_fee = data.get("ecosystem_fee").map(json_to_i64).unwrap_or(0);
     let net_amount = data
         .get("net_amount")
         .map(json_to_i64)

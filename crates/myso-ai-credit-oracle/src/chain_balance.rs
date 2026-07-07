@@ -22,8 +22,9 @@ pub async fn fetch_on_chain_settlement_nonce(rpc_url: &str, balance_id: &str) ->
             .get_move_object_bcs(object_id)
             .await
             .context("fetch AiCreditBalance BCS")
-            .and_then(|data| parse_settlement_nonce(&data).context("parse AiCreditBalance settlement_nonce"))
-        {
+            .and_then(|data| {
+                parse_settlement_nonce(&data).context("parse AiCreditBalance settlement_nonce")
+            }) {
             Ok(nonce) => return Ok(nonce),
             Err(err) => last_err = Some(err),
         }

@@ -926,8 +926,8 @@ async fn resolve_attribution_organization_id(
 }
 
 async fn load_latest_poc_thresholds(conn: &mut Connection<'_>) -> poc::PocThresholds {
-    use diesel::QueryableByName;
     use diesel::sql_types::BigInt;
+    use diesel::QueryableByName;
 
     #[derive(QueryableByName)]
     struct ThresholdRow {
@@ -2301,9 +2301,9 @@ mod promotion_view_commit_tests {
     use diesel::QueryDsl;
     use diesel_async::RunQueryDsl;
     use myso_indexer_alt_framework::postgres::handler::Handler;
-    use myso_indexer_alt_social_schema::MIGRATIONS;
     use myso_indexer_alt_social_schema::models::NewPromotedPost;
     use myso_indexer_alt_social_schema::schema::{promoted_posts, promotion_budget_events};
+    use myso_indexer_alt_social_schema::MIGRATIONS;
     use myso_pg_db::temp::TempDb;
     use myso_pg_db::Db;
 
@@ -2343,7 +2343,8 @@ mod promotion_view_commit_tests {
         let owner = addr_hex(5);
         let profile_id = addr_hex(6);
         let created_at = 1_700_000_000_000i64;
-        let time = chrono::DateTime::from_timestamp_millis(created_at).unwrap_or_else(chrono::Utc::now);
+        let time =
+            chrono::DateTime::from_timestamp_millis(created_at).unwrap_or_else(chrono::Utc::now);
 
         let mut conn = store.connect().await.expect("connection");
         diesel::insert_into(promoted_posts::table)
@@ -2403,9 +2404,13 @@ mod poc_analysis_result_commit_tests {
     use diesel::QueryDsl;
     use diesel_async::RunQueryDsl;
     use myso_indexer_alt_framework::postgres::handler::Handler;
+    use myso_indexer_alt_social_schema::models::{
+        NewPocAnalysisResult, NewPocRevenueRedirection, NewPost,
+    };
+    use myso_indexer_alt_social_schema::schema::{
+        poc_analysis_results, poc_revenue_redirections, posts,
+    };
     use myso_indexer_alt_social_schema::MIGRATIONS;
-    use myso_indexer_alt_social_schema::models::{NewPocAnalysisResult, NewPocRevenueRedirection, NewPost};
-    use myso_indexer_alt_social_schema::schema::{poc_analysis_results, poc_revenue_redirections, posts};
     use myso_pg_db::temp::TempDb;
     use myso_pg_db::Db;
 

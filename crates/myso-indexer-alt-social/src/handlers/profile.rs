@@ -10,7 +10,7 @@ use super::common;
 use super::{ProfileUpdate, SocialEventRow};
 use myso_indexer_alt_social_schema::models::{
     NewEcosystemTreasury, NewProfile, NewProfileConfig, NewProfileEvent, NewUsernameListing,
-    NewUsernameOffer, NewUsernameSaleFee, NewUsernameRegistry, NewVestingEvent, NewVestingWallet,
+    NewUsernameOffer, NewUsernameRegistry, NewUsernameSaleFee, NewVestingEvent, NewVestingWallet,
 };
 
 fn deserialize_number_from_string<'de, T, D>(deserializer: D) -> Result<T, D::Error>

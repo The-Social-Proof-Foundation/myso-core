@@ -167,7 +167,9 @@ fn parse_chat_completion(response: ChatCompletionResponse) -> Result<ChatComplet
         .and_then(|c| c.message.as_ref())
         .and_then(|m| m.content.clone())
         .unwrap_or_default();
-    let usage = response.usage.context("openrouter response missing usage")?;
+    let usage = response
+        .usage
+        .context("openrouter response missing usage")?;
     anyhow::ensure!(
         usage.prompt_tokens > 0 || usage.completion_tokens > 0 || usage.total_tokens > 0,
         "openrouter usage tokens are zero"

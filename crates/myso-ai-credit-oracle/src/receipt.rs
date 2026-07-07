@@ -71,7 +71,8 @@ impl StoreFileLock {
             .write(true)
             .open(lock_path)
             .context("open receipt store lock file")?;
-        file.lock_exclusive().context("acquire receipt store lock")?;
+        file.lock_exclusive()
+            .context("acquire receipt store lock")?;
         Ok(Self { _file: file })
     }
 }
@@ -113,7 +114,8 @@ impl ReceiptStore {
         let mut file = File::create(&tmp).context("failed to create receipt store tmp")?;
         file.write_all(&bytes)
             .context("failed to write receipt store tmp")?;
-        file.sync_all().context("failed to fsync receipt store tmp")?;
+        file.sync_all()
+            .context("failed to fsync receipt store tmp")?;
         drop(file);
         if path.exists() {
             let backup = path.with_extension("json.bak");

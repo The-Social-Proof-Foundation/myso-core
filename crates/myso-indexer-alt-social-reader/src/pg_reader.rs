@@ -1676,10 +1676,7 @@ impl SocialPgReader {
     }
 
     /// Total inbound paid-messaging revenue for a wallet.
-    pub async fn get_messaging_revenue_summary(
-        &self,
-        address: &str,
-    ) -> anyhow::Result<i64> {
+    pub async fn get_messaging_revenue_summary(&self, address: &str) -> anyhow::Result<i64> {
         let mut conn = self.connect().await?;
         get_messaging_revenue_summary(&mut conn, &self.metrics, address).await
     }

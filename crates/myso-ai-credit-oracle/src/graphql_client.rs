@@ -7,8 +7,7 @@ use std::time::Duration;
 
 use serde::Deserialize;
 
-const AI_CREDIT_MARKUP_QUERY: &str =
-    "query { aiCreditConfiguration { oracleMarkupBps } }";
+const AI_CREDIT_MARKUP_QUERY: &str = "query { aiCreditConfiguration { oracleMarkupBps } }";
 
 pub const MAX_ORACLE_MARKUP_BPS: u64 = 10_000;
 
@@ -156,7 +155,10 @@ mod tests {
     #[test]
     fn parse_happy_path() {
         let body = r#"{"data":{"aiCreditConfiguration":{"oracleMarkupBps":1500}}}"#;
-        assert_eq!(parse_oracle_markup_bps_from_graphql_body(body).unwrap(), 1500);
+        assert_eq!(
+            parse_oracle_markup_bps_from_graphql_body(body).unwrap(),
+            1500
+        );
     }
 
     #[test]

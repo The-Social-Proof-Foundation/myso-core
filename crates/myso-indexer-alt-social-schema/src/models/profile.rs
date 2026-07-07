@@ -257,7 +257,10 @@ pub fn default_profile_config() -> NewProfileConfig {
     }
 }
 
-pub fn merge_profile_config(prev: &NewProfileConfig, incoming: &NewProfileConfig) -> NewProfileConfig {
+pub fn merge_profile_config(
+    prev: &NewProfileConfig,
+    incoming: &NewProfileConfig,
+) -> NewProfileConfig {
     let version = if incoming.version > 0 {
         incoming.version
     } else {
@@ -353,7 +356,9 @@ impl NewProfileConfig {
 
 #[cfg(test)]
 mod merge_profile_config_tests {
-    use super::{default_profile_config, merge_profile_config, NewProfileConfig, USERNAME_SALE_FEE_BPS};
+    use super::{
+        NewProfileConfig, USERNAME_SALE_FEE_BPS, default_profile_config, merge_profile_config,
+    };
 
     fn sample_config(
         max_vesting_pieces: i64,
