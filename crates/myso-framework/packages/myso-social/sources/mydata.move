@@ -48,6 +48,7 @@ module social_contracts::mydata {
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
     use social_contracts::platform::{Self, Platform};
     use social_contracts::profile::{Self, EcosystemTreasury};
+    use social_contracts::subscription::{Self, ProfileSubscriptionService, ProfileSubscription};
 
     // === Default constants for config initialization ===
     const DEFAULT_MARKETPLACE_ENABLED: bool = false;
@@ -1844,6 +1845,53 @@ module social_contracts::mydata {
 
         let sender = tx_context::sender(ctx);
         if (has_access(mydata, sender, clock)) {
+            return
+        };
+
+        assert!(
+            social_contracts::memory::owner(account) == mydata.owner,
+            EPolicyNotEntitled,
+        );
+
+        if (!social_contracts::memory::is_registered_agent(account, sender)) {
+            abort EPolicyNotEntitled
+        };
+
+        let acting = social_contracts::memory::resolve_actor_with_cap(
+            memory_config,
+            account,
+            social_contracts::memory::cap_mydata_read(),
+            mydata.platform_id,
+            0,
+            clock,
+            ctx,
+        );
+        assert!(
+            social_contracts::memory::acting_principal_owner(&acting) == mydata.owner,
+            EPolicyNotEntitled,
+        );
+    }
+
+    /// Key-server policy hook for profile-subscription-gated MyData: grant when [`has_access`] or
+    /// [`subscription::is_subscription_valid`] for the linked profile service.
+    public entry fun mydata_approve_profile_subscription(
+        memory_config: &social_contracts::memory::MemoryConfig,
+        id: vector<u8>,
+        mydata: &MyData,
+        account: &social_contracts::memory::MemoryAccount,
+        service: &ProfileSubscriptionService,
+        subscription: &ProfileSubscription,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert!(encryption_id_matches(mydata, &id), EPolicyIdMismatch);
+
+        let sender = tx_context::sender(ctx);
+        if (has_access(mydata, sender, clock)) {
+            return
+        };
+
+        if (subscription::is_subscription_valid_for(subscription, service, sender, clock)) {
             return
         };
 

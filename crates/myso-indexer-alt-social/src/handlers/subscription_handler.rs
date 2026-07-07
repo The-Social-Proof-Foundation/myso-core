@@ -30,9 +30,10 @@ use myso_indexer_alt_social_schema::schema::{
 use super::common;
 use super::events;
 use super::subscription;
+use super::subscription_object;
 use crate::metrics::SocialMetrics;
 
-const SUBSCRIPTION_MODULES: &[&str] = &["subscription", "profile_subscription"];
+const SUBSCRIPTION_MODULES: &[&str] = &["subscription"];
 
 #[derive(Debug, Clone)]
 pub enum SubscriptionRow {
@@ -274,11 +275,30 @@ impl Processor for SubscriptionHandler {
                             continue;
                         }
                     };
+                let create_context = if event_name == "ProfileSubscriptionCreatedEvent" {
+                    let service_id = event_data
+                        .get("service_id")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or_default();
+                    let subscriber = event_data
+                        .get("subscriber")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or_default();
+                    subscription_object::find_created_profile_subscription(
+                        &checkpoint.object_set,
+                        tx,
+                        service_id,
+                        subscriber,
+                    )
+                } else {
+                    None
+                };
                 if let Some(rows) = subscription::handle_subscription_event(
                     event_name,
                     &event_data,
                     &event_id,
                     checkpoint_timestamp_ms,
+                    create_context.as_ref(),
                 ) {
                     for row in rows {
                         if let Some(r) = SubscriptionRow::from_social(row) {
@@ -323,6 +343,14 @@ impl Handler for SubscriptionHandler {
                         .do_nothing()
                         .execute(conn)
                         .await?;
+                    let _ = diesel::update(profiles::table)
+                        .filter(profiles::owner_address.eq(&s.profile_owner))
+                        .set((
+                            profiles::subscription_service_id.eq(Some(s.service_id.clone())),
+                            profiles::subscription_enabled.eq(true),
+                        ))
+                        .execute(conn)
+                        .await;
                 }
                 SubscriptionRow::ProfileSubscription(s) => {
                     total += diesel::insert_into(profile_subscriptions::table)
@@ -434,6 +462,19 @@ impl Handler for SubscriptionHandler {
                         ))
                         .execute(conn)
                         .await?;
+                    let profile_owner: Option<String> = profile_subscription_services::table
+                        .filter(profile_subscription_services::service_id.eq(service_id))
+                        .select(profile_subscription_services::profile_owner)
+                        .first(conn)
+                        .await
+                        .ok();
+                    if let Some(owner) = profile_owner {
+                        let _ = diesel::update(profiles::table)
+                            .filter(profiles::owner_address.eq(owner))
+                            .set(profiles::subscription_enabled.eq(false))
+                            .execute(conn)
+                            .await;
+                    }
                 }
                 SubscriptionRow::SubscriptionRevenueFromCreated {
                     service_id,

@@ -1818,6 +1818,22 @@ pub struct BcsPromotionFundsWithdrawnEvent {
     timestamp: u64,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct BcsPostSubscriptionGateEnabledEvent {
+    post_id: AccountAddress,
+    service_id: AccountAddress,
+    enabled: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsPostSubscriptionAccessEvent {
+    post_id: AccountAddress,
+    service_id: AccountAddress,
+    subscription_id: AccountAddress,
+    subscriber: AccountAddress,
+    timestamp: u64,
+}
+
 // Proof of Creativity (PoC) event structs - field order matches proof_of_creativity.move
 #[derive(Debug, Deserialize)]
 pub struct BcsAnalysisSubmittedEvent {
@@ -2391,6 +2407,10 @@ pub struct BcsProfileSubscriptionCreatedEvent {
     expires_at: u64,
     monthly_fee: u64,
     auto_renew: bool,
+    platform_fee: u64,
+    ecosystem_fee: u64,
+    creator_amount: u64,
+    platform_id: Option<AccountAddress>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -2400,6 +2420,10 @@ pub struct BcsProfileSubscriptionRenewedEvent {
     new_expires_at: u64,
     renewal_count: u64,
     auto_renewed: bool,
+    platform_fee: u64,
+    ecosystem_fee: u64,
+    creator_amount: u64,
+    platform_id: Option<AccountAddress>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -3839,6 +3863,26 @@ fn parse_post_event(
                 "promotion_id": addr_to_string(&ev.post_id),
                 "owner": addr_to_string(&ev.owner),
                 "withdrawn_amount": ev.withdrawn_amount,
+                "timestamp": ev.timestamp,
+            })))
+        }
+        "PostSubscriptionGateEnabledEvent" => {
+            let ev = bcs::from_bytes::<BcsPostSubscriptionGateEnabledEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "post_id": addr_to_string(&ev.post_id),
+                "service_id": addr_to_string(&ev.service_id),
+                "enabled": ev.enabled,
+            })))
+        }
+        "PostSubscriptionAccessEvent" => {
+            let ev = bcs::from_bytes::<BcsPostSubscriptionAccessEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "post_id": addr_to_string(&ev.post_id),
+                "service_id": addr_to_string(&ev.service_id),
+                "subscription_id": addr_to_string(&ev.subscription_id),
+                "subscriber": addr_to_string(&ev.subscriber),
                 "timestamp": ev.timestamp,
             })))
         }
@@ -5595,6 +5639,10 @@ fn parse_subscription_event(
                 "expires_at": ev.expires_at,
                 "monthly_fee": ev.monthly_fee,
                 "auto_renew": ev.auto_renew,
+                "platform_fee": ev.platform_fee,
+                "ecosystem_fee": ev.ecosystem_fee,
+                "creator_amount": ev.creator_amount,
+                "platform_id": ev.platform_id.as_ref().map(addr_to_string),
             })))
         }
         "ProfileSubscriptionRenewedEvent" => {
@@ -5606,6 +5654,10 @@ fn parse_subscription_event(
                 "new_expires_at": ev.new_expires_at,
                 "renewal_count": ev.renewal_count,
                 "auto_renewed": ev.auto_renewed,
+                "platform_fee": ev.platform_fee,
+                "ecosystem_fee": ev.ecosystem_fee,
+                "creator_amount": ev.creator_amount,
+                "platform_id": ev.platform_id.as_ref().map(addr_to_string),
             })))
         }
         "ProfileSubscriptionCancelledEvent" => {
@@ -6199,6 +6251,10 @@ mod tests {
             expires_at: 99999,
             monthly_fee: 500,
             auto_renew: true,
+            platform_fee: 50,
+            ecosystem_fee: 25,
+            creator_amount: 425,
+            platform_id: None,
         };
         let bytes2 = bcs::to_bytes(&ev2).expect("serialize");
         let result2 =

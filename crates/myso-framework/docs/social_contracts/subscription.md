@@ -44,6 +44,9 @@ Handles subscription services for profiles & MyData
 -  [Function `can_auto_renew`](#social_contracts_subscription_can_auto_renew)
 -  [Function `fund_renewal_balance`](#social_contracts_subscription_fund_renewal_balance)
 -  [Function `is_subscription_valid`](#social_contracts_subscription_is_subscription_valid)
+-  [Function `service_profile_owner`](#social_contracts_subscription_service_profile_owner)
+-  [Function `service_is_active`](#social_contracts_subscription_service_is_active)
+-  [Function `is_subscription_valid_for`](#social_contracts_subscription_is_subscription_valid_for)
 -  [Function `update_service_fee`](#social_contracts_subscription_update_service_fee)
 -  [Function `deactivate_service`](#social_contracts_subscription_deactivate_service)
 -  [Function `cancel_subscription`](#social_contracts_subscription_cancel_subscription)
@@ -2082,6 +2085,87 @@ Check if a subscription is valid for access
     };
     <b>let</b> now = clock::timestamp_ms(clock);
     <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.expires_at &gt; now
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_subscription_service_profile_owner"></a>
+
+## Function `service_profile_owner`
+
+Profile owner for a subscription service (for cross-module gate checks).
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_service_profile_owner">service_profile_owner</a>(service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>): <b>address</b>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_service_profile_owner">service_profile_owner</a>(service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">ProfileSubscriptionService</a>): <b>address</b> {
+    service.profile_owner
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_subscription_service_is_active"></a>
+
+## Function `service_is_active`
+
+Whether the service accepts new subscriptions.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_service_is_active">service_is_active</a>(service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_service_is_active">service_is_active</a>(service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">ProfileSubscriptionService</a>): bool {
+    service.active
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_subscription_is_subscription_valid_for"></a>
+
+## Function `is_subscription_valid_for`
+
+Whether <code>subscriber</code> holds a valid subscription to <code>service</code> at <code>clock</code>.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_is_subscription_valid_for">is_subscription_valid_for</a>(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, subscriber: <b>address</b>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_is_subscription_valid_for">is_subscription_valid_for</a>(
+    <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">ProfileSubscription</a>,
+    service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">ProfileSubscriptionService</a>,
+    subscriber: <b>address</b>,
+    clock: &Clock,
+): bool {
+    <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.subscriber == subscriber
+        && <a href="../social_contracts/subscription.md#social_contracts_subscription_is_subscription_valid">is_subscription_valid</a>(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>, service, clock)
 }
 </code></pre>
 

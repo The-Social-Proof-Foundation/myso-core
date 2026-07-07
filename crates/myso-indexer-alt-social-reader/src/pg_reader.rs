@@ -1631,6 +1631,79 @@ impl SocialPgReader {
         get_subscription_config(&mut conn, &self.metrics).await
     }
 
+    pub async fn get_profile_subscription_service(
+        &self,
+        service_id: &str,
+    ) -> anyhow::Result<Option<crate::subscription::ProfileSubscriptionServiceRow>> {
+        let mut conn = self.connect().await?;
+        crate::subscription::get_profile_subscription_service(&mut conn, &self.metrics, service_id)
+            .await
+    }
+
+    pub async fn list_profile_subscription_services_by_owner(
+        &self,
+        profile_owner: &str,
+        limit: u64,
+        offset: u64,
+    ) -> anyhow::Result<Vec<crate::subscription::ProfileSubscriptionServiceRow>> {
+        let mut conn = self.connect().await?;
+        crate::subscription::list_profile_subscription_services_by_owner(
+            &mut conn,
+            &self.metrics,
+            profile_owner,
+            limit as i64,
+            offset as i64,
+        )
+        .await
+    }
+
+    pub async fn get_profile_subscription_by_id(
+        &self,
+        subscription_id: &str,
+    ) -> anyhow::Result<Option<crate::subscription::ProfileSubscriptionRow>> {
+        let mut conn = self.connect().await?;
+        crate::subscription::get_profile_subscription_by_id(
+            &mut conn,
+            &self.metrics,
+            subscription_id,
+        )
+        .await
+    }
+
+    pub async fn list_active_profile_subscriptions_by_subscriber(
+        &self,
+        subscriber: &str,
+        service_id: Option<&str>,
+        limit: u64,
+        offset: u64,
+    ) -> anyhow::Result<Vec<crate::subscription::ProfileSubscriptionRow>> {
+        let mut conn = self.connect().await?;
+        crate::subscription::list_active_profile_subscriptions_by_subscriber(
+            &mut conn,
+            &self.metrics,
+            subscriber,
+            service_id,
+            limit as i64,
+            offset as i64,
+        )
+        .await
+    }
+
+    pub async fn check_profile_subscription_access(
+        &self,
+        subscriber: &str,
+        service_id: &str,
+    ) -> anyhow::Result<bool> {
+        let mut conn = self.connect().await?;
+        crate::subscription::check_profile_subscription_access(
+            &mut conn,
+            &self.metrics,
+            subscriber,
+            service_id,
+        )
+        .await
+    }
+
     /// Get latest paid-messaging configuration.
     pub async fn get_messaging_config(
         &self,

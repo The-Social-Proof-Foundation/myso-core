@@ -453,8 +453,80 @@ pub fn handle_post_event(
         }
         "PromotionStatusToggledEvent" => process_promotion_status_toggled_event(data, event_id),
         "PromotionFundsWithdrawnEvent" => process_promotion_funds_withdrawn_event(data, event_id),
+        "PostSubscriptionGateEnabledEvent" => {
+            process_post_subscription_gate_enabled_event(data, event_id, checkpoint_timestamp_ms)
+        }
+        "PostSubscriptionAccessEvent" => {
+            process_post_subscription_access_event(data, event_id, checkpoint_timestamp_ms)
+        }
         _ => None,
     }
+}
+
+fn process_post_subscription_gate_enabled_event(
+    data: &serde_json::Value,
+    event_id: &str,
+    checkpoint_timestamp_ms: u64,
+) -> Option<Vec<SocialEventRow>> {
+    #[derive(Deserialize)]
+    struct GateEvent {
+        post_id: String,
+        service_id: String,
+        enabled: bool,
+    }
+    let ev: GateEvent = common::deserialize_social_event_json(
+        "post",
+        "PostSubscriptionGateEnabledEvent",
+        event_id,
+        data,
+        "post PostSubscriptionGateEnabledEvent JSON did not match struct",
+    )?;
+    let _ = checkpoint_timestamp_ms;
+    Some(vec![SocialEventRow::PostSubscriptionGateUpdate {
+        post_id: ev.post_id,
+        service_id: if ev.enabled {
+            Some(ev.service_id)
+        } else {
+            None
+        },
+        enabled: ev.enabled,
+    }])
+}
+
+fn process_post_subscription_access_event(
+    data: &serde_json::Value,
+    event_id: &str,
+    checkpoint_timestamp_ms: u64,
+) -> Option<Vec<SocialEventRow>> {
+    #[derive(Deserialize)]
+    struct AccessEvent {
+        post_id: String,
+        subscription_id: String,
+        subscriber: String,
+        timestamp: u64,
+    }
+    let ev: AccessEvent = common::deserialize_social_event_json(
+        "post",
+        "PostSubscriptionAccessEvent",
+        event_id,
+        data,
+        "post PostSubscriptionAccessEvent JSON did not match struct",
+    )?;
+    let ms = common::chain_timestamp_ms(Some(ev.timestamp as i64), checkpoint_timestamp_ms);
+    let now = common::chain_time_from_ms(ms);
+    Some(vec![SocialEventRow::SubscriptionAccessLog(
+        myso_indexer_alt_social_schema::models::NewSubscriptionAccessLog {
+            subscription_id: ev.subscription_id,
+            subscriber: ev.subscriber,
+            content_type: "post".to_string(),
+            content_id: ev.post_id,
+            access_time: ms,
+            time: now,
+            transaction_id: event_id.to_string(),
+            processing_success: true,
+            processing_error: None,
+        },
+    )])
 }
 
 fn process_post_created_event(

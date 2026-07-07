@@ -412,6 +412,8 @@ readonly SOCIAL_GQL_BATCH='query SocialE2ESessionObjects {
   blocklistRegistry: objects(filter: { type: "0x50c1::block_list::BlockListRegistry", ownerKind: SHARED }, first: 1) { nodes { address } }
   mydataRegistry: objects(filter: { type: "0x50c1::mydata::MyDataRegistry", ownerKind: SHARED }, first: 1) { nodes { address } }
   postConfig: objects(filter: { type: "0x50c1::post::PostConfig", ownerKind: SHARED }, first: 1) { nodes { address } }
+  subscriptionConfig: objects(filter: { type: "0x50c1::subscription::SubscriptionConfig", ownerKind: SHARED }, first: 1) { nodes { address } }
+  subscriptionAdminCap: objects(filter: { type: "0x50c1::subscription::SubscriptionAdminCap" }, last: 1) { nodes { address } }
   platformAdminCap: objects(filter: { type: "0x50c1::platform::PlatformAdminCap" }, last: 1) { nodes { address } }
   platform: objects(filter: { type: "0x50c1::platform::Platform" }, last: 1) { nodes { address } }
 }'
@@ -426,7 +428,7 @@ collect_social_gql_mappings() {
     local json="$1" alias val env_key
     for alias in ecosystemTreasury usernameRegistry usernameMarketplace profileConfig \
         memoryRegistry memoryConfig aiCreditConfig platformRegistry platformConfig blocklistRegistry \
-        mydataRegistry postConfig platformAdminCap platform; do
+        mydataRegistry postConfig subscriptionConfig subscriptionAdminCap platformAdminCap platform; do
         case "$alias" in
             ecosystemTreasury) env_key=ECOSYSTEM_TREASURY_ID ;;
             usernameRegistry) env_key=USERNAME_REGISTRY_ID ;;
@@ -440,6 +442,8 @@ collect_social_gql_mappings() {
             blocklistRegistry) env_key=BLOCK_LIST_REGISTRY_ID ;;
             mydataRegistry) env_key=MYDATA_REGISTRY_ID ;;
             postConfig) env_key=POST_CONFIG_ID ;;
+            subscriptionConfig) env_key=SUBSCRIPTION_CONFIG_ID ;;
+            subscriptionAdminCap) env_key=SUBSCRIPTION_ADMIN_CAP_ID ;;
             platformAdminCap) env_key=PLATFORM_ADMIN_CAP_ID ;;
             platform) env_key=PLATFORM_OBJECT_ID ;;
             *) continue ;;
@@ -494,7 +498,8 @@ social_refresh_session_from_graphql() {
         for key in USERNAME_REGISTRY_ID USERNAME_MARKETPLACE_ID PROFILE_CONFIG_ID \
             AI_CREDIT_CONFIG_ID MEMORY_REGISTRY_ID MEMORY_CONFIG_ID ECOSYSTEM_TREASURY_ID \
             PLATFORM_REGISTRY_ID PLATFORM_CONFIG_ID PLATFORM_OBJECT_ID PLATFORM_ADMIN_CAP_ID \
-            BLOCK_LIST_REGISTRY_ID POST_CONFIG_ID MYDATA_REGISTRY_ID; do
+            BLOCK_LIST_REGISTRY_ID POST_CONFIG_ID MYDATA_REGISTRY_ID \
+            SUBSCRIPTION_CONFIG_ID SUBSCRIPTION_ADMIN_CAP_ID; do
             printf '%s=%q\n' "$key" "${!key-}"
         done
     } > "${SOCIAL_SESSION_SAVE_PATH}.tmp"
@@ -659,6 +664,93 @@ extract_tx_digest() {
         return 0
     fi
     echo "$out" | grep -Eo '[A-Za-z0-9+/]{43,44}=' | tail -n1
+}
+
+assert_tx_success() {
+    local out="$1" digest="${2:-}" json status
+    [[ -n "$out" || -n "$digest" ]] || return 1
+    if [[ -z "$digest" ]]; then
+        digest="$(extract_tx_digest "$out" 2>/dev/null || true)"
+    fi
+    if [[ -n "$digest" ]]; then
+        json="$(myso client tx-block "$digest" --json 2>/dev/null)" || return 1
+        status="$(echo "$json" | jq -r '.effects.V2.status // .effects.status // empty | tostring')"
+        [[ "$status" == "Success" ]]
+        return
+    fi
+    echo "$out" | jq -e '
+        (.effects.V2.status // .effects.status // empty | tostring) == "Success"
+    ' >/dev/null
+}
+
+tx_has_event_named() {
+    local digest="$1" event_name="$2" json
+    [[ -n "$digest" && -n "$event_name" ]] || return 1
+    json="$(myso client tx-block "$digest" --json 2>/dev/null)" || return 1
+    echo "$json" | jq -e --arg name "$event_name" '
+        [.. | objects | select(has("type_") or has("type"))]
+        | map(.type_ // .type)
+        | any(.name? == $name)
+    ' >/dev/null
+}
+
+tx_event_field() {
+    local digest="$1" event_name="$2" field="$3" json
+    [[ -n "$digest" && -n "$event_name" && -n "$field" ]] || return 1
+    json="$(myso client tx-block "$digest" --json 2>/dev/null)" || return 1
+    echo "$json" | jq -r --arg name "$event_name" --arg field "$field" '
+        [.. | objects | select(has("parsedJson") or has("parsed_json"))]
+        | map(.parsedJson // .parsed_json)
+        | map(select(. != null))
+        | .[]
+        | select(.[$field] != null)
+        | .[$field]
+        | tostring
+    ' | head -n1
+}
+
+assert_tx_aborts() {
+    local out="$1" digest="${2:-}"
+    [[ -n "$out" || -n "$digest" ]] || return 1
+    if [[ -z "$digest" ]]; then
+        digest="$(extract_tx_digest "$out" 2>/dev/null || true)"
+    fi
+    if [[ -n "$digest" ]]; then
+        local json status
+        json="$(myso client tx-block "$digest" --json 2>/dev/null)" || return 1
+        status="$(echo "$json" | jq -r '.effects.V2.status // .effects.status // empty | tostring')"
+        [[ "$status" != "Success" ]]
+        return
+    fi
+    echo "$out" | jq -e '
+        (.effects.V2.status // .effects.status // empty | tostring) != "Success"
+    ' >/dev/null 2>&1 || {
+        echo "$out" | grep -qiE 'abort|MoveAbort|Insufficient|Error' && return 0
+        return 1
+    }
+}
+
+assert_tx_aborts_with_code() {
+    local out="$1" expected_code="$2" digest="${3:-}" json status code
+    [[ -n "$out" || -n "$digest" ]] || return 1
+    assert_tx_aborts "$out" "$digest" || return 1
+    if [[ -z "$digest" ]]; then
+        digest="$(extract_tx_digest "$out" 2>/dev/null || true)"
+    fi
+    [[ -n "$digest" ]] || return 0
+    json="$(myso client tx-block "$digest" --json 2>/dev/null)" || return 1
+    code="$(echo "$json" | jq -r '
+        .. | objects
+        | select(has("abortCode") or has("abort_code"))
+        | (.abortCode // .abort_code)
+        | if type == "object" then (.error_code // .errorCode // .code // empty) else . end
+        | tostring
+    ' | head -n1)"
+    [[ -z "$code" || "$code" == "$expected_code" ]]
+}
+
+subscription_refresh_session() {
+    social_refresh_session_from_graphql
 }
 
 extract_created_object_by_type() {

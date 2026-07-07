@@ -9664,6 +9664,15 @@ fund_renewal_balance
 is_subscription_valid
 	public fun
 	0x50c1::subscription
+service_profile_owner
+	public fun
+	0x50c1::subscription
+service_is_active
+	public fun
+	0x50c1::subscription
+is_subscription_valid_for
+	public fun
+	0x50c1::subscription
 update_service_fee
 	public entry fun
 	0x50c1::subscription
@@ -10003,6 +10012,9 @@ encryption_id_matches
 mydata_approve
 	public entry fun
 	0x50c1::mydata
+mydata_approve_profile_subscription
+	public entry fun
+	0x50c1::mydata
 bytes_equal_u8
 	fun
 	0x50c1::mydata
@@ -10217,6 +10229,15 @@ PromotionFundsWithdrawnEvent
 	public struct
 	0x50c1::post
 ModerationRecord
+	public struct
+	0x50c1::post
+PostSubscriptionGate
+	public struct
+	0x50c1::post
+PostSubscriptionGateEnabledEvent
+	public struct
+	0x50c1::post
+PostSubscriptionAccessEvent
 	public struct
 	0x50c1::post
 has_flag
@@ -10530,6 +10551,27 @@ set_moderation_status
 	0x50c1::post
 is_content_approved
 	public fun
+	0x50c1::post
+post_subscription_gate
+	fun
+	0x50c1::post
+post_subscription_service_id
+	public fun
+	0x50c1::post
+post_requires_profile_subscription
+	public fun
+	0x50c1::post
+enable_post_subscription_gate
+	public entry fun
+	0x50c1::post
+disable_post_subscription_gate
+	public entry fun
+	0x50c1::post
+assert_can_view_post
+	public entry fun
+	0x50c1::post
+record_post_subscription_view
+	public entry fun
 	0x50c1::post
 create_post_admin_cap
 	public(package) fun

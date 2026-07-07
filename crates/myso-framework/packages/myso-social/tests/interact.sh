@@ -205,9 +205,10 @@ show_menu() {
     echo "9. View Object Details"
     echo "10. Upgrade Management"
     echo "11. Bootstrap & saved addresses"
+    echo "12. Profile subscriptions (billing + post gate)"
     echo "0. Exit"
     echo ""
-    read -r -p "Select an option [0-11]: " choice
+    read -r -p "Select an option [0-12]: " choice
 
     case $choice in
         1) profile_menu ;;
@@ -221,6 +222,7 @@ show_menu() {
         9) view_object ;;
         10) upgrade_menu ;;
         11) bootstrap_menu ;;
+        12) subscription_menu ;;
         0) exit 0 ;;
         *) echo "Invalid option" && show_menu ;;
     esac
@@ -386,6 +388,99 @@ reject_username_offer() {
     print_success "Done."
     press_enter
     profile_menu
+}
+
+# ---- Profile subscriptions ----
+
+subscription_menu() {
+    print_header "Profile Subscriptions"
+    echo "1. Create profile subscription service"
+    echo "2. Subscribe to profile"
+    echo "3. Enable post subscription gate"
+    echo "4. Assert can view post (subscriber)"
+    echo "5. Record post subscription view"
+    echo "6. Cancel subscription"
+    echo "7. Back to Main Menu"
+    echo ""
+    read -r -p "Select an option [1-7]: " choice
+    case $choice in
+        1) subscription_create_service ;;
+        2) subscription_subscribe ;;
+        3) subscription_enable_post_gate ;;
+        4) subscription_assert_view ;;
+        5) subscription_record_view ;;
+        6) subscription_cancel ;;
+        7) show_menu ;;
+        *) echo "Invalid option" && subscription_menu ;;
+    esac
+}
+
+subscription_create_service() {
+    read -r -p "Profile object ID: " profile_id
+    read -r -p "monthly_fee (MIST): " fee
+    read -r -p "Clock [${CLOCK_ID}]: " clk
+    clk="${clk:-$CLOCK_ID}"
+    myso client call --package "$PACKAGE_ID" --module subscription --function create_profile_service_entry \
+        --args "@${profile_id}" "$fee" "@${clk}" --gas-budget "$GAS_BUDGET"
+    press_enter
+    subscription_menu
+}
+
+subscription_subscribe() {
+    read -r -p "SubscriptionConfig: " cfg
+    read -r -p "ProfileSubscriptionService: " svc
+    read -r -p "EcosystemTreasury: " tre
+    read -r -p "Payment coin object: " coin
+    read -r -p "auto_renew (true/false): " ar
+    read -r -p "renewal_months: " rm
+    read -r -p "Clock [${CLOCK_ID}]: " clk
+    clk="${clk:-$CLOCK_ID}"
+    myso client call --package "$PACKAGE_ID" --module subscription --function subscribe_to_profile \
+        --args "@${cfg}" "@${svc}" "@${tre}" "$coin" "$ar" "$rm" "@${clk}" --gas-budget "$GAS_BUDGET"
+    press_enter
+    subscription_menu
+}
+
+subscription_enable_post_gate() {
+    read -r -p "Post object ID: " post_id
+    read -r -p "ProfileSubscriptionService: " svc
+    myso client call --package "$PACKAGE_ID" --module post --function enable_post_subscription_gate \
+        --args "@${post_id}" "@${svc}" --gas-budget "$GAS_BUDGET"
+    press_enter
+    subscription_menu
+}
+
+subscription_assert_view() {
+    read -r -p "Post object ID: " post_id
+    read -r -p "ProfileSubscriptionService: " svc
+    read -r -p "ProfileSubscription: " sub
+    read -r -p "Clock [${CLOCK_ID}]: " clk
+    clk="${clk:-$CLOCK_ID}"
+    myso client call --package "$PACKAGE_ID" --module post --function assert_can_view_post \
+        --args "@${post_id}" "@${svc}" "@${sub}" "@${clk}" --gas-budget "$GAS_BUDGET"
+    press_enter
+    subscription_menu
+}
+
+subscription_record_view() {
+    read -r -p "Post object ID: " post_id
+    read -r -p "ProfileSubscriptionService: " svc
+    read -r -p "ProfileSubscription: " sub
+    read -r -p "Clock [${CLOCK_ID}]: " clk
+    clk="${clk:-$CLOCK_ID}"
+    myso client call --package "$PACKAGE_ID" --module post --function record_post_subscription_view \
+        --args "@${post_id}" "@${svc}" "@${sub}" "@${clk}" --gas-budget "$GAS_BUDGET"
+    press_enter
+    subscription_menu
+}
+
+subscription_cancel() {
+    read -r -p "ProfileSubscriptionService: " svc
+    read -r -p "ProfileSubscription: " sub
+    myso client call --package "$PACKAGE_ID" --module subscription --function cancel_subscription \
+        --args "@${svc}" "@${sub}" --gas-budget "$GAS_BUDGET"
+    press_enter
+    subscription_menu
 }
 
 # ---- Content (post:: public fun via PTB) ----

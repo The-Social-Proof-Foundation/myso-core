@@ -42,6 +42,7 @@ mod spt_handler;
 mod sub_agent_registry_handler;
 mod subscription;
 mod subscription_handler;
+mod subscription_object;
 mod upgrade;
 mod upgrade_handler;
 
@@ -73,7 +74,7 @@ use myso_indexer_alt_social_schema::models::{
     NewSpotBetWithdrawal, NewSpotConfig, NewSpotEventLog, NewSpotPayout, NewSpotRecord,
     NewSpotRefund, NewSpotResolution, NewSptConfigEvent, NewSptHolding, NewSptPool,
     NewSptPriceHistory, NewSptReservation, NewSptReservationPool, NewSptTransaction,
-    NewSubAgentEvent, NewSubscriptionConfig, NewSubscriptionEvent, NewTip, NewUnifiedRevenue,
+    NewSubAgentEvent, NewSubscriptionAccessLog, NewSubscriptionConfig, NewSubscriptionEvent, NewTip, NewUnifiedRevenue,
     NewUpgradeEvent, NewUsernameRegistry, NewVestingEvent, NewVestingWallet,
     NewVoteDecryptionFailure, ProposalUpdateSet,
 };
@@ -693,6 +694,12 @@ pub enum SocialEventRow {
     ProfileSubscriptionServiceSubscriberDecrementBySubscription {
         subscription_id: String,
     },
+    PostSubscriptionGateUpdate {
+        post_id: String,
+        service_id: Option<String>,
+        enabled: bool,
+    },
+    SubscriptionAccessLog(NewSubscriptionAccessLog),
     SubscriptionRevenueFromCreated {
         service_id: String,
         subscription_id: String,

@@ -26,14 +26,14 @@ use myso_indexer_alt_social_schema::models::{
     NewPocRevenueRedirection, NewPocUsernameBeneficiary, NewPocUsernameBeneficiaryEvent,
     NewPocVaultClaim, NewPocVaultDeposit, NewPost, NewPostTransfer, NewPromotedPost,
     NewPromotionBudgetEvent, NewPromotionStatusEvent, NewPromotionView, NewReaction,
-    NewReactionCount, NewReport, NewRepost, NewTip, NewUnifiedRevenue,
+    NewReactionCount, NewReport, NewRepost, NewSubscriptionAccessLog, NewTip, NewUnifiedRevenue,
 };
 use myso_indexer_alt_social_schema::schema::{
     comments, poc_analysis_results, poc_badges, poc_configuration, poc_creator_identity_links,
     poc_dispute_votes, poc_disputes, poc_revenue_redirections, poc_username_beneficiary_events,
-    poc_vault_claims, poc_vault_deposits, post_config, posts, promoted_posts,
-    promotion_budget_events, promotion_status_events, promotion_views, reaction_counts, reactions,
-    reposts, tips,
+    poc_vault_claims, poc_vault_deposits, post_config, posts, profile_subscription_services,
+    promoted_posts, promotion_budget_events, promotion_status_events, promotion_views,
+    reaction_counts, reactions, reposts, subscription_access_logs, tips,
 };
 use myso_indexer_alt_social_schema::schema::{
     posts_deletion_events, posts_moderation_events, posts_reports, posts_transfers, profiles,
@@ -179,6 +179,12 @@ pub enum PostRow {
         timestamp: i64,
         transaction_id: String,
     },
+    PostSubscriptionGateUpdate {
+        post_id: String,
+        service_id: Option<String>,
+        enabled: bool,
+    },
+    SubscriptionAccessLog(NewSubscriptionAccessLog),
     UnifiedRevenue(NewUnifiedRevenue),
     PocBadge(NewPocBadge),
     PocAnalysisResult(NewPocAnalysisResult),
@@ -391,6 +397,16 @@ impl PostRow {
                 new_owner,
                 is_post,
             }),
+            SocialEventRow::PostSubscriptionGateUpdate {
+                post_id,
+                service_id,
+                enabled,
+            } => Some(PostRow::PostSubscriptionGateUpdate {
+                post_id,
+                service_id,
+                enabled,
+            }),
+            SocialEventRow::SubscriptionAccessLog(log) => Some(PostRow::SubscriptionAccessLog(log)),
             SocialEventRow::PostTransfer(t) => Some(PostRow::PostTransfer(t)),
             SocialEventRow::PostConfig {
                 updated_by,
@@ -1299,6 +1315,48 @@ impl Handler for PostsHandler {
                             .execute(conn)
                             .await;
                     }
+                }
+                PostRow::PostSubscriptionGateUpdate {
+                    post_id,
+                    service_id,
+                    enabled,
+                } => {
+                    if *enabled {
+                        if let Some(sid) = service_id {
+                            let monthly_fee: Option<i64> = profile_subscription_services::table
+                                .filter(profile_subscription_services::service_id.eq(sid))
+                                .select(profile_subscription_services::monthly_fee)
+                                .first(conn)
+                                .await
+                                .ok();
+                            let _ = diesel::update(posts::table)
+                                .filter(posts::post_id.eq(post_id))
+                                .set((
+                                    posts::subscription_service_id.eq(Some(sid.clone())),
+                                    posts::requires_subscription.eq(Some(true)),
+                                    posts::subscription_price.eq(monthly_fee),
+                                ))
+                                .execute(conn)
+                                .await;
+                        }
+                    } else {
+                        let _ = diesel::update(posts::table)
+                            .filter(posts::post_id.eq(post_id))
+                            .set((
+                                posts::subscription_service_id.eq(None::<String>),
+                                posts::requires_subscription.eq(Some(false)),
+                                posts::subscription_price.eq(None::<i64>),
+                            ))
+                            .execute(conn)
+                            .await;
+                    }
+                }
+                PostRow::SubscriptionAccessLog(log) => {
+                    total += diesel::insert_into(subscription_access_logs::table)
+                        .values(log)
+                        .on_conflict_do_nothing()
+                        .execute(conn)
+                        .await?;
                 }
                 PostRow::PostDeletedAtUpdate {
                     object_id,

@@ -34,7 +34,7 @@ use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::{MemoryAccountRow, Profile, SubAgentRow};
 use myso_indexer_alt_social_schema::schema::{
-    profile_subscription_services, profile_subscriptions, subscription_revenue,
+    profile_subscription_services, profile_subscriptions, subscription_events, subscription_revenue,
 };
 use myso_pg_db::{Db, DbArgs};
 use url::Url;
@@ -931,6 +931,155 @@ impl Reader {
             0
         };
 
+        let total_renewals: i64 = {
+            let mut q = subscription_events::table.into_boxed();
+            q = q.filter(subscription_events::time.between(start_dt, end_dt));
+            q = q.filter(
+                subscription_events::event_type.eq("ProfileSubscriptionRenewedEvent"),
+            );
+            if let Some(sid) = service_id {
+                q = q.filter(subscription_events::service_id.eq(sid));
+            }
+            q.count().get_result(&mut conn).await?
+        };
+
+        let auto_renewed_renewals: i64 = {
+            use diesel::sql_query;
+            use diesel::QueryableByName;
+            #[derive(QueryableByName)]
+            struct CountRow {
+                #[diesel(sql_type = BigInt)]
+                count: i64,
+            }
+            let sql = if service_id.is_some() {
+                "SELECT COUNT(*) AS count FROM subscription_events \
+                 WHERE time BETWEEN $1 AND $2 \
+                 AND event_type = 'ProfileSubscriptionRenewedEvent' \
+                 AND service_id = $3 \
+                 AND COALESCE((event_data->>'auto_renewed')::boolean, false) = true"
+            } else {
+                "SELECT COUNT(*) AS count FROM subscription_events \
+                 WHERE time BETWEEN $1 AND $2 \
+                 AND event_type = 'ProfileSubscriptionRenewedEvent' \
+                 AND COALESCE((event_data->>'auto_renewed')::boolean, false) = true"
+            };
+            let row: CountRow = if let Some(sid) = service_id {
+                sql_query(sql)
+                    .bind::<diesel::sql_types::Timestamptz, _>(start_dt)
+                    .bind::<diesel::sql_types::Timestamptz, _>(end_dt)
+                    .bind::<Text, _>(sid)
+                    .get_result(&mut conn)
+                    .await?
+            } else {
+                sql_query(sql)
+                    .bind::<diesel::sql_types::Timestamptz, _>(start_dt)
+                    .bind::<diesel::sql_types::Timestamptz, _>(end_dt)
+                    .get_result(&mut conn)
+                    .await?
+            };
+            row.count
+        };
+        let auto_renewal_rate = if total_renewals > 0 {
+            auto_renewed_renewals as f64 / total_renewals as f64
+        } else {
+            0.0
+        };
+
+        let total_cancels: i64 = {
+            let mut q = subscription_events::table.into_boxed();
+            q = q.filter(subscription_events::time.between(start_dt, end_dt));
+            q = q.filter(
+                subscription_events::event_type.eq("ProfileSubscriptionCancelledEvent"),
+            );
+            if let Some(sid) = service_id {
+                q = q.filter(subscription_events::service_id.eq(sid));
+            }
+            q.count().get_result(&mut conn).await?
+        };
+        let refunded_cancels: i64 = {
+            use diesel::sql_query;
+            use diesel::QueryableByName;
+            #[derive(QueryableByName)]
+            struct CountRow {
+                #[diesel(sql_type = BigInt)]
+                count: i64,
+            }
+            let sql = if service_id.is_some() {
+                "SELECT COUNT(*) AS count FROM subscription_events \
+                 WHERE time BETWEEN $1 AND $2 \
+                 AND event_type = 'ProfileSubscriptionCancelledEvent' \
+                 AND service_id = $3 \
+                 AND COALESCE((event_data->>'refunded_amount')::bigint, 0) > 0"
+            } else {
+                "SELECT COUNT(*) AS count FROM subscription_events \
+                 WHERE time BETWEEN $1 AND $2 \
+                 AND event_type = 'ProfileSubscriptionCancelledEvent' \
+                 AND COALESCE((event_data->>'refunded_amount')::bigint, 0) > 0"
+            };
+            let row: CountRow = if let Some(sid) = service_id {
+                sql_query(sql)
+                    .bind::<diesel::sql_types::Timestamptz, _>(start_dt)
+                    .bind::<diesel::sql_types::Timestamptz, _>(end_dt)
+                    .bind::<Text, _>(sid)
+                    .get_result(&mut conn)
+                    .await?
+            } else {
+                sql_query(sql)
+                    .bind::<diesel::sql_types::Timestamptz, _>(start_dt)
+                    .bind::<diesel::sql_types::Timestamptz, _>(end_dt)
+                    .get_result(&mut conn)
+                    .await?
+            };
+            row.count
+        };
+        let refund_rate = if total_cancels > 0 {
+            refunded_cancels as f64 / total_cancels as f64
+        } else {
+            0.0
+        };
+
+        let average_subscription_duration: f64 = {
+            use diesel::sql_query;
+            use diesel::QueryableByName;
+            #[derive(QueryableByName)]
+            struct AvgRow {
+                #[diesel(sql_type = Nullable<BigInt>)]
+                avg_ms: Option<i64>,
+            }
+            let sql = if service_id.is_some() {
+                "SELECT AVG(expires_at - created_at) AS avg_ms FROM (
+                    SELECT DISTINCT ON (subscription_id) subscription_id, created_at, expires_at
+                    FROM profile_subscriptions
+                    WHERE time BETWEEN $1 AND $2 AND service_id = $3
+                    ORDER BY subscription_id, time DESC
+                ) sub"
+            } else {
+                "SELECT AVG(expires_at - created_at) AS avg_ms FROM (
+                    SELECT DISTINCT ON (subscription_id) subscription_id, created_at, expires_at
+                    FROM profile_subscriptions
+                    WHERE time BETWEEN $1 AND $2
+                    ORDER BY subscription_id, time DESC
+                ) sub"
+            };
+            let row: AvgRow = if let Some(sid) = service_id {
+                sql_query(sql)
+                    .bind::<diesel::sql_types::Timestamptz, _>(start_dt)
+                    .bind::<diesel::sql_types::Timestamptz, _>(end_dt)
+                    .bind::<Text, _>(sid)
+                    .get_result(&mut conn)
+                    .await?
+            } else {
+                sql_query(sql)
+                    .bind::<diesel::sql_types::Timestamptz, _>(start_dt)
+                    .bind::<diesel::sql_types::Timestamptz, _>(end_dt)
+                    .get_result(&mut conn)
+                    .await?
+            };
+            row.avg_ms
+                .map(|ms| ms as f64 / (24.0 * 60.0 * 60.0 * 1000.0))
+                .unwrap_or(0.0)
+        };
+
         let service_id_str = service_id.unwrap_or("all").to_string();
         Ok(serde_json::json!({
             "service_id": service_id_str,
@@ -939,10 +1088,10 @@ impl Reader {
             "cancelled_subscriptions": cancelled_subscriptions,
             "monthly_recurring_revenue": monthly_recurring_revenue,
             "churn_rate": churn_rate,
-            "average_subscription_duration": 30.0,
-            "total_renewals": 0,
-            "auto_renewal_rate": 0.0,
-            "refund_rate": 0.0,
+            "average_subscription_duration": average_subscription_duration,
+            "total_renewals": total_renewals,
+            "auto_renewal_rate": auto_renewal_rate,
+            "refund_rate": refund_rate,
             "growth_metrics": []
         }))
     }
@@ -968,7 +1117,8 @@ impl Reader {
             ))
             .load(&mut conn)
             .await?;
-        let services: Vec<serde_json::Value> = rows
+        let now_ms = chrono::Utc::now().timestamp_millis();
+        let services: Vec<(String, String, String, i64, bool, i64, i64)> = rows
             .into_iter()
             .map(
                 |(
@@ -976,28 +1126,94 @@ impl Reader {
                     profile_owner,
                     profile_id,
                     monthly_fee,
-                    _active,
+                    active,
                     subscriber_count,
                     _created_at,
                 )| {
                     let mrr = monthly_fee * subscriber_count;
-                    serde_json::json!({
-                        "service_id": service_id,
-                        "profile_owner": profile_owner,
-                        "profile_id": profile_id,
-                        "monthly_fee": monthly_fee,
-                        "total_subscribers": subscriber_count,
-                        "active_subscribers": subscriber_count,
-                        "total_revenue": mrr,
-                        "monthly_recurring_revenue": mrr,
-                        "churn_rate": 0.0,
-                        "average_lifetime_value": 0.0,
-                        "conversion_rate": 0.0
-                    })
+                    (
+                        service_id,
+                        profile_owner,
+                        profile_id,
+                        monthly_fee,
+                        active,
+                        subscriber_count,
+                        mrr,
+                    )
                 },
             )
             .collect();
-        Ok(services)
+        let mut out = Vec::with_capacity(services.len());
+        for (
+            service_id,
+            profile_owner,
+            profile_id,
+            monthly_fee,
+            active,
+            subscriber_count,
+            mrr,
+        ) in services
+        {
+            use diesel::sql_query;
+            use diesel::QueryableByName;
+            #[derive(QueryableByName)]
+            struct ActiveRow {
+                #[diesel(sql_type = BigInt)]
+                count: i64,
+            }
+            #[derive(QueryableByName)]
+            struct RevenueRow {
+                #[diesel(sql_type = Nullable<BigInt>)]
+                total: Option<i64>,
+            }
+            let active_subscribers: i64 = sql_query(
+                "SELECT COUNT(*) AS count FROM (
+                    SELECT DISTINCT ON (subscription_id) subscription_id, expires_at, cancelled_at
+                    FROM profile_subscriptions
+                    WHERE service_id = $1
+                    ORDER BY subscription_id, time DESC
+                ) sub WHERE sub.cancelled_at IS NULL AND sub.expires_at > $2",
+            )
+            .bind::<Text, _>(&service_id)
+            .bind::<BigInt, _>(now_ms)
+            .get_result::<ActiveRow>(&mut conn)
+            .await
+            .map(|r| r.count)
+            .unwrap_or(0);
+            let total_revenue: i64 = sql_query(
+                "SELECT SUM(amount) AS total FROM subscription_revenue WHERE service_id = $1",
+            )
+            .bind::<Text, _>(&service_id)
+            .get_result::<RevenueRow>(&mut conn)
+            .await
+            .ok()
+            .and_then(|r| r.total)
+            .unwrap_or(0);
+            let churn_rate = if subscriber_count > 0 {
+                (subscriber_count - active_subscribers).max(0) as f64 / subscriber_count as f64
+            } else {
+                0.0
+            };
+            out.push(serde_json::json!({
+                "service_id": service_id,
+                "profile_owner": profile_owner,
+                "profile_id": profile_id,
+                "monthly_fee": monthly_fee,
+                "active": active,
+                "total_subscribers": subscriber_count,
+                "active_subscribers": active_subscribers,
+                "total_revenue": total_revenue,
+                "monthly_recurring_revenue": mrr,
+                "churn_rate": churn_rate,
+                "average_lifetime_value": if active_subscribers > 0 {
+                    total_revenue as f64 / active_subscribers as f64
+                } else {
+                    0.0
+                },
+                "conversion_rate": serde_json::Value::Null
+            }));
+        }
+        Ok(out)
     }
 
     pub async fn get_treasury_history(

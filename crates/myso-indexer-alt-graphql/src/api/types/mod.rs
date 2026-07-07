@@ -48,6 +48,7 @@ pub(crate) mod poc;
 pub(crate) mod poc_username_beneficiary;
 pub(crate) mod post;
 pub(crate) mod profile;
+pub(crate) mod profile_subscription;
 pub(crate) mod profile_summary;
 pub(crate) mod promotion;
 pub(crate) mod protocol_configs;

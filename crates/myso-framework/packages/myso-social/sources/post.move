@@ -4015,6 +4015,138 @@ module social_contracts::post {
         !post.removed_from_platform
     }
 
+    /// Profile subscription gate stored as a dynamic field (Post is at the VM field-count limit).
+    public struct PostSubscriptionGate has store, copy, drop {
+        service_id: ID,
+        enabled: bool,
+    }
+
+    const POST_SUBSCRIPTION_GATE_DF_KEY: vector<u8> = b"post_subscription_gate";
+
+    public struct PostSubscriptionGateEnabledEvent has copy, drop {
+        post_id: ID,
+        service_id: ID,
+        enabled: bool,
+    }
+
+    public struct PostSubscriptionAccessEvent has copy, drop {
+        post_id: ID,
+        service_id: ID,
+        subscription_id: ID,
+        subscriber: address,
+        timestamp: u64,
+    }
+
+    fun post_subscription_gate(post: &Post): Option<PostSubscriptionGate> {
+        if (!df::exists_with_type<vector<u8>, PostSubscriptionGate>(&post.id, POST_SUBSCRIPTION_GATE_DF_KEY)) {
+            return option::none()
+        };
+        option::some(*df::borrow<vector<u8>, PostSubscriptionGate>(&post.id, POST_SUBSCRIPTION_GATE_DF_KEY))
+    }
+
+    public fun post_subscription_service_id(post: &Post): Option<ID> {
+        let gate = post_subscription_gate(post);
+        if (option::is_none(&gate)) {
+            return option::none()
+        };
+        let gate = option::destroy_some(gate);
+        if (!gate.enabled) {
+            return option::none()
+        };
+        option::some(gate.service_id)
+    }
+
+    public fun post_requires_profile_subscription(post: &Post): bool {
+        option::is_some(&post_subscription_service_id(post))
+    }
+
+    /// Attach a profile subscription gate to a post (post owner only; service must belong to owner).
+    public entry fun enable_post_subscription_gate(
+        post: &mut Post,
+        service: &ProfileSubscriptionService,
+        ctx: &mut TxContext,
+    ) {
+        assert!(tx_context::sender(ctx) == post.owner, EUnauthorized);
+        assert!(subscription::service_profile_owner(service) == post.owner, EUnauthorized);
+        assert!(subscription::service_is_active(service), ENoSubscriptionService);
+        assert!(
+            !df::exists_with_type<vector<u8>, PostSubscriptionGate>(&post.id, POST_SUBSCRIPTION_GATE_DF_KEY),
+            EUnauthorized,
+        );
+
+        let service_id = object::id(service);
+        df::add(
+            &mut post.id,
+            POST_SUBSCRIPTION_GATE_DF_KEY,
+            PostSubscriptionGate {
+                service_id,
+                enabled: true,
+            },
+        );
+
+        event::emit(PostSubscriptionGateEnabledEvent {
+            post_id: object::id(post),
+            service_id,
+            enabled: true,
+        });
+    }
+
+    /// Remove the profile subscription gate from a post (post owner only).
+    public entry fun disable_post_subscription_gate(post: &mut Post, ctx: &mut TxContext) {
+        assert!(tx_context::sender(ctx) == post.owner, EUnauthorized);
+        assert!(
+            df::exists_with_type<vector<u8>, PostSubscriptionGate>(&post.id, POST_SUBSCRIPTION_GATE_DF_KEY),
+            ENoSubscriptionService,
+        );
+        let gate = df::remove<vector<u8>, PostSubscriptionGate>(&mut post.id, POST_SUBSCRIPTION_GATE_DF_KEY);
+        event::emit(PostSubscriptionGateEnabledEvent {
+            post_id: object::id(post),
+            service_id: gate.service_id,
+            enabled: false,
+        });
+    }
+
+    /// Abort unless caller is post owner or holds a valid profile subscription for the gated service.
+    public entry fun assert_can_view_post(
+        post: &Post,
+        service: &ProfileSubscriptionService,
+        subscription: &ProfileSubscription,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        let sender = tx_context::sender(ctx);
+        if (sender == post.owner) {
+            return
+        };
+        let gate = post_subscription_gate(post);
+        assert!(option::is_some(&gate), ENoSubscriptionService);
+        let gate = option::destroy_some(gate);
+        assert!(gate.enabled, ENoSubscriptionService);
+        assert!(gate.service_id == object::id(service), ENoSubscriptionService);
+        assert!(
+            subscription::is_subscription_valid_for(subscription, service, sender, clock),
+            EUnauthorized,
+        );
+    }
+
+    /// Record a subscriber view after access check; emits `PostSubscriptionAccessEvent`.
+    public entry fun record_post_subscription_view(
+        post: &Post,
+        service: &ProfileSubscriptionService,
+        subscription: &ProfileSubscription,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert_can_view_post(post, service, subscription, clock, ctx);
+        event::emit(PostSubscriptionAccessEvent {
+            post_id: object::id(post),
+            service_id: object::id(service),
+            subscription_id: object::id(subscription),
+            subscriber: tx_context::sender(ctx),
+            timestamp: clock::timestamp_ms(clock),
+        });
+    }
+
     #[test_only]
     public fun set_comment_count_for_testing(post: &mut Post, count: u64) {
         post.comment_count = count;

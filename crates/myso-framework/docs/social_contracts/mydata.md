@@ -106,6 +106,7 @@ not row-level dataset membership.
 -  [Function `has_access`](#social_contracts_mydata_has_access)
 -  [Function `encryption_id_matches`](#social_contracts_mydata_encryption_id_matches)
 -  [Function `mydata_approve`](#social_contracts_mydata_mydata_approve)
+-  [Function `mydata_approve_profile_subscription`](#social_contracts_mydata_mydata_approve_profile_subscription)
 -  [Function `bytes_equal_u8`](#social_contracts_mydata_bytes_equal_u8)
 -  [Function `grant_access`](#social_contracts_mydata_grant_access)
 -  [Function `revoke_access`](#social_contracts_mydata_revoke_access)
@@ -200,6 +201,7 @@ not row-level dataset membership.
 <b>use</b> <a href="../social_contracts/platform.md#social_contracts_platform">social_contracts::platform</a>;
 <b>use</b> <a href="../social_contracts/profile.md#social_contracts_profile">social_contracts::profile</a>;
 <b>use</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_contracts::social_graph</a>;
+<b>use</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">social_contracts::subscription</a>;
 <b>use</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade">social_contracts::upgrade</a>;
 <b>use</b> <a href="../std/address.md#std_address">std::address</a>;
 <b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
@@ -4444,6 +4446,68 @@ mode; <code>EncryptedObject.package_id</code> at encrypt time must match this pa
     <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata_encryption_id_matches">encryption_id_matches</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, &id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPolicyIdMismatch">EPolicyIdMismatch</a>);
     <b>let</b> sender = tx_context::sender(ctx);
     <b>if</b> (<a href="../social_contracts/mydata.md#social_contracts_mydata_has_access">has_access</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, sender, clock)) {
+        <b>return</b>
+    };
+    <b>assert</b>!(
+        <a href="../social_contracts/memory.md#social_contracts_memory_owner">social_contracts::memory::owner</a>(account) == <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_EPolicyNotEntitled">EPolicyNotEntitled</a>,
+    );
+    <b>if</b> (!<a href="../social_contracts/memory.md#social_contracts_memory_is_registered_agent">social_contracts::memory::is_registered_agent</a>(account, sender)) {
+        <b>abort</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_EPolicyNotEntitled">EPolicyNotEntitled</a>
+    };
+    <b>let</b> acting = <a href="../social_contracts/memory.md#social_contracts_memory_resolve_actor_with_cap">social_contracts::memory::resolve_actor_with_cap</a>(
+        memory_config,
+        account,
+        <a href="../social_contracts/memory.md#social_contracts_memory_cap_mydata_read">social_contracts::memory::cap_mydata_read</a>(),
+        <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>,
+        0,
+        clock,
+        ctx,
+    );
+    <b>assert</b>!(
+        <a href="../social_contracts/memory.md#social_contracts_memory_acting_principal_owner">social_contracts::memory::acting_principal_owner</a>(&acting) == <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_EPolicyNotEntitled">EPolicyNotEntitled</a>,
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_mydata_approve_profile_subscription"></a>
+
+## Function `mydata_approve_profile_subscription`
+
+Key-server policy hook for profile-subscription-gated MyData: grant when [<code><a href="../social_contracts/mydata.md#social_contracts_mydata_has_access">has_access</a></code>] or
+[<code><a href="../social_contracts/subscription.md#social_contracts_subscription_is_subscription_valid">subscription::is_subscription_valid</a></code>] for the linked profile service.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_mydata_approve_profile_subscription">mydata_approve_profile_subscription</a>(memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, id: vector&lt;u8&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_mydata_approve_profile_subscription">mydata_approve_profile_subscription</a>(
+    memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>,
+    id: vector&lt;u8&gt;,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
+    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>,
+    service: &ProfileSubscriptionService,
+    <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &ProfileSubscription,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata_encryption_id_matches">encryption_id_matches</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, &id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPolicyIdMismatch">EPolicyIdMismatch</a>);
+    <b>let</b> sender = tx_context::sender(ctx);
+    <b>if</b> (<a href="../social_contracts/mydata.md#social_contracts_mydata_has_access">has_access</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, sender, clock)) {
+        <b>return</b>
+    };
+    <b>if</b> (<a href="../social_contracts/subscription.md#social_contracts_subscription_is_subscription_valid_for">subscription::is_subscription_valid_for</a>(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>, service, sender, clock)) {
         <b>return</b>
     };
     <b>assert</b>!(

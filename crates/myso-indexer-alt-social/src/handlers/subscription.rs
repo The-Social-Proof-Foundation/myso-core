@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::common;
+use super::subscription_object::SubscriptionCreateContext;
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
     NewProfileSubscription, NewProfileSubscriptionService, NewSubscriptionConfig,
@@ -9,10 +10,6 @@ use myso_indexer_alt_social_schema::models::{
 };
 use serde::Deserialize;
 use serde_json::Value;
-
-fn generate_subscription_id() -> String {
-    format!("sub_{}", uuid::Uuid::new_v4().to_string().replace('-', ""))
-}
 
 #[derive(Debug, Deserialize)]
 struct ProfileSubscriptionServiceCreatedEvent {
@@ -90,14 +87,18 @@ pub fn handle_subscription_event(
     data: &serde_json::Value,
     event_id: &str,
     checkpoint_timestamp_ms: u64,
+    create_context: Option<&SubscriptionCreateContext>,
 ) -> Option<Vec<SocialEventRow>> {
     match event_name {
         "ProfileSubscriptionServiceCreatedEvent" => {
             process_subscription_service_created_event(data, event_id, checkpoint_timestamp_ms)
         }
-        "ProfileSubscriptionCreatedEvent" => {
-            process_subscription_created_event(data, event_id, checkpoint_timestamp_ms)
-        }
+        "ProfileSubscriptionCreatedEvent" => process_subscription_created_event(
+            data,
+            event_id,
+            checkpoint_timestamp_ms,
+            create_context,
+        ),
         "ProfileSubscriptionRenewedEvent" => {
             process_subscription_renewed_event(data, event_id, checkpoint_timestamp_ms)
         }
@@ -168,6 +169,7 @@ fn process_subscription_created_event(
     data: &Value,
     event_id: &str,
     checkpoint_timestamp_ms: u64,
+    create_context: Option<&SubscriptionCreateContext>,
 ) -> Option<Vec<SocialEventRow>> {
     let event: ProfileSubscriptionCreatedEvent = common::deserialize_social_event_json(
         "subscription",
@@ -176,13 +178,16 @@ fn process_subscription_created_event(
         data,
         "subscription ProfileSubscriptionCreatedEvent JSON did not match struct",
     )?;
+    let ctx = create_context?;
+    let subscription_id = ctx.subscription_id.clone();
     let ms = common::chain_timestamp_ms(
-        common::json_field_as_i64(data.get("created_at")),
+        Some(ctx.created_at_ms),
         checkpoint_timestamp_ms,
     );
     let now = common::chain_time_from_ms(ms);
-    let subscription_id = generate_subscription_id();
-    let payment_time = event.expires_at as i64 - THIRTY_DAYS_MS;
+    let billing_period_ms = common::json_field_as_i64(data.get("billing_period_ms"))
+        .unwrap_or(THIRTY_DAYS_MS);
+    let payment_time = event.expires_at as i64 - billing_period_ms;
 
     let subscription = NewProfileSubscription {
         subscription_id: subscription_id.clone(),
@@ -191,7 +196,7 @@ fn process_subscription_created_event(
         created_at: ms,
         expires_at: event.expires_at as i64,
         auto_renew: event.auto_renew,
-        renewal_balance: 0,
+        renewal_balance: ctx.renewal_balance as i64,
         renewal_count: 0,
         cancelled_at: None,
         time: now,
@@ -528,9 +533,54 @@ fn process_subscription_config_updated_event(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::handlers::subscription_object::SubscriptionCreateContext;
+
+    fn sample_create_context() -> SubscriptionCreateContext {
+        SubscriptionCreateContext {
+            subscription_id: "0xsub123".to_string(),
+            renewal_balance: 1_000_000_000,
+            created_at_ms: 1_700_000_000_000,
+        }
+    }
 
     #[test]
     fn test_handle_subscription_created_event_produces_rows() {
+        let data = serde_json::json!({
+            "service_id": "0xabc",
+            "subscriber": "0xdef",
+            "expires_at": 1735689600000i64,
+            "monthly_fee": 100,
+            "auto_renew": true,
+            "platform_fee": 10,
+            "ecosystem_fee": 5,
+            "creator_amount": 85
+        });
+        let rows = handle_subscription_event(
+            "ProfileSubscriptionCreatedEvent",
+            &data,
+            "tx123",
+            1_700_000_000_000,
+            Some(&sample_create_context()),
+        );
+        assert!(rows.is_some());
+        let rows = rows.unwrap();
+        assert!(!rows.is_empty());
+        let has_subscription = rows.iter().any(|r| {
+            if let SocialEventRow::ProfileSubscription(s) = r {
+                s.subscription_id == "0xsub123" && s.renewal_balance == 1_000_000_000
+            } else {
+                false
+            }
+        });
+        assert!(has_subscription);
+        let has_sub_event = rows
+            .iter()
+            .any(|r| matches!(r, SocialEventRow::SubscriptionEvent(_)));
+        assert!(has_sub_event);
+    }
+
+    #[test]
+    fn test_handle_subscription_created_event_skips_without_context() {
         let data = serde_json::json!({
             "service_id": "0xabc",
             "subscriber": "0xdef",
@@ -543,18 +593,63 @@ mod tests {
             &data,
             "tx123",
             1_700_000_000_000,
+            None,
         );
-        assert!(rows.is_some());
-        let rows = rows.unwrap();
-        assert!(!rows.is_empty());
-        let has_subscription = rows
+        assert!(rows.is_none());
+    }
+
+    #[test]
+    fn test_handle_subscription_renewed_updates_same_subscription_id() {
+        let create_data = serde_json::json!({
+            "service_id": "0xabc",
+            "subscriber": "0xdef",
+            "expires_at": 1735689600000i64,
+            "monthly_fee": 100,
+            "auto_renew": true
+        });
+        let create_rows = handle_subscription_event(
+            "ProfileSubscriptionCreatedEvent",
+            &create_data,
+            "tx_create",
+            1_700_000_000_000,
+            Some(&sample_create_context()),
+        )
+        .unwrap();
+        let sub_id = match &create_rows[0] {
+            SocialEventRow::ProfileSubscription(s) => s.subscription_id.clone(),
+            _ => panic!("expected subscription row"),
+        };
+
+        let renew_data = serde_json::json!({
+            "subscription_id": sub_id,
+            "subscriber": "0xdef",
+            "new_expires_at": 1738281600000i64,
+            "renewal_count": 1,
+            "auto_renewed": false
+        });
+        let renew_rows = handle_subscription_event(
+            "ProfileSubscriptionRenewedEvent",
+            &renew_data,
+            "tx_renew",
+            1_700_000_000_000,
+            None,
+        )
+        .unwrap();
+        let update = renew_rows
             .iter()
-            .any(|r| matches!(r, SocialEventRow::ProfileSubscription(_)));
-        assert!(has_subscription);
-        let has_sub_event = rows
-            .iter()
-            .any(|r| matches!(r, SocialEventRow::SubscriptionEvent(_)));
-        assert!(has_sub_event);
+            .find_map(|r| {
+                if let SocialEventRow::ProfileSubscriptionUpdate {
+                    subscription_id,
+                    ..
+                } = r
+                {
+                    Some(subscription_id.clone())
+                } else {
+                    None
+                }
+            })
+            .unwrap();
+        assert_eq!(update, sub_id);
     }
 
     #[test]
@@ -570,6 +665,7 @@ mod tests {
             &data,
             "tx456",
             1_700_000_000_000,
+            None,
         );
         assert!(rows.is_some());
         let rows = rows.unwrap();

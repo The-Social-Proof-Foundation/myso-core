@@ -909,6 +909,27 @@ module social_contracts::subscription {
         subscription.expires_at > now
     }
 
+    /// Profile owner for a subscription service (for cross-module gate checks).
+    public fun service_profile_owner(service: &ProfileSubscriptionService): address {
+        service.profile_owner
+    }
+
+    /// Whether the service accepts new subscriptions.
+    public fun service_is_active(service: &ProfileSubscriptionService): bool {
+        service.active
+    }
+
+    /// Whether `subscriber` holds a valid subscription to `service` at `clock`.
+    public fun is_subscription_valid_for(
+        subscription: &ProfileSubscription,
+        service: &ProfileSubscriptionService,
+        subscriber: address,
+        clock: &Clock,
+    ): bool {
+        subscription.subscriber == subscriber
+            && is_subscription_valid(subscription, service, clock)
+    }
+
     /// Update service fee (profile owner only)
     public entry fun update_service_fee(
         service: &mut ProfileSubscriptionService,

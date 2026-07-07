@@ -37,6 +37,9 @@ Implements features like comments, reposts, and quotes
 -  [Struct `PromotionStatusToggledEvent`](#social_contracts_post_PromotionStatusToggledEvent)
 -  [Struct `PromotionFundsWithdrawnEvent`](#social_contracts_post_PromotionFundsWithdrawnEvent)
 -  [Struct `ModerationRecord`](#social_contracts_post_ModerationRecord)
+-  [Struct `PostSubscriptionGate`](#social_contracts_post_PostSubscriptionGate)
+-  [Struct `PostSubscriptionGateEnabledEvent`](#social_contracts_post_PostSubscriptionGateEnabledEvent)
+-  [Struct `PostSubscriptionAccessEvent`](#social_contracts_post_PostSubscriptionAccessEvent)
 -  [Constants](#@Constants_0)
 -  [Function `has_flag`](#social_contracts_post_has_flag)
 -  [Function `set_flag`](#social_contracts_post_set_flag)
@@ -142,6 +145,13 @@ Implements features like comments, reposts, and quotes
 -  [Function `get_promotion_id`](#social_contracts_post_get_promotion_id)
 -  [Function `set_moderation_status`](#social_contracts_post_set_moderation_status)
 -  [Function `is_content_approved`](#social_contracts_post_is_content_approved)
+-  [Function `post_subscription_gate`](#social_contracts_post_post_subscription_gate)
+-  [Function `post_subscription_service_id`](#social_contracts_post_post_subscription_service_id)
+-  [Function `post_requires_profile_subscription`](#social_contracts_post_post_requires_profile_subscription)
+-  [Function `enable_post_subscription_gate`](#social_contracts_post_enable_post_subscription_gate)
+-  [Function `disable_post_subscription_gate`](#social_contracts_post_disable_post_subscription_gate)
+-  [Function `assert_can_view_post`](#social_contracts_post_assert_can_view_post)
+-  [Function `record_post_subscription_view`](#social_contracts_post_record_post_subscription_view)
 -  [Function `create_post_admin_cap`](#social_contracts_post_create_post_admin_cap)
 
 
@@ -197,6 +207,7 @@ Implements features like comments, reposts, and quotes
 <b>use</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault">social_contracts::poc_vault</a>;
 <b>use</b> <a href="../social_contracts/profile.md#social_contracts_profile">social_contracts::profile</a>;
 <b>use</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_contracts::social_graph</a>;
+<b>use</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">social_contracts::subscription</a>;
 <b>use</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade">social_contracts::upgrade</a>;
 <b>use</b> <a href="../std/address.md#std_address">std::address</a>;
 <b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
@@ -2187,6 +2198,120 @@ Simple moderation record for tracking moderation decisions
 
 </details>
 
+<a name="social_contracts_post_PostSubscriptionGate"></a>
+
+## Struct `PostSubscriptionGate`
+
+Profile subscription gate stored as a dynamic field (Post is at the VM field-count limit).
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/post.md#social_contracts_post_PostSubscriptionGate">PostSubscriptionGate</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>service_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>enabled: bool</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_post_PostSubscriptionGateEnabledEvent"></a>
+
+## Struct `PostSubscriptionGateEnabledEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/post.md#social_contracts_post_PostSubscriptionGateEnabledEvent">PostSubscriptionGateEnabledEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>post_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>service_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>enabled: bool</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_post_PostSubscriptionAccessEvent"></a>
+
+## Struct `PostSubscriptionAccessEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/post.md#social_contracts_post_PostSubscriptionAccessEvent">PostSubscriptionAccessEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>post_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>service_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>subscription_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>subscriber: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="@Constants_0"></a>
 
 ## Constants
@@ -2921,6 +3046,15 @@ Redirected MYSO accumulates in the beneficiary's shared <code>PoCBeneficiaryVaul
 
 
 <pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_COMMENT_ATTRIBUTION_DF_KEY">COMMENT_ATTRIBUTION_DF_KEY</a>: vector&lt;u8&gt; = vector[99, 111, 109, 109, 101, 110, 116, 95, 97, 116, 116, 114, 105, 98, 117, 116, 105, 111, 110];
+</code></pre>
+
+
+
+<a name="social_contracts_post_POST_SUBSCRIPTION_GATE_DF_KEY"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_POST_SUBSCRIPTION_GATE_DF_KEY">POST_SUBSCRIPTION_GATE_DF_KEY</a>: vector&lt;u8&gt; = vector[112, 111, 115, 116, 95, 115, 117, 98, 115, 99, 114, 105, 112, 116, 105, 111, 110, 95, 103, 97, 116, 101];
 </code></pre>
 
 
@@ -7819,6 +7953,254 @@ Check if content is approved (not flagged)
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_is_content_approved">is_content_approved</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): bool {
     !<a href="../social_contracts/post.md#social_contracts_post">post</a>.removed_from_platform
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_post_subscription_gate"></a>
+
+## Function `post_subscription_gate`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_post_subscription_gate">post_subscription_gate</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../social_contracts/post.md#social_contracts_post_PostSubscriptionGate">social_contracts::post::PostSubscriptionGate</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_post_subscription_gate">post_subscription_gate</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): Option&lt;<a href="../social_contracts/post.md#social_contracts_post_PostSubscriptionGate">PostSubscriptionGate</a>&gt; {
+    <b>if</b> (!df::exists_with_type&lt;vector&lt;u8&gt;, <a href="../social_contracts/post.md#social_contracts_post_PostSubscriptionGate">PostSubscriptionGate</a>&gt;(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_POST_SUBSCRIPTION_GATE_DF_KEY">POST_SUBSCRIPTION_GATE_DF_KEY</a>)) {
+        <b>return</b> option::none()
+    };
+    option::some(*df::borrow&lt;vector&lt;u8&gt;, <a href="../social_contracts/post.md#social_contracts_post_PostSubscriptionGate">PostSubscriptionGate</a>&gt;(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_POST_SUBSCRIPTION_GATE_DF_KEY">POST_SUBSCRIPTION_GATE_DF_KEY</a>))
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_post_subscription_service_id"></a>
+
+## Function `post_subscription_service_id`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_post_subscription_service_id">post_subscription_service_id</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_post_subscription_service_id">post_subscription_service_id</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): Option&lt;ID&gt; {
+    <b>let</b> gate = <a href="../social_contracts/post.md#social_contracts_post_post_subscription_gate">post_subscription_gate</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    <b>if</b> (option::is_none(&gate)) {
+        <b>return</b> option::none()
+    };
+    <b>let</b> gate = option::destroy_some(gate);
+    <b>if</b> (!gate.enabled) {
+        <b>return</b> option::none()
+    };
+    option::some(gate.service_id)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_post_requires_profile_subscription"></a>
+
+## Function `post_requires_profile_subscription`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_post_requires_profile_subscription">post_requires_profile_subscription</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_post_requires_profile_subscription">post_requires_profile_subscription</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): bool {
+    option::is_some(&<a href="../social_contracts/post.md#social_contracts_post_post_subscription_service_id">post_subscription_service_id</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>))
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_enable_post_subscription_gate"></a>
+
+## Function `enable_post_subscription_gate`
+
+Attach a profile subscription gate to a post (post owner only; service must belong to owner).
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_enable_post_subscription_gate">enable_post_subscription_gate</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_enable_post_subscription_gate">enable_post_subscription_gate</a>(
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
+    service: &ProfileSubscriptionService,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner, <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
+    <b>assert</b>!(<a href="../social_contracts/subscription.md#social_contracts_subscription_service_profile_owner">subscription::service_profile_owner</a>(service) == <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner, <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
+    <b>assert</b>!(<a href="../social_contracts/subscription.md#social_contracts_subscription_service_is_active">subscription::service_is_active</a>(service), <a href="../social_contracts/post.md#social_contracts_post_ENoSubscriptionService">ENoSubscriptionService</a>);
+    <b>assert</b>!(
+        !df::exists_with_type&lt;vector&lt;u8&gt;, <a href="../social_contracts/post.md#social_contracts_post_PostSubscriptionGate">PostSubscriptionGate</a>&gt;(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_POST_SUBSCRIPTION_GATE_DF_KEY">POST_SUBSCRIPTION_GATE_DF_KEY</a>),
+        <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>,
+    );
+    <b>let</b> service_id = object::id(service);
+    df::add(
+        &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.id,
+        <a href="../social_contracts/post.md#social_contracts_post_POST_SUBSCRIPTION_GATE_DF_KEY">POST_SUBSCRIPTION_GATE_DF_KEY</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_PostSubscriptionGate">PostSubscriptionGate</a> {
+            service_id,
+            enabled: <b>true</b>,
+        },
+    );
+    event::emit(<a href="../social_contracts/post.md#social_contracts_post_PostSubscriptionGateEnabledEvent">PostSubscriptionGateEnabledEvent</a> {
+        post_id: object::id(<a href="../social_contracts/post.md#social_contracts_post">post</a>),
+        service_id,
+        enabled: <b>true</b>,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_disable_post_subscription_gate"></a>
+
+## Function `disable_post_subscription_gate`
+
+Remove the profile subscription gate from a post (post owner only).
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_disable_post_subscription_gate">disable_post_subscription_gate</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_disable_post_subscription_gate">disable_post_subscription_gate</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>, ctx: &<b>mut</b> TxContext) {
+    <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner, <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
+    <b>assert</b>!(
+        df::exists_with_type&lt;vector&lt;u8&gt;, <a href="../social_contracts/post.md#social_contracts_post_PostSubscriptionGate">PostSubscriptionGate</a>&gt;(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_POST_SUBSCRIPTION_GATE_DF_KEY">POST_SUBSCRIPTION_GATE_DF_KEY</a>),
+        <a href="../social_contracts/post.md#social_contracts_post_ENoSubscriptionService">ENoSubscriptionService</a>,
+    );
+    <b>let</b> gate = df::remove&lt;vector&lt;u8&gt;, <a href="../social_contracts/post.md#social_contracts_post_PostSubscriptionGate">PostSubscriptionGate</a>&gt;(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_POST_SUBSCRIPTION_GATE_DF_KEY">POST_SUBSCRIPTION_GATE_DF_KEY</a>);
+    event::emit(<a href="../social_contracts/post.md#social_contracts_post_PostSubscriptionGateEnabledEvent">PostSubscriptionGateEnabledEvent</a> {
+        post_id: object::id(<a href="../social_contracts/post.md#social_contracts_post">post</a>),
+        service_id: gate.service_id,
+        enabled: <b>false</b>,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_assert_can_view_post"></a>
+
+## Function `assert_can_view_post`
+
+Abort unless caller is post owner or holds a valid profile subscription for the gated service.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_assert_can_view_post">assert_can_view_post</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_assert_can_view_post">assert_can_view_post</a>(
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
+    service: &ProfileSubscriptionService,
+    <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &ProfileSubscription,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>let</b> sender = tx_context::sender(ctx);
+    <b>if</b> (sender == <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner) {
+        <b>return</b>
+    };
+    <b>let</b> gate = <a href="../social_contracts/post.md#social_contracts_post_post_subscription_gate">post_subscription_gate</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    <b>assert</b>!(option::is_some(&gate), <a href="../social_contracts/post.md#social_contracts_post_ENoSubscriptionService">ENoSubscriptionService</a>);
+    <b>let</b> gate = option::destroy_some(gate);
+    <b>assert</b>!(gate.enabled, <a href="../social_contracts/post.md#social_contracts_post_ENoSubscriptionService">ENoSubscriptionService</a>);
+    <b>assert</b>!(gate.service_id == object::id(service), <a href="../social_contracts/post.md#social_contracts_post_ENoSubscriptionService">ENoSubscriptionService</a>);
+    <b>assert</b>!(
+        <a href="../social_contracts/subscription.md#social_contracts_subscription_is_subscription_valid_for">subscription::is_subscription_valid_for</a>(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>, service, sender, clock),
+        <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>,
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_record_post_subscription_view"></a>
+
+## Function `record_post_subscription_view`
+
+Record a subscriber view after access check; emits <code><a href="../social_contracts/post.md#social_contracts_post_PostSubscriptionAccessEvent">PostSubscriptionAccessEvent</a></code>.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_record_post_subscription_view">record_post_subscription_view</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_record_post_subscription_view">record_post_subscription_view</a>(
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
+    service: &ProfileSubscriptionService,
+    <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &ProfileSubscription,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <a href="../social_contracts/post.md#social_contracts_post_assert_can_view_post">assert_can_view_post</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, service, <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>, clock, ctx);
+    event::emit(<a href="../social_contracts/post.md#social_contracts_post_PostSubscriptionAccessEvent">PostSubscriptionAccessEvent</a> {
+        post_id: object::id(<a href="../social_contracts/post.md#social_contracts_post">post</a>),
+        service_id: object::id(service),
+        subscription_id: object::id(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>),
+        subscriber: tx_context::sender(ctx),
+        timestamp: clock::timestamp_ms(clock),
+    });
 }
 </code></pre>
 

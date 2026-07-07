@@ -5,6 +5,7 @@
 use anyhow::Context as _;
 use anyhow::anyhow;
 use async_graphql::Context;
+use async_graphql::ID;
 use async_graphql::Object;
 use async_graphql::Result;
 use async_graphql::connection::Connection;
@@ -75,6 +76,9 @@ use crate::api::types::poc::PocBeneficiaryVault;
 use crate::api::types::poc_username_beneficiary::PocUsernameBeneficiary;
 use crate::api::types::post::{CommentSummary, Post, ReactionSummary, RepostSummary, TipSummary};
 use crate::api::types::profile::Profile;
+use crate::api::types::profile_subscription::{
+    ProfileSubscription, ProfileSubscriptionService, SubscriptionAccess,
+};
 use crate::api::types::promotion::{Promotion, PromotionTimeSeries};
 use crate::api::types::protocol_configs::ProtocolConfigs;
 use crate::api::types::service_config::ServiceConfig;
@@ -2308,7 +2312,6 @@ impl Query {
         )
     }
 
-    /// Subscription configuration. Returns null when social DB not configured or no config.
     async fn subscription_configuration(
         &self,
         ctx: &Context<'_>,
@@ -2323,6 +2326,110 @@ impl Query {
                 .map_err(Into::into)
                 .map(|opt| opt.map(SubscriptionConfig::from_row)),
         )
+    }
+
+    /// Profile subscription service by on-chain service object ID.
+    async fn profile_subscription_service(
+        &self,
+        ctx: &Context<'_>,
+        service_id: ID,
+    ) -> Option<Result<Option<ProfileSubscriptionService>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_profile_subscription_service(service_id.as_str())
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(ProfileSubscriptionService::from_row)),
+        )
+    }
+
+    /// Profile subscription by on-chain subscription object ID.
+    async fn profile_subscription(
+        &self,
+        ctx: &Context<'_>,
+        subscription_id: ID,
+    ) -> Option<Result<Option<ProfileSubscription>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_profile_subscription_by_id(subscription_id.as_str())
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(ProfileSubscription::from_row)),
+        )
+    }
+
+    /// Active profile subscriptions for a subscriber (optional service filter).
+    async fn profile_subscriptions(
+        &self,
+        ctx: &Context<'_>,
+        subscriber: MySoAddress,
+        service_id: Option<ID>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<ProfileSubscription>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100);
+        let offset = offset.unwrap_or(0);
+        let subscriber_str = subscriber.to_string();
+        let service_filter_owned = service_id.as_ref().map(|id| id.to_string());
+        let service_filter = service_filter_owned.as_deref();
+        Some(
+            reader
+                .list_active_profile_subscriptions_by_subscriber(
+                    subscriber_str.as_str(),
+                    service_filter,
+                    limit,
+                    offset,
+                )
+                .await
+                .map_err(Into::into)
+                .map(|rows| rows.into_iter().map(ProfileSubscription::from_row).collect()),
+        )
+    }
+
+    /// Whether a subscriber currently has access to a profile subscription service.
+    async fn subscription_access(
+        &self,
+        ctx: &Context<'_>,
+        subscriber: MySoAddress,
+        service_id: ID,
+    ) -> Option<Result<SubscriptionAccess, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let subscriber_str = subscriber.to_string();
+        let service_str = service_id.to_string();
+        let access_result: Result<SubscriptionAccess, RpcError> = async {
+            let has_access = reader
+                .check_profile_subscription_access(&subscriber_str, &service_str)
+                .await
+                .map_err(|e| RpcError::from(e))?;
+            let expires_at = if has_access {
+                reader
+                    .list_active_profile_subscriptions_by_subscriber(
+                        &subscriber_str,
+                        Some(service_str.as_str()),
+                        1,
+                        0,
+                    )
+                    .await
+                    .ok()
+                    .and_then(|rows| rows.first().map(|r| r.expires_at))
+            } else {
+                None
+            };
+            Ok(SubscriptionAccess::new(has_access, expires_at))
+        }
+        .await;
+        Some(access_result)
     }
 
     /// Profile configuration. Returns null when social DB not configured or no config.
