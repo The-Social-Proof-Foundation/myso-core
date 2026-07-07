@@ -693,6 +693,20 @@ module social_contracts::proof_of_creativity {
         );
     }
 
+    /// Poster reusing their own corpus match is not a derivative; skip redirect/vault paths.
+    fun clear_self_match_original_creator(
+        post_owner: address,
+        mut original_creator: Option<address>,
+    ): Option<address> {
+        if (option::is_some(&original_creator)) {
+            let oc = *option::borrow(&original_creator);
+            if (oc == post_owner) {
+                original_creator = option::none();
+            };
+        };
+        original_creator
+    }
+
     fun mint_shared_poc_badge_object(
         post_id: address,
         beneficiary_address: Option<address>,
@@ -830,6 +844,10 @@ module social_contracts::proof_of_creativity {
             } else {
                 get_threshold_for_media_type(config, media_type)
             };
+            original_creator = clear_self_match_original_creator(
+                social_contracts::post::get_post_owner(post),
+                original_creator,
+            );
             similarity_detected = highest_similarity_score >= threshold && option::is_some(&original_creator);
             
             if (similarity_detected) {
@@ -1653,6 +1671,25 @@ module social_contracts::proof_of_creativity {
     }
 
     // === Test-only functions ===
+
+    #[test_only]
+    public fun test_clear_self_match_original_creator(
+        post_owner: address,
+        original_creator: Option<address>,
+    ): Option<address> {
+        clear_self_match_original_creator(post_owner, original_creator)
+    }
+
+    #[test_only]
+    public fun test_would_apply_derivative_redirect(
+        post_owner: address,
+        original_creator: Option<address>,
+        highest_similarity_score: u64,
+        threshold: u64,
+    ): bool {
+        let cleared = clear_self_match_original_creator(post_owner, original_creator);
+        highest_similarity_score >= threshold && option::is_some(&cleared)
+    }
 
     #[test_only]
     public fun test_bps_to_redirect_percent(bps: u64): u64 {

@@ -119,4 +119,22 @@ module social_contracts::proof_of_creativity_tests {
     fun test_assert_embed_audio_flag_requires_video() {
         poc::test_assert_embed_audio_derivative_media_type(true, MEDIA_IMAGE);
     }
+
+    #[test]
+    fun test_self_match_clears_original_creator() {
+        let owner = @0xA11CE;
+        let cleared = poc::test_clear_self_match_original_creator(owner, option::some(owner));
+        assert!(option::is_none(&cleared));
+        let other = @0xB0B;
+        let kept = poc::test_clear_self_match_original_creator(owner, option::some(other));
+        assert!(option::is_some(&kept));
+        assert!(*option::borrow(&kept) == other);
+    }
+
+    #[test]
+    fun test_self_match_skips_derivative_redirect() {
+        let owner = @0xA11CE;
+        assert!(!poc::test_would_apply_derivative_redirect(owner, option::some(owner), 100, 95));
+        assert!(poc::test_would_apply_derivative_redirect(owner, option::some(@0xB0B), 100, 95));
+    }
 }

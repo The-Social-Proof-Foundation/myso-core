@@ -238,6 +238,38 @@ pub struct NewSptTransaction {
     pub organization_id: Option<String>,
 }
 
+impl NewSptTransaction {
+    /// Maps a reservation ledger row into `spt_transactions` (pre-launch MYSO activity).
+    pub fn from_reservation(reservation: &NewSptReservation, pool_id: String) -> Self {
+        let creator_fee = reservation.creator_fee.unwrap_or(0);
+        let platform_fee = reservation.platform_fee.unwrap_or(0);
+        let treasury_fee = reservation.treasury_fee.unwrap_or(0);
+        let transaction_type = if reservation.amount < 0 {
+            TRANSACTION_TYPE_RESERVATION_WITHDRAW.to_string()
+        } else {
+            TRANSACTION_TYPE_RESERVATION.to_string()
+        };
+        Self {
+            pool_id,
+            transaction_type,
+            sender: reservation.reserver_address.clone(),
+            amount: 0,
+            myso_amount: reservation.amount,
+            fee_amount: creator_fee
+                .saturating_add(platform_fee)
+                .saturating_add(treasury_fee),
+            creator_fee,
+            platform_fee,
+            treasury_fee,
+            price: 0,
+            created_at: reservation.created_at,
+            time: reservation.time,
+            transaction_id: reservation.transaction_id.clone(),
+            organization_id: reservation.organization_id.clone(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
 #[diesel(table_name = spt_reservation_pools)]
 pub struct NewSptReservationPool {
@@ -1028,5 +1060,55 @@ mod spt_config_merge_tests {
         assert_eq!(merged.admin_address, "0xkill_admin");
         assert_eq!(merged.reason, "halt");
         assert_eq!(merged.updated_by, "0xconfig_admin");
+    }
+}
+
+#[cfg(test)]
+mod new_spt_transaction_from_reservation_tests {
+    use super::{NewSptReservation, NewSptTransaction, TRANSACTION_TYPE_RESERVATION,
+                TRANSACTION_TYPE_RESERVATION_WITHDRAW};
+
+    fn sample_reservation(amount: i64) -> NewSptReservation {
+        NewSptReservation {
+            pool_id: "reservation_pool_0xabc".to_string(),
+            reserver_address: "0xreserver".to_string(),
+            amount,
+            reserved_at: 1_700_000_000_000,
+            created_at: 1_700_000_000_100,
+            fee_amount: Some(75_000_000),
+            creator_fee: Some(56_250_000),
+            platform_fee: Some(0),
+            treasury_fee: Some(18_750_000),
+            time: chrono::DateTime::from_timestamp_millis(1_700_000_000_000).unwrap(),
+            transaction_id: "tx:0".to_string(),
+            organization_id: Some("org-1".to_string()),
+        }
+    }
+
+    #[test]
+    fn deposit_maps_to_reservation_type_with_myso_amount() {
+        let reservation = sample_reservation(4_925_000_000);
+        let tx = NewSptTransaction::from_reservation(&reservation, "0xpool".to_string());
+        assert_eq!(tx.transaction_type, TRANSACTION_TYPE_RESERVATION);
+        assert_eq!(tx.pool_id, "0xpool");
+        assert_eq!(tx.sender, "0xreserver");
+        assert_eq!(tx.amount, 0);
+        assert_eq!(tx.myso_amount, 4_925_000_000);
+        assert_eq!(tx.fee_amount, 75_000_000);
+        assert_eq!(tx.creator_fee, 56_250_000);
+        assert_eq!(tx.platform_fee, 0);
+        assert_eq!(tx.treasury_fee, 18_750_000);
+        assert_eq!(tx.price, 0);
+        assert_eq!(tx.created_at, 1_700_000_000_100);
+        assert_eq!(tx.transaction_id, "tx:0");
+        assert_eq!(tx.organization_id.as_deref(), Some("org-1"));
+    }
+
+    #[test]
+    fn withdraw_maps_to_reservation_withdraw_with_negative_myso_amount() {
+        let reservation = sample_reservation(-1_000_000_000);
+        let tx = NewSptTransaction::from_reservation(&reservation, "0xpool".to_string());
+        assert_eq!(tx.transaction_type, TRANSACTION_TYPE_RESERVATION_WITHDRAW);
+        assert_eq!(tx.myso_amount, -1_000_000_000);
     }
 }

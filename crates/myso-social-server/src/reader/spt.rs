@@ -217,12 +217,14 @@ pub(crate) async fn list_spt_reservation_pools(
             SELECT pool_id, COALESCE(SUM(myso_amount), 0)::bigint AS vol
             FROM spt_transactions
             WHERE time > NOW() - INTERVAL '24 hours'
+              AND transaction_type IN ('BUY', 'SELL')
             GROUP BY pool_id
         ),
         tx_vol_previous AS (
             SELECT pool_id, COALESCE(SUM(myso_amount), 0)::bigint AS vol
             FROM spt_transactions
             WHERE time BETWEEN NOW() - INTERVAL '48 hours' AND NOW() - INTERVAL '24 hours'
+              AND transaction_type IN ('BUY', 'SELL')
             GROUP BY pool_id
         ),
         res_vol_current AS (
@@ -650,6 +652,7 @@ pub(crate) async fn get_spt_market_sentiment(db: &Db) -> Result<serde_json::Valu
                     MAX(ABS(myso_amount))::bigint AS myso_abs
                 FROM spt_transactions
                 WHERE time > NOW() - INTERVAL '24 hours'
+                  AND transaction_type IN ('BUY', 'SELL')
                 GROUP BY transaction_id, pool_id, transaction_type, sender, amount
             ) buy_sell_groups
         ),
@@ -659,6 +662,7 @@ pub(crate) async fn get_spt_market_sentiment(db: &Db) -> Result<serde_json::Valu
                 SELECT MAX(ABS(myso_amount))::bigint AS myso_abs
                 FROM spt_transactions
                 WHERE time BETWEEN NOW() - INTERVAL '48 hours' AND NOW() - INTERVAL '24 hours'
+                  AND transaction_type IN ('BUY', 'SELL')
                 GROUP BY transaction_id, pool_id, transaction_type, sender, amount
             ) prev_groups
         ),

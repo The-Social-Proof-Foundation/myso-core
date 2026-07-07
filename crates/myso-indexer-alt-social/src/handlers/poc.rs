@@ -36,11 +36,47 @@ fn transaction_id_from_event_id(event_id: &str) -> String {
     event_id.split(':').next().unwrap_or(event_id).to_string()
 }
 
+/// Matches Move `DEFAULT_*_THRESHOLD` (95 on a 0–100 scale) when no `poc_configuration` row exists.
+pub(crate) const DEFAULT_POC_SIMILARITY_THRESHOLD: i64 = 95;
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct PocThresholds {
+    pub image_threshold: i64,
+    pub video_threshold: i64,
+    pub audio_threshold: i64,
+}
+
+impl Default for PocThresholds {
+    fn default() -> Self {
+        Self {
+            image_threshold: DEFAULT_POC_SIMILARITY_THRESHOLD,
+            video_threshold: DEFAULT_POC_SIMILARITY_THRESHOLD,
+            audio_threshold: DEFAULT_POC_SIMILARITY_THRESHOLD,
+        }
+    }
+}
+
+/// GraphQL-facing semantics: similarity detected when oracle score meets the media-type threshold.
+pub(crate) fn poc_similarity_detected(
+    media_type: i16,
+    highest_similarity_score: i64,
+    thresholds: &PocThresholds,
+) -> bool {
+    let threshold = match media_type {
+        1 => thresholds.image_threshold,
+        2 => thresholds.video_threshold,
+        3 => thresholds.audio_threshold,
+        _ => return false,
+    };
+    highest_similarity_score >= threshold
+}
+
 #[derive(Debug, Deserialize)]
 struct AnalysisSubmittedEvent {
     post_id: String,
     media_type: u8,
-    similarity_detected: bool,
+    #[serde(rename = "similarity_detected", default)]
+    chain_similarity_detected: bool,
     #[serde(deserialize_with = "deserialize_u64")]
     highest_similarity_score: u64,
     oracle_address: String,
@@ -351,7 +387,11 @@ fn process_analysis_submitted_event(
     let analysis = NewPocAnalysisResult {
         post_id: ev.post_id.clone(),
         media_type: ev.media_type as i16,
-        similarity_detected: ev.similarity_detected,
+        similarity_detected: poc_similarity_detected(
+            ev.media_type as i16,
+            ev.highest_similarity_score as i64,
+            &PocThresholds::default(),
+        ),
         highest_similarity_score: ev.highest_similarity_score as i64,
         oracle_address: ev.oracle_address.clone(),
         original_creator: None,
@@ -1222,5 +1262,37 @@ mod tests {
             }
             _ => panic!("expected vault claim row"),
         }
+    }
+}
+
+#[cfg(test)]
+mod similarity_detected_tests {
+    use super::{poc_similarity_detected, PocThresholds};
+
+    #[test]
+    fn score_at_or_above_default_threshold_is_detected() {
+        let thresholds = PocThresholds::default();
+        assert!(poc_similarity_detected(1, 95, &thresholds));
+        assert!(poc_similarity_detected(1, 100, &thresholds));
+    }
+
+    #[test]
+    fn score_below_threshold_not_detected() {
+        let thresholds = PocThresholds::default();
+        assert!(!poc_similarity_detected(1, 50, &thresholds));
+        assert!(!poc_similarity_detected(1, 94, &thresholds));
+    }
+
+    #[test]
+    fn per_media_type_threshold_selection() {
+        let thresholds = PocThresholds {
+            image_threshold: 90,
+            video_threshold: 80,
+            audio_threshold: 70,
+        };
+        assert!(poc_similarity_detected(2, 80, &thresholds));
+        assert!(!poc_similarity_detected(2, 79, &thresholds));
+        assert!(poc_similarity_detected(3, 70, &thresholds));
+        assert!(!poc_similarity_detected(4, 100, &thresholds));
     }
 }

@@ -875,6 +875,7 @@ impl Handler for SptHandler {
                     let reserver_org = r.organization_id.clone();
                     let reserver_amount = r.amount;
                     let reserver_at = r.reserved_at;
+                    let spt_transaction = NewSptTransaction::from_reservation(&r, pool_id.clone());
                     let reservation_inserted = diesel::insert_into(spt_reservations::table)
                         .values(r)
                         .on_conflict((spt_reservations::transaction_id, spt_reservations::time))
@@ -909,6 +910,11 @@ impl Handler for SptHandler {
                             )
                             .await?;
                         }
+
+                        total += diesel::insert_into(spt_transactions::table)
+                            .values(&spt_transaction)
+                            .execute(conn)
+                            .await?;
                     } else {
                         tracing::debug!(
                             associated_id = %associated_id,

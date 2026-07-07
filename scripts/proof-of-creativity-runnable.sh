@@ -29,6 +29,9 @@
 # Environment (optional flow flags only):
 #   ASSUME_YES=1, DRY_RUN=1, POC_AUTO_REFRESH=1, POC_NO_AUTO_REFRESH=1
 #   POC_SKIP_USERNAME=1, POC_SKIP_DISPUTE=1, POC_INCLUDE_SPT=1, POC_INCLUDE_PROFILE_RESERVATION=1
+#   POC_INCLUDE_POST_RESERVATION=1, POC_INCLUDE_DISPUTE_REANALYZE=1
+#   POC_ORACLE_URL=http://127.0.0.1:8000, POC_ORACLE_NETWORK=localnet, POC_USE_DIRECT_MOVE=0
+#   POC_E2E_SUBMIT_OVERRIDE=1 (localnet upload score/creator overrides)
 #   POC_NO_PLATFORM=1, POC_REQUIRE_PLATFORM=1, POC_SKIP_VAULT_FUNDING=1, POC_FORCE_UPDATE_CONFIG=1
 #
 # No-platform (--run-all without PLATFORM_OBJECT_ID): preflight + username beneficiary PoC only.
@@ -40,6 +43,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 # shellcheck source=lib/runnable-summary-common.sh
 source "${SCRIPT_DIR}/lib/runnable-summary-common.sh"
+# shellcheck source=lib/poc-oracle-http.sh
+source "${SCRIPT_DIR}/lib/poc-oracle-http.sh"
 
 readonly DEFAULT_PKG_SOCIAL='0x00000000000000000000000000000000000000000000000000000000000050c1'
 readonly DEFAULT_ORDERBOOK_PKG='0x000000000000000000000000000000000000000000000000000000000000b0c'
@@ -2277,7 +2282,7 @@ ptb_option_address_from_arg() {
     printf '%s' "$arg"
 }
 
-analyze_post() {
+analyze_post_direct() {
     local post_id="$1" media_type="$2" score="$3" original_creator_arg="$4" \
         deriv_target="$5" embed_audio="$6" apply_explicit="$7" explicit_outcome="$8"
     local sender="${9:-}"
@@ -2307,6 +2312,14 @@ analyze_post() {
     digest="$(extract_tx_digest "$out")"
     ANALYZE_POST_LAST_DIGEST="${digest:-}"
     [[ -n "$ANALYZE_POST_LAST_DIGEST" ]]
+}
+
+analyze_post() {
+    if [[ "${POC_USE_DIRECT_MOVE:-0}" == "1" ]]; then
+        analyze_post_direct "$@"
+        return $?
+    fi
+    poc_oracle_analyze_post "$@"
 }
 
 tip_post_as_tipper() {
@@ -2431,31 +2444,22 @@ run_username_beneficiary_flow() {
     ensure_claim_wallet_without_profile || return 1
     POC_UB_LAST_CLAIM_WALLET="$CREATOR_ADDRESS"
     POC_UB_LAST_CLAIM_ORACLE="$USERNAME_CLAIM_ORACLE"
-    log_step "1b claim_username_beneficiary oracle=$USERNAME_CLAIM_ORACLE wallet=$CREATOR_ADDRESS"
-    local claim_digest
-    out="$(SKIP_CONFIRM_RUN=1 run_myso_call_as "$USERNAME_CLAIM_ORACLE" proof_of_creativity claim_username_beneficiary \
-        --args "@${POC_CONFIG_ID}" "@${PROFILE_CONFIG_ID}" \
-        "@${POC_USERNAME_BENEFICIARY_DIRECTORY_ID}" "@${shard_id}" \
-        "@${USERNAME_REGISTRY_ID}" "@${MEMORY_REGISTRY_ID}" "@${AI_CREDIT_CONFIG_ID}" \
-        "@${beneficiary_id}" \
-        0x "$x_handle" \
-        "$(bytes_to_hex_arg "Creator")" "$(bytes_to_hex_arg "bio")" 0x 0x \
-        "$CREATOR_ADDRESS" "@${CLOCK_ID}")" || {
-        echo "claim_username_beneficiary failed — see myso client error above" >&2
-        [[ -n "${out:-}" ]] && echo "$out" | tail -n 20 >&2
+    log_step "1b claim_username_beneficiary via oracle wallet=$CREATOR_ADDRESS"
+    claim_digest="$(poc_oracle_claim_beneficiary "$identity_hash" "$CREATOR_ADDRESS" "$beneficiary_id" "$ub_username" \
+        "Creator" "bio")" || {
+        echo "oracle claim_username_beneficiary failed" >&2
         return 1
     }
-    claim_digest="$(extract_tx_digest "$out")"
-    [[ -n "$claim_digest" ]] || {
-        echo "Could not parse transaction digest from claim_username_beneficiary output" >&2
-        [[ -n "${out:-}" ]] && echo "$out" | tail -n 20 >&2
-        return 1
-    }
-    assert_tx_success "$out" "$claim_digest" || {
-        echo "claim_username_beneficiary tx $claim_digest did not succeed" >&2
-        return 1
-    }
-    verify_username_beneficiary_claimed "$claim_digest" "$beneficiary_id" "$ub_username" || return 1
+    if [[ -n "$claim_digest" && "$claim_digest" != unknown* ]]; then
+        verify_username_beneficiary_claimed "$claim_digest" "$beneficiary_id" "$ub_username" || return 1
+    else
+        status="$(username_beneficiary_status "$beneficiary_id")"
+        [[ "$status" == "2" ]] || {
+            echo "beneficiary $beneficiary_id status=$status (expected 2=CLAIMED)" >&2
+            return 1
+        }
+        log_step "1b claim_username_beneficiary OK username=$ub_username beneficiary=$beneficiary_id"
+    fi
     POC_UB_LAST_CLAIM_PROFILE_ID="$(extract_created_object_by_type "$claim_digest" "profile::Profile")"
     [[ -n "$POC_UB_LAST_CLAIM_PROFILE_ID" ]] || POC_UB_LAST_CLAIM_PROFILE_ID="$(extract_created_object_by_type "$claim_digest" "Profile")"
     [[ -n "$POC_UB_LAST_CLAIM_PROFILE_ID" ]] || POC_UB_LAST_CLAIM_PROFILE_ID="$(gql_profile_id_for_address "$CREATOR_ADDRESS" 2>/dev/null || true)"
@@ -2751,6 +2755,109 @@ run_dispute_flow() {
     print_poc_dispute_flow_summary
 }
 
+run_dispute_overturn_reanalyze_flow() {
+    require_platform_mode || return 1
+    require_session_fields POC_CONFIG_ID POC_REGISTRY_ID ECOSYSTEM_TREASURY_ID || return 1
+    local out digest post_id dispute_id coin vote_coin oracle reanalyze_digest
+    oracle="$(resolve_myso_active_address)"
+
+    log_step "4a Disputable post (overturn + re-analyze)"
+    out="$(create_post_poc_enabled "$(literal_move_string "PoC overturn ${POC_RUN_ID}")")"
+    digest="$(extract_tx_digest "$out")"
+    post_id="$(extract_created_object_by_type "$digest" "post::Post")"
+    [[ -n "$post_id" ]] || post_id="$(extract_created_object_by_type "$digest" "Post")"
+    analyze_post "$post_id" 1 100 "some($CREATOR_ADDRESS)" 1 false false 0 || return 1
+
+    coin="$(resolve_gas_coin_for_address "$oracle")"
+    [[ -n "$coin" ]] || { echo "No coin for dispute fee" >&2; return 1; }
+
+    log_step "4b submit_poc_dispute"
+    out="$(SKIP_CONFIRM_RUN=1 run_myso_call proof_of_creativity submit_poc_dispute \
+        --args "@${POC_CONFIG_ID}" "@${POC_REGISTRY_ID}" "@${ECOSYSTEM_TREASURY_ID}" "@${post_id}" \
+        "$(literal_move_string "$DEFAULT_DISPUTE_EVIDENCE")" "$coin" "@${CLOCK_ID}")"
+    digest="$(extract_tx_digest "$out")"
+    dispute_id="$(extract_created_object_by_type "$digest" "PoCDispute")"
+
+    vote_coin="$(resolve_gas_coin_for_address "$oracle")"
+    [[ -n "$vote_coin" && -n "$dispute_id" ]] || { echo "Missing dispute or vote coin" >&2; return 1; }
+
+    log_step "4c vote_on_dispute (overturn)"
+    SKIP_CONFIRM_RUN=1 run_myso_call proof_of_creativity vote_on_dispute \
+        --args "@${POC_CONFIG_ID}" "@${POC_REGISTRY_ID}" "@${dispute_id}" 2 "$vote_coin" "@${CLOCK_ID}"
+
+    log_step "4d sleep for voting_duration_ms (3s + buffer)"
+    sleep 4
+
+    log_step "4e resolve_dispute_voting (expect clear_poc_data)"
+    SKIP_CONFIRM_RUN=1 run_myso_call proof_of_creativity resolve_dispute_voting \
+        --args "@${dispute_id}" "@${post_id}" "@${CLOCK_ID}"
+
+    log_step "4f oracle re-analyze after overturn (force_reanalyze)"
+    export MYSO_POC_ALLOW_FORCE_RESUBMIT=1
+    reanalyze_digest="$(poc_oracle_analyze_post "$post_id" 1 50 none 0 false false 0 "" true)" || return 1
+    log_step "4f re-analyze digest=$reanalyze_digest"
+    print_poc_dispute_flow_summary
+}
+
+run_post_reservation_poc_flow() {
+    require_platform_mode || return 1
+    require_session_fields TOKEN_REGISTRY_ID SOCIAL_PROOF_TOKENS_CONFIG_ID ECOSYSTEM_TREASURY_ID \
+        POC_CONFIG_ID POC_REGISTRY_ID POC_VAULT_DIRECTORY_ID PLATFORM_REGISTRY_ID \
+        PLATFORM_OBJECT_ID BLOCK_LIST_REGISTRY_ID CLOCK_ID || return 1
+    ensure_spt_trading_enabled || return 1
+
+    local out digest post_id pool_id vault_id reserve_amount pay_amount gross
+    reserve_amount="${RESERVE_AMOUNT:-$DEFAULT_RESERVE_AMOUNT}"
+    pay_amount="${RESERVE_PAY_AMOUNT:-$(( reserve_amount + 200000000 ))}"
+    gross="$reserve_amount"
+
+    log_step "Post reservation PoC: create post + oracle escrow analyze"
+    out="$(create_post_poc_enabled "$(literal_move_string "PoC reservation ${POC_RUN_ID}")")"
+    digest="$(extract_tx_digest "$out")"
+    post_id="$(extract_created_object_by_type "$digest" "post::Post")"
+    [[ -n "$post_id" ]] || post_id="$(extract_created_object_by_type "$digest" "Post")"
+    analyze_post "$post_id" 1 100 "some($CREATOR_ADDRESS)" 1 false false 0 || return 1
+
+    vault_id="$(resolve_beneficiary_vault_id "$ANALYZE_POST_LAST_DIGEST" "$(normalize_hex_id "$CREATOR_ADDRESS")")" || {
+        echo "Could not resolve beneficiary vault for post reservation flow" >&2
+        return 1
+    }
+
+    log_step "create_reservation_pool_for_post post=$post_id"
+    out="$(SKIP_CONFIRM_RUN=1 run_myso_call social_proof_tokens create_reservation_pool_for_post \
+        --args "@${TOKEN_REGISTRY_ID}" "@${SOCIAL_PROOF_TOKENS_CONFIG_ID}" "@${post_id}" "@${CLOCK_ID}")"
+    digest="$(extract_tx_digest "$out")"
+    pool_id="$(extract_created_object_by_type "$digest" "ReservationPoolObject")"
+    [[ -n "$pool_id" ]] || pool_id="$(extract_created_object_by_type "$digest" "ReservationPool")"
+    [[ -n "$pool_id" ]] || { echo "Could not find reservation pool" >&2; return 1; }
+
+    ensure_tipper_memory_account || return 1
+    local ref_token ref_spt ref_pool ref_treasury ref_post ref_vault ref_clk
+    ref_token="$(ptb_shared_ref "$TOKEN_REGISTRY_ID")" || return 1
+    ref_spt="$(ptb_shared_ref "$SOCIAL_PROOF_TOKENS_CONFIG_ID")" || return 1
+    ref_pool="$(ptb_shared_ref "$pool_id")" || return 1
+    ref_treasury="$(ptb_shared_ref "$ECOSYSTEM_TREASURY_ID")" || return 1
+    ref_post="$(ptb_shared_ref "$post_id")" || return 1
+    ref_vault="$(ptb_shared_ref "$vault_id")" || return 1
+    ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || return 1
+
+    log_step "reserve_towards_post gross=$gross vault=$vault_id"
+    SKIP_CONFIRM_RUN=1 invoke_ptb \
+        --split-coins gas "[${pay_amount}]" \
+        --assign pay_coin \
+        --move-call "${PKG_SOCIAL}::social_proof_tokens::reserve_towards_post" \
+        "$ref_token" "$ref_spt" "$POC_MIN_VAULT_DEPOSIT" \
+        "$ref_pool" "$ref_treasury" "$ref_post" "$ref_vault" pay_coin.0 "$gross" "$ref_clk" || return 1
+
+    log_step "withdraw_reservation_for_post gross=$gross"
+    SKIP_CONFIRM_RUN=1 invoke_ptb \
+        --move-call "${PKG_SOCIAL}::social_proof_tokens::withdraw_reservation_for_post" \
+        "$ref_token" "$ref_spt" "$POC_MIN_VAULT_DEPOSIT" \
+        "$ref_pool" "$ref_treasury" "$ref_post" "$ref_vault" "$gross" "$ref_clk" || return 1
+
+    log_step "Post reservation PoC flow completed post=$post_id vault=$vault_id"
+}
+
 run_profile_reservation_flow() {
     require_session_fields "${REQUIRED_SPT_RESERVATION_KEYS[@]}" CLOCK_ID || return 1
     ensure_spt_trading_enabled || return 1
@@ -2810,8 +2917,14 @@ run_all_e2e() {
         if [[ "${POC_SKIP_DISPUTE:-0}" != 1 ]]; then
             run_dispute_flow
         fi
+        if [[ "${POC_INCLUDE_DISPUTE_REANALYZE:-0}" == 1 ]]; then
+            run_dispute_overturn_reanalyze_flow
+        fi
         if [[ "${POC_INCLUDE_PROFILE_RESERVATION:-0}" == 1 ]]; then
             run_profile_reservation_flow
+        fi
+        if [[ "${POC_INCLUDE_POST_RESERVATION:-0}" == 1 ]]; then
+            run_post_reservation_poc_flow
         fi
     fi
     save_session_state

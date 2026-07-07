@@ -925,12 +925,41 @@ async fn resolve_attribution_organization_id(
     Ok(())
 }
 
+async fn load_latest_poc_thresholds(conn: &mut Connection<'_>) -> poc::PocThresholds {
+    use diesel::QueryableByName;
+    use diesel::sql_types::BigInt;
+
+    #[derive(QueryableByName)]
+    struct ThresholdRow {
+        #[diesel(sql_type = BigInt)]
+        image_threshold: i64,
+        #[diesel(sql_type = BigInt)]
+        video_threshold: i64,
+        #[diesel(sql_type = BigInt)]
+        audio_threshold: i64,
+    }
+
+    diesel::sql_query(
+        "SELECT image_threshold, video_threshold, audio_threshold \
+         FROM poc_configuration ORDER BY time DESC LIMIT 1",
+    )
+    .get_result::<ThresholdRow>(conn)
+    .await
+    .map(|row| poc::PocThresholds {
+        image_threshold: row.image_threshold,
+        video_threshold: row.video_threshold,
+        audio_threshold: row.audio_threshold,
+    })
+    .unwrap_or_default()
+}
+
 #[async_trait]
 impl Handler for PostsHandler {
     async fn commit<'a>(values: &[Self::Value], conn: &mut Connection<'a>) -> Result<usize> {
         use diesel::sql_query;
         use diesel::sql_types::{Bool, Int2, Nullable};
 
+        let poc_thresholds = load_latest_poc_thresholds(conn).await;
         let mut total = 0;
         for row in values {
             match row {
@@ -1638,8 +1667,14 @@ impl Handler for PostsHandler {
                         .await?;
                 }
                 PostRow::PocAnalysisResult(r) => {
+                    let mut row = r.clone();
+                    row.similarity_detected = poc::poc_similarity_detected(
+                        row.media_type,
+                        row.highest_similarity_score,
+                        &poc_thresholds,
+                    );
                     total += diesel::insert_into(poc_analysis_results::table)
-                        .values(r)
+                        .values(&row)
                         .execute(conn)
                         .await?;
                 }
@@ -1648,6 +1683,16 @@ impl Handler for PostsHandler {
                         .values(r)
                         .execute(conn)
                         .await?;
+                    total += diesel::sql_query(
+                        "UPDATE poc_analysis_results \
+                         SET original_creator = $1 \
+                         WHERE post_id = $2 AND transaction_id = $3 AND original_creator IS NULL",
+                    )
+                    .bind::<Text, _>(&r.original_post_id)
+                    .bind::<Text, _>(&r.accused_post_id)
+                    .bind::<Text, _>(&r.transaction_id)
+                    .execute(conn)
+                    .await?;
                 }
                 PostRow::PocDispute(d) => {
                     total += diesel::insert_into(poc_disputes::table)
@@ -2348,5 +2393,207 @@ mod promotion_view_commit_tests {
             .await
             .expect("budget event count");
         assert_eq!(budget_events, 1);
+    }
+}
+
+#[cfg(test)]
+mod poc_analysis_result_commit_tests {
+    use chrono::TimeZone;
+    use diesel::ExpressionMethods;
+    use diesel::QueryDsl;
+    use diesel_async::RunQueryDsl;
+    use myso_indexer_alt_framework::postgres::handler::Handler;
+    use myso_indexer_alt_social_schema::MIGRATIONS;
+    use myso_indexer_alt_social_schema::models::{NewPocAnalysisResult, NewPocRevenueRedirection, NewPost};
+    use myso_indexer_alt_social_schema::schema::{poc_analysis_results, poc_revenue_redirections, posts};
+    use myso_pg_db::temp::TempDb;
+    use myso_pg_db::Db;
+
+    use super::PostRow;
+    use super::PostsHandler;
+
+    fn addr_hex(id: u8) -> String {
+        format!("0x{:064x}", id)
+    }
+
+    fn minimal_post(post_id: &str, tx_id: &str) -> NewPost {
+        let created_at = 1_700_000_000_000i64;
+        let time = chrono::Utc.timestamp_millis_opt(created_at).unwrap();
+        NewPost {
+            post_id: post_id.to_string(),
+            owner: addr_hex(10),
+            profile_id: addr_hex(11),
+            content: "poc test post".to_string(),
+            media_urls: None,
+            mentions: None,
+            metadata_json: None,
+            post_type: "standard".to_string(),
+            parent_post_id: None,
+            created_at,
+            updated_at: None,
+            deleted_at: None,
+            reaction_count: 0,
+            comment_count: 0,
+            repost_count: 0,
+            tips_received: 0,
+            total_tip_volume: 0,
+            removed_from_platform: false,
+            removed_by: None,
+            transaction_id: tx_id.to_string(),
+            time,
+            mydata_id: None,
+            revenue_recipient: None,
+            poc_id: None,
+            poc_reasoning: None,
+            poc_evidence_urls: None,
+            poc_similarity_score: None,
+            poc_media_type: None,
+            poc_oracle_address: None,
+            poc_analyzed_at: None,
+            poc_outcome: None,
+            poc_redirection_kind: None,
+            poc_disputes_submitted: 0,
+            revenue_redirect_to: None,
+            revenue_redirect_percentage: None,
+            requires_subscription: None,
+            subscription_service_id: None,
+            subscription_price: None,
+            encrypted_content_hash: None,
+            promotion_id: None,
+            enable_spt: false,
+            enable_poc: true,
+            enable_spot: false,
+            spot_id: None,
+            spt_id: None,
+            platform_id: None,
+            permissions: None,
+            actor_address: None,
+            sub_agent_id: None,
+            action_identity_class: None,
+            organization_id: None,
+        }
+    }
+
+    async fn setup_temp_db() -> Option<Db> {
+        let temp_db = TempDb::new().ok()?;
+        let store = Db::for_write(temp_db.database().url().clone(), Default::default())
+            .await
+            .ok()?;
+        {
+            let mut probe = store.connect().await.ok()?;
+            diesel::sql_query("CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE")
+                .execute(&mut probe)
+                .await
+                .ok()?;
+        }
+        store.run_migrations(Some(&MIGRATIONS)).await.ok()?;
+        Some(store)
+    }
+
+    #[tokio::test]
+    async fn analysis_commit_derives_similarity_detected_from_score() {
+        let Some(store) = setup_temp_db().await else {
+            return;
+        };
+
+        let post_id = addr_hex(2);
+        let tx_id = "tx:analysis:0";
+        let mut conn = store.connect().await.expect("connection");
+        diesel::insert_into(posts::table)
+            .values(minimal_post(&post_id, tx_id))
+            .execute(&mut conn)
+            .await
+            .expect("insert post");
+
+        let analysis_row = PostRow::PocAnalysisResult(NewPocAnalysisResult {
+            post_id: post_id.clone(),
+            media_type: 1,
+            similarity_detected: false,
+            highest_similarity_score: 100,
+            oracle_address: addr_hex(5),
+            original_creator: None,
+            analysis_timestamp: 1_700_000_001_000,
+            transaction_id: tx_id.to_string(),
+            reasoning: None,
+            evidence_urls: None,
+        });
+        PostsHandler::commit(&[analysis_row], &mut conn)
+            .await
+            .expect("commit analysis");
+
+        let detected: bool = poc_analysis_results::table
+            .filter(poc_analysis_results::post_id.eq(&post_id))
+            .select(poc_analysis_results::similarity_detected)
+            .first(&mut conn)
+            .await
+            .expect("analysis row");
+        assert!(detected);
+    }
+
+    #[tokio::test]
+    async fn revenue_redirection_commit_populates_original_creator_on_analysis() {
+        let Some(store) = setup_temp_db().await else {
+            return;
+        };
+
+        let accused_post_id = addr_hex(2);
+        let original_post_id = addr_hex(3);
+        let tx_id = "tx:redirect:0";
+        let mut conn = store.connect().await.expect("connection");
+        diesel::insert_into(posts::table)
+            .values(minimal_post(&accused_post_id, tx_id))
+            .execute(&mut conn)
+            .await
+            .expect("insert accused post");
+        diesel::insert_into(posts::table)
+            .values(minimal_post(&original_post_id, "tx:original:0"))
+            .execute(&mut conn)
+            .await
+            .expect("insert original post");
+
+        let rows = [
+            PostRow::PocAnalysisResult(NewPocAnalysisResult {
+                post_id: accused_post_id.clone(),
+                media_type: 1,
+                similarity_detected: false,
+                highest_similarity_score: 100,
+                oracle_address: addr_hex(5),
+                original_creator: None,
+                analysis_timestamp: 1_700_000_001_000,
+                transaction_id: tx_id.to_string(),
+                reasoning: None,
+                evidence_urls: None,
+            }),
+            PostRow::PocRevenueRedirection(NewPocRevenueRedirection {
+                redirection_id: accused_post_id.clone(),
+                accused_post_id: accused_post_id.clone(),
+                original_post_id: original_post_id.clone(),
+                redirect_percentage: 50,
+                similarity_score: 100,
+                created_at: 1_700_000_002_000,
+                removed: false,
+                removed_at: None,
+                transaction_id: tx_id.to_string(),
+            }),
+        ];
+        PostsHandler::commit(&rows, &mut conn)
+            .await
+            .expect("commit analysis and redirect");
+
+        let creator: Option<String> = poc_analysis_results::table
+            .filter(poc_analysis_results::post_id.eq(&accused_post_id))
+            .select(poc_analysis_results::original_creator)
+            .first(&mut conn)
+            .await
+            .expect("analysis row");
+        assert_eq!(creator.as_deref(), Some(original_post_id.as_str()));
+
+        let redirect_count: i64 = poc_revenue_redirections::table
+            .filter(poc_revenue_redirections::transaction_id.eq(tx_id))
+            .count()
+            .get_result(&mut conn)
+            .await
+            .expect("redirect count");
+        assert_eq!(redirect_count, 1);
     }
 }

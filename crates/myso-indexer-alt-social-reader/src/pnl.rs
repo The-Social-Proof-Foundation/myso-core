@@ -152,6 +152,7 @@ async fn profile_pnl_one_window(
         SELECT
             (SELECT COALESCE(SUM(-myso_amount), 0)::bigint FROM spt_transactions
              WHERE sender = $1
+               AND transaction_type IN ('BUY', 'SELL')
                AND ($2::bigint < 0 OR time >= (NOW() - ($2::bigint * INTERVAL '1 day')))) AS swap_net_myso,
             (SELECT COALESCE(SUM(-amount), 0)::bigint FROM spt_reservations
              WHERE reserver_address = $1

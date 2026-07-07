@@ -18,6 +18,7 @@
 #   ASSUME_YES=1 ./scripts/poc-oracle-post-runnable.sh --run-all
 #   ASSUME_YES=1 ./scripts/poc-oracle-post-runnable.sh --tip-post
 #   ASSUME_YES=1 ./scripts/poc-oracle-post-runnable.sh --reserve-post
+#   ASSUME_YES=1 ./scripts/poc-oracle-post-runnable.sh --self-match-analyze
 #   ./scripts/poc-oracle-post-runnable.sh   # interactive menu
 
 set -euo pipefail
@@ -29,8 +30,10 @@ SOCIAL_SESSION_SAVE_PATH="$REPO_ROOT/network.config/poc-oracle/poc-oracle-sessio
 source "${SCRIPT_DIR}/lib/social-runtime-common.sh"
 # shellcheck source=lib/runnable-summary-common.sh
 source "${SCRIPT_DIR}/lib/runnable-summary-common.sh"
+# shellcheck source=lib/poc-oracle-http.sh
+source "${SCRIPT_DIR}/lib/poc-oracle-http.sh"
 
-readonly POST_MEDIA_URL='https://pub-8f69c25218db46419ad423201e6877ab.r2.dev/validators/1764921200656-uis6kdx2adp.png'
+readonly POST_MEDIA_URL='https://pub-b2100065e2e5444db484a5fed5d87096.r2.dev/image/2026/05/23a44811-b991-418e-88ee-b99c3973fa91.png'
 readonly PLATFORM_WEBSITE_URL='https://pub-1f3749a8084a44c3abbd97a4875268a1.r2.dev'
 
 readonly POC_ORACLE_GQL_EXTRAS='query PocOracleSessionExtras {
@@ -70,6 +73,7 @@ POC_BENEFICIARY_VAULT_ID=''
 LAST_TX_DIGEST=''
 LAST_TIP_TX_DIGEST=''
 LAST_RESERVE_TX_DIGEST=''
+SELF_MATCH_ANALYZE_DIGEST=''
 POST_GQL_SNAPSHOT=''
 GQL_INDEXED='false'
 
@@ -83,7 +87,7 @@ POC_ORACLE_SESSION_KEYS=(
     CREATOR_ADDRESS CREATOR_PROFILE_ID MEMORY_ACCOUNT_ID
     TIPPER_ADDRESS TIPPER_MEMORY_ACCOUNT_ID
     POST_ID RESERVATION_POOL_ID POC_BENEFICIARY_VAULT_ID
-    LAST_TX_DIGEST LAST_TIP_TX_DIGEST LAST_RESERVE_TX_DIGEST
+    LAST_TX_DIGEST LAST_TIP_TX_DIGEST LAST_RESERVE_TX_DIGEST SELF_MATCH_ANALYZE_DIGEST
 )
 
 usage() {
@@ -270,6 +274,244 @@ read_poc_oracle_address_from_graphql() {
     oracle="$(echo "$resp" | jq -r '.data.pocConfiguration.oracleAddress // empty' | head -n1)"
     [[ -n "$oracle" ]] || return 1
     normalize_hex_id "$oracle"
+}
+
+ptb_option_address_from_arg() {
+    local arg="$1"
+    if [[ "$arg" == none ]]; then
+        printf 'none'
+        return 0
+    fi
+    if [[ "$arg" =~ ^some\((0x[0-9a-fA-F]+)\)$ ]]; then
+        printf 'some(@%s)' "${BASH_REMATCH[1]}"
+        return 0
+    fi
+    printf '%s' "$arg"
+}
+
+# Back-to-back PTBs mutate the same gas coin; resolve a fresh coin id before each submit.
+LAST_PTB_GAS_COIN_USED=''
+
+wait_for_tx_finalized() {
+    local digest="$1" attempt json status
+    [[ -n "$digest" ]] || return 1
+    for attempt in $(seq 1 30); do
+        json="$(myso client tx-block "$digest" --json 2>/dev/null)" || {
+            sleep 0.5
+            continue
+        }
+        status="$(echo "$json" | jq -r '.effects.V2.status // .effects.status // empty | tostring')"
+        if [[ "$status" == "Success" ]]; then
+            return 0
+        fi
+        if [[ -n "$status" && "$status" != "null" && "$status" != "Unknown" ]]; then
+            echo "tx $digest finished with status=$status" >&2
+            return 1
+        fi
+        sleep 0.5
+    done
+    echo "Timed out waiting for tx $digest to finalize" >&2
+    return 1
+}
+
+resolve_fresh_gas_coin_for_address() {
+    local addr="$1" exclude="${2:-}" json coin
+    addr="$(normalize_hex_id "$addr")" || return 1
+    json="$(resolve_gas_coins_json_for_address "$addr")" || return 1
+    if [[ -n "$exclude" ]]; then
+        exclude="$(normalize_hex_id "$exclude")"
+        coin="$(echo "$json" | jq -r --arg ex "$exclude" '
+            [.[] | (.gasCoinId // .coinObjectId) as $id | select($id != null and $id != "" and $id != $ex) | $id][0] // empty
+        ')"
+        if [[ -n "$coin" ]]; then
+            normalize_hex_id "$coin"
+            return 0
+        fi
+    fi
+    resolve_gas_coin_for_address "$addr"
+}
+
+begin_fresh_ptb_gas_coin() {
+    local sender="$1"
+    BEGIN_FRESH_PTB_GAS_SAVED="${PTB_GAS_COIN_ID:-}"
+    PTB_GAS_COIN_ID="$(resolve_fresh_gas_coin_for_address "$sender" "$LAST_PTB_GAS_COIN_USED")" || return 1
+    PTB_GAS_COIN_ID="$(normalize_hex_id "$PTB_GAS_COIN_ID")"
+    LAST_PTB_GAS_COIN_USED="$PTB_GAS_COIN_ID"
+}
+
+end_fresh_ptb_gas_coin() {
+    if [[ -n "${BEGIN_FRESH_PTB_GAS_SAVED:-}" ]]; then
+        PTB_GAS_COIN_ID="$BEGIN_FRESH_PTB_GAS_SAVED"
+    else
+        unset PTB_GAS_COIN_ID
+    fi
+    unset BEGIN_FRESH_PTB_GAS_SAVED
+}
+
+tx_has_event_named() {
+    local digest="$1" event_name="$2"
+    local json
+    [[ -n "$digest" && -n "$event_name" ]] || return 1
+    json="$(myso client tx-block "$digest" --json 2>/dev/null)" || return 1
+    echo "$json" | jq -e --arg name "$event_name" '
+        [.. | objects | select(has("type_") or has("type"))]
+        | map(.type_ // .type)
+        | any(.name? == $name)
+    ' >/dev/null
+}
+
+analyze_post_as_oracle() {
+    local post_id="$1" media_type="$2" score="$3" original_creator_arg="$4" \
+        deriv_target="$5" embed_audio="$6" apply_explicit="$7" explicit_outcome="$8"
+    if [[ "${POC_USE_DIRECT_MOVE:-0}" == "1" ]]; then
+        analyze_post_as_oracle_direct "$post_id" "$media_type" "$score" "$original_creator_arg" \
+            "$deriv_target" "$embed_audio" "$apply_explicit" "$explicit_outcome"
+        return $?
+    fi
+    poc_oracle_analyze_post "$post_id" "$media_type" "$score" "$original_creator_arg" \
+        "$deriv_target" "$embed_audio" "$apply_explicit" "$explicit_outcome"
+}
+
+analyze_post_as_oracle_direct() {
+    local post_id="$1" media_type="$2" score="$3" original_creator_arg="$4" \
+        deriv_target="$5" embed_audio="$6" apply_explicit="$7" explicit_outcome="$8"
+    local oracle ref_cfg ref_reg ref_vault ref_post ref_clk creator_arg out digest
+    require_hex_ids POC_CONFIG_ID POC_REGISTRY_ID POC_VAULT_DIRECTORY_ID CLOCK_ID || return 1
+    creator_arg="$(ptb_option_address_from_arg "$original_creator_arg")"
+    oracle="$(read_poc_oracle_address_from_graphql)" || {
+        echo "Could not resolve PoC oracle address from GraphQL" >&2
+        return 1
+    }
+    switch_wallet "$oracle" || return 1
+    log_step "analyze_and_update_post post=$post_id score=$score creator=$original_creator_arg"
+    ref_cfg="$(ptb_shared_ref "$POC_CONFIG_ID")" || { restore_wallet; return 1; }
+    ref_reg="$(ptb_shared_ref "$POC_REGISTRY_ID")" || { restore_wallet; return 1; }
+    ref_vault="$(ptb_shared_ref "$POC_VAULT_DIRECTORY_ID")" || { restore_wallet; return 1; }
+    ref_post="$(ptb_shared_ref "$post_id")" || { restore_wallet; return 1; }
+    ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || { restore_wallet; return 1; }
+    begin_fresh_ptb_gas_coin "$oracle" || { restore_wallet; return 1; }
+    out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_as_capture "$oracle" \
+        --move-call "${PKG_SOCIAL}::proof_of_creativity::analyze_and_update_post" \
+        "$ref_cfg" "$ref_reg" "$ref_vault" "$ref_post" \
+        "$media_type" "$score" "$creator_arg" "$deriv_target" \
+        "$embed_audio" "$apply_explicit" "$explicit_outcome" \
+        none none "$ref_clk")" || {
+        end_fresh_ptb_gas_coin
+        restore_wallet
+        return 1
+    }
+    end_fresh_ptb_gas_coin
+    restore_wallet
+    digest="$(extract_tx_digest "$out")"
+    wait_for_tx_finalized "$digest" || return 1
+    [[ -n "$digest" ]]
+    printf '%s' "$digest"
+}
+
+assert_self_match_analyze_tx() {
+    local digest="$1"
+    [[ -n "$digest" ]] || return 1
+    tx_has_event_named "$digest" "PoCBadgeIssuedEvent" || {
+        echo "self-match analyze tx $digest missing PoCBadgeIssuedEvent" >&2
+        return 1
+    }
+    if tx_has_event_named "$digest" "RevenueRedirectionActivatedEvent"; then
+        echo "self-match analyze tx $digest unexpectedly emitted RevenueRedirectionActivatedEvent" >&2
+        return 1
+    fi
+    log_step "self-match analyze OK digest=$digest (badge issued, no redirect)"
+}
+
+create_poc_post_for_analyze() {
+    local label="$1"
+    local out digest post_id body_lit media_opt ref_ur ref_pr ref_plat ref_blr ref_cfg ref_mcfg ref_mr ref_mem ref_clk
+    require_hex_ids USERNAME_REGISTRY_ID PLATFORM_REGISTRY_ID PLATFORM_OBJECT_ID \
+        BLOCK_LIST_REGISTRY_ID POST_CONFIG_ID MEMORY_CONFIG_ID MYDATA_REGISTRY_ID \
+        MEMORY_ACCOUNT_ID CLOCK_ID || return 1
+    body_lit="$(literal_move_string "$label")"
+    media_opt="some(vector[$(literal_move_string "$POST_MEDIA_URL")])"
+    ref_ur="$(ptb_shared_ref "$USERNAME_REGISTRY_ID")" || return 1
+    ref_pr="$(ptb_shared_ref "$PLATFORM_REGISTRY_ID")" || return 1
+    ref_plat="$(ptb_shared_ref "$PLATFORM_OBJECT_ID")" || return 1
+    ref_blr="$(ptb_shared_ref "$BLOCK_LIST_REGISTRY_ID")" || return 1
+    ref_cfg="$(ptb_shared_ref "$POST_CONFIG_ID")" || return 1
+    ref_mcfg="$(ptb_shared_ref "$MEMORY_CONFIG_ID")" || return 1
+    ref_mr="$(ptb_shared_ref "$MYDATA_REGISTRY_ID")" || return 1
+    ref_mem="$(ptb_shared_ref "$MEMORY_ACCOUNT_ID")" || return 1
+    ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || return 1
+    switch_wallet "$CREATOR_ADDRESS" || return 1
+    begin_fresh_ptb_gas_coin "$CREATOR_ADDRESS" || { restore_wallet; return 1; }
+    out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_as_capture "$CREATOR_ADDRESS" \
+        --move-call "${PKG_SOCIAL}::post::create_post" \
+        "$ref_ur" "$ref_pr" "$ref_plat" "$ref_blr" "$ref_cfg" "$ref_mcfg" \
+        "$body_lit" \
+        "$media_opt" \
+        none none none none none none none \
+        some\(true\) some\(true\) none none \
+        "$ref_mr" "$ref_mem" "$ref_clk")" || {
+        end_fresh_ptb_gas_coin
+        restore_wallet
+        return 1
+    }
+    end_fresh_ptb_gas_coin
+    restore_wallet
+    digest="$(extract_tx_digest "$out")"
+    wait_for_tx_finalized "$digest" || return 1
+    post_id="$(extract_created_object_by_type "$digest" "post::Post")"
+    [[ -n "$post_id" ]] || post_id="$(extract_created_object_by_type "$digest" "Post")"
+    [[ -n "$post_id" ]] || {
+        echo "create_post did not produce a Post object" >&2
+        return 1
+    }
+    normalize_hex_id "$post_id"
+}
+
+run_self_match_analyze_flow() {
+    load_poc_oracle_session
+    SOCIAL_RUN_ID="$(date +%s)"
+    require_session_fields USERNAME_REGISTRY_ID PROFILE_CONFIG_ID AI_CREDIT_CONFIG_ID \
+        MEMORY_REGISTRY_ID MEMORY_CONFIG_ID POST_CONFIG_ID MYDATA_REGISTRY_ID \
+        PLATFORM_REGISTRY_ID PLATFORM_CONFIG_ID PLATFORM_ADMIN_CAP_ID BLOCK_LIST_REGISTRY_ID \
+        POC_CONFIG_ID POC_REGISTRY_ID POC_VAULT_DIRECTORY_ID CLOCK_ID || {
+        echo "Run --refresh-session first" >&2
+        return 1
+    }
+    local post1 post2 digest
+    LAST_PTB_GAS_COIN_USED=''
+    ensure_platform_ready || return 1
+    step_creator_profile_and_join || return 1
+    ensure_creator_wallet || return 1
+
+    log_step "self-match 1/3 baseline original post + analyze"
+    post1="$(create_poc_post_for_analyze "PoC self-match baseline ${SOCIAL_RUN_ID}")" || return 1
+    digest="$(analyze_post_as_oracle "$post1" 1 50 none 0 false false 0)" || return 1
+    assert_self_match_analyze_tx "$digest" || return 1
+
+    log_step "self-match 2/3 second post analyzed with original_creator=post owner (score 100)"
+    post2="$(create_poc_post_for_analyze "PoC self-match repost ${SOCIAL_RUN_ID}")" || return 1
+    digest="$(analyze_post_as_oracle "$post2" 1 100 "some($CREATOR_ADDRESS)" 1 false false 0)" || return 1
+    assert_self_match_analyze_tx "$digest" || return 1
+    SELF_MATCH_ANALYZE_DIGEST="$digest"
+    POST_ID="$(normalize_hex_id "$post2")"
+    log_session_use "POST_ID" "$POST_ID"
+    log_session_use "SELF_MATCH_ANALYZE_DIGEST" "$SELF_MATCH_ANALYZE_DIGEST"
+    save_poc_oracle_session
+
+    log_step "self-match 3/3 verify GraphQL has no revenue redirect on repost"
+    local gql_resp redirect
+    gql_resp="$(gql_post_snapshot "$post2" 2>/dev/null)" || gql_resp='{}'
+    redirect="$(echo "$gql_resp" | jq -r '.data.post.revenueRedirectTo // empty')"
+    if [[ -n "$redirect" && "$redirect" != "null" ]]; then
+        echo "self-match post $post2 unexpectedly has revenueRedirectTo=$redirect" >&2
+        return 1
+    fi
+
+    print_run_summary_header "PoC Oracle Post — self-match analyze completed"
+    print_run_summary_line "Baseline post" "$(normalize_hex_id "$post1")"
+    print_run_summary_line "Self-match post" "$(normalize_hex_id "$post2")"
+    print_run_summary_line "Creator" "$(normalize_hex_id "$CREATOR_ADDRESS")"
+    print_run_summary_line "Analyze digest" "$SELF_MATCH_ANALYZE_DIGEST"
+    print_run_summary_footer
 }
 
 ensure_beneficiary_vault_via_royalty_free_analyze() {
@@ -991,6 +1233,7 @@ show_menu() {
     echo " 1) Create PoC+SPT post (--run-all)"
     echo " 2) Tip latest post"
     echo " 3) Reserve SPT into latest post"
+    echo " 4) Self-match analyze (same creator, no redirect)"
     echo " h) Help"
     echo " q) Quit"
     read -r -p "Choice: " choice
@@ -999,6 +1242,7 @@ show_menu() {
         1) run_poc_oracle_post_flow ;;
         2) run_tip_latest_post_flow ;;
         3) run_reserve_latest_post_flow ;;
+        4) run_self_match_analyze_flow ;;
         [Hh]) usage ;;
         [Qq]) exit 0 ;;
         *) echo "Invalid choice" ;;
@@ -1015,6 +1259,7 @@ main() {
             --run-all) RUN_MODE=run_all; shift ;;
             --tip-post) RUN_MODE=tip_post; shift ;;
             --reserve-post) RUN_MODE=reserve_post; shift ;;
+            --self-match-analyze) RUN_MODE=self_match_analyze; shift ;;
             *) echo "Unknown option: $1" >&2; usage; exit 1 ;;
         esac
     done
@@ -1026,6 +1271,7 @@ main() {
         run_all) run_poc_oracle_post_flow; exit 0 ;;
         tip_post) run_tip_latest_post_flow; exit 0 ;;
         reserve_post) run_reserve_latest_post_flow; exit 0 ;;
+        self_match_analyze) run_self_match_analyze_flow; exit 0 ;;
         '') show_menu ;;
         *) echo "Unknown RUN_MODE: $RUN_MODE" >&2; exit 1 ;;
     esac
