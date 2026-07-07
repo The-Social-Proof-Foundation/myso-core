@@ -147,7 +147,7 @@ Ecosystem margin is static: `AI_CREDIT_ECOSYSTEM_MARGIN_PCT` (default 12.5%, cla
 2. Submits on-chain setup PTBs (`create_profile`, org, sub-agent, deposit, `set_agent_budget`).
 3. Asserts indexer GraphQL (`Profile.aiCreditBalance`) and social-server REST (`/profiles/:address/ai-credit`, usage history).
 
-**Prerequisites:** `./scripts/bootstrap.sh`, local chain (`:9001`), social indexer GraphQL (`:9125`), social-server (`:9009`), `myso` CLI with the `social-proof2` key funded.
+**Prerequisites:** `./scripts/bootstrap.sh`, local chain (`:9000`), social indexer GraphQL (`:9125`), social-server (`:9009`), `myso` CLI with the `social-proof2` key funded.
 
 ```bash
 ./scripts/ai-credit-runnable.sh --refresh-session

@@ -954,7 +954,7 @@ pub(crate) async fn get_spt_exchange_config(
                max_reservers_per_pool, base_price, quadratic_coefficient, max_hold_percent_bps,
                trading_enabled, non_platform_platform_to_creator_bps,
                non_platform_platform_to_treasury_bps, updated_at, transaction_id, version, time
-        FROM spt_exchange_config
+        FROM spt_config
         ORDER BY time DESC
         LIMIT 1
     ";

@@ -56,6 +56,16 @@ pub fn chain_time_from_ms(ms: i64) -> DateTime<Utc> {
         .unwrap_or_else(Utc::now)
 }
 
+/// Lowercase `0x`-prefixed hex for consistent profile/registry DB lookups.
+pub fn normalize_hex_address(addr: &str) -> String {
+    let trimmed = addr.trim();
+    if trimmed.is_empty() {
+        return trimmed.to_string();
+    }
+    let hex = trimmed.strip_prefix("0x").unwrap_or(trimmed);
+    format!("0x{}", hex.to_ascii_lowercase())
+}
+
 pub fn json_field_as_i64(v: Option<&serde_json::Value>) -> Option<i64> {
     v.and_then(|val| {
         val.as_i64()

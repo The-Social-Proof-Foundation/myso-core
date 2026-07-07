@@ -112,6 +112,8 @@ mod tests {
             catalog_sync_interval_secs: 86400,
             catalog_sync_on_startup: true,
             openrouter_api_url: "https://openrouter.ai/api/v1/models".into(),
+            openrouter_chat_url: "https://openrouter.ai/api/v1/chat/completions".into(),
+            inference_enabled: false,
             catalog_max_drift_pct: 50.0,
             approvals_enabled: false,
             approval_lookup_ttl_secs: 5,

@@ -69,9 +69,9 @@ use myso_indexer_alt_social_schema::models::{
     NewProfile, NewProfileBadge, NewProfileConfig, NewProfileEvent, NewUsernameListing,
     NewUsernameOffer, NewUsernameSaleFee, NewProfileSubscription, NewProfileSubscriptionService, NewProposal,
     NewReaction, NewReport, NewRepost, NewRewardDistribution, NewSocialGraphEvent,
-    NewSocialGraphRelationship, NewSocialProofTokensConfig, NewSocialProofTokensEvent, NewSpotBet,
+    NewSocialGraphRelationship, NewSocialProofTokensEvent, NewSpotBet,
     NewSpotBetWithdrawal, NewSpotConfig, NewSpotEventLog, NewSpotPayout, NewSpotRecord,
-    NewSpotRefund, NewSpotResolution, NewSptExchangeConfig, NewSptHolding, NewSptPool,
+    NewSpotRefund, NewSpotResolution, NewSptConfigEvent, NewSptHolding, NewSptPool,
     NewSptPriceHistory, NewSptReservation, NewSptReservationPool, NewSptTransaction,
     NewSubAgentEvent, NewSubscriptionConfig, NewSubscriptionEvent, NewTip, NewUnifiedRevenue,
     NewUpgradeEvent, NewUsernameRegistry, NewVestingEvent, NewVestingWallet,
@@ -116,9 +116,11 @@ pub enum SocialEventRow {
     ProfileUsernameSet {
         profile_id: String,
         username: String,
+        owner_address: Option<String>,
     },
     ProfileUsernameClear {
         profile_id: String,
+        owner_address: Option<String>,
     },
     EcosystemTreasury(NewEcosystemTreasury),
     ProfileConfig(NewProfileConfig),
@@ -630,8 +632,7 @@ pub enum SocialEventRow {
         status: Option<String>,
         required_threshold: Option<i64>,
     },
-    SptExchangeConfig(NewSptExchangeConfig),
-    SocialProofTokensConfig(NewSocialProofTokensConfig),
+    SptConfig(NewSptConfigEvent),
     SocialProofTokensEvent(NewSocialProofTokensEvent),
     UnifiedRevenue(NewUnifiedRevenue),
     SptBuySellRevenueData {

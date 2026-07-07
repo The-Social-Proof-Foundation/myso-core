@@ -18,7 +18,7 @@
 #   - MySocial shared objects exist (bootstrap runs automatically at genesis).
 #   - Shared MyData objects exist (mydata::bootstrap_init). Resolve IDs from GraphQL / explorer
 #     (e.g. types ...::mydata::MyDataConfig, MyDataRegistry, MyDataPoolRegistry, ...).
-#   - For listings: MyDataConfig.enable_flag must be true (menu 1).
+#   - For listings: MyDataConfig.marketplace_enabled must be true (menu 1).
 #   - Hybrid MemoryAccount (VERSION 2) with on-chain agent index for agent purchase/approve flows.
 #
 # Production-like encryption (menu 2):
@@ -55,8 +55,10 @@
 #                                   Default save: <repo>/network.config/mydata/marketplace-session.env
 #                                   Load tries: this var, then ./network.config/.../ then repo path.
 #   MYDATA_FORCE_PROMPT=1        Re-prompt for session-backed fields even when already set.
-#   Menu [0]: client.yaml path, PKG_SOCIAL, CLOCK_ID, and COIN_TYPE are not prompted; set them in the
-#     session env or exported env if you need non-defaults. Blank CLIENT_CONFIG defaults to <cwd>/network.config/client.yaml
+#   MYDATA_NO_AUTO_REFRESH=1     Skip auto GraphQL refresh when config ids are missing on startup.
+#   Menu [0]: refresh MyDataConfig/Registry/Pool/Anchor/Vault/AdminCap ids from GraphQL.
+#   Menu [s]: manual session setup (secrets file, listing ids, client.yaml). Blank CLIENT_CONFIG
+#     defaults to <cwd>/network.config/client.yaml
 #   MEMORY_ACCOUNT_ID is required for menus 3, 4, and 7 (saved after those menus). Resolve from GraphQL
 #     profile.memoryAccountId or REST /profiles/:address/memory-account.
 #   Menus 3/4 always prompt for LISTING_ID and PAY_COIN_ID (Enter keeps session/default).
@@ -69,15 +71,30 @@
 #   Legacy marketplace-session.env files may contain GAS_COIN_ID; it is ignored on load.
 #   Agent flows: no SubAgent args in the PTB; configure client.yaml active address as derived_address.
 #   MYDATA_MARKETPLACE_NO_SAVE=1 Skip writing session file after menu 0 / encrypt flow.
-#   ASSUME_YES=1 / -y          Non-interactive yes for confirm_run, enable_flag, and operation defaults.
+#   ASSUME_YES=1 / -y          Non-interactive yes for confirm_run, marketplace enable, and operation defaults.
 #
-# Usage: ./scripts/mydata-marketplace-runnable.sh   [-y] [--help] [--no-session]
+# Usage: ./scripts/mydata-marketplace-runnable.sh [--refresh-session] [-y] [--help] [--no-session]
 # Rename/link as runnable.sh if you prefer.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+# shellcheck source=lib/social-runtime-common.sh
+source "${SCRIPT_DIR}/lib/social-runtime-common.sh"
+# shellcheck source=lib/runnable-summary-common.sh
+source "${SCRIPT_DIR}/lib/runnable-summary-common.sh"
+
+print_mydata_operation_summary() {
+    local operation="$1"
+    shift
+    print_run_summary_header "MyData Marketplace — ${operation} completed"
+    while [[ $# -ge 2 ]]; do
+        print_run_summary_line "$1" "$2"
+        shift 2
+    done
+    print_run_summary_footer
+}
 
 readonly DEFAULT_PKG_SOCIAL='0x00000000000000000000000000000000000000000000000000000000000050c1'
 readonly DEFAULT_CLOCK='0x0000000000000000000000000000000000000000000000000000000000000006'
@@ -86,6 +103,51 @@ readonly DEFAULT_KEY_SERVER_URL='http://127.0.0.1:2024'
 readonly DEFAULT_GAS_BUDGET='1000000000'
 readonly DEFAULT_SECRETS_REL='network.config/mydata/local-mydata-secrets.env'
 readonly G2_PUBLIC_KEY_HEX_LEN=192
+
+readonly DEFAULT_MAX_ENCRYPTION_ID_BYTES='1024'
+readonly DEFAULT_P2P_PLATFORM_FEE_BPS='250'
+readonly DEFAULT_P2P_ECOSYSTEM_FEE_BPS='250'
+readonly DEFAULT_MYDATA_MARKETPLACE_PLATFORM_FEE_BPS='250'
+readonly DEFAULT_MYDATA_MARKETPLACE_ECOSYSTEM_FEE_BPS='250'
+readonly DEFAULT_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS='0'
+readonly DEFAULT_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS='10000'
+readonly DEFAULT_MAX_TAGS='10'
+readonly DEFAULT_MAX_SUBSCRIPTION_DAYS='365'
+readonly DEFAULT_MAX_FREE_ACCESS_GRANTS='100000'
+
+readonly MYDATA_CONFIG_GQL='query MyDataConfiguration {
+  mydataConfiguration {
+    marketplaceEnabled
+    maxTags
+    maxSubscriptionDays
+    maxFreeAccessGrants
+    maxEncryptionIdBytes
+    p2PPlatformFeeBps
+    p2PEcosystemFeeBps
+    mydataMarketplacePlatformFeeBps
+    mydataMarketplaceEcosystemFeeBps
+    nonPlatformPlatformToCreatorBps
+    nonPlatformPlatformToTreasuryBps
+  }
+}'
+
+readonly MYDATA_MARKETPLACE_GQL_EXTRAS='query MyDataMarketplaceSessionObjects {
+  mydataConfig: objects(filter: { type: "0x50c1::mydata::MyDataConfig", ownerKind: SHARED }, first: 1) { nodes { address } }
+  mydataRegistry: objects(filter: { type: "0x50c1::mydata::MyDataRegistry", ownerKind: SHARED }, first: 1) { nodes { address } }
+  mydataPoolRegistry: objects(filter: { type: "0x50c1::mydata::MyDataPoolRegistry", ownerKind: SHARED }, first: 1) { nodes { address } }
+  snapshotAnchorRegistry: objects(filter: { type: "0x50c1::mydata::SnapshotAnchorRegistry", ownerKind: SHARED }, first: 1) { nodes { address } }
+  mydataClaimVault: objects(filter: { type: "0x50c1::mydata::MyDataClaimVault", ownerKind: SHARED }, first: 1) { nodes { address } }
+  distributionRegistry: objects(filter: { type: "0x50c1::mydata::DistributionRegistry", ownerKind: SHARED }, first: 1) { nodes { address } }
+  mydataAdminCap: objects(filter: { type: "0x50c1::mydata::MyDataAdminCap" }, last: 1) { nodes { address } }
+  mydataPoolAdminCap: objects(filter: { type: "0x50c1::mydata::MyDataPoolAdminCap" }, last: 1) { nodes { address } }
+}'
+
+MYDATA_SESSION_PRESERVED_KEYS=(
+    CLIENT_CONFIG KEY_SERVER_URL LISTING_ID SUB_POOL_ID PAY_COIN_ID
+    MEMORY_ACCOUNT_ID REVOKE_BUYER_ID MYDATA_SECRETS_FILE PUBLIC_KEY KEY_SERVER_OBJECT_ID
+)
+
+DO_REFRESH=0
 
 CLIENT_CONFIG=''
 PKG_SOCIAL="$DEFAULT_PKG_SOCIAL"
@@ -120,6 +182,84 @@ session_state_save_path() {
     else
         printf '%s' "$REPO_ROOT/network.config/mydata/marketplace-session.env"
     fi
+}
+
+collect_mydata_marketplace_gql_mappings() {
+    local json="$1" alias val env_key
+    for alias in mydataConfig mydataRegistry mydataPoolRegistry snapshotAnchorRegistry \
+        mydataClaimVault distributionRegistry mydataAdminCap mydataPoolAdminCap; do
+        case "$alias" in
+            mydataConfig) env_key=MYDATA_CONFIG_ID ;;
+            mydataRegistry) env_key=MYDATA_REGISTRY_ID ;;
+            mydataPoolRegistry) env_key=POOL_REGISTRY_ID ;;
+            snapshotAnchorRegistry) env_key=ANCHOR_REGISTRY_ID ;;
+            mydataClaimVault) env_key=CLAIM_VAULT_ID ;;
+            distributionRegistry) env_key=DIST_REGISTRY_ID ;;
+            mydataAdminCap) env_key=MYDATA_ADMIN_CAP_ID ;;
+            mydataPoolAdminCap) env_key=POOL_ADMIN_CAP_ID ;;
+            *) continue ;;
+        esac
+        val="$(gql_object_address "$json" "$alias")"
+        [[ -n "$val" ]] || continue
+        printf -v "$env_key" '%s' "$(normalize_hex_id "$val")"
+        log_session_use "$env_key" "${!env_key}"
+    done
+}
+
+refresh_mydata_marketplace_session_from_graphql() {
+    command -v curl >/dev/null 2>&1 || { echo "curl required" >&2; return 1; }
+    command -v jq >/dev/null 2>&1 || { echo "jq required" >&2; return 1; }
+    [[ "${NO_SESSION_FILE:-0}" == 1 ]] && { echo "Cannot refresh session with --no-session" >&2; return 1; }
+
+    local f preserve_file="" key json
+    f="$(session_state_save_path)"
+
+    if [[ -f "$f" ]]; then
+        preserve_file="$(mktemp)"
+        # shellcheck disable=SC1090
+        source "$f"
+        {
+            for key in "${MYDATA_SESSION_PRESERVED_KEYS[@]}"; do
+                session_value_set "$key" && printf '%s=%q\n' "$key" "${!key}"
+            done
+        } > "$preserve_file"
+    fi
+
+    log_step "Refreshing MyData marketplace session from GraphQL ($GRAPHQL_URL)"
+    json="$(graphql_post "$MYDATA_MARKETPLACE_GQL_EXTRAS")" || {
+        rm -f "$preserve_file"
+        return 1
+    }
+
+    PKG_SOCIAL="$SOCIAL_DEFAULT_PKG"
+    CLOCK_ID="$SOCIAL_DEFAULT_CLOCK"
+    COIN_TYPE="$SOCIAL_DEFAULT_COIN_TYPE"
+    apply_session_defaults
+    collect_mydata_marketplace_gql_mappings "$json"
+
+    if [[ -z "${CLIENT_CONFIG:-}" ]]; then
+        CLIENT_CONFIG="$PWD/network.config/client.yaml"
+    fi
+
+    if [[ -n "$preserve_file" && -s "$preserve_file" ]]; then
+        # shellcheck disable=SC1090
+        source "$preserve_file"
+        rm -f "$preserve_file"
+    fi
+
+    hydrate_encrypt_from_secrets || true
+    save_session_state
+    show_context
+}
+
+maybe_auto_refresh_mydata_session() {
+    [[ "${MYDATA_NO_AUTO_REFRESH:-0}" == 1 ]] && return 0
+    [[ "${NO_SESSION_FILE:-0}" == 1 ]] && return 0
+    if session_value_set MYDATA_CONFIG_ID && session_value_set MYDATA_REGISTRY_ID \
+        && session_value_set POOL_REGISTRY_ID && session_value_set MYDATA_ADMIN_CAP_ID; then
+        return 0
+    fi
+    refresh_mydata_marketplace_session_from_graphql
 }
 
 apply_session_defaults() {
@@ -287,7 +427,7 @@ require_session_fields() {
         session_value_set "$name" || missing+=("$name")
     done
     if [[ ${#missing[@]} -gt 0 ]]; then
-        echo "Missing session field(s): ${missing[*]}. Run menu [0] to set them." >&2
+        echo "Missing session field(s): ${missing[*]}. Run menu [0] to refresh from GraphQL or [s] for manual setup." >&2
         return 1
     fi
     return 0
@@ -808,14 +948,54 @@ run_myso_call() {
 }
 
 menu_update_config() {
-    require_session_fields MYDATA_ADMIN_CAP_ID MYDATA_CONFIG_ID || return 1
-    local en max_tags max_sub max_grants
-    en="$(prompt_or_default "enable_flag (true/false)" "true")"
-    max_tags="$(prompt_or_default "max_tags" "10")"
-    max_sub="$(prompt_or_default "max_subscription_days" "365")"
-    max_grants="$(prompt_or_default "max_free_access_grants" "100000")"
+    require_session_fields MYDATA_ADMIN_CAP_ID MYDATA_CONFIG_ID CLOCK_ID || return 1
+    local en max_tags max_sub max_grants max_enc_id
+    local p2p_plat p2p_eco md_plat md_eco np_creator np_treasury
+    load_mydata_config_params_from_graphql || true
+    en="$(prompt_or_default "marketplace_enabled (true/false)" "${MYDATA_CFG_MARKETPLACE_ENABLED:-true}")"
+    max_tags="$(prompt_or_default "max_tags" "${MYDATA_CFG_MAX_TAGS:-$DEFAULT_MAX_TAGS}")"
+    max_sub="$(prompt_or_default "max_subscription_days" "${MYDATA_CFG_MAX_SUBSCRIPTION_DAYS:-$DEFAULT_MAX_SUBSCRIPTION_DAYS}")"
+    max_grants="$(prompt_or_default "max_free_access_grants" "${MYDATA_CFG_MAX_FREE_ACCESS_GRANTS:-$DEFAULT_MAX_FREE_ACCESS_GRANTS}")"
+    max_enc_id="$(prompt_or_default "max_encryption_id_bytes" "${MYDATA_CFG_MAX_ENCRYPTION_ID_BYTES:-$DEFAULT_MAX_ENCRYPTION_ID_BYTES}")"
+    p2p_plat="$(prompt_or_default "p2p_platform_fee_bps" "${MYDATA_CFG_P2P_PLATFORM_FEE_BPS:-$DEFAULT_P2P_PLATFORM_FEE_BPS}")"
+    p2p_eco="$(prompt_or_default "p2p_ecosystem_fee_bps" "${MYDATA_CFG_P2P_ECOSYSTEM_FEE_BPS:-$DEFAULT_P2P_ECOSYSTEM_FEE_BPS}")"
+    md_plat="$(prompt_or_default "mydata_marketplace_platform_fee_bps" "${MYDATA_CFG_MYDATA_MARKETPLACE_PLATFORM_FEE_BPS:-$DEFAULT_MYDATA_MARKETPLACE_PLATFORM_FEE_BPS}")"
+    md_eco="$(prompt_or_default "mydata_marketplace_ecosystem_fee_bps" "${MYDATA_CFG_MYDATA_MARKETPLACE_ECOSYSTEM_FEE_BPS:-$DEFAULT_MYDATA_MARKETPLACE_ECOSYSTEM_FEE_BPS}")"
+    np_creator="$(prompt_or_default "non_platform_platform_to_creator_bps" "${MYDATA_CFG_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS:-$DEFAULT_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS}")"
+    np_treasury="$(prompt_or_default "non_platform_platform_to_treasury_bps" "${MYDATA_CFG_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS:-$DEFAULT_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS}")"
+    run_update_mydata_config_call "$en" "$max_tags" "$max_sub" "$max_grants" "$max_enc_id" \
+        "$p2p_plat" "$p2p_eco" "$md_plat" "$md_eco" "$np_creator" "$np_treasury"
+}
+
+gql_mydata_configuration_snapshot() {
+    graphql_post "$MYDATA_CONFIG_GQL"
+}
+
+load_mydata_config_params_from_graphql() {
+    local resp
+    resp="$(gql_mydata_configuration_snapshot 2>/dev/null)" || return 1
+    MYDATA_CFG_MARKETPLACE_ENABLED="$(echo "$resp" | jq -r '.data.mydataConfiguration.marketplaceEnabled // empty')"
+    MYDATA_CFG_MAX_TAGS="$(echo "$resp" | jq -r '.data.mydataConfiguration.maxTags // empty')"
+    MYDATA_CFG_MAX_SUBSCRIPTION_DAYS="$(echo "$resp" | jq -r '.data.mydataConfiguration.maxSubscriptionDays // empty')"
+    MYDATA_CFG_MAX_FREE_ACCESS_GRANTS="$(echo "$resp" | jq -r '.data.mydataConfiguration.maxFreeAccessGrants // empty')"
+    MYDATA_CFG_MAX_ENCRYPTION_ID_BYTES="$(echo "$resp" | jq -r '.data.mydataConfiguration.maxEncryptionIdBytes // empty')"
+    MYDATA_CFG_P2P_PLATFORM_FEE_BPS="$(echo "$resp" | jq -r '.data.mydataConfiguration.p2PPlatformFeeBps // empty')"
+    MYDATA_CFG_P2P_ECOSYSTEM_FEE_BPS="$(echo "$resp" | jq -r '.data.mydataConfiguration.p2PEcosystemFeeBps // empty')"
+    MYDATA_CFG_MYDATA_MARKETPLACE_PLATFORM_FEE_BPS="$(echo "$resp" | jq -r '.data.mydataConfiguration.mydataMarketplacePlatformFeeBps // empty')"
+    MYDATA_CFG_MYDATA_MARKETPLACE_ECOSYSTEM_FEE_BPS="$(echo "$resp" | jq -r '.data.mydataConfiguration.mydataMarketplaceEcosystemFeeBps // empty')"
+    MYDATA_CFG_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS="$(echo "$resp" | jq -r '.data.mydataConfiguration.nonPlatformPlatformToCreatorBps // empty')"
+    MYDATA_CFG_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS="$(echo "$resp" | jq -r '.data.mydataConfiguration.nonPlatformPlatformToTreasuryBps // empty')"
+}
+
+run_update_mydata_config_call() {
+    local marketplace_enabled="$1" max_tags="$2" max_sub="$3" max_grants="$4" max_enc_id="$5"
+    local p2p_plat="$6" p2p_eco="$7" md_plat="$8" md_eco="$9" np_creator="${10}" np_treasury="${11}"
+    require_session_fields MYDATA_ADMIN_CAP_ID MYDATA_CONFIG_ID CLOCK_ID || return 1
     run_myso_call update_mydata_config \
-        --args "$MYDATA_ADMIN_CAP_ID" "$MYDATA_CONFIG_ID" "$en" "$max_tags" "$max_sub" "$max_grants"
+        --args "$MYDATA_ADMIN_CAP_ID" "$MYDATA_CONFIG_ID" "$marketplace_enabled" \
+        "$max_tags" "$max_sub" "$max_grants" "$max_enc_id" \
+        "$p2p_plat" "$p2p_eco" "$md_plat" "$md_eco" "$np_creator" "$np_treasury" \
+        "$CLOCK_ID"
 }
 
 # Ensures create_and_share won't hit EDisabled (abort 11). Optional non-interactive: ASSUME_YES=1 skips prompt and always enables.
@@ -824,20 +1004,36 @@ ensure_mydata_enabled_for_listing() {
     [[ -n "${MYDATA_ADMIN_CAP_ID:-}" ]] || {
         echo "" >&2
         echo "Note: MYDATA_ADMIN_CAP is not set. If create_and_share fails with abort 11 (EDisabled)," >&2
-        echo "      run menu [1] update_mydata_config with enable_flag true (need admin cap in menu 0)." >&2
+        echo "      run menu [1] update_mydata_config with marketplace_enabled true (need admin cap in menu 0)." >&2
         return 0
     }
+
+    load_mydata_config_params_from_graphql || true
+    if [[ "${MYDATA_CFG_MARKETPLACE_ENABLED:-false}" == "true" ]]; then
+        log_step "MyDataConfig.marketplace_enabled already true"
+        return 0
+    fi
+
     echo "" >&2
-    echo ">>> Listings require MyDataConfig.enable_flag=true (otherwise Move abort 11 / EDisabled)." >&2
+    echo ">>> Listings require MyDataConfig.marketplace_enabled=true (otherwise Move abort 11 / EDisabled)." >&2
     local run_en='y'
     if [[ "${ASSUME_YES:-}" != 1 ]]; then
-        read -r -p "Run update_mydata_config with enable_flag=true now (limits 10 / 365d / 100k grants)? [Y/n] " run_en
+        read -r -p "Run update_mydata_config with marketplace_enabled=true now (limits 10 / 365d / 100k grants)? [Y/n] " run_en
     fi
     if [[ -z "${run_en:-}" || "${run_en}" == [yY]* ]]; then
-        echo "(Submitting update_mydata_config — enable_flag true...)" >&2
+        echo "(Submitting update_mydata_config — marketplace_enabled true...)" >&2
         set +e
-        SKIP_CONFIRM_RUN=1 run_myso_call update_mydata_config \
-            --args "$MYDATA_ADMIN_CAP_ID" "$MYDATA_CONFIG_ID" true 10 365 100000
+        SKIP_CONFIRM_RUN=1 run_update_mydata_config_call true \
+            "${MYDATA_CFG_MAX_TAGS:-$DEFAULT_MAX_TAGS}" \
+            "${MYDATA_CFG_MAX_SUBSCRIPTION_DAYS:-$DEFAULT_MAX_SUBSCRIPTION_DAYS}" \
+            "${MYDATA_CFG_MAX_FREE_ACCESS_GRANTS:-$DEFAULT_MAX_FREE_ACCESS_GRANTS}" \
+            "${MYDATA_CFG_MAX_ENCRYPTION_ID_BYTES:-$DEFAULT_MAX_ENCRYPTION_ID_BYTES}" \
+            "${MYDATA_CFG_P2P_PLATFORM_FEE_BPS:-$DEFAULT_P2P_PLATFORM_FEE_BPS}" \
+            "${MYDATA_CFG_P2P_ECOSYSTEM_FEE_BPS:-$DEFAULT_P2P_ECOSYSTEM_FEE_BPS}" \
+            "${MYDATA_CFG_MYDATA_MARKETPLACE_PLATFORM_FEE_BPS:-$DEFAULT_MYDATA_MARKETPLACE_PLATFORM_FEE_BPS}" \
+            "${MYDATA_CFG_MYDATA_MARKETPLACE_ECOSYSTEM_FEE_BPS:-$DEFAULT_MYDATA_MARKETPLACE_ECOSYSTEM_FEE_BPS}" \
+            "${MYDATA_CFG_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS:-$DEFAULT_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS}" \
+            "${MYDATA_CFG_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS:-$DEFAULT_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS}"
         local ec=$?
         set -e
         if [[ $ec -ne 0 ]]; then
@@ -913,6 +1109,13 @@ menu_create_and_share() {
 
     apply_session_defaults
     save_session_state
+    print_mydata_operation_summary "create_and_share (encrypt + list)" \
+        "Media type" "$media" \
+        "One-time price option" "$otp" \
+        "Subscription price option" "$sp" \
+        "Subscription days" "$subdur_raw" \
+        "Encrypted object id" "0x${ENCRYPT_ID_HEX:-}" \
+        "Key server object" "$ks"
 }
 
 menu_purchase_one_time() {
@@ -927,6 +1130,11 @@ menu_purchase_one_time() {
     MEMORY_ACCOUNT_ID="$account"
     save_session_state
     run_myso_call purchase_one_time --args "$MYDATA_CONFIG_ID" "$listing" "$pay" "$account" "$CLOCK_ID"
+    print_mydata_operation_summary "purchase_one_time" \
+        "Listing" "$listing" \
+        "Payment coin" "$pay" \
+        "Memory account" "$account" \
+        "Buyer / signer" "$(myso client active-address 2>/dev/null || echo '<active>')"
 }
 
 menu_purchase_sub() {
@@ -941,6 +1149,11 @@ menu_purchase_sub() {
     MEMORY_ACCOUNT_ID="$account"
     save_session_state
     run_myso_call purchase_subscription --args "$MYDATA_CONFIG_ID" "$listing" "$pay" "$account" "$CLOCK_ID"
+    print_mydata_operation_summary "purchase_subscription" \
+        "Listing" "$listing" \
+        "Payment coin" "$pay" \
+        "Memory account" "$account" \
+        "Buyer / signer" "$(myso client active-address 2>/dev/null || echo '<active>')"
 }
 
 menu_update_pricing() {
@@ -974,6 +1187,10 @@ menu_mydata_approve() {
     MEMORY_ACCOUNT_ID="$account"
     save_session_state
     run_myso_call mydata_approve --args "\"$idv\"" "$listing" "$account" "$CLOCK_ID"
+    print_mydata_operation_summary "mydata_approve (access grant)" \
+        "Listing" "$listing" \
+        "Encryption id" "$idv" \
+        "Memory account" "$account"
 }
 
 menu_grant_access() {
@@ -985,6 +1202,11 @@ menu_grant_access() {
     at="$(prompt_or_default "access_type (0=one_time, 1=subscription)" "0")"
     sd="$(prompt_or_default "subscription_days Option" '[]')"
     run_myso_call grant_access --args "$MYDATA_CONFIG_ID" "$listing" "$user" "$at" "$sd" "$CLOCK_ID"
+    print_mydata_operation_summary "grant_access" \
+        "Listing" "$listing" \
+        "Beneficiary" "$user" \
+        "Access type" "$at" \
+        "Subscription days" "$sd"
 }
 
 menu_revoke_access() {
@@ -997,6 +1219,10 @@ menu_revoke_access() {
     echo "Sign as listing owner. Revoked buyers cannot pass mydata_approve; fetch_key returns NoAccess." >&2
     run_myso_call revoke_access --args "$listing" "$user" "$at" "$CLOCK_ID"
     save_session_state
+    print_mydata_operation_summary "revoke_access" \
+        "Listing" "$listing" \
+        "Revoked buyer" "$user" \
+        "Access type" "$at"
 }
 
 menu_register() {
@@ -1090,7 +1316,8 @@ main_menu() {
     while true; do
         echo ""
         echo "MyData marketplace (social_contracts::mydata)"
-        echo " 0) Set / show session context (saved when done)"
+        echo " 0) Refresh session from GraphQL"
+        echo " s) Set / show session context (manual secrets + listing ids)"
         echo " 1) update_mydata_config"
         echo " 2) create_and_share (encrypt + list; auto-offers enable if admin cap set)"
         echo " 3) purchase_one_time"
@@ -1113,7 +1340,8 @@ main_menu() {
         local c
         read -r -p "Choice: " c || break
         case "$c" in
-            0) set_context_interactive ;;
+            0) refresh_mydata_marketplace_session_from_graphql ;;
+            s|S) set_context_interactive ;;
             1) menu_update_config ;;
             2) menu_create_and_share ;;
             3) menu_purchase_one_time ;;
@@ -1150,9 +1378,22 @@ for arg in "$@"; do
         --no-session)
             NO_SESSION_FILE=1
             ;;
+        --refresh-session)
+            DO_REFRESH=1
+            ;;
+        --no-auto-refresh)
+            MYDATA_NO_AUTO_REFRESH=1
+            ;;
     esac
 done
 
 load_session_state
+maybe_auto_refresh_mydata_session
+load_session_state
+
+if [[ "$DO_REFRESH" == 1 ]]; then
+    refresh_mydata_marketplace_session_from_graphql
+    exit 0
+fi
 
 main_menu

@@ -12,12 +12,23 @@ use crate::ai_credit_object::parse_settlement_nonce;
 pub async fn fetch_on_chain_settlement_nonce(rpc_url: &str, balance_id: &str) -> Result<u64> {
     let object_id = ObjectID::from_hex_literal(balance_id)?;
     let client = MySoClientBuilder::default().build(rpc_url).await?;
-    let data = client
-        .read_api()
-        .get_move_object_bcs(object_id)
-        .await
-        .context("fetch AiCreditBalance BCS")?;
-    parse_settlement_nonce(&data).context("parse AiCreditBalance settlement_nonce")
+    let mut last_err = None;
+    for attempt in 0..5 {
+        if attempt > 0 {
+            tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+        }
+        match client
+            .read_api()
+            .get_move_object_bcs(object_id)
+            .await
+            .context("fetch AiCreditBalance BCS")
+            .and_then(|data| parse_settlement_nonce(&data).context("parse AiCreditBalance settlement_nonce"))
+        {
+            Ok(nonce) => return Ok(nonce),
+            Err(err) => last_err = Some(err),
+        }
+    }
+    Err(last_err.unwrap_or_else(|| anyhow::anyhow!("fetch on-chain settlement_nonce failed")))
 }
 
 /// Resolve settlement nonce: on-chain BCS first, then indexed social-server value.

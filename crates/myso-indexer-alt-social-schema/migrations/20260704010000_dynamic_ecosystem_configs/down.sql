@@ -165,6 +165,27 @@ DROP COLUMN IF EXISTS max_promotion_amount,
 DROP COLUMN IF EXISTS min_promotion_amount;
 
 -- 1.9 config semantic renames + defaults (reverse)
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'spt_config'
+    ) THEN
+        ALTER TABLE spt_config DROP CONSTRAINT IF EXISTS valid_admin_address;
+        ALTER TABLE spt_config DROP CONSTRAINT IF EXISTS valid_reason;
+        ALTER TABLE spt_config DROP CONSTRAINT IF EXISTS valid_timestamp;
+        ALTER TABLE spt_config DROP CONSTRAINT IF EXISTS valid_transaction_id;
+        ALTER TABLE spt_config
+            ADD CONSTRAINT valid_admin_address CHECK (length(admin_address) > 0);
+        ALTER TABLE spt_config
+            ADD CONSTRAINT valid_reason CHECK (length(reason) > 0 AND length(reason) <= 512);
+        ALTER TABLE spt_config
+            ADD CONSTRAINT valid_timestamp CHECK (updated_at >= 0);
+        ALTER TABLE spt_config
+            ADD CONSTRAINT valid_transaction_id
+            CHECK (length(transaction_id) > 0 AND length(transaction_id) <= 255);
+    END IF;
+END $$;
 ALTER TABLE spt_config ALTER COLUMN trading_enabled SET DEFAULT FALSE;
 ALTER TABLE spt_exchange_config ALTER COLUMN trading_enabled SET DEFAULT FALSE;
 ALTER TABLE insurance_config RENAME COLUMN insurance_enabled TO enable_flag;

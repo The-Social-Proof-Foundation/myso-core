@@ -18,6 +18,9 @@
 #   ASSUME_YES=1 ./scripts/username-marketplace-runnable.sh --run-all
 #   ./scripts/username-marketplace-runnable.sh --reject-flow
 #   ./scripts/username-marketplace-runnable.sh   # interactive menu
+#
+# Each accept/reject run uses fresh ephemeral seller + buyer wallets and new
+# premium{runId}/seller{runId} usernames so the flow can be repeated on localnet.
 
 set -euo pipefail
 
@@ -26,6 +29,8 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 SOCIAL_SESSION_SAVE_PATH="$REPO_ROOT/network.config/username-marketplace/marketplace-session.env"
 # shellcheck source=lib/social-runtime-common.sh
 source "${SCRIPT_DIR}/lib/social-runtime-common.sh"
+# shellcheck source=lib/runnable-summary-common.sh
+source "${SCRIPT_DIR}/lib/runnable-summary-common.sh"
 
 readonly MIN_LISTING_PRICE='5000000000'
 readonly OFFER_AMOUNT='5000000000'
@@ -64,8 +69,6 @@ save_marketplace_session() {
 
 load_marketplace_session() {
     social_load_session
-    LISTING_USERNAME="${LISTING_USERNAME:-premium${SOCIAL_RUN_ID}}"
-    REPLACEMENT_USERNAME="${REPLACEMENT_USERNAME:-seller${SOCIAL_RUN_ID}}"
 }
 
 setup_usernames_for_run() {
@@ -74,10 +77,9 @@ setup_usernames_for_run() {
 }
 
 ensure_seller_wallet() {
-    SELLER_ADDRESS="$(resolve_myso_active_address)" || {
-        echo "Could not read myso client active-address" >&2
-        return 1
-    }
+    if [[ -z "${SELLER_ADDRESS:-}" ]]; then
+        SELLER_ADDRESS="$(create_ephemeral_wallet "um_seller_${SOCIAL_RUN_ID}")" || return 1
+    fi
     SELLER_ADDRESS="$(normalize_hex_id "$SELLER_ADDRESS")"
     # Seller only pays gas (listing/accept); one faucet (~5 MYSO) is enough.
     ensure_wallet_funded "$SELLER_ADDRESS" "$((SOCIAL_DEFAULT_GAS_BUDGET * 3))" || return 1
@@ -94,6 +96,9 @@ ensure_buyer_wallet() {
 }
 
 prepare_new_run_wallets() {
+    SELLER_ADDRESS=''
+    SELLER_PROFILE_ID=''
+    SELLER_MEMORY_ACCOUNT_ID=''
     BUYER_ADDRESS=''
     BUYER_PROFILE_ID=''
     BUYER_USERNAME=''
@@ -161,7 +166,36 @@ step_create_buyer_profile() {
     save_marketplace_session
 }
 
+username_marketplace_listing_active() {
+    local username="$1" resp listed
+    [[ -n "$username" ]] || return 1
+    resp="$(gql_username_availability_snapshot "$username" 2>/dev/null)" || resp='{}'
+    listed="$(echo "$resp" | jq -r '.data.usernameAvailability.marketplaceListed // false')"
+    [[ "$listed" == "true" ]]
+}
+
+username_marketplace_listing_seller_profile_id() {
+    local username="$1" resp
+    resp="$(gql_username_availability_snapshot "$username" 2>/dev/null)" || resp='{}'
+    echo "$resp" | jq -r '.data.usernameAvailability.listingSellerProfileId // empty'
+}
+
+step_cancel_username_listing() {
+    require_session_fields USERNAME_MARKETPLACE_ID USERNAME_REGISTRY_ID CLOCK_ID || return 1
+    require_hex_ids USERNAME_MARKETPLACE_ID USERNAME_REGISTRY_ID SELLER_PROFILE_ID CLOCK_ID || return 1
+    switch_wallet "$SELLER_ADDRESS" || return 1
+    log_step "cancel_username_listing username=$LISTING_USERNAME (stale listing cleanup)"
+    SKIP_CONFIRM_RUN=1 run_myso_call_as_capture "$SELLER_ADDRESS" profile cancel_username_listing \
+        "@${USERNAME_MARKETPLACE_ID}" "@${USERNAME_REGISTRY_ID}" "$SELLER_PROFILE_ID" \
+        "$(literal_move_string "$LISTING_USERNAME")" "@${CLOCK_ID}" || {
+        restore_wallet
+        return 1
+    }
+    restore_wallet
+}
+
 step_create_username_listing() {
+    local out rc listing_seller seller_norm
     require_session_fields USERNAME_MARKETPLACE_ID USERNAME_REGISTRY_ID CLOCK_ID || return 1
     require_hex_ids USERNAME_MARKETPLACE_ID USERNAME_REGISTRY_ID SELLER_PROFILE_ID CLOCK_ID || return 1
     [[ -n "${SELLER_PROFILE_ID:-}" ]] || {
@@ -169,14 +203,41 @@ step_create_username_listing() {
     }
     [[ -n "${SELLER_PROFILE_ID:-}" ]] || { echo "SELLER_PROFILE_ID required" >&2; return 1; }
 
+    seller_norm="$(normalize_hex_id "$SELLER_PROFILE_ID")"
+    if username_marketplace_listing_active "$LISTING_USERNAME"; then
+        listing_seller="$(username_marketplace_listing_seller_profile_id "$LISTING_USERNAME")"
+        if [[ "$(normalize_hex_id "$listing_seller")" == "$seller_norm" ]]; then
+            log_step "Reusing existing marketplace listing for $LISTING_USERNAME"
+            return 0
+        fi
+        echo "Username $LISTING_USERNAME is already listed by profile $listing_seller (expected $seller_norm)" >&2
+        return 1
+    fi
+
     switch_wallet "$SELLER_ADDRESS" || return 1
     log_step "create_username_listing username=$LISTING_USERNAME min=$MIN_LISTING_PRICE"
-    SKIP_CONFIRM_RUN=1 run_myso_call_as_capture "$SELLER_ADDRESS" profile create_username_listing \
+    out="$(SKIP_CONFIRM_RUN=1 run_myso_call_as_capture "$SELLER_ADDRESS" profile create_username_listing \
         "@${USERNAME_MARKETPLACE_ID}" "@${USERNAME_REGISTRY_ID}" "$SELLER_PROFILE_ID" \
-        "$(literal_move_string "$LISTING_USERNAME")" "$MIN_LISTING_PRICE" "@${CLOCK_ID}" || {
+        "$(literal_move_string "$LISTING_USERNAME")" "$MIN_LISTING_PRICE" "@${CLOCK_ID}" 2>&1)" || rc=$?
+    if [[ "${rc:-0}" -ne 0 ]]; then
+        if echo "$out" | grep -qE 'Abort Code: 37|EListingAlreadyExists'; then
+            log_step "Listing already exists on-chain for $LISTING_USERNAME; attempting cancel + retry"
+            restore_wallet
+            step_cancel_username_listing || return 1
+            switch_wallet "$SELLER_ADDRESS" || return 1
+            SKIP_CONFIRM_RUN=1 run_myso_call_as_capture "$SELLER_ADDRESS" profile create_username_listing \
+                "@${USERNAME_MARKETPLACE_ID}" "@${USERNAME_REGISTRY_ID}" "$SELLER_PROFILE_ID" \
+                "$(literal_move_string "$LISTING_USERNAME")" "$MIN_LISTING_PRICE" "@${CLOCK_ID}" || {
+                restore_wallet
+                return 1
+            }
+            restore_wallet
+            return 0
+        fi
+        echo "$out" >&2
         restore_wallet
         return 1
-    }
+    fi
     restore_wallet
 }
 
@@ -327,7 +388,31 @@ run_marketplace_flow() {
     assert_offer_accepted_rest || return 1
     assert_on_chain_profile_owner_unchanged || return 1
     save_marketplace_session
-    log_step "Username marketplace E2E complete"
+    print_username_marketplace_accept_summary
+}
+
+print_username_marketplace_accept_summary() {
+    print_run_summary_header "Username Marketplace — accept flow completed"
+    print_run_summary_line "Listed username (sold)" "$LISTING_USERNAME"
+    print_run_summary_line "Seller" "$(normalize_hex_id "$SELLER_ADDRESS") (profile $(normalize_hex_id "$SELLER_PROFILE_ID"))"
+    print_run_summary_line "Buyer" "$(normalize_hex_id "$BUYER_ADDRESS") (profile $(normalize_hex_id "$BUYER_PROFILE_ID"))"
+    print_run_summary_line "Buyer username (after sale)" "$LISTING_USERNAME"
+    print_run_summary_line "Seller replacement username" "$REPLACEMENT_USERNAME"
+    print_run_summary_line "Offer amount" "$(format_mist_with_units "$OFFER_AMOUNT")"
+    print_run_summary_line "Marketplace fee (5%)" "$(format_mist_with_units "$EXPECTED_FEE")"
+    print_run_summary_line "Seller net proceeds" "$(format_mist_with_units "$SELLER_NET")"
+    print_run_summary_line "Outcome" "Offer accepted; username transferred to buyer; seller keeps profile with replacement username"
+    print_run_summary_footer
+}
+
+print_username_marketplace_reject_summary() {
+    print_run_summary_header "Username Marketplace — reject flow completed"
+    print_run_summary_line "Listed username" "$LISTING_USERNAME"
+    print_run_summary_line "Seller" "$(normalize_hex_id "$SELLER_ADDRESS")"
+    print_run_summary_line "Buyer" "$(normalize_hex_id "$BUYER_ADDRESS")"
+    print_run_summary_line "Offer amount" "$(format_mist_with_units "$OFFER_AMOUNT")"
+    print_run_summary_line "Outcome" "Offer rejected; listing remains locked to seller; buyer coin returned"
+    print_run_summary_footer
 }
 
 run_reject_flow() {
@@ -347,7 +432,7 @@ run_reject_flow() {
     step_reject_username_offer || return 1
     assert_offer_rejected_rest || return 1
     save_marketplace_session
-    log_step "Username marketplace reject flow complete"
+    print_username_marketplace_reject_summary
 }
 
 show_menu() {

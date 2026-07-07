@@ -1,13 +1,13 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-//! HTTP client for OpenRouter model pricing (catalog sync only — not inference).
+//! HTTP client for OpenRouter model pricing (catalog sync) and chat completions (inference proxy).
 
 use std::collections::HashMap;
 use std::time::Duration;
 
 use anyhow::{Context, Result};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone)]
 pub struct OpenRouterModelRate {
@@ -16,9 +16,24 @@ pub struct OpenRouterModelRate {
     pub output_usd_per_1m: f64,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct ChatMessage<'a> {
+    pub role: &'a str,
+    pub content: &'a str,
+}
+
+#[derive(Debug, Clone)]
+pub struct ChatCompletionResult {
+    pub content: String,
+    pub prompt_tokens: u64,
+    pub completion_tokens: u64,
+    pub total_tokens: u64,
+}
+
 #[derive(Debug, Clone)]
 pub struct OpenRouterClient {
-    api_url: String,
+    models_url: String,
+    chat_url: String,
     api_key: String,
     http: reqwest::Client,
 }
@@ -44,12 +59,54 @@ struct PricingEntry {
     completion: Option<serde_json::Value>,
 }
 
+#[derive(Debug, Serialize)]
+struct ChatCompletionRequest<'a> {
+    model: &'a str,
+    messages: Vec<ChatMessage<'a>>,
+    max_tokens: u32,
+}
+
+#[derive(Debug, Deserialize)]
+struct ChatCompletionResponse {
+    #[serde(default)]
+    choices: Vec<ChatChoice>,
+    #[serde(default)]
+    usage: Option<ChatUsage>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ChatChoice {
+    #[serde(default)]
+    message: Option<ChatChoiceMessage>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ChatChoiceMessage {
+    #[serde(default)]
+    content: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ChatUsage {
+    #[serde(default)]
+    prompt_tokens: u64,
+    #[serde(default)]
+    completion_tokens: u64,
+    #[serde(default)]
+    total_tokens: u64,
+}
+
 impl OpenRouterClient {
-    pub fn new(api_url: impl Into<String>, api_key: impl Into<String>) -> Self {
+    pub fn new(
+        models_url: impl Into<String>,
+        chat_url: impl Into<String>,
+        api_key: impl Into<String>,
+    ) -> Self {
         Self {
-            api_url: api_url.into().trim_end_matches('/').to_string(),
+            models_url: models_url.into().trim_end_matches('/').to_string(),
+            chat_url: chat_url.into().trim_end_matches('/').to_string(),
             http: reqwest::Client::builder()
-                .timeout(Duration::from_secs(30))
+                .timeout(Duration::from_secs(120))
                 .build()
                 .expect("reqwest client"),
             api_key: api_key.into(),
@@ -59,7 +116,7 @@ impl OpenRouterClient {
     pub async fn fetch_model_rates(&self) -> Result<HashMap<String, OpenRouterModelRate>> {
         let response = self
             .http
-            .get(&self.api_url)
+            .get(&self.models_url)
             .header("Authorization", format!("Bearer {}", self.api_key))
             .send()
             .await
@@ -72,6 +129,55 @@ impl OpenRouterClient {
 
         Ok(parse_model_rates(response.data))
     }
+
+    pub async fn chat_completions(
+        &self,
+        model: &str,
+        messages: &[ChatMessage<'_>],
+        max_tokens: u32,
+    ) -> Result<ChatCompletionResult> {
+        let body = ChatCompletionRequest {
+            model,
+            messages: messages.to_vec(),
+            max_tokens,
+        };
+        let response = self
+            .http
+            .post(&self.chat_url)
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .header("Content-Type", "application/json")
+            .json(&body)
+            .send()
+            .await
+            .context("openrouter chat completions request")?
+            .error_for_status()
+            .context("openrouter chat completions status")?
+            .json::<ChatCompletionResponse>()
+            .await
+            .context("openrouter chat completions json")?;
+
+        parse_chat_completion(response)
+    }
+}
+
+fn parse_chat_completion(response: ChatCompletionResponse) -> Result<ChatCompletionResult> {
+    let content = response
+        .choices
+        .first()
+        .and_then(|c| c.message.as_ref())
+        .and_then(|m| m.content.clone())
+        .unwrap_or_default();
+    let usage = response.usage.context("openrouter response missing usage")?;
+    anyhow::ensure!(
+        usage.prompt_tokens > 0 || usage.completion_tokens > 0 || usage.total_tokens > 0,
+        "openrouter usage tokens are zero"
+    );
+    Ok(ChatCompletionResult {
+        content,
+        prompt_tokens: usage.prompt_tokens,
+        completion_tokens: usage.completion_tokens,
+        total_tokens: usage.total_tokens,
+    })
 }
 
 fn parse_model_rates(entries: Vec<ModelEntry>) -> HashMap<String, OpenRouterModelRate> {
@@ -135,5 +241,25 @@ mod tests {
         assert!((rate.input_usd_per_1m - 0.15).abs() < f64::EPSILON);
         assert!((rate.output_usd_per_1m - 0.6).abs() < f64::EPSILON);
         assert!(!rates.contains_key("no-pricing-model"));
+    }
+
+    #[test]
+    fn parse_chat_completion_fixture() {
+        let json = r#"{
+            "choices": [
+                { "message": { "content": "hello" } }
+            ],
+            "usage": {
+                "prompt_tokens": 12,
+                "completion_tokens": 3,
+                "total_tokens": 15
+            }
+        }"#;
+        let body: ChatCompletionResponse = serde_json::from_str(json).unwrap();
+        let result = parse_chat_completion(body).unwrap();
+        assert_eq!(result.content, "hello");
+        assert_eq!(result.prompt_tokens, 12);
+        assert_eq!(result.completion_tokens, 3);
+        assert_eq!(result.total_tokens, 15);
     }
 }

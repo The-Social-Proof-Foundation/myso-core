@@ -550,6 +550,7 @@ fn process_username_claimed_event(
         SocialEventRow::ProfileUsernameSet {
             profile_id: ev.profile_id,
             username: ev.username,
+            owner_address: None,
         },
         SocialEventRow::ProfileEvent(audit_event),
     ])
@@ -596,6 +597,7 @@ fn process_username_revoked_event(
         },
         SocialEventRow::ProfileUsernameClear {
             profile_id: ev.profile_id,
+            owner_address: None,
         },
         SocialEventRow::ProfileEvent(audit_event),
     ])
@@ -635,10 +637,12 @@ fn process_username_reassigned_event(
         },
         SocialEventRow::ProfileUsernameClear {
             profile_id: ev.old_profile_id,
+            owner_address: None,
         },
         SocialEventRow::ProfileUsernameSet {
             profile_id: ev.new_profile_id,
             username: ev.username,
+            owner_address: None,
         },
     ])
 }
@@ -1173,10 +1177,8 @@ struct UsernameOfferCreatedEvent {
 #[derive(Debug, Clone, Deserialize)]
 struct UsernameOfferAcceptedEvent {
     username: String,
-    #[serde(rename = "replacement_username")]
-    _replacement_username: String,
-    #[serde(rename = "seller")]
-    _seller: String,
+    replacement_username: String,
+    seller: String,
     seller_profile_id: String,
     buyer: String,
     buyer_profile_id: String,
@@ -1317,12 +1319,18 @@ fn process_username_offer_accepted_event(
         "profile UsernameOfferAcceptedEvent JSON did not match UsernameOfferAcceptedEvent",
     )?;
     let accepted_at = ev.accepted_at as i64;
+    let seller_profile_id = ev.seller_profile_id.clone();
+    let buyer_profile_id = ev.buyer_profile_id.clone();
+    let seller = ev.seller.clone();
+    let buyer = ev.buyer.clone();
+    let listed_username = ev.username.clone();
+    let replacement_username = ev.replacement_username.clone();
     // Hypertable rows are append-only; insert a resolved snapshot instead of UPDATE pending.
     let offer = NewUsernameOffer {
-        username: ev.username.clone(),
-        seller_profile_id: ev.seller_profile_id,
-        buyer_address: ev.buyer.clone(),
-        buyer_profile_id: ev.buyer_profile_id,
+        username: listed_username.clone(),
+        seller_profile_id: seller_profile_id.clone(),
+        buyer_address: buyer.clone(),
+        buyer_profile_id: buyer_profile_id.clone(),
         amount: ev.amount as i64,
         status: "accepted".to_string(),
         created_at: accepted_at,
@@ -1333,10 +1341,20 @@ fn process_username_offer_accepted_event(
     Some(vec![
         SocialEventRow::UsernameOffer(offer),
         SocialEventRow::UsernameListingStatusUpdate {
-            username: ev.username,
+            username: listed_username.clone(),
             status: "sold".to_string(),
             cancelled_at: None,
             transaction_id: event_id.to_string(),
+        },
+        SocialEventRow::ProfileUsernameSet {
+            profile_id: seller_profile_id,
+            username: replacement_username,
+            owner_address: Some(seller),
+        },
+        SocialEventRow::ProfileUsernameSet {
+            profile_id: buyer_profile_id,
+            username: listed_username,
+            owner_address: Some(buyer),
         },
     ])
 }
@@ -1378,11 +1396,9 @@ fn process_username_offer_rejected_event(
 struct UsernameSaleSettledEvent {
     listed_username: String,
     replacement_username: String,
-    #[serde(rename = "seller")]
-    _seller: String,
+    seller: String,
     seller_profile_id: String,
-    #[serde(rename = "buyer")]
-    _buyer: String,
+    buyer: String,
     buyer_profile_id: String,
     #[serde(default, deserialize_with = "deserialize_number_from_string")]
     amount: u64,
@@ -1432,10 +1448,12 @@ fn process_username_sale_settled_event(
         SocialEventRow::ProfileUsernameSet {
             profile_id: ev.seller_profile_id,
             username: ev.replacement_username,
+            owner_address: Some(ev.seller),
         },
         SocialEventRow::ProfileUsernameSet {
             profile_id: ev.buyer_profile_id,
             username: ev.listed_username,
+            owner_address: Some(ev.buyer),
         },
         SocialEventRow::ProfileEvent(audit_event),
     ])
@@ -1817,6 +1835,16 @@ mod tests {
             r,
             SocialEventRow::UsernameListingStatusUpdate { status, .. } if status == "sold"
         )));
+        assert!(rows.iter().any(|r| matches!(
+            r,
+            SocialEventRow::ProfileUsernameSet { profile_id, username, .. }
+                if *profile_id == seller_profile_id.to_canonical_string(true) && username == "seller1"
+        )));
+        assert!(rows.iter().any(|r| matches!(
+            r,
+            SocialEventRow::ProfileUsernameSet { profile_id, username, .. }
+                if *profile_id == buyer_profile_id.to_canonical_string(true) && username == "premium1"
+        )));
     }
 
     #[test]
@@ -1853,12 +1881,12 @@ mod tests {
         )));
         assert!(rows.iter().any(|r| matches!(
             r,
-            SocialEventRow::ProfileUsernameSet { profile_id, username }
+            SocialEventRow::ProfileUsernameSet { profile_id, username, .. }
                 if *profile_id == seller_profile_id.to_canonical_string(true) && username == "seller1"
         )));
         assert!(rows.iter().any(|r| matches!(
             r,
-            SocialEventRow::ProfileUsernameSet { profile_id, username }
+            SocialEventRow::ProfileUsernameSet { profile_id, username, .. }
                 if *profile_id == buyer_profile_id.to_canonical_string(true) && username == "premium1"
         )));
         assert!(rows.iter().any(|r| matches!(

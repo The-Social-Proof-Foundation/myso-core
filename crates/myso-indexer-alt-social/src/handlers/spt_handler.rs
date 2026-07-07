@@ -21,23 +21,16 @@ use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
-    InsertSptExchangeConfig, NewSocialProofTokensConfig, NewSocialProofTokensEvent,
-    NewSptExchangeConfig, NewSptHolding, NewSptPool, NewSptPriceHistory, NewSptReservation,
+    default_spt_config, InsertSptConfig, merge_spt_config, NewSocialProofTokensEvent,
+    NewSptConfigEvent, NewSptHolding, NewSptPool, NewSptPriceHistory, NewSptReservation,
     NewSptReservationPool, NewSptRevenue, NewSptTransaction, NewUnifiedRevenue,
     ProfileUpdateSet, RESERVATION_POOL_STATUS_ACTIVE, RESERVATION_POOL_STATUS_THRESHOLD_MET,
     REVENUE_TYPE_SPT_CREATOR_FEE, REVENUE_TYPE_SPT_PLATFORM_FEE, REVENUE_TYPE_SPT_TREASURY_FEE,
-    DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS, DEFAULT_MAX_RESERVERS_PER_POOL,
-    DEFAULT_POST_THRESHOLD, DEFAULT_PROFILE_THRESHOLD, DEFAULT_QUADRATIC_COEFFICIENT,
-    DEFAULT_RESERVATION_CREATOR_FEE_BPS, DEFAULT_RESERVATION_PLATFORM_FEE_BPS,
-    DEFAULT_RESERVATION_TREASURY_FEE_BPS, DEFAULT_TRADING_CREATOR_FEE_BPS,
-    DEFAULT_TRADING_PLATFORM_FEE_BPS, DEFAULT_TRADING_TREASURY_FEE_BPS, DEFAULT_BASE_PRICE,
-    MAX_HOLD_PERCENT_BPS, TOKEN_TYPE_POST, TOKEN_TYPE_PROFILE, TRANSACTION_TYPE_BUY,
-    merge_social_proof_tokens_config, merge_spt_exchange_config,
+    TOKEN_TYPE_POST, TOKEN_TYPE_PROFILE, TRANSACTION_TYPE_BUY,
 };
 use myso_indexer_alt_social_schema::schema::{
-    ecosystem_treasury, posts, profiles, spt_config, spt_events, spt_exchange_config, spt_holdings,
-    spt_pools, spt_reservation_pools, spt_reservations, spt_revenue, spt_transactions,
-    unified_revenue,
+    ecosystem_treasury, posts, profiles, spt_config, spt_events, spt_holdings, spt_pools,
+    spt_reservation_pools, spt_reservations, spt_revenue, spt_transactions, unified_revenue,
 };
 
 use super::common;
@@ -282,8 +275,7 @@ pub enum SptRow {
         status: Option<String>,
         required_threshold: Option<i64>,
     },
-    SptExchangeConfig(NewSptExchangeConfig),
-    SocialProofTokensConfig(NewSocialProofTokensConfig),
+    SptConfig(NewSptConfigEvent),
     SocialProofTokensEvent(NewSocialProofTokensEvent),
     SptBuySellRevenueData {
         pool_id: String,
@@ -371,12 +363,7 @@ impl SptRow {
                 status,
                 required_threshold,
             }),
-            crate::handlers::SocialEventRow::SptExchangeConfig(c) => {
-                Some(SptRow::SptExchangeConfig(c))
-            }
-            crate::handlers::SocialEventRow::SocialProofTokensConfig(c) => {
-                Some(SptRow::SocialProofTokensConfig(c))
-            }
+            crate::handlers::SocialEventRow::SptConfig(c) => Some(SptRow::SptConfig(c)),
             crate::handlers::SocialEventRow::SocialProofTokensEvent(e) => {
                 Some(SptRow::SocialProofTokensEvent(e))
             }
@@ -593,7 +580,18 @@ impl Processor for SptHandler {
                 let event_data =
                     match events::parse_event_contents(module, event_name, &ev.contents) {
                         Ok(v) => v,
-                        Err(_) => continue,
+                        Err(e) => {
+                            tracing::warn!(
+                                tx_digest = %tx_digest,
+                                module,
+                                event_name,
+                                error = %e,
+                                hex_preview = %e.contents_hex_preview(48),
+                                "spt pipeline: event contents parse failed; skipping event"
+                            );
+                            SocialMetrics::record_event_bcs_parse_failed(module, event_name);
+                            continue;
+                        }
                     };
                 if let Some(rows) =
                     spt::handle_spt_event(event_name, &event_data, &event_id, epoch, timestamp_ms)
@@ -610,69 +608,10 @@ impl Processor for SptHandler {
     }
 }
 
-fn default_spt_exchange_config() -> InsertSptExchangeConfig {
-    InsertSptExchangeConfig {
-        updated_by: String::new(),
-        post_threshold: DEFAULT_POST_THRESHOLD,
-        profile_threshold: DEFAULT_PROFILE_THRESHOLD,
-        max_individual_reservation_bps: DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS,
-        total_fee_bps: DEFAULT_TRADING_CREATOR_FEE_BPS
-            + DEFAULT_TRADING_PLATFORM_FEE_BPS
-            + DEFAULT_TRADING_TREASURY_FEE_BPS,
-        creator_fee_bps: DEFAULT_TRADING_CREATOR_FEE_BPS,
-        platform_fee_bps: DEFAULT_TRADING_PLATFORM_FEE_BPS,
-        treasury_fee_bps: DEFAULT_TRADING_TREASURY_FEE_BPS,
-        trading_creator_fee_bps: DEFAULT_TRADING_CREATOR_FEE_BPS,
-        trading_platform_fee_bps: DEFAULT_TRADING_PLATFORM_FEE_BPS,
-        trading_treasury_fee_bps: DEFAULT_TRADING_TREASURY_FEE_BPS,
-        reservation_creator_fee_bps: DEFAULT_RESERVATION_CREATOR_FEE_BPS,
-        reservation_platform_fee_bps: DEFAULT_RESERVATION_PLATFORM_FEE_BPS,
-        reservation_treasury_fee_bps: DEFAULT_RESERVATION_TREASURY_FEE_BPS,
-        max_reservers_per_pool: DEFAULT_MAX_RESERVERS_PER_POOL,
-        base_price: DEFAULT_BASE_PRICE,
-        quadratic_coefficient: DEFAULT_QUADRATIC_COEFFICIENT,
-        max_hold_percent_bps: MAX_HOLD_PERCENT_BPS,
-        non_platform_platform_to_creator_bps: 0,
-        non_platform_platform_to_treasury_bps: 0,
-        trading_enabled: true,
-        version: 0,
-        updated_at: 0,
-        time: chrono::Utc::now(),
-        transaction_id: String::new(),
-    }
-}
-
-async fn load_latest_spt_exchange_config(
-    conn: &mut Connection<'_>,
-) -> Result<Option<InsertSptExchangeConfig>> {
-    spt_exchange_config::table
-        .order(spt_exchange_config::time.desc())
-        .select(InsertSptExchangeConfig::as_select())
-        .first(conn)
-        .await
-        .optional()
-        .map_err(Into::into)
-}
-
-fn default_social_proof_tokens_config() -> NewSocialProofTokensConfig {
-    NewSocialProofTokensConfig {
-        trading_enabled: false,
-        admin_address: String::new(),
-        reason: String::new(),
-        updated_by: String::new(),
-        version: 0,
-        updated_at: 0,
-        time: chrono::Utc::now(),
-        transaction_id: String::new(),
-    }
-}
-
-async fn load_latest_social_proof_tokens_config(
-    conn: &mut Connection<'_>,
-) -> Result<Option<NewSocialProofTokensConfig>> {
+async fn load_latest_spt_config(conn: &mut Connection<'_>) -> Result<Option<InsertSptConfig>> {
     spt_config::table
         .order(spt_config::time.desc())
-        .select(NewSocialProofTokensConfig::as_select())
+        .select(InsertSptConfig::as_select())
         .first(conn)
         .await
         .optional()
@@ -684,12 +623,9 @@ impl Handler for SptHandler {
     async fn commit<'a>(values: &[Self::Value], conn: &mut Connection<'a>) -> Result<usize> {
         let mut total = 0;
         let mut zero_circ_pools: Vec<(String, String)> = Vec::new();
-        let mut running_exchange_config = load_latest_spt_exchange_config(conn)
+        let mut running_spt_config = load_latest_spt_config(conn)
             .await?
-            .unwrap_or_else(default_spt_exchange_config);
-        let mut running_spt_config = load_latest_social_proof_tokens_config(conn)
-            .await?
-            .unwrap_or_else(default_social_proof_tokens_config);
+            .unwrap_or_else(default_spt_config);
         for row in values {
             match row {
                 SptRow::SptPool(p) => {
@@ -1185,18 +1121,18 @@ impl Handler for SptHandler {
                         .execute(conn)
                         .await?;
                 }
-                SptRow::SptExchangeConfig(c) => {
+                SptRow::SptConfig(c) => {
                     let sync_reservation_pool_thresholds = !c.apply_trading_enabled_only
                         && c.profile_threshold > 0
                         && c.post_threshold > 0;
                     let profile_threshold = c.profile_threshold;
                     let post_threshold = c.post_threshold;
-                    let merged = merge_spt_exchange_config(&running_exchange_config, c);
-                    total += diesel::insert_into(spt_exchange_config::table)
+                    let merged = merge_spt_config(&running_spt_config, c);
+                    total += diesel::insert_into(spt_config::table)
                         .values(&merged)
                         .execute(conn)
                         .await?;
-                    running_exchange_config = merged;
+                    running_spt_config = merged;
                     if sync_reservation_pool_thresholds {
                         let sync_sql = r#"
                             UPDATE spt_reservation_pools sp
@@ -1218,14 +1154,6 @@ impl Handler for SptHandler {
                             .execute(conn)
                             .await?;
                     }
-                }
-                SptRow::SocialProofTokensConfig(c) => {
-                    let merged = merge_social_proof_tokens_config(&running_spt_config, c);
-                    total += diesel::insert_into(spt_config::table)
-                        .values(&merged)
-                        .execute(conn)
-                        .await?;
-                    running_spt_config = merged;
                 }
                 SptRow::SocialProofTokensEvent(e) => {
                     total += diesel::insert_into(spt_events::table)

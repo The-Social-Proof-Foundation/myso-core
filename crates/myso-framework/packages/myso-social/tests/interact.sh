@@ -31,6 +31,7 @@ ECOSYSTEM_TREASURY_ID="${ECOSYSTEM_TREASURY_ID:-}"
 BLOCK_LIST_REGISTRY_ID="${BLOCK_LIST_REGISTRY_ID:-}"
 SOCIAL_GRAPH_ID="${SOCIAL_GRAPH_ID:-}"
 PLATFORM_REGISTRY_ID="${PLATFORM_REGISTRY_ID:-}"
+PLATFORM_CONFIG_ID="${PLATFORM_CONFIG_ID:-}"
 MYDATA_REGISTRY_ID="${MYDATA_REGISTRY_ID:-}"
 MYDATA_CONFIG_ID="${MYDATA_CONFIG_ID:-}"
 GOVERNANCE_ECOSYSTEM_REGISTRY_ID="${GOVERNANCE_ECOSYSTEM_REGISTRY_ID:-}"
@@ -826,19 +827,25 @@ maybe_approve_platform() {
     local platform_id="$1"
     local admin_cap="${PLATFORM_ADMIN_CAP_ID:-}"
     local preg="${PLATFORM_REGISTRY_ID:-}"
-    local ref_preg ref_cap platform_addr out digest
+    local pcfg="${PLATFORM_CONFIG_ID:-}"
+    local ref_preg ref_pcfg ref_cap platform_addr out digest
 
     [ -n "$platform_id" ] || return 0
     [ -n "$admin_cap" ] || {
         print_info "PLATFORM_ADMIN_CAP_ID unset — skip toggle_platform_approval."
         return 0
     }
+    [ -n "$pcfg" ] || {
+        print_info "PLATFORM_CONFIG_ID unset — skip toggle_platform_approval."
+        return 0
+    }
     ref_preg="$(ptb_shared_ref "$preg")" || return 1
+    ref_pcfg="$(ptb_shared_ref "$pcfg")" || return 1
     ref_cap="$(ptb_shared_ref "$admin_cap")" || return 1
     platform_addr="$(normalize_hex_id "$platform_id")" || return 1
     print_info "Approving platform via toggle_platform_approval ..."
     invoke_ptb --move-call "${PACKAGE_ID}::platform::toggle_platform_approval" \
-        "$ref_preg" "$platform_addr" "$ref_cap" none
+        "$ref_preg" "$ref_pcfg" "$(ptb_shared_ref "$platform_addr")" "$ref_cap" none
 }
 
 invoke_platform_create_ptb() {
@@ -849,13 +856,19 @@ invoke_platform_create_ptb() {
     local pc="$1" sc_arg="$2" st="$3" rd="$4" wdao="$5"
     local dc_a="$6" dt_a="$7" psc_a="$8" mv_a="$9" qb_a="${10}" vp_a="${11}" qv_a="${12}"
     local cp_arg="${13}" mp_arg="${14}"
-    local ref_preg ref_clk out digest platform_id
+    local ref_preg ref_pcfg ref_clk out digest platform_id
 
     ref_preg="$(ptb_shared_ref "$preg")" || return 1
+    if [ -z "${PLATFORM_CONFIG_ID:-}" ]; then
+        print_info "PLATFORM_CONFIG_ID required (platform::PlatformConfig shared object)."
+        return 1
+    fi
+    ref_pcfg="$(ptb_shared_ref "$PLATFORM_CONFIG_ID")" || return 1
     ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || return 1
 
     out="$(invoke_ptb_capture --move-call "${PACKAGE_ID}::platform::create_platform" \
         "$ref_preg" \
+        "$ref_pcfg" \
         "$nl" "$tg" "$ds" "$lg" "$tm" "$pv" \
         "$pl_vec" "$lk_vec" \
         "$pc" "$sc_arg" \
@@ -916,8 +929,11 @@ ptb_platform_create_with_defaults() {
     if [ -z "$preg" ]; then
         read -r -p "PlatformRegistry (mutable shared) ID: " preg
     fi
-    if [ -z "$preg" ]; then
-        print_info "PLATFORM_REGISTRY_ID required."
+    if [ -z "${PLATFORM_CONFIG_ID:-}" ]; then
+        read -r -p "PlatformConfig (shared) ID: " PLATFORM_CONFIG_ID
+    fi
+    if [ -z "$preg" ] || [ -z "${PLATFORM_CONFIG_ID:-}" ]; then
+        print_info "PLATFORM_REGISTRY_ID and PLATFORM_CONFIG_ID required."
         press_enter
         platform_menu
         return
@@ -928,7 +944,7 @@ ptb_platform_create_with_defaults() {
         "$(literal_move_string "Test Platform ${run_id}")" \
         "$(literal_move_string 'A test platform')" \
         "$(literal_move_string 'This is a test platform for badge testing')" \
-        "$(literal_move_string 'https://example.com/logo.png')" \
+        "$(literal_move_string 'https://pub-1f3749a8084a44c3abbd97a4875268a1.r2.dev/Logo%20Regular%20-%20Accent-1.png')" \
         "$(literal_move_string 'https://example.com/terms')" \
         "$(literal_move_string 'https://example.com/privacy')" \
         "$(literal_move_vector_empty)" \
@@ -938,7 +954,7 @@ ptb_platform_create_with_defaults() {
         "$(literal_move_string '2023-01-01')" \
         false \
         none none none none none none none \
-        none none \
+        "some($(literal_move_string 'https://pub-1f3749a8084a44c3abbd97a4875268a1.r2.dev/mysocial-banner.png'))" none \
         || { press_enter; platform_menu; return; }
     print_success "Submitted."
     press_enter
@@ -949,6 +965,9 @@ ptb_platform_create() {
     print_header "platform::create_platform (PTB)"
     read -r -p "PlatformRegistry (mutable shared) ID [${PLATFORM_REGISTRY_ID:-}]: " preg
     preg="${preg:-$PLATFORM_REGISTRY_ID}"
+    if [ -z "${PLATFORM_CONFIG_ID:-}" ]; then
+        read -r -p "PlatformConfig (shared) ID: " PLATFORM_CONFIG_ID
+    fi
     read -r -p "platform name String: " n
     read -r -p "tagline String: " tag
     read -r -p "description String: " desc
@@ -1010,8 +1029,8 @@ ptb_platform_create() {
         MP_ARG="some(vector[${acc}])"
     fi
 
-    if [ -z "$preg" ]; then
-        print_info "PLATFORM_REGISTRY_ID required."
+    if [ -z "$preg" ] || [ -z "${PLATFORM_CONFIG_ID:-}" ]; then
+        print_info "PLATFORM_REGISTRY_ID and PLATFORM_CONFIG_ID required."
         press_enter
         platform_menu
         return
@@ -1438,6 +1457,7 @@ record_saved_addresses() {
         read_one "BLOCK_LIST_REGISTRY_ID" "block_list BlockListRegistry"
         read_one "SOCIAL_GRAPH_ID" "social_graph SocialGraph"
         read_one "PLATFORM_REGISTRY_ID" "platform PlatformRegistry"
+        read_one "PLATFORM_CONFIG_ID" "platform PlatformConfig"
         read_one "PLATFORM_OBJECT_ID" "platform Platform shared object (for posts/comments)"
         read_one "PLATFORM_ADMIN_CAP_ID" "platform PlatformAdminCap (for approval PTB)"
         read_one "MEMORY_ACCOUNT_ID" "memory MemoryAccount (for post PTBs)"
@@ -1484,6 +1504,7 @@ ECOSYSTEM_TREASURY_ID=
 BLOCK_LIST_REGISTRY_ID=
 SOCIAL_GRAPH_ID=
 PLATFORM_REGISTRY_ID=
+PLATFORM_CONFIG_ID=
 PLATFORM_OBJECT_ID=
 PLATFORM_ADMIN_CAP_ID=
 MEMORY_ACCOUNT_ID=

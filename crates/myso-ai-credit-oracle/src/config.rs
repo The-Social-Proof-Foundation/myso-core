@@ -22,7 +22,7 @@ pub struct OracleArgs {
     #[arg(
         long,
         env = "AI_CREDIT_MYSO_RPC",
-        default_value = "http://127.0.0.1:9001"
+        default_value = "http://127.0.0.1:9000"
     )]
     pub myso_rpc: String,
 
@@ -154,6 +154,17 @@ pub struct OracleArgs {
     )]
     pub openrouter_api_url: String,
 
+    #[arg(
+        long,
+        env = "AI_CREDIT_OPENROUTER_CHAT_URL",
+        default_value = "https://openrouter.ai/api/v1/chat/completions"
+    )]
+    pub openrouter_chat_url: String,
+
+    /// Proxy live LLM calls via OpenRouter (`POST /v1/ai-credit/inference`).
+    #[arg(long, env = "AI_CREDIT_INFERENCE_ENABLED", default_value = "false")]
+    pub inference_enabled: bool,
+
     #[arg(long, env = "AI_CREDIT_CATALOG_MAX_DRIFT_PCT", default_value = "50.0")]
     pub catalog_max_drift_pct: f64,
 
@@ -234,6 +245,10 @@ pub struct OracleArgs {
 impl OracleArgs {
     pub fn catalog_sync_active(&self) -> bool {
         self.catalog_sync_enabled && self.openrouter_api_key.is_some()
+    }
+
+    pub fn inference_active(&self) -> bool {
+        self.inference_enabled && self.openrouter_api_key.is_some()
     }
 
     pub fn validate_startup(&self) -> anyhow::Result<()> {

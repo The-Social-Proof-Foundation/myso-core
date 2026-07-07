@@ -2177,7 +2177,7 @@ pub struct BcsMyDataUnregisteredEvent {
     unregistered_at: u64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsMyDataConfigUpdatedEvent {
     updated_by: AccountAddress,
     marketplace_enabled: bool,
@@ -2185,6 +2185,12 @@ pub struct BcsMyDataConfigUpdatedEvent {
     max_subscription_days: u64,
     max_free_access_grants: u64,
     max_encryption_id_bytes: u64,
+    p2p_platform_fee_bps: u64,
+    p2p_ecosystem_fee_bps: u64,
+    mydata_marketplace_platform_fee_bps: u64,
+    mydata_marketplace_ecosystem_fee_bps: u64,
+    non_platform_platform_to_creator_bps: u64,
+    non_platform_platform_to_treasury_bps: u64,
     timestamp: u64,
 }
 
@@ -2427,11 +2433,15 @@ pub struct BcsProfileSubscriptionServiceDeactivatedEvent {
     deactivated_at: u64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsSubscriptionConfigUpdatedEvent {
     updated_by: AccountAddress,
     billing_period_ms: u64,
     max_renewal_months: u64,
+    platform_fee_bps: u64,
+    ecosystem_fee_bps: u64,
+    non_platform_platform_to_creator_bps: u64,
+    non_platform_platform_to_treasury_bps: u64,
     timestamp: u64,
 }
 
@@ -2525,7 +2535,7 @@ pub struct BcsReservationPoolCreatedEvent {
     created_at: u64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsSptConfigUpdatedEvent {
     updated_by: AccountAddress,
     timestamp: u64,
@@ -4895,6 +4905,12 @@ fn parse_mydata_event(
                 "max_subscription_days": ev.max_subscription_days,
                 "max_free_access_grants": ev.max_free_access_grants,
                 "max_encryption_id_bytes": ev.max_encryption_id_bytes,
+                "p2p_platform_fee_bps": ev.p2p_platform_fee_bps,
+                "p2p_ecosystem_fee_bps": ev.p2p_ecosystem_fee_bps,
+                "mydata_marketplace_platform_fee_bps": ev.mydata_marketplace_platform_fee_bps,
+                "mydata_marketplace_ecosystem_fee_bps": ev.mydata_marketplace_ecosystem_fee_bps,
+                "non_platform_platform_to_creator_bps": ev.non_platform_platform_to_creator_bps,
+                "non_platform_platform_to_treasury_bps": ev.non_platform_platform_to_treasury_bps,
                 "timestamp": ev.timestamp,
             })))
         }
@@ -5638,6 +5654,10 @@ fn parse_subscription_event(
                 "updated_by": addr_to_string(&ev.updated_by),
                 "billing_period_ms": ev.billing_period_ms,
                 "max_renewal_months": ev.max_renewal_months,
+                "platform_fee_bps": ev.platform_fee_bps,
+                "ecosystem_fee_bps": ev.ecosystem_fee_bps,
+                "non_platform_platform_to_creator_bps": ev.non_platform_platform_to_creator_bps,
+                "non_platform_platform_to_treasury_bps": ev.non_platform_platform_to_treasury_bps,
                 "timestamp": ev.timestamp,
             })))
         }
@@ -7218,5 +7238,97 @@ mod tests {
             .as_str()
             .unwrap()
             .starts_with("0x"));
+    }
+
+    #[test]
+    fn subscription_config_updated_bcs_roundtrip() {
+        let updated_by = AccountAddress::from_hex_literal(
+            "0x9cc886f94db2b2a41b1f8d7c20c7fc0960e1f9eb34ce2c0c7f309",
+        )
+        .unwrap();
+        let ev = BcsSubscriptionConfigUpdatedEvent {
+            updated_by,
+            billing_period_ms: 2_592_000_000,
+            max_renewal_months: 120,
+            platform_fee_bps: 250,
+            ecosystem_fee_bps: 250,
+            non_platform_platform_to_creator_bps: 0,
+            non_platform_platform_to_treasury_bps: 10_000,
+            timestamp: 1_700_000_000_000,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("serialize SubscriptionConfigUpdatedEvent");
+        let json = parse_event_contents("subscription", "SubscriptionConfigUpdatedEvent", &bytes)
+            .expect("parse SubscriptionConfigUpdatedEvent");
+        assert_eq!(json["billing_period_ms"].as_u64(), Some(2_592_000_000));
+        assert_eq!(json["platform_fee_bps"], 250);
+        assert_eq!(json["ecosystem_fee_bps"], 250);
+        assert_eq!(json["non_platform_platform_to_treasury_bps"], 10_000);
+    }
+
+    #[test]
+    fn mydata_config_updated_bcs_roundtrip() {
+        let updated_by = AccountAddress::from_hex_literal(
+            "0x9cc886f94db2b2a41b1f8d7c20c7fc0960e1f9eb34ce2c0c7f309",
+        )
+        .unwrap();
+        let ev = BcsMyDataConfigUpdatedEvent {
+            updated_by,
+            marketplace_enabled: true,
+            max_tags: 10,
+            max_subscription_days: 365,
+            max_free_access_grants: 100_000,
+            max_encryption_id_bytes: 1024,
+            p2p_platform_fee_bps: 250,
+            p2p_ecosystem_fee_bps: 250,
+            mydata_marketplace_platform_fee_bps: 250,
+            mydata_marketplace_ecosystem_fee_bps: 250,
+            non_platform_platform_to_creator_bps: 0,
+            non_platform_platform_to_treasury_bps: 10_000,
+            timestamp: 1_700_000_000_000,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("serialize MyDataConfigUpdatedEvent");
+        let json = parse_event_contents("mydata", "MyDataConfigUpdatedEvent", &bytes)
+            .expect("parse MyDataConfigUpdatedEvent");
+        assert_eq!(json["marketplace_enabled"], true);
+        assert_eq!(json["p2p_platform_fee_bps"], 250);
+        assert_eq!(json["mydata_marketplace_ecosystem_fee_bps"], 250);
+        assert_eq!(json["non_platform_platform_to_treasury_bps"], 10_000);
+    }
+
+    #[test]
+    fn spt_config_updated_bcs_roundtrip() {
+        let updated_by = AccountAddress::from_hex_literal(
+            "0x9cc886f94db2b2a41b1f8d7c20c7fc0960e1f9eb34ce2c0c7f309",
+        )
+        .unwrap();
+        let ev = BcsSptConfigUpdatedEvent {
+            updated_by,
+            timestamp: 1_700_000_000_000,
+            total_fee_bps: 150,
+            trading_creator_fee_bps: 100,
+            trading_platform_fee_bps: 25,
+            trading_treasury_fee_bps: 25,
+            reservation_total_fee_bps: 150,
+            reservation_creator_fee_bps: 100,
+            reservation_platform_fee_bps: 25,
+            reservation_treasury_fee_bps: 25,
+            base_price: 100_000_000,
+            quadratic_coefficient: 100_000,
+            max_hold_percent_bps: 500,
+            post_threshold: 1_000_000_000_000,
+            profile_threshold: 10_000_000_000_000,
+            max_individual_reservation_bps: 2000,
+            max_reservers_per_pool: 1000,
+            non_platform_platform_to_creator_bps: 5000,
+            non_platform_platform_to_treasury_bps: 5000,
+            trading_enabled: true,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("serialize ConfigUpdatedEvent");
+        let json = parse_event_contents("social_proof_tokens", "ConfigUpdatedEvent", &bytes)
+            .expect("parse ConfigUpdatedEvent");
+        assert_eq!(json["total_fee_bps"], 150);
+        assert_eq!(json["base_price"], 100_000_000);
+        assert_eq!(json["trading_enabled"], true);
+        assert_eq!(json["timestamp"].as_u64(), Some(1_700_000_000_000));
     }
 }

@@ -90,6 +90,12 @@ display_name = "Qwen 2.5 72B"
 input_mist_per_1m = 350_000_000
 output_mist_per_1m = 400_000_000
 
+[[models]]
+aliases = ["tencent/hy3:free", "hy3:free"]
+display_name = "Tencent HY3 Free"
+input_mist_per_1m = 0
+output_mist_per_1m = 0
+
 [[embeddings]]
 aliases = ["text-embedding-3-small", "openai/text-embedding-3-small"]
 display_name = "text-embedding-3-small"

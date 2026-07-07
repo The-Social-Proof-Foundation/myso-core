@@ -16,7 +16,7 @@ use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::ProfilePlatformMembershipRow;
 use myso_indexer_alt_social_schema::schema::{
     blocked_events, blocked_profiles, platform_blocked_profiles, profile_events, profiles,
-    social_graph_relationships, spt_exchange_config, wallet_social_graph,
+    social_graph_relationships, spt_config, wallet_social_graph,
 };
 use serde_json::Value as JsonValue;
 
@@ -266,9 +266,9 @@ async fn get_reservation_pool_info_for_profiles(
         return Ok(HashMap::new());
     }
 
-    let profile_threshold: i64 = spt_exchange_config::table
-        .order_by(spt_exchange_config::time.desc())
-        .select(spt_exchange_config::profile_threshold)
+    let profile_threshold: i64 = spt_config::table
+        .order_by(spt_config::time.desc())
+        .select(spt_config::profile_threshold)
         .first(conn)
         .await
         .unwrap_or(10_000_000_000_000);

@@ -41,14 +41,29 @@ COMMENT ON COLUMN post_config.min_promotion_amount IS 'Minimum payment per view 
 COMMENT ON COLUMN post_config.max_promotion_amount IS 'Maximum payment per view for a promoted post in MIST (default: 100000000)';
 COMMENT ON COLUMN post_config.min_view_duration_ms IS 'Minimum view duration in ms for a promoted post view to count (default: 3000)';
 
--- 1.3 spt_exchange_config (hypertable) — non-platform platform-fee bucket split
-ALTER TABLE spt_exchange_config
+-- 1.3 spt_config — exchange parameters (consolidates former spt_exchange_config hypertable)
+ALTER TABLE spt_config
+ADD COLUMN IF NOT EXISTS post_threshold BIGINT NOT NULL DEFAULT 1000000000000,
+ADD COLUMN IF NOT EXISTS profile_threshold BIGINT NOT NULL DEFAULT 10000000000000,
+ADD COLUMN IF NOT EXISTS max_individual_reservation_bps BIGINT NOT NULL DEFAULT 2000,
+ADD COLUMN IF NOT EXISTS total_fee_bps BIGINT NOT NULL DEFAULT 150,
+ADD COLUMN IF NOT EXISTS creator_fee_bps BIGINT NOT NULL DEFAULT 100,
+ADD COLUMN IF NOT EXISTS platform_fee_bps BIGINT NOT NULL DEFAULT 25,
+ADD COLUMN IF NOT EXISTS treasury_fee_bps BIGINT NOT NULL DEFAULT 25,
+ADD COLUMN IF NOT EXISTS trading_creator_fee_bps BIGINT NOT NULL DEFAULT 100,
+ADD COLUMN IF NOT EXISTS trading_platform_fee_bps BIGINT NOT NULL DEFAULT 25,
+ADD COLUMN IF NOT EXISTS trading_treasury_fee_bps BIGINT NOT NULL DEFAULT 25,
+ADD COLUMN IF NOT EXISTS reservation_creator_fee_bps BIGINT NOT NULL DEFAULT 100,
+ADD COLUMN IF NOT EXISTS reservation_platform_fee_bps BIGINT NOT NULL DEFAULT 25,
+ADD COLUMN IF NOT EXISTS reservation_treasury_fee_bps BIGINT NOT NULL DEFAULT 25,
+ADD COLUMN IF NOT EXISTS max_reservers_per_pool BIGINT NOT NULL DEFAULT 1000,
+ADD COLUMN IF NOT EXISTS base_price BIGINT NOT NULL DEFAULT 100000000,
+ADD COLUMN IF NOT EXISTS quadratic_coefficient BIGINT NOT NULL DEFAULT 100000,
+ADD COLUMN IF NOT EXISTS max_hold_percent_bps BIGINT NOT NULL DEFAULT 500,
 ADD COLUMN IF NOT EXISTS non_platform_platform_to_creator_bps BIGINT NOT NULL DEFAULT 5000,
 ADD COLUMN IF NOT EXISTS non_platform_platform_to_treasury_bps BIGINT NOT NULL DEFAULT 5000;
-UPDATE spt_exchange_config SET non_platform_platform_to_creator_bps = 5000 WHERE non_platform_platform_to_creator_bps IS NULL;
-UPDATE spt_exchange_config SET non_platform_platform_to_treasury_bps = 5000 WHERE non_platform_platform_to_treasury_bps IS NULL;
-COMMENT ON COLUMN spt_exchange_config.non_platform_platform_to_creator_bps IS 'Non-platform path: creator share of the platform-fee bucket in bps (default: 5000)';
-COMMENT ON COLUMN spt_exchange_config.non_platform_platform_to_treasury_bps IS 'Non-platform path: ecosystem treasury share of the platform-fee bucket in bps (default: 5000)';
+COMMENT ON COLUMN spt_config.non_platform_platform_to_creator_bps IS 'Non-platform path: creator share of the platform-fee bucket in bps (default: 5000)';
+COMMENT ON COLUMN spt_config.non_platform_platform_to_treasury_bps IS 'Non-platform path: ecosystem treasury share of the platform-fee bucket in bps (default: 5000)';
 
 -- 1.4 spot_config (hypertable) — betting/reasoning/evidence limits
 ALTER TABLE spot_config
@@ -165,8 +180,6 @@ ALTER TABLE insurance_config RENAME COLUMN enable_flag TO insurance_enabled;
 COMMENT ON COLUMN mydata_config.marketplace_enabled IS 'Whether the MyData marketplace is enabled (default: false)';
 COMMENT ON COLUMN spot_config.truth_enabled IS 'Whether Social Proof of Truth (SPoT) is enabled (default: false)';
 COMMENT ON COLUMN insurance_config.insurance_enabled IS 'Whether insurance is enabled (default: false)';
-ALTER TABLE spt_exchange_config ALTER COLUMN trading_enabled SET DEFAULT TRUE;
-UPDATE spt_exchange_config SET trading_enabled = TRUE WHERE trading_enabled = FALSE;
 ALTER TABLE spt_config ALTER COLUMN trading_enabled SET DEFAULT TRUE;
 
 -- ============================================================================
@@ -679,7 +692,6 @@ END $$;
 
 -- Add version where missing
 ALTER TABLE mydata_config ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0;
-ALTER TABLE spt_exchange_config ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0;
 ALTER TABLE poc_configuration ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0;
 ALTER TABLE ecosystem_treasury ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0;
 
@@ -710,6 +722,13 @@ BEGIN
         ALTER TABLE spt_config ADD COLUMN IF NOT EXISTS updated_by TEXT NOT NULL DEFAULT '';
         ALTER TABLE spt_config ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0;
         ALTER TABLE spt_config ADD COLUMN IF NOT EXISTS time TIMESTAMPTZ NOT NULL DEFAULT NOW();
+        -- Unified spt_config: ConfigUpdatedEvent rows omit kill-switch audit fields.
+        ALTER TABLE spt_config DROP CONSTRAINT IF EXISTS valid_admin_address;
+        ALTER TABLE spt_config DROP CONSTRAINT IF EXISTS valid_reason;
+        ALTER TABLE spt_config DROP CONSTRAINT IF EXISTS valid_timestamp;
+        ALTER TABLE spt_config DROP CONSTRAINT IF EXISTS valid_transaction_id;
+        ALTER TABLE spt_config ALTER COLUMN admin_address SET DEFAULT '';
+        ALTER TABLE spt_config ALTER COLUMN reason SET DEFAULT '';
         UPDATE spt_config SET updated_by = admin_address WHERE updated_by = '' AND admin_address IS NOT NULL;
         UPDATE spt_config SET time = to_timestamp(updated_at / 1000) WHERE updated_at > 0;
     END IF;
@@ -751,18 +770,6 @@ DROP TRIGGER IF EXISTS set_insurance_config_time ON insurance_config;
 CREATE TRIGGER set_insurance_config_time
 BEFORE INSERT ON insurance_config FOR EACH ROW
 EXECUTE FUNCTION update_insurance_config_time();
-
-CREATE OR REPLACE FUNCTION update_spt_exchange_config_time()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.time = to_timestamp(NEW.updated_at / 1000);
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-DROP TRIGGER IF EXISTS set_spt_exchange_config_time ON spt_exchange_config;
-CREATE TRIGGER set_spt_exchange_config_time
-BEFORE INSERT ON spt_exchange_config FOR EACH ROW
-EXECUTE FUNCTION update_spt_exchange_config_time();
 
 CREATE OR REPLACE FUNCTION update_ecosystem_treasury_time()
 RETURNS TRIGGER AS $$
@@ -851,6 +858,30 @@ END $$;
 CREATE INDEX IF NOT EXISTS idx_poc_configuration_time ON poc_configuration(time DESC);
 CREATE INDEX IF NOT EXISTS idx_spt_config_time ON spt_config(time DESC);
 CREATE INDEX IF NOT EXISTS idx_ecosystem_treasury_time ON ecosystem_treasury(time DESC);
+
+-- Drop legacy spt_exchange_config hypertable; all SPT config lives in spt_config.
+DROP TABLE IF EXISTS spt_exchange_config CASCADE;
+DROP FUNCTION IF EXISTS update_spt_exchange_config_time();
+
+CREATE OR REPLACE FUNCTION get_current_exchange_config()
+RETURNS TABLE(
+    post_threshold BIGINT,
+    profile_threshold BIGINT,
+    max_individual_reservation_bps BIGINT,
+    trading_enabled BOOLEAN
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        c.post_threshold,
+        c.profile_threshold,
+        c.max_individual_reservation_bps,
+        c.trading_enabled
+    FROM spt_config c
+    ORDER BY c.time DESC
+    LIMIT 1;
+END;
+$$ LANGUAGE plpgsql;
 
 -- ============================================================================
 -- 1.11 profiles on-chain fields cleanup

@@ -70,9 +70,11 @@ pub enum ProfileRow {
     ProfileUsernameSet {
         profile_id: String,
         username: String,
+        owner_address: Option<String>,
     },
     ProfileUsernameClear {
         profile_id: String,
+        owner_address: Option<String>,
     },
     ProfileEvent(NewProfileEvent),
     UsernameListing(NewUsernameListing),
@@ -139,13 +141,19 @@ impl ProfileRow {
             crate::handlers::SocialEventRow::ProfileUsernameSet {
                 profile_id,
                 username,
+                owner_address,
             } => Some(ProfileRow::ProfileUsernameSet {
                 profile_id,
                 username,
+                owner_address,
             }),
-            crate::handlers::SocialEventRow::ProfileUsernameClear { profile_id } => {
-                Some(ProfileRow::ProfileUsernameClear { profile_id })
-            }
+            crate::handlers::SocialEventRow::ProfileUsernameClear {
+                profile_id,
+                owner_address,
+            } => Some(ProfileRow::ProfileUsernameClear {
+                profile_id,
+                owner_address,
+            }),
             crate::handlers::SocialEventRow::ProfileEvent(e) => Some(ProfileRow::ProfileEvent(e)),
             crate::handlers::SocialEventRow::UsernameListing(l) => {
                 Some(ProfileRow::UsernameListing(l))
@@ -313,7 +321,9 @@ impl Processor for ProfilesHandler {
 const COMMIT_PASS_MARKETPLACE: u8 = 2;
 const COMMIT_PASS_REGISTRY_REASSIGN: u8 = 3;
 const COMMIT_PASS_REGISTRY_UPSERT: u8 = 4;
-const COMMIT_PASS_OTHER: u8 = 5;
+const COMMIT_PASS_USERNAME_CLEAR: u8 = 5;
+const COMMIT_PASS_USERNAME_SET: u8 = 6;
+const COMMIT_PASS_OTHER: u8 = 7;
 
 fn profile_row_commit_pass(row: &ProfileRow) -> u8 {
     match row {
@@ -325,6 +335,8 @@ fn profile_row_commit_pass(row: &ProfileRow) -> u8 {
             COMMIT_PASS_REGISTRY_REASSIGN
         }
         ProfileRow::UsernameRegistryUpsert(_) => COMMIT_PASS_REGISTRY_UPSERT,
+        ProfileRow::ProfileUsernameClear { .. } => COMMIT_PASS_USERNAME_CLEAR,
+        ProfileRow::ProfileUsernameSet { .. } => COMMIT_PASS_USERNAME_SET,
         ProfileRow::Profile(_)
         | ProfileRow::MemoryAccountBootstrap(_)
         | ProfileRow::AiCreditBalanceBootstrap(_) => 0,
@@ -358,6 +370,8 @@ impl Handler for ProfilesHandler {
             COMMIT_PASS_MARKETPLACE,
             COMMIT_PASS_REGISTRY_REASSIGN,
             COMMIT_PASS_REGISTRY_UPSERT,
+            COMMIT_PASS_USERNAME_CLEAR,
+            COMMIT_PASS_USERNAME_SET,
             COMMIT_PASS_OTHER,
         ] {
             for row in values {
@@ -630,32 +644,76 @@ async fn commit_profile_row<'a>(row: &ProfileRow, conn: &mut Connection<'a>) -> 
         ProfileRow::ProfileUsernameSet {
             profile_id,
             username,
+            owner_address,
         } => {
             let now = chrono::Utc::now().naive_utc();
-            let updated = diesel::update(profiles::table)
-                .filter(profiles::profile_id.eq(profile_id))
-                .set((
-                    profiles::username.eq(username),
-                    profiles::updated_at.eq(now),
-                ))
-                .execute(conn)
-                .await?;
+            let profile_id_norm = common::normalize_hex_address(profile_id);
+            let updated = if let Some(owner) = owner_address.as_ref() {
+                let owner_norm = common::normalize_hex_address(owner);
+                diesel::update(profiles::table)
+                    .filter(
+                        profiles::profile_id
+                            .eq(&profile_id_norm)
+                            .or(profiles::owner_address.eq(&owner_norm)),
+                    )
+                    .set((
+                        profiles::username.eq(username),
+                        profiles::updated_at.eq(now),
+                    ))
+                    .execute(conn)
+                    .await?
+            } else {
+                diesel::update(profiles::table)
+                    .filter(profiles::profile_id.eq(&profile_id_norm))
+                    .set((
+                        profiles::username.eq(username),
+                        profiles::updated_at.eq(now),
+                    ))
+                    .execute(conn)
+                    .await?
+            };
             if updated == 0 {
-                tracing::warn!(
-                    profile_id = %profile_id,
+                tracing::error!(
+                    profile_id = %profile_id_norm,
                     username = %username,
-                    "ProfileUsernameSet updated 0 rows after profile insert pass"
+                    owner_address = ?owner_address,
+                    "ProfileUsernameSet updated 0 rows — profiles.username out of sync with registry"
                 );
             }
             total += updated;
         }
-        ProfileRow::ProfileUsernameClear { profile_id } => {
+        ProfileRow::ProfileUsernameClear {
+            profile_id,
+            owner_address,
+        } => {
             let now = chrono::Utc::now().naive_utc();
-            total += diesel::update(profiles::table)
-                .filter(profiles::profile_id.eq(profile_id))
-                .set((profiles::username.eq(""), profiles::updated_at.eq(now)))
-                .execute(conn)
-                .await?;
+            let profile_id_norm = common::normalize_hex_address(profile_id);
+            let updated = if let Some(owner) = owner_address.as_ref() {
+                let owner_norm = common::normalize_hex_address(owner);
+                diesel::update(profiles::table)
+                    .filter(
+                        profiles::profile_id
+                            .eq(&profile_id_norm)
+                            .or(profiles::owner_address.eq(&owner_norm)),
+                    )
+                    .set((profiles::username.eq(""), profiles::updated_at.eq(now)))
+                    .execute(conn)
+                    .await?
+            } else {
+                diesel::update(profiles::table)
+                    .filter(profiles::profile_id.eq(&profile_id_norm))
+                    .set((profiles::username.eq(""), profiles::updated_at.eq(now)))
+                    .execute(conn)
+                    .await?
+            };
+            if updated == 0 {
+                tracing::error!(
+                    profile_id = %profile_id_norm,
+                    owner_address = ?owner_address,
+                    "ProfileUsernameClear updated 0 rows — profiles.username out of sync with registry"
+                );
+            }
+            total += updated;
         }
         ProfileRow::ProfileUpdate(up) => {
             let now = chrono::Utc::now().naive_utc();
@@ -889,6 +947,8 @@ mod tests {
     use super::COMMIT_PASS_MARKETPLACE;
     use super::COMMIT_PASS_REGISTRY_REASSIGN;
     use super::COMMIT_PASS_REGISTRY_UPSERT;
+    use super::COMMIT_PASS_USERNAME_CLEAR;
+    use super::COMMIT_PASS_USERNAME_SET;
     use super::COMMIT_PASS_OTHER;
 
     fn addr(id: u8) -> AccountAddress {
@@ -935,12 +995,14 @@ mod tests {
         let store = Db::for_write(temp_db.database().url().clone(), Default::default())
             .await
             .ok()?;
-        let mut probe = store.connect().await.ok()?;
-        use diesel_async::RunQueryDsl;
-        diesel::sql_query("CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE")
-            .execute(&mut probe)
-            .await
-            .ok()?;
+        {
+            let mut probe = store.connect().await.ok()?;
+            use diesel_async::RunQueryDsl;
+            diesel::sql_query("CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE")
+                .execute(&mut probe)
+                .await
+                .ok()?;
+        }
         store.run_migrations(Some(&MIGRATIONS)).await.ok()?;
         Some(store)
     }
@@ -972,10 +1034,12 @@ mod tests {
             ProfileRow::ProfileUsernameSet {
                 profile_id: seller_profile_id,
                 username: "seller1".to_string(),
+                owner_address: None,
             },
             ProfileRow::ProfileUsernameSet {
                 profile_id: buyer_profile_id,
                 username: "premium1".to_string(),
+                owner_address: None,
             },
         ];
         let passes: Vec<u8> = rows.iter().map(profile_row_commit_pass).collect();
@@ -993,11 +1057,18 @@ mod tests {
             .expect("upsert pass");
         let first_profile_set = passes
             .iter()
-            .position(|pass| *pass == COMMIT_PASS_OTHER)
-            .expect("profile username pass");
+            .position(|pass| *pass == COMMIT_PASS_USERNAME_SET)
+            .expect("profile username set pass");
         assert!(first_marketplace < first_reassign);
         assert!(first_reassign < first_upsert);
         assert!(first_upsert < first_profile_set);
+    }
+
+    #[test]
+    fn username_sale_commit_passes_clears_before_sets() {
+        assert!(COMMIT_PASS_USERNAME_CLEAR < COMMIT_PASS_USERNAME_SET);
+        assert!(COMMIT_PASS_REGISTRY_UPSERT < COMMIT_PASS_USERNAME_CLEAR);
+        assert!(COMMIT_PASS_USERNAME_SET < COMMIT_PASS_OTHER);
     }
 
     #[tokio::test]
@@ -1131,6 +1202,134 @@ mod tests {
             .await
             .expect("settled profile events");
         assert_eq!(settled_events, 1);
+
+        let seller_username: String = profiles::table
+            .filter(profiles::profile_id.eq(&seller_profile_id))
+            .select(profiles::username)
+            .first(&mut conn)
+            .await
+            .expect("seller profile username");
+        assert_eq!(seller_username, "seller1");
+
+        let buyer_username: String = profiles::table
+            .filter(profiles::profile_id.eq(&buyer_profile_id))
+            .select(profiles::username)
+            .first(&mut conn)
+            .await
+            .expect("buyer profile username");
+        assert_eq!(buyer_username, "premium1");
+    }
+
+    #[tokio::test]
+    async fn username_accept_tx_commit_updates_profiles_username() {
+        let Some(store) = setup_temp_db().await else {
+            return;
+        };
+
+        let seller_profile_id = addr_hex(11);
+        let buyer_profile_id = addr_hex(12);
+        let seller_owner = addr_hex(21);
+        let buyer_owner = addr_hex(22);
+
+        let mut conn = store.connect().await.expect("connection");
+        diesel::insert_into(profiles::table)
+            .values(sample_profile(
+                &seller_owner,
+                &seller_profile_id,
+                "premium1",
+            ))
+            .execute(&mut conn)
+            .await
+            .expect("insert seller profile");
+        diesel::insert_into(profiles::table)
+            .values(sample_profile(&buyer_owner, &buyer_profile_id, "buyer1"))
+            .execute(&mut conn)
+            .await
+            .expect("insert buyer profile");
+        diesel::insert_into(username_registry::table)
+            .values(NewUsernameRegistry {
+                username: "premium1".to_string(),
+                profile_id: seller_profile_id.clone(),
+                transaction_id: "tx:seed:0".to_string(),
+            })
+            .execute(&mut conn)
+            .await
+            .expect("insert listed username");
+        diesel::insert_into(username_registry::table)
+            .values(NewUsernameRegistry {
+                username: "buyer1".to_string(),
+                profile_id: buyer_profile_id.clone(),
+                transaction_id: "tx:seed:1".to_string(),
+            })
+            .execute(&mut conn)
+            .await
+            .expect("insert buyer username");
+
+        let revoke_json = serde_json::json!({
+            "username": "buyer1",
+            "profile_id": buyer_profile_id,
+            "revoked_by": seller_owner,
+            "reason_code": 2,
+        });
+        let settle_json = serde_json::json!({
+            "listed_username": "premium1",
+            "replacement_username": "seller1",
+            "seller": seller_owner,
+            "seller_profile_id": seller_profile_id,
+            "buyer": buyer_owner,
+            "buyer_profile_id": buyer_profile_id,
+            "amount": "5000000000",
+            "settled_at": "1783238216000",
+        });
+        let accept_json = serde_json::json!({
+            "username": "premium1",
+            "replacement_username": "seller1",
+            "seller": seller_owner,
+            "seller_profile_id": seller_profile_id,
+            "buyer": buyer_owner,
+            "buyer_profile_id": buyer_profile_id,
+            "amount": "5000000000",
+            "accepted_at": "1783238216000",
+        });
+
+        let mut rows = Vec::new();
+        for event in [
+            ("UsernameRevokedEvent", &revoke_json),
+            ("UsernameSaleSettledEvent", &settle_json),
+            ("UsernameOfferAcceptedEvent", &accept_json),
+        ] {
+            for row in profile::handle_profile_event(event.0, event.1, "tx:accept:0", 0)
+                .unwrap_or_else(|| panic!("handler for {}", event.0))
+            {
+                if let Some(r) = ProfileRow::from_social(row) {
+                    rows.push(r);
+                }
+            }
+        }
+
+        ProfilesHandler::commit(&rows, &mut conn)
+            .await
+            .expect("commit full accept tx rows");
+
+        use diesel::ExpressionMethods;
+        use diesel::QueryDsl;
+        use diesel_async::RunQueryDsl;
+
+        let seller_username: String = profiles::table
+            .filter(profiles::profile_id.eq(&seller_profile_id))
+            .select(profiles::username)
+            .first(&mut conn)
+            .await
+            .expect("seller profile username");
+        assert_eq!(seller_username, "seller1");
+
+        let buyer_username: String = profiles::table
+            .filter(profiles::profile_id.eq(&buyer_profile_id))
+            .select(profiles::username)
+            .first(&mut conn)
+            .await
+            .expect("buyer profile username");
+        assert_eq!(buyer_username, "premium1");
     }
 
     #[tokio::test]

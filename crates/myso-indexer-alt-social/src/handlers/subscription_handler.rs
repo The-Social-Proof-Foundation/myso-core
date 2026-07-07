@@ -30,6 +30,7 @@ use myso_indexer_alt_social_schema::schema::{
 use super::common;
 use super::events;
 use super::subscription;
+use crate::metrics::SocialMetrics;
 
 const SUBSCRIPTION_MODULES: &[&str] = &["subscription", "profile_subscription"];
 
@@ -260,7 +261,18 @@ impl Processor for SubscriptionHandler {
                 let event_data =
                     match events::parse_event_contents(module, event_name, &ev.contents) {
                         Ok(v) => v,
-                        Err(_) => continue,
+                        Err(e) => {
+                            tracing::warn!(
+                                tx_digest = %tx_digest,
+                                module,
+                                event_name,
+                                error = %e,
+                                hex_preview = %e.contents_hex_preview(48),
+                                "subscription pipeline: event contents parse failed; skipping event"
+                            );
+                            SocialMetrics::record_event_bcs_parse_failed(module, event_name);
+                            continue;
+                        }
                     };
                 if let Some(rows) = subscription::handle_subscription_event(
                     event_name,

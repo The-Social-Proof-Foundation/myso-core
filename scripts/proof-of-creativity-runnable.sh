@@ -11,6 +11,8 @@
 #   - Active `myso client` address is used as oracle, creator, and tipper (switch + faucet if needed).
 #
 # Session file: network.config/poc/poc-session.env (chain object IDs from GraphQL refresh).
+# After refresh, expect MEMORY_CONFIG_ID, PROFILE_CONFIG_ID, AI_CREDIT_CONFIG_ID for profile/post flows.
+# PLATFORM_OBJECT_ID from GraphQL may be indexer-only; post flows recreate platform on fullnode if missing.
 #
 # Usage:
 #   ./scripts/proof-of-creativity-runnable.sh --refresh-session
@@ -36,6 +38,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+# shellcheck source=lib/runnable-summary-common.sh
+source "${SCRIPT_DIR}/lib/runnable-summary-common.sh"
 
 readonly DEFAULT_PKG_SOCIAL='0x00000000000000000000000000000000000000000000000000000000000050c1'
 readonly DEFAULT_ORDERBOOK_PKG='0x000000000000000000000000000000000000000000000000000000000000b0c'
@@ -47,6 +51,10 @@ readonly DEFAULT_TIP_AMOUNT='100000000'
 readonly DEFAULT_VOTE_STAKE='1000000000'
 readonly DEFAULT_DISPUTE_EVIDENCE='PoC runtime test dispute evidence'
 readonly DEFAULT_RESERVE_AMOUNT='1000000000'
+readonly POC_MAX_DISPUTES_PER_POST='2'
+readonly POC_MIN_VAULT_DEPOSIT='1'
+readonly SOCIAL_DEFAULT_PLATFORM_LOGO_URL='https://pub-1f3749a8084a44c3abbd97a4875268a1.r2.dev/Logo%20Regular%20-%20Accent-1.png'
+readonly SOCIAL_DEFAULT_PLATFORM_COVER_PHOTO_URL='https://pub-1f3749a8084a44c3abbd97a4875268a1.r2.dev/mysocial-banner.png'
 
 # Session / chain object IDs (populated by GraphQL refresh)
 PKG_SOCIAL="$DEFAULT_PKG_SOCIAL"
@@ -58,6 +66,7 @@ GAS_BUDGET=''
 BOOTSTRAP_KEY_ID=''
 ECOSYSTEM_TREASURY_ID=''
 PLATFORM_REGISTRY_ID=''
+PLATFORM_CONFIG_ID=''
 PLATFORM_OBJECT_ID=''
 USERNAME_REGISTRY_ID=''
 BLOCK_LIST_REGISTRY_ID=''
@@ -67,6 +76,9 @@ TOKEN_REGISTRY_ID=''
 POC_REGISTRY_ID=''
 MESSAGE_REGISTRY_ID=''
 MEMORY_REGISTRY_ID=''
+MEMORY_CONFIG_ID=''
+PROFILE_CONFIG_ID=''
+AI_CREDIT_CONFIG_ID=''
 POOL_REGISTRY_ID=''
 ANCHOR_REGISTRY_ID=''
 CLAIM_VAULT_ID=''
@@ -100,6 +112,22 @@ RESERVATION_POOL_ID=''
 POC_BENEFICIARY_VAULT_ID=''
 ANALYZE_POST_LAST_DIGEST=''
 
+# Username beneficiary flow — populated for success summary
+POC_UB_LAST_USERNAME=''
+POC_UB_LAST_BENEFICIARY_ID=''
+POC_UB_LAST_SHARD_ID=''
+POC_UB_LAST_IDENTITY_HASH=''
+POC_UB_LAST_VAULT_ID=''
+POC_UB_LAST_CLAIM_WALLET=''
+POC_UB_LAST_CLAIM_ORACLE=''
+POC_UB_LAST_CLAIM_PROFILE_ID=''
+POC_UB_LAST_FUND_POST_ID=''
+POC_UB_LAST_VAULT_FUNDED='0'
+POC_UB_LAST_TIP_AMOUNT=''
+POC_UB_LAST_VAULT_GROSS=''
+POC_UB_LAST_VAULT_TREASURY=''
+POC_UB_LAST_VAULT_CREATOR_NET=''
+
 POC_RUN_ID="$(date +%s)"
 RUN_MODE=''
 ASSUME_YES="${ASSUME_YES:-0}"
@@ -114,12 +142,12 @@ MANUAL_PRESERVE_KEYS=(
 REQUIRED_CORE_KEYS=(
     POC_CONFIG_ID POC_REGISTRY_ID POC_VAULT_DIRECTORY_ID POC_USERNAME_BENEFICIARY_DIRECTORY_ID
     POC_ADMIN_CAP_ID POC_BENEFICIARY_ADMIN_CAP_ID USERNAME_REGISTRY_ID MEMORY_REGISTRY_ID
-    ECOSYSTEM_TREASURY_ID
+    MEMORY_CONFIG_ID PROFILE_CONFIG_ID AI_CREDIT_CONFIG_ID ECOSYSTEM_TREASURY_ID
 )
 
 REQUIRED_PLATFORM_KEYS=(
     PLATFORM_REGISTRY_ID PLATFORM_OBJECT_ID POST_CONFIG_ID BLOCK_LIST_REGISTRY_ID
-    MYDATA_REGISTRY_ID
+    MYDATA_REGISTRY_ID MEMORY_CONFIG_ID
 )
 
 REQUIRED_SPT_RESERVATION_KEYS=(
@@ -184,9 +212,10 @@ save_session_state() {
         echo "# PoC runtime session — scripts/proof-of-creativity-runnable.sh"
         echo "# Do not commit if sensitive."
         for key in PKG_SOCIAL ORDERBOOK_PACKAGE_ID CLOCK_ID COIN_TYPE GAS_BUDGET \
-            BOOTSTRAP_KEY_ID ECOSYSTEM_TREASURY_ID PLATFORM_REGISTRY_ID PLATFORM_OBJECT_ID \
+            BOOTSTRAP_KEY_ID ECOSYSTEM_TREASURY_ID PLATFORM_REGISTRY_ID PLATFORM_CONFIG_ID PLATFORM_OBJECT_ID \
             USERNAME_REGISTRY_ID BLOCK_LIST_REGISTRY_ID MYDATA_REGISTRY_ID SOCIAL_GRAPH_ID \
             TOKEN_REGISTRY_ID POC_REGISTRY_ID MESSAGE_REGISTRY_ID MEMORY_REGISTRY_ID \
+            MEMORY_CONFIG_ID PROFILE_CONFIG_ID AI_CREDIT_CONFIG_ID \
             POOL_REGISTRY_ID ANCHOR_REGISTRY_ID CLAIM_VAULT_ID POC_VAULT_DIRECTORY_ID \
             POC_USERNAME_BENEFICIARY_DIRECTORY_ID POST_CONFIG_ID SOCIAL_PROOF_TOKENS_CONFIG_ID \
             POC_CONFIG_ID MYDATA_CONFIG_ID SPOT_CONFIG_ID INSURANCE_CONFIG_ID ORDERBOOK_REGISTRY_ID \
@@ -364,6 +393,15 @@ literal_move_vector_from_csv() {
     printf 'vector[%s]' "$acc"
 }
 
+literal_move_option_string() {
+    local s="$1"
+    if [[ -z "$s" ]]; then
+        printf 'none'
+        return 0
+    fi
+    printf 'some(%s)' "$(literal_move_string "$s")"
+}
+
 require_hex_ids() {
     local name missing=()
     for name in "$@"; do
@@ -412,9 +450,11 @@ invoke_ptb_capture() {
     printf ' %q\n' "${cmd[@]}" >&2
     echo "---" >&2
     if [[ "${SKIP_CONFIRM_RUN:-0}" == 1 ]] || confirm_run; then
-        out="$("${cmd[@]}" 2>&1)" || { echo "$out" >&2; return 1; }
+        local rc=0
+        out="$("${cmd[@]}" 2>&1)" || rc=$?
         echo "$out" >&2
         printf '%s' "$out"
+        return "$rc"
     else
         return 0
     fi
@@ -516,9 +556,11 @@ invoke_ptb_as_capture() {
     printf ' %q\n' "${cmd[@]}" >&2
     echo "---" >&2
     if [[ "${SKIP_CONFIRM_RUN:-0}" == 1 ]] || confirm_run; then
-        out="$("${cmd[@]}" 2>&1)" || { echo "$out" >&2; return 1; }
+        local rc=0
+        out="$("${cmd[@]}" 2>&1)" || rc=$?
         echo "$out" >&2
         printf '%s' "$out"
+        return "$rc"
     else
         return 0
     fi
@@ -629,6 +671,7 @@ readonly GQL_BATCH1='query MysocialGenesisObjectsBatch1 {
   bootstrapKey: objects(filter: { type: "0x2::bootstrap_key::BootstrapKey", ownerKind: SHARED }, first: 1) { nodes { address } }
   ecosystemTreasury: objects(filter: { type: "0x50c1::profile::EcosystemTreasury", ownerKind: SHARED }, first: 1) { nodes { address } }
   platformRegistry: objects(filter: { type: "0x50c1::platform::PlatformRegistry", ownerKind: SHARED }, first: 1) { nodes { address } }
+  platformConfig: objects(filter: { type: "0x50c1::platform::PlatformConfig", ownerKind: SHARED }, first: 1) { nodes { address } }
   usernameRegistry: objects(filter: { type: "0x50c1::profile::UsernameRegistry", ownerKind: SHARED }, first: 1) { nodes { address } }
   blocklistRegistry: objects(filter: { type: "0x50c1::block_list::BlockListRegistry", ownerKind: SHARED }, first: 1) { nodes { address } }
   mydataRegistry: objects(filter: { type: "0x50c1::mydata::MyDataRegistry", ownerKind: SHARED }, first: 1) { nodes { address } }
@@ -637,16 +680,19 @@ readonly GQL_BATCH1='query MysocialGenesisObjectsBatch1 {
   pocRegistry: objects(filter: { type: "0x50c1::proof_of_creativity::PoCRegistry", ownerKind: SHARED }, first: 1) { nodes { address } }
   messageRegistry: objects(filter: { type: "0x50c1::message::MessageRegistry", ownerKind: SHARED }, first: 1) { nodes { address } }
   memoryRegistry: objects(filter: { type: "0x50c1::memory::MemoryRegistry", ownerKind: SHARED }, first: 1) { nodes { address } }
+  memoryConfig: objects(filter: { type: "0x50c1::memory::MemoryConfig", ownerKind: SHARED }, first: 1) { nodes { address } }
+  profileConfig: objects(filter: { type: "0x50c1::profile::ProfileConfig", ownerKind: SHARED }, first: 1) { nodes { address } }
+  aiCreditConfig: objects(filter: { type: "0x50c1::ai_credit::AiCreditConfig", ownerKind: SHARED }, first: 1) { nodes { address } }
   mydataPoolRegistry: objects(filter: { type: "0x50c1::mydata::MyDataPoolRegistry", ownerKind: SHARED }, first: 1) { nodes { address } }
   snapshotAnchorRegistry: objects(filter: { type: "0x50c1::mydata::SnapshotAnchorRegistry", ownerKind: SHARED }, first: 1) { nodes { address } }
   mydataClaimVault: objects(filter: { type: "0x50c1::mydata::MyDataClaimVault", ownerKind: SHARED }, first: 1) { nodes { address } }
   pocVaultDirectory: objects(filter: { type: "0x50c1::poc_vault::PoCVaultDirectory", ownerKind: SHARED }, first: 1) { nodes { address } }
   postConfig: objects(filter: { type: "0x50c1::post::PostConfig", ownerKind: SHARED }, first: 1) { nodes { address } }
-  sptConfig: objects(filter: { type: "0x50c1::social_proof_tokens::SocialProofTokensConfig", ownerKind: SHARED }, first: 1) { nodes { address } }
-  pocConfig: objects(filter: { type: "0x50c1::proof_of_creativity::PoCConfig", ownerKind: SHARED }, first: 1) { nodes { address } }
 }'
 
 readonly GQL_BATCH2='query MysocialGenesisObjectsBatch2 {
+  sptConfig: objects(filter: { type: "0x50c1::social_proof_tokens::SocialProofTokensConfig", ownerKind: SHARED }, first: 1) { nodes { address } }
+  pocConfig: objects(filter: { type: "0x50c1::proof_of_creativity::PoCConfig", ownerKind: SHARED }, first: 1) { nodes { address } }
   mydataConfig: objects(filter: { type: "0x50c1::mydata::MyDataConfig", ownerKind: SHARED }, first: 1) { nodes { address } }
   spotConfig: objects(filter: { type: "0x50c1::social_proof_of_truth::SpotConfig", ownerKind: SHARED }, first: 1) { nodes { address } }
   insuranceConfig: objects(filter: { type: "0x50c1::insurance::InsuranceConfig", ownerKind: SHARED }, first: 1) { nodes { address } }
@@ -682,9 +728,9 @@ gql_set_refresh() {
 collect_gql_mappings() {
     local json="$1"
     local alias val env_key
-    for alias in bootstrapKey ecosystemTreasury platformRegistry platform usernameRegistry blocklistRegistry \
+    for alias in bootstrapKey ecosystemTreasury platformRegistry platformConfig platform usernameRegistry blocklistRegistry \
         mydataRegistry socialGraph socialProofTokenRegistry pocRegistry messageRegistry memoryRegistry \
-        mydataPoolRegistry snapshotAnchorRegistry mydataClaimVault pocVaultDirectory \
+        memoryConfig profileConfig aiCreditConfig mydataPoolRegistry snapshotAnchorRegistry mydataClaimVault pocVaultDirectory \
         pocUsernameBeneficiaryDirectory postConfig sptConfig pocConfig mydataConfig spotConfig insuranceConfig \
         orderbookRegistry proofOfCreativityAdminCap socialProofTokensAdminCap pocBeneficiaryAdminCap \
         mydataAdminCap mydataPoolAdminCap platformAdminCap; do
@@ -692,6 +738,7 @@ collect_gql_mappings() {
             bootstrapKey) env_key=BOOTSTRAP_KEY_ID ;;
             ecosystemTreasury) env_key=ECOSYSTEM_TREASURY_ID ;;
             platformRegistry) env_key=PLATFORM_REGISTRY_ID ;;
+            platformConfig) env_key=PLATFORM_CONFIG_ID ;;
             platform) env_key=PLATFORM_OBJECT_ID ;;
             usernameRegistry) env_key=USERNAME_REGISTRY_ID ;;
             blocklistRegistry) env_key=BLOCK_LIST_REGISTRY_ID ;;
@@ -701,6 +748,9 @@ collect_gql_mappings() {
             pocRegistry) env_key=POC_REGISTRY_ID ;;
             messageRegistry) env_key=MESSAGE_REGISTRY_ID ;;
             memoryRegistry) env_key=MEMORY_REGISTRY_ID ;;
+            memoryConfig) env_key=MEMORY_CONFIG_ID ;;
+            profileConfig) env_key=PROFILE_CONFIG_ID ;;
+            aiCreditConfig) env_key=AI_CREDIT_CONFIG_ID ;;
             mydataPoolRegistry) env_key=POOL_REGISTRY_ID ;;
             snapshotAnchorRegistry) env_key=ANCHOR_REGISTRY_ID ;;
             mydataClaimVault) env_key=CLAIM_VAULT_ID ;;
@@ -783,7 +833,7 @@ refresh_poc_session_from_graphql() {
         echo "ORDERBOOK_PACKAGE_ID=$DEFAULT_ORDERBOOK_PKG"
         echo "CLOCK_ID=$DEFAULT_CLOCK"
         echo "COIN_TYPE=$DEFAULT_COIN_TYPE"
-        for key in BOOTSTRAP_KEY_ID ECOSYSTEM_TREASURY_ID PLATFORM_REGISTRY_ID PLATFORM_OBJECT_ID \
+        for key in BOOTSTRAP_KEY_ID ECOSYSTEM_TREASURY_ID PLATFORM_REGISTRY_ID PLATFORM_CONFIG_ID PLATFORM_OBJECT_ID \
             USERNAME_REGISTRY_ID BLOCK_LIST_REGISTRY_ID MYDATA_REGISTRY_ID SOCIAL_GRAPH_ID \
             TOKEN_REGISTRY_ID POC_REGISTRY_ID MESSAGE_REGISTRY_ID MEMORY_REGISTRY_ID \
             POOL_REGISTRY_ID ANCHOR_REGISTRY_ID CLAIM_VAULT_ID POC_VAULT_DIRECTORY_ID \
@@ -1416,33 +1466,38 @@ gql_profile_memory_account_id() {
 }
 
 assert_post_flow_tip_and_claim_graphql() {
-    local post_id="$1" vault_id="$2" resp vars
+    local post_id="$1" vault_id="$2" resp vars attempt
     local tips_received total_tip_volume tip_amount gross_amount treasury_amount
     post_id="$(normalize_hex_id "$post_id")" || return 1
     vault_id="$(normalize_hex_id "$vault_id")" || return 1
-    sleep 1
     vars="$(jq -nc --arg postId "$post_id" --arg vaultId "$vault_id" \
         '{postId: $postId, vaultId: $vaultId}')"
-    resp="$(graphql_post \
-        'query PostFlowTipVolume($postId: ID!, $vaultId: String!) {
-            post(id: $postId) {
-                tipsReceived
-                totalTipVolume
-                tips(limit: 1) { amount }
-            }
-            pocBeneficiaryVaultByVaultId(vaultId: $vaultId) {
-                claims(limit: 1) {
-                    grossAmount
-                    treasuryAmount
+    for attempt in $(seq 1 60); do
+        resp="$(graphql_post \
+            'query PostFlowTipVolume($postId: ID!, $vaultId: String!) {
+                post(id: $postId) {
+                    tipsReceived
+                    totalTipVolume
+                    tips(limit: 1) { amount }
                 }
-            }
-        }' \
-        "$vars")" || return 1
-    tips_received="$(echo "$resp" | jq -r '.data.post.tipsReceived // empty')"
-    total_tip_volume="$(echo "$resp" | jq -r '.data.post.totalTipVolume // empty')"
-    tip_amount="$(echo "$resp" | jq -r '.data.post.tips[0].amount // empty')"
-    gross_amount="$(echo "$resp" | jq -r '.data.pocBeneficiaryVaultByVaultId.claims[0].grossAmount // empty')"
-    treasury_amount="$(echo "$resp" | jq -r '.data.pocBeneficiaryVaultByVaultId.claims[0].treasuryAmount // empty')"
+                pocBeneficiaryVaultByVaultId(vaultId: $vaultId) {
+                    claims(limit: 1) {
+                        grossAmount
+                        treasuryAmount
+                    }
+                }
+            }' \
+            "$vars" 2>/dev/null)" || resp='{}'
+        tips_received="$(echo "$resp" | jq -r '.data.post.tipsReceived // empty')"
+        total_tip_volume="$(echo "$resp" | jq -r '.data.post.totalTipVolume // empty')"
+        tip_amount="$(echo "$resp" | jq -r '.data.post.tips[0].amount // empty')"
+        gross_amount="$(echo "$resp" | jq -r '.data.pocBeneficiaryVaultByVaultId.claims[0].grossAmount // empty')"
+        treasury_amount="$(echo "$resp" | jq -r '.data.pocBeneficiaryVaultByVaultId.claims[0].treasuryAmount // empty')"
+        if [[ "$total_tip_volume" == "$DEFAULT_TIP_AMOUNT" && "$gross_amount" == "$DEFAULT_TIP_AMOUNT" ]]; then
+            break
+        fi
+        sleep 1
+    done
     if [[ "$tips_received" != "0" ]]; then
         echo "GraphQL post.tipsReceived expected 0 for escrow tip, got: $tips_received" >&2
         return 1
@@ -1466,37 +1521,37 @@ assert_post_flow_tip_and_claim_graphql() {
     log_step "GraphQL tip volume + vault claim amounts verified"
 }
 
-assert_username_beneficiary_graphql() {
-    local username="$1" beneficiary_id="$2" resp vars
-    local status indexed_id
-    sleep 1
+wait_for_gql_username_beneficiary() {
+    local username="$1" beneficiary_id="$2" attempt resp vars indexed_id status
+    beneficiary_id="$(normalize_hex_id "$beneficiary_id")" || return 1
     vars="$(jq -nc --arg username "$username" '{username: $username}')"
-    resp="$(graphql_post \
-        'query PocUsernameBeneficiaryByUsername($username: String!) {
-            pocUsernameBeneficiaryByUsername(username: $username) {
-                beneficiaryId
-                username
-                status
-            }
-        }' \
-        "$vars")" || return 1
+    for attempt in $(seq 1 60); do
+        resp="$(graphql_post \
+            'query PocUsernameBeneficiaryByUsername($username: String!) {
+                pocUsernameBeneficiaryByUsername(username: $username) {
+                    beneficiaryId
+                    username
+                    status
+                }
+            }' \
+            "$vars" 2>/dev/null)" || resp='{}'
+        indexed_id="$(echo "$resp" | jq -r '.data.pocUsernameBeneficiaryByUsername.beneficiaryId // empty')"
+        status="$(echo "$resp" | jq -r '.data.pocUsernameBeneficiaryByUsername.status // empty')"
+        if [[ -n "$indexed_id" && "$(normalize_hex_id "$indexed_id")" == "$beneficiary_id" && "$status" == "2" ]]; then
+            printf '%s' "$resp"
+            return 0
+        fi
+        sleep 1
+    done
+    echo "Timed out waiting for GraphQL username beneficiary $username status=2 (last status=${status:-null})" >&2
+    return 1
+}
+
+assert_username_beneficiary_graphql() {
+    local username="$1" beneficiary_id="$2" resp indexed_id status
+    resp="$(wait_for_gql_username_beneficiary "$username" "$beneficiary_id")" || return 1
     indexed_id="$(echo "$resp" | jq -r '.data.pocUsernameBeneficiaryByUsername.beneficiaryId // empty')"
     status="$(echo "$resp" | jq -r '.data.pocUsernameBeneficiaryByUsername.status // empty')"
-    beneficiary_id="$(normalize_hex_id "$beneficiary_id")" || return 1
-    if [[ -z "$indexed_id" ]]; then
-        echo "GraphQL pocUsernameBeneficiaryByUsername($username) returned null" >&2
-        echo "$resp" | jq . >&2 || true
-        return 1
-    fi
-    indexed_id="$(normalize_hex_id "$indexed_id")" || return 1
-    if [[ "$indexed_id" != "$beneficiary_id" ]]; then
-        echo "GraphQL beneficiaryId expected $beneficiary_id, got: $indexed_id" >&2
-        return 1
-    fi
-    if [[ "$status" != "2" ]]; then
-        echo "GraphQL status expected 2 (claimed), got: $status" >&2
-        return 1
-    fi
     log_step "GraphQL username beneficiary OK username=$username status=$status beneficiaryId=$indexed_id"
 }
 
@@ -1545,37 +1600,93 @@ resolve_memory_account_for_address() {
 }
 
 ensure_joined_platform() {
+    local out
+    if [[ "${POC_PLATFORM_JOINED:-0}" == 1 ]]; then
+        return 0
+    fi
+    if [[ -n "${PLATFORM_OBJECT_ID:-}" ]] && ! object_exists_on_fullnode "$PLATFORM_OBJECT_ID"; then
+        echo "Session PLATFORM_OBJECT_ID not on localnet fullnode; clearing." >&2
+        PLATFORM_OBJECT_ID=''
+    fi
     require_session_fields PLATFORM_REGISTRY_ID BLOCK_LIST_REGISTRY_ID PLATFORM_OBJECT_ID CLOCK_ID || return 1
     require_hex_ids PLATFORM_REGISTRY_ID BLOCK_LIST_REGISTRY_ID PLATFORM_OBJECT_ID CLOCK_ID || return 1
     log_step "Joining platform for $(resolve_myso_active_address) (join_platform PTB)"
-    if SKIP_CONFIRM_RUN=1 invoke_ptb \
+    if out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_capture \
         --move-call "${PKG_SOCIAL}::platform::join_platform" \
         "$(ptb_shared_ref "$PLATFORM_REGISTRY_ID")" \
         "$(ptb_shared_ref "$BLOCK_LIST_REGISTRY_ID")" \
         "$(ptb_shared_ref "$PLATFORM_OBJECT_ID")" \
-        "$(ptb_shared_ref "$CLOCK_ID")"; then
+        "$(ptb_shared_ref "$CLOCK_ID")")"; then
+        POC_PLATFORM_JOINED=1
+        return 0
+    fi
+    if echo "$out" | grep -qE 'Abort Code: 3\b'; then
+        log_step "Already joined platform — continuing"
+        POC_PLATFORM_JOINED=1
         return 0
     fi
     return 1
 }
 
 create_profile_with_memory_for_address() {
-    local sender="$1" out digest mem profile_id username
+    local sender="$1" out digest mem profile_id username existing_mem
     [[ -n "$sender" ]] || return 1
-    require_session_fields USERNAME_REGISTRY_ID MEMORY_REGISTRY_ID CLOCK_ID || return 1
-    require_hex_ids USERNAME_REGISTRY_ID MEMORY_REGISTRY_ID CLOCK_ID || return 1
+    sender="$(normalize_hex_id "$sender")" || return 1
+
+    existing_mem="$(resolve_memory_account_for_address "$sender")" || true
+    if [[ -n "$existing_mem" ]]; then
+        mem="$(normalize_hex_id "$existing_mem")"
+        profile_id="$(resolve_profile_object_for_address "$sender")" || true
+        if [[ "$sender" == "$ORACLE_ADDRESS" ]]; then
+            MEMORY_ACCOUNT_ID="$mem"
+            if [[ -n "$profile_id" ]]; then
+                ORACLE_PROFILE_ID="$(normalize_hex_id "$profile_id")"
+                log_session_use "ORACLE_PROFILE_ID" "$ORACLE_PROFILE_ID"
+            fi
+            log_session_use "MEMORY_ACCOUNT_ID" "$MEMORY_ACCOUNT_ID"
+            save_session_state
+        fi
+        printf '%s' "$mem"
+        return 0
+    fi
+
+    require_session_fields USERNAME_REGISTRY_ID PROFILE_CONFIG_ID MEMORY_REGISTRY_ID \
+        AI_CREDIT_CONFIG_ID CLOCK_ID || return 1
+    require_hex_ids USERNAME_REGISTRY_ID PROFILE_CONFIG_ID MEMORY_REGISTRY_ID \
+        AI_CREDIT_CONFIG_ID CLOCK_ID || return 1
     POC_RUN_ID="${POC_RUN_ID:-$(date +%s)}"
     username="poc${POC_RUN_ID}${RANDOM}"
     log_step "Creating profile + MemoryAccount for $sender (username=$username)"
     out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_as_capture "$sender" \
         --move-call "${PKG_SOCIAL}::profile::create_profile" \
         "$(ptb_shared_ref "$USERNAME_REGISTRY_ID")" \
+        "$(ptb_shared_ref "$PROFILE_CONFIG_ID")" \
         "$(ptb_shared_ref "$MEMORY_REGISTRY_ID")" \
+        "$(ptb_shared_ref "$AI_CREDIT_CONFIG_ID")" \
         "$(literal_move_string "PoC Runtime")" \
         "$(literal_move_string "$username")" \
         '""' \
         'vector[]' 'vector[]' \
-        "$(ptb_shared_ref "$CLOCK_ID")")" || return 1
+        "$(ptb_shared_ref "$CLOCK_ID")")" || {
+        if echo "$out" | grep -qE 'Abort Code: 0\b|EProfileAlreadyExists'; then
+            mem="$(resolve_memory_account_for_address "$sender")" || true
+            [[ -n "$mem" ]] || return 1
+            mem="$(normalize_hex_id "$mem")"
+            profile_id="$(resolve_profile_object_for_address "$sender")" || true
+            if [[ "$sender" == "$ORACLE_ADDRESS" ]]; then
+                MEMORY_ACCOUNT_ID="$mem"
+                if [[ -n "$profile_id" ]]; then
+                    ORACLE_PROFILE_ID="$(normalize_hex_id "$profile_id")"
+                    log_session_use "ORACLE_PROFILE_ID" "$ORACLE_PROFILE_ID"
+                fi
+                log_session_use "MEMORY_ACCOUNT_ID" "$MEMORY_ACCOUNT_ID"
+                save_session_state
+            fi
+            printf '%s' "$mem"
+            return 0
+        fi
+        return 1
+    }
     digest="$(extract_tx_digest "$out")"
     mem="$(extract_created_object_by_type "$digest" "memory::MemoryAccount")"
     [[ -n "$mem" ]] || mem="$(extract_created_object_by_type "$digest" "MemoryAccount")"
@@ -1589,8 +1700,8 @@ create_profile_with_memory_for_address() {
     if [[ "$sender" == "$ORACLE_ADDRESS" ]]; then
         MEMORY_ACCOUNT_ID="$mem"
         if [[ -n "$profile_id" ]]; then
-            ORACLE_PROFILE_ID="$profile_id"
-            log_session_use "ORACLE_PROFILE_ID" "$profile_id"
+            ORACLE_PROFILE_ID="$(normalize_hex_id "$profile_id")"
+            log_session_use "ORACLE_PROFILE_ID" "$ORACLE_PROFILE_ID"
         fi
         log_session_use "MEMORY_ACCOUNT_ID" "$MEMORY_ACCOUNT_ID"
         save_session_state
@@ -1811,6 +1922,7 @@ update_poc_config_oracle() {
         3000 5000 10 10000 \
         100 500 3000 \
         0 10000 10000 500 \
+        "$POC_MAX_DISPUTES_PER_POST" "$POC_MIN_VAULT_DEPOSIT" \
         "@${CLOCK_ID}"
 }
 
@@ -2026,27 +2138,57 @@ claim_beneficiary_vault_balance_as() {
         "$ref_cfg" "$ref_treasury" "$ref_vault" "$referrer_arg" "$ref_clk"
 }
 
+claim_username_beneficiary_vault_balance_as() {
+    local sender="$1" beneficiary_id="$2" vault_id="$3" referrer="$4"
+    local ref_cfg ref_dir ref_ben ref_treasury ref_vault ref_clk referrer_arg
+    sender="$(normalize_hex_id "$sender")" || return 1
+    beneficiary_id="$(normalize_hex_id "$beneficiary_id")" || return 1
+    vault_id="$(normalize_hex_id "$vault_id")" || return 1
+    if [[ -n "$referrer" ]]; then
+        referrer="$(normalize_hex_id "$referrer")" || return 1
+        if [[ "$referrer" == "$sender" ]]; then
+            referrer_arg="none"
+        else
+            referrer_arg="$(ptb_option_address_from_arg "some($referrer)")"
+        fi
+    else
+        referrer_arg="none"
+    fi
+    ref_cfg="$(ptb_shared_ref "$POC_CONFIG_ID")" || return 1
+    ref_dir="$(ptb_shared_ref "$POC_USERNAME_BENEFICIARY_DIRECTORY_ID")" || return 1
+    ref_ben="$(ptb_shared_ref "$beneficiary_id")" || return 1
+    ref_treasury="$(ptb_shared_ref "$ECOSYSTEM_TREASURY_ID")" || return 1
+    ref_vault="$(ptb_shared_ref "$vault_id")" || return 1
+    ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || return 1
+    SKIP_CONFIRM_RUN=1 invoke_ptb_as "$sender" \
+        --move-call "${PKG_SOCIAL}::proof_of_creativity::claim_username_beneficiary_vault_balance<${COIN_TYPE}>" \
+        "$ref_cfg" "$ref_dir" "$ref_ben" "$ref_treasury" "$ref_vault" \
+        "$referrer_arg" "$ref_clk"
+}
+
 create_test_platform() {
     local out digest platform_id platform_addr
-    local ref_preg ref_clk ref_cap
+    local ref_preg ref_pcfg ref_clk ref_cap
 
-    require_session_fields PLATFORM_REGISTRY_ID PLATFORM_ADMIN_CAP_ID CLOCK_ID || return 1
-    require_hex_ids PLATFORM_REGISTRY_ID PLATFORM_ADMIN_CAP_ID CLOCK_ID || return 1
+    require_session_fields PLATFORM_REGISTRY_ID PLATFORM_CONFIG_ID PLATFORM_ADMIN_CAP_ID CLOCK_ID || return 1
+    require_hex_ids PLATFORM_REGISTRY_ID PLATFORM_CONFIG_ID PLATFORM_ADMIN_CAP_ID CLOCK_ID || return 1
 
     ref_preg="$(ptb_shared_ref "$PLATFORM_REGISTRY_ID")" || return 1
+    ref_pcfg="$(ptb_shared_ref "$PLATFORM_CONFIG_ID")" || return 1
     ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || return 1
     ref_cap="$(ptb_shared_ref "$PLATFORM_ADMIN_CAP_ID")" || return 1
 
     POC_RUN_ID="${POC_RUN_ID:-$(date +%s)}"
 
     log_step "Creating test platform (create_platform PTB)"
-    out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_capture \
+    if out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_capture \
         --move-call "${PKG_SOCIAL}::platform::create_platform" \
         "$ref_preg" \
-        "$(literal_move_string "Test Platform poc${POC_RUN_ID}")" \
+        "$ref_pcfg" \
+        "$(literal_move_string "Test Platform poc${POC_RUN_ID}-${RANDOM}")" \
         "$(literal_move_string 'A test platform')" \
         "$(literal_move_string 'This is a test platform for badge testing')" \
-        "$(literal_move_string 'https://example.com/logo.png')" \
+        "$(literal_move_string "$SOCIAL_DEFAULT_PLATFORM_LOGO_URL")" \
         "$(literal_move_string 'https://example.com/terms')" \
         "$(literal_move_string 'https://example.com/privacy')" \
         "$(literal_move_vector_empty)" \
@@ -2056,8 +2198,20 @@ create_test_platform() {
         "$(literal_move_string '2023-01-01')" \
         false \
         none none none none none none none \
-        none none \
-        "$ref_clk")" || return 1
+        "$(literal_move_option_string "$SOCIAL_DEFAULT_PLATFORM_COVER_PHOTO_URL")" none \
+        "$ref_clk")"; then
+        :
+    elif echo "$out" | grep -qE 'Abort Code: 1\b'; then
+        if [[ -n "${PLATFORM_OBJECT_ID:-}" ]] && object_exists_on_fullnode "$PLATFORM_OBJECT_ID"; then
+            log_step "Platform name already registered — reusing session PLATFORM_OBJECT_ID"
+            POC_PLATFORM_JOINED=1
+            return 0
+        fi
+        echo "create_platform failed (platform name may already exist)" >&2
+        return 1
+    else
+        return 1
+    fi
 
     digest="$(extract_tx_digest "$out")"
     platform_id="$(extract_created_object_by_type "$digest" "platform::Platform")"
@@ -2067,11 +2221,13 @@ create_test_platform() {
     log_session_use "PLATFORM_OBJECT_ID (pending approval)" "$platform_id"
 
     log_step "Approving platform via toggle_platform_approval"
+    platform_addr="$(normalize_hex_id "$platform_id")" || return 1
     SKIP_CONFIRM_RUN=1 invoke_ptb \
         --move-call "${PKG_SOCIAL}::platform::toggle_platform_approval" \
         "$ref_preg" \
-        "$(ptb_shared_ref "$platform_id")" \
-        "$(ptb_shared_ref "$PLATFORM_ADMIN_CAP_ID")" \
+        "$ref_pcfg" \
+        "$(ptb_shared_ref "$platform_addr")" \
+        "$ref_cap" \
         none || return 1
 
     PLATFORM_OBJECT_ID="$platform_id"
@@ -2081,17 +2237,19 @@ create_test_platform() {
 
 create_post_poc_enabled() {
     local body_lit="$1"
-    local ref_ur ref_pr ref_plat ref_blr ref_cfg ref_mr ref_mem ref_clk
+    local ref_ur ref_pr ref_plat ref_blr ref_cfg ref_mcfg ref_mr ref_mem ref_clk
 
     prepare_for_create_post || return 1
 
     require_hex_ids USERNAME_REGISTRY_ID PLATFORM_REGISTRY_ID PLATFORM_OBJECT_ID \
-        BLOCK_LIST_REGISTRY_ID POST_CONFIG_ID MYDATA_REGISTRY_ID MEMORY_ACCOUNT_ID CLOCK_ID || return 1
+        BLOCK_LIST_REGISTRY_ID POST_CONFIG_ID MEMORY_CONFIG_ID MYDATA_REGISTRY_ID \
+        MEMORY_ACCOUNT_ID CLOCK_ID || return 1
     ref_ur="$(ptb_shared_ref "$USERNAME_REGISTRY_ID")" || return 1
     ref_pr="$(ptb_shared_ref "$PLATFORM_REGISTRY_ID")" || return 1
     ref_plat="$(ptb_shared_ref "$PLATFORM_OBJECT_ID")" || return 1
     ref_blr="$(ptb_shared_ref "$BLOCK_LIST_REGISTRY_ID")" || return 1
     ref_cfg="$(ptb_shared_ref "$POST_CONFIG_ID")" || return 1
+    ref_mcfg="$(ptb_shared_ref "$MEMORY_CONFIG_ID")" || return 1
     ref_mr="$(ptb_shared_ref "$MYDATA_REGISTRY_ID")" || return 1
     ref_mem="$(ptb_shared_ref "$MEMORY_ACCOUNT_ID")" || return 1
     ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || return 1
@@ -2099,7 +2257,7 @@ create_post_poc_enabled() {
     log_step "Creating post: $body_lit"
     SKIP_CONFIRM_RUN=1 invoke_ptb_capture \
         --move-call "${PKG_SOCIAL}::post::create_post" \
-        "$ref_ur" "$ref_pr" "$ref_plat" "$ref_blr" "$ref_cfg" \
+        "$ref_ur" "$ref_pr" "$ref_plat" "$ref_blr" "$ref_cfg" "$ref_mcfg" \
         "$body_lit" \
         none none none none none none none none \
         none some\(true\) none none \
@@ -2122,20 +2280,30 @@ ptb_option_address_from_arg() {
 analyze_post() {
     local post_id="$1" media_type="$2" score="$3" original_creator_arg="$4" \
         deriv_target="$5" embed_audio="$6" apply_explicit="$7" explicit_outcome="$8"
+    local sender="${9:-}"
     local ref_cfg ref_reg ref_vault ref_post ref_clk creator_arg out digest
     creator_arg="$(ptb_option_address_from_arg "$original_creator_arg")"
-    log_step "analyze_and_update_post post=$post_id score=$score"
+    log_step "analyze_and_update_post post=$post_id score=$score${sender:+ sender=$sender}"
     ref_cfg="$(ptb_shared_ref "$POC_CONFIG_ID")" || return 1
     ref_reg="$(ptb_shared_ref "$POC_REGISTRY_ID")" || return 1
     ref_vault="$(ptb_shared_ref "$POC_VAULT_DIRECTORY_ID")" || return 1
     ref_post="$(ptb_shared_ref "$post_id")" || return 1
     ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || return 1
-    out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_capture \
-        --move-call "${PKG_SOCIAL}::proof_of_creativity::analyze_and_update_post" \
-        "$ref_cfg" "$ref_reg" "$ref_vault" "$ref_post" \
-        "$media_type" "$score" "$creator_arg" "$deriv_target" \
-        "$embed_audio" "$apply_explicit" "$explicit_outcome" \
-        none none "$ref_clk")" || return 1
+    if [[ -n "$sender" ]]; then
+        out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_as_capture "$sender" \
+            --move-call "${PKG_SOCIAL}::proof_of_creativity::analyze_and_update_post" \
+            "$ref_cfg" "$ref_reg" "$ref_vault" "$ref_post" \
+            "$media_type" "$score" "$creator_arg" "$deriv_target" \
+            "$embed_audio" "$apply_explicit" "$explicit_outcome" \
+            none none "$ref_clk")" || return 1
+    else
+        out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_capture \
+            --move-call "${PKG_SOCIAL}::proof_of_creativity::analyze_and_update_post" \
+            "$ref_cfg" "$ref_reg" "$ref_vault" "$ref_post" \
+            "$media_type" "$score" "$creator_arg" "$deriv_target" \
+            "$embed_audio" "$apply_explicit" "$explicit_outcome" \
+            none none "$ref_clk")" || return 1
+    fi
     digest="$(extract_tx_digest "$out")"
     ANALYZE_POST_LAST_DIGEST="${digest:-}"
     [[ -n "$ANALYZE_POST_LAST_DIGEST" ]]
@@ -2168,7 +2336,8 @@ tip_post_as_tipper() {
     PTB_GAS_COIN_ID="$gas_coin"
     SKIP_CONFIRM_RUN=1 invoke_ptb_as "$TIPPER_ADDRESS" \
         --move-call "${PKG_SOCIAL}::post::tip_post<${COIN_TYPE}>" \
-        "$ref_post" "$ref_vault" "$ref_tip" "$amount" "$ref_mem" "$ref_clk" || {
+        "$ref_post" "$ref_vault" "$ref_tip" "$amount" "$POC_MIN_VAULT_DEPOSIT" \
+        "$ref_mem" "$ref_clk" || {
         PTB_GAS_COIN_ID="$saved_gas_coin"
         TIPPER_ADDRESS="$saved_tipper"
         restore_oracle_address
@@ -2185,7 +2354,7 @@ run_username_beneficiary_flow() {
     ensure_ephemeral_oracle_for_username_claim || return 1
     require_session_fields POC_BENEFICIARY_ADMIN_CAP_ID POC_USERNAME_BENEFICIARY_DIRECTORY_ID \
         POC_VAULT_DIRECTORY_ID USERNAME_REGISTRY_ID MEMORY_REGISTRY_ID POC_CONFIG_ID \
-        ECOSYSTEM_TREASURY_ID || return 1
+        PROFILE_CONFIG_ID AI_CREDIT_CONFIG_ID ECOSYSTEM_TREASURY_ID || return 1
 
     local ub_username identity_hash x_handle shard_id digest beneficiary_id vault_id beneficiary_addr
     ub_username="pocub${POC_RUN_ID}"
@@ -2194,10 +2363,21 @@ run_username_beneficiary_flow() {
     local username_bytes
     username_bytes="$(bytes_to_hex_arg "$ub_username")"
 
+    POC_UB_LAST_USERNAME="$ub_username"
+    POC_UB_LAST_IDENTITY_HASH="$identity_hash"
+    POC_UB_LAST_VAULT_FUNDED='0'
+    POC_UB_LAST_TIP_AMOUNT=''
+    POC_UB_LAST_VAULT_GROSS=''
+    POC_UB_LAST_VAULT_TREASURY=''
+    POC_UB_LAST_VAULT_CREATOR_NET=''
+    POC_UB_LAST_FUND_POST_ID=''
+
     shard_id="$(resolve_shard_id_for_username "$ub_username")" || {
         echo "Could not resolve beneficiary shard for username $ub_username" >&2
         return 1
     }
+
+    POC_UB_LAST_SHARD_ID="$shard_id"
 
     log_step "1a create_username_beneficiary username=$ub_username"
     local out
@@ -2225,6 +2405,7 @@ run_username_beneficiary_flow() {
         return 1
     }
     log_step "1a resolved beneficiary_id=$beneficiary_id"
+    POC_UB_LAST_BENEFICIARY_ID="$beneficiary_id"
     if [[ "$beneficiary_id" == "$POC_USERNAME_BENEFICIARY_DIRECTORY_ID" ]]; then
         echo "Resolved beneficiary_id matches directory object — refusing to claim" >&2
         return 1
@@ -2245,13 +2426,18 @@ run_username_beneficiary_flow() {
         bjson="$(myso client object "$beneficiary_id" --json 2>/dev/null)" || true
         vault_id="$(echo "$bjson" | jq -r '.. | objects | select(has("vault_id")) | .vault_id // empty' | head -n1)"
     fi
+    POC_UB_LAST_VAULT_ID="${vault_id:-}"
 
     ensure_claim_wallet_without_profile || return 1
+    POC_UB_LAST_CLAIM_WALLET="$CREATOR_ADDRESS"
+    POC_UB_LAST_CLAIM_ORACLE="$USERNAME_CLAIM_ORACLE"
     log_step "1b claim_username_beneficiary oracle=$USERNAME_CLAIM_ORACLE wallet=$CREATOR_ADDRESS"
     local claim_digest
     out="$(SKIP_CONFIRM_RUN=1 run_myso_call_as "$USERNAME_CLAIM_ORACLE" proof_of_creativity claim_username_beneficiary \
-        --args "@${POC_CONFIG_ID}" "@${POC_USERNAME_BENEFICIARY_DIRECTORY_ID}" "@${shard_id}" \
-        "@${USERNAME_REGISTRY_ID}" "@${MEMORY_REGISTRY_ID}" "@${beneficiary_id}" \
+        --args "@${POC_CONFIG_ID}" "@${PROFILE_CONFIG_ID}" \
+        "@${POC_USERNAME_BENEFICIARY_DIRECTORY_ID}" "@${shard_id}" \
+        "@${USERNAME_REGISTRY_ID}" "@${MEMORY_REGISTRY_ID}" "@${AI_CREDIT_CONFIG_ID}" \
+        "@${beneficiary_id}" \
         0x "$x_handle" \
         "$(bytes_to_hex_arg "Creator")" "$(bytes_to_hex_arg "bio")" 0x 0x \
         "$CREATOR_ADDRESS" "@${CLOCK_ID}")" || {
@@ -2270,6 +2456,9 @@ run_username_beneficiary_flow() {
         return 1
     }
     verify_username_beneficiary_claimed "$claim_digest" "$beneficiary_id" "$ub_username" || return 1
+    POC_UB_LAST_CLAIM_PROFILE_ID="$(extract_created_object_by_type "$claim_digest" "profile::Profile")"
+    [[ -n "$POC_UB_LAST_CLAIM_PROFILE_ID" ]] || POC_UB_LAST_CLAIM_PROFILE_ID="$(extract_created_object_by_type "$claim_digest" "Profile")"
+    [[ -n "$POC_UB_LAST_CLAIM_PROFILE_ID" ]] || POC_UB_LAST_CLAIM_PROFILE_ID="$(gql_profile_id_for_address "$CREATOR_ADDRESS" 2>/dev/null || true)"
     assert_username_beneficiary_graphql "$ub_username" "$beneficiary_id" || return 1
 
     if should_skip_vault_funding; then
@@ -2278,6 +2467,8 @@ run_username_beneficiary_flow() {
         else
             log_step "1c-1d skipped (POC_SKIP_VAULT_FUNDING=1)"
         fi
+        save_session_state
+        print_poc_username_beneficiary_summary "$ub_username" "$beneficiary_id"
         return 0
     fi
 
@@ -2292,19 +2483,139 @@ run_username_beneficiary_flow() {
     [[ -n "$fund_post" ]] || fund_post="$(extract_created_object_by_type "$digest2" "Post")"
     [[ -n "$fund_post" ]] || { echo "Could not find Post for vault funding" >&2; return 1; }
 
-    analyze_post "$fund_post" 1 100 "some($beneficiary_addr)" 1 false false 0 || return 1
+    analyze_post "$fund_post" 1 100 "some($beneficiary_addr)" 1 false false 0 "$USERNAME_CLAIM_ORACLE" || return 1
     [[ -n "$vault_id" ]] || vault_id="$(resolve_beneficiary_vault_id "$ANALYZE_POST_LAST_DIGEST" "$beneficiary_addr")"
     [[ -n "$vault_id" ]] || { echo "Could not resolve beneficiary vault id" >&2; return 1; }
     ensure_tipper_memory_account
     tip_post_as_tipper "$fund_post" "$vault_id" "$DEFAULT_TIP_AMOUNT"
+    POC_UB_LAST_VAULT_FUNDED='1'
+    POC_UB_LAST_FUND_POST_ID="$fund_post"
+    POC_UB_LAST_TIP_AMOUNT="$DEFAULT_TIP_AMOUNT"
+    POC_UB_LAST_VAULT_ID="$(normalize_hex_id "$vault_id")"
 
-    local referrer="${JOIN_REFERRER_ADDRESS:-$(resolve_myso_active_address)}"
-    log_step "1d claim_username_beneficiary_vault_balance (creator)"
-    SKIP_CONFIRM_RUN=1 run_myso_call_as "$CREATOR_ADDRESS" proof_of_creativity claim_username_beneficiary_vault_balance \
-        --type-args "$COIN_TYPE" \
-        --args "@${POC_CONFIG_ID}" "@${POC_USERNAME_BENEFICIARY_DIRECTORY_ID}" "@${beneficiary_id}" \
-        "@${ECOSYSTEM_TREASURY_ID}" "@${vault_id}" "some($referrer)" "@${CLOCK_ID}"
+    local claim_wallet referrer
+    claim_wallet="$(normalize_hex_id "$POC_UB_LAST_CLAIM_WALLET")"
+    referrer="${JOIN_REFERRER_ADDRESS:-$ORACLE_ADDRESS}"
+    log_step "1d claim_username_beneficiary_vault_balance claim_wallet=$claim_wallet referrer=$referrer"
+    claim_username_beneficiary_vault_balance_as "$claim_wallet" "$beneficiary_id" "$vault_id" "$referrer" || return 1
+
+    local vault_gql vars
+    sleep 1
+    vars="$(jq -nc --arg vaultId "$(normalize_hex_id "$vault_id")" '{vaultId: $vaultId}')"
+    vault_gql="$(graphql_post \
+        'query UbVaultClaim($vaultId: String!) {
+            pocBeneficiaryVaultByVaultId(vaultId: $vaultId) {
+                claims(limit: 1) { grossAmount treasuryAmount netAmount }
+            }
+        }' \
+        "$vars" 2>/dev/null)" || vault_gql='{}'
+    POC_UB_LAST_VAULT_GROSS="$(echo "$vault_gql" | jq -r '.data.pocBeneficiaryVaultByVaultId.claims[0].grossAmount // empty')"
+    POC_UB_LAST_VAULT_TREASURY="$(echo "$vault_gql" | jq -r '.data.pocBeneficiaryVaultByVaultId.claims[0].treasuryAmount // empty')"
+    POC_UB_LAST_VAULT_CREATOR_NET="$(echo "$vault_gql" | jq -r '.data.pocBeneficiaryVaultByVaultId.claims[0].netAmount // empty')"
+    [[ -n "$POC_UB_LAST_VAULT_GROSS" ]] || POC_UB_LAST_VAULT_GROSS="$DEFAULT_TIP_AMOUNT"
+    [[ -n "$POC_UB_LAST_VAULT_TREASURY" ]] || POC_UB_LAST_VAULT_TREASURY='1000000'
+    if [[ -z "$POC_UB_LAST_VAULT_CREATOR_NET" && -n "$POC_UB_LAST_VAULT_GROSS" && -n "$POC_UB_LAST_VAULT_TREASURY" ]]; then
+        POC_UB_LAST_VAULT_CREATOR_NET="$((POC_UB_LAST_VAULT_GROSS - POC_UB_LAST_VAULT_TREASURY))"
+    fi
+
     save_session_state
+    print_poc_username_beneficiary_summary "$ub_username" "$beneficiary_id"
+}
+
+print_poc_username_beneficiary_summary() {
+    local username="${1:-${POC_UB_LAST_USERNAME:-}}"
+    local beneficiary_id="${2:-${POC_UB_LAST_BENEFICIARY_ID:-}}"
+    local claim_wallet claim_oracle claim_profile vault_id fund_post outcome gql_status
+    local tip_amount gross treasury creator_net vault_section
+
+    beneficiary_id="$(normalize_hex_id "$beneficiary_id")"
+    claim_wallet="$(normalize_hex_id "${POC_UB_LAST_CLAIM_WALLET:-$CREATOR_ADDRESS}")"
+    claim_oracle="$(normalize_hex_id "${POC_UB_LAST_CLAIM_ORACLE:-$USERNAME_CLAIM_ORACLE}")"
+    claim_profile="$(normalize_hex_id "${POC_UB_LAST_CLAIM_PROFILE_ID:-}")"
+    vault_id="$(normalize_hex_id "${POC_UB_LAST_VAULT_ID:-}")"
+    fund_post="$(normalize_hex_id "${POC_UB_LAST_FUND_POST_ID:-}")"
+    gql_status="$(graphql_post \
+        'query PocUsernameBeneficiaryByUsername($username: String!) {
+            pocUsernameBeneficiaryByUsername(username: $username) { status }
+        }' \
+        "$(jq -nc --arg username "$username" '{username: $username}')" 2>/dev/null \
+        | jq -r '.data.pocUsernameBeneficiaryByUsername.status // empty')" || gql_status='2'
+
+    print_run_summary_header "Proof of Creativity — username beneficiary flow completed"
+    print_run_summary_line "Run ID" "$POC_RUN_ID"
+    print_run_summary_line "Username provisioned" "$username"
+    print_run_summary_line "Beneficiary object" "$beneficiary_id"
+    print_run_summary_line "Beneficiary shard" "$(normalize_hex_id "${POC_UB_LAST_SHARD_ID:-}")"
+    print_run_summary_line "Identity hash" "${POC_UB_LAST_IDENTITY_HASH:-}"
+    print_run_summary_line "Beneficiary vault" "${vault_id:-<none>}"
+    print_run_summary_line "Claim oracle" "$claim_oracle"
+    print_run_summary_line "Claim wallet" "$claim_wallet"
+    print_run_summary_line "Profile created" "${claim_profile:-<indexed after claim>}"
+    print_run_summary_line "On-chain status" "CLAIMED (status ${gql_status:-2}, GraphQL verified)"
+
+    if [[ "${POC_UB_LAST_VAULT_FUNDED:-0}" == 1 ]]; then
+        tip_amount="${POC_UB_LAST_TIP_AMOUNT:-$DEFAULT_TIP_AMOUNT}"
+        gross="${POC_UB_LAST_VAULT_GROSS:-$tip_amount}"
+        treasury="${POC_UB_LAST_VAULT_TREASURY:-1000000}"
+        creator_net="${POC_UB_LAST_VAULT_CREATOR_NET:-$((gross - treasury))}"
+        print_run_summary_line "Vault funding post" "$fund_post"
+        print_run_summary_line "Escrow tip to vault" "$(format_mist_with_units "$tip_amount")"
+        print_run_summary_line "Vault claim (gross)" "$(format_mist_with_units "$gross")"
+        print_run_summary_line "Treasury fee (claim)" "$(format_mist_with_units "$treasury")"
+        print_run_summary_line "Creator net (vault)" "$(format_mist_with_units "$creator_net")"
+        vault_section=" Vault funded via derivative post tip $(format_mist_with_units "$tip_amount"); creator claimed $(format_mist_with_units "$creator_net") net after $(format_mist_with_units "$treasury") treasury fee."
+    else
+        if ! platform_mode_is_full; then
+            vault_section=" Vault funding skipped (no platform on fullnode)."
+        elif [[ "${POC_SKIP_VAULT_FUNDING:-0}" == 1 ]]; then
+            vault_section=" Vault funding skipped (POC_SKIP_VAULT_FUNDING=1)."
+        else
+            vault_section=""
+        fi
+    fi
+
+    outcome="Admin provisioned @$username as a PoC username beneficiary; oracle $claim_oracle verified claim for wallet $claim_wallet, creating profile ${claim_profile:-<new>} with username @$username.${vault_section}"
+    print_run_summary_line "Outcome" "$outcome"
+    print_run_summary_line "GraphQL indexer" "$GRAPHQL_URL"
+    print_run_summary_line "Session file" "$(session_state_save_path)"
+    print_run_summary_footer
+}
+
+print_poc_post_flow_summary() {
+    print_run_summary_header "Proof of Creativity — post PoC flow completed"
+    print_run_summary_line "Platform" "$(normalize_hex_id "${PLATFORM_OBJECT_ID:-}")"
+    print_run_summary_line "Creator" "$(normalize_hex_id "$CREATOR_ADDRESS")"
+    print_run_summary_line "Tipper" "$(normalize_hex_id "${TIPPER_ADDRESS:-}")"
+    print_run_summary_line "Beneficiary vault" "$(normalize_hex_id "${POC_BENEFICIARY_VAULT_ID:-}")"
+    print_run_summary_line "Tip amount" "$(format_mist_with_units "${DEFAULT_TIP_AMOUNT:-100000000}")"
+    print_run_summary_line "Steps" "Original analyze → derivative escrow + tip → vault claim → royalty-free outcome post"
+    print_run_summary_footer
+}
+
+print_poc_dispute_flow_summary() {
+    print_run_summary_header "Proof of Creativity — dispute flow completed"
+    print_run_summary_line "Voter / oracle" "$(normalize_hex_id "$(resolve_myso_active_address 2>/dev/null || echo "$ORACLE_ADDRESS")")"
+    print_run_summary_line "Vote stake" "$(format_mist_with_units "${DEFAULT_VOTE_STAKE:-1000000000}")"
+    print_run_summary_line "Evidence" "$DEFAULT_DISPUTE_EVIDENCE"
+    print_run_summary_line "Outcome" "Dispute submitted → vote (uphold) → resolved → voting reward claimed"
+    print_run_summary_footer
+}
+
+print_poc_run_all_summary() {
+    local flows="Username beneficiary"
+    print_run_summary_header "Proof of Creativity — full E2E completed ($(platform_mode) mode)"
+    print_run_summary_line "Run ID" "$POC_RUN_ID"
+    print_run_summary_line "Platform mode" "$(platform_mode)"
+    print_run_summary_line "Platform" "${PLATFORM_OBJECT_ID:-<none>}"
+    print_run_summary_line "Oracle" "$(normalize_hex_id "$ORACLE_ADDRESS")"
+    print_run_summary_line "Creator" "$(normalize_hex_id "$CREATOR_ADDRESS")"
+    if platform_mode_is_full; then
+        flows="$flows + post PoC + optional SPT/dispute/reservation"
+    else
+        flows="$flows only (no platform)"
+    fi
+    print_run_summary_line "Flows exercised" "$flows"
+    print_run_summary_footer
 }
 
 run_post_poc_flow() {
@@ -2316,12 +2627,15 @@ run_post_poc_flow() {
     local out digest post1 post2 post3 vault_id beneficiary_addr
     beneficiary_addr="$CREATOR_ADDRESS"
 
-    if ! ensure_joined_platform; then
-        log_step "Platform join failed — creating and approving a fresh test platform"
-        create_test_platform || return 1
-        ensure_joined_platform || return 1
+    if [[ "${POC_PLATFORM_JOINED:-0}" != 1 ]]; then
+        if ! ensure_joined_platform; then
+            log_step "Platform join failed — creating and approving a fresh test platform"
+            create_test_platform || return 1
+            ensure_joined_platform || return 1
+        fi
+    else
+        log_step "Platform already joined this run — skipping join"
     fi
-    POC_PLATFORM_JOINED=1
 
     log_step "2a-2b Original post + analyze"
     out="$(create_post_poc_enabled "$(literal_move_string "PoC original ${POC_RUN_ID}")")" || return 1
@@ -2364,6 +2678,7 @@ run_post_poc_flow() {
     [[ -n "$post3" ]] || { echo "royalty-free create_post did not produce a Post object" >&2; return 1; }
     analyze_post "$post3" 1 0 none 0 false true 4 || return 1
     save_session_state
+    print_poc_post_flow_summary
 }
 
 run_spt_sync_flow() {
@@ -2433,6 +2748,7 @@ run_dispute_flow() {
     log_step "4f claim_voting_reward"
     SKIP_CONFIRM_RUN=1 run_myso_call proof_of_creativity claim_voting_reward \
         --args "@${dispute_id}" "@${CLOCK_ID}"
+    print_poc_dispute_flow_summary
 }
 
 run_profile_reservation_flow() {
@@ -2499,17 +2815,12 @@ run_all_e2e() {
         fi
     fi
     save_session_state
-    log_step "PoC runtime E2E complete ($(platform_mode) mode)."
+    print_poc_run_all_summary
 }
 
 menu_session_setup() {
-    echo ""
-    echo "=== Menu [0] Refresh session from GraphQL ==="
-    read -r -p "Run GraphQL refresh now? [Y/n] " do_refresh
-    if [[ -z "${do_refresh:-}" || "${do_refresh}" == [yY]* ]]; then
-        refresh_poc_session_from_graphql
-        load_session_state
-    fi
+    refresh_poc_session_from_graphql
+    load_session_state
     save_session_state
     echo "Session saved."
 }
@@ -2518,7 +2829,6 @@ show_menu() {
     echo ""
     echo "=== PoC Runtime Test Menu ==="
     echo " 0) Refresh poc-session.env from GraphQL"
-    echo " R) Refresh poc-session.env from GraphQL"
     echo " C) Create test platform (+ approve) and save PLATFORM_OBJECT_ID"
     echo " 1) Run full E2E (platform mode if PLATFORM_OBJECT_ID set, else username PoC only)"
     echo " 2) Username beneficiary flow only"
@@ -2531,7 +2841,6 @@ show_menu() {
     read -r -p "Choice: " choice
     case "${choice:-}" in
         0) menu_session_setup ;;
-        [Rr]) refresh_poc_session_from_graphql; load_session_state ;;
         [Cc]) maybe_auto_refresh_session; create_test_platform ;;
         1) run_all_e2e ;;
         2) maybe_auto_refresh_session; ensure_cli_addresses; preflight_oracle_and_config; run_username_beneficiary_flow ;;
@@ -2574,7 +2883,6 @@ main() {
             preflight_oracle_and_config || exit 1
             run_post_poc_flow || exit 1
             save_session_state
-            log_step "Post PoC flow complete."
             exit 0
             ;;
         username_flow)
@@ -2584,7 +2892,6 @@ main() {
             preflight_oracle_and_config || exit 1
             run_username_beneficiary_flow || exit 1
             save_session_state
-            log_step "Username beneficiary flow complete."
             exit 0
             ;;
         run_all) run_all_e2e; exit 0 ;;

@@ -315,12 +315,9 @@ impl NewEcosystemTreasury {
     }
 }
 
-/// `trading_enabled` is [`None`] for fee/threshold config events; kill-switch events set [`Some`].
-///
-/// When [`Self::apply_trading_enabled_only`] is true (emergency kill switch), the indexer must only
-/// update trading toggle and metadata columns on `spt_exchange_config`, not fee/threshold fields.
+/// Event-layer SPT config before merge/insert. Kill-switch events set [`apply_trading_enabled_only`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NewSptExchangeConfig {
+pub struct NewSptConfigEvent {
     pub updated_by: String,
     pub post_threshold: i64,
     pub profile_threshold: i64,
@@ -342,7 +339,8 @@ pub struct NewSptExchangeConfig {
     pub non_platform_platform_to_creator_bps: i64,
     pub non_platform_platform_to_treasury_bps: i64,
     pub trading_enabled: Option<bool>,
-    /// Kill-switch path: apply only `updated_by`, `trading_enabled`, `updated_at`, `transaction_id`.
+    pub admin_address: Option<String>,
+    pub reason: Option<String>,
     #[serde(default)]
     pub apply_trading_enabled_only: bool,
     pub updated_at: i64,
@@ -352,8 +350,11 @@ pub struct NewSptExchangeConfig {
 }
 
 #[derive(Debug, Clone, Insertable, Queryable, Selectable, Serialize, Deserialize)]
-#[diesel(table_name = crate::schema::spt_exchange_config)]
-pub struct InsertSptExchangeConfig {
+#[diesel(table_name = spt_config)]
+pub struct InsertSptConfig {
+    pub trading_enabled: bool,
+    pub admin_address: String,
+    pub reason: String,
     pub updated_by: String,
     pub post_threshold: i64,
     pub profile_threshold: i64,
@@ -374,41 +375,42 @@ pub struct InsertSptExchangeConfig {
     pub max_hold_percent_bps: i64,
     pub non_platform_platform_to_creator_bps: i64,
     pub non_platform_platform_to_treasury_bps: i64,
-    pub trading_enabled: bool,
     pub version: i64,
     pub updated_at: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
 }
 
-impl InsertSptExchangeConfig {
-    pub fn from_row(row: &NewSptExchangeConfig, trading_enabled: bool) -> Self {
+impl InsertSptConfig {
+    pub fn from_event(event: &NewSptConfigEvent, trading_enabled: bool) -> Self {
         Self {
-            updated_by: row.updated_by.clone(),
-            post_threshold: row.post_threshold,
-            profile_threshold: row.profile_threshold,
-            max_individual_reservation_bps: row.max_individual_reservation_bps,
-            total_fee_bps: row.total_fee_bps,
-            creator_fee_bps: row.creator_fee_bps,
-            platform_fee_bps: row.platform_fee_bps,
-            treasury_fee_bps: row.treasury_fee_bps,
-            trading_creator_fee_bps: row.trading_creator_fee_bps,
-            trading_platform_fee_bps: row.trading_platform_fee_bps,
-            trading_treasury_fee_bps: row.trading_treasury_fee_bps,
-            reservation_creator_fee_bps: row.reservation_creator_fee_bps,
-            reservation_platform_fee_bps: row.reservation_platform_fee_bps,
-            reservation_treasury_fee_bps: row.reservation_treasury_fee_bps,
-            max_reservers_per_pool: row.max_reservers_per_pool,
-            base_price: row.base_price,
-            quadratic_coefficient: row.quadratic_coefficient,
-            max_hold_percent_bps: row.max_hold_percent_bps,
-            non_platform_platform_to_creator_bps: row.non_platform_platform_to_creator_bps,
-            non_platform_platform_to_treasury_bps: row.non_platform_platform_to_treasury_bps,
             trading_enabled,
-            version: row.version,
-            updated_at: row.updated_at,
-            time: row.time,
-            transaction_id: row.transaction_id.clone(),
+            admin_address: event.admin_address.clone().unwrap_or_default(),
+            reason: event.reason.clone().unwrap_or_default(),
+            updated_by: event.updated_by.clone(),
+            post_threshold: event.post_threshold,
+            profile_threshold: event.profile_threshold,
+            max_individual_reservation_bps: event.max_individual_reservation_bps,
+            total_fee_bps: event.total_fee_bps,
+            creator_fee_bps: event.creator_fee_bps,
+            platform_fee_bps: event.platform_fee_bps,
+            treasury_fee_bps: event.treasury_fee_bps,
+            trading_creator_fee_bps: event.trading_creator_fee_bps,
+            trading_platform_fee_bps: event.trading_platform_fee_bps,
+            trading_treasury_fee_bps: event.trading_treasury_fee_bps,
+            reservation_creator_fee_bps: event.reservation_creator_fee_bps,
+            reservation_platform_fee_bps: event.reservation_platform_fee_bps,
+            reservation_treasury_fee_bps: event.reservation_treasury_fee_bps,
+            max_reservers_per_pool: event.max_reservers_per_pool,
+            base_price: event.base_price,
+            quadratic_coefficient: event.quadratic_coefficient,
+            max_hold_percent_bps: event.max_hold_percent_bps,
+            non_platform_platform_to_creator_bps: event.non_platform_platform_to_creator_bps,
+            non_platform_platform_to_treasury_bps: event.non_platform_platform_to_treasury_bps,
+            version: event.version,
+            updated_at: event.updated_at,
+            time: event.time,
+            transaction_id: event.transaction_id.clone(),
         }
     }
 
@@ -418,13 +420,8 @@ impl InsertSptExchangeConfig {
     }
 }
 
-pub fn merge_spt_exchange_config(
-    prev: &InsertSptExchangeConfig,
-    incoming: &NewSptExchangeConfig,
-) -> InsertSptExchangeConfig {
-    let trading_enabled = incoming
-        .trading_enabled
-        .unwrap_or(prev.trading_enabled);
+pub fn merge_spt_config(prev: &InsertSptConfig, incoming: &NewSptConfigEvent) -> InsertSptConfig {
+    let trading_enabled = incoming.trading_enabled.unwrap_or(prev.trading_enabled);
     let version = if incoming.version > 0 {
         incoming.version
     } else {
@@ -432,9 +429,23 @@ pub fn merge_spt_exchange_config(
     };
 
     if incoming.apply_trading_enabled_only {
-        return InsertSptExchangeConfig {
-            updated_by: incoming.updated_by.clone(),
+        return InsertSptConfig {
             trading_enabled,
+            admin_address: incoming
+                .admin_address
+                .clone()
+                .filter(|v| !v.is_empty())
+                .unwrap_or_else(|| prev.admin_address.clone()),
+            reason: incoming
+                .reason
+                .clone()
+                .filter(|v| !v.is_empty())
+                .unwrap_or_else(|| prev.reason.clone()),
+            updated_by: if incoming.updated_by.is_empty() {
+                prev.updated_by.clone()
+            } else {
+                incoming.updated_by.clone()
+            },
             version,
             updated_at: incoming.updated_at,
             time: incoming.time,
@@ -443,65 +454,51 @@ pub fn merge_spt_exchange_config(
         };
     }
 
-    InsertSptExchangeConfig::from_row(incoming, trading_enabled).with_version(version)
+    let mut merged = InsertSptConfig::from_event(incoming, trading_enabled).with_version(version);
+    merged.admin_address = incoming
+        .admin_address
+        .clone()
+        .filter(|v| !v.is_empty())
+        .unwrap_or_else(|| prev.admin_address.clone());
+    merged.reason = incoming
+        .reason
+        .clone()
+        .filter(|v| !v.is_empty())
+        .unwrap_or_else(|| prev.reason.clone());
+    merged
 }
 
-#[derive(Debug, Clone, AsChangeset)]
-#[diesel(table_name = crate::schema::spt_exchange_config)]
-#[diesel(treat_none_as_null = false)]
-pub struct SptExchangeConfigChangeset {
-    pub updated_by: String,
-    pub post_threshold: i64,
-    pub profile_threshold: i64,
-    pub max_individual_reservation_bps: i64,
-    pub total_fee_bps: i64,
-    pub creator_fee_bps: i64,
-    pub platform_fee_bps: i64,
-    pub treasury_fee_bps: i64,
-    pub trading_creator_fee_bps: i64,
-    pub trading_platform_fee_bps: i64,
-    pub trading_treasury_fee_bps: i64,
-    pub reservation_creator_fee_bps: i64,
-    pub reservation_platform_fee_bps: i64,
-    pub reservation_treasury_fee_bps: i64,
-    pub max_reservers_per_pool: i64,
-    pub base_price: i64,
-    pub quadratic_coefficient: i64,
-    pub max_hold_percent_bps: i64,
-    pub non_platform_platform_to_creator_bps: i64,
-    pub non_platform_platform_to_treasury_bps: i64,
-    pub trading_enabled: Option<bool>,
-    pub updated_at: i64,
-    pub transaction_id: String,
-}
-
-impl From<&NewSptExchangeConfig> for SptExchangeConfigChangeset {
-    fn from(c: &NewSptExchangeConfig) -> Self {
-        Self {
-            updated_by: c.updated_by.clone(),
-            post_threshold: c.post_threshold,
-            profile_threshold: c.profile_threshold,
-            max_individual_reservation_bps: c.max_individual_reservation_bps,
-            total_fee_bps: c.total_fee_bps,
-            creator_fee_bps: c.creator_fee_bps,
-            platform_fee_bps: c.platform_fee_bps,
-            treasury_fee_bps: c.treasury_fee_bps,
-            trading_creator_fee_bps: c.trading_creator_fee_bps,
-            trading_platform_fee_bps: c.trading_platform_fee_bps,
-            trading_treasury_fee_bps: c.trading_treasury_fee_bps,
-            reservation_creator_fee_bps: c.reservation_creator_fee_bps,
-            reservation_platform_fee_bps: c.reservation_platform_fee_bps,
-            reservation_treasury_fee_bps: c.reservation_treasury_fee_bps,
-            max_reservers_per_pool: c.max_reservers_per_pool,
-            base_price: c.base_price,
-            quadratic_coefficient: c.quadratic_coefficient,
-            max_hold_percent_bps: c.max_hold_percent_bps,
-            non_platform_platform_to_creator_bps: c.non_platform_platform_to_creator_bps,
-            non_platform_platform_to_treasury_bps: c.non_platform_platform_to_treasury_bps,
-            trading_enabled: c.trading_enabled,
-            updated_at: c.updated_at,
-            transaction_id: c.transaction_id.clone(),
-        }
+pub fn default_spt_config() -> InsertSptConfig {
+    InsertSptConfig {
+        trading_enabled: true,
+        admin_address: String::new(),
+        reason: String::new(),
+        updated_by: String::new(),
+        post_threshold: DEFAULT_POST_THRESHOLD,
+        profile_threshold: DEFAULT_PROFILE_THRESHOLD,
+        max_individual_reservation_bps: DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS,
+        total_fee_bps: DEFAULT_TRADING_CREATOR_FEE_BPS
+            + DEFAULT_TRADING_PLATFORM_FEE_BPS
+            + DEFAULT_TRADING_TREASURY_FEE_BPS,
+        creator_fee_bps: DEFAULT_TRADING_CREATOR_FEE_BPS,
+        platform_fee_bps: DEFAULT_TRADING_PLATFORM_FEE_BPS,
+        treasury_fee_bps: DEFAULT_TRADING_TREASURY_FEE_BPS,
+        trading_creator_fee_bps: DEFAULT_TRADING_CREATOR_FEE_BPS,
+        trading_platform_fee_bps: DEFAULT_TRADING_PLATFORM_FEE_BPS,
+        trading_treasury_fee_bps: DEFAULT_TRADING_TREASURY_FEE_BPS,
+        reservation_creator_fee_bps: DEFAULT_RESERVATION_CREATOR_FEE_BPS,
+        reservation_platform_fee_bps: DEFAULT_RESERVATION_PLATFORM_FEE_BPS,
+        reservation_treasury_fee_bps: DEFAULT_RESERVATION_TREASURY_FEE_BPS,
+        max_reservers_per_pool: DEFAULT_MAX_RESERVERS_PER_POOL,
+        base_price: DEFAULT_BASE_PRICE,
+        quadratic_coefficient: DEFAULT_QUADRATIC_COEFFICIENT,
+        max_hold_percent_bps: MAX_HOLD_PERCENT_BPS,
+        non_platform_platform_to_creator_bps: 5000,
+        non_platform_platform_to_treasury_bps: 5000,
+        version: 0,
+        updated_at: 0,
+        time: chrono::Utc::now(),
+        transaction_id: String::new(),
     }
 }
 
@@ -938,51 +935,6 @@ impl NewUnifiedRevenue {
     }
 }
 
-#[derive(Debug, Clone, Insertable, Queryable, Selectable, Serialize, Deserialize)]
-#[diesel(table_name = spt_config)]
-pub struct NewSocialProofTokensConfig {
-    pub trading_enabled: bool,
-    pub admin_address: String,
-    pub reason: String,
-    pub updated_by: String,
-    pub version: i64,
-    pub updated_at: i64,
-    pub time: chrono::DateTime<chrono::Utc>,
-    pub transaction_id: String,
-}
-
-pub fn merge_social_proof_tokens_config(
-    prev: &NewSocialProofTokensConfig,
-    incoming: &NewSocialProofTokensConfig,
-) -> NewSocialProofTokensConfig {
-    let version = if incoming.version > 0 {
-        incoming.version
-    } else {
-        prev.version + 1
-    };
-    NewSocialProofTokensConfig {
-        trading_enabled: incoming.trading_enabled,
-        admin_address: if incoming.admin_address.is_empty() {
-            prev.admin_address.clone()
-        } else {
-            incoming.admin_address.clone()
-        },
-        reason: if incoming.reason.is_empty() {
-            prev.reason.clone()
-        } else {
-            incoming.reason.clone()
-        },
-        updated_by: if incoming.updated_by.is_empty() {
-            prev.updated_by.clone()
-        } else {
-            incoming.updated_by.clone()
-        },
-        version,
-        updated_at: incoming.updated_at,
-        time: incoming.time,
-        transaction_id: incoming.transaction_id.clone(),
-    }
-}
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
 #[diesel(table_name = spt_events)]
@@ -994,64 +946,87 @@ pub struct NewSocialProofTokensEvent {
 }
 
 #[cfg(test)]
-mod spt_exchange_config_changeset_tests {
-    use super::{NewSptExchangeConfig, SptExchangeConfigChangeset};
-    use crate::schema::spt_exchange_config;
-    use diesel::debug_query;
-    use diesel::pg::Pg;
+mod spt_config_merge_tests {
+    use super::{default_spt_config, merge_spt_config, NewSptConfigEvent};
 
-    fn sample_row(trading_enabled: Option<bool>) -> NewSptExchangeConfig {
-        NewSptExchangeConfig {
-            updated_by: "0x1".to_string(),
-            post_threshold: 1,
-            profile_threshold: 1,
-            max_individual_reservation_bps: 1,
-            total_fee_bps: 1,
-            creator_fee_bps: 1,
-            platform_fee_bps: 1,
-            treasury_fee_bps: 1,
-            trading_creator_fee_bps: 1,
-            trading_platform_fee_bps: 1,
-            trading_treasury_fee_bps: 1,
-            reservation_creator_fee_bps: 1,
-            reservation_platform_fee_bps: 1,
-            reservation_treasury_fee_bps: 1,
-            max_reservers_per_pool: 1,
-            base_price: 1,
-            quadratic_coefficient: 1,
-            max_hold_percent_bps: 1,
-            non_platform_platform_to_creator_bps: 1,
-            non_platform_platform_to_treasury_bps: 1,
-            trading_enabled,
-            apply_trading_enabled_only: false,
-            version: 1,
-            updated_at: 0,
-            time: chrono::DateTime::UNIX_EPOCH,
+    #[test]
+    fn kill_switch_preserves_fee_fields() {
+        let prev = default_spt_config();
+        let incoming = NewSptConfigEvent {
+            updated_by: "0xadmin".to_string(),
+            post_threshold: 0,
+            profile_threshold: 0,
+            max_individual_reservation_bps: 0,
+            total_fee_bps: 0,
+            creator_fee_bps: 0,
+            platform_fee_bps: 0,
+            treasury_fee_bps: 0,
+            trading_creator_fee_bps: 0,
+            trading_platform_fee_bps: 0,
+            trading_treasury_fee_bps: 0,
+            reservation_creator_fee_bps: 0,
+            reservation_platform_fee_bps: 0,
+            reservation_treasury_fee_bps: 0,
+            max_reservers_per_pool: 0,
+            base_price: 0,
+            quadratic_coefficient: 0,
+            max_hold_percent_bps: 0,
+            non_platform_platform_to_creator_bps: 0,
+            non_platform_platform_to_treasury_bps: 0,
+            trading_enabled: Some(false),
+            admin_address: Some("0xadmin".to_string()),
+            reason: Some("halt".to_string()),
+            apply_trading_enabled_only: true,
+            updated_at: 1,
+            time: chrono::Utc::now(),
             transaction_id: "tx".to_string(),
-        }
+            version: 0,
+        };
+        let merged = merge_spt_config(&prev, &incoming);
+        assert!(!merged.trading_enabled);
+        assert_eq!(merged.base_price, prev.base_price);
+        assert_eq!(merged.admin_address, "0xadmin");
     }
 
     #[test]
-    fn as_changeset_omits_trading_enabled_when_unset() {
-        let row = sample_row(None);
-        let q =
-            diesel::update(spt_exchange_config::table).set(SptExchangeConfigChangeset::from(&row));
-        let sql = debug_query::<Pg, _>(&q).to_string();
-        assert!(
-            !sql.to_lowercase().contains("trading_enabled"),
-            "SET should not touch trading_enabled when None: {sql}"
-        );
-    }
-
-    #[test]
-    fn as_changeset_sets_trading_enabled_when_some() {
-        let row = sample_row(Some(true));
-        let q =
-            diesel::update(spt_exchange_config::table).set(SptExchangeConfigChangeset::from(&row));
-        let sql = debug_query::<Pg, _>(&q).to_string();
-        assert!(
-            sql.to_lowercase().contains("trading_enabled"),
-            "SET should include trading_enabled when Some: {sql}"
-        );
+    fn config_update_preserves_kill_switch_audit_fields() {
+        let mut prev = default_spt_config();
+        prev.admin_address = "0xkill_admin".to_string();
+        prev.reason = "halt".to_string();
+        let incoming = NewSptConfigEvent {
+            updated_by: "0xconfig_admin".to_string(),
+            post_threshold: 2,
+            profile_threshold: 3,
+            max_individual_reservation_bps: 100,
+            total_fee_bps: 150,
+            creator_fee_bps: 100,
+            platform_fee_bps: 25,
+            treasury_fee_bps: 25,
+            trading_creator_fee_bps: 100,
+            trading_platform_fee_bps: 25,
+            trading_treasury_fee_bps: 25,
+            reservation_creator_fee_bps: 100,
+            reservation_platform_fee_bps: 25,
+            reservation_treasury_fee_bps: 25,
+            max_reservers_per_pool: 1000,
+            base_price: 200,
+            quadratic_coefficient: 300,
+            max_hold_percent_bps: 500,
+            non_platform_platform_to_creator_bps: 5000,
+            non_platform_platform_to_treasury_bps: 5000,
+            trading_enabled: Some(true),
+            admin_address: None,
+            reason: None,
+            apply_trading_enabled_only: false,
+            updated_at: 42,
+            time: chrono::Utc::now(),
+            transaction_id: "tx-config".to_string(),
+            version: 0,
+        };
+        let merged = merge_spt_config(&prev, &incoming);
+        assert_eq!(merged.base_price, 200);
+        assert_eq!(merged.admin_address, "0xkill_admin");
+        assert_eq!(merged.reason, "halt");
+        assert_eq!(merged.updated_by, "0xconfig_admin");
     }
 }

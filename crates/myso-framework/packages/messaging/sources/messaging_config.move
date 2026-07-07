@@ -3,6 +3,7 @@ module messaging::messaging_config;
 
 use myso::clock::Clock;
 use myso::event;
+use myso::tx_context;
 use social_contracts::bootstrap::MessagingAdminCap;
 
 const BPS_DENOM: u64 = 10_000;
@@ -40,7 +41,18 @@ public struct MessagingConfigUpdatedEvent has copy, drop {
 
 /// Shares the genesis [`MessagingConfig`] singleton. Called from `messaging::init`.
 public(package) fun share_initial(ctx: &mut TxContext) {
-    transfer::share_object(new_defaults(ctx));
+    let config = new_defaults(ctx);
+    let sender = tx_context::sender(ctx);
+    event::emit(MessagingConfigUpdatedEvent {
+        updated_by: sender,
+        timestamp: 0,
+        paid_msg_platform_fee_bps: config.paid_msg_platform_fee_bps,
+        paid_msg_treasury_fee_bps: config.paid_msg_treasury_fee_bps,
+        payment_expiration_ms: config.payment_expiration_ms,
+        min_reply_chars: config.min_reply_chars,
+        max_dedupe_key_bytes: config.max_dedupe_key_bytes,
+    });
+    transfer::share_object(config);
 }
 
 public fun update_messaging_config(

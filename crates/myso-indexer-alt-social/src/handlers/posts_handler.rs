@@ -1476,7 +1476,7 @@ impl Handler for PostsHandler {
                         let time = chrono::DateTime::from_timestamp(*timestamp / 1000, 0)
                             .unwrap_or_else(chrono::Utc::now);
                         let row = NewPromotionView {
-                            post_id,
+                            post_id: post_id.clone(),
                             promotion_id: promotion_id.clone(),
                             viewer: viewer.clone(),
                             payment_amount: *payment_amount,
@@ -1490,6 +1490,43 @@ impl Handler for PostsHandler {
                             .values(&row)
                             .execute(conn)
                             .await?;
+
+                        let budget_row: Option<(i64, i64)> = promoted_posts::table
+                            .filter(promoted_posts::promotion_id.eq(promotion_id))
+                            .order(promoted_posts::time.desc())
+                            .select((
+                                promoted_posts::remaining_budget,
+                                promoted_posts::payment_per_view,
+                            ))
+                            .first(conn)
+                            .await
+                            .optional()?;
+                        if let Some((remaining_budget, payment_per_view)) = budget_row {
+                            let new_remaining = remaining_budget.saturating_sub(*payment_amount);
+                            let still_active = new_remaining >= payment_per_view;
+                            let budget_event = NewPromotionBudgetEvent {
+                                promotion_id: promotion_id.clone(),
+                                post_id: post_id.clone(),
+                                event_type: "view_payment".to_string(),
+                                amount: *payment_amount,
+                                remaining_budget: new_remaining,
+                                timestamp: *timestamp,
+                                time,
+                                transaction_id: transaction_id.clone(),
+                            };
+                            total += diesel::insert_into(promotion_budget_events::table)
+                                .values(&budget_event)
+                                .execute(conn)
+                                .await?;
+                            total += diesel::update(promoted_posts::table)
+                                .filter(promoted_posts::promotion_id.eq(promotion_id))
+                                .set((
+                                    promoted_posts::remaining_budget.eq(new_remaining),
+                                    promoted_posts::active.eq(still_active),
+                                ))
+                                .execute(conn)
+                                .await?;
+                        }
                     }
                 }
                 PostRow::PromotionStatusEvent {
@@ -2210,5 +2247,106 @@ mod post_row_poc_mapping_tests {
             increment_row,
             Some(PostRow::PostTipsReceivedIncrement { .. })
         ));
+    }
+}
+
+#[cfg(test)]
+mod promotion_view_commit_tests {
+    use diesel::ExpressionMethods;
+    use diesel::QueryDsl;
+    use diesel_async::RunQueryDsl;
+    use myso_indexer_alt_framework::postgres::handler::Handler;
+    use myso_indexer_alt_social_schema::MIGRATIONS;
+    use myso_indexer_alt_social_schema::models::NewPromotedPost;
+    use myso_indexer_alt_social_schema::schema::{promoted_posts, promotion_budget_events};
+    use myso_pg_db::temp::TempDb;
+    use myso_pg_db::Db;
+
+    use super::PostRow;
+    use super::PostsHandler;
+
+    fn addr_hex(id: u8) -> String {
+        format!("0x{:064x}", id)
+    }
+
+    async fn setup_temp_db() -> Option<Db> {
+        let temp_db = TempDb::new().ok()?;
+        let store = Db::for_write(temp_db.database().url().clone(), Default::default())
+            .await
+            .ok()?;
+        {
+            let mut probe = store.connect().await.ok()?;
+            diesel::sql_query("CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE")
+                .execute(&mut probe)
+                .await
+                .ok()?;
+        }
+        store.run_migrations(Some(&MIGRATIONS)).await.ok()?;
+        Some(store)
+    }
+
+    #[tokio::test]
+    async fn promotion_view_commit_decrements_remaining_budget() {
+        let Some(store) = setup_temp_db().await else {
+            return;
+        };
+
+        let promotion_id = addr_hex(1);
+        let post_id = addr_hex(2);
+        let viewer = addr_hex(3);
+        let platform_id = addr_hex(4);
+        let owner = addr_hex(5);
+        let profile_id = addr_hex(6);
+        let created_at = 1_700_000_000_000i64;
+        let time = chrono::DateTime::from_timestamp_millis(created_at).unwrap_or_else(chrono::Utc::now);
+
+        let mut conn = store.connect().await.expect("connection");
+        diesel::insert_into(promoted_posts::table)
+            .values(NewPromotedPost {
+                promotion_id: promotion_id.clone(),
+                post_id: post_id.clone(),
+                owner: owner.clone(),
+                profile_id: profile_id.clone(),
+                payment_per_view: 1_000_000,
+                total_budget: 3_000_000,
+                remaining_budget: 3_000_000,
+                active: true,
+                created_at,
+                time,
+                transaction_id: "tx:seed:0".to_string(),
+            })
+            .execute(&mut conn)
+            .await
+            .expect("insert promoted post");
+
+        let view_row = PostRow::PromotionView {
+            promotion_id: promotion_id.clone(),
+            viewer: viewer.clone(),
+            payment_amount: 1_000_000,
+            view_duration: 3_000,
+            platform_id: platform_id.clone(),
+            timestamp: created_at + 1_000,
+            transaction_id: "tx:view:0".to_string(),
+        };
+        PostsHandler::commit(&[view_row], &mut conn)
+            .await
+            .expect("commit promotion view");
+
+        let (remaining_budget, active): (i64, bool) = promoted_posts::table
+            .filter(promoted_posts::promotion_id.eq(&promotion_id))
+            .select((promoted_posts::remaining_budget, promoted_posts::active))
+            .first(&mut conn)
+            .await
+            .expect("promoted post row");
+        assert_eq!(remaining_budget, 2_000_000);
+        assert!(active);
+
+        let budget_events: i64 = promotion_budget_events::table
+            .filter(promotion_budget_events::event_type.eq("view_payment"))
+            .count()
+            .get_result(&mut conn)
+            .await
+            .expect("budget event count");
+        assert_eq!(budget_events, 1);
     }
 }

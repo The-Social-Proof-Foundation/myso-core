@@ -1,16 +1,30 @@
+#!/usr/bin/env bash
 # Copyright (c) The Social Proof Foundation, LLC.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Shared helpers for social E2E runnable scripts (username marketplace, post promotion).
-# Source from runnable scripts after setting REPO_ROOT and SOCIAL_SESSION_SAVE_PATH.
+# Source from runnable scripts; REPO_ROOT defaults from this file's location (scripts/lib → repo root).
+# Runnable scripts may override REPO_ROOT and SOCIAL_SESSION_SAVE_PATH before sourcing.
 
-: "${REPO_ROOT:?REPO_ROOT must be set before sourcing social-runtime-common.sh}"
-: "${SOCIAL_SESSION_SAVE_PATH:?SOCIAL_SESSION_SAVE_PATH must be set}"
+_social_runtime_lib_dir() {
+    cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd
+}
+
+_social_runtime_repo_root() {
+    local lib_dir
+    lib_dir="$(_social_runtime_lib_dir)"
+    cd "${lib_dir}/../.." && pwd
+}
+
+: "${REPO_ROOT:=$(_social_runtime_repo_root)}"
+: "${SOCIAL_SESSION_SAVE_PATH:=$REPO_ROOT/network.config/social/social-session.env}"
 
 readonly SOCIAL_DEFAULT_PKG='0x00000000000000000000000000000000000000000000000000000000000050c1'
 readonly SOCIAL_DEFAULT_CLOCK='0x0000000000000000000000000000000000000000000000000000000000000006'
 readonly SOCIAL_DEFAULT_COIN_TYPE='0x2::myso::MYSO'
 readonly SOCIAL_DEFAULT_GAS_BUDGET='1000000000'
+readonly SOCIAL_DEFAULT_PLATFORM_LOGO_URL='https://pub-1f3749a8084a44c3abbd97a4875268a1.r2.dev/Logo%20Regular%20-%20Accent-1.png'
+readonly SOCIAL_DEFAULT_PLATFORM_COVER_PHOTO_URL='https://pub-1f3749a8084a44c3abbd97a4875268a1.r2.dev/mysocial-banner.png'
 
 GRAPHQL_URL="${GRAPHQL_URL:-http://127.0.0.1:9125/graphql}"
 SOCIAL_SERVER_URL="${SOCIAL_SERVER_URL:-http://127.0.0.1:9126}"
@@ -130,6 +144,12 @@ normalize_hex_id() {
     esac
 }
 
+object_exists_on_fullnode() {
+    local id="$1"
+    id="$(normalize_hex_id "$id")" || return 1
+    myso client object "$id" >/dev/null 2>&1
+}
+
 ptb_shared_ref() {
     local id normalized
     id="$1"
@@ -168,6 +188,15 @@ literal_move_vector_from_csv() {
         s2=", "
     done
     printf 'vector[%s]' "$acc"
+}
+
+literal_move_option_string() {
+    local s="$1"
+    if [[ -z "$s" ]]; then
+        printf 'none'
+        return 0
+    fi
+    printf 'some(%s)' "$(literal_move_string "$s")"
 }
 
 extra_gas_budget() {
@@ -379,6 +408,7 @@ readonly SOCIAL_GQL_BATCH='query SocialE2ESessionObjects {
   memoryConfig: objects(filter: { type: "0x50c1::memory::MemoryConfig", ownerKind: SHARED }, first: 1) { nodes { address } }
   aiCreditConfig: objects(filter: { type: "0x50c1::ai_credit::AiCreditConfig", ownerKind: SHARED }, first: 1) { nodes { address } }
   platformRegistry: objects(filter: { type: "0x50c1::platform::PlatformRegistry", ownerKind: SHARED }, first: 1) { nodes { address } }
+  platformConfig: objects(filter: { type: "0x50c1::platform::PlatformConfig", ownerKind: SHARED }, first: 1) { nodes { address } }
   blocklistRegistry: objects(filter: { type: "0x50c1::block_list::BlockListRegistry", ownerKind: SHARED }, first: 1) { nodes { address } }
   mydataRegistry: objects(filter: { type: "0x50c1::mydata::MyDataRegistry", ownerKind: SHARED }, first: 1) { nodes { address } }
   postConfig: objects(filter: { type: "0x50c1::post::PostConfig", ownerKind: SHARED }, first: 1) { nodes { address } }
@@ -395,7 +425,7 @@ gql_set_refresh() {
 collect_social_gql_mappings() {
     local json="$1" alias val env_key
     for alias in ecosystemTreasury usernameRegistry usernameMarketplace profileConfig \
-        memoryRegistry memoryConfig aiCreditConfig platformRegistry blocklistRegistry \
+        memoryRegistry memoryConfig aiCreditConfig platformRegistry platformConfig blocklistRegistry \
         mydataRegistry postConfig platformAdminCap platform; do
         case "$alias" in
             ecosystemTreasury) env_key=ECOSYSTEM_TREASURY_ID ;;
@@ -406,6 +436,7 @@ collect_social_gql_mappings() {
             memoryConfig) env_key=MEMORY_CONFIG_ID ;;
             aiCreditConfig) env_key=AI_CREDIT_CONFIG_ID ;;
             platformRegistry) env_key=PLATFORM_REGISTRY_ID ;;
+            platformConfig) env_key=PLATFORM_CONFIG_ID ;;
             blocklistRegistry) env_key=BLOCK_LIST_REGISTRY_ID ;;
             mydataRegistry) env_key=MYDATA_REGISTRY_ID ;;
             postConfig) env_key=POST_CONFIG_ID ;;
@@ -442,6 +473,10 @@ social_refresh_session_from_graphql() {
         # shellcheck disable=SC1090
         source "$GQL_REFRESH_FILE"
     fi
+    if [[ -n "${PLATFORM_OBJECT_ID:-}" ]] && ! object_exists_on_fullnode "$PLATFORM_OBJECT_ID"; then
+        echo "GraphQL PLATFORM_OBJECT_ID not on localnet fullnode; omitting from session." >&2
+        PLATFORM_OBJECT_ID=''
+    fi
     rm -f "$GQL_REFRESH_FILE"
     GQL_REFRESH_FILE=''
 
@@ -458,7 +493,7 @@ social_refresh_session_from_graphql() {
         printf '%s=%q\n' GAS_BUDGET "$GAS_BUDGET"
         for key in USERNAME_REGISTRY_ID USERNAME_MARKETPLACE_ID PROFILE_CONFIG_ID \
             AI_CREDIT_CONFIG_ID MEMORY_REGISTRY_ID MEMORY_CONFIG_ID ECOSYSTEM_TREASURY_ID \
-            PLATFORM_REGISTRY_ID PLATFORM_OBJECT_ID PLATFORM_ADMIN_CAP_ID \
+            PLATFORM_REGISTRY_ID PLATFORM_CONFIG_ID PLATFORM_OBJECT_ID PLATFORM_ADMIN_CAP_ID \
             BLOCK_LIST_REGISTRY_ID POST_CONFIG_ID MYDATA_REGISTRY_ID; do
             printf '%s=%q\n' "$key" "${!key-}"
         done
@@ -479,6 +514,7 @@ social_refresh_session_from_graphql() {
     log_session_use "USERNAME_MARKETPLACE_ID" "$USERNAME_MARKETPLACE_ID"
     log_session_use "USERNAME_REGISTRY_ID" "$USERNAME_REGISTRY_ID"
     log_session_use "PROFILE_CONFIG_ID" "$PROFILE_CONFIG_ID"
+    log_session_use "PLATFORM_CONFIG_ID" "$PLATFORM_CONFIG_ID"
     log_session_use "PLATFORM_OBJECT_ID" "$PLATFORM_OBJECT_ID"
 }
 
@@ -510,9 +546,11 @@ invoke_ptb_capture() {
     printf ' %q\n' "${cmd[@]}" >&2
     echo "---" >&2
     if [[ "${SKIP_CONFIRM_RUN:-0}" == 1 ]] || confirm_run; then
-        out="$("${cmd[@]}" 2>&1)" || { echo "$out" >&2; return 1; }
+        local rc=0
+        out="$("${cmd[@]}" 2>&1)" || rc=$?
         echo "$out" >&2
         printf '%s' "$out"
+        return "$rc"
     else
         return 0
     fi
@@ -558,9 +596,11 @@ invoke_ptb_as_capture() {
     printf ' %q\n' "${cmd[@]}" >&2
     echo "---" >&2
     if [[ "${SKIP_CONFIRM_RUN:-0}" == 1 ]] || confirm_run; then
-        out="$("${cmd[@]}" 2>&1)" || { echo "$out" >&2; return 1; }
+        local rc=0
+        out="$("${cmd[@]}" 2>&1)" || rc=$?
         echo "$out" >&2
         printf '%s' "$out"
+        return "$rc"
     else
         return 0
     fi
@@ -584,9 +624,11 @@ run_myso_call_as_capture() {
     printf ' %q\n' "${cmd[@]}" >&2
     echo "---" >&2
     if [[ "${SKIP_CONFIRM_RUN:-0}" == 1 ]] || confirm_run; then
-        out="$("${cmd[@]}" 2>&1)" || { echo "$out" >&2; return 1; }
+        local rc=0
+        out="$("${cmd[@]}" 2>&1)" || rc=$?
         echo "$out" >&2
         printf '%s' "$out"
+        return "$rc"
     else
         return 0
     fi
@@ -738,31 +780,12 @@ resolve_registry_username_for_profile() {
 }
 
 collect_marketplace_username_candidates() {
-    local gql_user="${1:-}" line key val run_suffix
+    local gql_user="${1:-}"
+    # Authoritative on-chain username first, then this run's planned listing/replacement only.
+    # Do not scan session history — stale LISTING_USERNAME values break repeat E2E runs.
     [[ -n "$gql_user" ]] && printf '%s\0' "$gql_user"
-    if [[ "$gql_user" =~ ^premium([0-9]+)$ ]]; then
-        run_suffix="${BASH_REMATCH[1]}"
-        printf '%s\0' "seller${run_suffix}"
-    elif [[ "$gql_user" =~ ^seller([0-9]+)$ ]]; then
-        run_suffix="${BASH_REMATCH[1]}"
-        printf '%s\0' "seller${run_suffix}"
-    fi
     [[ -n "${LISTING_USERNAME:-}" ]] && printf '%s\0' "$LISTING_USERNAME"
     [[ -n "${REPLACEMENT_USERNAME:-}" ]] && printf '%s\0' "$REPLACEMENT_USERNAME"
-    if [[ -f "${SOCIAL_SESSION_SAVE_PATH:-}" ]]; then
-        while IFS= read -r line; do
-            key="${line%%=*}"
-            val="${line#*=}"
-            case "$key" in
-                LISTING_USERNAME|REPLACEMENT_USERNAME)
-                    [[ -n "$val" ]] && printf '%s\0' "$val"
-                    ;;
-            esac
-        done < <(grep -E '^(LISTING_USERNAME|REPLACEMENT_USERNAME)=' "$SOCIAL_SESSION_SAVE_PATH" 2>/dev/null || true)
-        while IFS= read -r val; do
-            [[ -n "$val" ]] && printf '%s\0' "$val"
-        done < <(grep -Eo '(premium|seller|buyer)[0-9]+' "$SOCIAL_SESSION_SAVE_PATH" 2>/dev/null | sort -u || true)
-    fi
 }
 
 gql_profile_snapshot() {
@@ -1013,23 +1036,32 @@ create_profile_for_address() {
 }
 
 ensure_joined_platform() {
+    local out
     require_session_fields PLATFORM_REGISTRY_ID BLOCK_LIST_REGISTRY_ID PLATFORM_OBJECT_ID CLOCK_ID || return 1
     require_hex_ids PLATFORM_REGISTRY_ID BLOCK_LIST_REGISTRY_ID PLATFORM_OBJECT_ID CLOCK_ID || return 1
     log_step "Joining platform for $(resolve_myso_active_address)"
-    SKIP_CONFIRM_RUN=1 invoke_ptb \
+    if out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_capture \
         --move-call "${PKG_SOCIAL}::platform::join_platform" \
         "$(ptb_shared_ref "$PLATFORM_REGISTRY_ID")" \
         "$(ptb_shared_ref "$BLOCK_LIST_REGISTRY_ID")" \
         "$(ptb_shared_ref "$PLATFORM_OBJECT_ID")" \
-        "$(ptb_shared_ref "$CLOCK_ID")"
+        "$(ptb_shared_ref "$CLOCK_ID")")"; then
+        return 0
+    fi
+    if echo "$out" | grep -qE 'Abort Code: 3\b'; then
+        log_step "Already joined platform — continuing"
+        return 0
+    fi
+    return 1
 }
 
 create_test_platform() {
-    local out digest platform_id ref_preg ref_clk ref_cap
-    require_session_fields PLATFORM_REGISTRY_ID PLATFORM_ADMIN_CAP_ID CLOCK_ID || return 1
-    require_hex_ids PLATFORM_REGISTRY_ID PLATFORM_ADMIN_CAP_ID CLOCK_ID || return 1
+    local out digest platform_id ref_preg ref_pcfg ref_clk ref_cap
+    require_session_fields PLATFORM_REGISTRY_ID PLATFORM_CONFIG_ID PLATFORM_ADMIN_CAP_ID CLOCK_ID || return 1
+    require_hex_ids PLATFORM_REGISTRY_ID PLATFORM_CONFIG_ID PLATFORM_ADMIN_CAP_ID CLOCK_ID || return 1
 
     ref_preg="$(ptb_shared_ref "$PLATFORM_REGISTRY_ID")" || return 1
+    ref_pcfg="$(ptb_shared_ref "$PLATFORM_CONFIG_ID")" || return 1
     ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || return 1
     ref_cap="$(ptb_shared_ref "$PLATFORM_ADMIN_CAP_ID")" || return 1
 
@@ -1037,10 +1069,11 @@ create_test_platform() {
     out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_capture \
         --move-call "${PKG_SOCIAL}::platform::create_platform" \
         "$ref_preg" \
+        "$ref_pcfg" \
         "$(literal_move_string "Promo Platform ${SOCIAL_RUN_ID}")" \
         "$(literal_move_string 'Post promotion E2E')" \
         "$(literal_move_string 'Test platform for promoted post flows')" \
-        "$(literal_move_string 'https://example.com/logo.png')" \
+        "$(literal_move_string "$SOCIAL_DEFAULT_PLATFORM_LOGO_URL")" \
         "$(literal_move_string 'https://example.com/terms')" \
         "$(literal_move_string 'https://example.com/privacy')" \
         "$(literal_move_vector_empty)" \
@@ -1050,7 +1083,7 @@ create_test_platform() {
         "$(literal_move_string '2023-01-01')" \
         false \
         none none none none none none none \
-        none none \
+        "$(literal_move_option_string "$SOCIAL_DEFAULT_PLATFORM_COVER_PHOTO_URL")" none \
         "$ref_clk")" || return 1
 
     digest="$(extract_tx_digest "$out")"
@@ -1059,9 +1092,11 @@ create_test_platform() {
     [[ -n "$platform_id" ]] || { echo "Could not find Platform from create tx" >&2; return 1; }
 
     log_step "Approving platform $platform_id"
+    platform_id="$(normalize_hex_id "$platform_id")"
     SKIP_CONFIRM_RUN=1 invoke_ptb \
         --move-call "${PKG_SOCIAL}::platform::toggle_platform_approval" \
         "$ref_preg" \
+        "$ref_pcfg" \
         "$(ptb_shared_ref "$platform_id")" \
         "$ref_cap" \
         none || return 1
@@ -1105,7 +1140,7 @@ wait_for_gql_promotion_views() {
         resp="$(gql_promotion_snapshot "$promotion_id" 2>/dev/null)" || resp='{}'
         views="$(echo "$resp" | jq -r '.data.promotion.views // 0' 2>/dev/null || echo 0)"
         if [[ -n "$views" && "$views" -ge "$min_views" ]]; then
-            echo "$resp" >&2
+            printf '%s' "$resp"
             return 0
         fi
         sleep 1
@@ -1113,3 +1148,9 @@ wait_for_gql_promotion_views() {
     echo "Timed out waiting for promotion views >= $min_views (last: ${views:-0})" >&2
     return 1
 }
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    echo "social-runtime-common.sh is a library; source it from a runnable script, e.g.:" >&2
+    echo "  source \"\${REPO_ROOT}/scripts/lib/social-runtime-common.sh\"" >&2
+    exit 0
+fi

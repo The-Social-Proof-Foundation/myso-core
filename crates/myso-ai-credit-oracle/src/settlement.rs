@@ -110,6 +110,36 @@ pub async fn run_settlement_cycle(
     let package = ObjectID::from_hex_literal(package_id)?;
     let config_object = ObjectID::from_hex_literal(config_id)?;
 
+    let mut store_dirty = false;
+
+    // Re-anchor pending receipt nonces to the current on-chain settlement nonce before submit.
+    // Indexer lag at signing time can produce stale nonces; re-signing here unblocks settlement.
+    let mut resigned_balances = 0usize;
+    for balance_id in balance_ids {
+        match resign_pending_for_balance(args, store, balance_id).await {
+            Ok(n) if n > 0 => {
+                store_dirty = true;
+                resigned_balances += n;
+            }
+            Ok(_) => {}
+            Err(err) => {
+                tracing::warn!(
+                    balance_id = %balance_id,
+                    error = %err,
+                    trigger,
+                    "failed to re-sign pending receipts before settlement"
+                );
+            }
+        }
+    }
+    if resigned_balances > 0 {
+        tracing::info!(
+            resigned = resigned_balances,
+            trigger,
+            "re-signed pending receipts before settlement submit"
+        );
+    }
+
     let mut groups: HashMap<BatchKey, Vec<UsageLine>> = HashMap::new();
     for line in pending {
         let key = BatchKey {
@@ -121,7 +151,6 @@ pub async fn run_settlement_cycle(
     }
 
     let mut settled_count = 0usize;
-    let mut store_dirty = false;
     for (key, lines) in groups {
         let mut remaining = lines;
         while !remaining.is_empty() {

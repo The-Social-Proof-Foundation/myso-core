@@ -56,6 +56,7 @@ pub struct AppState {
     pub myso_price_oracle_url: String,
     pub approvals: ApprovalsCache,
     pub workflow: Option<WorkflowClient>,
+    pub openrouter: Option<OpenRouterClient>,
 }
 
 /// Structured spend-policy rejection so approval gating can carry context to the caller
@@ -166,6 +167,32 @@ pub struct UsageResponse {
     pub receipt: UsageReceipt,
 }
 
+#[derive(Debug, serde::Deserialize)]
+pub struct InferenceRequest {
+    pub owner: String,
+    pub balance_id: String,
+    pub memory_account_id: String,
+    pub agent_object_id: String,
+    pub model_id: String,
+    pub prompt: String,
+    #[serde(default)]
+    pub max_tokens: Option<u32>,
+    pub idempotency_key: String,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct InferenceResponse {
+    pub receipt_id: u128,
+    pub amount_mist: u64,
+    pub settlement_nonce: u64,
+    pub signature: String,
+    pub receipt: UsageReceipt,
+    pub tokens_in: u64,
+    pub tokens_out: u64,
+    pub model_id: String,
+    pub content: String,
+}
+
 pub async fn serve(args: OracleArgs) -> anyhow::Result<()> {
     args.validate_startup()?;
     let signer = ReceiptSigner::from_hex(&args.private_key_hex)?;
@@ -200,6 +227,7 @@ pub async fn serve(args: OracleArgs) -> anyhow::Result<()> {
     if args.catalog_sync_active() {
         let openrouter = OpenRouterClient::new(
             args.openrouter_api_url.clone(),
+            args.openrouter_chat_url.clone(),
             args.openrouter_api_key
                 .clone()
                 .expect("catalog_sync_active implies key"),
@@ -223,6 +251,25 @@ pub async fn serve(args: OracleArgs) -> anyhow::Result<()> {
         tracing::error!(
             "AI_CREDIT_CATALOG_SYNC_ENABLED=true but AI_CREDIT_OPENROUTER_API_KEY is unset"
         );
+    }
+
+    let openrouter = if args.inference_active() {
+        Some(OpenRouterClient::new(
+            args.openrouter_api_url.clone(),
+            args.openrouter_chat_url.clone(),
+            args.openrouter_api_key
+                .clone()
+                .expect("inference_active implies key"),
+        ))
+    } else {
+        None
+    };
+    if args.inference_enabled && openrouter.is_none() {
+        tracing::warn!(
+            "AI_CREDIT_INFERENCE_ENABLED=true but AI_CREDIT_OPENROUTER_API_KEY is unset; /v1/ai-credit/inference disabled"
+        );
+    } else if openrouter.is_some() {
+        tracing::info!("OpenRouter inference proxy enabled");
     }
 
     let social = SocialClient::new(
@@ -258,6 +305,7 @@ pub async fn serve(args: OracleArgs) -> anyhow::Result<()> {
         myso_price_oracle_url: args.myso_price_oracle_url.clone(),
         approvals,
         workflow,
+        openrouter,
     };
 
     spawn_ingest_reconcile_worker(state.clone());
@@ -267,6 +315,7 @@ pub async fn serve(args: OracleArgs) -> anyhow::Result<()> {
         .route("/v1/ai-credit/preflight", post(preflight))
         .route("/v1/ai-credit/estimate", post(estimate))
         .route("/v1/ai-credit/usage", post(record_usage))
+        .route("/v1/ai-credit/inference", post(run_inference))
         .route("/v1/ai-credit/usage-history", get(usage_history))
         .route("/v1/ai-credit/catalog", get(get_catalog))
         .route("/internal/ai-credit/settle", post(trigger_settle))
@@ -349,6 +398,63 @@ fn usage_response_from_line(line: &UsageLine) -> Result<UsageResponse, StatusCod
         signature: line.signature_hex.clone(),
         receipt,
     })
+}
+
+fn inference_response_from_line(line: &UsageLine) -> Result<InferenceResponse, StatusCode> {
+    let usage = usage_response_from_line(line)?;
+    let metadata = line.metadata.as_ref();
+    let content = metadata
+        .and_then(|m| m.get("content"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    let tokens_in = metadata
+        .and_then(|m| m.get("tokens_in"))
+        .and_then(|v| v.as_u64())
+        .unwrap_or(0);
+    let tokens_out = metadata
+        .and_then(|m| m.get("tokens_out"))
+        .and_then(|v| v.as_u64())
+        .unwrap_or(0);
+    let model_id = line
+        .model_id
+        .clone()
+        .unwrap_or_else(|| "unknown".to_string());
+    Ok(InferenceResponse {
+        receipt_id: usage.receipt_id,
+        amount_mist: usage.amount_mist,
+        settlement_nonce: usage.settlement_nonce,
+        signature: usage.signature,
+        receipt: usage.receipt,
+        tokens_in,
+        tokens_out,
+        model_id,
+        content,
+    })
+}
+
+fn estimate_prompt_tokens(prompt: &str) -> u64 {
+    ((prompt.len() as u64).div_ceil(4)).max(1)
+}
+
+fn inference_response_from_usage(
+    usage: UsageResponse,
+    model_id: &str,
+    content: &str,
+    tokens_in: u64,
+    tokens_out: u64,
+) -> InferenceResponse {
+    InferenceResponse {
+        receipt_id: usage.receipt_id,
+        amount_mist: usage.amount_mist,
+        settlement_nonce: usage.settlement_nonce,
+        signature: usage.signature,
+        receipt: usage.receipt,
+        tokens_in,
+        tokens_out,
+        model_id: model_id.to_string(),
+        content: content.to_string(),
+    }
 }
 
 fn spawn_ingest_reconcile_worker(state: AppState) {
@@ -854,6 +960,27 @@ async fn record_usage(
         return Err(agent_auth_error_to_status(err));
     }
 
+    let usage = record_usage_core(&state, req, serde_json::Map::new()).await?;
+    Ok(Json(usage))
+}
+
+async fn run_inference(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(req): Json<InferenceRequest>,
+) -> Result<Json<InferenceResponse>, StatusCode> {
+    check_oracle_api_secret(&headers, &state.oracle_api_secret)?;
+    validate_idempotency_key(&req.idempotency_key)?;
+
+    let openrouter = state.openrouter.as_ref().ok_or_else(|| {
+        tracing::warn!("inference rejected: OpenRouter proxy not configured");
+        StatusCode::SERVICE_UNAVAILABLE
+    })?;
+
+    if req.model_id.trim().is_empty() || req.prompt.trim().is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
     {
         let store = state.store.lock().await;
         if let Some(existing) = store.find_by_idempotency(
@@ -861,18 +988,163 @@ async fn record_usage(
             &req.agent_object_id,
             &req.idempotency_key,
         ) {
-            return Ok(Json(usage_response_from_line(existing)?));
+            return Ok(Json(inference_response_from_line(existing)?));
+        }
+    }
+
+    let max_tokens = req.max_tokens.unwrap_or(64).max(1);
+
+    let pricing = state.pricing.read().await;
+    if price_unavailable_for_usage(&state, &pricing) {
+        tracing::warn!("inference rejected: MYSO/USD price unavailable or stale");
+        return Err(StatusCode::SERVICE_UNAVAILABLE);
+    }
+    let est_tokens_in = estimate_prompt_tokens(&req.prompt);
+    let est_breakdown =
+        pricing.inference_breakdown(&req.model_id, est_tokens_in, max_tokens as u64);
+    let est_amount = est_breakdown.amount_mist;
+    drop(pricing);
+
+    {
+        let store = state.store.lock().await;
+        match validate_spend_policy(
+            &state,
+            &req.owner,
+            Some(&req.balance_id),
+            &req.agent_object_id,
+            est_amount,
+            &store,
+        )
+        .await
+        {
+            Ok(_) => {}
+            Err(SpendPolicyError::ApprovalRequired { .. }) => {
+                return Err(StatusCode::PAYMENT_REQUIRED);
+            }
+            Err(err) => {
+                tracing::warn!(reason = %err.reason(), "inference preflight rejected");
+                return Err(StatusCode::BAD_REQUEST);
+            }
+        }
+    }
+
+    let message = crate::openrouter_client::ChatMessage {
+        role: "user",
+        content: &req.prompt,
+    };
+    let completion = openrouter
+        .chat_completions(&req.model_id, std::slice::from_ref(&message), max_tokens)
+        .await
+        .map_err(|err| {
+            tracing::warn!(error = %err, model = %req.model_id, "openrouter inference failed");
+            StatusCode::BAD_GATEWAY
+        })?;
+
+    let tokens_in = completion.prompt_tokens;
+    let tokens_out = completion.completion_tokens;
+
+    let pricing = state.pricing.read().await;
+    let actual_amount = pricing
+        .inference_breakdown(&req.model_id, tokens_in, tokens_out)
+        .amount_mist;
+    drop(pricing);
+
+    {
+        let store = state.store.lock().await;
+        match validate_spend_policy(
+            &state,
+            &req.owner,
+            Some(&req.balance_id),
+            &req.agent_object_id,
+            actual_amount,
+            &store,
+        )
+        .await
+        {
+            Ok(_) => {}
+            Err(SpendPolicyError::ApprovalRequired { .. }) => {
+                tracing::warn!(
+                    model = %req.model_id,
+                    actual_amount,
+                    tokens_in,
+                    tokens_out,
+                    "inference completed but billing rejected (approval required)"
+                );
+                return Err(StatusCode::PAYMENT_REQUIRED);
+            }
+            Err(err) => {
+                tracing::warn!(
+                    reason = %err.reason(),
+                    actual_amount,
+                    est_amount,
+                    "inference completed but billing rejected"
+                );
+                return Err(StatusCode::PAYMENT_REQUIRED);
+            }
+        }
+    }
+
+    let mut extra_metadata = serde_json::Map::new();
+    extra_metadata.insert(
+        "content".to_string(),
+        serde_json::Value::String(completion.content.clone()),
+    );
+    extra_metadata.insert(
+        "prompt".to_string(),
+        serde_json::Value::String(req.prompt.clone()),
+    );
+    extra_metadata.insert(
+        "inference".to_string(),
+        serde_json::Value::Bool(true),
+    );
+
+    let usage_req = UsageRequest {
+        owner: req.owner,
+        balance_id: req.balance_id,
+        memory_account_id: req.memory_account_id,
+        agent_object_id: req.agent_object_id,
+        usage_kind: USAGE_INFERENCE,
+        tokens_in: Some(tokens_in),
+        tokens_out: Some(tokens_out),
+        tool_id: None,
+        model_id: Some(req.model_id.clone()),
+        idempotency_key: req.idempotency_key,
+    };
+
+    let usage = record_usage_core(&state, usage_req, extra_metadata).await?;
+    Ok(Json(inference_response_from_usage(
+        usage,
+        &req.model_id,
+        &completion.content,
+        tokens_in,
+        tokens_out,
+    )))
+}
+
+async fn record_usage_core(
+    state: &AppState,
+    req: UsageRequest,
+    mut extra_metadata: serde_json::Map<String, serde_json::Value>,
+) -> Result<UsageResponse, StatusCode> {
+    {
+        let store = state.store.lock().await;
+        if let Some(existing) = store.find_by_idempotency(
+            &req.balance_id,
+            &req.agent_object_id,
+            &req.idempotency_key,
+        ) {
+            return usage_response_from_line(existing);
         }
     }
 
     let pricing = state.pricing.read().await;
-    if price_unavailable_for_usage(&state, &pricing) {
+    if price_unavailable_for_usage(state, &pricing) {
         tracing::warn!("usage rejected: MYSO/USD price unavailable or stale");
         return Err(StatusCode::SERVICE_UNAVAILABLE);
     }
 
     let catalog = state.catalog.read().await;
-    let breakdown = match compute_usage_breakdown(&state, &pricing, &catalog, &req) {
+    let breakdown = match compute_usage_breakdown(state, &pricing, &catalog, &req) {
         Ok(b) => b,
         Err(reason) => {
             tracing::warn!(reason = %reason, "usage rejected");
@@ -899,7 +1171,7 @@ async fn record_usage(
     let (usage_response, ingest) = {
         let mut store_guard = state.store.lock().await;
         let agent = match validate_spend_policy(
-            &state,
+            state,
             &req.owner,
             Some(&req.balance_id),
             &req.agent_object_id,
@@ -914,8 +1186,6 @@ async fn record_usage(
                 threshold_mist,
                 organization_id,
             }) => {
-                // Post-hoc callers may have already burned compute; the spend stays
-                // unbilled (never silently bypassed) and is audited for reconciliation.
                 tracing::warn!(
                     balance_id = %balance_id,
                     agent_object_id = %req.agent_object_id,
@@ -924,7 +1194,7 @@ async fn record_usage(
                     "usage rejected: unbilled_over_threshold (approval required)"
                 );
                 spawn_approval_request_side_effects(
-                    &state,
+                    state,
                     req.owner.clone(),
                     balance_id,
                     req.agent_object_id.clone(),
@@ -981,15 +1251,37 @@ async fn record_usage(
             .sign_receipt(&receipt)
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-        let metadata = serde_json::json!({
-            "catalog_version": catalog_version,
-            "tokens_in": req.tokens_in,
-            "tokens_out": req.tokens_out,
-            "base_mist": breakdown.base_mist,
-            "margin_mist": breakdown.margin_mist,
-            "ecosystem_margin_pct": ecosystem_margin_pct,
-            "myso_usd": myso_usd,
-        });
+        let mut metadata = serde_json::Map::new();
+        metadata.insert(
+            "catalog_version".to_string(),
+            serde_json::Value::String(catalog_version),
+        );
+        metadata.insert(
+            "tokens_in".to_string(),
+            serde_json::json!(req.tokens_in.unwrap_or(0)),
+        );
+        metadata.insert(
+            "tokens_out".to_string(),
+            serde_json::json!(req.tokens_out.unwrap_or(0)),
+        );
+        metadata.insert(
+            "base_mist".to_string(),
+            serde_json::json!(breakdown.base_mist),
+        );
+        metadata.insert(
+            "margin_mist".to_string(),
+            serde_json::json!(breakdown.margin_mist),
+        );
+        metadata.insert(
+            "ecosystem_margin_pct".to_string(),
+            serde_json::json!(ecosystem_margin_pct),
+        );
+        metadata.insert(
+            "myso_usd".to_string(),
+            serde_json::json!(myso_usd),
+        );
+        metadata.append(&mut extra_metadata);
+        let metadata = serde_json::Value::Object(metadata);
 
         let line = UsageLine {
             receipt_id,
@@ -1072,7 +1364,7 @@ async fn record_usage(
         coordinator.request_settle_for_balance(balance_id).await;
     });
 
-    Ok(Json(usage_response))
+    Ok(usage_response)
 }
 
 #[derive(Debug, serde::Deserialize)]
