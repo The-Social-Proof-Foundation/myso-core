@@ -67,6 +67,7 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `username_lock_reason`](#social_contracts_profile_username_lock_reason)
 -  [Function `lock_username_for_beneficiary`](#social_contracts_profile_lock_username_for_beneficiary)
 -  [Function `unlock_username_for_beneficiary`](#social_contracts_profile_unlock_username_for_beneficiary)
+-  [Function `assign_username`](#social_contracts_profile_assign_username)
 -  [Function `claim_username`](#social_contracts_profile_claim_username)
 -  [Function `claim_username_internal`](#social_contracts_profile_claim_username_internal)
 -  [Function `revoke_username`](#social_contracts_profile_revoke_username)
@@ -3568,6 +3569,44 @@ Release a username beneficiary lock after claim or admin end.
 
 </details>
 
+<a name="social_contracts_profile_assign_username"></a>
+
+## Function `assign_username`
+
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_assign_username">assign_username</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, username: <a href="../std/string.md#std_string_String">std::string::String</a>, profile_id: <b>address</b>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_assign_username">assign_username</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>,
+    username: String,
+    profile_id: <b>address</b>,
+) {
+    <b>assert</b>!(!table::contains(&registry.usernames, username), <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameNotAvailable">EUsernameNotAvailable</a>);
+    <b>assert</b>!(
+        !table::contains(&registry.profile_username, profile_id),
+        <a href="../social_contracts/profile.md#social_contracts_profile_EProfileAlreadyHasUsername">EProfileAlreadyHasUsername</a>,
+    );
+    <b>assert</b>!(
+        !table::contains(&registry.username_locks, username),
+        <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameLocked">EUsernameLocked</a>,
+    );
+    table::add(&<b>mut</b> registry.usernames, username, profile_id);
+    table::add(&<b>mut</b> registry.profile_username, profile_id, username);
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_profile_claim_username"></a>
 
 ## Function `claim_username`
@@ -3588,17 +3627,7 @@ Release a username beneficiary lock after claim or admin end.
     username: String,
     profile_id: <b>address</b>,
 ) {
-    <b>assert</b>!(!table::contains(&registry.usernames, username), <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameNotAvailable">EUsernameNotAvailable</a>);
-    <b>assert</b>!(
-        !table::contains(&registry.profile_username, profile_id),
-        <a href="../social_contracts/profile.md#social_contracts_profile_EProfileAlreadyHasUsername">EProfileAlreadyHasUsername</a>,
-    );
-    <b>assert</b>!(
-        !table::contains(&registry.username_locks, username),
-        <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameLocked">EUsernameLocked</a>,
-    );
-    table::add(&<b>mut</b> registry.usernames, username, profile_id);
-    table::add(&<b>mut</b> registry.profile_username, profile_id, username);
+    <a href="../social_contracts/profile.md#social_contracts_profile_assign_username">assign_username</a>(registry, username, profile_id);
     event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_UsernameClaimedEvent">UsernameClaimedEvent</a> {
         username,
         profile_id,
@@ -4727,8 +4756,9 @@ Get the owner of a profile
     };
     // 2. Move the listed username to the buyer.
     <a href="../social_contracts/profile.md#social_contracts_profile_move_username">move_username</a>(registry, listed_username, buyer_profile_id);
-    // 3. Claim the replacement <b>for</b> the seller (seller <b>has</b> zero usernames after step 2).
-    <a href="../social_contracts/profile.md#social_contracts_profile_claim_username_internal">claim_username_internal</a>(registry, replacement_username, seller_profile_id);
+    // 3. Assign the replacement <b>for</b> the seller (seller <b>has</b> zero usernames after step 2).
+    //    Silent registry update: <a href="../social_contracts/profile.md#social_contracts_profile_UsernameSaleSettledEvent">UsernameSaleSettledEvent</a> is the audit record.
+    <a href="../social_contracts/profile.md#social_contracts_profile_assign_username">assign_username</a>(registry, replacement_username, seller_profile_id);
     // 4. Release the marketplace reservation on the listed username.
     <a href="../social_contracts/profile.md#social_contracts_profile_unlock_username">unlock_username</a>(registry, listed_username, <a href="../social_contracts/profile.md#social_contracts_profile_USERNAME_LOCK_MARKETPLACE">USERNAME_LOCK_MARKETPLACE</a>, seller);
     event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_UsernameSaleSettledEvent">UsernameSaleSettledEvent</a> {

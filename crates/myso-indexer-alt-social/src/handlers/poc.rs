@@ -75,8 +75,6 @@ pub(crate) fn poc_similarity_detected(
 struct AnalysisSubmittedEvent {
     post_id: String,
     media_type: u8,
-    #[serde(rename = "similarity_detected", default)]
-    chain_similarity_detected: bool,
     #[serde(deserialize_with = "deserialize_u64")]
     highest_similarity_score: u64,
     oracle_address: String,

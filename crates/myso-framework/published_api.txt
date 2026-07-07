@@ -8581,6 +8581,9 @@ lock_username_for_beneficiary
 unlock_username_for_beneficiary
 	public(package) fun
 	0x50c1::profile
+assign_username
+	public(package) fun
+	0x50c1::profile
 claim_username
 	public(package) fun
 	0x50c1::profile
@@ -11208,6 +11211,9 @@ claim_username_beneficiary
 	0x50c1::proof_of_creativity
 claim_username_beneficiary_vault_balance
 	public entry fun
+	0x50c1::proof_of_creativity
+clear_self_match_original_creator
+	fun
 	0x50c1::proof_of_creativity
 mint_shared_poc_badge_object
 	fun

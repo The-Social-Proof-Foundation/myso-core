@@ -927,7 +927,7 @@ async fn insert_username_marketplace_unified_revenue(
 
 #[cfg(test)]
 mod tests {
-    use chrono::NaiveDateTime;
+    use chrono::DateTime;
     use move_core_types::account_address::AccountAddress;
     use myso_indexer_alt_framework::postgres::handler::Handler;
     use diesel::OptionalExtension;
@@ -962,7 +962,7 @@ mod tests {
     }
 
     fn sample_profile(owner: &str, profile_id: &str, username: &str) -> NewProfile {
-        let now = NaiveDateTime::from_timestamp_opt(1_700_000_000, 0).unwrap();
+        let now = DateTime::from_timestamp(1_700_000_000, 0).unwrap().naive_utc();
         NewProfile {
             owner_address: owner.to_string(),
             username: username.to_string(),

@@ -3,7 +3,6 @@ module messaging::messaging_config;
 
 use myso::clock::Clock;
 use myso::event;
-use myso::tx_context;
 use social_contracts::bootstrap::MessagingAdminCap;
 
 const BPS_DENOM: u64 = 10_000;

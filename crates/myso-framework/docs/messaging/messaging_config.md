@@ -317,7 +317,18 @@ Shares the genesis [<code><a href="../messaging/messaging_config.md#messaging_me
 
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../messaging/messaging_config.md#messaging_messaging_config_share_initial">share_initial</a>(ctx: &<b>mut</b> TxContext) {
-    transfer::share_object(<a href="../messaging/messaging_config.md#messaging_messaging_config_new_defaults">new_defaults</a>(ctx));
+    <b>let</b> config = <a href="../messaging/messaging_config.md#messaging_messaging_config_new_defaults">new_defaults</a>(ctx);
+    <b>let</b> sender = tx_context::sender(ctx);
+    event::emit(<a href="../messaging/messaging_config.md#messaging_messaging_config_MessagingConfigUpdatedEvent">MessagingConfigUpdatedEvent</a> {
+        updated_by: sender,
+        timestamp: 0,
+        <a href="../messaging/messaging_config.md#messaging_messaging_config_paid_msg_platform_fee_bps">paid_msg_platform_fee_bps</a>: config.<a href="../messaging/messaging_config.md#messaging_messaging_config_paid_msg_platform_fee_bps">paid_msg_platform_fee_bps</a>,
+        <a href="../messaging/messaging_config.md#messaging_messaging_config_paid_msg_treasury_fee_bps">paid_msg_treasury_fee_bps</a>: config.<a href="../messaging/messaging_config.md#messaging_messaging_config_paid_msg_treasury_fee_bps">paid_msg_treasury_fee_bps</a>,
+        <a href="../messaging/messaging_config.md#messaging_messaging_config_payment_expiration_ms">payment_expiration_ms</a>: config.<a href="../messaging/messaging_config.md#messaging_messaging_config_payment_expiration_ms">payment_expiration_ms</a>,
+        <a href="../messaging/messaging_config.md#messaging_messaging_config_min_reply_chars">min_reply_chars</a>: config.<a href="../messaging/messaging_config.md#messaging_messaging_config_min_reply_chars">min_reply_chars</a>,
+        <a href="../messaging/messaging_config.md#messaging_messaging_config_max_dedupe_key_bytes">max_dedupe_key_bytes</a>: config.<a href="../messaging/messaging_config.md#messaging_messaging_config_max_dedupe_key_bytes">max_dedupe_key_bytes</a>,
+    });
+    transfer::share_object(config);
 }
 </code></pre>
 
