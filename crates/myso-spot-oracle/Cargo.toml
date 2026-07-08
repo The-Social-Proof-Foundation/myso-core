@@ -1,0 +1,47 @@
+[package]
+name = "myso-spot-oracle"
+version = "0.1.0"
+authors = ["The Social Proof Foundation <brandon@socialproof.foundation>"]
+license = "Apache-2.0"
+publish = false
+edition = "2021"
+
+[dependencies]
+anyhow.workspace = true
+async-trait = "0.1"
+axum = { version = "0.7", features = ["json"] }
+chrono = { workspace = true, features = ["serde"] }
+clap = { workspace = true, features = ["env"] }
+figment = { version = "0.10", features = ["env", "toml"] }
+hex = "0.4"
+myso-discovery-service-core = { path = "../myso-discovery-service-core" }
+myso-discovery-service-schema = { path = "../myso-discovery-service-schema" }
+myso-futures = { path = "../myso-futures" }
+myso-indexer-alt-metrics = { path = "../myso-indexer-alt-metrics" }
+myso-json-rpc-types.workspace = true
+myso-sdk.workspace = true
+myso-spot-oracle-schema = { path = "../myso-spot-oracle-schema" }
+myso-types.workspace = true
+prometheus = "0.13"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+sha2 = "0.10"
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "json"] }
+thiserror = "2"
+tokio = { workspace = true, features = ["full"] }
+tokio-util = "0.7"
+tracing.workspace = true
+tracing-subscriber.workspace = true
+uuid = { version = "1", features = ["v4", "v5", "serde"] }
+
+[dev-dependencies]
+wiremock = "0.6"
+
+[[bin]]
+name = "myso-spot-oracle"
+path = "src/main.rs"
+
+[lib]
+name = "myso_spot_oracle"
+path = "src/lib.rs"

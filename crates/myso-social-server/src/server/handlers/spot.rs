@@ -2,12 +2,47 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use axum::extract::{Path, Query, State};
+use axum::http::HeaderMap;
 use axum::Json;
+use serde::Deserialize;
 use std::sync::Arc;
 
 use crate::error::SocialError;
 
 use super::super::{AppState, PageParams};
+
+fn check_spot_oracle_sync_secret(headers: &HeaderMap) -> Result<(), SocialError> {
+    if let Ok(secret) = std::env::var("SPOT_ORACLE_SYNC_SECRET") {
+        let provided = headers.get("x-spot-oracle-sync-secret").and_then(|v| v.to_str().ok());
+        if provided != Some(secret.as_str()) {
+            return Err(SocialError::bad_request("invalid spot oracle sync secret"));
+        }
+    }
+    Ok(())
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PendingSpotPostsQuery {
+    pub limit: Option<i64>,
+    /// Cursor = last `created_at` (ms) from the previous page.
+    pub cursor: Option<i64>,
+}
+
+/// Secret-gated endpoint consumed by the SPoT oracle PostPoller.
+/// Returns posts with `enable_spot = true` and `spot_id IS NULL`.
+pub async fn list_pending_spot_posts(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<PendingSpotPostsQuery>,
+    headers: HeaderMap,
+) -> Result<Json<Vec<crate::reader::PendingSpotPostRow>>, SocialError> {
+    check_spot_oracle_sync_secret(&headers)?;
+    let limit = params.limit.unwrap_or(50).clamp(1, 500);
+    let data = state
+        .reader
+        .list_pending_spot_posts(limit, params.cursor)
+        .await?;
+    Ok(Json(data))
+}
 
 pub async fn get_spot_record(
     State(state): State<Arc<AppState>>,

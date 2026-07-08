@@ -21,5 +21,6 @@ pub fn normalize_record(raw: &RawDiscoveryRecord) -> DiscoveryAssetRecord {
         source_trust_score: raw.trust_score,
         creator_confidence,
         creator_x_handle: raw.creator_x_handle.clone(),
+        content_hash: raw.content_hash.clone(),
     }
 }

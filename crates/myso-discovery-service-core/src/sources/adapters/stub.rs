@@ -8,6 +8,8 @@ use crate::sources::{
     SourceMetadata,
 };
 
+/// Disabled-by-default placeholder for creative/out-of-scope factual sources.
+/// Returns empty polls and reports disabled health. Never used in V1 E2E.
 pub struct StubAdapter {
     adapter_id: String,
     domain: DiscoveryDomain,

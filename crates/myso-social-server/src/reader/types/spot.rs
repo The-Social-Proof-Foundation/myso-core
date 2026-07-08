@@ -1,9 +1,23 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use diesel::sql_types::{BigInt, Bool, SmallInt, Text, Timestamptz};
+use diesel::sql_types::{BigInt, Bool, Nullable, SmallInt, Text, Timestamptz};
 use diesel::QueryableByName;
 use serde::Serialize;
+
+#[derive(Debug, Serialize, QueryableByName)]
+pub struct PendingSpotPostRow {
+    #[diesel(sql_type = Text)]
+    pub post_id: String,
+    #[diesel(sql_type = Text)]
+    pub owner: String,
+    #[diesel(sql_type = Text)]
+    pub content: String,
+    #[diesel(sql_type = BigInt)]
+    pub created_at: i64,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub post_type: Option<String>,
+}
 
 #[derive(Debug, Serialize)]
 pub struct SpotRecordResponse {

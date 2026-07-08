@@ -484,6 +484,15 @@ impl Reader {
         spot::list_contested_spot_records(&self.db, limit, offset).await
     }
 
+    /// Pending SPoT posts for oracle ingestion (secret-gated endpoint).
+    pub async fn list_pending_spot_posts(
+        &self,
+        limit: i64,
+        cursor_ms: Option<i64>,
+    ) -> Result<Vec<PendingSpotPostRow>, crate::error::SocialError> {
+        spot::list_pending_spot_posts(&self.db, limit, cursor_ms).await
+    }
+
     pub async fn list_proposals(
         &self,
         limit: i64,

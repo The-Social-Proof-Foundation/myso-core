@@ -12,14 +12,15 @@ use crate::identity::{identity_hash_from_x_handle, resolve_or_create_candidate};
 use crate::lifecycle::{AssetLifecycleState, LifecycleEvent};
 use crate::normalizer::normalize_record;
 use crate::prioritizer::{score_priority, signals_for_asset, PriorityWeights};
-use crate::sources::{SourceConfig, SourceRegistry};
+use crate::sources::{DiscoveryRegistry, SourceConfig};
 use crate::store::DiscoveryStore;
 
 pub async fn run_scheduler_loop(
     store: Arc<DiscoveryStore>,
-    registry: Arc<SourceRegistry>,
+    registry: Arc<DiscoveryRegistry>,
     sources: Vec<SourceConfig>,
     poll_interval_secs: u64,
+    embed_enabled: bool,
 ) {
     loop {
         for source in &sources {
@@ -35,6 +36,9 @@ pub async fn run_scheduler_loop(
             }
             match adapter.discover(source).await {
                 Ok(raw_records) => {
+                    if let Ok(source_db_id) = upsert_source_row(&store, source).await {
+                        let _ = store.mark_source_polled(source_db_id).await;
+                    }
                     for raw in raw_records {
                         let normalized = normalize_record(&raw);
                         let signals = signals_for_asset(&normalized, false);
@@ -71,17 +75,19 @@ pub async fn run_scheduler_loop(
                                 .await;
                             }
                         }
-                        let _ = store
-                            .transition_asset(asset_id, LifecycleEvent::Enqueue)
-                            .await;
-                        let _ = store
-                            .enqueue_job(
-                                "embed_asset",
-                                asset_id,
-                                priority,
-                                serde_json::json!({}),
-                            )
-                            .await;
+                        if embed_enabled {
+                            let _ = store
+                                .transition_asset(asset_id, LifecycleEvent::Enqueue)
+                                .await;
+                            let _ = store
+                                .enqueue_job(
+                                    "embed_asset",
+                                    asset_id,
+                                    priority,
+                                    serde_json::json!({}),
+                                )
+                                .await;
+                        }
                     }
                 }
                 Err(err) => error!(source = %source.id, error = %err, "adapter poll failed"),
@@ -189,4 +195,34 @@ async fn process_embed_job(
     }
 
     Ok(())
+}
+
+/// Register/refresh a `discovery_sources` row from the loaded YAML `SourceConfig`.
+/// Source URL is derived from fetch config (first feed URL / GitHub repo / API base).
+async fn upsert_source_row(store: &DiscoveryStore, source: &SourceConfig) -> anyhow::Result<uuid::Uuid> {
+    let config_json = serde_json::to_value(&source.config)?;
+    let source_url = source
+        .config
+        .feed_urls
+        .first()
+        .cloned()
+        .or_else(|| {
+            source.config.owner.as_ref().and_then(|o| {
+                source.config.repo.as_ref().map(|r| {
+                    format!("https://github.com/{o}/{r}")
+                })
+            })
+        })
+        .or_else(|| source.config.api_base_url.clone());
+    store
+        .upsert_source(
+            &source.id,
+            &source.adapter_type,
+            source.domain.as_str(),
+            source.trust_score,
+            source.enabled,
+            source_url.as_deref(),
+            &config_json,
+        )
+        .await
 }

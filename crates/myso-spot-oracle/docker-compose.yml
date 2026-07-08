@@ -1,0 +1,46 @@
+services:
+  spot-oracle-postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: spot
+      POSTGRES_PASSWORD: spot
+      POSTGRES_DB: spot_oracle
+    ports:
+      - "5435:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spot -d spot_oracle"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  spot-oracle:
+    build:
+      context: ../..
+      dockerfile: crates/myso-spot-oracle/Dockerfile
+    environment:
+      SPOT_ORACLE_DATABASE_URL: postgresql://spot:spot@spot-oracle-postgres:5432/spot_oracle
+      SPOT_ORACLE_LISTEN: 0.0.0.0:8097
+      SPOT_ORACLE_METRICS_ADDRESS: 0.0.0.0:9187
+      SPOT_ORACLE_SOURCES_CONFIG: config/discovery/sources.localnet.yaml
+      RUST_LOG: info
+    ports:
+      - "8097:8097"
+      - "9187:9187"
+    depends_on:
+      spot-oracle-postgres:
+        condition: service_healthy
+
+  # Optional observability stack — enable with: docker compose --profile obs up
+  prometheus:
+    profiles: ["obs"]
+    image: prom/prometheus:latest
+    ports:
+      - "9095:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+  grafana:
+    profiles: ["obs"]
+    image: grafana/grafana:latest
+    ports:
+      - "3100:3000"

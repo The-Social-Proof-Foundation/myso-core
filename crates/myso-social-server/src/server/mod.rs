@@ -858,6 +858,7 @@ fn make_router(state: Arc<AppState>) -> Router {
         .route("/spot/records/:post_id/payouts", get(list_spot_payouts))
         .route("/spot/records/:post_id/refunds", get(list_spot_refunds))
         .route("/spot/configuration", get(get_spot_configuration))
+        .route("/spot/pending-posts", get(list_pending_spot_posts))
         .route("/spt/pools", get(list_spt_pools))
         .route(
             "/spt/pools/by-associated-id/:id",

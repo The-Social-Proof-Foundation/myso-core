@@ -8,7 +8,7 @@ use diesel_async::RunQueryDsl;
 use myso_pg_db::Db;
 
 use crate::error::SocialError;
-use crate::reader::types::{SpotBetRow, SpotConfigInfo, SpotRecordResponse, SpotTransferRow};
+use crate::reader::types::{PendingSpotPostRow, SpotBetRow, SpotConfigInfo, SpotRecordResponse, SpotTransferRow};
 
 pub(crate) async fn get_spot_record(
     db: &Db,
@@ -256,4 +256,31 @@ pub(crate) async fn get_spot_configuration(db: &Db) -> Result<Option<SpotConfigI
         .await
         .optional()?;
     Ok(result)
+}
+
+/// Posts that opted into SPoT (`enable_spot = true`) but have no SpotRecord yet
+/// (`spot_id IS NULL`). Consumed by the SPoT oracle's PostPoller via the secret-gated
+/// `GET /spot/pending-posts` endpoint. Cursor is the last `created_at` (ms).
+pub(crate) async fn list_pending_spot_posts(
+    db: &Db,
+    limit: i64,
+    cursor_ms: Option<i64>,
+) -> Result<Vec<PendingSpotPostRow>, SocialError> {
+    let mut conn = db.connect().await?;
+    let query = "
+        SELECT post_id, owner, content, created_at, post_type
+        FROM posts
+        WHERE enable_spot = true
+          AND spot_id IS NULL
+          AND deleted_at IS NULL
+          AND ($1::bigint IS NULL OR created_at > $1)
+        ORDER BY created_at ASC
+        LIMIT $2
+    ";
+    let results = diesel::sql_query(query)
+        .bind::<Nullable<BigInt>, _>(cursor_ms)
+        .bind::<BigInt, _>(limit)
+        .load::<PendingSpotPostRow>(&mut conn)
+        .await?;
+    Ok(results)
 }

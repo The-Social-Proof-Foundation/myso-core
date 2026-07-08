@@ -70,7 +70,9 @@ pub use social_graph::{
     SocialProofTokenInfo, SocialStatsRow, UniversalUserResult, WalletMessagingPolicyResponse,
     WalletOnlyProfile,
 };
-pub use spot::{SpotBetRow, SpotConfigInfo, SpotRecordResponse, SpotTransferRow};
+pub use spot::{
+    PendingSpotPostRow, SpotBetRow, SpotConfigInfo, SpotRecordResponse, SpotTransferRow,
+};
 pub use spt::{
     SptExchangeConfigRow, SptHoldingRow, SptPoolRow, SptPriceHistoryRow, SptReservationPoolRow,
     SptReservationPoolWithDisplayRow, SptReservationRow, SptReservationVolumeBucketRow,

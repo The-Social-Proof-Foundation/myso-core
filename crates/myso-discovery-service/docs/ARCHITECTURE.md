@@ -26,6 +26,7 @@ docker compose --profile app up postgres redis api oracle-worker
 | Variable | Purpose |
 |----------|---------|
 | `DISCOVERY_DATABASE_URL` | Discovery Postgres (separate from PoC pgvector DB) |
-| `DISCOVERY_EMBED_ENDPOINT` | PoC internal embed URL |
+| `DISCOVERY_EMBED_ENDPOINT` | PoC internal embed URL (only when embed enabled) |
+| `DISCOVERY_EMBED_ENABLED` | `false` for local fetch-only; `true` when PoC embed stack is running |
 | `DISCOVERY_EMBED_SECRET` | Shared secret with PoC |
 | `DISCOVERY_ACTIVE_EMBEDDING_VERSION` | Active corpus version filter |

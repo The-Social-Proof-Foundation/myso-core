@@ -21,6 +21,7 @@ services:
       DISCOVERY_DATABASE_URL: postgresql://poc:poc@discovery-postgres:5432/discovery
       DISCOVERY_EMBED_ENDPOINT: http://host.docker.internal:8000/internal/discovery/embed
       DISCOVERY_LISTEN: 0.0.0.0:8096
+      DISCOVERY_EMBED_ENABLED: "false"
       RUST_LOG: info
     ports:
       - "8096:8096"

@@ -1,7 +1,7 @@
 [package]
 name = "myso-orderbook-server"
 version = "0.1.0"
-authors = ["The Social Proof Foundation <brandon@mysocial.network>"]
+authors = ["The Social Proof Foundation <brandon@socialproof.foundation>"]
 license = "Apache-2.0"
 publish = false
 edition = "2021"

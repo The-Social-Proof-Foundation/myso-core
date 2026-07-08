@@ -26,6 +26,12 @@ pub struct DiscoveryArgs {
     )]
     pub embed_endpoint: String,
 
+    /// When false, discovery fetch/indexing runs without calling the PoC embed worker.
+    /// Local dev and discovery-runnable E2E do not require embed; set true when the
+    /// proof-of-creativity stack is running.
+    #[arg(long, env = "DISCOVERY_EMBED_ENABLED", default_value = "false")]
+    pub embed_enabled: bool,
+
     #[arg(long, env = "DISCOVERY_EMBED_SECRET")]
     pub embed_secret: Option<String>,
 
@@ -50,7 +56,7 @@ pub struct DiscoveryArgs {
     #[arg(
         long,
         env = "DISCOVERY_SOURCES_CONFIG",
-        default_value = "config/discovery/sources.localnet.yaml"
+        default_value = "crates/myso-discovery-service/config/discovery/sources.localnet.yaml"
     )]
     pub sources_config: PathBuf,
 

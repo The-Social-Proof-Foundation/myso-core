@@ -1,0 +1,351 @@
+// Copyright (c) The Social Proof Foundation, LLC.
+// SPDX-License-Identifier: Apache-2.0
+
+//! SQLx repositories for SPoT-specific tables plus read/write access to the
+//! shared `discovery_sources` table. The PG job-queue pattern (`FOR UPDATE SKIP
+//! LOCKED` + priority + attempts) is re-implemented here against `spot_jobs` —
+//! it is not linked from `myso-discovery-service` (dependency boundary).
+//!
+//! Independence rule: the resolver never reads or writes `discovery_assets`.
+//! `evidence` has no FK to `discovery_assets`; it is resolver-owned.
+
+pub mod evidence;
+pub mod jobs;
+pub mod markets;
+pub mod reviews;
+pub mod transactions;
+
+use chrono::{DateTime, Utc};
+use sqlx::PgPool;
+use uuid::Uuid;
+
+use myso_discovery_service_core::sources::SourceConfig;
+
+use crate::resolver::ResolverDefinition;
+use crate::review::CanonicalClaimFields;
+use crate::store::reviews::ExtractedClaim;
+
+/// Deterministic UUID v5 namespace for `discovery_sources` rows so repeated
+/// startup upserts hit the same row. Mirrors the discovery-service namespace.
+const NAMESPACE: Uuid = Uuid::from_bytes([
+    0x6d, 0x79, 0x73, 0x6f, 0x2d, 0x64, 0x69, 0x73, 0x63, 0x6f, 0x76, 0x65, 0x72, 0x79, 0x2d, 0x73,
+]);
+
+pub fn uuid_v5_named(source_id: &str) -> Uuid {
+    Uuid::new_v5(&NAMESPACE, source_id.as_bytes())
+}
+
+pub struct OracleStore {
+    pool: PgPool,
+}
+
+impl OracleStore {
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
+    }
+
+    pub fn pool(&self) -> &PgPool {
+        &self.pool
+    }
+
+    pub async fn upsert_source_rows(&self, sources: &[SourceConfig]) -> anyhow::Result<()> {
+        for cfg in sources {
+            let config_json = serde_json::to_value(&cfg.config)?;
+            let source_url = first_feed_url(cfg).map(|s| s.to_string());
+            let row: (Uuid,) = sqlx::query_as(
+                r#"
+                INSERT INTO discovery_sources (id, adapter_type, domain, trust_score, enabled, source_url, config)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                ON CONFLICT (id) DO UPDATE SET
+                    adapter_type = EXCLUDED.adapter_type,
+                    domain = EXCLUDED.domain,
+                    trust_score = EXCLUDED.trust_score,
+                    enabled = EXCLUDED.enabled,
+                    source_url = EXCLUDED.source_url,
+                    config = EXCLUDED.config,
+                    updated_at = NOW()
+                RETURNING id
+                "#,
+            )
+            .bind(uuid_v5_named(&cfg.id))
+            .bind(&cfg.adapter_type)
+            .bind(cfg.domain.as_str())
+            .bind(cfg.trust_score)
+            .bind(cfg.enabled)
+            .bind(source_url.as_deref())
+            .bind(&config_json)
+            .fetch_one(&self.pool)
+            .await?;
+            tracing::debug!(source_id = %cfg.id, db_id = %row.0, "registered discovery source");
+        }
+        Ok(())
+    }
+
+    pub async fn list_enabled_sources(&self) -> anyhow::Result<Vec<DiscoverySourceRow>> {
+        let rows = sqlx::query_as::<_, DiscoverySourceRow>(
+            r#"
+            SELECT id, adapter_type, domain, trust_score, enabled, config
+            FROM discovery_sources
+            WHERE enabled = true
+            ORDER BY trust_score DESC
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(rows)
+    }
+
+    // --- markets ---
+    pub async fn market_exists(&self, post_id: &str) -> anyhow::Result<bool> {
+        markets::market_exists(&self.pool, post_id).await
+    }
+
+    pub async fn insert_market(
+        &self,
+        post_id: &str,
+        creator: &str,
+        claim_text: &str,
+    ) -> anyhow::Result<Uuid> {
+        markets::insert_market(&self.pool, post_id, creator, claim_text).await
+    }
+
+    pub async fn get_market_by_post_id(
+        &self,
+        post_id: &str,
+    ) -> anyhow::Result<Option<markets::MarketRow>> {
+        markets::get_market_by_post_id(&self.pool, post_id).await
+    }
+
+    pub async fn get_market(&self, market_id: Uuid) -> anyhow::Result<Option<markets::MarketRow>> {
+        markets::get_market(&self.pool, market_id).await
+    }
+
+    pub async fn list_markets(
+        &self,
+        status: Option<&str>,
+        limit: i64,
+    ) -> anyhow::Result<Vec<markets::MarketRow>> {
+        markets::list_markets(&self.pool, status, limit).await
+    }
+
+    pub async fn update_market_status(
+        &self,
+        market_id: Uuid,
+        status: &str,
+        review_id: Option<Uuid>,
+        resolver_definition_id: Option<Uuid>,
+        betting_options: Option<&serde_json::Value>,
+    ) -> anyhow::Result<()> {
+        markets::update_market_status(
+            &self.pool,
+            market_id,
+            status,
+            review_id,
+            resolver_definition_id,
+            betting_options,
+        )
+        .await
+    }
+
+    pub async fn set_spot_record_id(
+        &self,
+        market_id: Uuid,
+        spot_record_id: &str,
+    ) -> anyhow::Result<()> {
+        markets::set_spot_record_id(&self.pool, market_id, spot_record_id).await
+    }
+
+    // --- jobs ---
+    pub async fn enqueue_job(
+        &self,
+        job_type: &str,
+        market_id: Option<Uuid>,
+        resolver_definition_id: Option<Uuid>,
+        priority_score: i64,
+        run_after: DateTime<Utc>,
+        payload: serde_json::Value,
+    ) -> anyhow::Result<Uuid> {
+        jobs::enqueue_job(
+            &self.pool,
+            job_type,
+            market_id,
+            resolver_definition_id,
+            priority_score,
+            run_after,
+            payload,
+        )
+        .await
+    }
+
+    pub async fn claim_next_job(&self) -> anyhow::Result<Option<jobs::SpotJob>> {
+        jobs::claim_next_job(&self.pool).await
+    }
+
+    pub async fn complete_job(
+        &self,
+        job_id: Uuid,
+        status: &str,
+        error: Option<&str>,
+    ) -> anyhow::Result<()> {
+        jobs::complete_job(&self.pool, job_id, status, error).await
+    }
+
+    pub async fn requeue_job(
+        &self,
+        job_id: Uuid,
+        run_after: DateTime<Utc>,
+        error: &str,
+    ) -> anyhow::Result<()> {
+        jobs::requeue_job(&self.pool, job_id, run_after, error).await
+    }
+
+    pub async fn list_jobs(
+        &self,
+        status: Option<&str>,
+        limit: i64,
+    ) -> anyhow::Result<Vec<jobs::SpotJob>> {
+        jobs::list_jobs(&self.pool, status, limit).await
+    }
+
+    // --- reviews ---
+    pub async fn insert_llm_extraction(
+        &self,
+        post_id: &str,
+        raw_response: Option<&str>,
+        parsed: &ExtractedClaim,
+        model: &str,
+    ) -> anyhow::Result<Uuid> {
+        reviews::insert_llm_extraction(&self.pool, post_id, raw_response, parsed, model).await
+    }
+
+    pub async fn insert_canonical_claim(
+        &self,
+        llm_extraction_id: Uuid,
+        fields: &CanonicalClaimFields,
+        claim_hash: &str,
+    ) -> anyhow::Result<Uuid> {
+        reviews::insert_canonical_claim(&self.pool, llm_extraction_id, fields, claim_hash).await
+    }
+
+    pub async fn claim_hash_exists(&self, claim_hash: &str) -> anyhow::Result<bool> {
+        reviews::claim_hash_exists(&self.pool, claim_hash).await
+    }
+
+    pub async fn insert_oracle_review(
+        &self,
+        post_id: &str,
+        canonical_claim_id: Option<Uuid>,
+        decision: &str,
+        reject_reason: Option<&str>,
+    ) -> anyhow::Result<Uuid> {
+        reviews::insert_oracle_review(
+            &self.pool,
+            post_id,
+            canonical_claim_id,
+            decision,
+            reject_reason,
+        )
+        .await
+    }
+
+    pub async fn get_review(
+        &self,
+        review_id: Uuid,
+    ) -> anyhow::Result<Option<reviews::OracleReviewRow>> {
+        reviews::get_review(&self.pool, review_id).await
+    }
+
+    pub async fn insert_resolver_definition(
+        &self,
+        canonical_claim_id: Uuid,
+        def: &ResolverDefinition,
+    ) -> anyhow::Result<Uuid> {
+        reviews::insert_resolver_definition(&self.pool, canonical_claim_id, def).await
+    }
+
+    pub async fn get_resolver_definition(
+        &self,
+        def_id: Uuid,
+    ) -> anyhow::Result<Option<ResolverDefinition>> {
+        reviews::get_resolver_definition(&self.pool, def_id).await
+    }
+
+    // --- evidence ---
+    pub async fn insert_evidence(
+        &self,
+        market_id: Uuid,
+        resolver_job_id: Option<Uuid>,
+        adapter_id: &str,
+        source_url: &str,
+        content_hash: &str,
+        raw_response: Option<&str>,
+    ) -> anyhow::Result<Uuid> {
+        evidence::insert_evidence(
+            &self.pool,
+            market_id,
+            resolver_job_id,
+            adapter_id,
+            source_url,
+            content_hash,
+            raw_response,
+        )
+        .await
+    }
+
+    pub async fn list_evidence_for_market(
+        &self,
+        market_id: Uuid,
+    ) -> anyhow::Result<Vec<evidence::EvidenceRow>> {
+        evidence::list_evidence_for_market(&self.pool, market_id).await
+    }
+
+    pub async fn upsert_resolver_state(
+        &self,
+        market_id: Uuid,
+        outcome_draft: Option<&str>,
+        confidence_bps: Option<i32>,
+    ) -> anyhow::Result<()> {
+        evidence::upsert_resolver_state(&self.pool, market_id, outcome_draft, confidence_bps).await
+    }
+
+    // --- transactions ---
+    pub async fn insert_transaction(
+        &self,
+        market_id: Option<Uuid>,
+        tx_kind: &str,
+        nonce: &str,
+    ) -> anyhow::Result<Uuid> {
+        transactions::insert_transaction(&self.pool, market_id, tx_kind, nonce).await
+    }
+
+    pub async fn update_transaction_status(
+        &self,
+        tx_id: Uuid,
+        status: &str,
+        digest: Option<&str>,
+        error: Option<&str>,
+    ) -> anyhow::Result<()> {
+        transactions::update_transaction_status(&self.pool, tx_id, status, digest, error).await
+    }
+
+    pub async fn list_pending_transactions(
+        &self,
+        limit: i64,
+    ) -> anyhow::Result<Vec<transactions::TransactionRow>> {
+        transactions::list_pending_transactions(&self.pool, limit).await
+    }
+}
+
+fn first_feed_url(cfg: &SourceConfig) -> Option<&str> {
+    cfg.config.feed_urls.first().map(|s| s.as_str())
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct DiscoverySourceRow {
+    pub id: Uuid,
+    pub adapter_type: String,
+    pub domain: String,
+    pub trust_score: f64,
+    pub enabled: bool,
+    pub config: serde_json::Value,
+}

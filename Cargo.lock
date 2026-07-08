@@ -11215,11 +11215,11 @@ dependencies = [
  "clap",
  "figment",
  "hex",
+ "myso-discovery-service-core",
  "myso-discovery-service-schema",
  "reqwest 0.12.28",
  "serde",
  "serde_json",
- "serde_yaml 0.9.34+deprecated",
  "sqlx",
  "thiserror 2.0.18",
  "tokio",
@@ -11227,6 +11227,23 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid",
+]
+
+[[package]]
+name = "myso-discovery-service-core"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "chrono",
+ "hex",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "serde_yaml 0.9.34+deprecated",
+ "sha2 0.10.9",
+ "thiserror 2.0.18",
+ "tracing",
 ]
 
 [[package]]
@@ -11456,7 +11473,7 @@ dependencies = [
  "ttl_cache",
  "typed-store",
  "uuid",
- "wiremock",
+ "wiremock 0.5.22",
 ]
 
 [[package]]
@@ -11637,7 +11654,7 @@ dependencies = [
  "toml 0.7.8",
  "tracing",
  "url",
- "wiremock",
+ "wiremock 0.5.22",
 ]
 
 [[package]]
@@ -11807,7 +11824,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "url",
- "wiremock",
+ "wiremock 0.5.22",
  "zstd 0.12.4",
 ]
 
@@ -13653,6 +13670,47 @@ dependencies = [
  "tonic 0.14.5",
  "tracing",
  "ureq",
+]
+
+[[package]]
+name = "myso-spot-oracle"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "axum 0.7.9",
+ "chrono",
+ "clap",
+ "figment",
+ "hex",
+ "myso-discovery-service-core",
+ "myso-discovery-service-schema",
+ "myso-futures",
+ "myso-indexer-alt-metrics",
+ "myso-json-rpc-types",
+ "myso-sdk",
+ "myso-spot-oracle-schema",
+ "myso-types",
+ "prometheus 0.13.4",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "sqlx",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-util 0.7.18",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+ "wiremock 0.6.5",
+]
+
+[[package]]
+name = "myso-spot-oracle-schema"
+version = "0.1.0"
+dependencies = [
+ "sqlx",
 ]
 
 [[package]]
@@ -18341,6 +18399,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "sha1_smol"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bbfa15b3dddfee50a0fff136974b3e1bde555604ba463834a7eb7deb6417705d"
+
+[[package]]
 name = "sha2"
 version = "0.9.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -21147,6 +21211,7 @@ dependencies = [
  "js-sys",
  "rand 0.10.0",
  "serde_core",
+ "sha1_smol",
  "wasm-bindgen",
 ]
 
@@ -22068,6 +22133,29 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "wiremock"
+version = "0.6.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "08db1edfb05d9b3c1542e521aea074442088292f00b5f28e435c714a98f85031"
+dependencies = [
+ "assert-json-diff",
+ "base64 0.22.1",
+ "deadpool 0.12.3",
+ "futures",
+ "http 1.4.0",
+ "http-body-util",
+ "hyper 1.9.0",
+ "hyper-util",
+ "log",
+ "once_cell",
+ "regex",
+ "serde",
+ "serde_json",
+ "tokio",
+ "url",
 ]
 
 [[package]]

@@ -114,8 +114,8 @@ pub use social_graph::{
     check_social_graph_following, get_badge_by_id, get_social_graph_chart_data, list_badges,
 };
 pub use spot::{
-    get_spot_configuration, get_spot_record, list_contested_spot_records, list_spot_bets,
-    list_spot_payouts, list_spot_refunds,
+    get_spot_configuration, get_spot_record, list_contested_spot_records, list_pending_spot_posts,
+    list_spot_bets, list_spot_payouts, list_spot_refunds,
 };
 pub use spt::{
     get_spt_analytics_top_performers, get_spt_config, get_spt_creator_revenue_streams,

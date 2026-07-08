@@ -20,6 +20,54 @@ impl DiscoveryStore {
         &self.pool
     }
 
+    pub async fn upsert_source(
+        &self,
+        id: &str,
+        adapter_type: &str,
+        domain: &str,
+        trust_score: f64,
+        enabled: bool,
+        source_url: Option<&str>,
+        config: &serde_json::Value,
+    ) -> anyhow::Result<Uuid> {
+        let row: (Uuid,) = sqlx::query_as(
+            r#"
+            INSERT INTO discovery_sources (id, adapter_type, domain, trust_score, enabled, source_url, config)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            ON CONFLICT (id) DO UPDATE SET
+                adapter_type = EXCLUDED.adapter_type,
+                domain = EXCLUDED.domain,
+                trust_score = EXCLUDED.trust_score,
+                enabled = EXCLUDED.enabled,
+                source_url = EXCLUDED.source_url,
+                config = EXCLUDED.config,
+                updated_at = NOW()
+            RETURNING id
+            "#,
+        )
+        // discovery_sources.id is UUID; cast the text id deterministically via uuid_generate_v5
+        // is overkill for localnet — instead rely on a stable text PK. The schema uses UUID PK,
+        // so we generate a deterministic UUID v5 in the namespace of the adapter_type+id.
+        .bind(uuid_v5_named(id))
+        .bind(adapter_type)
+        .bind(domain)
+        .bind(trust_score)
+        .bind(enabled)
+        .bind(source_url)
+        .bind(config)
+        .fetch_one(&self.pool)
+        .await?;
+        Ok(row.0)
+    }
+
+    pub async fn mark_source_polled(&self, source_db_id: Uuid) -> anyhow::Result<()> {
+        sqlx::query("UPDATE discovery_sources SET last_polled_at = NOW(), updated_at = NOW() WHERE id = $1")
+            .bind(source_db_id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
     pub async fn audit(
         &self,
         entity_type: &str,
@@ -53,10 +101,11 @@ impl DiscoveryStore {
             r#"
             INSERT INTO discovery_assets (
                 source_id, external_source_url, canonical_metadata, media_type,
-                lifecycle_state, source_trust_score, creator_confidence, priority_score
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                content_hash, lifecycle_state, source_trust_score, creator_confidence, priority_score
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             ON CONFLICT (external_source_url) DO UPDATE SET
                 canonical_metadata = EXCLUDED.canonical_metadata,
+                content_hash = COALESCE(EXCLUDED.content_hash, discovery_assets.content_hash),
                 lifecycle_state = EXCLUDED.lifecycle_state,
                 source_trust_score = EXCLUDED.source_trust_score,
                 creator_confidence = EXCLUDED.creator_confidence,
@@ -69,6 +118,7 @@ impl DiscoveryStore {
         .bind(&record.external_source_url)
         .bind(&record.canonical_metadata)
         .bind(&record.media_type)
+        .bind(&record.content_hash)
         .bind(lifecycle.as_str())
         .bind(record.source_trust_score)
         .bind(record.creator_confidence)
@@ -253,3 +303,14 @@ pub struct DiscoveryStats {
     pub indexed_assets: i64,
     pub pending_jobs: i64,
 }
+
+/// Deterministic UUID v5 from a source's string id, so repeated startup upserts hit the
+/// same `discovery_sources` row. Namespace is a fixed random UUID.
+fn uuid_v5_named(source_id: &str) -> Uuid {
+    Uuid::new_v5(&NAMESPACE, source_id.as_bytes())
+}
+
+const NAMESPACE: Uuid = Uuid::from_bytes([
+    0x6d, 0x79, 0x73, 0x6f, 0x2d, 0x64, 0x69, 0x73,
+    0x63, 0x6f, 0x76, 0x65, 0x72, 0x79, 0x2d, 0x73,
+]);

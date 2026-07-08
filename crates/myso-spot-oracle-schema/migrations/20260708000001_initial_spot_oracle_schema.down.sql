@@ -1,0 +1,12 @@
+DROP TABLE IF EXISTS retries;
+DROP TABLE IF EXISTS audit_logs;
+DROP TABLE IF EXISTS transactions;
+DROP TABLE IF EXISTS source_health;
+DROP TABLE IF EXISTS evidence;
+DROP TABLE IF EXISTS spot_jobs;
+DROP TABLE IF EXISTS resolver_state;
+DROP TABLE IF EXISTS resolver_definitions;
+DROP TABLE IF EXISTS oracle_reviews;
+DROP TABLE IF EXISTS canonical_claims;
+DROP TABLE IF EXISTS llm_extractions;
+DROP TABLE IF EXISTS markets;
