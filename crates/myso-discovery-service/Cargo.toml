@@ -1,0 +1,36 @@
+[package]
+name = "myso-discovery-service"
+version = "0.1.0"
+authors = ["The Social Proof Foundation <brandon@mysocial.network>"]
+license = "Apache-2.0"
+publish = false
+edition = "2021"
+
+[dependencies]
+anyhow.workspace = true
+async-trait = "0.1"
+axum = { version = "0.7", features = ["json"] }
+chrono = { workspace = true, features = ["serde"] }
+clap = { workspace = true, features = ["env"] }
+figment = { version = "0.10", features = ["env", "toml"] }
+hex = "0.4"
+myso-discovery-service-schema = { path = "../myso-discovery-service-schema" }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+serde_yaml = "0.9"
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "json"] }
+thiserror = "2"
+tokio = { workspace = true, features = ["full"] }
+tokio-util = "0.7"
+tracing.workspace = true
+tracing-subscriber.workspace = true
+uuid = { version = "1", features = ["v4", "serde"] }
+
+[[bin]]
+name = "myso-discovery-service"
+path = "src/main.rs"
+
+[lib]
+name = "myso_discovery_service"
+path = "src/lib.rs"

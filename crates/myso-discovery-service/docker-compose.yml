@@ -1,0 +1,29 @@
+services:
+  discovery-postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: poc
+      POSTGRES_PASSWORD: poc
+      POSTGRES_DB: discovery
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U poc -d discovery"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  discovery-service:
+    build:
+      context: ../..
+      dockerfile: crates/myso-discovery-service/Dockerfile
+    environment:
+      DISCOVERY_DATABASE_URL: postgresql://poc:poc@discovery-postgres:5432/discovery
+      DISCOVERY_EMBED_ENDPOINT: http://host.docker.internal:8000/internal/discovery/embed
+      DISCOVERY_LISTEN: 0.0.0.0:8096
+      RUST_LOG: info
+    ports:
+      - "8096:8096"
+    depends_on:
+      discovery-postgres:
+        condition: service_healthy

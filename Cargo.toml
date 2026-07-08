@@ -147,6 +147,8 @@ members = [
   "crates/myso-indexer-alt-social-reader",
   "crates/myso-indexer-alt-social-schema",
   "crates/myso-ai-credit-oracle",
+  "crates/myso-discovery-service",
+  "crates/myso-discovery-service-schema",
   "crates/myso-social-server",
   "crates/myso-json",
   "crates/myso-json-rpc",
@@ -779,6 +781,8 @@ myso-rpc-loadgen = { path = "crates/myso-rpc-loadgen" }
 myso-sdk = { path = "crates/myso-sdk" }
 myso-social-server = { path = "crates/myso-social-server" }
 myso-ai-credit-oracle = { path = "crates/myso-ai-credit-oracle" }
+myso-discovery-service = { path = "crates/myso-discovery-service" }
+myso-discovery-service-schema = { path = "crates/myso-discovery-service-schema" }
 myso-simulator = { path = "crates/myso-simulator" }
 myso-snapshot = { path = "crates/myso-snapshot" }
 myso-source-validation = { path = "crates/myso-source-validation" }
