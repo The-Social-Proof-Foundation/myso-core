@@ -493,6 +493,38 @@ impl Reader {
         spot::list_pending_spot_posts(&self.db, limit, cursor_ms).await
     }
 
+    pub async fn get_spot_route(
+        &self,
+        post_id: &str,
+    ) -> Result<Option<SpotRouteResponse>, crate::error::SocialError> {
+        spot::get_spot_route(&self.db, post_id).await
+    }
+
+    pub async fn list_spot_pending_creator_payouts(
+        &self,
+        creator: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<SpotPendingCreatorPayoutRow>, crate::error::SocialError> {
+        spot::list_pending_creator_payouts(&self.db, creator, limit, offset).await
+    }
+
+    pub async fn get_spot_creator_stats(
+        &self,
+        creator: &str,
+    ) -> Result<SpotCreatorStatsResponse, crate::error::SocialError> {
+        spot::get_spot_creator_stats(&self.db, creator).await
+    }
+
+    pub async fn list_expired_spot_creator_payouts(
+        &self,
+        market_object_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<SpotPendingCreatorPayoutRow>, crate::error::SocialError> {
+        spot::list_expired_creator_payouts(&self.db, market_object_id, limit, offset).await
+    }
+
     pub async fn list_proposals(
         &self,
         limit: i64,

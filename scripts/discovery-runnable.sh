@@ -8,9 +8,14 @@
 # Usage:
 #   ./scripts/discovery-runnable.sh                 # run E2E + tear down
 #   ./scripts/discovery-runnable.sh --refresh-session
-#   KEEP_STACK=1 ./scripts/discovery-runnable.sh    # leave stack running
+#   KEEP_STACK=1 ./scripts/discovery-runnable.sh    # leave postgres up after E2E
+#   REUSE_DB=1 KEEP_STACK=1 ./scripts/discovery-runnable.sh  # skip volume wipe
+#   DISCOVERY_EMBED_ENABLED=true ./scripts/discovery-runnable.sh
+#     # optional embed mode: requires PoC at DISCOVERY_EMBED_ENDPOINT or fails clearly
 #
 # Session env: network.config/discovery/discovery-session.env
+# E2E always recreates the discovery volume unless REUSE_DB=1 (avoids stale
+# sqlx checksums after greenfield migration edits).
 
 set -euo pipefail
 
@@ -28,6 +33,8 @@ DB_URL="postgresql://${PG_USER}:${PG_PASSWORD}@127.0.0.1:${PG_PORT}/${PG_DB}"
 SOURCES_CONFIG="${DISCOVERY_SOURCES_CONFIG:-crates/myso-discovery-service/config/discovery/sources.factual.localnet.yaml}"
 POLL_INTERVAL="${DISCOVERY_SCHEDULER_POLL_INTERVAL_SECONDS:-30}"
 LISTEN="${DISCOVERY_LISTEN:-127.0.0.1:8096}"
+# Avoid clash with `myso start` metrics on :9186.
+METRICS="${DISCOVERY_METRICS_ADDRESS:-127.0.0.1:9286}"
 KEEP_STACK="${KEEP_STACK:-0}"
 WE_STARTED_PG=0
 SVC_PID=""
@@ -41,11 +48,13 @@ psql_exec() {
 }
 
 start_postgres() {
-  if docker compose -f "$COMPOSE_FILE" ps discovery-postgres 2>/dev/null | grep -q "running\|healthy"; then
-    log "discovery postgres already running — reusing"
+  if [[ "${REUSE_DB:-0}" == "1" ]] \
+    && docker compose -f "$COMPOSE_FILE" ps discovery-postgres 2>/dev/null | grep -q "running\|healthy"; then
+    log "REUSE_DB=1 — reusing running discovery postgres"
     return 0
   fi
-  log "Starting discovery postgres via docker compose"
+  log "Starting discovery postgres (fresh volume for E2E)"
+  docker compose -f "$COMPOSE_FILE" down -v >/dev/null 2>&1 || true
   docker compose -f "$COMPOSE_FILE" up -d discovery-postgres
   WE_STARTED_PG=1
   local i
@@ -59,14 +68,39 @@ start_postgres() {
   return 1
 }
 
+EMBED_ENABLED="${DISCOVERY_EMBED_ENABLED:-false}"
+
+require_poc_if_embed_enabled() {
+  case "${EMBED_ENABLED}" in
+    1|true|TRUE|yes|YES) ;;
+    *) return 0 ;;
+  esac
+  local endpoint="${DISCOVERY_EMBED_ENDPOINT:-http://127.0.0.1:8000/internal/discovery/embed}"
+  local base="${endpoint%/internal/discovery/embed}"
+  base="${base:-http://127.0.0.1:8000}"
+  if ! curl -sf --max-time 3 "${base}/health" >/dev/null 2>&1 \
+    && ! curl -sf --max-time 3 "${base}/" >/dev/null 2>&1; then
+    echo "FAIL: DISCOVERY_EMBED_ENABLED=${EMBED_ENABLED} but PoC is unreachable at ${base}" >&2
+    echo "Start proof-of-creativity API or set DISCOVERY_EMBED_ENABLED=false" >&2
+    return 1
+  fi
+  log "PoC reachable for embed mode (${base})"
+}
+
 run_discovery_service() {
-  log "Building + running myso-discovery-service (poll interval ${POLL_INTERVAL}s, sources: $SOURCES_CONFIG)"
+  log "Building + running myso-discovery-service (poll interval ${POLL_INTERVAL}s, sources: $SOURCES_CONFIG, embed=${EMBED_ENABLED})"
   DISCOVERY_DATABASE_URL="$DB_URL" \
   DISCOVERY_SOURCES_CONFIG="$SOURCES_CONFIG" \
   DISCOVERY_SCHEDULER_POLL_INTERVAL_SECONDS="$POLL_INTERVAL" \
   DISCOVERY_WORKER_CONCURRENCY="${DISCOVERY_WORKER_CONCURRENCY:-2}" \
   DISCOVERY_LISTEN="$LISTEN" \
+  DISCOVERY_METRICS_ADDRESS="$METRICS" \
   DISCOVERY_ENABLED=true \
+  DISCOVERY_EMBED_ENABLED="$EMBED_ENABLED" \
+  DISCOVERY_EMBED_ENDPOINT="${DISCOVERY_EMBED_ENDPOINT:-http://127.0.0.1:8000/internal/discovery/embed}" \
+  DISCOVERY_EMBED_SECRET="${DISCOVERY_EMBED_SECRET:-}" \
+  DISCOVERY_ADMIN_SECRET="${DISCOVERY_ADMIN_SECRET:-local-discovery-admin}" \
+  DISCOVERY_CLIENT_SECRET="${DISCOVERY_CLIENT_SECRET:-local-discovery-client}" \
   RUST_LOG="${RUST_LOG:-info}" \
   cargo run -p myso-discovery-service &
   SVC_PID=$!
@@ -92,17 +126,22 @@ wait_for_health() {
 assert_assets() {
   log "Waiting for first scheduler poll (sleep ${POLL_INTERVAL}s)..."
   sleep "$POLL_INTERVAL"
-  local i count url hash
+  local i count url hash source_id kind
   for i in $(seq 1 40); do
     count="$(psql_exec "SELECT COUNT(*) FROM discovery_assets" || echo 0)"
     count="${count// /}"
     if [[ -n "$count" && "$count" -gt 0 ]]; then
       log "discovery_assets count = $count"
-      # Assert a sample row has non-null external_source_url + content_hash.
-      local row
-      row="$(psql_exec "SELECT external_source_url || '|' || COALESCE(content_hash,'') FROM discovery_assets WHERE content_hash IS NOT NULL ORDER BY discovered_at DESC LIMIT 1" || true)"
+      # Assert sample has url + content_hash + source_id + content_kind=text (factual corpus).
+      local row rest
+      row="$(psql_exec "SELECT external_source_url || '|' || COALESCE(content_hash,'') || '|' || COALESCE(source_id::text,'') || '|' || COALESCE(content_kind,'') FROM discovery_assets WHERE content_hash IS NOT NULL ORDER BY discovered_at DESC LIMIT 1" || true)"
       url="${row%%|*}"
-      hash="${row#*|}"
+      rest="${row#*|}"
+      hash="${rest%%|*}"
+      rest="${rest#*|}"
+      source_id="${rest%%|*}"
+      kind="${rest#*|}"
+      kind="${kind//$'\n'/}"
       if [[ -z "$hash" ]]; then
         echo "FAIL: sample discovery_asset has null content_hash" >&2
         return 1
@@ -111,8 +150,16 @@ assert_assets() {
         echo "FAIL: sample discovery_asset has null external_source_url" >&2
         return 1
       fi
-      log "sample asset: url=$url hash=$hash"
-      log "PASS: real source fetch produced discovery_assets with verifiable content_hash"
+      if [[ -z "$source_id" ]]; then
+        echo "FAIL: sample discovery_asset has null source_id" >&2
+        return 1
+      fi
+      if [[ "$kind" != "text" ]]; then
+        echo "FAIL: expected content_kind=text for factual corpus, got '${kind}'" >&2
+        return 1
+      fi
+      log "sample asset: url=$url hash=$hash source_id=$source_id content_kind=$kind"
+      log "PASS: real source fetch produced discovery_assets with verifiable content_hash + source_id"
       return 0
     fi
     sleep 5
@@ -149,8 +196,12 @@ refresh_discovery_session() {
     printf '%s=%q\n' DISCOVERY_SCHEDULER_POLL_INTERVAL_SECONDS "$POLL_INTERVAL"
     printf '%s=%q\n' DISCOVERY_WORKER_CONCURRENCY "${DISCOVERY_WORKER_CONCURRENCY:-2}"
     printf '%s=%q\n' DISCOVERY_LISTEN "$LISTEN"
+    printf '%s=%q\n' DISCOVERY_METRICS_ADDRESS "$METRICS"
     printf '%s=%q\n' DISCOVERY_ENABLED true
-    printf '%s=%q\n' DISCOVERY_EMBED_ENABLED false
+    printf '%s=%q\n' DISCOVERY_EMBED_ENABLED "${DISCOVERY_EMBED_ENABLED:-false}"
+    printf '%s=%q\n' DISCOVERY_EMBED_ENDPOINT "${DISCOVERY_EMBED_ENDPOINT:-http://127.0.0.1:8000/internal/discovery/embed}"
+    printf '%s=%q\n' DISCOVERY_ADMIN_SECRET "${DISCOVERY_ADMIN_SECRET:-local-discovery-admin}"
+    printf '%s=%q\n' DISCOVERY_MAX_RETRIES "${DISCOVERY_MAX_RETRIES:-5}"
     printf '%s=%q\n' RUST_LOG "${RUST_LOG:-info}"
   } > "${DISCOVERY_SESSION_FILE}.tmp"
   mv "${DISCOVERY_SESSION_FILE}.tmp" "$DISCOVERY_SESSION_FILE"
@@ -181,8 +232,10 @@ main() {
   done
 
   load_discovery_session
+  EMBED_ENABLED="${DISCOVERY_EMBED_ENABLED:-false}"
   trap cleanup EXIT
   start_postgres
+  require_poc_if_embed_enabled
   run_discovery_service
   wait_for_health
   assert_assets

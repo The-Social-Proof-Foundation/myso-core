@@ -1,5 +1,6 @@
 ---
 source: crates/myso-indexer-alt-graphql/src/api/types/available_range.rs
+assertion_line: 619
 expression: output
 ---
 AccumulatorRootCreateTransaction._
@@ -3974,9 +3975,6 @@ Post.revenueRedirectTo
 Post.revenueRedirectPercentage
   => {}
 
-Post.enablePoc
-  => {}
-
 Post.enableSpt
   => {}
 
@@ -4538,6 +4536,66 @@ ProfilePnLWindowStats.grossInboundMyso
 ProfilePnLWindowStats.netCashFlowMyso
   => {}
 
+ProfileSubscription.subscriptionId
+  => {}
+
+ProfileSubscription.serviceId
+  => {}
+
+ProfileSubscription.subscriber
+  => {}
+
+ProfileSubscription.profileOwner
+  => {}
+
+ProfileSubscription.createdAt
+  => {}
+
+ProfileSubscription.expiresAt
+  => {}
+
+ProfileSubscription.autoRenew
+  => {}
+
+ProfileSubscription.renewalBalance
+  => {}
+
+ProfileSubscription.renewalCount
+  => {}
+
+ProfileSubscription.cancelledAt
+  => {}
+
+ProfileSubscription.monthlyFee
+  => {}
+
+ProfileSubscription.active
+  => {}
+
+ProfileSubscriptionService.serviceId
+  => {}
+
+ProfileSubscriptionService.profileOwner
+  => {}
+
+ProfileSubscriptionService.profileId
+  => {}
+
+ProfileSubscriptionService.monthlyFee
+  => {}
+
+ProfileSubscriptionService.active
+  => {}
+
+ProfileSubscriptionService.subscriberCount
+  => {}
+
+ProfileSubscriptionService.createdAt
+  => {}
+
+ProfileSubscriptionService.updatedAt
+  => {}
+
 ProfileSummary.address
   => {}
 
@@ -5088,6 +5146,18 @@ Query.messagingAgentGroups
   => {}
 
 Query.subscriptionConfiguration
+  => {}
+
+Query.profileSubscriptionService
+  => {}
+
+Query.profileSubscription
+  => {}
+
+Query.profileSubscriptions
+  => {}
+
+Query.subscriptionAccess
   => {}
 
 Query.profileConfiguration
@@ -6141,6 +6211,12 @@ SubAgent.orgRoles
   => {}
 
 SubAgent.children
+  => {}
+
+SubscriptionAccess.hasAccess
+  => {}
+
+SubscriptionAccess.expiresAt
   => {}
 
 SubscriptionConfig.updatedBy

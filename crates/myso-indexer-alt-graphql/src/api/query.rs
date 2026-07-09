@@ -89,7 +89,8 @@ use crate::api::types::social_config::{
     PostConfig, ProfileConfig, SpotConfig, SptExchangeConfig, SubscriptionConfig,
 };
 use crate::api::types::spot::{
-    SpotBet, SpotBetWithdrawal, SpotPayout, SpotRecord, SpotRefund, SpotResolution,
+    SpotBet, SpotBetWithdrawal, SpotClaim, SpotCreatorStats, SpotMarket, SpotPayout,
+    SpotPendingCreatorPayout, SpotRecord, SpotRefund, SpotResolution, SpotRoute,
 };
 use crate::api::types::spt::{
     SptHolding, SptOrder, SptPool, SptPriceHistory, SptReservationHolding,
@@ -1164,6 +1165,127 @@ impl Query {
                 .map_err(Into::into)
                 .map(|v| v.into_iter().map(SpotBetWithdrawal::from_row).collect()),
         )
+    }
+
+    /// Mandatory SPoT betting route: post → claim → open market.
+    async fn spot_route(
+        &self,
+        ctx: &Context<'_>,
+        post_id: async_graphql::ID,
+    ) -> Option<Result<Option<SpotRoute>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_spot_route(post_id.as_str())
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(SpotRoute::from_row)),
+        )
+    }
+
+    /// Indexed SpotClaim by on-chain object id.
+    async fn spot_claim(
+        &self,
+        ctx: &Context<'_>,
+        claim_id: async_graphql::ID,
+    ) -> Option<Result<Option<SpotClaim>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_spot_claim(claim_id.as_str())
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(SpotClaim::from_row)),
+        )
+    }
+
+    /// Indexed SpotMarket by on-chain object id.
+    async fn spot_market(
+        &self,
+        ctx: &Context<'_>,
+        market_id: async_graphql::ID,
+    ) -> Option<Result<Option<SpotMarket>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_spot_market(market_id.as_str())
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(SpotMarket::from_row)),
+        )
+    }
+
+    /// Unclaimed pending creator payouts for a wallet.
+    async fn spot_pending_creator_payouts(
+        &self,
+        ctx: &Context<'_>,
+        creator: MySoAddress,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<SpotPendingCreatorPayout>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let creator_str = creator.to_string();
+        Some(
+            reader
+                .list_spot_pending_creator_payouts(&creator_str, limit, offset)
+                .await
+                .map_err(Into::into)
+                .map(|rows| {
+                    rows.into_iter()
+                        .map(SpotPendingCreatorPayout::from_row)
+                        .collect()
+                }),
+        )
+    }
+
+    /// Aggregated SPoT creator earnings (claimed + pending).
+    async fn spot_creator_stats(
+        &self,
+        ctx: &Context<'_>,
+        creator: MySoAddress,
+    ) -> Option<Result<SpotCreatorStats, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let creator_str = creator.to_string();
+        let stats = match reader.get_spot_creator_stats(&creator_str).await {
+            Ok(v) => v,
+            Err(e) => return Some(Err(e.into())),
+        };
+        let top_claims = match reader.list_spot_creator_top_claims(&creator_str, 10).await {
+            Ok(v) => v,
+            Err(e) => return Some(Err(e.into())),
+        };
+        let earnings_by_post = match reader
+            .list_spot_creator_earnings_by_post(&creator_str, 20)
+            .await
+        {
+            Ok(v) => v,
+            Err(e) => return Some(Err(e.into())),
+        };
+        let earnings_by_market = match reader
+            .list_spot_creator_earnings_by_market(&creator_str, 20)
+            .await
+        {
+            Ok(v) => v,
+            Err(e) => return Some(Err(e.into())),
+        };
+        Some(Ok(SpotCreatorStats::from_parts(
+            stats,
+            top_claims,
+            earnings_by_post,
+            earnings_by_market,
+        )))
     }
 
     /// MyData record by ID. Returns null when social DB not configured or not found.

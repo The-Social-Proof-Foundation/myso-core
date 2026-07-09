@@ -852,6 +852,13 @@ fn make_router(state: Arc<AppState>) -> Router {
             "/insurance/markets/:market_id/policies",
             get(list_insurance_market_policies),
         )
+        .route("/spot/route/:post_id", get(get_spot_route))
+        .route("/spot/creators/:address/pending", get(list_spot_pending_creator_payouts))
+        .route("/spot/creators/:address/stats", get(get_spot_creator_stats))
+        .route(
+            "/spot/markets/:market_id/expired-creator-payouts",
+            get(list_expired_spot_creator_payouts),
+        )
         .route("/spot/contested-records", get(list_contested_spot_records))
         .route("/spot/records/:post_id", get(get_spot_record))
         .route("/spot/records/:post_id/bets", get(list_spot_bets))

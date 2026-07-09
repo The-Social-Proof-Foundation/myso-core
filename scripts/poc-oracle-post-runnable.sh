@@ -30,6 +30,8 @@ SOCIAL_SESSION_SAVE_PATH="$REPO_ROOT/network.config/poc-oracle/poc-oracle-sessio
 source "${SCRIPT_DIR}/lib/social-runtime-common.sh"
 # shellcheck source=lib/runnable-summary-common.sh
 source "${SCRIPT_DIR}/lib/runnable-summary-common.sh"
+# shellcheck source=lib/poc-oracle-common.sh
+source "${SCRIPT_DIR}/lib/poc-oracle-common.sh"
 # shellcheck source=lib/poc-oracle-http.sh
 source "${SCRIPT_DIR}/lib/poc-oracle-http.sh"
 
@@ -196,7 +198,7 @@ resolve_latest_post_id() {
     vars="$(jq -nc --arg owner "$owner" '{owner: $owner}')"
     resp="$(graphql_post \
         'query LatestCreatorPost($owner: String!) {
-            posts(owner: $owner, limit: 1) { id createdAt enablePoc enableSpt }
+            posts(owner: $owner, limit: 1) { id createdAt enableSpt }
         }' \
         "$vars")" || return 1
     post_id="$(echo "$resp" | jq -r '.data.posts[0].id // empty')"
@@ -292,28 +294,6 @@ ptb_option_address_from_arg() {
 # Back-to-back PTBs mutate the same gas coin; resolve a fresh coin id before each submit.
 LAST_PTB_GAS_COIN_USED=''
 
-wait_for_tx_finalized() {
-    local digest="$1" attempt json status
-    [[ -n "$digest" ]] || return 1
-    for attempt in $(seq 1 30); do
-        json="$(myso client tx-block "$digest" --json 2>/dev/null)" || {
-            sleep 0.5
-            continue
-        }
-        status="$(echo "$json" | jq -r '.effects.V2.status // .effects.status // empty | tostring')"
-        if [[ "$status" == "Success" ]]; then
-            return 0
-        fi
-        if [[ -n "$status" && "$status" != "null" && "$status" != "Unknown" ]]; then
-            echo "tx $digest finished with status=$status" >&2
-            return 1
-        fi
-        sleep 0.5
-    done
-    echo "Timed out waiting for tx $digest to finalize" >&2
-    return 1
-}
-
 resolve_fresh_gas_coin_for_address() {
     local addr="$1" exclude="${2:-}" json coin
     addr="$(normalize_hex_id "$addr")" || return 1
@@ -348,17 +328,7 @@ end_fresh_ptb_gas_coin() {
     unset BEGIN_FRESH_PTB_GAS_SAVED
 }
 
-tx_has_event_named() {
-    local digest="$1" event_name="$2"
-    local json
-    [[ -n "$digest" && -n "$event_name" ]] || return 1
-    json="$(myso client tx-block "$digest" --json 2>/dev/null)" || return 1
-    echo "$json" | jq -e --arg name "$event_name" '
-        [.. | objects | select(has("type_") or has("type"))]
-        | map(.type_ // .type)
-        | any(.name? == $name)
-    ' >/dev/null
-}
+poc_oracle_load_localnet_env
 
 analyze_post_as_oracle() {
     local post_id="$1" media_type="$2" score="$3" original_creator_arg="$4" \
@@ -368,6 +338,8 @@ analyze_post_as_oracle() {
             "$deriv_target" "$embed_audio" "$apply_explicit" "$explicit_outcome"
         return $?
     fi
+    sync_poc_config_oracle_on_chain "$POC_DEFAULT_ORACLE_ADDRESS" || return 1
+    ensure_poc_oracle_key_in_env || return 1
     poc_oracle_analyze_post "$post_id" "$media_type" "$score" "$original_creator_arg" \
         "$deriv_target" "$embed_audio" "$apply_explicit" "$explicit_outcome"
 }
@@ -411,14 +383,7 @@ analyze_post_as_oracle_direct() {
 assert_self_match_analyze_tx() {
     local digest="$1"
     [[ -n "$digest" ]] || return 1
-    tx_has_event_named "$digest" "PoCBadgeIssuedEvent" || {
-        echo "self-match analyze tx $digest missing PoCBadgeIssuedEvent" >&2
-        return 1
-    }
-    if tx_has_event_named "$digest" "RevenueRedirectionActivatedEvent"; then
-        echo "self-match analyze tx $digest unexpectedly emitted RevenueRedirectionActivatedEvent" >&2
-        return 1
-    fi
+    assert_poc_scenario_events self_match "$digest" || return 1
     log_step "self-match analyze OK digest=$digest (badge issued, no redirect)"
 }
 
@@ -447,7 +412,7 @@ create_poc_post_for_analyze() {
         "$body_lit" \
         "$media_opt" \
         none none none none none none none \
-        some\(true\) some\(true\) none none \
+        some\(true\) none none \
         "$ref_mr" "$ref_mem" "$ref_clk")" || {
         end_fresh_ptb_gas_coin
         restore_wallet
@@ -471,6 +436,7 @@ run_self_match_analyze_flow() {
     SOCIAL_RUN_ID="$(date +%s)"
     require_session_fields USERNAME_REGISTRY_ID PROFILE_CONFIG_ID AI_CREDIT_CONFIG_ID \
         MEMORY_REGISTRY_ID MEMORY_CONFIG_ID POST_CONFIG_ID MYDATA_REGISTRY_ID \
+        TOKEN_REGISTRY_ID SOCIAL_PROOF_TOKENS_CONFIG_ID \
         PLATFORM_REGISTRY_ID PLATFORM_CONFIG_ID PLATFORM_ADMIN_CAP_ID BLOCK_LIST_REGISTRY_ID \
         POC_CONFIG_ID POC_REGISTRY_ID POC_VAULT_DIRECTORY_ID CLOCK_ID || {
         echo "Run --refresh-session first" >&2
@@ -648,8 +614,30 @@ print("0x" + bytes(contents[32:64]).hex())
 PY
 }
 
+extract_reservation_pool_from_digest() {
+    local digest="$1" pool_id
+    [[ -n "$digest" ]] || return 1
+    pool_id="$(extract_created_object_by_type "$digest" "ReservationPoolObject")"
+    [[ -n "$pool_id" ]] || pool_id="$(extract_created_object_by_type "$digest" "ReservationPool")"
+    [[ -n "$pool_id" ]] || return 1
+    normalize_hex_id "$pool_id"
+}
+
+gql_post_reservation_pool_id() {
+    local post_id="$1" resp vars pool_id
+    post_id="$(normalize_hex_id "$post_id")" || return 1
+    vars="$(jq -nc --arg id "$post_id" '{id: $id}')"
+    resp="$(graphql_post \
+        'query PostReservationPool($id: ID!) { post(id: $id) { sptId enableSpt } }' \
+        "$vars")" || return 1
+    pool_id="$(echo "$resp" | jq -r '.data.post.sptId // empty')"
+    [[ -n "$pool_id" ]] || return 1
+    normalize_hex_id "$pool_id"
+}
+
 ensure_reservation_pool_for_post() {
-    local post_id="$1" out digest pool_id associated_post
+    local post_id="$1" pool_id associated_post out digest
+    local ref_token ref_spt ref_post ref_clk
     post_id="$(normalize_hex_id "$post_id")" || return 1
     if [[ -n "${RESERVATION_POOL_ID:-}" ]] && object_exists_on_fullnode "$RESERVATION_POOL_ID"; then
         associated_post="$(reservation_pool_associated_post_id "$RESERVATION_POOL_ID" 2>/dev/null)" || associated_post=''
@@ -658,23 +646,33 @@ ensure_reservation_pool_for_post() {
             return 0
         fi
         if [[ -n "$associated_post" ]]; then
-            log_step "Session pool $RESERVATION_POOL_ID is for post $associated_post, not $post_id — creating a new pool"
+            log_step "Session pool $RESERVATION_POOL_ID is for post $associated_post, not $post_id — resolving pool for $post_id"
         else
-            log_step "Could not verify session pool $RESERVATION_POOL_ID for post $post_id — creating a new pool"
+            log_step "Could not verify session pool $RESERVATION_POOL_ID for post $post_id — resolving pool for $post_id"
         fi
         RESERVATION_POOL_ID=''
     fi
-    require_session_fields TOKEN_REGISTRY_ID SOCIAL_PROOF_TOKENS_CONFIG_ID CLOCK_ID || return 1
-    require_hex_ids TOKEN_REGISTRY_ID SOCIAL_PROOF_TOKENS_CONFIG_ID CLOCK_ID || return 1
-    [[ -n "${CREATOR_ADDRESS:-}" ]] || ensure_creator_wallet || return 1
-    log_step "Creating reservation pool for post $post_id (post owner must sign)"
-    out="$(SKIP_CONFIRM_RUN=1 run_myso_call_as_capture "$CREATOR_ADDRESS" social_proof_tokens create_reservation_pool_for_post \
-        "@${TOKEN_REGISTRY_ID}" "@${SOCIAL_PROOF_TOKENS_CONFIG_ID}" "@${post_id}" "@${CLOCK_ID}")" || return 1
-    digest="$(extract_tx_digest "$out")"
-    pool_id="$(extract_created_object_by_type "$digest" "ReservationPoolObject")"
-    [[ -n "$pool_id" ]] || pool_id="$(extract_created_object_by_type "$digest" "ReservationPool")"
+    pool_id="$(gql_post_reservation_pool_id "$post_id" 2>/dev/null)" || pool_id=''
+    if [[ -z "$pool_id" ]]; then
+        require_session_fields TOKEN_REGISTRY_ID SOCIAL_PROOF_TOKENS_CONFIG_ID CLOCK_ID || return 1
+        ref_token="$(ptb_shared_ref "$TOKEN_REGISTRY_ID")" || return 1
+        ref_spt="$(ptb_shared_ref "$SOCIAL_PROOF_TOKENS_CONFIG_ID")" || return 1
+        ref_post="$(ptb_shared_ref "$post_id")" || return 1
+        ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || return 1
+        switch_wallet "$CREATOR_ADDRESS" || return 1
+        log_step "create_reservation_pool_for_post post=$post_id"
+        out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_as_capture "$CREATOR_ADDRESS" \
+            --move-call "${PKG_SOCIAL}::social_proof_tokens::create_reservation_pool_for_post" \
+            "$ref_token" "$ref_spt" "$ref_post" "$ref_clk")" || {
+            restore_wallet
+            return 1
+        }
+        restore_wallet
+        digest="$(extract_tx_digest "$out")"
+        pool_id="$(extract_reservation_pool_from_digest "$digest" 2>/dev/null)" || pool_id=''
+    fi
     [[ -n "$pool_id" ]] || {
-        echo "create_reservation_pool_for_post did not produce ReservationPoolObject" >&2
+        echo "create_reservation_pool_for_post did not produce a reservation pool for post $post_id" >&2
         return 1
     }
     RESERVATION_POOL_ID="$(normalize_hex_id "$pool_id")"
@@ -864,10 +862,13 @@ step_creator_profile_and_join() {
 }
 
 step_create_poc_post() {
-    local out digest body_lit media_opt ref_ur ref_pr ref_plat ref_blr ref_cfg ref_mcfg ref_mr ref_mem ref_clk
+    local out digest body_lit media_opt pool_id
+    local ref_ur ref_pr ref_plat ref_blr ref_cfg ref_mcfg ref_mr ref_mem ref_clk
+    local ref_token ref_spt ref_post ref_clk_pool
 
     require_hex_ids USERNAME_REGISTRY_ID PLATFORM_REGISTRY_ID PLATFORM_OBJECT_ID \
         BLOCK_LIST_REGISTRY_ID POST_CONFIG_ID MEMORY_CONFIG_ID MYDATA_REGISTRY_ID \
+        TOKEN_REGISTRY_ID SOCIAL_PROOF_TOKENS_CONFIG_ID \
         MEMORY_ACCOUNT_ID CLOCK_ID || return 1
 
     body_lit="$(literal_move_string "PoC oracle test post ${SOCIAL_RUN_ID}")"
@@ -884,14 +885,14 @@ step_create_poc_post() {
     ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || return 1
 
     switch_wallet "$CREATOR_ADDRESS" || return 1
-    log_step "create_post enable_poc=true enable_spt=true media=$POST_MEDIA_URL"
+    log_step "create_post enable_spt=true media=$POST_MEDIA_URL"
     out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_as_capture "$CREATOR_ADDRESS" \
         --move-call "${PKG_SOCIAL}::post::create_post" \
         "$ref_ur" "$ref_pr" "$ref_plat" "$ref_blr" "$ref_cfg" "$ref_mcfg" \
         "$body_lit" \
         "$media_opt" \
         none none none none none none none \
-        some\(true\) some\(true\) none none \
+        some\(true\) none none \
         "$ref_mr" "$ref_mem" "$ref_clk")" || {
         restore_wallet
         return 1
@@ -900,6 +901,8 @@ step_create_poc_post() {
 
     digest="$(extract_tx_digest "$out")"
     LAST_TX_DIGEST="$digest"
+    wait_for_tx_finalized "$digest" || return 1
+    assert_poc_scenario_events post_created "$digest" || return 1
     POST_ID="$(extract_created_object_by_type "$digest" "post::Post")"
     [[ -n "$POST_ID" ]] || POST_ID="$(extract_created_object_by_type "$digest" "Post")"
     [[ -n "$POST_ID" ]] || {
@@ -907,7 +910,29 @@ step_create_poc_post() {
         return 1
     }
     POST_ID="$(normalize_hex_id "$POST_ID")"
-    RESERVATION_POOL_ID=''
+
+    ref_token="$(ptb_shared_ref "$TOKEN_REGISTRY_ID")" || return 1
+    ref_spt="$(ptb_shared_ref "$SOCIAL_PROOF_TOKENS_CONFIG_ID")" || return 1
+    ref_post="$(ptb_shared_ref "$POST_ID")" || return 1
+    ref_clk_pool="$(ptb_shared_ref "$CLOCK_ID")" || return 1
+    switch_wallet "$CREATOR_ADDRESS" || return 1
+    log_step "create_reservation_pool_for_post post=$POST_ID"
+    out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_as_capture "$CREATOR_ADDRESS" \
+        --move-call "${PKG_SOCIAL}::social_proof_tokens::create_reservation_pool_for_post" \
+        "$ref_token" "$ref_spt" "$ref_post" "$ref_clk_pool")" || {
+        restore_wallet
+        return 1
+    }
+    restore_wallet
+    digest="$(extract_tx_digest "$out")"
+    wait_for_tx_finalized "$digest" || return 1
+    assert_poc_scenario_events reservation_pool_created "$digest" || return 1
+    pool_id="$(extract_reservation_pool_from_digest "$digest" 2>/dev/null)" || pool_id=''
+    [[ -n "$pool_id" ]] || {
+        echo "create_reservation_pool_for_post did not produce ReservationPoolObject" >&2
+        return 1
+    }
+    RESERVATION_POOL_ID="$(normalize_hex_id "$pool_id")"
     log_session_use "POST_ID" "$POST_ID"
     log_session_use "RESERVATION_POOL_ID" "$RESERVATION_POOL_ID"
     log_session_use "LAST_TX_DIGEST" "$LAST_TX_DIGEST"
@@ -923,7 +948,6 @@ gql_post_snapshot() {
             post(id: $id) {
                 id
                 content
-                enablePoc
                 enableSpt
                 mediaUrls
                 platformId
@@ -957,23 +981,16 @@ wait_for_gql_post() {
 }
 
 assert_poc_post_graphql() {
-    local resp enable_poc media_urls platform_id media_match
+    local resp media_urls platform_id media_match
     log_step "GraphQL assert PoC post indexed with media"
     if ! resp="$(wait_for_gql_post "$POST_ID")"; then
         GQL_INDEXED='false'
         return 0
     fi
 
-    enable_poc="$(echo "$resp" | jq -r '.data.post.enablePoc // false')"
     media_urls="$(echo "$resp" | jq -c '.data.post.mediaUrls // null')"
     platform_id="$(echo "$resp" | jq -r '.data.post.platformId // empty')"
 
-    if [[ "$enable_poc" != "true" ]]; then
-        echo "Warning: post.enablePoc expected true got $enable_poc" >&2
-        GQL_INDEXED='false'
-        POST_GQL_SNAPSHOT="$resp"
-        return 0
-    fi
     if [[ "$(echo "$resp" | jq -r '.data.post.enableSpt // false')" != "true" ]]; then
         echo "Warning: post.enableSpt expected true got $(echo "$resp" | jq -r '.data.post.enableSpt // false')" >&2
         GQL_INDEXED='false'
@@ -1004,11 +1021,10 @@ assert_poc_post_graphql() {
 
 print_poc_oracle_post_summary() {
     local gql_resp="${POST_GQL_SNAPSHOT:-}"
-    local content enable_poc media_urls owner created_at gql_status outcome
+    local content media_urls owner created_at gql_status outcome
     [[ -n "$gql_resp" ]] || gql_resp="$(gql_post_snapshot "$POST_ID" 2>/dev/null)" || gql_resp='{}'
 
     content="$(echo "$gql_resp" | jq -r '.data.post.content // empty')"
-    enable_poc="$(echo "$gql_resp" | jq -r '.data.post.enablePoc // empty')"
     media_urls="$(echo "$gql_resp" | jq -c '.data.post.mediaUrls // null')"
     owner="$(echo "$gql_resp" | jq -r '.data.post.owner // empty')"
     created_at="$(echo "$gql_resp" | jq -r '.data.post.createdAt // empty')"
@@ -1027,10 +1043,9 @@ print_poc_oracle_post_summary() {
     print_run_summary_line "PoC config" "$(normalize_hex_id "${POC_CONFIG_ID:-}")"
     print_run_summary_line "PoC registry" "$(normalize_hex_id "${POC_REGISTRY_ID:-}")"
     print_run_summary_line "Post content" "${content:-PoC oracle test post ${SOCIAL_RUN_ID}}"
-    print_run_summary_line "enablePoc (on-chain)" "true"
     print_run_summary_line "enableSpt (on-chain)" "true"
-    print_run_summary_line "enablePoc (GraphQL)" "${enable_poc:-pending}"
     print_run_summary_line "enableSpt (GraphQL)" "$(echo "$gql_resp" | jq -r '.data.post.enableSpt // pending')"
+    print_run_summary_line "Reservation pool" "$(normalize_hex_id "${RESERVATION_POOL_ID:-}")"
     print_run_summary_line "Media URL" "$POST_MEDIA_URL"
     print_run_summary_line "mediaUrls (GraphQL)" "${media_urls:-pending}"
     print_run_summary_line "Post owner (GraphQL)" "${owner:-pending}"
@@ -1039,9 +1054,9 @@ print_poc_oracle_post_summary() {
     print_run_summary_line "Session file" "$SOCIAL_SESSION_SAVE_PATH"
     print_run_summary_line "Oracle config" "../proof-of-creativity/config/networks/localnet.yaml"
     print_run_summary_line "localnet.yaml hints" "objects.poc_config / poc_registry / username_registry / clock"
-    outcome="Post $(normalize_hex_id "${POST_ID:-}") was created on-chain with PoC + SPT enabled and media attached. "
+    outcome="Post $(normalize_hex_id "${POST_ID:-}") was created on-chain with SPT enabled and media attached. "
     if [[ "$gql_status" == "true" ]]; then
-        outcome+="GraphQL indexer confirmed enablePoc and mediaUrls. "
+        outcome+="GraphQL indexer confirmed enableSpt and mediaUrls. "
     else
         outcome+="GraphQL indexer has not confirmed the post yet (oracle can still read chain events). "
     fi
@@ -1064,7 +1079,7 @@ print_poc_oracle_post_summary() {
 }
 
 step_tip_latest_post() {
-    local post_id tip_coin gas_coin saved_gas owner ref_post ref_tip ref_mem out digest
+    local post_id tip_coin gas_coin saved_gas owner vault_id ref_post ref_vault ref_tip ref_mem ref_clk out digest
     post_id="$(resolve_latest_post_id)" || return 1
     owner="$(object_address_owner "$post_id" 2>/dev/null)" || owner="${CREATOR_ADDRESS:-}"
     [[ -n "$owner" ]] || { echo "Could not resolve post owner for $post_id" >&2; return 1; }
@@ -1075,6 +1090,8 @@ step_tip_latest_post() {
         echo "Self-tipping is forbidden; tipper must differ from post owner $CREATOR_ADDRESS" >&2
         return 1
     fi
+    vault_id="$(resolve_beneficiary_vault_for_post_owner "$CREATOR_ADDRESS" "$post_id")" || return 1
+    POC_BENEFICIARY_VAULT_ID="$(normalize_hex_id "$vault_id")"
 
     switch_wallet "$TIPPER_ADDRESS" || return 1
     read -r tip_coin gas_coin <<<"$(pick_payment_and_gas_coins_for_address "$TIPPER_ADDRESS" "$DEFAULT_TIP_AMOUNT")" || {
@@ -1082,15 +1099,18 @@ step_tip_latest_post() {
         return 1
     }
     ref_post="$(ptb_shared_ref "$post_id")" || { restore_wallet; return 1; }
+    ref_vault="$(ptb_shared_ref "$vault_id")" || { restore_wallet; return 1; }
     ref_tip="$(ptb_shared_ref "$tip_coin")" || { restore_wallet; return 1; }
     ref_mem="$(ptb_shared_ref "$TIPPER_MEMORY_ACCOUNT_ID")" || { restore_wallet; return 1; }
+    ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || { restore_wallet; return 1; }
     saved_gas="${PTB_GAS_COIN_ID:-}"
     PTB_GAS_COIN_ID="$gas_coin"
 
-    log_step "tip_post_simple amount=$DEFAULT_TIP_AMOUNT post=$post_id tipper=$TIPPER_ADDRESS"
+    log_step "tip_post amount=$DEFAULT_TIP_AMOUNT post=$post_id tipper=$TIPPER_ADDRESS vault=$vault_id"
     out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_as_capture "$TIPPER_ADDRESS" \
-        --move-call "${PKG_SOCIAL}::post::tip_post_simple<${COIN_TYPE}>" \
-        "$ref_post" "$ref_tip" "$DEFAULT_TIP_AMOUNT" "$ref_mem")" || {
+        --move-call "${PKG_SOCIAL}::post::tip_post<${COIN_TYPE}>" \
+        "$ref_post" "$ref_vault" "$ref_tip" "$DEFAULT_TIP_AMOUNT" "$POC_MIN_VAULT_DEPOSIT" \
+        "$ref_mem" "$ref_clk")" || {
         PTB_GAS_COIN_ID="$saved_gas"
         restore_wallet
         return 1
@@ -1099,6 +1119,8 @@ step_tip_latest_post() {
     restore_wallet
 
     digest="$(extract_tx_digest "$out")"
+    wait_for_tx_finalized "$digest" || return 1
+    assert_poc_scenario_events tip_post "$digest" || return 1
     LAST_TIP_TX_DIGEST="$digest"
     POST_ID="$(normalize_hex_id "$post_id")"
     log_session_use "POST_ID" "$POST_ID"
@@ -1158,6 +1180,8 @@ step_reserve_into_latest_post() {
     restore_wallet
 
     digest="$(extract_tx_digest "$out")"
+    wait_for_tx_finalized "$digest" || return 1
+    assert_poc_scenario_events spt_reserve "$digest" || return 1
     LAST_RESERVE_TX_DIGEST="$digest"
     POST_ID="$(normalize_hex_id "$post_id")"
     log_session_use "POST_ID" "$POST_ID"
@@ -1213,6 +1237,7 @@ run_poc_oracle_post_flow() {
     SOCIAL_RUN_ID="$(date +%s)"
     require_session_fields USERNAME_REGISTRY_ID PROFILE_CONFIG_ID AI_CREDIT_CONFIG_ID \
         MEMORY_REGISTRY_ID MEMORY_CONFIG_ID POST_CONFIG_ID MYDATA_REGISTRY_ID \
+        TOKEN_REGISTRY_ID SOCIAL_PROOF_TOKENS_CONFIG_ID \
         PLATFORM_REGISTRY_ID PLATFORM_CONFIG_ID PLATFORM_ADMIN_CAP_ID BLOCK_LIST_REGISTRY_ID || {
         echo "Run --refresh-session first" >&2
         return 1

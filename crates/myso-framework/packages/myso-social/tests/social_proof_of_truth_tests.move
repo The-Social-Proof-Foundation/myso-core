@@ -135,6 +135,53 @@ module social_contracts::social_proof_of_truth_tests {
         abort 999
     }
 
+    fun resolve_spot_market(
+        scen: &mut Scenario,
+        outcome: u8,
+        confidence: u64,
+        reasoning: String,
+    ) {
+        test_scenario::next_tx(scen, ADMIN);
+        {
+            let oracle_admin_cap = test_scenario::take_from_sender<spot::SpotOracleAdminCap>(scen);
+            let cfg = test_scenario::take_shared<spot::SpotConfig>(scen);
+            let mut spot_registry = test_scenario::take_shared<spot::SpotClaimRegistry>(scen);
+            let claim = test_scenario::take_shared<spot::SpotClaim>(scen);
+            let mut rec = test_scenario::take_shared<spot::SpotMarket>(scen);
+            let post_ref = test_scenario::take_shared<Post>(scen);
+            let mut platform = test_scenario::take_shared<Platform>(scen);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(scen);
+            let clock = test_scenario::take_shared<Clock>(scen);
+            let mut evidence_urls = vector::empty<String>();
+            vector::push_back(&mut evidence_urls, string::utf8(b"https://example.com/evidence1"));
+            spot::oracle_resolve(
+                &oracle_admin_cap,
+                &cfg,
+                &mut spot_registry,
+                &claim,
+                &mut rec,
+                &post_ref,
+                &mut platform,
+                &treasury,
+                outcome,
+                confidence,
+                reasoning,
+                evidence_urls,
+                &clock,
+                test_scenario::ctx(scen),
+            );
+            test_scenario::return_shared(platform);
+            test_scenario::return_shared(treasury);
+            test_scenario::return_shared(clock);
+            test_scenario::return_to_sender(scen, oracle_admin_cap);
+            test_scenario::return_shared(cfg);
+            test_scenario::return_shared(rec);
+            test_scenario::return_shared(post_ref);
+            test_scenario::return_shared(claim);
+            test_scenario::return_shared(spot_registry);
+        };
+    }
+
     // --- Tests ---
 
     #[test]
@@ -158,6 +205,9 @@ module social_contracts::social_proof_of_truth_tests {
                 0,    // payout_delay_ms
                 25,   // platform_fee_bps
                 25,   // ecosystem_fee_bps
+                0,    // creator_fee_bps
+                0,    // creator_claim_window_ms
+                10000, // expired_creator_ecosystem_bps
                 2,    // min_betting_options
                 10,   // max_betting_options
                 1,    // min_reasoning_length
@@ -189,7 +239,7 @@ module social_contracts::social_proof_of_truth_tests {
             let mut cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
             let spot_gov_id = spot::spot_governance_registry_id(&cfg);
             let clock = test_scenario::take_shared<Clock>(&scen);
-            spot::update_spot_config(&admin_cap, &mut cfg, true, 0, 0, 0, 0, 5000, 5000, 2, 10, 1, 1000, 10, ADMIN, 0, 10000, spot_gov_id, &clock, test_scenario::ctx(&mut scen));
+            spot::update_spot_config(&admin_cap, &mut cfg, true, 0, 0, 0, 0, 5000, 5000, 0, 0, 10000, 2, 10, 1, 1000, 10, ADMIN, 0, 10000, spot_gov_id, &clock, test_scenario::ctx(&mut scen));
             test_scenario::return_to_sender(&scen, admin_cap);
             test_scenario::return_shared(cfg);
             test_scenario::return_shared(clock);
@@ -210,6 +260,7 @@ module social_contracts::social_proof_of_truth_tests {
         {
             let oracle_admin_cap = test_scenario::take_from_sender<spot::SpotOracleAdminCap>(&scen);
             let cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
+            let mut spot_registry = test_scenario::take_shared<spot::SpotClaimRegistry>(&scen);
             let mut p = test_scenario::take_shared<Post>(&scen);
             let mut betting_options = vector::empty<String>();
             vector::push_back(&mut betting_options, string::utf8(b"Yes"));
@@ -218,6 +269,7 @@ module social_contracts::social_proof_of_truth_tests {
             spot::create_spot_record_for_post(
                 &oracle_admin_cap,
                 &cfg, 
+                &mut spot_registry,
                 &mut p, 
                 betting_options,
                 option::none(), // resolution_window_epochs - immediate resolution
@@ -228,13 +280,14 @@ module social_contracts::social_proof_of_truth_tests {
             test_scenario::return_to_sender(&scen, oracle_admin_cap);
             test_scenario::return_shared(cfg);
             test_scenario::return_shared(p);
+            test_scenario::return_shared(spot_registry);
             test_scenario::return_shared(clock);
         };
 
         // User1 places bet on option 0 (Yes)
         test_scenario::next_tx(&mut scen, USER1);
         {
-            let mut spot_rec = test_scenario::take_shared<spot::SpotRecord>(&scen);
+            let mut spot_rec = test_scenario::take_shared<spot::SpotMarket>(&scen);
             let pay = coin::mint_for_testing<MYSO>(1000 * SCALING, test_scenario::ctx(&mut scen));
             let post_ref = test_scenario::take_shared<Post>(&scen);
             let spot_cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
@@ -261,41 +314,18 @@ module social_contracts::social_proof_of_truth_tests {
             test_scenario::return_shared(clock);
         };
 
-        // Oracle resolves option 0 (Yes) immediately (confidence high)
+        resolve_spot_market(
+            &mut scen,
+            0,
+            9000,
+            string::utf8(b"Test reasoning: High confidence resolution"),
+        );
+
         test_scenario::next_tx(&mut scen, ADMIN);
         {
-            let oracle_admin_cap = test_scenario::take_from_sender<spot::SpotOracleAdminCap>(&scen);
-            let cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
-            let mut rec = test_scenario::take_shared<spot::SpotRecord>(&scen);
-            let post_ref = test_scenario::take_shared<Post>(&scen);
-            let mut evidence_urls = vector::empty<String>();
-            vector::push_back(&mut evidence_urls, string::utf8(b"https://example.com/evidence1"));
-            let mut platform = test_scenario::take_shared<Platform>(&scen);
-            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scen);
-            let clock = test_scenario::take_shared<Clock>(&scen);
-            spot::oracle_resolve(
-                &oracle_admin_cap,
-                &cfg, 
-                &mut rec, 
-                &post_ref,
-                &mut platform,
-                &treasury,
-                0, // outcome_option_id 0 = "Yes"
-                9000, 
-                string::utf8(b"Test reasoning: High confidence resolution"),
-                evidence_urls,
-                &clock,
-                test_scenario::ctx(&mut scen)
-            );
-            test_scenario::return_shared(platform);
-            test_scenario::return_shared(treasury);
-            test_scenario::return_shared(clock);
-            // Resolved
+            let rec = test_scenario::take_shared<spot::SpotMarket>(&scen);
             assert!(spot::get_status(&rec) == 3, 3); // STATUS_RESOLVED
-            test_scenario::return_to_sender(&scen, oracle_admin_cap);
-            test_scenario::return_shared(cfg);
             test_scenario::return_shared(rec);
-            test_scenario::return_shared(post_ref);
         };
 
         test_scenario::end(scen);
@@ -312,7 +342,7 @@ module social_contracts::social_proof_of_truth_tests {
             let mut cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
             let spot_gov_id = spot::spot_governance_registry_id(&cfg);
             let clock = test_scenario::take_shared<Clock>(&scen);
-            spot::update_spot_config(&admin_cap, &mut cfg, true, 9000, 0, 0, 0, 5000, 5000, 2, 10, 1, 1000, 10, ADMIN, 0, 10000, spot_gov_id, &clock, test_scenario::ctx(&mut scen));
+            spot::update_spot_config(&admin_cap, &mut cfg, true, 9000, 0, 0, 0, 5000, 5000, 0, 0, 10000, 2, 10, 1, 1000, 10, ADMIN, 0, 10000, spot_gov_id, &clock, test_scenario::ctx(&mut scen));
             test_scenario::return_to_sender(&scen, admin_cap);
             test_scenario::return_shared(cfg);
             test_scenario::return_shared(clock);
@@ -354,6 +384,7 @@ module social_contracts::social_proof_of_truth_tests {
         {
             let oracle_admin_cap = test_scenario::take_from_sender<spot::SpotOracleAdminCap>(&scen);
             let cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
+            let mut spot_registry = test_scenario::take_shared<spot::SpotClaimRegistry>(&scen);
             let mut p = test_scenario::take_shared<Post>(&scen);
             let mut betting_options = vector::empty<String>();
             vector::push_back(&mut betting_options, string::utf8(b"Yes"));
@@ -362,6 +393,7 @@ module social_contracts::social_proof_of_truth_tests {
             spot::create_spot_record_for_post(
                 &oracle_admin_cap,
                 &cfg, 
+                &mut spot_registry,
                 &mut p, 
                 betting_options,
                 option::none(), // resolution_window_epochs - immediate resolution
@@ -372,13 +404,14 @@ module social_contracts::social_proof_of_truth_tests {
             test_scenario::return_to_sender(&scen, oracle_admin_cap);
             test_scenario::return_shared(cfg);
             test_scenario::return_shared(p);
+            test_scenario::return_shared(spot_registry);
             test_scenario::return_shared(clock);
         };
 
         // Place bet with USER1 on option 1 (No)
         test_scenario::next_tx(&mut scen, USER1);
         {
-            let mut rec = test_scenario::take_shared<spot::SpotRecord>(&scen);
+            let mut rec = test_scenario::take_shared<spot::SpotMarket>(&scen);
             let post_ref = test_scenario::take_shared<Post>(&scen);
             let pay = coin::mint_for_testing<MYSO>(500 * SCALING, test_scenario::ctx(&mut scen));
             let spot_cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
@@ -397,39 +430,13 @@ module social_contracts::social_proof_of_truth_tests {
         };
 
         // Oracle says confidence is too low → DAO_REQUIRED
+        resolve_spot_market(&mut scen, 0, 1000, string::utf8(b"Test reasoning: Low confidence, requires DAO"));
+
         test_scenario::next_tx(&mut scen, ADMIN);
         {
-            let oracle_admin_cap = test_scenario::take_from_sender<spot::SpotOracleAdminCap>(&scen);
-            let cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
-            let mut rec = test_scenario::take_shared<spot::SpotRecord>(&scen);
-            let post_ref = test_scenario::take_shared<Post>(&scen);
-            let mut evidence_urls = vector::empty<String>();
-            vector::push_back(&mut evidence_urls, string::utf8(b"https://example.com/evidence2"));
-            let mut platform = test_scenario::take_shared<Platform>(&scen);
-            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scen);
-            let clock = test_scenario::take_shared<Clock>(&scen);
-            spot::oracle_resolve(
-                &oracle_admin_cap,
-                &cfg, 
-                &mut rec, 
-                &post_ref,
-                &mut platform,
-                &treasury,
-                0, // outcome_option_id 0 = "Yes" (but confidence too low)
-                1000, 
-                string::utf8(b"Test reasoning: Low confidence, requires DAO"),
-                evidence_urls,
-                &clock,
-                test_scenario::ctx(&mut scen)
-            );
-            test_scenario::return_shared(platform);
-            test_scenario::return_shared(treasury);
-            test_scenario::return_shared(clock);
-            assert!(spot::get_status(&rec) == 2, 3); // DAO_REQUIRED
-            test_scenario::return_to_sender(&scen, oracle_admin_cap);
-            test_scenario::return_shared(cfg);
+            let rec = test_scenario::take_shared<spot::SpotMarket>(&scen);
+            assert!(spot::get_status(&rec) == 2, 3);
             test_scenario::return_shared(rec);
-            test_scenario::return_shared(post_ref);
         };
 
         // Submit governance proposal to ratify DRAW, then implement after approval
@@ -437,7 +444,7 @@ module social_contracts::social_proof_of_truth_tests {
         {
             let cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
             let mut spot_registry = take_spot_governance_registry(&scen);
-            let mut rec = test_scenario::take_shared<spot::SpotRecord>(&scen);
+            let mut rec = test_scenario::take_shared<spot::SpotMarket>(&scen);
             let post_ref = test_scenario::take_shared<Post>(&scen);
             let clock = test_scenario::take_shared<Clock>(&scen);
             let mut payment = coin::mint_for_testing<MYSO>(10_000 * SCALING, test_scenario::ctx(&mut scen));
@@ -515,9 +522,11 @@ module social_contracts::social_proof_of_truth_tests {
         test_scenario::next_tx(&mut scen, ADMIN);
         {
             let cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
-            let mut spot_registry = take_spot_governance_registry(&scen);
+            let mut gov_registry = take_spot_governance_registry(&scen);
+            let mut claim_registry = test_scenario::take_shared<spot::SpotClaimRegistry>(&scen);
+            let claim = test_scenario::take_shared<spot::SpotClaim>(&scen);
             let mut proposal = test_scenario::take_shared<Proposal>(&scen);
-            let mut rec = test_scenario::take_shared<spot::SpotRecord>(&scen);
+            let mut rec = test_scenario::take_shared<spot::SpotMarket>(&scen);
             let post_ref = test_scenario::take_shared<Post>(&scen);
             let mut platform = test_scenario::take_shared<Platform>(&scen);
             let treasury = test_scenario::take_shared<EcosystemTreasury>(&scen);
@@ -525,7 +534,7 @@ module social_contracts::social_proof_of_truth_tests {
             clock::increment_for_testing(&mut clock, 2);
             spot::finalize_spot_governance_proposal(
                 &cfg,
-                &mut spot_registry,
+                &mut gov_registry,
                 &mut proposal,
                 &mut rec,
                 &post_ref,
@@ -535,8 +544,10 @@ module social_contracts::social_proof_of_truth_tests {
             );
             spot::implement_spot_resolution_from_governance(
                 &cfg,
-                &mut spot_registry,
+                &mut gov_registry,
                 &mut proposal,
+                &mut claim_registry,
+                &claim,
                 &mut rec,
                 &post_ref,
                 &mut platform,
@@ -553,7 +564,9 @@ module social_contracts::social_proof_of_truth_tests {
             test_scenario::return_shared(post_ref);
             test_scenario::return_shared(rec);
             test_scenario::return_shared(proposal);
-            test_scenario::return_shared(spot_registry);
+            test_scenario::return_shared(claim);
+            test_scenario::return_shared(claim_registry);
+            test_scenario::return_shared(gov_registry);
             test_scenario::return_shared(cfg);
         };
 
@@ -571,7 +584,7 @@ module social_contracts::social_proof_of_truth_tests {
             let mut cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
             let spot_gov_id = spot::spot_governance_registry_id(&cfg);
             let clock = test_scenario::take_shared<Clock>(&scen);
-            spot::update_spot_config(&admin_cap, &mut cfg, true, 7000, 0, 0, 0, 5000, 5000, 2, 10, 1, 1000, 10, ADMIN, 0, 10000, spot_gov_id, &clock, test_scenario::ctx(&mut scen));
+            spot::update_spot_config(&admin_cap, &mut cfg, true, 7000, 0, 0, 0, 5000, 5000, 0, 0, 10000, 2, 10, 1, 1000, 10, ADMIN, 0, 10000, spot_gov_id, &clock, test_scenario::ctx(&mut scen));
             test_scenario::return_to_sender(&scen, admin_cap);
             test_scenario::return_shared(cfg);
             test_scenario::return_shared(clock);
@@ -589,6 +602,7 @@ module social_contracts::social_proof_of_truth_tests {
         {
             let oracle_admin_cap = test_scenario::take_from_sender<spot::SpotOracleAdminCap>(&scen);
             let cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
+            let mut spot_registry = test_scenario::take_shared<spot::SpotClaimRegistry>(&scen);
             let mut p = test_scenario::take_shared<Post>(&scen);
             let mut betting_options = vector::empty<String>();
             vector::push_back(&mut betting_options, string::utf8(b"Yes"));
@@ -597,6 +611,7 @@ module social_contracts::social_proof_of_truth_tests {
             spot::create_spot_record_for_post(
                 &oracle_admin_cap,
                 &cfg, 
+                &mut spot_registry,
                 &mut p, 
                 betting_options,
                 option::none(), // resolution_window_epochs - immediate resolution
@@ -607,13 +622,14 @@ module social_contracts::social_proof_of_truth_tests {
             test_scenario::return_to_sender(&scen, oracle_admin_cap);
             test_scenario::return_shared(cfg);
             test_scenario::return_shared(p);
+            test_scenario::return_shared(spot_registry);
             test_scenario::return_shared(clock);
         };
 
         // Place a bet on option 0 (Yes)
         test_scenario::next_tx(&mut scen, USER1);
         {
-            let mut rec = test_scenario::take_shared<spot::SpotRecord>(&scen);
+            let mut rec = test_scenario::take_shared<spot::SpotMarket>(&scen);
             let post_ref = test_scenario::take_shared<Post>(&scen);
             let pay = coin::mint_for_testing<MYSO>(250 * SCALING, test_scenario::ctx(&mut scen));
             let spot_cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
@@ -633,15 +649,17 @@ module social_contracts::social_proof_of_truth_tests {
         {
             let oracle_admin_cap = test_scenario::take_from_sender<spot::SpotOracleAdminCap>(&scen);
             let cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
-            let mut rec = test_scenario::take_shared<spot::SpotRecord>(&scen);
+            let mut spot_registry = test_scenario::take_shared<spot::SpotClaimRegistry>(&scen);
+            let mut rec = test_scenario::take_shared<spot::SpotMarket>(&scen);
             let post_ref = test_scenario::take_shared<Post>(&scen);
             let clock = test_scenario::take_shared<Clock>(&scen);
-            spot::refund_unresolved(&oracle_admin_cap, &cfg, &mut rec, &post_ref, &clock, test_scenario::ctx(&mut scen));
+            spot::refund_unresolved(&oracle_admin_cap, &cfg, &mut spot_registry, &mut rec, &post_ref, &clock, test_scenario::ctx(&mut scen));
             assert!(spot::get_status(&rec) == 4, 2); // REFUNDABLE
             test_scenario::return_to_sender(&scen, oracle_admin_cap);
             test_scenario::return_shared(cfg);
             test_scenario::return_shared(rec);
             test_scenario::return_shared(post_ref);
+            test_scenario::return_shared(spot_registry);
             test_scenario::return_shared(clock);
         };
 
@@ -660,7 +678,7 @@ module social_contracts::social_proof_of_truth_tests {
             let mut cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
             let spot_gov_id = spot::spot_governance_registry_id(&cfg);
             let clock = test_scenario::take_shared<Clock>(&scen);
-            spot::update_spot_config(&admin_cap, &mut cfg, true, 7000, 0, 0, 0, 5000, 5000, 2, 10, 1, 1000, 10, ADMIN, 0, 10000, spot_gov_id, &clock, test_scenario::ctx(&mut scen));
+            spot::update_spot_config(&admin_cap, &mut cfg, true, 7000, 0, 0, 0, 5000, 5000, 0, 0, 10000, 2, 10, 1, 1000, 10, ADMIN, 0, 10000, spot_gov_id, &clock, test_scenario::ctx(&mut scen));
             test_scenario::return_to_sender(&scen, admin_cap);
             test_scenario::return_shared(cfg);
             test_scenario::return_shared(clock);
@@ -679,6 +697,7 @@ module social_contracts::social_proof_of_truth_tests {
         {
             let oracle_admin_cap = test_scenario::take_from_sender<spot::SpotOracleAdminCap>(&scen);
             let cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
+            let mut spot_registry = test_scenario::take_shared<spot::SpotClaimRegistry>(&scen);
             let mut p = test_scenario::take_shared<Post>(&scen);
             let mut betting_options = vector::empty<String>();
             vector::push_back(&mut betting_options, string::utf8(b"Yes"));
@@ -687,6 +706,7 @@ module social_contracts::social_proof_of_truth_tests {
             spot::create_spot_record_for_post(
                 &oracle_admin_cap,
                 &cfg, 
+                &mut spot_registry,
                 &mut p, 
                 betting_options,
                 option::none(),
@@ -697,6 +717,7 @@ module social_contracts::social_proof_of_truth_tests {
             test_scenario::return_to_sender(&scen, oracle_admin_cap);
             test_scenario::return_shared(cfg);
             test_scenario::return_shared(p);
+            test_scenario::return_shared(spot_registry);
             test_scenario::return_shared(clock);
         };
 
@@ -715,7 +736,7 @@ module social_contracts::social_proof_of_truth_tests {
             let mut cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
             let spot_gov_id = spot::spot_governance_registry_id(&cfg);
             let clock = test_scenario::take_shared<Clock>(&scen);
-            spot::update_spot_config(&admin_cap, &mut cfg, true, 9000, 0, 0, 0, 5000, 5000, 2, 10, 1, 1000, 10, ADMIN, 0, 10000, spot_gov_id, &clock, test_scenario::ctx(&mut scen));
+            spot::update_spot_config(&admin_cap, &mut cfg, true, 9000, 0, 0, 0, 5000, 5000, 0, 0, 10000, 2, 10, 1, 1000, 10, ADMIN, 0, 10000, spot_gov_id, &clock, test_scenario::ctx(&mut scen));
             test_scenario::return_to_sender(&scen, admin_cap);
             test_scenario::return_shared(cfg);
             test_scenario::return_shared(clock);
@@ -733,6 +754,7 @@ module social_contracts::social_proof_of_truth_tests {
         {
             let oracle_admin_cap = test_scenario::take_from_sender<spot::SpotOracleAdminCap>(&scen);
             let cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
+            let mut spot_registry = test_scenario::take_shared<spot::SpotClaimRegistry>(&scen);
             let mut p = test_scenario::take_shared<Post>(&scen);
             let mut betting_options = vector::empty<String>();
             vector::push_back(&mut betting_options, string::utf8(b"Yes"));
@@ -741,6 +763,7 @@ module social_contracts::social_proof_of_truth_tests {
             spot::create_spot_record_for_post(
                 &oracle_admin_cap,
                 &cfg, 
+                &mut spot_registry,
                 &mut p, 
                 betting_options,
                 option::none(),
@@ -751,13 +774,14 @@ module social_contracts::social_proof_of_truth_tests {
             test_scenario::return_to_sender(&scen, oracle_admin_cap);
             test_scenario::return_shared(cfg);
             test_scenario::return_shared(p);
+            test_scenario::return_shared(spot_registry);
             test_scenario::return_shared(clock);
         };
 
         // Place bet
         test_scenario::next_tx(&mut scen, USER1);
         {
-            let mut rec = test_scenario::take_shared<spot::SpotRecord>(&scen);
+            let mut rec = test_scenario::take_shared<spot::SpotMarket>(&scen);
             let post_ref = test_scenario::take_shared<Post>(&scen);
             let pay = coin::mint_for_testing<MYSO>(500 * SCALING, test_scenario::ctx(&mut scen));
             let spot_cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
@@ -770,40 +794,13 @@ module social_contracts::social_proof_of_truth_tests {
             test_scenario::return_shared(clock);
         };
 
-        // Oracle resolves with low confidence -> DAO_REQUIRED
+        resolve_spot_market(&mut scen, 0, 1000, string::utf8(b"Low confidence resolution"));
+
         test_scenario::next_tx(&mut scen, ADMIN);
         {
-            let oracle_admin_cap = test_scenario::take_from_sender<spot::SpotOracleAdminCap>(&scen);
-            let cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
-            let mut rec = test_scenario::take_shared<spot::SpotRecord>(&scen);
-            let post_ref = test_scenario::take_shared<Post>(&scen);
-            let mut evidence_urls = vector::empty<String>();
-            vector::push_back(&mut evidence_urls, string::utf8(b"https://example.com/evidence"));
-            let mut platform = test_scenario::take_shared<Platform>(&scen);
-            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scen);
-            let clock = test_scenario::take_shared<Clock>(&scen);
-            spot::oracle_resolve(
-                &oracle_admin_cap,
-                &cfg, 
-                &mut rec, 
-                &post_ref,
-                &mut platform,
-                &treasury,
-                0,
-                1000, // Low confidence
-                string::utf8(b"Low confidence resolution"),
-                evidence_urls,
-                &clock,
-                test_scenario::ctx(&mut scen)
-            );
-            test_scenario::return_shared(platform);
-            test_scenario::return_shared(treasury);
-            test_scenario::return_shared(clock);
-            assert!(spot::get_status(&rec) == 2, 1); // DAO_REQUIRED
-            test_scenario::return_to_sender(&scen, oracle_admin_cap);
-            test_scenario::return_shared(cfg);
+            let rec = test_scenario::take_shared<spot::SpotMarket>(&scen);
+            assert!(spot::get_status(&rec) == 2, 1);
             test_scenario::return_shared(rec);
-            test_scenario::return_shared(post_ref);
         };
 
         // Try to withdraw when status is DAO_REQUIRED - should fail
@@ -812,11 +809,24 @@ module social_contracts::social_proof_of_truth_tests {
 
             let clock = test_scenario::take_shared<Clock>(&scen);
             let spot_cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
-            let mut rec = test_scenario::take_shared<spot::SpotRecord>(&scen);
+            let mut rec = test_scenario::take_shared<spot::SpotMarket>(&scen);
             let post_ref = test_scenario::take_shared<Post>(&scen);
             let mut platform = test_scenario::take_shared<Platform>(&scen);
             let treasury = test_scenario::take_shared<EcosystemTreasury>(&scen);
-            spot::withdraw_spot_bet(&spot_cfg, &mut rec, &post_ref, &mut platform, &treasury, 0, &clock, test_scenario::ctx(&mut scen));
+            let claim = test_scenario::take_shared<spot::SpotClaim>(&scen);
+            spot::withdraw_spot_bet(
+                &spot_cfg,
+                &claim,
+                &mut rec,
+                &post_ref,
+                &post_ref,
+                &mut platform,
+                &treasury,
+                0,
+                &clock,
+                test_scenario::ctx(&mut scen),
+            );
+            test_scenario::return_shared(claim);
             test_scenario::return_shared(platform);
             test_scenario::return_shared(treasury);
             test_scenario::return_shared(spot_cfg);
@@ -849,9 +859,12 @@ module social_contracts::social_proof_of_truth_tests {
                 0,
                 0,
                 5000,
+                0,
+                0,
+                10000,
                 2,
                 10,
-                10,
+                1,
                 5000,
                 5,
                 ADMIN,
@@ -877,6 +890,7 @@ module social_contracts::social_proof_of_truth_tests {
         {
             let oracle_admin_cap = test_scenario::take_from_sender<spot::SpotOracleAdminCap>(&scen);
             let cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
+            let mut spot_registry = test_scenario::take_shared<spot::SpotClaimRegistry>(&scen);
             let mut p = test_scenario::take_shared<Post>(&scen);
             let mut betting_options = vector::empty<String>();
             vector::push_back(&mut betting_options, string::utf8(b"Yes"));
@@ -885,6 +899,7 @@ module social_contracts::social_proof_of_truth_tests {
             spot::create_spot_record_for_post(
                 &oracle_admin_cap,
                 &cfg,
+                &mut spot_registry,
                 &mut p,
                 betting_options,
                 option::none(),
@@ -895,12 +910,13 @@ module social_contracts::social_proof_of_truth_tests {
             test_scenario::return_to_sender(&scen, oracle_admin_cap);
             test_scenario::return_shared(cfg);
             test_scenario::return_shared(p);
+            test_scenario::return_shared(spot_registry);
             test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scen, USER1);
         {
-            let mut spot_rec = test_scenario::take_shared<spot::SpotRecord>(&scen);
+            let mut spot_rec = test_scenario::take_shared<spot::SpotMarket>(&scen);
             let spot_cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
             let post_ref = test_scenario::take_shared<Post>(&scen);
             let clock = test_scenario::take_shared<Clock>(&scen);
@@ -937,7 +953,7 @@ module social_contracts::social_proof_of_truth_tests {
             let mut cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
             let spot_gov_id = spot::spot_governance_registry_id(&cfg);
             let clock = test_scenario::take_shared<Clock>(&scen);
-            spot::update_spot_config(&admin_cap, &mut cfg, true, 7000, 0, 0, 0, 5000, 5000, 2, 10, 1, 1000, 10, ADMIN, 0, 3, spot_gov_id, &clock, test_scenario::ctx(&mut scen)); // max_bets_per_record = 3
+            spot::update_spot_config(&admin_cap, &mut cfg, true, 7000, 0, 0, 0, 5000, 5000, 0, 0, 10000, 2, 10, 1, 1000, 10, ADMIN, 0, 3, spot_gov_id, &clock, test_scenario::ctx(&mut scen)); // max_bets_per_record = 3
             test_scenario::return_to_sender(&scen, admin_cap);
             test_scenario::return_shared(cfg);
             test_scenario::return_shared(clock);
@@ -958,6 +974,7 @@ module social_contracts::social_proof_of_truth_tests {
         {
             let oracle_admin_cap = test_scenario::take_from_sender<spot::SpotOracleAdminCap>(&scen);
             let cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
+            let mut spot_registry = test_scenario::take_shared<spot::SpotClaimRegistry>(&scen);
             let mut p = test_scenario::take_shared<Post>(&scen);
             let mut betting_options = vector::empty<String>();
             vector::push_back(&mut betting_options, string::utf8(b"Yes"));
@@ -966,6 +983,7 @@ module social_contracts::social_proof_of_truth_tests {
             spot::create_spot_record_for_post(
                 &oracle_admin_cap,
                 &cfg,
+                &mut spot_registry,
                 &mut p,
                 betting_options,
                 option::none(),
@@ -976,13 +994,14 @@ module social_contracts::social_proof_of_truth_tests {
             test_scenario::return_to_sender(&scen, oracle_admin_cap);
             test_scenario::return_shared(cfg);
             test_scenario::return_shared(p);
+            test_scenario::return_shared(spot_registry);
             test_scenario::return_shared(clock);
         };
 
         // Place 3 bets (at limit)
         test_scenario::next_tx(&mut scen, USER1);
         {
-            let mut spot_rec = test_scenario::take_shared<spot::SpotRecord>(&scen);
+            let mut spot_rec = test_scenario::take_shared<spot::SpotMarket>(&scen);
             let spot_cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
             let post_ref = test_scenario::take_shared<Post>(&scen);
             let clock = test_scenario::take_shared<Clock>(&scen);
@@ -996,7 +1015,7 @@ module social_contracts::social_proof_of_truth_tests {
 
         test_scenario::next_tx(&mut scen, USER2);
         {
-            let mut spot_rec = test_scenario::take_shared<spot::SpotRecord>(&scen);
+            let mut spot_rec = test_scenario::take_shared<spot::SpotMarket>(&scen);
             let spot_cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
             let post_ref = test_scenario::take_shared<Post>(&scen);
             let clock = test_scenario::take_shared<Clock>(&scen);
@@ -1010,7 +1029,7 @@ module social_contracts::social_proof_of_truth_tests {
 
         test_scenario::next_tx(&mut scen, CREATOR);
         {
-            let mut spot_rec = test_scenario::take_shared<spot::SpotRecord>(&scen);
+            let mut spot_rec = test_scenario::take_shared<spot::SpotMarket>(&scen);
             let spot_cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
             let post_ref = test_scenario::take_shared<Post>(&scen);
             let clock = test_scenario::take_shared<Clock>(&scen);
@@ -1025,7 +1044,7 @@ module social_contracts::social_proof_of_truth_tests {
         // Try to place 4th bet - should fail with ETooManyBets
         test_scenario::next_tx(&mut scen, USER1);
         {
-            let mut spot_rec = test_scenario::take_shared<spot::SpotRecord>(&scen);
+            let mut spot_rec = test_scenario::take_shared<spot::SpotMarket>(&scen);
             let spot_cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
             let post_ref = test_scenario::take_shared<Post>(&scen);
             let clock = test_scenario::take_shared<Clock>(&scen);

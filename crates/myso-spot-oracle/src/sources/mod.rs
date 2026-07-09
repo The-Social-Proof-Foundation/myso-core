@@ -9,6 +9,7 @@
 //! only the conceptual capability is shared.
 
 pub mod adapters;
+pub mod discovery_resolve;
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -20,6 +21,7 @@ use serde::{Deserialize, Serialize};
 use myso_discovery_service_core::sources::{DiscoveryDomain, SourceHealth, SourceMetadata};
 
 use crate::resolver::ResolverDefinition;
+use crate::sources::discovery_resolve::DiscoveryResolveCtx;
 use crate::store::DiscoverySourceRow;
 
 /// Auditable evidence produced by a `TrustedSource::resolve` call. Persisted in
@@ -54,16 +56,25 @@ pub trait TrustedSource: Send + Sync {
 }
 
 /// Holds `TrustedSource` impls present in the binary, keyed by adapter id. Built at
-/// startup by cross-referencing enabled `discovery_sources` rows with the default
-/// registry. Core never branches on adapter type — only `supports()` / `resolve()`.
+/// startup by cross-referencing enabled sources with the default registry.
 #[derive(Clone, Default)]
 pub struct ResolverRegistry {
     by_id: HashMap<String, Arc<dyn TrustedSource>>,
+    pub discovery_ctx: DiscoveryResolveCtx,
 }
 
 impl ResolverRegistry {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    pub fn with_discovery_ctx(mut self, ctx: DiscoveryResolveCtx) -> Self {
+        self.discovery_ctx = ctx;
+        self
+    }
+
+    pub fn discovery_ctx(&self) -> &DiscoveryResolveCtx {
+        &self.discovery_ctx
     }
 
     pub fn register(&mut self, src: Arc<dyn TrustedSource>) {
@@ -98,12 +109,10 @@ impl ResolverRegistry {
 }
 
 /// Build the default registry from every `TrustedSource` impl compiled into the
-/// binary (live V1 adapters + scaffolded stubs). V1 adapters replace the live
-/// placeholders in the v1-adapters phase; stubs report `disabled` health and never
-/// resolve in E2E.
-pub fn build_default_registry() -> ResolverRegistry {
-    let mut reg = ResolverRegistry::new();
-    for src in adapters::all_default_sources() {
+/// binary (live V1 adapters + scaffolded stubs).
+pub fn build_default_registry(discovery_ctx: DiscoveryResolveCtx) -> ResolverRegistry {
+    let mut reg = ResolverRegistry::new().with_discovery_ctx(discovery_ctx.clone());
+    for src in adapters::all_default_sources(discovery_ctx) {
         reg.register(src);
     }
     reg
@@ -139,7 +148,7 @@ pub fn build_registry_from_sources(
     default: &ResolverRegistry,
     rows: &[DiscoverySourceRow],
 ) -> ResolverRegistry {
-    let mut reg = ResolverRegistry::new();
+    let mut reg = ResolverRegistry::new().with_discovery_ctx(default.discovery_ctx.clone());
     for row in rows.iter().filter(|r| r.enabled) {
         for trusted_id in trusted_ids_for_row(row) {
             if let Some(src) = default.get(&trusted_id) {
@@ -147,7 +156,6 @@ pub fn build_registry_from_sources(
             }
         }
     }
-    // Always register core V1 price adapters when any factual source is enabled.
     if !rows.iter().any(|r| r.enabled) {
         return reg;
     }
@@ -159,4 +167,23 @@ pub fn build_registry_from_sources(
         }
     }
     reg
+}
+
+/// Build registry from Discovery `/v1/sources` summaries (no local YAML).
+pub fn build_registry_from_discovery_summaries(
+    default: &ResolverRegistry,
+    summaries: &[myso_discovery_service_core::api::SourceSummary],
+) -> ResolverRegistry {
+    let rows: Vec<DiscoverySourceRow> = summaries
+        .iter()
+        .map(|s| DiscoverySourceRow {
+            id: crate::store::uuid_v5_named(&s.id),
+            adapter_type: s.adapter_type.clone(),
+            domain: s.domain.clone(),
+            trust_score: s.trust_score,
+            enabled: s.enabled,
+            config: serde_json::json!({}),
+        })
+        .collect();
+    build_registry_from_sources(default, &rows)
 }

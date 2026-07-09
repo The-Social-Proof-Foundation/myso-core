@@ -118,6 +118,28 @@ The following is a list of possible options and flags to pass to `myso start`. U
           Override the social API server host and port. Defaults to 0.0.0.0:9126
           when `--with-social-indexer` is set.
 
+      --with-spot[=<SPOT_ORACLE_HOST_PORT>]
+          Start discovery (factual sources) + the SPoT oracle. Default listen
+          `0.0.0.0:8097`. Requires `--with-social-indexer`. Discovery Postgres
+          uses host port 5434; spot-oracle Postgres uses 5435.
+
+      --with-poc[=<POC_API_HOST_PORT>]
+          Start discovery (media sources, embed on) + Proof of Creativity via
+          `docker compose --profile app` in the sibling `proof-of-creativity`
+          repo. Default API port 8000. Override repo with `--poc-repo` or
+          `MYSO_POC_REPO`. Shared embed secret defaults to `discovery-secret`.
+
+      --poc-repo <PATH>
+          Path to the local `proof-of-creativity` repository.
+
+      --with-messaging[=<MESSAGING_RELAYER_HOST_PORT>]
+          Start the messaging relayer from sibling `myso-messaging-stack/relayer`.
+          Default listen `0.0.0.0:3003`. Uses in-memory storage. Override repo
+          with `--messaging-repo` or `MYSO_MESSAGING_REPO`.
+
+      --messaging-repo <PATH>
+          Path to the local `myso-messaging-stack` repository.
+
       --fullnode-rpc-port <FULLNODE_RPC_PORT>
           Port to start the Fullnode RPC server on. Default port is 9000
           
@@ -235,6 +257,43 @@ The response resembles the following:
 │ 0xf61c8b21b305cc8e062b3a37de8c3a37583e17f437a449a2ab42321d019aeeb4 │ 200000000  │
 ╰────────────────────────────────────────────────────────────────────┴────────────╯
 ```
+
+## Spot, PoC, and messaging sidecars
+
+`myso start` can also launch discovery, SPoT oracle, Proof of Creativity, and the messaging relayer as external processes (same pattern as `--with-mydata`):
+
+```sh
+myso start --with-faucet --force-regenesis \
+  --with-indexer=postgres://postgres@localhost:5432/sui_indexer \
+  --with-social-indexer --with-graphql \
+  --with-spot --with-poc --with-messaging
+```
+
+Discovery policy:
+
+| Flags | Discovery | Sources YAML |
+|-------|-----------|--------------|
+| `--with-spot` only | once | factual |
+| `--with-poc` only | once | media (embed on) |
+| both | **once** | combined (embed on) |
+| neither | not started | — |
+
+Prerequisites:
+
+- Build workspace binaries: `cargo build -p myso-discovery-service -p myso-spot-oracle`
+- Build messaging relayer: `cd ../myso-messaging-stack/relayer && cargo build -p messaging-relayer`
+- Docker for discovery/spot Postgres and for PoC (`docker compose --profile app`)
+- Sibling repos (or overrides): `proof-of-creativity` (`MYSO_POC_REPO` / `--poc-repo`), `myso-messaging-stack` (`MYSO_MESSAGING_REPO` / `--messaging-repo`)
+
+Default ports: discovery `8096`, spot-oracle `8097`, PoC API `8000`, messaging relayer `3003`. Local embed/admin secrets default to `discovery-secret` / `local-discovery-admin`.
+
+After `myso start --with-poc`, validate the full PoC loop (grpc-sync worker attestation, on-chain Move event asserts, discovery embed, mock username claim):
+
+```sh
+ASSUME_YES=1 ./scripts/poc-e2e-runnable.sh --run-all
+```
+
+Partial runs: `--skip-discovery`, `--skip-claim`, or `--direct-move` for HTTP analyze instead of worker attestation.
 
 ## Generate example data
 

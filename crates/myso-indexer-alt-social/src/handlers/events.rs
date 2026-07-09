@@ -644,32 +644,8 @@ pub struct BcsVestingWalletDeletedEvent {
     deleted_at: u64,
 }
 
-/// Legacy layout before `poc_redirection_kind` was appended (still emitted by older deployments).
-#[derive(Debug, Deserialize)]
-pub struct BcsPostCreatedEventLegacy {
-    post_id: AccountAddress,
-    owner: AccountAddress,
-    profile_id: AccountAddress,
-    platform_id: AccountAddress,
-    permissions: u8,
-    content: String,
-    post_type: String,
-    parent_post_id: Option<AccountAddress>,
-    mentions: Option<Vec<AccountAddress>>,
-    media_urls: Option<Vec<String>>,
-    metadata_json: Option<String>,
-    mydata_id: Option<AccountAddress>,
-    promotion_id: Option<AccountAddress>,
-    revenue_redirect_to: Option<AccountAddress>,
-    revenue_redirect_percentage: Option<u64>,
-    enable_spt: bool,
-    enable_poc: bool,
-    enable_spot: bool,
-    spot_id: Option<AccountAddress>,
-    spt_id: Option<AccountAddress>,
-}
-
-#[derive(Debug, Deserialize)]
+/// Matches Move `post::PostCreatedEvent`.
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsPostCreatedEvent {
     post_id: AccountAddress,
     owner: AccountAddress,
@@ -687,34 +663,6 @@ pub struct BcsPostCreatedEvent {
     revenue_redirect_to: Option<AccountAddress>,
     revenue_redirect_percentage: Option<u64>,
     enable_spt: bool,
-    enable_poc: bool,
-    enable_spot: bool,
-    spot_id: Option<AccountAddress>,
-    spt_id: Option<AccountAddress>,
-    /// Matches Move `PostCreatedEvent.poc_redirection_kind` / `Post.poc_redirection_kind`.
-    poc_redirection_kind: u8,
-}
-
-/// Current layout with sub-agent attribution and organization tail fields.
-#[derive(Debug, Deserialize, Serialize)]
-pub struct BcsPostCreatedEventWithOrganization {
-    post_id: AccountAddress,
-    owner: AccountAddress,
-    profile_id: AccountAddress,
-    platform_id: AccountAddress,
-    permissions: u8,
-    content: String,
-    post_type: String,
-    parent_post_id: Option<AccountAddress>,
-    mentions: Option<Vec<AccountAddress>>,
-    media_urls: Option<Vec<String>>,
-    metadata_json: Option<String>,
-    mydata_id: Option<AccountAddress>,
-    promotion_id: Option<AccountAddress>,
-    revenue_redirect_to: Option<AccountAddress>,
-    revenue_redirect_percentage: Option<u64>,
-    enable_spt: bool,
-    enable_poc: bool,
     enable_spot: bool,
     spot_id: Option<AccountAddress>,
     spt_id: Option<AccountAddress>,
@@ -722,35 +670,6 @@ pub struct BcsPostCreatedEventWithOrganization {
     actor_address: AccountAddress,
     sub_agent_id: Option<BcsMoveObjectId>,
     organization_id: Option<BcsMoveObjectId>,
-    action_identity_class: u8,
-}
-
-/// Previous attribution layout without `organization_id`.
-#[derive(Debug, Deserialize)]
-pub struct BcsPostCreatedEventWithAttribution {
-    post_id: AccountAddress,
-    owner: AccountAddress,
-    profile_id: AccountAddress,
-    platform_id: AccountAddress,
-    permissions: u8,
-    content: String,
-    post_type: String,
-    parent_post_id: Option<AccountAddress>,
-    mentions: Option<Vec<AccountAddress>>,
-    media_urls: Option<Vec<String>>,
-    metadata_json: Option<String>,
-    mydata_id: Option<AccountAddress>,
-    promotion_id: Option<AccountAddress>,
-    revenue_redirect_to: Option<AccountAddress>,
-    revenue_redirect_percentage: Option<u64>,
-    enable_spt: bool,
-    enable_poc: bool,
-    enable_spot: bool,
-    spot_id: Option<AccountAddress>,
-    spt_id: Option<AccountAddress>,
-    poc_redirection_kind: u8,
-    actor_address: AccountAddress,
-    sub_agent_id: Option<BcsMoveObjectId>,
     action_identity_class: u8,
 }
 
@@ -771,7 +690,6 @@ struct ParsedPostCreated {
     revenue_redirect_to: Option<AccountAddress>,
     revenue_redirect_percentage: Option<u64>,
     enable_spt: bool,
-    enable_poc: bool,
     enable_spot: bool,
     spot_id: Option<AccountAddress>,
     spt_id: Option<AccountAddress>,
@@ -780,70 +698,6 @@ struct ParsedPostCreated {
     sub_agent_id: Option<String>,
     organization_id: Option<String>,
     action_identity_class: u8,
-}
-
-impl From<BcsPostCreatedEventWithOrganization> for ParsedPostCreated {
-    fn from(ev: BcsPostCreatedEventWithOrganization) -> Self {
-        Self {
-            post_id: ev.post_id,
-            owner: ev.owner,
-            profile_id: ev.profile_id,
-            platform_id: ev.platform_id,
-            permissions: ev.permissions,
-            content: ev.content,
-            post_type: ev.post_type,
-            parent_post_id: ev.parent_post_id,
-            mentions: ev.mentions,
-            media_urls: ev.media_urls,
-            metadata_json: ev.metadata_json,
-            mydata_id: ev.mydata_id,
-            promotion_id: ev.promotion_id,
-            revenue_redirect_to: ev.revenue_redirect_to,
-            revenue_redirect_percentage: ev.revenue_redirect_percentage,
-            enable_spt: ev.enable_spt,
-            enable_poc: ev.enable_poc,
-            enable_spot: ev.enable_spot,
-            spot_id: ev.spot_id,
-            spt_id: ev.spt_id,
-            poc_redirection_kind: ev.poc_redirection_kind,
-            actor_address: ev.actor_address,
-            sub_agent_id: optional_move_object_id_json(&ev.sub_agent_id),
-            organization_id: optional_move_object_id_json(&ev.organization_id),
-            action_identity_class: ev.action_identity_class,
-        }
-    }
-}
-
-impl From<BcsPostCreatedEventWithAttribution> for ParsedPostCreated {
-    fn from(ev: BcsPostCreatedEventWithAttribution) -> Self {
-        Self {
-            post_id: ev.post_id,
-            owner: ev.owner,
-            profile_id: ev.profile_id,
-            platform_id: ev.platform_id,
-            permissions: ev.permissions,
-            content: ev.content,
-            post_type: ev.post_type,
-            parent_post_id: ev.parent_post_id,
-            mentions: ev.mentions,
-            media_urls: ev.media_urls,
-            metadata_json: ev.metadata_json,
-            mydata_id: ev.mydata_id,
-            promotion_id: ev.promotion_id,
-            revenue_redirect_to: ev.revenue_redirect_to,
-            revenue_redirect_percentage: ev.revenue_redirect_percentage,
-            enable_spt: ev.enable_spt,
-            enable_poc: ev.enable_poc,
-            enable_spot: ev.enable_spot,
-            spot_id: ev.spot_id,
-            spt_id: ev.spt_id,
-            poc_redirection_kind: ev.poc_redirection_kind,
-            actor_address: ev.actor_address,
-            sub_agent_id: optional_move_object_id_json(&ev.sub_agent_id),
-            organization_id: None,
-            action_identity_class: ev.action_identity_class,
-        }
-    }
 }
 
 impl From<BcsPostCreatedEvent> for ParsedPostCreated {
@@ -865,69 +719,25 @@ impl From<BcsPostCreatedEvent> for ParsedPostCreated {
             revenue_redirect_to: ev.revenue_redirect_to,
             revenue_redirect_percentage: ev.revenue_redirect_percentage,
             enable_spt: ev.enable_spt,
-            enable_poc: ev.enable_poc,
             enable_spot: ev.enable_spot,
             spot_id: ev.spot_id,
             spt_id: ev.spt_id,
             poc_redirection_kind: ev.poc_redirection_kind,
-            actor_address: ev.owner,
-            sub_agent_id: None,
-            organization_id: None,
-            action_identity_class: 0,
+            actor_address: ev.actor_address,
+            sub_agent_id: optional_move_object_id_json(&ev.sub_agent_id),
+            organization_id: optional_move_object_id_json(&ev.organization_id),
+            action_identity_class: ev.action_identity_class,
         }
     }
 }
 
-impl From<BcsPostCreatedEventLegacy> for ParsedPostCreated {
-    fn from(l: BcsPostCreatedEventLegacy) -> Self {
-        ParsedPostCreated::from(BcsPostCreatedEvent::from(l))
-    }
-}
-
 fn bcs_post_created_from_bytes(contents: &[u8]) -> Result<ParsedPostCreated, EventParseError> {
-    if let Ok(ev) = bcs::from_bytes::<BcsPostCreatedEventWithOrganization>(contents) {
-        return Ok(ParsedPostCreated::from(ev));
-    }
-    if let Ok(ev) = bcs::from_bytes::<BcsPostCreatedEventWithAttribution>(contents) {
-        return Ok(ParsedPostCreated::from(ev));
-    }
-    if let Ok(ev) = bcs::from_bytes::<BcsPostCreatedEvent>(contents) {
-        return Ok(ParsedPostCreated::from(ev));
-    }
-    match bcs::from_bytes::<BcsPostCreatedEventLegacy>(contents) {
+    match bcs::from_bytes::<BcsPostCreatedEvent>(contents) {
         Ok(ev) => Ok(ParsedPostCreated::from(ev)),
         Err(e) => Err(EventParseError {
             error: format!("PostCreatedEvent BCS: {}", e),
             contents: contents.to_vec(),
         }),
-    }
-}
-
-impl From<BcsPostCreatedEventLegacy> for BcsPostCreatedEvent {
-    fn from(l: BcsPostCreatedEventLegacy) -> Self {
-        Self {
-            post_id: l.post_id,
-            owner: l.owner,
-            profile_id: l.profile_id,
-            platform_id: l.platform_id,
-            permissions: l.permissions,
-            content: l.content,
-            post_type: l.post_type,
-            parent_post_id: l.parent_post_id,
-            mentions: l.mentions,
-            media_urls: l.media_urls,
-            metadata_json: l.metadata_json,
-            mydata_id: l.mydata_id,
-            promotion_id: l.promotion_id,
-            revenue_redirect_to: l.revenue_redirect_to,
-            revenue_redirect_percentage: l.revenue_redirect_percentage,
-            enable_spt: l.enable_spt,
-            enable_poc: l.enable_poc,
-            enable_spot: l.enable_spot,
-            spot_id: l.spot_id,
-            spt_id: l.spt_id,
-            poc_redirection_kind: 0,
-        }
     }
 }
 
@@ -2279,18 +2089,23 @@ pub struct BcsDistributionRecordedEvent {
 #[derive(Debug, Deserialize)]
 pub struct BcsSpotBetPlacedEvent {
     post_id: AccountAddress,
+    market_id: AccountAddress,
     user: AccountAddress,
     option_id: u8,
     amount: u64,
     timestamp_ms: u64,
+    referrer_post_id: Option<AccountAddress>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct BcsSpotResolvedEvent {
     post_id: AccountAddress,
+    market_id: AccountAddress,
+    claim_id: AccountAddress,
     outcome: u8,
     total_escrow: u64,
     fee_taken: u64,
+    creator_fee_total: u64,
     reasoning: String,
     evidence_urls: Vec<String>,
 }
@@ -2329,6 +2144,9 @@ pub struct BcsSpotConfigUpdatedEvent {
     payout_delay_ms: u64,
     platform_fee_bps: u64,
     ecosystem_fee_bps: u64,
+    creator_fee_bps: u64,
+    creator_claim_window_ms: u64,
+    expired_creator_ecosystem_bps: u64,
     min_betting_options: u64,
     max_betting_options: u64,
     min_reasoning_length: u64,
@@ -2373,6 +2191,58 @@ pub struct BcsSpotGovernanceProposalClearedEvent {
     post_id: AccountAddress,
     spot_record_id: AccountAddress,
     proposal_id: AccountAddress,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsSpotClaimCreatedEvent {
+    claim_id: AccountAddress,
+    semantic_claim_hash: Vec<u8>,
+    created_at_ms: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsSpotMarketCreatedEvent {
+    market_id: AccountAddress,
+    claim_id: AccountAddress,
+    market_key_hash: Vec<u8>,
+    primary_post_id: AccountAddress,
+    created_at_ms: u64,
+    betting_options: Vec<String>,
+    resolution_window_ms: Option<u64>,
+    max_resolution_window_ms: Option<u64>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsSpotPostLinkedEvent {
+    post_id: AccountAddress,
+    claim_id: AccountAddress,
+    market_id: Option<AccountAddress>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsSpotCreatorPayoutAccruedEvent {
+    market_id: AccountAddress,
+    payout_id: u64,
+    creator: AccountAddress,
+    referrer_post_id: AccountAddress,
+    amount: u64,
+    expires_at_ms: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsSpotCreatorPayoutClaimedEvent {
+    market_id: AccountAddress,
+    payout_id: u64,
+    creator: AccountAddress,
+    amount: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsSpotCreatorPayoutReclaimedEvent {
+    market_id: AccountAddress,
+    payout_id: u64,
+    ecosystem_amount: u64,
+    platform_amount: u64,
 }
 
 // Upgrade event structs - field order matches upgrade.move
@@ -3678,7 +3548,6 @@ fn parse_post_event(
                 "revenue_redirect_to": ev.revenue_redirect_to.as_ref().map(addr_to_string),
                 "revenue_redirect_percentage": ev.revenue_redirect_percentage,
                 "enable_spt": ev.enable_spt,
-                "enable_poc": ev.enable_poc,
                 "enable_spot": ev.enable_spot,
                 "spot_id": ev.spot_id.as_ref().map(addr_to_string),
                 "spt_id": ev.spt_id.as_ref().map(addr_to_string),
@@ -5288,10 +5157,12 @@ fn parse_spot_event(
                 .map_err(|e| bcs_parse_err(e, contents))?;
             Ok(Some(serde_json::json!({
                 "post_id": addr_to_string(&ev.post_id),
+                "market_id": addr_to_string(&ev.market_id),
                 "user": addr_to_string(&ev.user),
                 "option_id": ev.option_id,
                 "amount": ev.amount,
                 "timestamp_ms": ev.timestamp_ms,
+                "referrer_post_id": ev.referrer_post_id.as_ref().map(addr_to_string),
             })))
         }
         "SpotResolvedEvent" | "ResolvedEvent" => {
@@ -5299,9 +5170,12 @@ fn parse_spot_event(
                 .map_err(|e| bcs_parse_err(e, contents))?;
             Ok(Some(serde_json::json!({
                 "post_id": addr_to_string(&ev.post_id),
+                "market_id": addr_to_string(&ev.market_id),
+                "claim_id": addr_to_string(&ev.claim_id),
                 "outcome": ev.outcome,
                 "total_escrow": ev.total_escrow,
                 "fee_taken": ev.fee_taken,
+                "creator_fee_total": ev.creator_fee_total,
                 "reasoning": ev.reasoning,
                 "evidence_urls": ev.evidence_urls,
             })))
@@ -5348,6 +5222,9 @@ fn parse_spot_event(
                 "payout_delay_ms": ev.payout_delay_ms,
                 "platform_fee_bps": ev.platform_fee_bps,
                 "ecosystem_fee_bps": ev.ecosystem_fee_bps,
+                "creator_fee_bps": ev.creator_fee_bps,
+                "creator_claim_window_ms": ev.creator_claim_window_ms,
+                "expired_creator_ecosystem_bps": ev.expired_creator_ecosystem_bps,
                 "min_betting_options": ev.min_betting_options,
                 "max_betting_options": ev.max_betting_options,
                 "min_reasoning_length": ev.min_reasoning_length,
@@ -5400,6 +5277,70 @@ fn parse_spot_event(
                 "post_id": addr_to_string(&ev.post_id),
                 "spot_record_id": addr_to_string(&ev.spot_record_id),
                 "proposal_id": addr_to_string(&ev.proposal_id),
+            })))
+        }
+        "SpotClaimCreatedEvent" => {
+            let ev = bcs::from_bytes::<BcsSpotClaimCreatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "claim_id": addr_to_string(&ev.claim_id),
+                "semantic_claim_hash": format!("0x{}", hex::encode(&ev.semantic_claim_hash)),
+                "created_at_ms": ev.created_at_ms,
+            })))
+        }
+        "SpotMarketCreatedEvent" => {
+            let ev = bcs::from_bytes::<BcsSpotMarketCreatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "market_id": addr_to_string(&ev.market_id),
+                "claim_id": addr_to_string(&ev.claim_id),
+                "market_key_hash": format!("0x{}", hex::encode(&ev.market_key_hash)),
+                "primary_post_id": addr_to_string(&ev.primary_post_id),
+                "created_at_ms": ev.created_at_ms,
+                "betting_options": ev.betting_options,
+                "resolution_window_ms": ev.resolution_window_ms,
+                "max_resolution_window_ms": ev.max_resolution_window_ms,
+            })))
+        }
+        "SpotPostLinkedEvent" => {
+            let ev = bcs::from_bytes::<BcsSpotPostLinkedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "post_id": addr_to_string(&ev.post_id),
+                "claim_id": addr_to_string(&ev.claim_id),
+                "market_id": ev.market_id.as_ref().map(addr_to_string),
+            })))
+        }
+        "SpotCreatorPayoutAccruedEvent" => {
+            let ev = bcs::from_bytes::<BcsSpotCreatorPayoutAccruedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "market_id": addr_to_string(&ev.market_id),
+                "payout_id": ev.payout_id,
+                "creator": addr_to_string(&ev.creator),
+                "referrer_post_id": addr_to_string(&ev.referrer_post_id),
+                "amount": ev.amount,
+                "expires_at_ms": ev.expires_at_ms,
+            })))
+        }
+        "SpotCreatorPayoutClaimedEvent" => {
+            let ev = bcs::from_bytes::<BcsSpotCreatorPayoutClaimedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "market_id": addr_to_string(&ev.market_id),
+                "payout_id": ev.payout_id,
+                "creator": addr_to_string(&ev.creator),
+                "amount": ev.amount,
+            })))
+        }
+        "SpotCreatorPayoutReclaimedEvent" => {
+            let ev = bcs::from_bytes::<BcsSpotCreatorPayoutReclaimedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "market_id": addr_to_string(&ev.market_id),
+                "payout_id": ev.payout_id,
+                "ecosystem_amount": ev.ecosystem_amount,
+                "platform_amount": ev.platform_amount,
             })))
         }
         _ => Ok(None),
@@ -6045,7 +5986,7 @@ mod tests {
 
     #[test]
     fn test_parse_post_created_event_json_fallback() {
-        let json = r#"{"post_id":"0x123","owner":"0x456","profile_id":"0x789","content":"hello","post_type":"post","parent_post_id":null,"mentions":null,"media_urls":null,"metadata_json":null,"mydata_id":null,"promotion_id":null,"revenue_redirect_to":null,"revenue_redirect_percentage":null,"enable_spt":false,"enable_poc":false,"enable_spot":false,"spot_id":null,"spt_id":null}"#;
+        let json = r#"{"post_id":"0x123","owner":"0x456","profile_id":"0x789","content":"hello","post_type":"post","parent_post_id":null,"mentions":null,"media_urls":null,"metadata_json":null,"mydata_id":null,"promotion_id":null,"revenue_redirect_to":null,"revenue_redirect_percentage":null,"enable_spt":false,"enable_spot":false,"spot_id":null,"spt_id":null}"#;
         let result = parse_event_contents("post", "PostCreatedEvent", json.as_bytes());
         assert!(
             result.is_ok(),
@@ -7049,8 +6990,8 @@ mod tests {
 
     fn sample_post_created_with_attribution(
         organization_id: Option<BcsMoveObjectId>,
-    ) -> BcsPostCreatedEventWithOrganization {
-        BcsPostCreatedEventWithOrganization {
+    ) -> BcsPostCreatedEvent {
+        BcsPostCreatedEvent {
             post_id: AccountAddress::from_hex_literal("0x1").unwrap(),
             owner: AccountAddress::from_hex_literal("0x2").unwrap(),
             profile_id: AccountAddress::from_hex_literal("0x3").unwrap(),
@@ -7067,7 +7008,6 @@ mod tests {
             revenue_redirect_to: None,
             revenue_redirect_percentage: None,
             enable_spt: false,
-            enable_poc: true,
             enable_spot: false,
             spot_id: None,
             spt_id: None,
@@ -7223,6 +7163,9 @@ mod tests {
             payout_delay_ms: 12_000,
             platform_fee_bps: 50,
             ecosystem_fee_bps: 50,
+            creator_fee_bps: 100,
+            creator_claim_window_ms: 7_776_000_000,
+            expired_creator_ecosystem_bps: 10_000,
             min_betting_options: 2,
             max_betting_options: 10,
             min_reasoning_length: 10,

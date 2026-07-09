@@ -6,7 +6,7 @@ use async_trait::async_trait;
 
 use crate::sources::http_client::HttpFetchClient;
 use crate::sources::{
-    DiscoveryDomain, DiscoverySource, RawDiscoveryRecord, SourceConfig, SourceHealth,
+    ContentKind, DiscoveryDomain, DiscoverySource, RawDiscoveryRecord, SourceConfig, SourceHealth,
     SourceMetadata,
 };
 
@@ -93,6 +93,7 @@ impl DiscoverySource for GithubReleasesAdapter {
             records.push(RawDiscoveryRecord {
                 external_source_url: html_url.clone(),
                 media_type: "text/html".to_string(),
+                content_kind: ContentKind::Text,
                 title: name.or(Some(tag.clone())),
                 creator_x_handle: None,
                 trust_score: config.trust_score,

@@ -10,18 +10,22 @@ edition = "2021"
 anyhow.workspace = true
 async-trait = "0.1"
 axum = { version = "0.7", features = ["json"] }
+bcs.workspace = true
 chrono = { workspace = true, features = ["serde"] }
 clap = { workspace = true, features = ["env"] }
 figment = { version = "0.10", features = ["env", "toml"] }
+futures.workspace = true
 hex = "0.4"
 myso-discovery-service-core = { path = "../myso-discovery-service-core" }
 myso-discovery-service-schema = { path = "../myso-discovery-service-schema" }
 myso-futures = { path = "../myso-futures" }
 myso-indexer-alt-metrics = { path = "../myso-indexer-alt-metrics" }
 myso-json-rpc-types.workspace = true
+myso-rpc.workspace = true
 myso-sdk.workspace = true
 myso-spot-oracle-schema = { path = "../myso-spot-oracle-schema" }
 myso-types.workspace = true
+move-core-types.workspace = true
 prometheus = "0.13"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 serde = { workspace = true, features = ["derive"] }
@@ -31,6 +35,7 @@ sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "uuid"
 thiserror = "2"
 tokio = { workspace = true, features = ["full"] }
 tokio-util = "0.7"
+tonic.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 uuid = { version = "1", features = ["v4", "v5", "serde"] }

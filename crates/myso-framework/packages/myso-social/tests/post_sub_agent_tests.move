@@ -254,7 +254,6 @@ module social_contracts::post_sub_agent_tests {
                 option::none(),
                 option::none(),
                 option::none(),
-                option::none(),
                 &mydata_registry,
                 &memory_account,
                 &clock,

@@ -59,6 +59,18 @@ pub struct OracleArgs {
     #[arg(long, env = "SPOT_ORACLE_ADMIN_CAP_OBJECT_ID")]
     pub admin_cap_object_id: Option<String>,
 
+    /// Shared `SpotClaimRegistry` object ID (required for claim/market PTBs).
+    #[arg(long, env = "SPOT_ORACLE_REGISTRY_OBJECT_ID")]
+    pub spot_registry_object_id: Option<String>,
+
+    /// Shared `Platform` object ID (required for on-chain `oracle_resolve`).
+    #[arg(long, env = "SPOT_ORACLE_PLATFORM_OBJECT_ID")]
+    pub platform_object_id: Option<String>,
+
+    /// Shared `EcosystemTreasury` object ID (required for on-chain `oracle_resolve`).
+    #[arg(long, env = "SPOT_ORACLE_ECOSYSTEM_TREASURY_OBJECT_ID")]
+    pub ecosystem_treasury_object_id: Option<String>,
+
     /// Social-server base URL (pending-posts ingestion + indexed SPoT reads).
     #[arg(
         long,
@@ -97,6 +109,10 @@ pub struct OracleArgs {
     #[arg(long, env = "SPOT_ORACLE_RECONCILE_INTERVAL_SECS", default_value = "120")]
     pub reconcile_interval_secs: u64,
 
+    /// Confidence threshold (bps) matching on-chain SpotConfig default (70%).
+    #[arg(long, env = "SPOT_ORACLE_CONFIDENCE_THRESHOLD_BPS", default_value = "7000")]
+    pub confidence_threshold_bps: u64,
+
     /// Persist raw evidence bodies (config: `SPOT_ORACLE_STORE_RAW_EVIDENCE=true`).
     #[arg(long, env = "SPOT_ORACLE_STORE_RAW_EVIDENCE", default_value = "true")]
     pub store_raw_evidence: bool,
@@ -108,6 +124,26 @@ pub struct OracleArgs {
     /// Master switch for background workers (API + metrics still serve when false).
     #[arg(long, env = "SPOT_ORACLE_ENABLED", default_value = "true")]
     pub enabled: bool,
+
+    /// gRPC endpoint for `SubscribeCheckpoints` claim ingest.
+    #[arg(long, env = "SPOT_ORACLE_STREAMING_URL")]
+    pub streaming_url: Option<String>,
+
+    /// Claim ingest mode: `checkpoint`, `http`, or `both`.
+    #[arg(long, env = "SPOT_ORACLE_INGEST_MODE", default_value = "checkpoint")]
+    pub ingest_mode: String,
+
+    /// Discovery service base URL for factual `/v1/*` settlement fetches.
+    #[arg(long, env = "SPOT_ORACLE_DISCOVERY_CLIENT_URL")]
+    pub discovery_client_url: Option<String>,
+
+    /// Secret for `x-discovery-client-secret` on Discovery factual API.
+    #[arg(long, env = "SPOT_ORACLE_DISCOVERY_CLIENT_SECRET")]
+    pub discovery_client_secret: Option<String>,
+
+    /// On-chain social package id for filtering `PostCreatedEvent`.
+    #[arg(long, env = "SPOT_ORACLE_SOCIAL_PACKAGE_ID", default_value = "0x50c1")]
+    pub social_package_id: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -123,5 +159,17 @@ impl OracleArgs {
             .merge(Toml::file("config/default.toml").nested())
             .merge(Toml::file("config/local.toml").nested())
             .merge(Env::prefixed("SPOT_ORACLE_").split("_"))
+    }
+
+    pub fn uses_checkpoint_ingest(&self) -> bool {
+        matches!(self.ingest_mode.as_str(), "checkpoint" | "both")
+    }
+
+    pub fn uses_http_ingest(&self) -> bool {
+        matches!(self.ingest_mode.as_str(), "http" | "both")
+    }
+
+    pub fn uses_discovery_client(&self) -> bool {
+        self.discovery_client_url.is_some()
     }
 }

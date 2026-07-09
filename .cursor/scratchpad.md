@@ -43,7 +43,12 @@ Plan reference: `.cursor/plans/dynamic_config_e2e_8fffcc98.plan.md` (Phases 0–
   social-reader `get_*_config` methods (incl. the gap-fix `get_ai_credit_config`) and
   `get_ecosystem_treasury` + `EcosystemTreasuryRow`.
 
-## High-Level Task Breakdown (plan todos + status)
+## Remove PoC Opt-In + SPT Auto-Bootstrap (2026-07-09)
+- **Move:** `Post.enable_flags` → explicit `enable_spt` / `enable_spot`; removed `enable_poc` and `is_poc_enabled` gate in PoC; `poc_disputes_submitted` moved to dynamic field (VM 32-field limit). SPT pool creation is explicit via `social_proof_tokens::create_reservation_pool_for_post` (not auto-bootstrapped at post create).
+- **Off-chain:** `enable_poc` removed from migration (in-place), schema, indexer events/handlers, reader, GraphQL, social server, spot-oracle ingest.
+- **Scripts:** PTBs use `post::create_post`; separate `create_reservation_pool_for_post` when user enables SPT.
+- **Verify:** `myso move test -e localnet` 316/316; `cargo nextest run -p myso-indexer-alt-social -p myso-indexer-alt-graphql --lib` 292/292; e2e runnable scripts require live localnet (not run here).
+
 1. **move-batch1** — AiCreditConfig (+oracle_markup_bps, update_min_deposit, pubkey event
    fix), PostConfig promotion fields, SPT non-platform split bps, EcosystemTreasury
    profile_sale_fee_bps — **completed**
@@ -269,4 +274,128 @@ ASSUME_YES=1 ./scripts/post-promotion-runnable.sh --refresh-session --run-all
 ```
 
 Session files: `network.config/username-marketplace/marketplace-session.env`, `network.config/post-promotion/promotion-session.env`.
+
+---
+
+## Discovery Framework E2E Completion (2026-07-08)
+
+Plan: discovery E2E completion (Phases 1–4). Do not edit the plan file.
+
+### Project Status Board
+- [x] Phase 1 — Harden discovery (`source_id`, embed Fail lifecycle, metrics/admin/retries, manual_curated gate)
+- [x] Phase 2 — SPoT post helper + pending-posts + `--run-all-onchain`
+- [x] Phase 3 — `discovery-poc-runnable.sh` + ARCHITECTURE.md ports/secrets matrix
+- [x] Phase 4 — session/compose polish, dead config cleanup, clippy `--no-deps -D warnings`
+- [x] Greenfield migration fold — `max_attempts`/`run_after` inlined into `20260708000000_initial_discovery_schema`; deleted `20260708000002_discovery_jobs_retry`
+
+### Lessons
+- Prefer editing the initial greenfield migration over additive ALTER migrations while schemas are still unpublished.
+- `cargo xclippy -p` is unsupported; use `cargo clippy -p … --no-deps -- -D warnings` for touched crates.
+- On-chain SPoT E2E needs full `oracle_resolve` PTB (platform + treasury + spot_record_id from create objectChanges); script asserts accepted → active+spot_id → evidence → resolved.
+- `SPOT_ORACLE_ONCHAIN=1` is an alias for `--run-all-onchain`.
+
+---
+
+## Discovery Media vs Text Split (2026-07-08)
+
+Plan: `discovery_media_text_split_*.plan.md` (do not edit). Creative media → PoC; factual text → SPoT.
+
+### Project Status Board
+- [x] Core: `ContentKind`, `normalize_media_type`, adapters + normalizer
+- [x] Schema/store: `content_kind` on `discovery_assets` (greenfield initial migration) + upsert
+- [x] Scheduler: embed only `creative` + `media` when embed enabled; `skipped_non_media` metric
+- [x] Configs/scripts: `sources.media.localnet.yaml`; poc-runnable defaults to media + `MANUAL_CURATED=1`
+- [x] PoC: 400 non-media / 422 unreadable; unit tests + docs
+- [x] SPoT docs: factual TrustedSource only; no `discovery_assets` reads
+- [x] E2E asserts: factual runnable checks `content_kind=text`; poc runnable checks `content_kind=media`
+
+### Manual verify (when stacks up)
+```bash
+# Wipe discovery volume if schema changed (or omit REUSE_DB)
+KEEP_STACK=1 ./scripts/discovery-runnable.sh
+
+DISCOVERY_EMBED_SECRET=… \
+DISCOVERY_EMBED_ENDPOINT=http://127.0.0.1:8001/internal/discovery/embed \
+  ./scripts/discovery-poc-runnable.sh
+```
+
+---
+
+## `myso start` sidecars (2026-07-08)
+
+Plan: `myso_start_sidecars_*.plan.md` (do not edit).
+
+### Project Status Board
+- [x] CLI: `--with-spot` / `--with-poc` / `--with-messaging` (+ `--poc-repo` / `--messaging-repo`)
+- [x] `sources.combined.localnet.yaml`
+- [x] `local_discovery` / `local_spot_oracle` / `local_poc` / `local_messaging` + `LocalSidecars` lifecycle
+- [x] Docs: `local-network.mdx`
+
+### Discovery policy
+| Flags | Discovery | YAML |
+|-------|-----------|------|
+| spot only | once | factual |
+| poc only | once | media + embed |
+| both | once | combined + embed |
+| neither | none | — |
+
+---
+
+## SPoT ↔ Discovery Architecture Unification (2026-07-08)
+
+Plan: `.cursor/plans/spot_discovery_unification_36bff8df.plan.md` (read-only).
+
+### Background
+Unify factual data through Discovery `/v1/*` + `myso-discovery-client`; replace SPoT HTTP
+pending-posts poller with `SubscribeCheckpoints` gRPC ingest filtering `PostCreatedEvent.enable_spot`.
+
+### Project Status Board
+- [x] Phase 0: DTOs + `DiscoveryClient` trait; ARCHITECTURE.md updates
+- [x] Phase 1: `discovery_factual_cache`, rate-limit, factual YAML SoT
+- [x] Phase 2: `/v1/*` handlers + `myso-discovery-client` crate
+- [x] Phase 2b: checkpoint ingest + watermark store + dual-path ingest mode
+- [x] Phase 3–5: Discovery-only `TrustedSource` adapters; registry from `/v1/sources`
+- [x] Phase 6: metrics, auth secrets, spot DB schema-only (no co-hosted discovery migrations)
+- [x] Scripts/env: `spot-oracle-common.sh`, session env, `local_spot_oracle.rs`, runnable starts Discovery
+- [x] `cargo check` green on `myso-discovery-service`, `myso-spot-oracle`, `myso`
+
+### Executor's Feedback
+- On-chain E2E reordered: start oracle **before** post creation so checkpoint stream catches `PostCreatedEvent`.
+- `SPOT_ORACLE_INGEST_MODE` default `checkpoint`; HTTP poller kept only for explicit `http|both`.
+- Factual settlement requires `SPOT_ORACLE_DISCOVERY_CLIENT_URL`; direct `HttpFetchClient` removed from SPoT adapters.
+
+---
+
+## PoC E2E Gap Fill (2026-07-09)
+
+Closed operational gaps between Move contracts, proof-of-creativity docker stack, and myso-core runnable scripts.
+
+### Project Status Board
+- [x] Oracle worker import fix + unit test (proof-of-creativity)
+- [x] Dedupe `build_reserve_towards_post_with_platform_call` in move_calls.py
+- [x] `validate_registry_objects` for poc_config + poc_beneficiary_admin_cap
+- [x] `scripts/lib/poc-oracle-common.sh` + `network.config/poc/oracle-localnet.env`
+- [x] `local_poc.rs`: grpc-sync, full PoC `.env`, sync status wait, e2e hint
+- [x] Chain event asserts wired into poc-oracle-post + proof-of-creativity runnables
+- [x] `scripts/poc-e2e-runnable.sh` unified loop
+- [x] `proof-of-creativity/scripts/poc-claim-runnable.sh` mock claim E2E
+- [x] Docs: oracle-runbook, discovery-runbook, local-network.mdx (mock_mode fix)
+- [ ] Live `poc-e2e-runnable.sh --run-all` (requires running localnet + PoC stack)
+
+### Lessons
+- Chain events via `myso client tx-block` are the E2E gate; GraphQL is downstream cross-check only.
+- `tip_post_simple` does not emit `PoCBeneficiaryVaultDepositEvent`; tip leg uses `tip_post` with vault.
+- Localnet `grpc_sync.mock_mode` defaults to `false` for live checkpoint sync with `myso start --with-poc`.
+
+
+Moved `HttpDiscoveryClient` from deleted `myso-discovery-client` crate into
+`myso-discovery-service-core/src/api/http.rs`. SPoT now imports from `-core` only.
+
+### Project Status Board
+- [x] Move `HttpDiscoveryClient` + unit test into `-core` `api/`
+- [x] Rewire `myso-spot-oracle` imports; remove `-client` dependency
+- [x] Delete `crates/myso-discovery-client`; remove from workspace `Cargo.toml`
+
+### Lessons
+- Separate `-client` crate added no dependency-boundary value once SPoT already depended on `-core`.
 

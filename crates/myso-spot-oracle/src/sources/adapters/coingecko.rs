@@ -2,28 +2,19 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use async_trait::async_trait;
-use chrono::Utc;
-use myso_discovery_service_core::sources::http_client::HttpFetchClient;
 use myso_discovery_service_core::sources::{DiscoveryDomain, SourceHealth, SourceMetadata};
 
 use crate::resolver::{ResolverDefinition, ResolverKind, ResolverSpec};
+use crate::sources::discovery_resolve::{self, DiscoveryResolveCtx};
 use crate::sources::{SourceEvidence, TrustedSource};
 
 pub struct CoingeckoAdapter {
-    client: HttpFetchClient,
+    discovery_ctx: DiscoveryResolveCtx,
 }
 
 impl CoingeckoAdapter {
-    pub fn new() -> Self {
-        Self {
-            client: HttpFetchClient::new(),
-        }
-    }
-}
-
-impl Default for CoingeckoAdapter {
-    fn default() -> Self {
-        Self::new()
+    pub fn new(discovery_ctx: DiscoveryResolveCtx) -> Self {
+        Self { discovery_ctx }
     }
 }
 
@@ -46,32 +37,31 @@ impl TrustedSource for CoingeckoAdapter {
         let ResolverSpec::PriceThreshold { asset, quote, .. } = &def.spec else {
             anyhow::bail!("coingecko: expected PriceThreshold spec");
         };
-        let url = format!(
-            "https://api.coingecko.com/api/v3/simple/price?ids={asset}&vs_currencies={quote}"
-        );
-        let fetched = self.client.get_text(&url).await?;
-        let payload: serde_json::Value = serde_json::from_str(&fetched.body)?;
-        Ok(SourceEvidence {
-            adapter_id: self.id().to_string(),
-            source_url: url,
-            content_hash: fetched.content_hash,
-            raw_response: Some(fetched.body),
-            fetched_at: Utc::now(),
-            payload,
-        })
+        discovery_resolve::fetch_price(
+            &self.discovery_ctx,
+            self.id(),
+            "coingecko-simple-price",
+            asset,
+            quote,
+        )
+        .await
     }
 
     async fn health(&self) -> SourceHealth {
         SourceHealth {
-            healthy: true,
-            message: "coingecko live".to_string(),
+            healthy: self.discovery_ctx.uses_discovery(),
+            message: if self.discovery_ctx.uses_discovery() {
+                "coingecko via Discovery".to_string()
+            } else {
+                "discovery client not configured".to_string()
+            },
         }
     }
 
     fn metadata(&self) -> SourceMetadata {
         SourceMetadata {
             id: self.id().to_string(),
-            description: "CoinGecko simple price API".to_string(),
+            description: "CoinGecko simple price via Discovery /v1/prices".to_string(),
             domain: DiscoveryDomain::Factual,
         }
     }

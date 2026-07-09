@@ -13,6 +13,7 @@ pub fn normalize_record(raw: &RawDiscoveryRecord) -> DiscoveryAssetRecord {
     DiscoveryAssetRecord {
         external_source_url: raw.external_source_url.clone(),
         media_type: raw.media_type.clone(),
+        content_kind: raw.content_kind,
         canonical_metadata: serde_json::json!({
             "title": raw.title,
             "creator_x_handle": raw.creator_x_handle,

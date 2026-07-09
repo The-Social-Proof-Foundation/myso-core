@@ -12,7 +12,10 @@
 
 pub mod api;
 pub mod blockchain;
+pub mod claim;
 pub mod config;
+pub mod evidence;
+pub mod ingest;
 pub mod jobs;
 pub mod metrics;
 pub mod resolver;

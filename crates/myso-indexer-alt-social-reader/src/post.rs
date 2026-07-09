@@ -61,8 +61,6 @@ pub struct PostRow {
     pub revenue_redirect_to: Option<String>,
     #[diesel(sql_type = Nullable<BigInt>)]
     pub revenue_redirect_percentage: Option<i64>,
-    #[diesel(sql_type = diesel::sql_types::Bool)]
-    pub enable_poc: bool,
     #[diesel(sql_type = Nullable<Text>)]
     pub poc_reasoning: Option<String>,
     #[diesel(sql_type = Nullable<diesel::sql_types::Jsonb>)]
@@ -87,6 +85,8 @@ pub struct PostRow {
     pub enable_spot: bool,
     #[diesel(sql_type = Nullable<Text>)]
     pub spot_id: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub spot_claim_id: Option<String>,
     #[diesel(sql_type = Nullable<Text>)]
     pub spt_id: Option<String>,
     #[diesel(sql_type = Nullable<Text>)]
@@ -201,11 +201,11 @@ pub(crate) async fn get_post_by_id(
         "SELECT post_id, owner, profile_id, content, post_type, created_at, deleted_at,
                 reaction_count, comment_count, repost_count, tips_received, total_tip_volume,
                 media_urls, mentions, parent_post_id, updated_at,
-                poc_id, revenue_redirect_to, revenue_redirect_percentage, enable_poc,
+                poc_id, revenue_redirect_to, revenue_redirect_percentage,
                 poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type,
                 poc_oracle_address, poc_analyzed_at, poc_outcome, poc_redirection_kind,
                 poc_disputes_submitted,
-                enable_spt, enable_spot, spot_id, spt_id, mydata_id,
+                enable_spt, enable_spot, spot_id, spot_claim_id, spt_id, mydata_id,
                 revenue_recipient, requires_subscription, subscription_service_id, subscription_price,
                 encrypted_content_hash, removed_from_platform, removed_by, metadata_json, promotion_id,
                 platform_id, permissions, actor_address, sub_agent_id, action_identity_class,
@@ -306,11 +306,11 @@ pub(crate) async fn list_posts(
         SELECT post_id, owner, profile_id, content, post_type, created_at, deleted_at,
                reaction_count, comment_count, repost_count, tips_received, total_tip_volume,
                media_urls, mentions, parent_post_id, updated_at,
-               poc_id, revenue_redirect_to, revenue_redirect_percentage, enable_poc,
+               poc_id, revenue_redirect_to, revenue_redirect_percentage,
                poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type,
                poc_oracle_address, poc_analyzed_at, poc_outcome, poc_redirection_kind,
                poc_disputes_submitted,
-               enable_spt, enable_spot, spot_id, spt_id, mydata_id,
+               enable_spt, enable_spot, spot_id, spot_claim_id, spt_id, mydata_id,
                revenue_recipient, requires_subscription, subscription_service_id, subscription_price,
                encrypted_content_hash, removed_from_platform, removed_by, metadata_json, promotion_id,
                platform_id, permissions, actor_address, sub_agent_id, action_identity_class,
@@ -342,7 +342,6 @@ pub(crate) async fn list_posts_for_profile(
     owner_address: &str,
     profile_id: Option<&str>,
     post_type: Option<&str>,
-    enable_poc: Option<bool>,
     poc_outcomes: Option<&[i16]>,
     include_removed: bool,
     limit: i64,
@@ -355,11 +354,6 @@ pub(crate) async fn list_posts_for_profile(
         ""
     } else {
         "AND deleted_at IS NULL"
-    };
-    let enable_sql = match enable_poc {
-        Some(true) => "AND enable_poc = TRUE",
-        Some(false) => "AND enable_poc = FALSE",
-        None => "",
     };
     let outcomes_sql = match poc_outcomes {
         Some(v) if !v.is_empty() => {
@@ -376,11 +370,11 @@ pub(crate) async fn list_posts_for_profile(
         SELECT post_id, owner, profile_id, content, post_type, created_at, deleted_at,
                reaction_count, comment_count, repost_count, tips_received, total_tip_volume,
                media_urls, mentions, parent_post_id, updated_at,
-               poc_id, revenue_redirect_to, revenue_redirect_percentage, enable_poc,
+               poc_id, revenue_redirect_to, revenue_redirect_percentage,
                poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type,
                poc_oracle_address, poc_analyzed_at, poc_outcome, poc_redirection_kind,
                poc_disputes_submitted,
-               enable_spt, enable_spot, spot_id, spt_id, mydata_id,
+               enable_spt, enable_spot, spot_id, spot_claim_id, spt_id, mydata_id,
                revenue_recipient, requires_subscription, subscription_service_id, subscription_price,
                encrypted_content_hash, removed_from_platform, removed_by, metadata_json, promotion_id,
                platform_id, permissions, actor_address, sub_agent_id, action_identity_class,
@@ -391,7 +385,6 @@ pub(crate) async fn list_posts_for_profile(
             WHERE (owner = $1 OR ($2::TEXT IS NOT NULL AND profile_id = $2))
             AND ($3::TEXT IS NULL OR post_type = $3)
             {deleted_sql}
-            {enable_sql}
             {outcomes_sql}
             ORDER BY post_id, time DESC
         ) sub
@@ -399,7 +392,6 @@ pub(crate) async fn list_posts_for_profile(
         LIMIT $4 OFFSET $5
         ",
         deleted_sql = deleted_sql,
-        enable_sql = enable_sql,
         outcomes_sql = outcomes_sql,
     );
     let results = diesel::sql_query(query)
@@ -419,7 +411,6 @@ pub(crate) async fn count_posts_for_profile(
     owner_address: &str,
     profile_id: Option<&str>,
     post_type: Option<&str>,
-    enable_poc: Option<bool>,
     poc_outcomes: Option<&[i16]>,
     include_removed: bool,
     metrics: &DbReaderMetrics,
@@ -430,11 +421,6 @@ pub(crate) async fn count_posts_for_profile(
         ""
     } else {
         "AND deleted_at IS NULL"
-    };
-    let enable_sql = match enable_poc {
-        Some(true) => "AND enable_poc = TRUE",
-        Some(false) => "AND enable_poc = FALSE",
-        None => "",
     };
     let outcomes_sql = match poc_outcomes {
         Some(v) if !v.is_empty() => {
@@ -453,11 +439,9 @@ pub(crate) async fn count_posts_for_profile(
         WHERE (owner = $1 OR ($2::TEXT IS NOT NULL AND profile_id = $2))
         AND ($3::TEXT IS NULL OR post_type = $3)
         {deleted_sql}
-        {enable_sql}
         {outcomes_sql}
         ",
         deleted_sql = deleted_sql,
-        enable_sql = enable_sql,
         outcomes_sql = outcomes_sql,
     );
     #[derive(QueryableByName)]

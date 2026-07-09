@@ -7,6 +7,7 @@ use anyhow::Context;
 use serde::Deserialize;
 
 use crate::store::reviews::ExtractedClaim;
+use crate::types::{ClaimCategory, ResolverHints};
 
 #[derive(Debug, Clone)]
 pub struct LlmClient {
@@ -53,10 +54,22 @@ impl LlmClient {
         post_type: Option<&str>,
     ) -> anyhow::Result<(ExtractedClaim, String)> {
         let system = r#"You extract structured claim fields from social posts for prediction markets.
-Return JSON only with keys: subject, predicate, object, metric (optional), comparison (optional: lt|lte|gt|gte|eq|neq),
-threshold (optional decimal string), deadline (optional ISO-8601 UTC), outcome_type (binary|multi_choice|scalar),
-suggested_sources (string array), suggested_options (string array, 2-10 unique labels).
-Do NOT include approve/reject/resolution fields."#;
+Return JSON only with keys:
+  subject, predicate, object, metric (optional),
+  comparison (optional: lt|lte|gt|gte|eq|neq),
+  threshold (optional decimal string),
+  deadline (optional ISO-8601 UTC; required for non-price claims),
+  outcome_type (binary|multi_choice|scalar),
+  suggested_sources (string array),
+  suggested_options (string array, 2-10 unique labels),
+  claim_category (price_threshold|release_published|event_occurrence|custom_http|unsupported),
+  resolver_hints (object with optional fields):
+    owner, repo, tag_predicate,
+    feed_url, match_predicate, match_fields (string array),
+    url, json_path, comparison, expected,
+    preferred_sources (string array).
+Do NOT include approve/reject/resolution fields.
+If the claim is not objectively verifiable from public data, set claim_category to unsupported."#;
         let user = format!(
             "Post type: {}\nContent:\n{}",
             post_type.unwrap_or("text"),
@@ -127,6 +140,11 @@ pub fn extract_claim_heuristic(content: &str) -> ExtractedClaim {
         outcome_type: crate::review::canonicalize::OutcomeType::Binary,
         suggested_sources: vec!["coingecko".to_string()],
         suggested_options: vec!["Yes".to_string(), "No".to_string()],
+        claim_category: ClaimCategory::PriceThreshold,
+        resolver_hints: ResolverHints {
+            preferred_sources: vec!["coingecko".to_string()],
+            ..Default::default()
+        },
     }
 }
 

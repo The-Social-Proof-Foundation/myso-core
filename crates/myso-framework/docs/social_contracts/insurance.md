@@ -3767,7 +3767,7 @@ Utilization curve only (<code><a href="../social_contracts/insurance.md#social_c
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_compute_spot_risk_quote">compute_spot_risk_quote</a>(config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, vault: &<a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, vault_market_id: <b>address</b>, option_id: u8, covered_amount: u64, coverage_bps: u64, duration_ms: u64, enforce_max_risk: bool): <a href="../social_contracts/insurance.md#social_contracts_insurance_PremiumQuote">social_contracts::insurance::PremiumQuote</a>
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_compute_spot_risk_quote">compute_spot_risk_quote</a>(config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, vault: &<a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotMarket">social_contracts::social_proof_of_truth::SpotMarket</a>, vault_market_id: <b>address</b>, option_id: u8, covered_amount: u64, coverage_bps: u64, duration_ms: u64, enforce_max_risk: bool): <a href="../social_contracts/insurance.md#social_contracts_insurance_PremiumQuote">social_contracts::insurance::PremiumQuote</a>
 </code></pre>
 
 
@@ -3779,7 +3779,7 @@ Utilization curve only (<code><a href="../social_contracts/insurance.md#social_c
 <pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_compute_spot_risk_quote">compute_spot_risk_quote</a>(
     config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">InsuranceConfig</a>,
     vault: &<a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">UnderwriterVault</a>,
-    record: &spot::SpotRecord,
+    record: &spot::SpotMarket,
     vault_market_id: <b>address</b>,
     option_id: u8,
     covered_amount: u64,
@@ -3893,7 +3893,7 @@ Utilization curve only (<code><a href="../social_contracts/insurance.md#social_c
 Preview premium with SPoT pool odds, liquidity, and vault concentration on this option (<code>reserved</code> excludes a not-yet-open policy).
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_quote_premium_with_spot_risk">quote_premium_with_spot_risk</a>(config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, vault: &<a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, option_id: u8, covered_amount: u64, coverage_bps: u64, duration_ms: u64): <a href="../social_contracts/insurance.md#social_contracts_insurance_PremiumQuote">social_contracts::insurance::PremiumQuote</a>
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_quote_premium_with_spot_risk">quote_premium_with_spot_risk</a>(config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, vault: &<a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotMarket">social_contracts::social_proof_of_truth::SpotMarket</a>, option_id: u8, covered_amount: u64, coverage_bps: u64, duration_ms: u64): <a href="../social_contracts/insurance.md#social_contracts_insurance_PremiumQuote">social_contracts::insurance::PremiumQuote</a>
 </code></pre>
 
 
@@ -3905,7 +3905,7 @@ Preview premium with SPoT pool odds, liquidity, and vault concentration on this 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_quote_premium_with_spot_risk">quote_premium_with_spot_risk</a>(
     config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">InsuranceConfig</a>,
     vault: &<a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">UnderwriterVault</a>,
-    record: &spot::SpotRecord,
+    record: &spot::SpotMarket,
     option_id: u8,
     covered_amount: u64,
     coverage_bps: u64,
@@ -3970,7 +3970,7 @@ Preview premium with SPoT pool odds, liquidity, and vault concentration on this 
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_max_fill_covered_for_vault">max_fill_covered_for_vault</a>(config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, vault: &<a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, market_id: <b>address</b>, insured: <b>address</b>, option_id: u8, coverage_bps: u64): u64
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_max_fill_covered_for_vault">max_fill_covered_for_vault</a>(config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, vault: &<a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotMarket">social_contracts::social_proof_of_truth::SpotMarket</a>, market_id: <b>address</b>, insured: <b>address</b>, option_id: u8, coverage_bps: u64): u64
 </code></pre>
 
 
@@ -3982,7 +3982,7 @@ Preview premium with SPoT pool odds, liquidity, and vault concentration on this 
 <pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_max_fill_covered_for_vault">max_fill_covered_for_vault</a>(
     config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">InsuranceConfig</a>,
     vault: &<a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">UnderwriterVault</a>,
-    record: &spot::SpotRecord,
+    record: &spot::SpotMarket,
     market_id: <b>address</b>,
     insured: <b>address</b>,
     option_id: u8,
@@ -4097,7 +4097,7 @@ Preview premium with SPoT pool odds, liquidity, and vault concentration on this 
 
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_quote_vault_for_spot_coverage">quote_vault_for_spot_coverage</a>(config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, router_cfg: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">social_contracts::insurance::InsuranceRouterConfig</a>, vault: &<a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, insured: <b>address</b>, option_id: u8, requested_coverage_amount: u64, coverage_bps: u64, duration_ms: u64): <a href="../social_contracts/insurance.md#social_contracts_insurance_VaultCoverageQuote">social_contracts::insurance::VaultCoverageQuote</a>
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_quote_vault_for_spot_coverage">quote_vault_for_spot_coverage</a>(config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, router_cfg: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">social_contracts::insurance::InsuranceRouterConfig</a>, vault: &<a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotMarket">social_contracts::social_proof_of_truth::SpotMarket</a>, insured: <b>address</b>, option_id: u8, requested_coverage_amount: u64, coverage_bps: u64, duration_ms: u64): <a href="../social_contracts/insurance.md#social_contracts_insurance_VaultCoverageQuote">social_contracts::insurance::VaultCoverageQuote</a>
 </code></pre>
 
 
@@ -4110,7 +4110,7 @@ Preview premium with SPoT pool odds, liquidity, and vault concentration on this 
     config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">InsuranceConfig</a>,
     router_cfg: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">InsuranceRouterConfig</a>,
     vault: &<a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">UnderwriterVault</a>,
-    record: &spot::SpotRecord,
+    record: &spot::SpotMarket,
     insured: <b>address</b>,
     option_id: u8,
     requested_coverage_amount: u64,
@@ -4235,7 +4235,7 @@ Preview premium with SPoT pool odds, liquidity, and vault concentration on this 
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_buy_coverage_execute">buy_coverage_execute</a>(config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, router_cfg: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">social_contracts::insurance::InsuranceRouterConfig</a>, backstop: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceBackstopPool">social_contracts::insurance::InsuranceBackstopPool</a>, spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, vault: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, option_id: u8, covered_amount: u64, coverage_bps: u64, duration_ms: u64, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, route_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, route_leg_index: u8, check_market_router: bool, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, u64, u64, u64, u64, u64)
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_buy_coverage_execute">buy_coverage_execute</a>(config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, router_cfg: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">social_contracts::insurance::InsuranceRouterConfig</a>, backstop: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceBackstopPool">social_contracts::insurance::InsuranceBackstopPool</a>, spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, vault: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotMarket">social_contracts::social_proof_of_truth::SpotMarket</a>, option_id: u8, covered_amount: u64, coverage_bps: u64, duration_ms: u64, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, route_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, route_leg_index: u8, check_market_router: bool, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, u64, u64, u64, u64, u64)
 </code></pre>
 
 
@@ -4250,7 +4250,7 @@ Preview premium with SPoT pool odds, liquidity, and vault concentration on this 
     backstop: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceBackstopPool">InsuranceBackstopPool</a>,
     spot_config: &spot::SpotConfig,
     vault: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">UnderwriterVault</a>,
-    record: &spot::SpotRecord,
+    record: &spot::SpotMarket,
     option_id: u8,
     covered_amount: u64,
     coverage_bps: u64,
@@ -4368,7 +4368,7 @@ Preview premium with SPoT pool odds, liquidity, and vault concentration on this 
 Buy coverage for a SPoT position
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_buy_coverage">buy_coverage</a>(config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, router_cfg: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">social_contracts::insurance::InsuranceRouterConfig</a>, backstop: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceBackstopPool">social_contracts::insurance::InsuranceBackstopPool</a>, spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, vault: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, option_id: u8, requested_coverage_amount: u64, coverage_bps: u64, duration_ms: u64, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_buy_coverage">buy_coverage</a>(config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, router_cfg: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">social_contracts::insurance::InsuranceRouterConfig</a>, backstop: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceBackstopPool">social_contracts::insurance::InsuranceBackstopPool</a>, spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, vault: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotMarket">social_contracts::social_proof_of_truth::SpotMarket</a>, option_id: u8, requested_coverage_amount: u64, coverage_bps: u64, duration_ms: u64, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4383,7 +4383,7 @@ Buy coverage for a SPoT position
     backstop: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceBackstopPool">InsuranceBackstopPool</a>,
     spot_config: &spot::SpotConfig,
     vault: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">UnderwriterVault</a>,
-    record: &spot::SpotRecord,
+    record: &spot::SpotMarket,
     option_id: u8,
     requested_coverage_amount: u64,
     coverage_bps: u64,
@@ -4443,7 +4443,7 @@ Buy coverage for a SPoT position
 
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_route_buy_coverage_4">route_buy_coverage_4</a>(config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, router_cfg: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">social_contracts::insurance::InsuranceRouterConfig</a>, backstop: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceBackstopPool">social_contracts::insurance::InsuranceBackstopPool</a>, spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, v0: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, v1: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, v2: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, v3: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, option_id: u8, fill_0: u64, fill_1: u64, fill_2: u64, fill_3: u64, coverage_bps: u64, duration_ms: u64, deadline_ms: u64, min_total_covered: u64, max_total_premium: u64, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_route_buy_coverage_4">route_buy_coverage_4</a>(config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, router_cfg: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">social_contracts::insurance::InsuranceRouterConfig</a>, backstop: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceBackstopPool">social_contracts::insurance::InsuranceBackstopPool</a>, spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotMarket">social_contracts::social_proof_of_truth::SpotMarket</a>, v0: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, v1: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, v2: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, v3: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, option_id: u8, fill_0: u64, fill_1: u64, fill_2: u64, fill_3: u64, coverage_bps: u64, duration_ms: u64, deadline_ms: u64, min_total_covered: u64, max_total_premium: u64, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4457,7 +4457,7 @@ Buy coverage for a SPoT position
     router_cfg: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">InsuranceRouterConfig</a>,
     backstop: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceBackstopPool">InsuranceBackstopPool</a>,
     spot_config: &spot::SpotConfig,
-    record: &spot::SpotRecord,
+    record: &spot::SpotMarket,
     v0: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">UnderwriterVault</a>,
     v1: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">UnderwriterVault</a>,
     v2: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">UnderwriterVault</a>,
@@ -4783,7 +4783,7 @@ Cancel coverage while the market is open
 Cancellation can result in 0 refund due to fee + rounding
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_cancel_coverage">cancel_coverage</a>(config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, vault: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, policy: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_CoveragePolicy">social_contracts::insurance::CoveragePolicy</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_cancel_coverage">cancel_coverage</a>(config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, vault: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotMarket">social_contracts::social_proof_of_truth::SpotMarket</a>, policy: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_CoveragePolicy">social_contracts::insurance::CoveragePolicy</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4797,7 +4797,7 @@ Cancellation can result in 0 refund due to fee + rounding
     spot_config: &spot::SpotConfig,
     treasury: &EcosystemTreasury,
     vault: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">UnderwriterVault</a>,
-    record: &spot::SpotRecord,
+    record: &spot::SpotMarket,
     policy: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_CoveragePolicy">CoveragePolicy</a>,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
@@ -4859,7 +4859,7 @@ Dynamic coverage: payout adjusts if user reduces their SPoT position after buyin
 This prevents exploitation where user buys insurance then exits bet.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_claim">claim</a>(config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, vault: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, policy: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_CoveragePolicy">social_contracts::insurance::CoveragePolicy</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_claim">claim</a>(config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, vault: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotMarket">social_contracts::social_proof_of_truth::SpotMarket</a>, policy: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_CoveragePolicy">social_contracts::insurance::CoveragePolicy</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4872,7 +4872,7 @@ This prevents exploitation where user buys insurance then exits bet.
     config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">InsuranceConfig</a>,
     spot_config: &spot::SpotConfig,
     vault: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">UnderwriterVault</a>,
-    record: &spot::SpotRecord,
+    record: &spot::SpotMarket,
     policy: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_CoveragePolicy">CoveragePolicy</a>,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext

@@ -7,8 +7,9 @@ use std::sync::Arc;
 use async_graphql::Context;
 use async_graphql::Object;
 use myso_indexer_alt_social_reader::{
-    SocialPgReader, SpotBetRow, SpotBetWithdrawalRow, SpotPayoutRow, SpotRecordRow, SpotRefundRow,
-    SpotResolutionRow,
+    SocialPgReader, SpotBetRow, SpotBetWithdrawalRow, SpotClaimEarningsRow, SpotClaimRow,
+    SpotCreatorStatsRow, SpotMarketEarningsRow, SpotMarketRow, SpotPayoutRow, SpotPendingCreatorPayoutRow,
+    SpotPostEarningsRow, SpotRecordRow, SpotRefundRow, SpotResolutionRow, SpotRouteRow,
 };
 
 use crate::api::resolve_profile::resolve_profile_summary;
@@ -439,5 +440,354 @@ impl SpotOptionEscrow {
     /// Escrow amount for this option.
     async fn amount(&self) -> i64 {
         self.amount
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct SpotClaim {
+    inner: SpotClaimRow,
+}
+
+impl SpotClaim {
+    pub(crate) fn from_row(inner: SpotClaimRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl SpotClaim {
+    async fn claim_id(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.claim_object_id)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    async fn semantic_claim_hash(&self) -> Option<&str> {
+        self.inner.semantic_claim_hash.as_deref()
+    }
+
+    async fn created_at_ms(&self) -> Option<i64> {
+        self.inner.created_at_ms
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct SpotMarket {
+    inner: SpotMarketRow,
+}
+
+impl SpotMarket {
+    pub(crate) fn from_row(inner: SpotMarketRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl SpotMarket {
+    async fn market_id(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.market_object_id)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    async fn claim_id(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.claim_object_id)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    async fn market_key_hash(&self) -> Option<&str> {
+        self.inner.market_key_hash.as_deref()
+    }
+
+    async fn primary_post_id(&self) -> Option<&str> {
+        self.inner.primary_post_id.as_deref()
+    }
+
+    async fn status(&self) -> i16 {
+        self.inner.status
+    }
+
+    async fn deadline_ms(&self) -> Option<i64> {
+        self.inner.deadline_ms
+    }
+
+    async fn betting_options(&self) -> Vec<String> {
+        parse_betting_options(&self.inner.betting_options)
+    }
+
+    async fn creator_fee_total(&self) -> Option<i64> {
+        self.inner.creator_fee_total
+    }
+
+    async fn winner_pool(&self) -> Option<i64> {
+        self.inner.winner_pool
+    }
+
+    async fn resolution_timestamp_ms(&self) -> Option<i64> {
+        self.inner.resolution_timestamp_ms
+    }
+
+    async fn created_at_ms(&self) -> Option<i64> {
+        self.inner.created_at_ms
+    }
+
+    async fn claim(&self, ctx: &Context<'_>) -> Option<SpotClaim> {
+        let reader_opt = ctx.data_opt::<Arc<Option<SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        reader
+            .get_spot_claim(&self.inner.claim_object_id)
+            .await
+            .ok()?
+            .map(SpotClaim::from_row)
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct SpotRoute {
+    inner: SpotRouteRow,
+}
+
+impl SpotRoute {
+    pub(crate) fn from_row(inner: SpotRouteRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl SpotRoute {
+    async fn post_id(&self) -> &str {
+        &self.inner.post_id
+    }
+
+    async fn claim_id(&self) -> Option<MySoAddress> {
+        self.inner.claim_object_id.as_ref().and_then(|id| {
+            MySoAddress::from_str(id)
+                .ok()
+                .map(MySoAddress::from)
+        })
+    }
+
+    async fn target_market_id(&self) -> Option<MySoAddress> {
+        self.inner.target_market_id.as_ref().and_then(|id| {
+            MySoAddress::from_str(id)
+                .ok()
+                .map(MySoAddress::from)
+        })
+    }
+
+    async fn link_kind(&self) -> Option<&str> {
+        self.inner.link_kind.as_deref()
+    }
+
+    async fn routing_reason(&self) -> &str {
+        &self.inner.routing_reason
+    }
+
+    async fn spot_claim(&self, ctx: &Context<'_>) -> Option<SpotClaim> {
+        let claim_id = self.inner.claim_object_id.as_deref()?;
+        let reader_opt = ctx.data_opt::<Arc<Option<SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        reader.get_spot_claim(claim_id).await.ok()?.map(SpotClaim::from_row)
+    }
+
+    async fn spot_market(&self, ctx: &Context<'_>) -> Option<SpotMarket> {
+        let market_id = self.inner.target_market_id.as_deref()?;
+        let reader_opt = ctx.data_opt::<Arc<Option<SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        reader
+            .get_spot_market(market_id)
+            .await
+            .ok()?
+            .map(SpotMarket::from_row)
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct SpotPendingCreatorPayout {
+    inner: SpotPendingCreatorPayoutRow,
+}
+
+impl SpotPendingCreatorPayout {
+    pub(crate) fn from_row(inner: SpotPendingCreatorPayoutRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl SpotPendingCreatorPayout {
+    async fn payout_id(&self) -> i64 {
+        self.inner.payout_id
+    }
+
+    async fn market_id(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.market_object_id)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    async fn creator(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.creator)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    async fn referrer_post_id(&self) -> &str {
+        &self.inner.referrer_post_id
+    }
+
+    async fn amount(&self) -> i64 {
+        self.inner.amount
+    }
+
+    async fn expires_at_ms(&self) -> i64 {
+        self.inner.expires_at_ms
+    }
+
+    async fn is_expired(&self) -> bool {
+        let now_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis() as i64)
+            .unwrap_or(0);
+        now_ms >= self.inner.expires_at_ms
+    }
+
+    async fn is_claimable(&self) -> bool {
+        let now_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis() as i64)
+            .unwrap_or(0);
+        now_ms < self.inner.expires_at_ms
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct SpotClaimEarnings {
+    inner: SpotClaimEarningsRow,
+}
+
+impl SpotClaimEarnings {
+    pub(crate) fn from_row(inner: SpotClaimEarningsRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl SpotClaimEarnings {
+    async fn claim_id(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.claim_object_id)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    async fn total_amount(&self) -> i64 {
+        self.inner.total_amount
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct SpotPostEarnings {
+    inner: SpotPostEarningsRow,
+}
+
+impl SpotPostEarnings {
+    pub(crate) fn from_row(inner: SpotPostEarningsRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl SpotPostEarnings {
+    async fn referrer_post_id(&self) -> &str {
+        &self.inner.referrer_post_id
+    }
+
+    async fn total_amount(&self) -> i64 {
+        self.inner.total_amount
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct SpotMarketEarnings {
+    inner: SpotMarketEarningsRow,
+}
+
+impl SpotMarketEarnings {
+    pub(crate) fn from_row(inner: SpotMarketEarningsRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl SpotMarketEarnings {
+    async fn market_id(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.market_object_id)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    async fn total_amount(&self) -> i64 {
+        self.inner.total_amount
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct SpotCreatorStats {
+    inner: SpotCreatorStatsRow,
+    top_claims: Vec<SpotClaimEarningsRow>,
+    earnings_by_post: Vec<SpotPostEarningsRow>,
+    earnings_by_market: Vec<SpotMarketEarningsRow>,
+}
+
+impl SpotCreatorStats {
+    pub(crate) fn from_parts(
+        inner: SpotCreatorStatsRow,
+        top_claims: Vec<SpotClaimEarningsRow>,
+        earnings_by_post: Vec<SpotPostEarningsRow>,
+        earnings_by_market: Vec<SpotMarketEarningsRow>,
+    ) -> Self {
+        Self {
+            inner,
+            top_claims,
+            earnings_by_post,
+            earnings_by_market,
+        }
+    }
+}
+
+#[Object]
+impl SpotCreatorStats {
+    async fn creator(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.creator)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    async fn lifetime_earnings(&self) -> i64 {
+        self.inner.lifetime_earnings
+    }
+
+    async fn earnings_last30d(&self) -> i64 {
+        self.inner.earnings_last_30d
+    }
+
+    async fn pending_earnings(&self) -> i64 {
+        self.inner.pending_earnings
+    }
+
+    async fn top_claims(&self) -> Vec<SpotClaimEarnings> {
+        self.top_claims
+            .iter()
+            .cloned()
+            .map(SpotClaimEarnings::from_row)
+            .collect()
+    }
+
+    async fn earnings_by_post(&self) -> Vec<SpotPostEarnings> {
+        self.earnings_by_post
+            .iter()
+            .cloned()
+            .map(SpotPostEarnings::from_row)
+            .collect()
+    }
+
+    async fn earnings_by_market(&self) -> Vec<SpotMarketEarnings> {
+        self.earnings_by_market
+            .iter()
+            .cloned()
+            .map(SpotMarketEarnings::from_row)
+            .collect()
     }
 }

@@ -1,6 +1,6 @@
 -- Migration: Update Post struct to use opt-in flags and linked object IDs
 -- Version: 20251230000000
--- Purpose: Replace disable_auto_pool with three opt-in flags (enable_spt, enable_poc, enable_spot)
+-- Purpose: Replace disable_auto_pool with opt-in flags (enable_spt, enable_spot)
 --          and add linked object address fields (spot_id, spt_id, poc_id)
 --          Also rename poc_badge_id to poc_id
 
@@ -16,12 +16,6 @@ BEGIN
         WHERE table_name = 'posts' AND column_name = 'enable_spt'
     ) THEN
         ALTER TABLE posts ADD COLUMN enable_spt BOOLEAN NOT NULL DEFAULT false;
-    END IF;
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'posts' AND column_name = 'enable_poc'
-    ) THEN
-        ALTER TABLE posts ADD COLUMN enable_poc BOOLEAN NOT NULL DEFAULT false;
     END IF;
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns 
@@ -93,7 +87,6 @@ CREATE INDEX IF NOT EXISTS idx_posts_poc_id ON posts(poc_id, time) WHERE poc_id 
 
 -- Create indexes for new opt-in flags (partial indexes for efficiency)
 CREATE INDEX IF NOT EXISTS idx_posts_enable_spt ON posts(enable_spt, time) WHERE enable_spt = true;
-CREATE INDEX IF NOT EXISTS idx_posts_enable_poc ON posts(enable_poc, time) WHERE enable_poc = true;
 CREATE INDEX IF NOT EXISTS idx_posts_enable_spot ON posts(enable_spot, time) WHERE enable_spot = true;
 
 -- Create indexes for linked object IDs
@@ -108,7 +101,6 @@ DROP INDEX IF EXISTS idx_posts_auto_pool_disabled;
 -- ============================================================================
 
 COMMENT ON COLUMN posts.enable_spt IS 'Opt-in flag for Social Proof Tokens (SPT) auto-pool initialization';
-COMMENT ON COLUMN posts.enable_poc IS 'Opt-in flag for Proof of Creativity (PoC) analysis and badges';
 COMMENT ON COLUMN posts.enable_spot IS 'Opt-in flag for Social Proof of Truth (SPoT) prediction markets';
 COMMENT ON COLUMN posts.spot_id IS 'Address of the SpotRecord object (set when a SPoT record is created)';
 COMMENT ON COLUMN posts.spt_id IS 'Address of the TokenPool object (set when an SPT pool is created)';

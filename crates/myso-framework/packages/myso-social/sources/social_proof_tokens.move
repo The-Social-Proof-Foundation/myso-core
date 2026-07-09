@@ -1993,34 +1993,21 @@ module social_contracts::social_proof_tokens {
         });
     }
 
-    /// Create a new reservation pool for a post
-    public entry fun create_reservation_pool_for_post(
+    /// Shared pool-creation logic for `create_reservation_pool_for_post`.
+    public(package) fun bootstrap_reservation_pool_for_post_id(
         registry: &mut TokenRegistry,
         config: &SocialProofTokensConfig,
-        post: &Post,
+        associated_id: address,
+        owner: address,
         clock: &Clock,
-        ctx: &mut TxContext
-    ) {
-        // Check if trading is halted
+        ctx: &mut TxContext,
+    ): address {
         assert!(config.trading_enabled, ETradingHalted);
-        
-        let caller = tx_context::sender(ctx);
-        let associated_id = post::get_id_address(post);
-        let owner = post::get_post_owner(post);
-        
-        // Verify caller is the actual post owner
-        assert!(caller == owner, ENotAuthorized);
-        
-        // Verify post ID matches
-        assert!(associated_id == post::get_id_address(post), EInvalidID);
-        
-        // Check if reservation pool already exists
         assert!(!table::contains(&registry.reservation_pools, associated_id), ETokenAlreadyExists);
-        
+
         let now = clock::timestamp_ms(clock);
         let required_threshold = config.post_threshold;
-        
-        // Create reservation pool info (without reservers vector - only in ReservationPoolObject)
+
         let reservation_pool = ReservationPool {
             associated_id,
             token_type: TOKEN_TYPE_POST,
@@ -2029,8 +2016,7 @@ module social_contracts::social_proof_tokens {
             required_threshold,
             created_at: now,
         };
-        
-        // Create reservation pool object first (before moving reservation_pool)
+
         let reservation_pool_object = ReservationPoolObject {
             id: object::new(ctx),
             info: reservation_pool,
@@ -2040,8 +2026,7 @@ module social_contracts::social_proof_tokens {
             converted: false,
             version: upgrade::current_version(),
         };
-        
-        // Add to registry (reconstruct ReservationPool from object's info since original was moved)
+
         let pool_info = ReservationPool {
             associated_id: reservation_pool_object.info.associated_id,
             token_type: reservation_pool_object.info.token_type,
@@ -2051,10 +2036,9 @@ module social_contracts::social_proof_tokens {
             created_at: reservation_pool_object.info.created_at,
         };
         table::add(&mut registry.reservation_pools, associated_id, pool_info);
-        
+
         let pool_object_id = object::uid_to_address(&reservation_pool_object.id);
-        
-        // Emit reservation pool created event
+
         event::emit(ReservationPoolCreatedEvent {
             associated_id,
             token_type: TOKEN_TYPE_POST,
@@ -2063,8 +2047,34 @@ module social_contracts::social_proof_tokens {
             pool_object_id,
             created_at: now,
         });
-        
+
         transfer::share_object(reservation_pool_object);
+        pool_object_id
+    }
+
+    /// Create a reservation pool for a post (explicit second transaction after post create).
+    public entry fun create_reservation_pool_for_post(
+        registry: &mut TokenRegistry,
+        config: &SocialProofTokensConfig,
+        post: &mut Post,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let caller = tx_context::sender(ctx);
+        let associated_id = post::get_id_address(post);
+        let owner = post::get_post_owner(post);
+
+        assert!(caller == owner, ENotAuthorized);
+
+        let pool_object_id = bootstrap_reservation_pool_for_post_id(
+            registry,
+            config,
+            associated_id,
+            owner,
+            clock,
+            ctx,
+        );
+        post::set_spt_id(post, pool_object_id);
     }
 
     /// Create a new reservation pool for a profile

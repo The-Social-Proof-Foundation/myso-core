@@ -62,7 +62,7 @@ module social_contracts::insurance_tests {
             let mut cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
             let spot_gov_id = spot::spot_governance_registry_id(&cfg);
             let clock = test_scenario::take_shared<Clock>(&scen);
-            spot::update_spot_config(&admin_cap, &mut cfg, true, 7000, 0, 0, 0, 100, 5000, 2, 10, 1, 1000, 10, ADMIN, 0, 10000, spot_gov_id, &clock, test_scenario::ctx(&mut scen));
+            spot::update_spot_config(&admin_cap, &mut cfg, true, 7000, 0, 0, 0, 100, 5000, 0, 0, 10000, 2, 10, 1, 1000, 10, ADMIN, 0, 10000, spot_gov_id, &clock, test_scenario::ctx(&mut scen));
             test_scenario::return_to_sender(&scen, admin_cap);
             test_scenario::return_shared(cfg);
             test_scenario::return_shared(clock);
@@ -185,6 +185,7 @@ module social_contracts::insurance_tests {
         {
             let oracle_admin_cap = test_scenario::take_from_sender<spot::SpotOracleAdminCap>(scenario);
             let cfg = test_scenario::take_shared<spot::SpotConfig>(scenario);
+            let mut spot_registry = test_scenario::take_shared<spot::SpotClaimRegistry>(scenario);
             let mut p = test_scenario::take_shared<Post>(scenario);
             let mut betting_options = vector::empty<string::String>();
             vector::push_back(&mut betting_options, string::utf8(b"Yes"));
@@ -193,6 +194,7 @@ module social_contracts::insurance_tests {
             spot::create_spot_record_for_post(
                 &oracle_admin_cap,
                 &cfg,
+                &mut spot_registry,
                 &mut p,
                 betting_options,
                 option::none(),
@@ -203,14 +205,57 @@ module social_contracts::insurance_tests {
             test_scenario::return_to_sender(scenario, oracle_admin_cap);
             test_scenario::return_shared(cfg);
             test_scenario::return_shared(p);
+            test_scenario::return_shared(spot_registry);
             test_scenario::return_shared(clock);
+        };
+    }
+
+    fun resolve_spot_market_yes(scenario: &mut Scenario, outcome: u8) {
+        test_scenario::next_tx(scenario, ADMIN);
+        {
+            let oracle_admin_cap = test_scenario::take_from_sender<spot::SpotOracleAdminCap>(scenario);
+            let cfg = test_scenario::take_shared<spot::SpotConfig>(scenario);
+            let mut spot_registry = test_scenario::take_shared<spot::SpotClaimRegistry>(scenario);
+            let claim = test_scenario::take_shared<spot::SpotClaim>(scenario);
+            let mut rec = test_scenario::take_shared<spot::SpotMarket>(scenario);
+            let post_ref = test_scenario::take_shared<Post>(scenario);
+            let mut platform = test_scenario::take_shared<Platform>(scenario);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+            let mut evidence_urls = vector::empty<string::String>();
+            vector::push_back(&mut evidence_urls, string::utf8(b"https://example.com/evidence"));
+            spot::oracle_resolve(
+                &oracle_admin_cap,
+                &cfg,
+                &mut spot_registry,
+                &claim,
+                &mut rec,
+                &post_ref,
+                &mut platform,
+                &treasury,
+                outcome,
+                9000u64,
+                string::utf8(b"Test resolution"),
+                evidence_urls,
+                &clock,
+                test_scenario::ctx(scenario),
+            );
+            test_scenario::return_to_sender(scenario, oracle_admin_cap);
+            test_scenario::return_shared(cfg);
+            test_scenario::return_shared(rec);
+            test_scenario::return_shared(post_ref);
+            test_scenario::return_shared(platform);
+            test_scenario::return_shared(treasury);
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(claim);
+            test_scenario::return_shared(spot_registry);
         };
     }
 
     fun place_spot_bet_amt(scenario: &mut Scenario, bettor: address, option_id: u8, bet_amount: u64) {
         test_scenario::next_tx(scenario, bettor);
         {
-            let mut rec = test_scenario::take_shared<spot::SpotRecord>(scenario);
+            let mut rec = test_scenario::take_shared<spot::SpotMarket>(scenario);
             let post_ref = test_scenario::take_shared<Post>(scenario);
             let spot_cfg = test_scenario::take_shared<spot::SpotConfig>(scenario);
             let clock = test_scenario::take_shared<Clock>(scenario);
@@ -310,6 +355,7 @@ module social_contracts::insurance_tests {
         {
             let oracle_admin_cap = test_scenario::take_from_sender<spot::SpotOracleAdminCap>(&scen);
             let cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
+            let mut spot_registry = test_scenario::take_shared<spot::SpotClaimRegistry>(&scen);
             let mut p = test_scenario::take_shared<Post>(&scen);
             let mut betting_options = vector::empty<string::String>();
             vector::push_back(&mut betting_options, string::utf8(b"Yes"));
@@ -318,6 +364,7 @@ module social_contracts::insurance_tests {
             spot::create_spot_record_for_post(
                 &oracle_admin_cap,
                 &cfg,
+                &mut spot_registry,
                 &mut p,
                 betting_options,
                 option::none(),
@@ -328,12 +375,13 @@ module social_contracts::insurance_tests {
             test_scenario::return_to_sender(&scen, oracle_admin_cap);
             test_scenario::return_shared(cfg);
             test_scenario::return_shared(p);
+            test_scenario::return_shared(spot_registry);
             test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scen, USER1);
         {
-            let mut rec = test_scenario::take_shared<spot::SpotRecord>(&scen);
+            let mut rec = test_scenario::take_shared<spot::SpotMarket>(&scen);
             let post_ref = test_scenario::take_shared<Post>(&scen);
             let spot_cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
             let clock = test_scenario::take_shared<Clock>(&scen);
@@ -392,7 +440,7 @@ module social_contracts::insurance_tests {
             let mut backstop = test_scenario::take_shared<insurance::InsuranceBackstopPool>(&scen);
             let spot_config = test_scenario::take_shared<spot::SpotConfig>(&scen);
             let mut vault = test_scenario::take_shared<insurance::UnderwriterVault>(&scen);
-            let record = test_scenario::take_shared<spot::SpotRecord>(&scen);
+            let record = test_scenario::take_shared<spot::SpotMarket>(&scen);
             let clock = test_scenario::take_shared<Clock>(&scen);
             let payment = coin::mint_for_testing<MYSO>(500 * SCALING, test_scenario::ctx(&mut scen));
 
@@ -421,45 +469,13 @@ module social_contracts::insurance_tests {
             test_scenario::return_shared(clock);
         };
 
-        test_scenario::next_tx(&mut scen, ADMIN);
-        {
-            let oracle_admin_cap = test_scenario::take_from_sender<spot::SpotOracleAdminCap>(&scen);
-            let cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
-            let mut rec = test_scenario::take_shared<spot::SpotRecord>(&scen);
-            let post_ref = test_scenario::take_shared<Post>(&scen);
-            let mut platform = test_scenario::take_shared<Platform>(&scen);
-            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scen);
-            let clock = test_scenario::take_shared<Clock>(&scen);
-            let mut evidence_urls = vector::empty<string::String>();
-            vector::push_back(&mut evidence_urls, string::utf8(b"https://example.com/evidence"));
-            spot::oracle_resolve(
-                &oracle_admin_cap,
-                &cfg,
-                &mut rec,
-                &post_ref,
-                &mut platform,
-                &treasury,
-                1,
-                9000,
-                string::utf8(b"Test resolution"),
-                evidence_urls,
-                &clock,
-                test_scenario::ctx(&mut scen)
-            );
-            test_scenario::return_to_sender(&scen, oracle_admin_cap);
-            test_scenario::return_shared(cfg);
-            test_scenario::return_shared(rec);
-            test_scenario::return_shared(post_ref);
-            test_scenario::return_shared(platform);
-            test_scenario::return_shared(treasury);
-            test_scenario::return_shared(clock);
-        };
+        resolve_spot_market_yes(&mut scen, 1);
 
         test_scenario::next_tx(&mut scen, USER1);
         {
             let config = test_scenario::take_shared<insurance::InsuranceConfig>(&scen);
             let mut vault = test_scenario::take_shared<insurance::UnderwriterVault>(&scen);
-            let record = test_scenario::take_shared<spot::SpotRecord>(&scen);
+            let record = test_scenario::take_shared<spot::SpotMarket>(&scen);
             let clock = test_scenario::take_shared<Clock>(&scen);
             let mut policy_id_opt = test_scenario::most_recent_id_shared<insurance::CoveragePolicy>();
             assert!(option::is_some(&policy_id_opt), 1);
@@ -494,7 +510,7 @@ module social_contracts::insurance_tests {
             let mut backstop = test_scenario::take_shared<insurance::InsuranceBackstopPool>(&scen);
             let spot_config = test_scenario::take_shared<spot::SpotConfig>(&scen);
             let mut vault = test_scenario::take_shared<insurance::UnderwriterVault>(&scen);
-            let record = test_scenario::take_shared<spot::SpotRecord>(&scen);
+            let record = test_scenario::take_shared<spot::SpotMarket>(&scen);
             let clock = test_scenario::take_shared<Clock>(&scen);
             let payment = coin::mint_for_testing<MYSO>(500 * SCALING, test_scenario::ctx(&mut scen));
 
@@ -536,7 +552,7 @@ module social_contracts::insurance_tests {
         {
             let config = test_scenario::take_shared<insurance::InsuranceConfig>(&scen);
             let mut vault = test_scenario::take_shared<insurance::UnderwriterVault>(&scen);
-            let record = test_scenario::take_shared<spot::SpotRecord>(&scen);
+            let record = test_scenario::take_shared<spot::SpotMarket>(&scen);
             let clock = test_scenario::take_shared<Clock>(&scen);
             let mut policy_id_opt = test_scenario::most_recent_id_shared<insurance::CoveragePolicy>();
             assert!(option::is_some(&policy_id_opt), 1);
@@ -605,7 +621,7 @@ module social_contracts::insurance_tests {
             let mut backstop = test_scenario::take_shared<insurance::InsuranceBackstopPool>(&scen);
             let spot_config = test_scenario::take_shared<spot::SpotConfig>(&scen);
             let mut vault = test_scenario::take_shared<insurance::UnderwriterVault>(&scen);
-            let record = test_scenario::take_shared<spot::SpotRecord>(&scen);
+            let record = test_scenario::take_shared<spot::SpotMarket>(&scen);
             let clock = test_scenario::take_shared<Clock>(&scen);
             let payment = coin::mint_for_testing<MYSO>(500 * SCALING, test_scenario::ctx(&mut scen));
 
@@ -695,7 +711,7 @@ module social_contracts::insurance_tests {
 
         test_scenario::next_tx(&mut scen, ADMIN);
         {
-            let rec = test_scenario::take_shared<spot::SpotRecord>(&scen);
+            let rec = test_scenario::take_shared<spot::SpotMarket>(&scen);
             let a0 = spot::get_option_escrow(&rec, 0);
             let a1 = spot::get_option_escrow(&rec, 1);
             assert!(spot::total_option_escrow(&rec) == a0 + a1, 1);
@@ -721,7 +737,7 @@ module social_contracts::insurance_tests {
             let mut backstop = test_scenario::take_shared<insurance::InsuranceBackstopPool>(&scen);
             let spot_config = test_scenario::take_shared<spot::SpotConfig>(&scen);
             let mut vault = test_scenario::take_shared<insurance::UnderwriterVault>(&scen);
-            let record = test_scenario::take_shared<spot::SpotRecord>(&scen);
+            let record = test_scenario::take_shared<spot::SpotMarket>(&scen);
             let clock = test_scenario::take_shared<Clock>(&scen);
             let payment = coin::mint_for_testing<MYSO>(500 * SCALING, test_scenario::ctx(&mut scen));
 
@@ -768,7 +784,7 @@ module social_contracts::insurance_tests {
             let mut backstop = test_scenario::take_shared<insurance::InsuranceBackstopPool>(&scen);
             let spot_config = test_scenario::take_shared<spot::SpotConfig>(&scen);
             let mut vault = test_scenario::take_shared<insurance::UnderwriterVault>(&scen);
-            let record = test_scenario::take_shared<spot::SpotRecord>(&scen);
+            let record = test_scenario::take_shared<spot::SpotMarket>(&scen);
             let clock = test_scenario::take_shared<Clock>(&scen);
             let payment = coin::mint_for_testing<MYSO>(500 * SCALING, test_scenario::ctx(&mut scen));
 
@@ -812,7 +828,7 @@ module social_contracts::insurance_tests {
         {
             let config = test_scenario::take_shared<insurance::InsuranceConfig>(&scen);
             let vault = test_scenario::take_shared<insurance::UnderwriterVault>(&scen);
-            let record = test_scenario::take_shared<spot::SpotRecord>(&scen);
+            let record = test_scenario::take_shared<spot::SpotMarket>(&scen);
             let q_fav =
                 insurance::quote_premium_with_spot_risk(&config, &vault, &record, 0, 50 * SCALING, 8000, DAY_MS);
             let q_dog =
@@ -841,7 +857,7 @@ module social_contracts::insurance_tests {
         {
             let config = test_scenario::take_shared<insurance::InsuranceConfig>(&scen);
             let vault = test_scenario::take_shared<insurance::UnderwriterVault>(&scen);
-            let record = test_scenario::take_shared<spot::SpotRecord>(&scen);
+            let record = test_scenario::take_shared<spot::SpotMarket>(&scen);
             let pq =
                 insurance::quote_premium_with_spot_risk(&config, &vault, &record, 0, 50 * SCALING, 8000, DAY_MS);
             assert!(insurance::premium_quote_risk_multiplier_bps(&pq) >= 9000 && insurance::premium_quote_risk_multiplier_bps(&pq) <= 12_500, 1);
@@ -864,7 +880,7 @@ module social_contracts::insurance_tests {
         {
             let config = test_scenario::take_shared<insurance::InsuranceConfig>(&scen);
             let vault = test_scenario::take_shared<insurance::UnderwriterVault>(&scen);
-            let record = test_scenario::take_shared<spot::SpotRecord>(&scen);
+            let record = test_scenario::take_shared<spot::SpotMarket>(&scen);
             let pq = insurance::quote_premium_with_spot_risk(
                 &config,
                 &vault,
@@ -888,7 +904,7 @@ module social_contracts::insurance_tests {
             let mut backstop = test_scenario::take_shared<insurance::InsuranceBackstopPool>(&scen);
             let spot_config = test_scenario::take_shared<spot::SpotConfig>(&scen);
             let mut vault = test_scenario::take_shared<insurance::UnderwriterVault>(&scen);
-            let record = test_scenario::take_shared<spot::SpotRecord>(&scen);
+            let record = test_scenario::take_shared<spot::SpotMarket>(&scen);
             let clock = test_scenario::take_shared<Clock>(&scen);
             let payment = coin::mint_for_testing<MYSO>(10 * SCALING, test_scenario::ctx(&mut scen));
 
@@ -978,7 +994,7 @@ module social_contracts::insurance_tests {
             let mut v1 = test_scenario::take_shared<insurance::UnderwriterVault>(&scen);
             let mut v2 = test_scenario::take_shared<insurance::UnderwriterVault>(&scen);
             let mut v3 = test_scenario::take_shared<insurance::UnderwriterVault>(&scen);
-            let record = test_scenario::take_shared<spot::SpotRecord>(&scen);
+            let record = test_scenario::take_shared<spot::SpotMarket>(&scen);
             let clock = test_scenario::take_shared<Clock>(&scen);
             let payment = coin::mint_for_testing<MYSO>(10_000 * SCALING, test_scenario::ctx(&mut scen));
             let deadline_ms = clock::timestamp_ms(&clock) + 3_600_000;

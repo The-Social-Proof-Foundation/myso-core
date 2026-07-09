@@ -2,12 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::review::CanonicalClaim;
+use crate::resolver::{ResolverDefinition, ResolverSpec};
 use crate::sources::ResolverRegistry;
-use crate::types::ComparisonOp;
+use crate::types::{ClaimCategory, ComparisonOp};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReviewDecision {
     Accepted,
+    /// Post links to an existing claim/market (shared liquidity).
+    LinkedToExisting,
     Rejected(RejectReason),
 }
 
@@ -21,6 +24,10 @@ pub enum RejectReason {
     NoTrustedSource,
     InvalidOptions,
     AmbiguousClaim,
+    MissingFeedUrl,
+    MissingRepo,
+    MissingUrl,
+    MissingJsonPath,
 }
 
 impl RejectReason {
@@ -34,24 +41,31 @@ impl RejectReason {
             Self::NoTrustedSource => "no_trusted_source",
             Self::InvalidOptions => "invalid_options",
             Self::AmbiguousClaim => "ambiguous_claim",
+            Self::MissingFeedUrl => "missing_feed_url",
+            Self::MissingRepo => "missing_repo",
+            Self::MissingUrl => "missing_url",
+            Self::MissingJsonPath => "missing_json_path",
         }
     }
 }
 
 pub fn evaluate(
     canonical: &CanonicalClaim,
-    duplicate: bool,
+    market_exists: bool,
     registry: &ResolverRegistry,
 ) -> ReviewDecision {
     let f = &canonical.normalized_fields;
+    if f.claim_category == ClaimCategory::Unsupported {
+        return ReviewDecision::Rejected(RejectReason::UnsupportedCategory);
+    }
     if f.subject.is_empty() || f.predicate.is_empty() {
         return ReviewDecision::Rejected(RejectReason::AmbiguousClaim);
     }
-    if duplicate {
-        return ReviewDecision::Rejected(RejectReason::DuplicateClaim);
+    if market_exists {
+        return ReviewDecision::LinkedToExisting;
     }
     let options_len = f.suggested_options.len();
-    if !(2..=10).contains(&options_len) {
+    if options_len < 2 || options_len > 10 {
         return ReviewDecision::Rejected(RejectReason::InvalidOptions);
     }
     let unique: std::collections::HashSet<_> = f.suggested_options.iter().collect();
@@ -59,41 +73,174 @@ pub fn evaluate(
         return ReviewDecision::Rejected(RejectReason::InvalidOptions);
     }
 
-    let is_price = f.metric.as_deref() == Some("price")
-        || f.predicate.contains("price")
-        || f.subject == "bitcoin"
-        || f.subject == "ethereum";
 
-    if is_price {
-        if f.threshold.is_none() {
-            return ReviewDecision::Rejected(RejectReason::MissingThreshold);
+    match f.claim_category {
+        ClaimCategory::PriceThreshold => {
+            if f.threshold.is_none() {
+                return ReviewDecision::Rejected(RejectReason::MissingThreshold);
+            }
+            if f.comparison.is_none() {
+                return ReviewDecision::Rejected(RejectReason::MissingComparison);
+            }
         }
-        if f.comparison.is_none() {
-            return ReviewDecision::Rejected(RejectReason::MissingComparison);
+        ClaimCategory::ReleasePublished => {
+            if f.deadline.is_none() {
+                return ReviewDecision::Rejected(RejectReason::MissingDeadline);
+            }
+            let has_repo = f.resolver_hints.owner.is_some() && f.resolver_hints.repo.is_some()
+                || f.object.contains('/');
+            if !has_repo {
+                return ReviewDecision::Rejected(RejectReason::MissingRepo);
+            }
         }
-        if registry.get("coingecko").is_none()
-            && registry.get("coinbase").is_none()
-            && registry.get("http_official").is_none()
-        {
-            return ReviewDecision::Rejected(RejectReason::NoTrustedSource);
+        ClaimCategory::EventOccurrence => {
+            if f.deadline.is_none() {
+                return ReviewDecision::Rejected(RejectReason::MissingDeadline);
+            }
+            if f.resolver_hints.feed_url.as_ref().is_none_or(|s| s.is_empty())
+                && !f.suggested_sources.iter().any(|s| s.contains("rss"))
+            {
+                return ReviewDecision::Rejected(RejectReason::MissingFeedUrl);
+            }
         }
-        return ReviewDecision::Accepted;
-    }
-
-    if f.deadline.is_none() {
-        return ReviewDecision::Rejected(RejectReason::MissingDeadline);
+        ClaimCategory::CustomHttp => {
+            if f.deadline.is_none() {
+                return ReviewDecision::Rejected(RejectReason::MissingDeadline);
+            }
+            if f.resolver_hints.url.as_ref().is_none_or(|s| s.is_empty()) {
+                return ReviewDecision::Rejected(RejectReason::MissingUrl);
+            }
+            if f.resolver_hints.json_path.as_ref().is_none_or(|s| s.is_empty()) {
+                return ReviewDecision::Rejected(RejectReason::MissingJsonPath);
+            }
+        }
+        ClaimCategory::Unsupported => {}
     }
 
     if registry.is_empty() {
         return ReviewDecision::Rejected(RejectReason::NoTrustedSource);
     }
 
+    if let Some(preview) = preview_definition(canonical) {
+        let preferred = &f.resolver_hints.preferred_sources;
+        let fallback: &[&str] = match f.claim_category {
+            ClaimCategory::PriceThreshold => &["coingecko", "coinbase", "http_official", "chainlink"],
+            ClaimCategory::ReleasePublished => &["github_releases"],
+            ClaimCategory::EventOccurrence => &["rss_event", "http_official"],
+            ClaimCategory::CustomHttp => &["http_official"],
+            ClaimCategory::Unsupported => &[],
+        };
+        if crate::review::compiler::source_select::select_source(
+            registry,
+            &[],
+            &preview,
+            preferred,
+            fallback,
+        )
+        .is_err()
+        {
+            return ReviewDecision::Rejected(RejectReason::NoTrustedSource);
+        }
+    } else {
+        return ReviewDecision::Rejected(RejectReason::UnsupportedCategory);
+    }
+
     ReviewDecision::Accepted
 }
 
-pub fn is_price_claim(canonical: &CanonicalClaim) -> bool {
+fn preview_definition(canonical: &CanonicalClaim) -> Option<ResolverDefinition> {
     let f = &canonical.normalized_fields;
-    f.metric.as_deref() == Some("price")
-        || f.predicate.contains("price")
-        || matches!(f.comparison, Some(ComparisonOp::Gt | ComparisonOp::Lt | ComparisonOp::Gte | ComparisonOp::Lte))
+    let kind = f.claim_category.resolver_kind()?;
+    let spec = match f.claim_category {
+        ClaimCategory::PriceThreshold => ResolverSpec::PriceThreshold {
+            asset: f.subject.clone(),
+            quote: if f.object.is_empty() {
+                "usd".to_string()
+            } else {
+                f.object.clone()
+            },
+            comparator: f.comparison.unwrap_or(ComparisonOp::Gt),
+            threshold: f.threshold.clone().unwrap_or_default(),
+            source_id: "preview".to_string(),
+            json_path: "preview".to_string(),
+        },
+        ClaimCategory::ReleasePublished => ResolverSpec::ReleasePublished {
+            owner: f.resolver_hints.owner.clone().unwrap_or_default(),
+            repo: f.resolver_hints.repo.clone().unwrap_or_default(),
+            tag_predicate: f.predicate.clone(),
+            source_id: "preview".to_string(),
+        },
+        ClaimCategory::EventOccurrence => ResolverSpec::EventOccurrence {
+            feed_url: f
+                .resolver_hints
+                .feed_url
+                .clone()
+                .unwrap_or_else(|| "https://example.com/feed".to_string()),
+            match_predicate: f.predicate.clone(),
+            source_id: "preview".to_string(),
+        },
+        ClaimCategory::CustomHttp => ResolverSpec::CustomHttp {
+            url: f.resolver_hints.url.clone().unwrap_or_default(),
+            json_path: f.resolver_hints.json_path.clone().unwrap_or_default(),
+            comparator: f.comparison.unwrap_or(ComparisonOp::Eq),
+            expected: f
+                .resolver_hints
+                .expected
+                .clone()
+                .or(f.threshold.clone())
+                .unwrap_or_default(),
+            source_id: "preview".to_string(),
+        },
+        ClaimCategory::Unsupported => return None,
+    };
+    Some(ResolverDefinition {
+        id: uuid::Uuid::new_v4(),
+        resolver_kind: kind,
+        spec,
+        source_ids: vec![],
+        betting_options: f.suggested_options.clone(),
+        maturity_schedule: crate::resolver::MaturitySchedule {
+            maturity_at: chrono::Utc::now(),
+            deadline: chrono::Utc::now(),
+        },
+    })
+}
+
+pub fn is_price_claim(canonical: &CanonicalClaim) -> bool {
+    canonical.normalized_fields.claim_category == ClaimCategory::PriceThreshold
+        || {
+            let f = &canonical.normalized_fields;
+            f.metric.as_deref() == Some("price")
+                || f.predicate.contains("price")
+                || matches!(
+                    f.comparison,
+                    Some(ComparisonOp::Gt | ComparisonOp::Lt | ComparisonOp::Gte | ComparisonOp::Lte)
+                )
+        }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::review::compiler::fixtures;
+    use crate::review::compiler::test_registry;
+
+    #[test]
+    fn unsupported_claim_rejected() {
+        let canonical = fixtures::unsupported_claim();
+        let registry = test_registry();
+        let decision = evaluate(&canonical, false, &registry);
+        assert_eq!(
+            decision,
+            ReviewDecision::Rejected(RejectReason::UnsupportedCategory)
+        );
+    }
+
+    #[test]
+    fn btc_price_accepted() {
+        let canonical = fixtures::btc_price_claim();
+        let registry = test_registry();
+        let decision = evaluate(&canonical, false, &registry);
+        assert_eq!(decision, ReviewDecision::Accepted);
+    }
 }

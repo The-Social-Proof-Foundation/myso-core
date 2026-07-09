@@ -71,7 +71,8 @@ pub use social_graph::{
     WalletOnlyProfile,
 };
 pub use spot::{
-    PendingSpotPostRow, SpotBetRow, SpotConfigInfo, SpotRecordResponse, SpotTransferRow,
+    PendingSpotPostRow, SpotBetRow, SpotConfigInfo, SpotCreatorStatsResponse,
+    SpotPendingCreatorPayoutRow, SpotRecordResponse, SpotRouteResponse, SpotTransferRow,
 };
 pub use spt::{
     SptExchangeConfigRow, SptHoldingRow, SptPoolRow, SptPriceHistoryRow, SptReservationPoolRow,

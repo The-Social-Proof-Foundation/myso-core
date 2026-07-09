@@ -1,8 +1,11 @@
+DROP TABLE IF EXISTS checkpoint_ingest_state;
 DROP TABLE IF EXISTS retries;
 DROP TABLE IF EXISTS audit_logs;
 DROP TABLE IF EXISTS transactions;
 DROP TABLE IF EXISTS source_health;
 DROP TABLE IF EXISTS evidence;
+DROP TABLE IF EXISTS evidence_bundles;
+DROP TABLE IF EXISTS market_transitions;
 DROP TABLE IF EXISTS spot_jobs;
 DROP TABLE IF EXISTS resolver_state;
 DROP TABLE IF EXISTS resolver_definitions;

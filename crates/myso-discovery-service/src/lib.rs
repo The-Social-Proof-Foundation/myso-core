@@ -7,11 +7,15 @@
 
 pub mod admin;
 pub mod api;
+pub mod bootstrap;
+pub mod cache;
 pub mod config;
 pub mod embed_client;
+pub mod factual_api;
 pub mod identity;
 pub mod jobs;
 pub mod metrics;
+pub mod rate_limit;
 pub mod runtime;
 pub mod scheduler;
 pub mod store;

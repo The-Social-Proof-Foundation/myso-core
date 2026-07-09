@@ -61,6 +61,10 @@ pub use myso_indexer_alt_social_schema::models::{
     PostDeletionEventRow, PostModerationEventRow, SptHoldingRow, SptPoolRow, SptPriceHistory,
     SptTransaction,
 };
+pub use spot::{
+    SpotClaimEarningsRow, SpotClaimRow, SpotCreatorStatsRow, SpotMarketEarningsRow,
+    SpotMarketRow, SpotPendingCreatorPayoutRow, SpotPostEarningsRow, SpotRouteRow,
+};
 pub use org_leaderboard::{
     OrganizationCategoryInfo, OrganizationLeaderboardEntry, OrganizationLeaderboardResult,
     OrganizationLeaderboardSort, org_type_from_slug, organization_categories,

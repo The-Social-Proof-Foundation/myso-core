@@ -1,5 +1,5 @@
-# Real factual sources for discovery E2E — explicit config referenced by scripts/discovery-runnable.sh.
-# YAML declares REAL fetch targets (no fake curated entries). Prefer stable public RSS/JSON;
+# Real factual TEXT sources for discovery E2E — referenced by scripts/discovery-runnable.sh.
+# Not for PoC embed (use sources.media.localnet.yaml). Prefer stable public RSS/JSON;
 # avoid sources that require API keys unless api_key_env is set.
 
 - id: coindesk-rss

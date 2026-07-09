@@ -1,7 +1,9 @@
 # SPoT oracle discovery source registration for localnet/dev — REAL fetch targets.
+# Factual TEXT settlement registration only — not PoC media embed corpus.
 # YAML declares where to fetch + enable flags + trust scores. SPoT reads these same
 # rows for enable flags + trust scores when building ResolverRegistry. This is
 # registration only; TrustedSource adapters perform live HTTP at resolution time.
+# Creative media crawl lives in myso-discovery-service sources.media.localnet.yaml.
 
 - id: coindesk-rss
   adapter_type: rss

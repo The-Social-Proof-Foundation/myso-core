@@ -37,6 +37,7 @@ MYDATA_CONFIG_ID="${MYDATA_CONFIG_ID:-}"
 GOVERNANCE_ECOSYSTEM_REGISTRY_ID="${GOVERNANCE_ECOSYSTEM_REGISTRY_ID:-}"
 GOVERNANCE_POC_REGISTRY_ID="${GOVERNANCE_POC_REGISTRY_ID:-}"
 POST_CONFIG_ID="${POST_CONFIG_ID:-}"
+MEMORY_CONFIG_ID="${MEMORY_CONFIG_ID:-}"
 SOCIAL_PROOF_TOKENS_CONFIG_ID="${SOCIAL_PROOF_TOKENS_CONFIG_ID:-}"
 MESSAGE_REGISTRY_ID="${MESSAGE_REGISTRY_ID:-}"
 SPOT_CONFIG_ID="${SPOT_CONFIG_ID:-}"
@@ -522,33 +523,36 @@ ptb_create_post() {
     blr="${blr:-$BLOCK_LIST_REGISTRY_ID}"
     read -r -p "PostConfig [${POST_CONFIG_ID:-}]: " cfg
     cfg="${cfg:-$POST_CONFIG_ID}"
+    read -r -p "MemoryConfig [${MEMORY_CONFIG_ID:-}]: " mcfg
+    mcfg="${mcfg:-$MEMORY_CONFIG_ID}"
     read -r -p "MyDataRegistry [${MYDATA_REGISTRY_ID:-}]: " mr
     mr="${mr:-$MYDATA_REGISTRY_ID}"
     read -r -p "MemoryAccount [${MEMORY_ACCOUNT_ID:-}]: " mem
     mem="${mem:-$MEMORY_ACCOUNT_ID}"
     read -r -p "Post body (UTF-8; avoid unescaped double-quotes): " body
     CONTENT_LIT="$(literal_move_string "$body")"
-    if [ -z "$ur" ] || [ -z "$pr" ] || [ -z "$plat" ] || [ -z "$blr" ] || [ -z "$cfg" ] || [ -z "$mr" ] || [ -z "$mem" ]; then
+    if [ -z "$ur" ] || [ -z "$pr" ] || [ -z "$plat" ] || [ -z "$blr" ] || [ -z "$cfg" ] || [ -z "$mcfg" ] || [ -z "$mr" ] || [ -z "$mem" ]; then
         print_info "Missing required object id."
         press_enter
         content_menu
         return
     fi
-    local ref_ur ref_pr ref_plat ref_blr ref_cfg ref_mr ref_mem ref_clk
+    local ref_ur ref_pr ref_plat ref_blr ref_cfg ref_mcfg ref_mr ref_mem ref_clk
     ref_ur="$(ptb_shared_ref "$ur")" || { press_enter; content_menu; return; }
     ref_pr="$(ptb_shared_ref "$pr")" || { press_enter; content_menu; return; }
     ref_plat="$(ptb_shared_ref "$plat")" || { press_enter; content_menu; return; }
     ref_blr="$(ptb_shared_ref "$blr")" || { press_enter; content_menu; return; }
     ref_cfg="$(ptb_shared_ref "$cfg")" || { press_enter; content_menu; return; }
+    ref_mcfg="$(ptb_shared_ref "$mcfg")" || { press_enter; content_menu; return; }
     ref_mr="$(ptb_shared_ref "$mr")" || { press_enter; content_menu; return; }
     ref_mem="$(ptb_shared_ref "$mem")" || { press_enter; content_menu; return; }
     ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || { press_enter; content_menu; return; }
     print_info "Running myso client ptb --move-call ${PACKAGE_ID}::post::create_post ..."
     invoke_ptb --move-call "${PACKAGE_ID}::post::create_post" \
-        "$ref_ur" "$ref_pr" "$ref_plat" "$ref_blr" "$ref_cfg" \
+        "$ref_ur" "$ref_pr" "$ref_plat" "$ref_blr" "$ref_cfg" "$ref_mcfg" \
         "${CONTENT_LIT}" \
-        none none none none none none none none \
-        none some\(true\) none none \
+        none none none none none none none \
+        none none none \
         "$ref_mr" "$ref_mem" "$ref_clk"
     print_success "Submitted."
     press_enter
@@ -1562,6 +1566,7 @@ record_saved_addresses() {
         read_one "GOVERNANCE_ECOSYSTEM_REGISTRY_ID" "governance ecosystem GovernanceDAO"
         read_one "GOVERNANCE_POC_REGISTRY_ID" "governance PoC GovernanceDAO"
         read_one "POST_CONFIG_ID" "post PostConfig"
+        read_one "MEMORY_CONFIG_ID" "memory MemoryConfig"
         read_one "SOCIAL_PROOF_TOKENS_CONFIG_ID" "SPT shared config object"
         read_one "TOKEN_REGISTRY_ID" "social_proof_tokens TokenRegistry"
         read_one "MESSAGE_REGISTRY_ID" "message registry if used"
@@ -1608,6 +1613,7 @@ MYDATA_CONFIG_ID=
 GOVERNANCE_ECOSYSTEM_REGISTRY_ID=
 GOVERNANCE_POC_REGISTRY_ID=
 POST_CONFIG_ID=
+MEMORY_CONFIG_ID=
 SOCIAL_PROOF_TOKENS_CONFIG_ID=
 TOKEN_REGISTRY_ID=
 MESSAGE_REGISTRY_ID=

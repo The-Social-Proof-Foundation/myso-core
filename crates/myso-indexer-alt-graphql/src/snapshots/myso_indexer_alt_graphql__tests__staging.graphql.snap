@@ -5743,10 +5743,6 @@ type Post implements Node {
 	"""
 	deletionEvents(limit: Int, offset: Int): [PostDeletionEvent!]
 	"""
-	Opt-in for Proof of Creativity analysis.
-	"""
-	enablePoc: Boolean!
-	"""
 	Whether SPoT (Social Proof of Truth) prediction markets are enabled for this post.
 	"""
 	enableSpot: Boolean!
@@ -6273,15 +6269,15 @@ type Profile implements Node {
 	Posts by this profile (paginated, newest first). Matches REST `GET /profiles/:address/posts`
 	scope: `posts.owner` is this profile's wallet **or** `posts.profile_id` is this profile's object id.
 	"""
-	posts(postType: String, enablePoc: Boolean, pocOutcomes: [Int!], includeRemoved: Boolean, limit: Int, offset: Int): [Post!]
+	posts(postType: String, pocOutcomes: [Int!], includeRemoved: Boolean, limit: Int, offset: Int): [Post!]
 	"""
 	Same rows as `posts` with total count and `totalPages` for pagers.
 	"""
-	postsPage(postType: String, enablePoc: Boolean, pocOutcomes: [Int!], includeRemoved: Boolean, limit: Int, offset: Int): PostPage
+	postsPage(postType: String, pocOutcomes: [Int!], includeRemoved: Boolean, limit: Int, offset: Int): PostPage
 	"""
 	Total post count for this profile (same filters as `posts` / `postsPage`).
 	"""
-	postsTotalCount(postType: String, enablePoc: Boolean, pocOutcomes: [Int!], includeRemoved: Boolean): Int
+	postsTotalCount(postType: String, pocOutcomes: [Int!], includeRemoved: Boolean): Int
 	"""
 	The profile ID (object address).
 	"""

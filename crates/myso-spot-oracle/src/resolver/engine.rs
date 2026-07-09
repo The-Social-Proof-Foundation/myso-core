@@ -9,9 +9,12 @@ use chrono::Utc;
 use tracing::info;
 
 use crate::api::AppState;
+use crate::claim::lifecycle::{default_context_for, LifecycleEvent};
+use crate::evidence::EvidenceBundle;
 use crate::resolver::{ResolutionDraft, ResolverDefinition, ResolverKind, ResolverSpec};
 use crate::sources::SourceEvidence;
 use crate::store::jobs::SpotJob;
+use crate::types::{MarketStatus, OnChainSpotStatus};
 use crate::types::ComparisonOp;
 
 pub async fn resolve_market(state: Arc<AppState>, job: &SpotJob) -> anyhow::Result<()> {
@@ -32,9 +35,36 @@ pub async fn resolve_market(state: Arc<AppState>, job: &SpotJob) -> anyhow::Resu
         .get_market(market_id)
         .await?
         .ok_or_else(|| anyhow::anyhow!("market not found"))?;
-    if market.status != "active" && market.status != "resolving" {
+
+    let status = MarketStatus::from_str(&market.status);
+    match status {
+        Some(MarketStatus::Resolved | MarketStatus::Refunded | MarketStatus::Rejected | MarketStatus::DaoRequired | MarketStatus::Failed) => {
+            return Ok(());
+        }
+        Some(MarketStatus::Waiting | MarketStatus::Resolving) => {}
+        _ => return Ok(()),
+    }
+
+    let now = Utc::now();
+    if now < def.maturity_schedule.maturity_at {
+        state
+            .store
+            .requeue_job(job.id, def.maturity_schedule.maturity_at, "before maturity")
+            .await?;
         return Ok(());
     }
+
+    if now > def.maturity_schedule.deadline {
+        enqueue_refund(state.clone(), market_id, def_id).await?;
+        return Ok(());
+    }
+
+    let mut ctx = default_context_for(&LifecycleEvent::ResolveAttemptStarted);
+    ctx.job_id = Some(job.id);
+    state
+        .store
+        .apply_market_transition(market_id, &LifecycleEvent::ResolveAttemptStarted, &ctx)
+        .await?;
 
     let adapters = state.sources.supports(&def);
     if adapters.is_empty() {
@@ -49,27 +79,15 @@ pub async fn resolve_market(state: Arc<AppState>, job: &SpotJob) -> anyhow::Resu
         }
     }
     if evidence_list.is_empty() {
+        state
+            .store
+            .requeue_job(job.id, now + chrono::Duration::minutes(5), "all adapters failed")
+            .await?;
         anyhow::bail!("all adapters failed to resolve");
     }
 
-    let store_raw = state.args.store_raw_evidence;
-    for ev in &evidence_list {
-        state
-            .store
-            .insert_evidence(
-                market_id,
-                Some(job.id),
-                &ev.adapter_id,
-                &ev.source_url,
-                &ev.content_hash,
-                if store_raw {
-                    ev.raw_response.as_deref()
-                } else {
-                    None
-                },
-            )
-            .await?;
-    }
+    let bundle = EvidenceBundle::build(market_id, job.id, &evidence_list);
+    state.store.insert_evidence_bundle(&bundle).await?;
 
     let draft = evaluate_definition(&def, &evidence_list)?;
     state
@@ -81,35 +99,62 @@ pub async fn resolve_market(state: Arc<AppState>, job: &SpotJob) -> anyhow::Resu
         )
         .await?;
 
-    if draft.outcome_label.is_some() {
+    if draft.outcome_label.is_none() {
+        let next_run = if now + chrono::Duration::minutes(15) < def.maturity_schedule.deadline {
+            now + chrono::Duration::minutes(15)
+        } else {
+            def.maturity_schedule.deadline
+        };
         state
             .store
-            .update_market_status(market_id, "resolving", None, None, None)
+            .requeue_job(job.id, next_run, "outcome not yet determined")
             .await?;
-        state
-            .store
-            .enqueue_job(
-                "SubmitChainTx",
-                Some(market_id),
-                Some(def_id),
-                200,
-                Utc::now(),
-                serde_json::json!({
-                    "tx_kind": "oracle_resolve",
-                    "outcome_label": draft.outcome_label,
-                    "confidence_bps": draft.confidence_bps,
-                    "reasoning": draft.reasoning,
-                    "evidence_urls": draft.evidence_urls,
-                }),
-            )
-            .await?;
-        info!(
-            market_id = %market_id,
-            outcome = ?draft.outcome_label,
-            confidence_bps = draft.confidence_bps,
-            "resolution draft ready for chain submit"
-        );
+        return Ok(());
     }
+
+    if draft.evidence_urls.is_empty() {
+        anyhow::bail!("resolution draft missing evidence urls");
+    }
+
+    state
+        .store
+        .enqueue_job(
+            "SubmitChainTx",
+            Some(market_id),
+            Some(def_id),
+            200,
+            Utc::now(),
+            serde_json::json!({
+                "tx_kind": "oracle_resolve",
+                "outcome_label": draft.outcome_label,
+                "confidence_bps": draft.confidence_bps,
+                "reasoning": draft.reasoning,
+                "evidence_urls": draft.evidence_urls,
+                "bundle_hash": bundle.bundle_hash,
+            }),
+        )
+        .await?;
+    info!(
+        market_id = %market_id,
+        outcome = ?draft.outcome_label,
+        confidence_bps = draft.confidence_bps,
+        "resolution draft ready for chain submit"
+    );
+    Ok(())
+}
+
+async fn enqueue_refund(state: Arc<AppState>, market_id: uuid::Uuid, def_id: uuid::Uuid) -> anyhow::Result<()> {
+    state
+        .store
+        .enqueue_job(
+            "SubmitChainTx",
+            Some(market_id),
+            Some(def_id),
+            150,
+            Utc::now(),
+            serde_json::json!({"tx_kind": "refund_unresolved"}),
+        )
+        .await?;
     Ok(())
 }
 
@@ -120,18 +165,8 @@ fn evaluate_definition(
     match def.resolver_kind {
         ResolverKind::PriceThreshold => evaluate_price_threshold(def, evidence),
         ResolverKind::ReleasePublished => evaluate_release(def, evidence),
-        ResolverKind::EventOccurrence => Ok(ResolutionDraft {
-            outcome_label: None,
-            confidence_bps: 0,
-            reasoning: "event not yet matched".to_string(),
-            evidence_urls: evidence.iter().map(|e| e.source_url.clone()).collect(),
-        }),
-        ResolverKind::CustomHttp => Ok(ResolutionDraft {
-            outcome_label: None,
-            confidence_bps: 0,
-            reasoning: "custom http unresolved".to_string(),
-            evidence_urls: evidence.iter().map(|e| e.source_url.clone()).collect(),
-        }),
+        ResolverKind::EventOccurrence => evaluate_event(def, evidence),
+        ResolverKind::CustomHttp => evaluate_custom_http(def, evidence),
     }
 }
 
@@ -233,12 +268,110 @@ fn evaluate_release(
     })
 }
 
+fn evaluate_event(
+    def: &ResolverDefinition,
+    evidence: &[SourceEvidence],
+) -> anyhow::Result<ResolutionDraft> {
+    let ResolverSpec::EventOccurrence { match_predicate, .. } = &def.spec else {
+        anyhow::bail!("expected EventOccurrence spec");
+    };
+    let urls: Vec<String> = evidence.iter().map(|e| e.source_url.clone()).collect();
+    let matched = evidence.iter().any(|ev| {
+        let title = ev.payload.get("title").and_then(|v| v.as_str()).unwrap_or("");
+        let summary = ev.payload.get("summary").and_then(|v| v.as_str()).unwrap_or("");
+        let blob = format!("{title} {summary}").to_lowercase();
+        blob.contains(&match_predicate.to_lowercase())
+    });
+    if !matched {
+        return Ok(ResolutionDraft {
+            outcome_label: None,
+            confidence_bps: 0,
+            reasoning: format!("event not yet matched for predicate '{match_predicate}'"),
+            evidence_urls: urls,
+        });
+    }
+    let yes = def.betting_options.first().cloned().unwrap_or_else(|| "Yes".to_string());
+    let _no = def.betting_options.get(1).cloned().unwrap_or_else(|| "No".to_string());
+    Ok(ResolutionDraft {
+        outcome_label: Some(yes),
+        confidence_bps: 8500,
+        reasoning: format!("event matched predicate '{match_predicate}'"),
+        evidence_urls: urls,
+    })
+}
+
+fn evaluate_custom_http(
+    def: &ResolverDefinition,
+    evidence: &[SourceEvidence],
+) -> anyhow::Result<ResolutionDraft> {
+    let ResolverSpec::CustomHttp {
+        json_path,
+        comparator,
+        expected,
+        ..
+    } = &def.spec
+    else {
+        anyhow::bail!("expected CustomHttp spec");
+    };
+    let urls: Vec<String> = evidence.iter().map(|e| e.source_url.clone()).collect();
+    let actual = evidence
+        .first()
+        .and_then(|e| json_path_value_str(&e.payload, json_path));
+    let Some(actual) = actual else {
+        return Ok(ResolutionDraft {
+            outcome_label: None,
+            confidence_bps: 0,
+            reasoning: "custom http value not yet available".to_string(),
+            evidence_urls: urls,
+        });
+    };
+    let condition = match comparator {
+        ComparisonOp::Eq => actual == *expected,
+        ComparisonOp::Neq => actual != *expected,
+        ComparisonOp::Gt => actual.parse::<f64>().ok().zip(expected.parse::<f64>().ok()).map(|(a, e)| a > e).unwrap_or(false),
+        ComparisonOp::Gte => actual.parse::<f64>().ok().zip(expected.parse::<f64>().ok()).map(|(a, e)| a >= e).unwrap_or(false),
+        ComparisonOp::Lt => actual.parse::<f64>().ok().zip(expected.parse::<f64>().ok()).map(|(a, e)| a < e).unwrap_or(false),
+        ComparisonOp::Lte => actual.parse::<f64>().ok().zip(expected.parse::<f64>().ok()).map(|(a, e)| a <= e).unwrap_or(false),
+    };
+    let yes = def.betting_options.first().cloned().unwrap_or_else(|| "Yes".to_string());
+    let no = def.betting_options.get(1).cloned().unwrap_or_else(|| "No".to_string());
+    Ok(ResolutionDraft {
+        outcome_label: Some(if condition { yes } else { no }),
+        confidence_bps: 8800,
+        reasoning: format!("custom http {actual} vs expected {expected} ({comparator:?})"),
+        evidence_urls: urls,
+    })
+}
+
 fn json_path_value(payload: &serde_json::Value, path: &str) -> Option<f64> {
     let mut current = payload;
     for part in path.split('.') {
         current = current.get(part)?;
     }
     current.as_f64().or_else(|| current.as_str().and_then(|s| s.parse().ok()))
+}
+
+fn json_path_value_str(payload: &serde_json::Value, path: &str) -> Option<String> {
+    let mut current = payload;
+    for part in path.split('.') {
+        current = current.get(part)?;
+    }
+    current
+        .as_str()
+        .map(|s| s.to_string())
+        .or_else(|| current.as_f64().map(|f| f.to_string()))
+}
+
+pub fn is_high_confidence(confidence_bps: u64, threshold_bps: u64) -> bool {
+    confidence_bps >= threshold_bps
+}
+
+pub fn on_chain_status_for_resolve(high_confidence: bool) -> i16 {
+    if high_confidence {
+        OnChainSpotStatus::Resolved as i16
+    } else {
+        OnChainSpotStatus::DaoRequired as i16
+    }
 }
 
 #[cfg(test)]
@@ -279,5 +412,13 @@ mod tests {
         }];
         let draft = evaluate_definition(&def, &evidence).unwrap();
         assert_eq!(draft.outcome_label.as_deref(), Some("Yes"));
+    }
+
+    #[test]
+    fn confidence_threshold_mapping() {
+        assert!(is_high_confidence(9500, 7000));
+        assert!(!is_high_confidence(6500, 7000));
+        assert_eq!(on_chain_status_for_resolve(true), 3);
+        assert_eq!(on_chain_status_for_resolve(false), 2);
     }
 }

@@ -4,7 +4,7 @@
 use std::sync::Arc;
 
 use crate::api::AppState;
-use crate::blockchain::{create_market, settle};
+use crate::blockchain::{create_market, refund, settle};
 use crate::store::jobs::SpotJob;
 
 pub async fn process_chain_job(state: Arc<AppState>, job: SpotJob) -> anyhow::Result<()> {
@@ -15,8 +15,12 @@ pub async fn process_chain_job(state: Arc<AppState>, job: SpotJob) -> anyhow::Re
         .and_then(|v| v.as_str())
         .unwrap_or("unknown");
     let result = match tx_kind {
-        "create_market" => create_market::submit_create_market(state.clone(), &job).await,
+        "create_market" | "create_claim_market" => {
+            create_market::submit_create_claim_market(state.clone(), &job).await
+        }
+        "link_post" => create_market::submit_link_post(state.clone(), &job).await,
         "oracle_resolve" => settle::submit_oracle_resolve(state.clone(), &job).await,
+        "refund_unresolved" => refund::submit_refund_unresolved(state.clone(), &job).await,
         other => Err(anyhow::anyhow!("unknown tx_kind: {other}")),
     };
     match result {

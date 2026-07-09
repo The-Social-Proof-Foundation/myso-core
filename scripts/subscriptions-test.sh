@@ -14,10 +14,10 @@
 # Session: network.config/subscription/subscription-session.env
 #
 # Usage:
-#   ./scripts/test-subscriptions.sh --refresh-session
-#   ASSUME_YES=1 ./scripts/test-subscriptions.sh --run-all
-#   ./scripts/test-subscriptions.sh --lenient-offchain   # debug: skip REST/GQL hard fails
-#   ./scripts/test-subscriptions.sh --with-encrypted-post  # optional key-server subflow
+#   ./scripts/subscriptions-test.sh --refresh-session
+#   ASSUME_YES=1 ./scripts/subscriptions-test.sh --run-all
+#   ./scripts/subscriptions-test.sh --lenient-offchain   # debug: skip REST/GQL hard fails
+#   ./scripts/subscriptions-test.sh --with-encrypted-post  # optional key-server subflow
 
 set -euo pipefail
 
@@ -52,6 +52,8 @@ SUBSCRIPTION_ID=''
 POST_ID=''
 ORIGINAL_BILLING_PERIOD_MS=''
 PAY_COIN_ID=''
+TOKEN_REGISTRY_ID=''
+SOCIAL_PROOF_TOKENS_CONFIG_ID=''
 
 declare -a RUN_RESULTS=()
 
@@ -63,6 +65,7 @@ SUBSCRIPTION_SESSION_KEYS=(
     MYDATA_REGISTRY_ID SUBSCRIPTION_CONFIG_ID SUBSCRIPTION_ADMIN_CAP_ID
     CREATOR_ADDRESS SUBSCRIBER_ADDRESS NONSUB_ADDRESS CREATOR_PROFILE_ID
     MEMORY_ACCOUNT_ID SERVICE_ID SUBSCRIPTION_ID POST_ID PAY_COIN_ID
+    TOKEN_REGISTRY_ID SOCIAL_PROOF_TOKENS_CONFIG_ID
     ORIGINAL_BILLING_PERIOD_MS
 )
 
@@ -136,6 +139,25 @@ ensure_memory_account() {
     log_session_use "MEMORY_ACCOUNT_ID" "$MEMORY_ACCOUNT_ID"
 }
 
+ensure_spt_objects_for_post() {
+    if [[ -n "${TOKEN_REGISTRY_ID:-}" && -n "${SOCIAL_PROOF_TOKENS_CONFIG_ID:-}" ]]; then
+        require_hex_ids TOKEN_REGISTRY_ID SOCIAL_PROOF_TOKENS_CONFIG_ID || return 1
+        return 0
+    fi
+    local json
+    log_step "Fetching TokenRegistry + SocialProofTokensConfig from GraphQL"
+    json="$(graphql_post 'query SubscriptionPostSptObjects {
+  socialProofTokenRegistry: objects(filter: { type: "0x50c1::social_proof_tokens::TokenRegistry", ownerKind: SHARED }, first: 1) { nodes { address } }
+  sptConfig: objects(filter: { type: "0x50c1::social_proof_tokens::SocialProofTokensConfig", ownerKind: SHARED }, first: 1) { nodes { address } }
+}')" || return 1
+    TOKEN_REGISTRY_ID="$(gql_object_address "$json" socialProofTokenRegistry)"
+    SOCIAL_PROOF_TOKENS_CONFIG_ID="$(gql_object_address "$json" sptConfig)"
+    require_session_fields TOKEN_REGISTRY_ID SOCIAL_PROOF_TOKENS_CONFIG_ID || return 1
+    require_hex_ids TOKEN_REGISTRY_ID SOCIAL_PROOF_TOKENS_CONFIG_ID || return 1
+    log_session_use "TOKEN_REGISTRY_ID" "$TOKEN_REGISTRY_ID"
+    log_session_use "SOCIAL_PROOF_TOKENS_CONFIG_ID" "$SOCIAL_PROOF_TOKENS_CONFIG_ID"
+}
+
 flow_create_service() {
     local out digest
     subscription_require_session_objects || return 1
@@ -181,7 +203,7 @@ flow_create_gated_post() {
     ensure_memory_account || return 1
     body_lit="$(literal_move_string "Subscription gated post ${SOCIAL_RUN_ID}")"
     ref_ur="$(ptb_shared_ref "$USERNAME_REGISTRY_ID")" || return 1
-    ref_pr="$(ptb_shared_ref "$PROFILE_CONFIG_ID")" || return 1
+    ref_pr="$(ptb_shared_ref "$PLATFORM_REGISTRY_ID")" || return 1
     ref_plat="$(ptb_shared_ref "$PLATFORM_OBJECT_ID")" || return 1
     ref_blr="$(ptb_shared_ref "$BLOCK_LIST_REGISTRY_ID")" || return 1
     ref_cfg="$(ptb_shared_ref "$POST_CONFIG_ID")" || return 1
@@ -193,8 +215,9 @@ flow_create_gated_post() {
     out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_as_capture "$CREATOR_ADDRESS" \
         --move-call "${PKG_SOCIAL}::post::create_post" \
         "$ref_ur" "$ref_pr" "$ref_plat" "$ref_blr" "$ref_cfg" "$ref_mcfg" \
-        "$body_lit" none none none none none none none none \
-        none none none none "$ref_mr" "$ref_mem" "$ref_clk")" || return 1
+        "$body_lit" none none none none none none none \
+        none none none \
+        "$ref_mr" "$ref_mem" "$ref_clk")" || return 1
     assert_tx_success "$out" || return 1
     digest="$(extract_tx_digest "$out")"
     POST_ID="$(extract_created_object_by_type "$digest" "post::Post")" || return 1

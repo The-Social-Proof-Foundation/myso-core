@@ -14,6 +14,7 @@ use uuid::Uuid;
 
 use crate::config::OracleArgs;
 use crate::metrics::OracleMetrics;
+use crate::sources::discovery_resolve::SharedDiscoveryClient;
 use crate::sources::ResolverRegistry;
 use crate::store::OracleStore;
 
@@ -23,6 +24,7 @@ pub struct AppState {
     pub args: Arc<OracleArgs>,
     pub metrics: Arc<OracleMetrics>,
     pub sources: Arc<ResolverRegistry>,
+    pub discovery_client: Option<SharedDiscoveryClient>,
     pub cancel: CancellationToken,
 }
 
@@ -144,7 +146,12 @@ async fn list_evidence(
         .list_evidence_for_market(market_id)
         .await
         .unwrap_or_default();
-    Json(serde_json::json!({ "evidence": evidence }))
+    let bundles = state
+        .store
+        .list_bundles_for_market(market_id)
+        .await
+        .unwrap_or_default();
+    Json(serde_json::json!({ "evidence": evidence, "bundles": bundles }))
 }
 
 async fn sources_health(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {

@@ -100,11 +100,14 @@ impl DiscoveryStore {
         let row: (Uuid,) = sqlx::query_as(
             r#"
             INSERT INTO discovery_assets (
-                source_id, external_source_url, canonical_metadata, media_type,
+                source_id, external_source_url, canonical_metadata, media_type, content_kind,
                 content_hash, lifecycle_state, source_trust_score, creator_confidence, priority_score
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             ON CONFLICT (external_source_url) DO UPDATE SET
+                source_id = COALESCE(EXCLUDED.source_id, discovery_assets.source_id),
                 canonical_metadata = EXCLUDED.canonical_metadata,
+                media_type = EXCLUDED.media_type,
+                content_kind = EXCLUDED.content_kind,
                 content_hash = COALESCE(EXCLUDED.content_hash, discovery_assets.content_hash),
                 lifecycle_state = EXCLUDED.lifecycle_state,
                 source_trust_score = EXCLUDED.source_trust_score,
@@ -118,6 +121,7 @@ impl DiscoveryStore {
         .bind(&record.external_source_url)
         .bind(&record.canonical_metadata)
         .bind(&record.media_type)
+        .bind(record.content_kind.as_str())
         .bind(&record.content_hash)
         .bind(lifecycle.as_str())
         .bind(record.source_trust_score)
@@ -164,11 +168,12 @@ impl DiscoveryStore {
         asset_id: Uuid,
         priority_score: i64,
         payload: serde_json::Value,
+        max_attempts: i32,
     ) -> anyhow::Result<Uuid> {
         let row: (Uuid,) = sqlx::query_as(
             r#"
-            INSERT INTO discovery_jobs (job_type, discovery_asset_id, priority_score, payload)
-            VALUES ($1, $2, $3, $4)
+            INSERT INTO discovery_jobs (job_type, discovery_asset_id, priority_score, payload, max_attempts)
+            VALUES ($1, $2, $3, $4, $5)
             RETURNING id
             "#,
         )
@@ -176,6 +181,7 @@ impl DiscoveryStore {
         .bind(asset_id)
         .bind(priority_score)
         .bind(payload)
+        .bind(max_attempts)
         .fetch_one(&self.pool)
         .await?;
         Ok(row.0)
@@ -185,9 +191,9 @@ impl DiscoveryStore {
         let mut tx = self.pool.begin().await?;
         let row = sqlx::query_as::<_, DiscoveryJob>(
             r#"
-            SELECT id, job_type, discovery_asset_id, priority_score, status, attempts, payload
+            SELECT id, job_type, discovery_asset_id, priority_score, status, attempts, max_attempts, payload
             FROM discovery_jobs
-            WHERE status = 'pending'
+            WHERE status = 'pending' AND run_after <= NOW()
             ORDER BY priority_score DESC, created_at ASC
             FOR UPDATE SKIP LOCKED
             LIMIT 1
@@ -221,6 +227,94 @@ impl DiscoveryStore {
         .execute(&self.pool)
         .await?;
         Ok(())
+    }
+
+    pub async fn requeue_job(
+        &self,
+        job_id: Uuid,
+        run_after: chrono::DateTime<chrono::Utc>,
+        error: &str,
+    ) -> anyhow::Result<()> {
+        sqlx::query(
+            r#"
+            UPDATE discovery_jobs SET
+                status = CASE WHEN attempts >= max_attempts THEN 'dead_letter' ELSE 'pending' END,
+                run_after = $2,
+                last_error = $3,
+                updated_at = NOW()
+            WHERE id = $1
+            "#,
+        )
+        .bind(job_id)
+        .bind(run_after)
+        .bind(error)
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn count_jobs_by_status(&self, status: &str) -> anyhow::Result<i64> {
+        let row: (i64,) =
+            sqlx::query_as("SELECT COUNT(*) FROM discovery_jobs WHERE status = $1")
+                .bind(status)
+                .fetch_one(&self.pool)
+                .await?;
+        Ok(row.0)
+    }
+
+    pub fn source_uuid_for_string_id(source_id: &str) -> Uuid {
+        uuid_v5_named(source_id)
+    }
+
+    pub async fn find_source_db_id(&self, source_string_id: &str) -> anyhow::Result<Option<Uuid>> {
+        let id = uuid_v5_named(source_string_id);
+        let row: Option<(Uuid,)> =
+            sqlx::query_as("SELECT id FROM discovery_sources WHERE id = $1")
+                .bind(id)
+                .fetch_optional(&self.pool)
+                .await?;
+        Ok(row.map(|r| r.0))
+    }
+
+    /// Clear last_polled_at so the next scheduler cycle re-polls this source.
+    pub async fn request_source_replay(&self, source_db_id: Uuid) -> anyhow::Result<()> {
+        sqlx::query(
+            "UPDATE discovery_sources SET last_polled_at = NULL, updated_at = NOW() WHERE id = $1",
+        )
+        .bind(source_db_id)
+        .execute(&self.pool)
+        .await?;
+        self.audit(
+            "discovery_source",
+            source_db_id,
+            "replay_requested",
+            serde_json::json!({}),
+        )
+        .await?;
+        Ok(())
+    }
+
+    pub async fn insert_exclusion(
+        &self,
+        target_type: &str,
+        target_id: Uuid,
+        reason: &str,
+        requested_by: Option<&str>,
+    ) -> anyhow::Result<Uuid> {
+        let row: (Uuid,) = sqlx::query_as(
+            r#"
+            INSERT INTO discovery_exclusions (target_type, target_id, reason, requested_by)
+            VALUES ($1, $2, $3, $4)
+            RETURNING id
+            "#,
+        )
+        .bind(target_type)
+        .bind(target_id)
+        .bind(reason)
+        .bind(requested_by)
+        .fetch_one(&self.pool)
+        .await?;
+        Ok(row.0)
     }
 
     pub async fn stats(&self) -> anyhow::Result<DiscoveryStats> {
@@ -284,6 +378,45 @@ impl DiscoveryStore {
         .await?;
         Ok(row.0)
     }
+
+    pub async fn list_enabled_sources(&self) -> anyhow::Result<Vec<DiscoverySourceRow>> {
+        let rows = sqlx::query_as::<_, DiscoverySourceRow>(
+            r#"
+            SELECT id, adapter_type, domain, trust_score, enabled, config
+            FROM discovery_sources
+            WHERE enabled = true
+            ORDER BY trust_score DESC
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(rows)
+    }
+
+    pub async fn get_source_by_string_id(&self, source_id: &str) -> anyhow::Result<Option<DiscoverySourceRow>> {
+        let uuid = uuid_v5_named(source_id);
+        let row = sqlx::query_as::<_, DiscoverySourceRow>(
+            r#"
+            SELECT id, adapter_type, domain, trust_score, enabled, config
+            FROM discovery_sources
+            WHERE id = $1
+            "#,
+        )
+        .bind(uuid)
+        .fetch_optional(&self.pool)
+        .await?;
+        Ok(row)
+    }
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct DiscoverySourceRow {
+    pub id: Uuid,
+    pub adapter_type: String,
+    pub domain: String,
+    pub trust_score: f64,
+    pub enabled: bool,
+    pub config: serde_json::Value,
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -294,6 +427,7 @@ pub struct DiscoveryJob {
     pub priority_score: i64,
     pub status: String,
     pub attempts: i32,
+    pub max_attempts: i32,
     pub payload: serde_json::Value,
 }
 
@@ -304,9 +438,8 @@ pub struct DiscoveryStats {
     pub pending_jobs: i64,
 }
 
-/// Deterministic UUID v5 from a source's string id, so repeated startup upserts hit the
-/// same `discovery_sources` row. Namespace is a fixed random UUID.
-fn uuid_v5_named(source_id: &str) -> Uuid {
+/// Deterministic UUID v5 from a source's string id.
+pub fn uuid_v5_named(source_id: &str) -> Uuid {
     Uuid::new_v5(&NAMESPACE, source_id.as_bytes())
 }
 

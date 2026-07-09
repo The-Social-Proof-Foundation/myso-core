@@ -118,3 +118,52 @@ pub async fn get_spot_configuration(
         .ok_or_else(|| SocialError::not_found("SPoT configuration".to_string()))?;
     Ok(Json(config))
 }
+
+/// Mandatory SPoT betting route: post → claim → open market.
+pub async fn get_spot_route(
+    State(state): State<Arc<AppState>>,
+    Path(post_id): Path<String>,
+) -> Result<Json<crate::reader::SpotRouteResponse>, SocialError> {
+    let route = state
+        .reader
+        .get_spot_route(&post_id)
+        .await?
+        .ok_or_else(|| SocialError::not_found(format!("post '{}'", post_id)))?;
+    Ok(Json(route))
+}
+
+pub async fn list_spot_pending_creator_payouts(
+    State(state): State<Arc<AppState>>,
+    Path(creator): Path<String>,
+    Query(params): Query<PageParams>,
+) -> Result<Json<Vec<crate::reader::SpotPendingCreatorPayoutRow>>, SocialError> {
+    let limit = params.limit();
+    let offset = params.offset();
+    let data = state
+        .reader
+        .list_spot_pending_creator_payouts(&creator, limit, offset)
+        .await?;
+    Ok(Json(data))
+}
+
+pub async fn get_spot_creator_stats(
+    State(state): State<Arc<AppState>>,
+    Path(creator): Path<String>,
+) -> Result<Json<crate::reader::SpotCreatorStatsResponse>, SocialError> {
+    let stats = state.reader.get_spot_creator_stats(&creator).await?;
+    Ok(Json(stats))
+}
+
+pub async fn list_expired_spot_creator_payouts(
+    State(state): State<Arc<AppState>>,
+    Path(market_id): Path<String>,
+    Query(params): Query<PageParams>,
+) -> Result<Json<Vec<crate::reader::SpotPendingCreatorPayoutRow>>, SocialError> {
+    let limit = params.limit();
+    let offset = params.offset();
+    let data = state
+        .reader
+        .list_expired_spot_creator_payouts(&market_id, limit, offset)
+        .await?;
+    Ok(Json(data))
+}

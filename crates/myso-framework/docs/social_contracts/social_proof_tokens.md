@@ -66,6 +66,7 @@ plus optional sub-token nano remainder into the <code>u64</code> nano-SPT values
 -  [Function `withdraw_reservation_for_profile`](#social_contracts_social_proof_tokens_withdraw_reservation_for_profile)
 -  [Function `withdraw_reservation_with_platform_for_post`](#social_contracts_social_proof_tokens_withdraw_reservation_with_platform_for_post)
 -  [Function `withdraw_reservation_with_platform_for_profile`](#social_contracts_social_proof_tokens_withdraw_reservation_with_platform_for_profile)
+-  [Function `bootstrap_reservation_pool_for_post_id`](#social_contracts_social_proof_tokens_bootstrap_reservation_pool_for_post_id)
 -  [Function `create_reservation_pool_for_post`](#social_contracts_social_proof_tokens_create_reservation_pool_for_post)
 -  [Function `create_reservation_pool_for_profile`](#social_contracts_social_proof_tokens_create_reservation_pool_for_profile)
 -  [Function `can_create_auction`](#social_contracts_social_proof_tokens_can_create_auction)
@@ -3876,14 +3877,86 @@ Withdraw from a **profile** reservation pool via an approved platform.
 
 </details>
 
+<a name="social_contracts_social_proof_tokens_bootstrap_reservation_pool_for_post_id"></a>
+
+## Function `bootstrap_reservation_pool_for_post_id`
+
+Shared pool-creation logic for <code><a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_create_reservation_pool_for_post">create_reservation_pool_for_post</a></code>.
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_bootstrap_reservation_pool_for_post_id">bootstrap_reservation_pool_for_post_id</a>(registry: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>, config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, associated_id: <b>address</b>, owner: <b>address</b>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <b>address</b>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_bootstrap_reservation_pool_for_post_id">bootstrap_reservation_pool_for_post_id</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">TokenRegistry</a>,
+    config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a>,
+    associated_id: <b>address</b>,
+    owner: <b>address</b>,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+): <b>address</b> {
+    <b>assert</b>!(config.trading_enabled, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ETradingHalted">ETradingHalted</a>);
+    <b>assert</b>!(!table::contains(&registry.reservation_pools, associated_id), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ETokenAlreadyExists">ETokenAlreadyExists</a>);
+    <b>let</b> now = clock::timestamp_ms(clock);
+    <b>let</b> required_threshold = config.post_threshold;
+    <b>let</b> reservation_pool = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPool">ReservationPool</a> {
+        associated_id,
+        token_type: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TOKEN_TYPE_POST">TOKEN_TYPE_POST</a>,
+        owner,
+        total_reserved: 0,
+        required_threshold,
+        created_at: now,
+    };
+    <b>let</b> reservation_pool_object = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">ReservationPoolObject</a> {
+        id: object::new(ctx),
+        info: reservation_pool,
+        myso_balance: balance::zero(),
+        reservations: table::new(ctx),
+        reservers: vector::empty(),
+        converted: <b>false</b>,
+        version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
+    };
+    <b>let</b> pool_info = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPool">ReservationPool</a> {
+        associated_id: reservation_pool_object.info.associated_id,
+        token_type: reservation_pool_object.info.token_type,
+        owner: reservation_pool_object.info.owner,
+        total_reserved: reservation_pool_object.info.total_reserved,
+        required_threshold: reservation_pool_object.info.required_threshold,
+        created_at: reservation_pool_object.info.created_at,
+    };
+    table::add(&<b>mut</b> registry.reservation_pools, associated_id, pool_info);
+    <b>let</b> pool_object_id = object::uid_to_address(&reservation_pool_object.id);
+    event::emit(<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolCreatedEvent">ReservationPoolCreatedEvent</a> {
+        associated_id,
+        token_type: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TOKEN_TYPE_POST">TOKEN_TYPE_POST</a>,
+        owner,
+        required_threshold,
+        pool_object_id,
+        created_at: now,
+    });
+    transfer::share_object(reservation_pool_object);
+    pool_object_id
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_social_proof_tokens_create_reservation_pool_for_post"></a>
 
 ## Function `create_reservation_pool_for_post`
 
-Create a new reservation pool for a post
+Create a reservation pool for a post (explicit second transaction after post create).
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_create_reservation_pool_for_post">create_reservation_pool_for_post</a>(registry: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>, config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_create_reservation_pool_for_post">create_reservation_pool_for_post</a>(registry: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>, config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3895,63 +3968,23 @@ Create a new reservation pool for a post
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_create_reservation_pool_for_post">create_reservation_pool_for_post</a>(
     registry: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">TokenRegistry</a>,
     config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a>,
-    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &Post,
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> Post,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
-    // Check <b>if</b> trading is halted
-    <b>assert</b>!(config.trading_enabled, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ETradingHalted">ETradingHalted</a>);
     <b>let</b> caller = tx_context::sender(ctx);
     <b>let</b> associated_id = <a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
     <b>let</b> owner = <a href="../social_contracts/post.md#social_contracts_post_get_post_owner">post::get_post_owner</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
-    // Verify caller is the actual <a href="../social_contracts/post.md#social_contracts_post">post</a> owner
     <b>assert</b>!(caller == owner, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ENotAuthorized">ENotAuthorized</a>);
-    // Verify <a href="../social_contracts/post.md#social_contracts_post">post</a> ID matches
-    <b>assert</b>!(associated_id == <a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidID">EInvalidID</a>);
-    // Check <b>if</b> reservation pool already exists
-    <b>assert</b>!(!table::contains(&registry.reservation_pools, associated_id), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ETokenAlreadyExists">ETokenAlreadyExists</a>);
-    <b>let</b> now = clock::timestamp_ms(clock);
-    <b>let</b> required_threshold = config.post_threshold;
-    // Create reservation pool info (without reservers vector - only in <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">ReservationPoolObject</a>)
-    <b>let</b> reservation_pool = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPool">ReservationPool</a> {
+    <b>let</b> pool_object_id = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_bootstrap_reservation_pool_for_post_id">bootstrap_reservation_pool_for_post_id</a>(
+        registry,
+        config,
         associated_id,
-        token_type: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TOKEN_TYPE_POST">TOKEN_TYPE_POST</a>,
         owner,
-        total_reserved: 0,
-        required_threshold,
-        created_at: now,
-    };
-    // Create reservation pool object first (before moving reservation_pool)
-    <b>let</b> reservation_pool_object = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">ReservationPoolObject</a> {
-        id: object::new(ctx),
-        info: reservation_pool,
-        myso_balance: balance::zero(),
-        reservations: table::new(ctx),
-        reservers: vector::empty(),
-        converted: <b>false</b>,
-        version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
-    };
-    // Add to registry (reconstruct <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPool">ReservationPool</a> from object's info since original was moved)
-    <b>let</b> pool_info = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPool">ReservationPool</a> {
-        associated_id: reservation_pool_object.info.associated_id,
-        token_type: reservation_pool_object.info.token_type,
-        owner: reservation_pool_object.info.owner,
-        total_reserved: reservation_pool_object.info.total_reserved,
-        required_threshold: reservation_pool_object.info.required_threshold,
-        created_at: reservation_pool_object.info.created_at,
-    };
-    table::add(&<b>mut</b> registry.reservation_pools, associated_id, pool_info);
-    <b>let</b> pool_object_id = object::uid_to_address(&reservation_pool_object.id);
-    // Emit reservation pool created event
-    event::emit(<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolCreatedEvent">ReservationPoolCreatedEvent</a> {
-        associated_id,
-        token_type: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TOKEN_TYPE_POST">TOKEN_TYPE_POST</a>,
-        owner,
-        required_threshold,
-        pool_object_id,
-        created_at: now,
-    });
-    transfer::share_object(reservation_pool_object);
+        clock,
+        ctx,
+    );
+    <a href="../social_contracts/post.md#social_contracts_post_set_spt_id">post::set_spt_id</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, pool_object_id);
 }
 </code></pre>
 

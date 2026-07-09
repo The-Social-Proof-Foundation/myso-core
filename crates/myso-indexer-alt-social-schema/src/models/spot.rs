@@ -8,14 +8,18 @@ use diesel::sql_types::{BigInt, Int4, Jsonb, Nullable, SmallInt, Text};
 use serde::{Deserialize, Serialize};
 
 use crate::schema::{
-    spot_bet_withdrawals, spot_bets, spot_config, spot_events, spot_payouts, spot_records,
-    spot_refunds, spot_resolutions,
+    spot_bet_withdrawals, spot_bets, spot_claims, spot_config, spot_creator_payouts, spot_events,
+    spot_markets, spot_payouts, spot_post_links, spot_records, spot_refunds, spot_resolutions,
 };
 
 pub const STATUS_OPEN: i16 = 1;
 pub const STATUS_DAO_REQUIRED: i16 = 2;
 pub const STATUS_RESOLVED: i16 = 3;
 pub const STATUS_REFUNDABLE: i16 = 4;
+pub const CREATOR_PAYOUT_STATUS_ACCRUED: &str = "accrued";
+pub const CREATOR_PAYOUT_STATUS_CLAIMED: &str = "claimed";
+pub const CREATOR_PAYOUT_STATUS_RECLAIMED: &str = "reclaimed";
+pub const SPOT_LINK_KIND_PRIMARY: &str = "primary";
 pub const OUTCOME_DRAW: i16 = 255;
 pub const OUTCOME_UNAPPLICABLE: i16 = 254;
 pub const DEFAULT_CONFIDENCE_THRESHOLD_BPS: i32 = 7000;
@@ -83,6 +87,16 @@ pub struct SpotRecordRow {
     pub proposed_outcome: Option<i16>,
     #[diesel(sql_type = Nullable<BigInt>)]
     pub dao_escalated_at_ms: Option<i64>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub claim_object_id: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub market_object_id: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub primary_post_id: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub market_key_hash: Option<String>,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub creator_fee_total: Option<i64>,
 }
 
 /// Query result for a spot payout (for GraphQL/reader).
@@ -185,6 +199,11 @@ pub struct NewSpotRecord {
     pub oracle_proposed_outcome: Option<i16>,
     pub proposed_outcome: Option<i16>,
     pub dao_escalated_at_ms: Option<i64>,
+    pub claim_object_id: Option<String>,
+    pub market_object_id: Option<String>,
+    pub primary_post_id: Option<String>,
+    pub market_key_hash: Option<String>,
+    pub creator_fee_total: Option<i64>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -199,6 +218,8 @@ pub struct NewSpotBet {
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
     pub organization_id: Option<String>,
+    pub market_object_id: Option<String>,
+    pub referrer_post_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -235,6 +256,9 @@ pub struct NewSpotResolution {
     pub transaction_id: String,
     pub reasoning: String,
     pub evidence_urls: serde_json::Value,
+    pub claim_object_id: Option<String>,
+    pub market_object_id: Option<String>,
+    pub creator_fee_total: Option<i64>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -272,6 +296,9 @@ pub struct NewSpotConfig {
     pub max_evidence_urls: i64,
     pub platform_fee_bps: i64,
     pub ecosystem_fee_bps: i64,
+    pub creator_fee_bps: Option<i64>,
+    pub creator_claim_window_ms: Option<i64>,
+    pub expired_creator_ecosystem_bps: Option<i64>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -284,5 +311,98 @@ pub struct NewSpotBetWithdrawal {
     pub fee_taken: i64,
     pub timestamp_ms: i64,
     pub time: chrono::DateTime<chrono::Utc>,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = spot_claims)]
+pub struct NewSpotClaim {
+    pub claim_object_id: String,
+    pub semantic_claim_hash: String,
+    pub created_at_ms: i64,
+    pub transaction_id: String,
+    pub created_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = spot_markets)]
+pub struct NewSpotMarket {
+    pub market_object_id: String,
+    pub claim_object_id: String,
+    pub market_key_hash: String,
+    pub primary_post_id: String,
+    pub primary_creator: Option<String>,
+    pub status: i16,
+    pub outcome: Option<i16>,
+    pub betting_options: serde_json::Value,
+    pub option_escrow: serde_json::Value,
+    pub resolution_window_ms: Option<i64>,
+    pub max_resolution_window_ms: Option<i64>,
+    pub created_at_ms: i64,
+    pub last_resolution_at_ms: Option<i64>,
+    pub resolution_timestamp_ms: Option<i64>,
+    pub creator_fee_total: Option<i64>,
+    pub transaction_id: String,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = spot_post_links)]
+pub struct NewSpotPostLink {
+    pub post_id: String,
+    pub claim_object_id: String,
+    pub market_object_id: Option<String>,
+    pub link_kind: String,
+    pub transaction_id: String,
+    pub created_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = spot_creator_payouts)]
+pub struct NewSpotCreatorPayout {
+    pub market_object_id: String,
+    pub payout_id: i64,
+    pub creator_address: String,
+    pub referrer_post_id: String,
+    pub amount: i64,
+    pub expires_at_ms: i64,
+    pub status: String,
+    pub ecosystem_amount: Option<i64>,
+    pub platform_amount: Option<i64>,
+    pub claimed_at_ms: Option<i64>,
+    pub reclaimed_at_ms: Option<i64>,
+    pub transaction_id: String,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
+pub struct SpotCreatorPayoutRow {
+    #[diesel(sql_type = Int4)]
+    pub id: i32,
+    #[diesel(sql_type = Text)]
+    pub market_object_id: String,
+    #[diesel(sql_type = BigInt)]
+    pub payout_id: i64,
+    #[diesel(sql_type = Text)]
+    pub creator_address: String,
+    #[diesel(sql_type = Text)]
+    pub referrer_post_id: String,
+    #[diesel(sql_type = BigInt)]
+    pub amount: i64,
+    #[diesel(sql_type = BigInt)]
+    pub expires_at_ms: i64,
+    #[diesel(sql_type = Text)]
+    pub status: String,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub ecosystem_amount: Option<i64>,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub platform_amount: Option<i64>,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub claimed_at_ms: Option<i64>,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub reclaimed_at_ms: Option<i64>,
+    #[diesel(sql_type = Text)]
     pub transaction_id: String,
 }

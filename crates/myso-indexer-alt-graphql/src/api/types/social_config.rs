@@ -457,6 +457,21 @@ impl SpotConfig {
         self.inner.ecosystem_fee_bps
     }
 
+    /// Creator referral fee in basis points (default 100 = 1.00%).
+    async fn creator_fee_bps(&self) -> i64 {
+        self.inner.creator_fee_bps
+    }
+
+    /// Window after resolution during which creators may claim referral rewards.
+    async fn creator_claim_window_ms(&self) -> i64 {
+        self.inner.creator_claim_window_ms
+    }
+
+    /// Share of expired unclaimed creator rewards routed to ecosystem on reclaim.
+    async fn expired_creator_ecosystem_bps(&self) -> i64 {
+        self.inner.expired_creator_ecosystem_bps
+    }
+
     /// Oracle address for resolution.
     async fn oracle_address(&self) -> &str {
         &self.inner.oracle_address

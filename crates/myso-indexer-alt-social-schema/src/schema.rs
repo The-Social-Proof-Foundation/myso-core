@@ -1045,9 +1045,9 @@ diesel::table! {
         subscription_price -> Nullable<Int8>,
         encrypted_content_hash -> Nullable<Text>,
         enable_spt -> Bool,
-        enable_poc -> Bool,
         enable_spot -> Bool,
         spot_id -> Nullable<Text>,
+        spot_claim_id -> Nullable<Text>,
         spt_id -> Nullable<Text>,
         poc_reasoning -> Nullable<Text>,
         poc_evidence_urls -> Nullable<Jsonb>,
@@ -1994,6 +1994,84 @@ diesel::table! {
         transaction_id -> Text,
         option_id -> Int2,
         organization_id -> Nullable<Text>,
+        market_object_id -> Nullable<Text>,
+        referrer_post_id -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
+    spot_claims (id) {
+        id -> Int4,
+        claim_object_id -> Text,
+        semantic_claim_hash -> Text,
+        created_at_ms -> Int8,
+        transaction_id -> Text,
+        created_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    spot_creator_earnings_daily (creator_address, day) {
+        creator_address -> Text,
+        day -> Date,
+        amount -> Int8,
+        updated_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    spot_creator_payouts (id) {
+        id -> Int4,
+        market_object_id -> Text,
+        payout_id -> Int8,
+        creator_address -> Text,
+        referrer_post_id -> Text,
+        amount -> Int8,
+        expires_at_ms -> Int8,
+        status -> Text,
+        ecosystem_amount -> Nullable<Int8>,
+        platform_amount -> Nullable<Int8>,
+        claimed_at_ms -> Nullable<Int8>,
+        reclaimed_at_ms -> Nullable<Int8>,
+        transaction_id -> Text,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    spot_markets (id) {
+        id -> Int4,
+        market_object_id -> Text,
+        claim_object_id -> Text,
+        market_key_hash -> Text,
+        primary_post_id -> Text,
+        primary_creator -> Nullable<Text>,
+        status -> Int2,
+        outcome -> Nullable<Int2>,
+        betting_options -> Jsonb,
+        option_escrow -> Jsonb,
+        resolution_window_ms -> Nullable<Int8>,
+        max_resolution_window_ms -> Nullable<Int8>,
+        created_at_ms -> Int8,
+        last_resolution_at_ms -> Nullable<Int8>,
+        resolution_timestamp_ms -> Nullable<Int8>,
+        creator_fee_total -> Nullable<Int8>,
+        transaction_id -> Text,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    spot_post_links (id) {
+        id -> Int4,
+        post_id -> Text,
+        claim_object_id -> Text,
+        market_object_id -> Nullable<Text>,
+        link_kind -> Text,
+        transaction_id -> Text,
+        created_at -> Timestamp,
     }
 }
 
@@ -2022,6 +2100,9 @@ diesel::table! {
         max_evidence_urls -> Int8,
         platform_fee_bps -> Int8,
         ecosystem_fee_bps -> Int8,
+        creator_fee_bps -> Nullable<Int8>,
+        creator_claim_window_ms -> Nullable<Int8>,
+        expired_creator_ecosystem_bps -> Nullable<Int8>,
     }
 }
 
@@ -2070,6 +2151,11 @@ diesel::table! {
         oracle_proposed_outcome -> Nullable<Int2>,
         proposed_outcome -> Nullable<Int2>,
         dao_escalated_at_ms -> Nullable<Int8>,
+        claim_object_id -> Nullable<Text>,
+        market_object_id -> Nullable<Text>,
+        primary_post_id -> Nullable<Text>,
+        market_key_hash -> Nullable<Text>,
+        creator_fee_total -> Nullable<Int8>,
     }
 }
 
@@ -2097,6 +2183,9 @@ diesel::table! {
         transaction_id -> Text,
         reasoning -> Text,
         evidence_urls -> Jsonb,
+        claim_object_id -> Nullable<Text>,
+        market_object_id -> Nullable<Text>,
+        creator_fee_total -> Nullable<Int8>,
     }
 }
 
@@ -2642,9 +2731,14 @@ diesel::allow_tables_to_appear_in_same_query!(
     social_proof_of_truth,
     spot_bet_withdrawals,
     spot_bets,
+    spot_claims,
     spot_config,
+    spot_creator_earnings_daily,
+    spot_creator_payouts,
     spot_events,
+    spot_markets,
     spot_payouts,
+    spot_post_links,
     spot_records,
     spot_refunds,
     spot_resolutions,

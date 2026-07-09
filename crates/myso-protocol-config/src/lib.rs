@@ -4628,7 +4628,7 @@ impl ProtocolConfig {
 
                     cfg.feature_flags.enable_ristretto255_group_ops = true;
                     cfg.feature_flags.enable_verify_bulletproofs_ristretto255 = true;
-                    cfg.max_move_package_size = Some(256 * 1024);
+                    cfg.max_move_package_size = Some(320 * 1024);
                 }
                 // Use this template when making changes:
                 //

@@ -353,7 +353,7 @@ pub(crate) async fn get_profile_posts(
         SELECT post_id, owner, profile_id, content, post_type, created_at, deleted_at,
                reaction_count, comment_count, repost_count, tips_received,
                media_urls, mentions, parent_post_id, updated_at,
-               poc_id, revenue_redirect_to, revenue_redirect_percentage, enable_poc,
+               poc_id, revenue_redirect_to, revenue_redirect_percentage,
                poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type,
                poc_oracle_address, poc_analyzed_at, poc_outcome, poc_redirection_kind,
                poc_disputes_submitted,

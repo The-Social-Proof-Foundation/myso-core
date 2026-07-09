@@ -39,6 +39,10 @@ pub struct ExtractedClaim {
     pub suggested_sources: Vec<String>,
     #[serde(default)]
     pub suggested_options: Vec<String>,
+    #[serde(default)]
+    pub claim_category: crate::types::ClaimCategory,
+    #[serde(default)]
+    pub resolver_hints: crate::types::ResolverHints,
 }
 
 pub async fn insert_llm_extraction(
@@ -65,33 +69,35 @@ pub async fn insert_llm_extraction(
     Ok(row.0)
 }
 
-pub async fn insert_canonical_claim(
+pub async fn get_or_insert_canonical_claim(
     pool: &PgPool,
     llm_extraction_id: Uuid,
     fields: &CanonicalClaimFields,
-    claim_hash: &str,
+    semantic_hash: &str,
+    market_key_hash: &str,
 ) -> anyhow::Result<Uuid> {
+    if let Some(row) = sqlx::query_as::<_, (Uuid,)>(
+        "SELECT id FROM canonical_claims WHERE semantic_claim_hash = $1",
+    )
+    .bind(semantic_hash)
+    .fetch_optional(pool)
+    .await?
+    {
+        return Ok(row.0);
+    }
     let fields_json = serde_json::to_value(fields)?;
     let row: (Uuid,) = sqlx::query_as(
         r#"
-        INSERT INTO canonical_claims (llm_extraction_id, normalized_fields, claim_hash)
-        VALUES ($1, $2, $3)
+        INSERT INTO canonical_claims (llm_extraction_id, normalized_fields, claim_hash, semantic_claim_hash, market_key_hash)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING id
         "#,
     )
     .bind(llm_extraction_id)
     .bind(fields_json)
-    .bind(claim_hash)
-    .fetch_one(pool)
-    .await?;
-    Ok(row.0)
-}
-
-pub async fn claim_hash_exists(pool: &PgPool, claim_hash: &str) -> anyhow::Result<bool> {
-    let row: (bool,) = sqlx::query_as(
-        "SELECT EXISTS(SELECT 1 FROM canonical_claims WHERE claim_hash = $1)",
-    )
-    .bind(claim_hash)
+    .bind(market_key_hash)
+    .bind(semantic_hash)
+    .bind(market_key_hash)
     .fetch_one(pool)
     .await?;
     Ok(row.0)
@@ -137,6 +143,7 @@ pub async fn insert_resolver_definition(
     pool: &PgPool,
     canonical_claim_id: Uuid,
     def: &ResolverDefinition,
+    compile_fingerprint: &str,
 ) -> anyhow::Result<Uuid> {
     let spec_json = serde_json::to_value(&def.spec)?;
     let source_ids_json = serde_json::to_value(&def.source_ids)?;
@@ -151,8 +158,8 @@ pub async fn insert_resolver_definition(
     let row: (Uuid,) = sqlx::query_as(
         r#"
         INSERT INTO resolver_definitions
-            (id, canonical_claim_id, resolver_kind, spec, source_ids, betting_options, maturity_schedule)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
+            (id, canonical_claim_id, resolver_kind, spec, source_ids, betting_options, maturity_schedule, compile_fingerprint)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING id
         "#,
     )
@@ -163,6 +170,7 @@ pub async fn insert_resolver_definition(
     .bind(source_ids_json)
     .bind(betting_options_json)
     .bind(maturity_json)
+    .bind(compile_fingerprint)
     .fetch_one(pool)
     .await?;
     Ok(row.0)

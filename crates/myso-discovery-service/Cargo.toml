@@ -16,6 +16,9 @@ figment = { version = "0.10", features = ["env", "toml"] }
 hex = "0.4"
 myso-discovery-service-core = { path = "../myso-discovery-service-core" }
 myso-discovery-service-schema = { path = "../myso-discovery-service-schema" }
+myso-futures = { path = "../myso-futures" }
+myso-indexer-alt-metrics = { path = "../myso-indexer-alt-metrics" }
+prometheus = "0.13"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true

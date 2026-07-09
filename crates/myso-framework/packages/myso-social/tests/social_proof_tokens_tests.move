@@ -637,12 +637,12 @@ CREATOR,
             let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<social_proof_tokens::TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
-            let post_obj = test_scenario::take_shared<Post>(&scenario);
+            let mut post_obj = test_scenario::take_shared<Post>(&scenario);
             assert!(post::get_id_address(&post_obj) == post_id, 0);
             social_proof_tokens::create_reservation_pool_for_post(
                 &mut registry,
                 &config,
-                &post_obj,
+                &mut post_obj,
                 &clock,
                 test_scenario::ctx(&mut scenario)
             );
@@ -1748,12 +1748,12 @@ CREATOR,
             let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
-            let post_obj = test_scenario::take_shared<Post>(&scenario);
+            let mut post_obj = test_scenario::take_shared<Post>(&scenario);
             assert!(post::get_id_address(&post_obj) == post_id, 0);
             social_proof_tokens::create_reservation_pool_for_post(
                 &mut registry,
                 &config,
-                &post_obj,
+                &mut post_obj,
                 &clock,
                 test_scenario::ctx(&mut scenario)
             );
@@ -2086,12 +2086,12 @@ CREATOR,
             let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
-            let post_a =
+            let mut post_a =
                 test_scenario::take_shared_by_id<Post>(&scenario, object::id_from_address(_post_id_a));
             social_proof_tokens::create_reservation_pool_for_post(
                 &mut registry,
                 &config,
-                &post_a,
+                &mut post_a,
                 &clock,
                 test_scenario::ctx(&mut scenario)
             );
@@ -2404,12 +2404,12 @@ CREATOR,
             let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
-            let post_obj =
+            let mut post_obj =
                 test_scenario::take_shared_by_id<Post>(&scenario, object::id_from_address(post_id_only));
             social_proof_tokens::create_reservation_pool_for_post(
                 &mut registry,
                 &config,
-                &post_obj,
+                &mut post_obj,
                 &clock,
                 test_scenario::ctx(&mut scenario)
             );
@@ -2706,12 +2706,12 @@ CREATOR,
             let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
-            let post_obj = test_scenario::take_shared<Post>(&scenario);
+            let mut post_obj = test_scenario::take_shared<Post>(&scenario);
             assert!(post::get_id_address(&post_obj) == post_id, 0);
             social_proof_tokens::create_reservation_pool_for_post(
                 &mut registry,
                 &config,
-                &post_obj,
+                &mut post_obj,
                 &clock,
                 test_scenario::ctx(&mut scenario)
             );
@@ -2893,12 +2893,12 @@ CREATOR,
             let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
-            let post_obj = test_scenario::take_shared<Post>(&scenario);
+            let mut post_obj = test_scenario::take_shared<Post>(&scenario);
             assert!(post::get_id_address(&post_obj) == post_id, 0);
             social_proof_tokens::create_reservation_pool_for_post(
                 &mut registry,
                 &config,
-                &post_obj,
+                &mut post_obj,
                 &clock,
                 test_scenario::ctx(&mut scenario)
             );

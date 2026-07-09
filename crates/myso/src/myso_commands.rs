@@ -112,6 +112,11 @@ const DEFAULT_ORDERBOOK_API_PORT: u16 = 9008;
 /// Send `Authorization: Bearer bearer_admin_token`. Local development only — use env/config in production.
 const LOCAL_MYSO_START_ORDERBOOK_ADMIN_TOKEN: &str = "bearer_admin_token";
 const DEFAULT_MYDATA_KEY_SERVER_PORT: u16 = 2024;
+const DEFAULT_SPOT_ORACLE_PORT: u16 = crate::local_spot_oracle::DEFAULT_SPOT_ORACLE_PORT;
+const DEFAULT_POC_API_PORT: u16 = crate::local_poc::DEFAULT_POC_API_PORT;
+const DEFAULT_MESSAGING_RELAYER_PORT: u16 =
+    crate::local_messaging::DEFAULT_MESSAGING_RELAYER_PORT;
+const DEFAULT_DISCOVERY_PORT: u16 = crate::local_discovery::DEFAULT_DISCOVERY_PORT;
 
 /// Max connections per embedded Postgres pool when `myso start` runs indexers + APIs on one server.
 /// Typical local `max_connections` is 100; several pools must fit under that. Raise Postgres
@@ -329,6 +334,49 @@ pub enum MySoCommand {
         /// and `mydata-cli`). Defaults to env `MYSO_MYDATA_REPO` or a sibling `myso-mydata` path.
         #[clap(long, value_name = "PATH")]
         mydata_repo: Option<PathBuf>,
+
+        /// Start discovery (factual YAML) + SPoT oracle. Default spot listen `0.0.0.0:8097`.
+        /// Requires `--with-social-indexer`. Also starts discovery Postgres on `:5434`.
+        #[clap(
+            long,
+            default_missing_value = "0.0.0.0:8097",
+            num_args = 0..=1,
+            require_equals = true,
+            value_name = "SPOT_ORACLE_HOST_PORT",
+        )]
+        with_spot: Option<String>,
+
+        /// Start discovery (media YAML, embed on) + Proof of Creativity via docker compose
+        /// `--profile app` in the sibling `proof-of-creativity` repo. Default API port `8000`.
+        /// Override repo with `--poc-repo` or `MYSO_POC_REPO`.
+        #[clap(
+            long,
+            default_missing_value = "0.0.0.0:8000",
+            num_args = 0..=1,
+            require_equals = true,
+            value_name = "POC_API_HOST_PORT",
+        )]
+        with_poc: Option<String>,
+
+        /// Path to the local `proof-of-creativity` repository (must contain `docker-compose.yml`).
+        #[clap(long, value_name = "PATH")]
+        poc_repo: Option<PathBuf>,
+
+        /// Start the messaging relayer from sibling `myso-messaging-stack/relayer`.
+        /// Default listen `0.0.0.0:3003`. Override repo with `--messaging-repo` or
+        /// `MYSO_MESSAGING_REPO`. Uses in-memory storage for local start.
+        #[clap(
+            long,
+            default_missing_value = "0.0.0.0:3003",
+            num_args = 0..=1,
+            require_equals = true,
+            value_name = "MESSAGING_RELAYER_HOST_PORT",
+        )]
+        with_messaging: Option<String>,
+
+        /// Path to the local `myso-messaging-stack` repository (must contain `relayer/`).
+        #[clap(long, value_name = "PATH")]
+        messaging_repo: Option<PathBuf>,
 
         #[clap(flatten)]
         rpc_args: RpcArgs,
@@ -551,6 +599,11 @@ impl MySoCommand {
                 with_faucet,
                 with_mydata,
                 mydata_repo,
+                with_spot,
+                with_poc,
+                poc_repo,
+                with_messaging,
+                messaging_repo,
                 rpc_args,
                 fullnode_rpc_port,
                 data_ingestion_dir,
@@ -563,6 +616,11 @@ impl MySoCommand {
                     with_faucet,
                     with_mydata,
                     mydata_repo,
+                    with_spot,
+                    with_poc,
+                    poc_repo,
+                    with_messaging,
+                    messaging_repo,
                     rpc_args,
                     force_regenesis,
                     epoch_duration_ms,
@@ -902,6 +960,11 @@ async fn start(
     with_faucet: Option<String>,
     with_mydata: Option<String>,
     mydata_repo: Option<PathBuf>,
+    with_spot: Option<String>,
+    with_poc: Option<String>,
+    poc_repo: Option<PathBuf>,
+    with_messaging: Option<String>,
+    messaging_repo: Option<PathBuf>,
     rpc_args: RpcArgs,
     force_regenesis: bool,
     epoch_duration_ms: Option<u64>,
@@ -958,6 +1021,13 @@ async fn start(
         ensure!(
             with_indexer.is_some(),
             "Cannot start the orderbook indexer without --with-indexer."
+        );
+    }
+
+    if with_spot.is_some() {
+        ensure!(
+            with_social_indexer.is_some(),
+            "Cannot start `--with-spot` without `--with-social-indexer` (needs social-server for pending-posts)."
         );
     }
 
@@ -1228,8 +1298,9 @@ async fn start(
     let mut auxiliary_metrics_port: u16 = 9185;
 
     let mut social_database_url_for_graphql: Option<Url> = None;
+    let mut social_server_public_url: Option<String> = None;
 
-    if let (Some(ref db_url), Some(ref social_indexer_opt)) =
+    if let (Some(db_url), Some(social_indexer_opt)) =
         (database_url.as_ref(), with_social_indexer.as_ref())
     {
         info!(
@@ -1296,6 +1367,8 @@ async fn start(
 
         rpc_services = rpc_services.merge(social_server_service);
 
+        social_server_public_url = Some(format!("http://127.0.0.1:{}", social_server_addr.port()));
+
         info!(
             "Social indexer and server started — API on port {}, metrics on {} and {}",
             social_server_addr.port(),
@@ -1304,7 +1377,7 @@ async fn start(
         );
     }
 
-    if let (Some(ref db_url), Some(ref orderbook_opt)) =
+    if let (Some(db_url), Some(orderbook_opt)) =
         (database_url.as_ref(), with_orderbook.as_ref())
     {
         info!("Starting orderbook indexer and REST API");
@@ -1490,14 +1563,12 @@ async fn start(
         let _ = update_wallet_config_rpc(myso_config_dir()?, fullnode_rpc_url.clone()).await?;
     }
 
-    if with_mydata.is_some() && !config_dir.join(MYSO_CLIENT_CONFIG).is_file() {
-        if !force_regenesis {
-            bail!(
-                "`--with-mydata` requires a client configuration at {:?}. \
-                 Run `myso genesis` (or use `--force-regenesis`, which creates one for the ephemeral network).",
-                config_dir.join(MYSO_CLIENT_CONFIG)
-            );
-        }
+    if with_mydata.is_some() && !config_dir.join(MYSO_CLIENT_CONFIG).is_file() && !force_regenesis {
+        bail!(
+            "`--with-mydata` requires a client configuration at {:?}. \
+             Run `myso genesis` (or use `--force-regenesis`, which creates one for the ephemeral network).",
+            config_dir.join(MYSO_CLIENT_CONFIG)
+        );
     }
 
     if force_regenesis && with_mydata.is_some() {
@@ -1524,6 +1595,94 @@ async fn start(
         .await?;
         crate::local_mydata::log_mydata_secrets_once(&secrets);
         mydata_child = Some(child);
+    }
+
+    // --- External sidecars: discovery / spot / poc / messaging ---
+    let mut sidecars = crate::local_sidecars::LocalSidecars::empty();
+    sidecars.mydata = mydata_child;
+
+    let need_spot = with_spot.is_some();
+    let need_poc = with_poc.is_some();
+    let poc_api_port = if let Some(ref input) = with_poc {
+        let addr = ensure_bindable_socket_addr(
+            parse_host_port(input.clone(), DEFAULT_POC_API_PORT)
+                .map_err(|_| anyhow!("Invalid PoC API host and port"))?,
+            "PoC API",
+        );
+        addr.port()
+    } else {
+        DEFAULT_POC_API_PORT
+    };
+
+    if let Some(corpus) =
+        crate::local_discovery::DiscoveryCorpus::from_flags(need_spot, need_poc)
+    {
+        let discovery_listen = SocketAddr::from(([127, 0, 0, 1], DEFAULT_DISCOVERY_PORT));
+        let embed = need_poc;
+        info!(
+            "Starting discovery service (corpus={:?}, embed={embed})",
+            match corpus {
+                crate::local_discovery::DiscoveryCorpus::Factual => "factual",
+                crate::local_discovery::DiscoveryCorpus::Media => "media",
+                crate::local_discovery::DiscoveryCorpus::Combined => "combined",
+            }
+        );
+        let (info, child) = crate::local_discovery::spawn_discovery(
+            discovery_listen,
+            corpus,
+            embed,
+            poc_api_port,
+        )
+        .await
+        .context("Failed to start discovery service")?;
+        crate::local_discovery::log_discovery_once(&info);
+        sidecars.discovery = Some(child);
+    }
+
+    if need_poc {
+        info!("Starting Proof of Creativity docker stack (--profile app)");
+        let info = crate::local_poc::spawn_poc_stack(poc_repo, poc_api_port)
+            .await
+            .context("Failed to start PoC docker stack")?;
+        crate::local_poc::log_poc_once(&info);
+        sidecars.poc = Some(info);
+    }
+
+    if let Some(input) = with_spot {
+        let social_url = social_server_public_url.clone().ok_or_else(|| {
+            anyhow!("`--with-spot` requires social server (enable `--with-social-indexer`)")
+        })?;
+        let listen = ensure_bindable_socket_addr(
+            parse_host_port(input, DEFAULT_SPOT_ORACLE_PORT)
+                .map_err(|_| anyhow!("Invalid spot-oracle host and port"))?,
+            "spot-oracle",
+        );
+        info!("Starting SPoT oracle at {listen}");
+        let (info, child) =
+            crate::local_spot_oracle::spawn_spot_oracle(listen, &fullnode_rpc_url, &social_url)
+                .await
+                .context("Failed to start spot-oracle")?;
+        crate::local_spot_oracle::log_spot_once(&info);
+        sidecars.spot = Some(child);
+    }
+
+    if let Some(input) = with_messaging {
+        let listen = ensure_bindable_socket_addr(
+            parse_host_port(input, DEFAULT_MESSAGING_RELAYER_PORT)
+                .map_err(|_| anyhow!("Invalid messaging relayer host and port"))?,
+            "messaging relayer",
+        );
+        info!("Starting messaging relayer at {listen}");
+        let (info, child) = crate::local_messaging::spawn_messaging_relayer(
+            listen,
+            messaging_repo,
+            &fullnode_rpc_url,
+            social_server_public_url.as_deref(),
+        )
+        .await
+        .context("Failed to start messaging relayer")?;
+        crate::local_messaging::log_messaging_once(&info);
+        sidecars.messaging = Some(child);
     }
 
     if let Some(input) = with_faucet {
@@ -1603,9 +1762,6 @@ async fn start(
         tokio::select! {
             _ = tokio::signal::ctrl_c() => {
                 info!("Received Ctrl+C, shutting down...");
-                if let Some(mut c) = mydata_child.take() {
-                    let _ = c.start_kill();
-                }
                 break;
             }
             _ = interval.tick() => {}
@@ -1619,17 +1775,13 @@ async fn start(
 
             unhealthy += 1;
             if unhealthy > 3 {
-                if let Some(mut c) = mydata_child.take() {
-                    let _ = c.start_kill();
-                }
+                sidecars.shutdown().await;
                 return Err(e.into());
             }
         }
     }
 
-    if let Some(mut c) = mydata_child {
-        let _ = c.start_kill();
-    }
+    sidecars.shutdown().await;
 
     info!("Shutting down RPC services...");
     rpc_services.shutdown().await?;

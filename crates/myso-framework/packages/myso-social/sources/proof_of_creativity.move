@@ -922,7 +922,6 @@ module social_contracts::proof_of_creativity {
                     timestamp,
                 });
             } else {
-                assert!(social_contracts::post::is_poc_enabled(post), EDisabled);
                 social_contracts::post::update_poc_result(
                     post,
                     1,

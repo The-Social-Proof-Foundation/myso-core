@@ -11,8 +11,11 @@ CREATE TABLE markets (
     creator VARCHAR(128),
     claim_text TEXT NOT NULL,
     betting_options JSONB NOT NULL DEFAULT '[]',
-    status VARCHAR(32) NOT NULL DEFAULT 'pending_review',
-    -- pending_review -> pending_create -> active -> resolving -> resolved -> refunded -> rejected
+    status VARCHAR(32) NOT NULL DEFAULT 'post_created',
+    -- post_created -> pending_review -> pending_create -> waiting -> resolving -> resolved | refunded | rejected | dao_required | failed
+    status_reason TEXT,
+    on_chain_status SMALLINT,
+    last_transition_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     review_id UUID,
     resolver_definition_id UUID,
     resolution_window_ms BIGINT NOT NULL DEFAULT 86400000,
@@ -23,6 +26,20 @@ CREATE TABLE markets (
 
 CREATE INDEX idx_markets_status ON markets(status, created_at);
 CREATE INDEX idx_markets_spot_record ON markets(spot_record_id) WHERE spot_record_id IS NOT NULL;
+
+CREATE TABLE market_transitions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    market_id UUID NOT NULL REFERENCES markets(id) ON DELETE CASCADE,
+    from_status VARCHAR(32) NOT NULL,
+    to_status VARCHAR(32) NOT NULL,
+    trigger VARCHAR(64) NOT NULL,
+    job_id UUID,
+    tx_digest VARCHAR(128),
+    status_reason TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_market_transitions_market ON market_transitions(market_id, created_at DESC);
 
 CREATE TABLE llm_extractions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -67,6 +84,7 @@ CREATE TABLE resolver_definitions (
     source_ids JSONB NOT NULL DEFAULT '[]',
     betting_options JSONB NOT NULL DEFAULT '[]',
     maturity_schedule JSONB NOT NULL DEFAULT '{}',
+    compile_fingerprint VARCHAR(128) NOT NULL DEFAULT '',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -100,13 +118,27 @@ CREATE TABLE spot_jobs (
 CREATE INDEX idx_spot_jobs_claim ON spot_jobs(status, priority_score DESC, created_at);
 CREATE INDEX idx_spot_jobs_run_after ON spot_jobs(status, run_after) WHERE status = 'pending';
 
+CREATE TABLE evidence_bundles (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    market_id UUID NOT NULL REFERENCES markets(id) ON DELETE CASCADE,
+    resolver_job_id UUID REFERENCES spot_jobs(id) ON DELETE SET NULL,
+    bundle_hash VARCHAR(128) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_evidence_bundles_market ON evidence_bundles(market_id, created_at DESC);
+
 CREATE TABLE evidence (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     market_id UUID NOT NULL REFERENCES markets(id) ON DELETE CASCADE,
     resolver_job_id UUID REFERENCES spot_jobs(id) ON DELETE SET NULL,
+    bundle_id UUID REFERENCES evidence_bundles(id) ON DELETE SET NULL,
     adapter_id VARCHAR(64) NOT NULL,
     source_url TEXT NOT NULL,
     content_hash VARCHAR(128) NOT NULL,
+    payload JSONB NOT NULL DEFAULT '{}',
+    provenance JSONB NOT NULL DEFAULT '{}',
+    signature JSONB,
     raw_response TEXT,
     fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -165,3 +197,12 @@ CREATE TABLE retries (
 );
 
 CREATE INDEX idx_retries_next_run ON retries(entity_type, next_run_at);
+
+-- Checkpoint ingest watermark (SubscribeCheckpoints gRPC stream).
+CREATE TABLE checkpoint_ingest_state (
+    id SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+    last_checkpoint_seq BIGINT NOT NULL DEFAULT 0,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+INSERT INTO checkpoint_ingest_state (id, last_checkpoint_seq) VALUES (1, 0);

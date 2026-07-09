@@ -41,6 +41,10 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+# shellcheck source=lib/social-runtime-common.sh
+source "${SCRIPT_DIR}/lib/social-runtime-common.sh"
+# shellcheck source=lib/poc-oracle-common.sh
+source "${SCRIPT_DIR}/lib/poc-oracle-common.sh"
 # shellcheck source=lib/runnable-summary-common.sh
 source "${SCRIPT_DIR}/lib/runnable-summary-common.sh"
 # shellcheck source=lib/poc-oracle-http.sh
@@ -1324,10 +1328,8 @@ verify_username_beneficiary_claimed() {
     local claim_digest="$1" beneficiary_id="$2" username="$3"
     local status
     [[ -n "$claim_digest" && -n "$beneficiary_id" ]] || return 1
-    if ! tx_has_event_named "$claim_digest" "UsernameBeneficiaryClaimedEvent"; then
-        echo "claim tx $claim_digest missing UsernameBeneficiaryClaimedEvent" >&2
-        return 1
-    fi
+    wait_for_tx_finalized "$claim_digest" || return 1
+    assert_poc_scenario_events username_claim "$claim_digest" || return 1
     status="$(username_beneficiary_status "$beneficiary_id")"
     if [[ "$status" != "2" ]]; then
         echo "beneficiary $beneficiary_id status=$status (expected 2=CLAIMED)" >&2
@@ -1932,16 +1934,21 @@ update_poc_config_oracle() {
 }
 
 preflight_oracle_and_config() {
-    ensure_cli_addresses || return 1
     require_session_fields POC_CONFIG_ID POC_ADMIN_CAP_ID CLOCK_ID || return 1
-    local oracle current_oracle
-    oracle="$(resolve_myso_active_address)" || { echo "Could not read active-address" >&2; return 1; }
-    log_step "Preflight: oracle active-address = $oracle"
-    current_oracle="$(read_poc_config_oracle)" || true
-
-    if [[ "$current_oracle" != "$oracle" ]] || [[ "${POC_FORCE_UPDATE_CONFIG:-0}" == 1 ]]; then
-        update_poc_config_oracle "$oracle"
+    if [[ "${POC_USE_DIRECT_MOVE:-0}" == "1" ]]; then
+        ensure_cli_addresses || return 1
+        local oracle current_oracle
+        oracle="$(resolve_myso_active_address)" || { echo "Could not read active-address" >&2; return 1; }
+        log_step "Preflight: oracle active-address = $oracle"
+        current_oracle="$(read_poc_config_oracle)" || true
+        if [[ "$current_oracle" != "$oracle" ]] || [[ "${POC_FORCE_UPDATE_CONFIG:-0}" == 1 ]]; then
+            update_poc_config_oracle "$oracle"
+        fi
+        return 0
     fi
+    poc_oracle_load_localnet_env
+    sync_poc_config_oracle_on_chain "$POC_DEFAULT_ORACLE_ADDRESS" || return 1
+    ensure_poc_oracle_key_in_env || return 1
 }
 
 ensure_memory_account_for_post_flows() {
@@ -2242,6 +2249,7 @@ create_test_platform() {
 
 create_post_poc_enabled() {
     local body_lit="$1"
+    local enable_spt_arg="${2:-none}"
     local ref_ur ref_pr ref_plat ref_blr ref_cfg ref_mcfg ref_mr ref_mem ref_clk
 
     prepare_for_create_post || return 1
@@ -2264,9 +2272,32 @@ create_post_poc_enabled() {
         --move-call "${PKG_SOCIAL}::post::create_post" \
         "$ref_ur" "$ref_pr" "$ref_plat" "$ref_blr" "$ref_cfg" "$ref_mcfg" \
         "$body_lit" \
-        none none none none none none none none \
-        none some\(true\) none none \
+        none none none none none none none \
+        "$enable_spt_arg" none none \
         "$ref_mr" "$ref_mem" "$ref_clk"
+}
+
+create_reservation_pool_for_post_call() {
+    local post_id="$1"
+    local ref_token ref_spt ref_post ref_clk out digest pool_id
+    require_session_fields TOKEN_REGISTRY_ID SOCIAL_PROOF_TOKENS_CONFIG_ID CLOCK_ID || return 1
+    post_id="$(normalize_hex_id "$post_id")" || return 1
+    ref_token="$(ptb_shared_ref "$TOKEN_REGISTRY_ID")" || return 1
+    ref_spt="$(ptb_shared_ref "$SOCIAL_PROOF_TOKENS_CONFIG_ID")" || return 1
+    ref_post="$(ptb_shared_ref "$post_id")" || return 1
+    ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || return 1
+    log_step "create_reservation_pool_for_post post=$post_id"
+    out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_capture \
+        --move-call "${PKG_SOCIAL}::social_proof_tokens::create_reservation_pool_for_post" \
+        "$ref_token" "$ref_spt" "$ref_post" "$ref_clk")" || return 1
+    digest="$(extract_tx_digest "$out")"
+    pool_id="$(extract_created_object_by_type "$digest" "ReservationPoolObject")"
+    [[ -n "$pool_id" ]] || pool_id="$(extract_created_object_by_type "$digest" "ReservationPool")"
+    [[ -n "$pool_id" ]] || {
+        echo "create_reservation_pool_for_post did not produce ReservationPoolObject" >&2
+        return 1
+    }
+    normalize_hex_id "$pool_id"
 }
 
 ptb_option_address_from_arg() {
@@ -2319,6 +2350,9 @@ analyze_post() {
         analyze_post_direct "$@"
         return $?
     fi
+    poc_oracle_load_localnet_env
+    sync_poc_config_oracle_on_chain "$POC_DEFAULT_ORACLE_ADDRESS" || return 1
+    ensure_poc_oracle_key_in_env || return 1
     poc_oracle_analyze_post "$@"
 }
 
@@ -2417,6 +2451,8 @@ run_username_beneficiary_flow() {
         echo "Could not find PoCUsernameBeneficiary from tx $digest" >&2
         return 1
     }
+    wait_for_tx_finalized "$digest" || return 1
+    assert_poc_scenario_events username_provision "$digest" || return 1
     log_step "1a resolved beneficiary_id=$beneficiary_id"
     POC_UB_LAST_BENEFICIARY_ID="$beneficiary_id"
     if [[ "$beneficiary_id" == "$POC_USERNAME_BENEFICIARY_DIRECTORY_ID" ]]; then
@@ -2691,16 +2727,11 @@ run_spt_sync_flow() {
     require_session_fields TOKEN_REGISTRY_ID SOCIAL_PROOF_TOKENS_CONFIG_ID || return 1
     local out digest post_id pool_id
     log_step "3 SPT: create post + reservation pool + token"
-    out="$(create_post_poc_enabled "$(literal_move_string "PoC SPT ${POC_RUN_ID}")")"
+    out="$(create_post_poc_enabled "$(literal_move_string "PoC SPT ${POC_RUN_ID}")" some\(true\))"
     digest="$(extract_tx_digest "$out")"
     post_id="$(extract_created_object_by_type "$digest" "post::Post")"
     [[ -n "$post_id" ]] || post_id="$(extract_created_object_by_type "$digest" "Post")"
-
-    out="$(SKIP_CONFIRM_RUN=1 run_myso_call social_proof_tokens create_reservation_pool_for_post \
-        --args "@${TOKEN_REGISTRY_ID}" "@${SOCIAL_PROOF_TOKENS_CONFIG_ID}" "@${post_id}")"
-    digest="$(extract_tx_digest "$out")"
-    pool_id="$(extract_created_object_by_type "$digest" "ReservationPool")"
-    [[ -n "$pool_id" ]] || pool_id="$(extract_created_object_by_type "$digest" "TokenPool")"
+    pool_id="$(create_reservation_pool_for_post_call "$post_id")" || return 1
 
     SKIP_CONFIRM_RUN=1 run_myso_call social_proof_tokens create_social_proof_token \
         --args "@${TOKEN_REGISTRY_ID}" "@${SOCIAL_PROOF_TOKENS_CONFIG_ID}" "@${pool_id}"
@@ -2812,7 +2843,7 @@ run_post_reservation_poc_flow() {
     gross="$reserve_amount"
 
     log_step "Post reservation PoC: create post + oracle escrow analyze"
-    out="$(create_post_poc_enabled "$(literal_move_string "PoC reservation ${POC_RUN_ID}")")"
+    out="$(create_post_poc_enabled "$(literal_move_string "PoC reservation ${POC_RUN_ID}")" some\(true\))"
     digest="$(extract_tx_digest "$out")"
     post_id="$(extract_created_object_by_type "$digest" "post::Post")"
     [[ -n "$post_id" ]] || post_id="$(extract_created_object_by_type "$digest" "Post")"
@@ -2823,13 +2854,7 @@ run_post_reservation_poc_flow() {
         return 1
     }
 
-    log_step "create_reservation_pool_for_post post=$post_id"
-    out="$(SKIP_CONFIRM_RUN=1 run_myso_call social_proof_tokens create_reservation_pool_for_post \
-        --args "@${TOKEN_REGISTRY_ID}" "@${SOCIAL_PROOF_TOKENS_CONFIG_ID}" "@${post_id}" "@${CLOCK_ID}")"
-    digest="$(extract_tx_digest "$out")"
-    pool_id="$(extract_created_object_by_type "$digest" "ReservationPoolObject")"
-    [[ -n "$pool_id" ]] || pool_id="$(extract_created_object_by_type "$digest" "ReservationPool")"
-    [[ -n "$pool_id" ]] || { echo "Could not find reservation pool" >&2; return 1; }
+    pool_id="$(create_reservation_pool_for_post_call "$post_id")" || return 1
 
     ensure_tipper_memory_account || return 1
     local ref_token ref_spt ref_pool ref_treasury ref_post ref_vault ref_clk

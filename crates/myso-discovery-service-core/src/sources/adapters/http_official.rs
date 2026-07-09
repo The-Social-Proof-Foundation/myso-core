@@ -7,7 +7,7 @@ use sha2::{Digest, Sha256};
 
 use crate::sources::http_client::HttpFetchClient;
 use crate::sources::{
-    DiscoveryDomain, DiscoverySource, RawDiscoveryRecord, SourceConfig, SourceHealth,
+    ContentKind, DiscoveryDomain, DiscoverySource, RawDiscoveryRecord, SourceConfig, SourceHealth,
     SourceMetadata,
 };
 
@@ -86,6 +86,7 @@ impl DiscoverySource for HttpOfficialAdapter {
         Ok(vec![RawDiscoveryRecord {
             external_source_url: url.clone(),
             media_type: "application/json".to_string(),
+            content_kind: ContentKind::Text,
             title: Some(config.id.clone()),
             creator_x_handle: None,
             trust_score: config.trust_score,

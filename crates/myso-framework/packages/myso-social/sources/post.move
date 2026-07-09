@@ -118,11 +118,6 @@ module social_contracts::post {
     const PERMISSION_ALLOW_QUOTES: u8 = 8;          // bit 3
     const PERMISSION_ALLOW_TIPS: u8 = 16;          // bit 4
 
-    /// Bitfield constants for enable flags (enable_*)
-    const ENABLE_SPT: u8 = 1;                      // bit 0
-    const ENABLE_POC: u8 = 2;                      // bit 1
-    const ENABLE_SPOT: u8 = 4;                     // bit 2
-
     /// PoC analysis outcome (stored on Post)
     const POC_OUTCOME_NONE: u8 = 0;
     const POC_OUTCOME_ORIGINAL: u8 = 1;
@@ -197,8 +192,10 @@ module social_contracts::post {
         mydata_id: Option<address>,
         /// Optional promotion data ID for promoted posts
         promotion_id: Option<address>,
-        /// Enable flags bitfield: enable_spt (bit 0), enable_poc (bit 1), enable_spot (bit 2)
-        enable_flags: u8,
+        /// Opt-in for Social Proof Tokens (reservation pool created at post creation when true)
+        enable_spt: bool,
+        /// Opt-in for Social Proof of Truth
+        enable_spot: bool,
         /// Optional Social Proof of Truth record ID (address of SpotRecord object)
         spot_id: Option<address>,
         /// Optional Social Proof Token pool ID (address of TokenPool object)
@@ -207,8 +204,6 @@ module social_contracts::post {
         poc_outcome: u8,
         /// Where derivative redirect slices go for this post (`POC_REDIRECT_*`)
         poc_redirection_kind: u8,
-        /// Successful PoC dispute submissions for this post (max 2 lifetime; not reset when PoC cleared).
-        poc_disputes_submitted: u8,
         /// Version for upgrades
         version: u64,
     }
@@ -230,6 +225,8 @@ module social_contracts::post {
 
     const POST_ATTRIBUTION_DF_KEY: vector<u8> = b"post_attribution";
     const COMMENT_ATTRIBUTION_DF_KEY: vector<u8> = b"comment_attribution";
+    const POC_DISPUTES_SUBMITTED_DF_KEY: vector<u8> = b"poc_disputes_submitted";
+    const SPOT_CLAIM_ID_DF_KEY: vector<u8> = b"spot_claim_id";
 
     /// Helper: check if a bit is set in a bitfield
     fun has_flag(value: u8, flag: u8): bool {
@@ -292,17 +289,12 @@ module social_contracts::post {
 
     /// Query: check if SPT is enabled for this post
     public fun is_spt_enabled(post: &Post): bool {
-        has_flag(post.enable_flags, ENABLE_SPT)
-    }
-
-    /// Query: check if PoC is enabled for this post
-    public fun is_poc_enabled(post: &Post): bool {
-        has_flag(post.enable_flags, ENABLE_POC)
+        post.enable_spt
     }
 
     /// Query: check if SPoT is enabled for this post
     public fun is_spot_enabled(post: &Post): bool {
-        has_flag(post.enable_flags, ENABLE_SPOT)
+        post.enable_spot
     }
 
     /// Expose on-post PoC outcome for other modules (e.g. social_proof_tokens).
@@ -317,7 +309,11 @@ module social_contracts::post {
 
     /// Lifetime count of successful PoC dispute submissions (capped at 2 on-chain).
     public fun poc_disputes_submitted(post: &Post): u8 {
-        post.poc_disputes_submitted
+        if (df::exists_with_type<vector<u8>, u8>(&post.id, POC_DISPUTES_SUBMITTED_DF_KEY)) {
+            *df::borrow(&post.id, POC_DISPUTES_SUBMITTED_DF_KEY)
+        } else {
+            0
+        }
     }
 
     public fun actor_address(post: &Post): address {
@@ -499,6 +495,15 @@ module social_contracts::post {
         &post.spot_id
     }
 
+    /// Get the linked SPoT claim ID for a post (stored as dynamic field).
+    public fun get_spot_claim_id(post: &Post): Option<address> {
+        if (df::exists_with_type<vector<u8>, address>(&post.id, SPOT_CLAIM_ID_DF_KEY)) {
+            option::some(*df::borrow(&post.id, SPOT_CLAIM_ID_DF_KEY))
+        } else {
+            option::none()
+        }
+    }
+
     /// Get the SPT pool ID for a post
     public fun get_spt_id(post: &Post): &Option<address> {
         &post.spt_id
@@ -507,6 +512,15 @@ module social_contracts::post {
     /// Internal function to set SPoT record ID (package visibility only)
     public(package) fun set_spot_id(post: &mut Post, spot_id: address) {
         post.spot_id = option::some(spot_id);
+    }
+
+    /// Internal function to set linked SPoT claim ID (package visibility only)
+    public(package) fun set_spot_claim_id(post: &mut Post, claim_id: address) {
+        if (df::exists_with_type<vector<u8>, address>(&post.id, SPOT_CLAIM_ID_DF_KEY)) {
+            *df::borrow_mut(&mut post.id, SPOT_CLAIM_ID_DF_KEY) = claim_id;
+        } else {
+            df::add(&mut post.id, SPOT_CLAIM_ID_DF_KEY, claim_id);
+        }
     }
 
     /// Internal function to set SPT pool ID (package visibility only)
@@ -678,7 +692,6 @@ module social_contracts::post {
         revenue_redirect_to: Option<address>,
         revenue_redirect_percentage: Option<u64>,
         enable_spt: bool,
-        enable_poc: bool,
         enable_spot: bool,
         spot_id: Option<address>,
         spt_id: Option<address>,
@@ -985,7 +998,7 @@ module social_contracts::post {
         };
     }
 
-    /// Internal function to create a post and return its ID
+    /// Internal function to create a post object (not yet shared).
     fun create_post_internal(
         owner: address,
         profile_id: address,
@@ -1006,7 +1019,6 @@ module social_contracts::post {
         mydata_id: Option<address>,
         promotion_id: Option<address>,
         enable_spt: bool,
-        enable_poc: bool,
         enable_spot: bool,
         poc_redirection_kind: u8,
         actor_address: address,
@@ -1015,7 +1027,7 @@ module social_contracts::post {
         action_identity_class: u8,
         clock: &Clock,
         ctx: &mut TxContext
-    ): address {
+    ): Post {
         // Build permissions bitfield
         let mut permissions: u8 = 0;
         if (allow_comments) { permissions = permissions | PERMISSION_ALLOW_COMMENTS };
@@ -1023,12 +1035,6 @@ module social_contracts::post {
         if (allow_reposts) { permissions = permissions | PERMISSION_ALLOW_REPOSTS };
         if (allow_quotes) { permissions = permissions | PERMISSION_ALLOW_QUOTES };
         if (allow_tips) { permissions = permissions | PERMISSION_ALLOW_TIPS };
-
-        // Build enable flags bitfield
-        let mut enable_flags: u8 = 0;
-        if (enable_spt) { enable_flags = enable_flags | ENABLE_SPT };
-        if (enable_poc) { enable_flags = enable_flags | ENABLE_POC };
-        if (enable_spot) { enable_flags = enable_flags | ENABLE_SPOT };
 
         let mut post = Post {
             id: object::new(ctx),
@@ -1056,12 +1062,12 @@ module social_contracts::post {
             poc_badge_object_id: option::none(),
             mydata_id,
             promotion_id,
-            enable_flags,
+            enable_spt,
+            enable_spot,
             spot_id: option::none(), // Will be set when SPoT record is created
             spt_id: option::none(), // Will be set when SPT pool is created
             poc_outcome: POC_OUTCOME_NONE,
             poc_redirection_kind,
-            poc_disputes_submitted: 0,
             version: upgrade::current_version(),
         };
 
@@ -1072,14 +1078,13 @@ module social_contracts::post {
             organization_id,
             action_identity_class,
         );
-        
-        // Get post ID before sharing
+
+        post
+    }
+
+    public(package) fun share_post(post: Post): address {
         let post_id = object::uid_to_address(&post.id);
-        
-        // Share object
         transfer::share_object(post);
-        
-        // Return the post ID
         post_id
     }
 
@@ -1098,8 +1103,8 @@ module social_contracts::post {
         assert!(*option::borrow(&reg_owner) == owner, EMyDataOwnerMismatch);
     }
 
-    /// Create a new post with interaction permissions
-    public fun create_post(
+    /// Create a new post with interaction permissions.
+    public entry fun create_post(
         registry: &UsernameRegistry,
         platform_registry: &platform::PlatformRegistry,
         platform: &platform::Platform,
@@ -1116,7 +1121,6 @@ module social_contracts::post {
         allow_quotes: Option<bool>,
         allow_tips: Option<bool>,
         enable_spt: Option<bool>,
-        enable_poc: Option<bool>,
         enable_spot: Option<bool>,
         mydata_id: Option<address>,
         mydata_registry: &mydata::MyDataRegistry,
@@ -1218,11 +1222,6 @@ module social_contracts::post {
         } else {
             false // Default to opt-out (user must explicitly opt-in)
         };
-        let final_enable_poc = if (option::is_some(&enable_poc)) {
-            *option::borrow(&enable_poc)
-        } else {
-            false // Default to opt-out (user must explicitly opt-in)
-        };
         let final_enable_spot = if (option::is_some(&enable_spot)) {
             *option::borrow(&enable_spot)
         } else {
@@ -1234,8 +1233,7 @@ module social_contracts::post {
 
         let poc_redirection_kind = POC_REDIRECT_NONE;
         
-        // Create and share the post
-        let post_id = create_post_internal(
+        let post = create_post_internal(
             owner,
             profile_id,
             platform_id,
@@ -1255,7 +1253,6 @@ module social_contracts::post {
             mydata_id,
             option::none(), // promotion_id
             final_enable_spt,
-            final_enable_poc,
             final_enable_spot,
             poc_redirection_kind,
             actor_address,
@@ -1265,8 +1262,9 @@ module social_contracts::post {
             clock,
             ctx
         );
-        
-        // Emit post created event
+
+        let post_id = share_post(post);
+
         let permissions_for_event = permissions_bitfield(
             final_allow_comments,
             final_allow_reactions,
@@ -1274,6 +1272,7 @@ module social_contracts::post {
             final_allow_quotes,
             final_allow_tips,
         );
+
         event::emit(PostCreatedEvent {
             post_id,
             owner,
@@ -1291,7 +1290,6 @@ module social_contracts::post {
             revenue_redirect_to: option::none(),
             revenue_redirect_percentage: option::none(),
             enable_spt: final_enable_spt,
-            enable_poc: final_enable_poc,
             enable_spot: final_enable_spot,
             spot_id: option::none(),
             spt_id: option::none(),
@@ -1473,7 +1471,6 @@ module social_contracts::post {
         allow_quotes: Option<bool>,
         allow_tips: Option<bool>,
         enable_spt: Option<bool>,
-        enable_poc: Option<bool>,
         enable_spot: Option<bool>,
         memory_account: &MemoryAccount,
         clock: &Clock,
@@ -1637,11 +1634,6 @@ module social_contracts::post {
         } else {
             false // Default to opt-out (user must explicitly opt-in)
         };
-        let final_enable_poc = if (option::is_some(&enable_poc)) {
-            *option::borrow(&enable_poc)
-        } else {
-            false // Default to opt-out (user must explicitly opt-in)
-        };
         let final_enable_spot = if (option::is_some(&enable_spot)) {
             *option::borrow(&enable_spot)
         } else {
@@ -1653,8 +1645,7 @@ module social_contracts::post {
 
         let poc_redirection_kind = POC_REDIRECT_NONE;
         
-        // Create and share the repost post
-        let repost_post_id = create_post_internal(
+        let post = create_post_internal(
             owner,
             profile_id,
             platform_id,
@@ -1674,7 +1665,6 @@ module social_contracts::post {
             option::none(), // No MyData for reposts
             option::none(), // promotion_id
             final_enable_spt,
-            final_enable_poc,
             final_enable_spot,
             poc_redirection_kind,
             actor_address,
@@ -1692,9 +1682,11 @@ module social_contracts::post {
             final_allow_quotes,
             final_allow_tips,
         );
-        // Emit post created event for the repost
+
+        let post_id = share_post(post);
+
         event::emit(PostCreatedEvent {
-            post_id: repost_post_id,
+            post_id,
             owner,
             profile_id,
             platform_id,
@@ -1710,7 +1702,6 @@ module social_contracts::post {
             revenue_redirect_to: option::none(),
             revenue_redirect_percentage: option::none(),
             enable_spt: final_enable_spt,
-            enable_poc: final_enable_poc,
             enable_spot: final_enable_spot,
             spot_id: option::none(),
             spt_id: option::none(),
@@ -1768,12 +1759,12 @@ module social_contracts::post {
             poc_badge_object_id: _,
             mydata_id: _,
             promotion_id: _,
-            enable_flags: _,
+            enable_spt: _,
+            enable_spot: _,
             spot_id: _,
             spt_id: _,
             poc_outcome: _,
             poc_redirection_kind: _,
-            poc_disputes_submitted: _,
             version: _,
         } = post;
         
@@ -2274,8 +2265,15 @@ module social_contracts::post {
 
     /// Increment after each successful `submit_poc_dispute`.
     public(package) fun increment_poc_disputes_submitted(post: &mut Post, max_disputes: u8) {
-        assert!(post.poc_disputes_submitted < max_disputes, EDisputeCapReached);
-        post.poc_disputes_submitted = post.poc_disputes_submitted + 1;
+        let submitted = poc_disputes_submitted(post);
+        assert!(submitted < max_disputes, EDisputeCapReached);
+        let next = submitted + 1;
+        if (df::exists_with_type<vector<u8>, u8>(&post.id, POC_DISPUTES_SUBMITTED_DF_KEY)) {
+            let count = df::borrow_mut(&mut post.id, POC_DISPUTES_SUBMITTED_DF_KEY);
+            *count = next;
+        } else {
+            df::add(&mut post.id, POC_DISPUTES_SUBMITTED_DF_KEY, next);
+        };
     }
 
     /// Deposit redirected reservation/trading fees into the beneficiary vault when the post uses vault-mode redirect.
@@ -3027,7 +3025,7 @@ module social_contracts::post {
         clock: &Clock,
         ctx: &mut TxContext
     ): address {
-        create_post_internal(
+        share_post(create_post_internal(
             owner,
             profile_id,
             platform_id,
@@ -3047,7 +3045,6 @@ module social_contracts::post {
             option::none(), // No MyData ID
             option::none(), // promotion_id
             false, // enable_spt - default to opt-out
-            false, // enable_poc - default to opt-out
             false, // enable_spot - default to opt-out
             POC_REDIRECT_NONE,
             owner,
@@ -3056,7 +3053,7 @@ module social_contracts::post {
             memory::class_human(),
             clock,
             ctx
-        )
+        ))
     }
 
     /// Test-only: post with PoC revenue redirect fields set (for fee routing tests).
@@ -3071,7 +3068,7 @@ module social_contracts::post {
         clock: &Clock,
         ctx: &mut TxContext
     ): address {
-        create_post_internal(
+        share_post(create_post_internal(
             owner,
             profile_id,
             platform_id,
@@ -3092,7 +3089,6 @@ module social_contracts::post {
             option::none(),
             false,
             false,
-            false,
             POC_REDIRECT_WALLET,
             owner,
             option::none(),
@@ -3100,7 +3096,7 @@ module social_contracts::post {
             memory::class_human(),
             clock,
             ctx
-        )
+        ))
     }
 
     #[test_only]
@@ -3114,7 +3110,7 @@ module social_contracts::post {
         clock: &Clock,
         ctx: &mut TxContext
     ): address {
-        create_post_internal(
+        share_post(create_post_internal(
             owner,
             profile_id,
             platform_id,
@@ -3135,7 +3131,6 @@ module social_contracts::post {
             option::none(),
             false,
             false,
-            false,
             POC_REDIRECT_ESCROW,
             owner,
             option::none(),
@@ -3143,7 +3138,7 @@ module social_contracts::post {
             memory::class_human(),
             clock,
             ctx
-        )
+        ))
     }
 
     /// Test helper to create a post with SPoT enabled
@@ -3156,7 +3151,7 @@ module social_contracts::post {
         clock: &Clock,
         ctx: &mut TxContext
     ): address {
-        create_post_internal(
+        share_post(create_post_internal(
             owner,
             profile_id,
             platform_id,
@@ -3176,7 +3171,6 @@ module social_contracts::post {
             option::none(), // No MyData ID
             option::none(), // promotion_id
             false, // enable_spt - default to opt-out
-            false, // enable_poc - default to opt-out
             true, // enable_spot - enable SPoT for tests
             POC_REDIRECT_NONE,
             owner,
@@ -3185,7 +3179,7 @@ module social_contracts::post {
             memory::class_human(),
             clock,
             ctx
-        )
+        ))
     }
     
     /// Test-only function to create a promoted post directly for testing
@@ -3217,8 +3211,7 @@ module social_contracts::post {
         let media_option = option::none<vector<Url>>();
         let media_urls_for_event = convert_urls_to_strings(&media_option);
         let poc_redirection_kind = POC_REDIRECT_NONE;
-        // Create the post
-        let post_id = create_post_internal(
+        let post = create_post_internal(
             owner,
             profile_id,
             platform_id,
@@ -3238,7 +3231,6 @@ module social_contracts::post {
             option::none(), // mydata_id
             option::some(promotion_id), // promotion_id
             false, // enable_spt - default to opt-out
-            false, // enable_poc - default to opt-out
             false, // enable_spot - default to opt-out
             poc_redirection_kind,
             owner,
@@ -3248,7 +3240,9 @@ module social_contracts::post {
             clock,
             ctx
         );
-        
+
+        let post_id = share_post(post);
+
         event::emit(PostCreatedEvent {
             post_id,
             owner,
@@ -3266,7 +3260,6 @@ module social_contracts::post {
             revenue_redirect_to: option::none(),
             revenue_redirect_percentage: option::none(),
             enable_spt: false,
-            enable_poc: false,
             enable_spot: false,
             spot_id: option::none(),
             spt_id: option::none(),
@@ -3588,7 +3581,6 @@ module social_contracts::post {
         payment_per_view: u64,
         promotion_budget: Coin<MYSO>,
         enable_spt: Option<bool>,
-        enable_poc: Option<bool>,
         enable_spot: Option<bool>,
         mydata_registry: &mydata::MyDataRegistry,
         memory_account: &MemoryAccount,
@@ -3678,11 +3670,6 @@ module social_contracts::post {
         } else {
             false // Default to opt-out (user must explicitly opt-in)
         };
-        let final_enable_poc = if (option::is_some(&enable_poc)) {
-            *option::borrow(&enable_poc)
-        } else {
-            false // Default to opt-out (user must explicitly opt-in)
-        };
         let final_enable_spot = if (option::is_some(&enable_spot)) {
             *option::borrow(&enable_spot)
         } else {
@@ -3694,8 +3681,7 @@ module social_contracts::post {
 
         let poc_redirection_kind = POC_REDIRECT_NONE;
         
-        // Create and share the post
-        let post_id = create_post_internal(
+        let post = create_post_internal(
             owner,
             profile_id,
             platform_id,
@@ -3715,7 +3701,6 @@ module social_contracts::post {
             mydata_id,
             option::some(promotion_id),
             final_enable_spt,
-            final_enable_poc,
             final_enable_spot,
             poc_redirection_kind,
             actor_address,
@@ -3727,6 +3712,8 @@ module social_contracts::post {
         );
         
         // Indexers read PostCreatedEvent to upsert `posts` with promotion_id before PromotedPostCreatedEvent
+        let post_id = share_post(post);
+
         event::emit(PostCreatedEvent {
             post_id,
             owner,
@@ -3744,7 +3731,6 @@ module social_contracts::post {
             revenue_redirect_to: option::none(),
             revenue_redirect_percentage: option::none(),
             enable_spt: final_enable_spt,
-            enable_poc: final_enable_poc,
             enable_spot: final_enable_spot,
             spot_id: option::none(),
             spt_id: option::none(),

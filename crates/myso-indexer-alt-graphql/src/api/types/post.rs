@@ -166,11 +166,6 @@ impl Post {
         self.inner.revenue_redirect_percentage
     }
 
-    /// Opt-in for Proof of Creativity analysis.
-    async fn enable_poc(&self) -> bool {
-        self.inner.enable_poc
-    }
-
     /// Whether Social Proof Token (SPT) features are enabled for this post.
     async fn enable_spt(&self) -> bool {
         self.inner.enable_spt
@@ -227,6 +222,11 @@ impl Post {
     /// Address of the SpotRecord object (set when a SPoT record is created). Null if no record.
     async fn spot_id(&self) -> Option<&str> {
         self.inner.spot_id.as_deref()
+    }
+
+    /// On-chain SpotClaim object id when this post is linked to a semantic claim.
+    async fn spot_claim_id(&self) -> Option<&str> {
+        self.inner.spot_claim_id.as_deref()
     }
 
     /// Linked SPT pool id when set.

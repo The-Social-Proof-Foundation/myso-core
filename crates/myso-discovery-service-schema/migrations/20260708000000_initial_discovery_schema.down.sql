@@ -1,3 +1,4 @@
+DROP TABLE IF EXISTS discovery_factual_cache;
 DROP TABLE IF EXISTS discovery_audit_log;
 DROP TABLE IF EXISTS discovery_exclusions;
 DROP TABLE IF EXISTS provenance_hits;

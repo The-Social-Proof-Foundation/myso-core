@@ -8,7 +8,7 @@ use diesel_async::RunQueryDsl;
 use myso_pg_db::Db;
 
 use crate::error::SocialError;
-use crate::reader::types::{PendingSpotPostRow, SpotBetRow, SpotConfigInfo, SpotRecordResponse, SpotTransferRow};
+use crate::reader::types::{PendingSpotPostRow, SpotBetRow, SpotConfigInfo, SpotCreatorStatsResponse, SpotPendingCreatorPayoutRow, SpotRecordResponse, SpotRouteResponse, SpotTransferRow};
 
 pub(crate) async fn get_spot_record(
     db: &Db,
@@ -281,6 +281,159 @@ pub(crate) async fn list_pending_spot_posts(
         .bind::<Nullable<BigInt>, _>(cursor_ms)
         .bind::<BigInt, _>(limit)
         .load::<PendingSpotPostRow>(&mut conn)
+        .await?;
+    Ok(results)
+}
+
+pub(crate) async fn get_spot_route(
+    db: &Db,
+    post_id: &str,
+) -> Result<Option<SpotRouteResponse>, SocialError> {
+    let mut conn = db.connect().await?;
+    let query = "
+        WITH post_row AS (
+            SELECT post_id, enable_spot, spot_id, spot_claim_id
+            FROM posts
+            WHERE post_id = $1 AND deleted_at IS NULL
+            ORDER BY created_at DESC
+            LIMIT 1
+        ),
+        link_row AS (
+            SELECT spl.claim_object_id, spl.market_object_id, spl.link_kind
+            FROM spot_post_links spl
+            WHERE spl.post_id = $1
+        ),
+        claim_id AS (
+            SELECT COALESCE(
+                (SELECT spot_claim_id FROM post_row),
+                (SELECT claim_object_id FROM link_row)
+            ) AS claim_object_id
+        ),
+        open_market AS (
+            SELECT sm.market_object_id
+            FROM spot_markets sm
+            JOIN claim_id c ON c.claim_object_id = sm.claim_object_id
+            WHERE sm.status = 1
+            ORDER BY sm.created_at_ms DESC NULLS LAST
+            LIMIT 1
+        ),
+        legacy_record AS (
+            SELECT sr.record_object_id AS market_object_id
+            FROM spot_records sr
+            WHERE sr.post_id = $1 AND sr.status = 1
+            ORDER BY sr.created_at_ms DESC
+            LIMIT 1
+        )
+        SELECT
+            pr.post_id,
+            c.claim_object_id,
+            COALESCE(
+                pr.spot_id,
+                (SELECT market_object_id FROM link_row WHERE market_object_id IS NOT NULL),
+                (SELECT market_object_id FROM open_market),
+                (SELECT market_object_id FROM legacy_record)
+            ) AS target_market_id,
+            (SELECT link_kind FROM link_row) AS link_kind,
+            CASE
+                WHEN COALESCE(
+                    pr.spot_id,
+                    (SELECT market_object_id FROM link_row WHERE market_object_id IS NOT NULL),
+                    (SELECT market_object_id FROM open_market)
+                ) IS NOT NULL THEN 'open_market'
+                WHEN c.claim_object_id IS NOT NULL THEN 'claim_without_open_market'
+                WHEN (SELECT market_object_id FROM legacy_record) IS NOT NULL THEN 'legacy_record'
+                WHEN pr.enable_spot = true THEN 'pending_spot'
+                ELSE 'not_spot_enabled'
+            END AS routing_reason
+        FROM post_row pr
+        LEFT JOIN claim_id c ON true
+    ";
+    let result = diesel::sql_query(query)
+        .bind::<Text, _>(post_id)
+        .get_result::<SpotRouteResponse>(&mut conn)
+        .await
+        .optional()?;
+    Ok(result)
+}
+
+pub(crate) async fn list_pending_creator_payouts(
+    db: &Db,
+    creator: &str,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<SpotPendingCreatorPayoutRow>, SocialError> {
+    let mut conn = db.connect().await?;
+    let query = "
+        SELECT payout_id, market_object_id, creator_address AS creator, referrer_post_id, amount, expires_at_ms
+        FROM spot_creator_payouts
+        WHERE creator_address = $1 AND status = 'accrued'
+        ORDER BY expires_at_ms ASC
+        LIMIT $2 OFFSET $3
+    ";
+    let results = diesel::sql_query(query)
+        .bind::<Text, _>(creator)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<SpotPendingCreatorPayoutRow>(&mut conn)
+        .await?;
+    Ok(results)
+}
+
+pub(crate) async fn get_spot_creator_stats(
+    db: &Db,
+    creator: &str,
+) -> Result<SpotCreatorStatsResponse, SocialError> {
+    let mut conn = db.connect().await?;
+    let query = "
+        SELECT
+            $1::text AS creator,
+            COALESCE((
+                SELECT SUM(amount)::bigint FROM spot_creator_payouts
+                WHERE creator_address = $1 AND status = 'claimed'
+            ), 0) AS lifetime_earnings,
+            COALESCE((
+                SELECT SUM(amount)::bigint FROM spot_creator_payouts
+                WHERE creator_address = $1 AND status = 'claimed'
+                  AND claimed_at_ms >= (EXTRACT(EPOCH FROM NOW()) * 1000)::bigint - 2592000000
+            ), 0) AS earnings_last_30d,
+            COALESCE((
+                SELECT SUM(amount)::bigint FROM spot_creator_payouts
+                WHERE creator_address = $1 AND status = 'accrued'
+            ), 0) AS pending_earnings
+    ";
+    let result = diesel::sql_query(query)
+        .bind::<Text, _>(creator)
+        .get_result::<SpotCreatorStatsResponse>(&mut conn)
+        .await?;
+    Ok(result)
+}
+
+pub(crate) async fn list_expired_creator_payouts(
+    db: &Db,
+    market_object_id: &str,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<SpotPendingCreatorPayoutRow>, SocialError> {
+    let mut conn = db.connect().await?;
+    let now_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0);
+    let query = "
+        SELECT payout_id, market_object_id, creator_address AS creator, referrer_post_id, amount, expires_at_ms
+        FROM spot_creator_payouts
+        WHERE market_object_id = $1
+          AND status = 'accrued'
+          AND expires_at_ms <= $2
+        ORDER BY expires_at_ms ASC
+        LIMIT $3 OFFSET $4
+    ";
+    let results = diesel::sql_query(query)
+        .bind::<Text, _>(market_object_id)
+        .bind::<BigInt, _>(now_ms)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<SpotPendingCreatorPayoutRow>(&mut conn)
         .await?;
     Ok(results)
 }

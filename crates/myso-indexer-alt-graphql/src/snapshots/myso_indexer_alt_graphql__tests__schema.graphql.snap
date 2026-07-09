@@ -1,5 +1,6 @@
 ---
 source: crates/myso-indexer-alt-graphql/src/lib.rs
+assertion_line: 493
 expression: sdl
 ---
 """
@@ -5743,10 +5744,6 @@ type Post implements Node {
 	"""
 	deletionEvents(limit: Int, offset: Int): [PostDeletionEvent!]
 	"""
-	Opt-in for Proof of Creativity analysis.
-	"""
-	enablePoc: Boolean!
-	"""
 	Whether SPoT (Social Proof of Truth) prediction markets are enabled for this post.
 	"""
 	enableSpot: Boolean!
@@ -6273,15 +6270,15 @@ type Profile implements Node {
 	Posts by this profile (paginated, newest first). Matches REST `GET /profiles/:address/posts`
 	scope: `posts.owner` is this profile's wallet **or** `posts.profile_id` is this profile's object id.
 	"""
-	posts(postType: String, enablePoc: Boolean, pocOutcomes: [Int!], includeRemoved: Boolean, limit: Int, offset: Int): [Post!]
+	posts(postType: String, pocOutcomes: [Int!], includeRemoved: Boolean, limit: Int, offset: Int): [Post!]
 	"""
 	Same rows as `posts` with total count and `totalPages` for pagers.
 	"""
-	postsPage(postType: String, enablePoc: Boolean, pocOutcomes: [Int!], includeRemoved: Boolean, limit: Int, offset: Int): PostPage
+	postsPage(postType: String, pocOutcomes: [Int!], includeRemoved: Boolean, limit: Int, offset: Int): PostPage
 	"""
 	Total post count for this profile (same filters as `posts` / `postsPage`).
 	"""
-	postsTotalCount(postType: String, enablePoc: Boolean, pocOutcomes: [Int!], includeRemoved: Boolean): Int
+	postsTotalCount(postType: String, pocOutcomes: [Int!], includeRemoved: Boolean): Int
 	"""
 	The profile ID (object address).
 	"""
@@ -6474,7 +6471,6 @@ Per-window cash-flow breakdown for the profile owner wallet.
 type ProfilePnLWindowStats {
 	grossInboundMyso: Int!
 	messagingMyso: Int!
-	usernameMarketplaceMyso: Int!
 	mydataMyso: Int!
 	netCashFlowMyso: Int!
 	otherInboundMyso: Int!
@@ -6484,7 +6480,34 @@ type ProfilePnLWindowStats {
 	subscriptionsMyso: Int!
 	swapNetMyso: Int!
 	tipsMyso: Int!
+	usernameMarketplaceMyso: Int!
 	window: ProfilePnLWindowGql!
+}
+
+type ProfileSubscription {
+	active: Boolean!
+	autoRenew: Boolean!
+	cancelledAt: Int
+	createdAt: Int!
+	expiresAt: Int!
+	monthlyFee: Int!
+	profileOwner: String!
+	renewalBalance: Int!
+	renewalCount: Int!
+	serviceId: String!
+	subscriber: String!
+	subscriptionId: String!
+}
+
+type ProfileSubscriptionService {
+	active: Boolean!
+	createdAt: Int!
+	monthlyFee: Int!
+	profileId: String!
+	profileOwner: String!
+	serviceId: String!
+	subscriberCount: Int!
+	updatedAt: Int
 }
 
 type ProfileSummary {
@@ -7351,6 +7374,18 @@ type Query {
 	"""
 	profileConfiguration: ProfileConfig
 	"""
+	Profile subscription by on-chain subscription object ID.
+	"""
+	profileSubscription(subscriptionId: ID!): ProfileSubscription
+	"""
+	Profile subscription service by on-chain service object ID.
+	"""
+	profileSubscriptionService(serviceId: ID!): ProfileSubscriptionService
+	"""
+	Active profile subscriptions for a subscriber (optional service filter).
+	"""
+	profileSubscriptions(subscriber: MySoAddress!, serviceId: ID, limit: Int, offset: Int): [ProfileSubscription!]
+	"""
 	List social profiles with pagination. Returns empty when social DB not configured.
 	"""
 	profiles(limit: Int, offset: Int): [Profile!]
@@ -7489,8 +7524,9 @@ type Query {
 	"""
 	subAgentByObjectId(agentObjectId: String!): SubAgent
 	"""
-	Subscription configuration. Returns null when social DB not configured or no config.
+	Whether a subscriber currently has access to a profile subscription service.
 	"""
+	subscriptionAccess(subscriber: MySoAddress!, serviceId: ID!): SubscriptionAccess
 	subscriptionConfiguration: SubscriptionConfig
 	"""
 	Tips received for a post (paginated). Returns empty when social DB not configured.
@@ -8736,6 +8772,11 @@ type SubAgent {
 	registerScope: Int!
 	registeredBy: MySoAddress!
 	roleTags: Int!
+}
+
+type SubscriptionAccess {
+	expiresAt: Int
+	hasAccess: Boolean!
 }
 
 type SubscriptionConfig {

@@ -104,3 +104,45 @@ pub struct SpotConfigInfo {
     #[diesel(sql_type = Text)]
     pub transaction_id: String,
 }
+
+#[derive(Debug, Serialize, QueryableByName)]
+pub struct SpotRouteResponse {
+    #[diesel(sql_type = Text)]
+    pub post_id: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub claim_object_id: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub target_market_id: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub link_kind: Option<String>,
+    #[diesel(sql_type = Text)]
+    pub routing_reason: String,
+}
+
+#[derive(Debug, Serialize, QueryableByName)]
+pub struct SpotPendingCreatorPayoutRow {
+    #[diesel(sql_type = BigInt)]
+    pub payout_id: i64,
+    #[diesel(sql_type = Text)]
+    pub market_object_id: String,
+    #[diesel(sql_type = Text)]
+    pub creator: String,
+    #[diesel(sql_type = Text)]
+    pub referrer_post_id: String,
+    #[diesel(sql_type = BigInt)]
+    pub amount: i64,
+    #[diesel(sql_type = BigInt)]
+    pub expires_at_ms: i64,
+}
+
+#[derive(Debug, Serialize, QueryableByName)]
+pub struct SpotCreatorStatsResponse {
+    #[diesel(sql_type = Text)]
+    pub creator: String,
+    #[diesel(sql_type = BigInt)]
+    pub lifetime_earnings: i64,
+    #[diesel(sql_type = BigInt)]
+    pub earnings_last_30d: i64,
+    #[diesel(sql_type = BigInt)]
+    pub pending_earnings: i64,
+}

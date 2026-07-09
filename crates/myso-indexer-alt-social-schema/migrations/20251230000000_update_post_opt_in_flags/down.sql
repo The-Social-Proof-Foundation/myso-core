@@ -8,7 +8,6 @@
 
 -- Drop new columns if they exist
 DROP INDEX IF EXISTS idx_posts_enable_spt;
-DROP INDEX IF EXISTS idx_posts_enable_poc;
 DROP INDEX IF EXISTS idx_posts_enable_spot;
 DROP INDEX IF EXISTS idx_posts_spot_id;
 DROP INDEX IF EXISTS idx_posts_spt_id;
@@ -20,12 +19,6 @@ BEGIN
         WHERE table_name = 'posts' AND column_name = 'enable_spt'
     ) THEN
         ALTER TABLE posts DROP COLUMN enable_spt;
-    END IF;
-    IF EXISTS (
-        SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'posts' AND column_name = 'enable_poc'
-    ) THEN
-        ALTER TABLE posts DROP COLUMN enable_poc;
     END IF;
     IF EXISTS (
         SELECT 1 FROM information_schema.columns 

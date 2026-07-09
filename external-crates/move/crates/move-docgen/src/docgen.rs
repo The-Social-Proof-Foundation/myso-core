@@ -140,6 +140,24 @@ impl Default for DocgenOptions {
     }
 }
 
+/// Align a byte index to the nearest valid UTF-8 char boundary at or before `index`.
+fn floor_char_boundary(s: &str, index: usize) -> usize {
+    let mut i = index.min(s.len());
+    while i > 0 && !s.is_char_boundary(i) {
+        i -= 1;
+    }
+    i
+}
+
+/// Align a byte index to the nearest valid UTF-8 char boundary at or after `index`.
+fn ceil_char_boundary(s: &str, index: usize) -> usize {
+    let mut i = index.min(s.len());
+    while i < s.len() && !s.is_char_boundary(i) {
+        i += 1;
+    }
+    i
+}
+
 /// The documentation generator.
 pub struct Docgen<'env> {
     options: &'env DocgenOptions,
@@ -1672,8 +1690,10 @@ impl<'env> Docgen<'env> {
         // Compute the indentation of this source fragment by looking at some
         // characters preceding it.
         let ByteSpan { start, end } = files.byte_span(&loc).byte_span;
+        let start = floor_char_boundary(file_text, start);
+        let end = ceil_char_boundary(file_text, end);
         let source = &file_text[start..end];
-        let peek_start = start.saturating_sub(60);
+        let peek_start = floor_char_boundary(file_text, start.saturating_sub(60));
         let source_before = &file_text[peek_start..start];
         let newl_at = source_before.rfind('\n').unwrap_or(0);
         let indent = source_before.len() - newl_at - 1;

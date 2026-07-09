@@ -38,7 +38,6 @@ pub const PERMISSION_ALLOW_REPOSTS: i32 = 4;
 pub const PERMISSION_ALLOW_QUOTES: i32 = 8;
 pub const PERMISSION_ALLOW_TIPS: i32 = 16;
 pub const ENABLE_SPT: i32 = 1;
-pub const ENABLE_POC: i32 = 2;
 pub const ENABLE_SPOT: i32 = 4;
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -85,9 +84,9 @@ pub struct NewPost {
     pub encrypted_content_hash: Option<String>,
     pub promotion_id: Option<String>,
     pub enable_spt: bool,
-    pub enable_poc: bool,
     pub enable_spot: bool,
     pub spot_id: Option<String>,
+    pub spot_claim_id: Option<String>,
     pub spt_id: Option<String>,
     pub platform_id: Option<String>,
     pub permissions: Option<i16>,

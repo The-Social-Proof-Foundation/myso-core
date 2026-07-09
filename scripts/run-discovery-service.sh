@@ -8,7 +8,7 @@
 #
 # Usage:
 #   ./scripts/run-discovery-service.sh
-#   ./scripts/run-discovery-service.sh --refresh-session   # via discovery-runnable.sh
+#   ./scripts/run-discovery-service.sh --refresh-session
 
 set -euo pipefail
 
@@ -17,6 +17,22 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "$REPO_ROOT"
 
 DISCOVERY_SESSION_FILE="$REPO_ROOT/network.config/discovery/discovery-session.env"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --help|-h)
+      sed -n '2,12p' "$0" | sed 's/^# \?//'
+      exit 0
+      ;;
+    --refresh-session)
+      exec "$SCRIPT_DIR/discovery-runnable.sh" --refresh-session
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
 if [[ -f "$DISCOVERY_SESSION_FILE" ]]; then
   # shellcheck disable=SC1090
   source "$DISCOVERY_SESSION_FILE"
@@ -25,6 +41,7 @@ fi
 export DISCOVERY_DATABASE_URL="${DISCOVERY_DATABASE_URL:-postgresql://poc:poc@127.0.0.1:5434/discovery}"
 export DISCOVERY_SOURCES_CONFIG="${DISCOVERY_SOURCES_CONFIG:-crates/myso-discovery-service/config/discovery/sources.localnet.yaml}"
 export DISCOVERY_EMBED_ENABLED="${DISCOVERY_EMBED_ENABLED:-false}"
+export DISCOVERY_METRICS_ADDRESS="${DISCOVERY_METRICS_ADDRESS:-127.0.0.1:9286}"
 export RUST_LOG="${RUST_LOG:-info}"
 
 exec cargo run -p myso-discovery-service -- "$@"

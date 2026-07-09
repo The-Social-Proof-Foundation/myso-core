@@ -91,9 +91,13 @@ use crate::social_graph::{
     resolve_profile_address,
 };
 use crate::spot::{
-    get_spot_config, get_spot_record, get_spot_record_by_active_proposal_id,
-    get_spot_record_by_object_id, get_spot_resolution, list_contested_spot_records,
-    list_spot_bet_withdrawals, list_spot_bets, list_spot_payouts, list_spot_refunds,
+    get_spot_claim_by_object_id, get_spot_config, get_spot_creator_stats, get_spot_market_by_object_id,
+    get_spot_record, get_spot_record_by_active_proposal_id, get_spot_record_by_object_id,
+    get_spot_resolution, get_spot_route, list_contested_spot_records,
+    list_expired_unclaimed_creator_payouts, list_pending_creator_payouts,
+    list_spot_bet_withdrawals, list_spot_bets, list_spot_creator_earnings_by_market,
+    list_spot_creator_earnings_by_post, list_spot_creator_top_claims, list_spot_payouts,
+    list_spot_refunds,
 };
 use crate::spt::SptReservationVolumeInterval;
 use crate::spt::{
@@ -744,7 +748,6 @@ impl SocialPgReader {
         owner_address: &str,
         profile_id: Option<&str>,
         post_type: Option<&str>,
-        enable_poc: Option<bool>,
         poc_outcomes: Option<Vec<i16>>,
         include_removed: bool,
         limit: i64,
@@ -756,7 +759,6 @@ impl SocialPgReader {
             owner_address,
             profile_id,
             post_type,
-            enable_poc,
             poc_outcomes.as_deref(),
             include_removed,
             limit,
@@ -772,7 +774,6 @@ impl SocialPgReader {
         owner_address: &str,
         profile_id: Option<&str>,
         post_type: Option<&str>,
-        enable_poc: Option<bool>,
         poc_outcomes: Option<Vec<i16>>,
         include_removed: bool,
     ) -> anyhow::Result<i64> {
@@ -782,7 +783,6 @@ impl SocialPgReader {
             owner_address,
             profile_id,
             post_type,
-            enable_poc,
             poc_outcomes.as_deref(),
             include_removed,
             &self.metrics,
@@ -1845,6 +1845,100 @@ impl SocialPgReader {
     ) -> anyhow::Result<Vec<crate::SpotBetWithdrawalRow>> {
         let mut conn = self.connect().await?;
         list_spot_bet_withdrawals(&mut conn, post_id, limit, offset, &self.metrics).await
+    }
+
+    /// Resolve SPoT betting route for a post (post → claim → open market).
+    pub async fn get_spot_route(
+        &self,
+        post_id: &str,
+    ) -> anyhow::Result<Option<crate::spot::SpotRouteRow>> {
+        let mut conn = self.connect().await?;
+        get_spot_route(&mut conn, post_id, &self.metrics).await
+    }
+
+    /// Get indexed SpotClaim by on-chain object id.
+    pub async fn get_spot_claim(
+        &self,
+        claim_object_id: &str,
+    ) -> anyhow::Result<Option<crate::spot::SpotClaimRow>> {
+        let mut conn = self.connect().await?;
+        get_spot_claim_by_object_id(&mut conn, claim_object_id, &self.metrics).await
+    }
+
+    /// Get indexed SpotMarket by on-chain object id.
+    pub async fn get_spot_market(
+        &self,
+        market_object_id: &str,
+    ) -> anyhow::Result<Option<crate::spot::SpotMarketRow>> {
+        let mut conn = self.connect().await?;
+        get_spot_market_by_object_id(&mut conn, market_object_id, &self.metrics).await
+    }
+
+    /// Pending creator payouts for a wallet (unclaimed).
+    pub async fn list_spot_pending_creator_payouts(
+        &self,
+        creator: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::spot::SpotPendingCreatorPayoutRow>> {
+        let mut conn = self.connect().await?;
+        list_pending_creator_payouts(&mut conn, creator, limit, offset, &self.metrics).await
+    }
+
+    /// Expired unclaimed creator payouts for keeper reclaim UX.
+    pub async fn list_expired_spot_creator_payouts(
+        &self,
+        market_object_id: &str,
+        now_ms: i64,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::spot::SpotPendingCreatorPayoutRow>> {
+        let mut conn = self.connect().await?;
+        list_expired_unclaimed_creator_payouts(
+            &mut conn,
+            market_object_id,
+            now_ms,
+            limit,
+            offset,
+            &self.metrics,
+        )
+        .await
+    }
+
+    /// Aggregated creator earnings stats (claimed + pending).
+    pub async fn get_spot_creator_stats(
+        &self,
+        creator: &str,
+    ) -> anyhow::Result<crate::spot::SpotCreatorStatsRow> {
+        let mut conn = self.connect().await?;
+        get_spot_creator_stats(&mut conn, creator, &self.metrics).await
+    }
+
+    pub async fn list_spot_creator_top_claims(
+        &self,
+        creator: &str,
+        limit: i64,
+    ) -> anyhow::Result<Vec<crate::spot::SpotClaimEarningsRow>> {
+        let mut conn = self.connect().await?;
+        list_spot_creator_top_claims(&mut conn, creator, limit, &self.metrics).await
+    }
+
+    pub async fn list_spot_creator_earnings_by_post(
+        &self,
+        creator: &str,
+        limit: i64,
+    ) -> anyhow::Result<Vec<crate::spot::SpotPostEarningsRow>> {
+        let mut conn = self.connect().await?;
+        list_spot_creator_earnings_by_post(&mut conn, creator, limit, &self.metrics).await
+    }
+
+    pub async fn list_spot_creator_earnings_by_market(
+        &self,
+        creator: &str,
+        limit: i64,
+    ) -> anyhow::Result<Vec<crate::spot::SpotMarketEarningsRow>> {
+        let mut conn = self.connect().await?;
+        list_spot_creator_earnings_by_market(&mut conn, creator, limit, &self.metrics).await
     }
 
     /// Get a promotion by ID.

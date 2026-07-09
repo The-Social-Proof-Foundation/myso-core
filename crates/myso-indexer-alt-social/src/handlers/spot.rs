@@ -3,8 +3,10 @@
 
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
-    NewSpotBet, NewSpotBetWithdrawal, NewSpotConfig, NewSpotEventLog, NewSpotPayout, NewSpotRecord,
-    NewSpotRefund, NewSpotResolution, STATUS_DAO_REQUIRED, STATUS_OPEN, STATUS_RESOLVED,
+    CREATOR_PAYOUT_STATUS_ACCRUED, CREATOR_PAYOUT_STATUS_CLAIMED, CREATOR_PAYOUT_STATUS_RECLAIMED,
+    NewSpotBet, NewSpotBetWithdrawal, NewSpotClaim, NewSpotConfig, NewSpotCreatorPayout,
+    NewSpotEventLog, NewSpotMarket, NewSpotPayout, NewSpotPostLink, NewSpotRecord, NewSpotRefund,
+    NewSpotResolution, SPOT_LINK_KIND_PRIMARY, STATUS_DAO_REQUIRED, STATUS_OPEN, STATUS_RESOLVED,
 };
 
 fn transaction_id_from_event_id(event_id: &str) -> String {
@@ -62,6 +64,24 @@ pub fn handle_spot_event(
         "SpotGovernanceProposalClearedEvent" => {
             process_spot_governance_proposal_cleared_event(data, event_id, &transaction_id, now)
         }
+        "SpotClaimCreatedEvent" => {
+            process_spot_claim_created_event(data, event_id, &transaction_id, now)
+        }
+        "SpotMarketCreatedEvent" => {
+            process_spot_market_created_event(data, event_id, &transaction_id, now)
+        }
+        "SpotPostLinkedEvent" => {
+            process_spot_post_linked_event(data, event_id, &transaction_id, now)
+        }
+        "SpotCreatorPayoutAccruedEvent" => {
+            process_spot_creator_payout_accrued_event(data, event_id, timestamp_ms, &transaction_id, now)
+        }
+        "SpotCreatorPayoutClaimedEvent" => {
+            process_spot_creator_payout_claimed_event(data, event_id, timestamp_ms, &transaction_id, now)
+        }
+        "SpotCreatorPayoutReclaimedEvent" => {
+            process_spot_creator_payout_reclaimed_event(data, event_id, timestamp_ms, &transaction_id, now)
+        }
         _ => None,
     }
 }
@@ -93,6 +113,14 @@ fn process_spot_bet_placed_event(
     let user = data.get("user")?.as_str()?.to_string();
     let option_id = data.get("option_id")?.as_u64().unwrap_or(0) as i16;
     let amount = json_to_i64(data.get("amount")?);
+    let market_object_id = data
+        .get("market_id")
+        .and_then(|v| v.as_str())
+        .map(String::from);
+    let referrer_post_id = data
+        .get("referrer_post_id")
+        .and_then(|v| v.as_str())
+        .map(String::from);
     let ts = data
         .get("timestamp_ms")
         .and_then(json_opt_i64)
@@ -108,6 +136,8 @@ fn process_spot_bet_placed_event(
         time: now,
         transaction_id: transaction_id.to_string(),
         organization_id: None,
+        market_object_id,
+        referrer_post_id,
     };
 
     let log = new_event_log("SpotBetPlacedEvent", &post_id, data, event_id, now);
@@ -126,9 +156,18 @@ fn process_spot_resolved_event(
     now: chrono::DateTime<chrono::Utc>,
 ) -> Option<Vec<SocialEventRow>> {
     let post_id = data.get("post_id")?.as_str()?.to_string();
+    let claim_object_id = data
+        .get("claim_id")
+        .and_then(|v| v.as_str())
+        .map(String::from);
+    let market_object_id = data
+        .get("market_id")
+        .and_then(|v| v.as_str())
+        .map(String::from);
     let outcome = data.get("outcome")?.as_u64().unwrap_or(0) as i16;
     let total_escrow = json_to_i64(data.get("total_escrow")?);
     let fee_taken = json_to_i64(data.get("fee_taken")?);
+    let creator_fee_total = data.get("creator_fee_total").and_then(json_opt_i64);
     let reasoning = data.get("reasoning")?.as_str().unwrap_or("").to_string();
     let evidence_urls = data
         .get("evidence_urls")
@@ -147,20 +186,37 @@ fn process_spot_resolved_event(
         transaction_id: transaction_id.to_string(),
         reasoning,
         evidence_urls,
+        claim_object_id: claim_object_id.clone(),
+        market_object_id: market_object_id.clone(),
+        creator_fee_total,
     };
 
     let log = new_event_log("SpotResolvedEvent", &post_id, data, event_id, now);
 
-    Some(vec![
+    let mut rows = vec![
         SocialEventRow::SpotResolution(resolution),
         SocialEventRow::SpotRecordUpdate {
             post_id: post_id.clone(),
             status: STATUS_RESOLVED,
             outcome: Some(outcome),
             last_resolution_at_ms: resolved_at_ms,
+            claim_object_id,
+            market_object_id: market_object_id.clone(),
+            creator_fee_total,
         },
         SocialEventRow::SpotEventLog(log),
-    ])
+    ];
+    if let Some(market_id) = market_object_id {
+        rows.push(SocialEventRow::SpotMarketUpdate {
+            market_object_id: market_id,
+            status: STATUS_RESOLVED,
+            outcome: Some(outcome),
+            last_resolution_at_ms: Some(resolved_at_ms),
+            resolution_timestamp_ms: Some(resolved_at_ms),
+            creator_fee_total,
+        });
+    }
+    Some(rows)
 }
 
 fn process_spot_dao_required_event(
@@ -323,6 +379,11 @@ fn process_spot_config_updated_event(
     let payout_delay_ms = json_to_i64(data.get("payout_delay_ms")?);
     let platform_fee_bps = json_to_i64(data.get("platform_fee_bps")?);
     let ecosystem_fee_bps = json_to_i64(data.get("ecosystem_fee_bps")?);
+    let creator_fee_bps = data.get("creator_fee_bps").and_then(json_opt_i64);
+    let creator_claim_window_ms = data.get("creator_claim_window_ms").and_then(json_opt_i64);
+    let expired_creator_ecosystem_bps = data
+        .get("expired_creator_ecosystem_bps")
+        .and_then(json_opt_i64);
     let min_betting_options = json_to_i64(data.get("min_betting_options")?);
     let max_betting_options = json_to_i64(data.get("max_betting_options")?);
     let min_reasoning_length = json_to_i64(data.get("min_reasoning_length")?);
@@ -357,6 +418,9 @@ fn process_spot_config_updated_event(
         fee_split_bps_platform: 0,
         platform_fee_bps,
         ecosystem_fee_bps,
+        creator_fee_bps,
+        creator_claim_window_ms,
+        expired_creator_ecosystem_bps,
         min_betting_options,
         max_betting_options,
         min_reasoning_length,
@@ -422,6 +486,11 @@ fn process_spot_record_created_event(
         oracle_proposed_outcome: None,
         proposed_outcome: None,
         dao_escalated_at_ms: None,
+        claim_object_id: None,
+        market_object_id: None,
+        primary_post_id: Some(post_id.clone()),
+        market_key_hash: None,
+        creator_fee_total: None,
     };
 
     let log = new_event_log("SpotRecordCreatedEvent", &post_id, data, event_id, now);
@@ -460,6 +529,284 @@ fn process_spot_bet_withdrawn_event(
 
     Some(vec![
         SocialEventRow::SpotBetWithdrawal(withdrawal),
+        SocialEventRow::SpotEventLog(log),
+    ])
+}
+
+fn process_spot_claim_created_event(
+    data: &serde_json::Value,
+    event_id: &str,
+    transaction_id: &str,
+    now: chrono::DateTime<chrono::Utc>,
+) -> Option<Vec<SocialEventRow>> {
+    let claim_object_id = data.get("claim_id")?.as_str()?.to_string();
+    let semantic_claim_hash = data.get("semantic_claim_hash")?.as_str()?.to_string();
+    let created_at_ms = json_to_i64(data.get("created_at_ms")?);
+
+    let claim = NewSpotClaim {
+        claim_object_id: claim_object_id.clone(),
+        semantic_claim_hash,
+        created_at_ms,
+        transaction_id: transaction_id.to_string(),
+        created_at: now.naive_utc(),
+    };
+
+    let log = new_event_log("SpotClaimCreatedEvent", "", data, event_id, now);
+
+    Some(vec![
+        SocialEventRow::SpotClaimUpsert(claim),
+        SocialEventRow::SpotEventLog(log),
+    ])
+}
+
+fn process_spot_market_created_event(
+    data: &serde_json::Value,
+    event_id: &str,
+    transaction_id: &str,
+    now: chrono::DateTime<chrono::Utc>,
+) -> Option<Vec<SocialEventRow>> {
+    let market_object_id = data.get("market_id")?.as_str()?.to_string();
+    let claim_object_id = data.get("claim_id")?.as_str()?.to_string();
+    let market_key_hash = data.get("market_key_hash")?.as_str()?.to_string();
+    let primary_post_id = data.get("primary_post_id")?.as_str()?.to_string();
+    let created_at_ms = json_to_i64(data.get("created_at_ms")?);
+    let betting_options = data
+        .get("betting_options")
+        .and_then(|v| serde_json::from_value(v.clone()).ok())
+        .unwrap_or_else(|| serde_json::json!([]));
+    let resolution_window_ms = data.get("resolution_window_ms").and_then(json_opt_i64);
+    let max_resolution_window_ms = data.get("max_resolution_window_ms").and_then(json_opt_i64);
+    let now_naive = now.naive_utc();
+
+    let market = NewSpotMarket {
+        market_object_id: market_object_id.clone(),
+        claim_object_id: claim_object_id.clone(),
+        market_key_hash: market_key_hash.clone(),
+        primary_post_id: primary_post_id.clone(),
+        primary_creator: None,
+        status: STATUS_OPEN,
+        outcome: None,
+        betting_options: betting_options.clone(),
+        option_escrow: serde_json::json!({}),
+        resolution_window_ms,
+        max_resolution_window_ms,
+        created_at_ms,
+        last_resolution_at_ms: None,
+        resolution_timestamp_ms: None,
+        creator_fee_total: None,
+        transaction_id: transaction_id.to_string(),
+        created_at: now_naive,
+        updated_at: now_naive,
+    };
+
+    let record = NewSpotRecord {
+        post_id: primary_post_id.clone(),
+        status: STATUS_OPEN,
+        outcome: None,
+        amm_split_bps_used: 0,
+        betting_options: Some(betting_options),
+        option_escrow: Some(serde_json::json!({})),
+        resolution_window_ms,
+        max_resolution_window_ms,
+        created_at_ms,
+        last_resolution_at_ms: None,
+        version: 1,
+        created_at: now_naive,
+        updated_at: now_naive,
+        transaction_id: transaction_id.to_string(),
+        record_object_id: Some(market_object_id.clone()),
+        active_proposal_id: None,
+        oracle_proposed_outcome: None,
+        proposed_outcome: None,
+        dao_escalated_at_ms: None,
+        claim_object_id: Some(claim_object_id.clone()),
+        market_object_id: Some(market_object_id.clone()),
+        primary_post_id: Some(primary_post_id.clone()),
+        market_key_hash: Some(market_key_hash),
+        creator_fee_total: None,
+    };
+
+    let link = NewSpotPostLink {
+        post_id: primary_post_id.clone(),
+        claim_object_id: claim_object_id.clone(),
+        market_object_id: Some(market_object_id.clone()),
+        link_kind: SPOT_LINK_KIND_PRIMARY.to_string(),
+        transaction_id: transaction_id.to_string(),
+        created_at: now_naive,
+    };
+
+    let log = new_event_log(
+        "SpotMarketCreatedEvent",
+        &primary_post_id,
+        data,
+        event_id,
+        now,
+    );
+
+    Some(vec![
+        SocialEventRow::SpotMarketUpsert(market),
+        SocialEventRow::SpotRecordUpsert(record),
+        SocialEventRow::SpotPostLinkUpsert(link),
+        SocialEventRow::PostSpotFieldsUpdate {
+            post_id: primary_post_id,
+            spot_id: Some(market_object_id),
+            spot_claim_id: Some(data.get("claim_id")?.as_str()?.to_string()),
+        },
+        SocialEventRow::SpotEventLog(log),
+    ])
+}
+
+fn process_spot_post_linked_event(
+    data: &serde_json::Value,
+    event_id: &str,
+    transaction_id: &str,
+    now: chrono::DateTime<chrono::Utc>,
+) -> Option<Vec<SocialEventRow>> {
+    let post_id = data.get("post_id")?.as_str()?.to_string();
+    let claim_object_id = data.get("claim_id")?.as_str()?.to_string();
+    let market_object_id = data
+        .get("market_id")
+        .and_then(|v| v.as_str())
+        .map(String::from);
+
+    let link = NewSpotPostLink {
+        post_id: post_id.clone(),
+        claim_object_id: claim_object_id.clone(),
+        market_object_id: market_object_id.clone(),
+        link_kind: "linked".to_string(),
+        transaction_id: transaction_id.to_string(),
+        created_at: now.naive_utc(),
+    };
+
+    let log = new_event_log("SpotPostLinkedEvent", &post_id, data, event_id, now);
+
+    Some(vec![
+        SocialEventRow::SpotPostLinkUpsert(link),
+        SocialEventRow::PostSpotFieldsUpdate {
+            post_id,
+            spot_id: market_object_id,
+            spot_claim_id: Some(claim_object_id),
+        },
+        SocialEventRow::SpotEventLog(log),
+    ])
+}
+
+fn process_spot_creator_payout_accrued_event(
+    data: &serde_json::Value,
+    event_id: &str,
+    _checkpoint_timestamp_ms: u64,
+    transaction_id: &str,
+    now: chrono::DateTime<chrono::Utc>,
+) -> Option<Vec<SocialEventRow>> {
+    let market_object_id = data.get("market_id")?.as_str()?.to_string();
+    let payout_id = json_to_i64(data.get("payout_id")?);
+    let creator_address = data.get("creator")?.as_str()?.to_string();
+    let referrer_post_id = data.get("referrer_post_id")?.as_str()?.to_string();
+    let amount = json_to_i64(data.get("amount")?);
+    let expires_at_ms = json_to_i64(data.get("expires_at_ms")?);
+    let now_naive = now.naive_utc();
+
+    let payout = NewSpotCreatorPayout {
+        market_object_id: market_object_id.clone(),
+        payout_id,
+        creator_address,
+        referrer_post_id: referrer_post_id.clone(),
+        amount,
+        expires_at_ms,
+        status: CREATOR_PAYOUT_STATUS_ACCRUED.to_string(),
+        ecosystem_amount: None,
+        platform_amount: None,
+        claimed_at_ms: None,
+        reclaimed_at_ms: None,
+        transaction_id: transaction_id.to_string(),
+        created_at: now_naive,
+        updated_at: now_naive,
+    };
+
+    let log = new_event_log(
+        "SpotCreatorPayoutAccruedEvent",
+        &referrer_post_id,
+        data,
+        event_id,
+        now,
+    );
+
+    Some(vec![
+        SocialEventRow::SpotCreatorPayoutUpsert(payout),
+        SocialEventRow::SpotEventLog(log),
+    ])
+}
+
+fn process_spot_creator_payout_claimed_event(
+    data: &serde_json::Value,
+    event_id: &str,
+    checkpoint_timestamp_ms: u64,
+    _transaction_id: &str,
+    now: chrono::DateTime<chrono::Utc>,
+) -> Option<Vec<SocialEventRow>> {
+    let market_object_id = data.get("market_id")?.as_str()?.to_string();
+    let payout_id = json_to_i64(data.get("payout_id")?);
+    let creator_address = data.get("creator")?.as_str()?.to_string();
+    let amount = json_to_i64(data.get("amount")?);
+    let day = chrono::DateTime::from_timestamp_millis(checkpoint_timestamp_ms as i64)
+        .map(|dt| dt.date_naive())
+        .unwrap_or_else(|| now.date_naive());
+    let log = new_event_log(
+        "SpotCreatorPayoutClaimedEvent",
+        &market_object_id,
+        data,
+        event_id,
+        now,
+    );
+
+    Some(vec![
+        SocialEventRow::SpotCreatorPayoutStatusUpdate {
+            market_object_id: market_object_id.clone(),
+            payout_id,
+            status: CREATOR_PAYOUT_STATUS_CLAIMED.to_string(),
+            claimed_at_ms: Some(checkpoint_timestamp_ms as i64),
+            reclaimed_at_ms: None,
+            ecosystem_amount: None,
+            platform_amount: None,
+        },
+        SocialEventRow::SpotCreatorEarningsDailyUpsert {
+            creator_address,
+            day,
+            amount,
+        },
+        SocialEventRow::SpotEventLog(log),
+    ])
+}
+
+fn process_spot_creator_payout_reclaimed_event(
+    data: &serde_json::Value,
+    event_id: &str,
+    checkpoint_timestamp_ms: u64,
+    _transaction_id: &str,
+    now: chrono::DateTime<chrono::Utc>,
+) -> Option<Vec<SocialEventRow>> {
+    let market_object_id = data.get("market_id")?.as_str()?.to_string();
+    let payout_id = json_to_i64(data.get("payout_id")?);
+    let ecosystem_amount = json_to_i64(data.get("ecosystem_amount")?);
+    let platform_amount = json_to_i64(data.get("platform_amount")?);
+    let log = new_event_log(
+        "SpotCreatorPayoutReclaimedEvent",
+        &market_object_id,
+        data,
+        event_id,
+        now,
+    );
+
+    Some(vec![
+        SocialEventRow::SpotCreatorPayoutStatusUpdate {
+            market_object_id,
+            payout_id,
+            status: CREATOR_PAYOUT_STATUS_RECLAIMED.to_string(),
+            claimed_at_ms: None,
+            reclaimed_at_ms: Some(checkpoint_timestamp_ms as i64),
+            ecosystem_amount: Some(ecosystem_amount),
+            platform_amount: Some(platform_amount),
+        },
         SocialEventRow::SpotEventLog(log),
     ])
 }

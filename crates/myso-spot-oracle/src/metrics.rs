@@ -1,11 +1,9 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-//! Prometheus registry (`spot_oracle` prefix). Counters/histograms are wired up
-//! alongside the modules that emit them; the foundation exposes uptime + queue
-//! depth so `/metrics` is non-empty from boot.
+//! Prometheus registry (`spot_oracle` prefix).
 
-use prometheus::{IntCounter, IntCounterVec, IntGaugeVec, Opts, Registry};
+use prometheus::{IntCounter, IntCounterVec, IntGauge, IntGaugeVec, Opts, Registry};
 
 pub struct OracleMetrics {
     pub registry: Registry,
@@ -14,6 +12,10 @@ pub struct OracleMetrics {
     pub chain_tx_total: IntCounterVec,
     pub queue_depth: IntGaugeVec,
     pub rss_wake_total: IntCounter,
+    pub checkpoint_ingest_total: IntCounterVec,
+    pub checkpoint_lag: IntGauge,
+    pub posts_filtered_enable_spot: IntCounter,
+    pub discovery_client_errors: IntCounter,
 }
 
 impl OracleMetrics {
@@ -66,6 +68,39 @@ impl OracleMetrics {
             .register(Box::new(rss_wake_total.clone()))
             .expect("register rss_wake_total");
 
+        let checkpoint_ingest_total = IntCounterVec::new(
+            Opts::new("checkpoint_ingest_total", "Checkpoint ingest outcomes"),
+            &["result"],
+        )
+        .expect("checkpoint_ingest_total metric");
+        registry
+            .register(Box::new(checkpoint_ingest_total.clone()))
+            .expect("register checkpoint_ingest_total");
+
+        let checkpoint_lag = IntGauge::new("checkpoint_lag", "Last processed checkpoint sequence")
+            .expect("checkpoint_lag metric");
+        registry
+            .register(Box::new(checkpoint_lag.clone()))
+            .expect("register checkpoint_lag");
+
+        let posts_filtered_enable_spot = IntCounter::new(
+            "posts_filtered_enable_spot",
+            "Posts observed with enable_spot=false",
+        )
+        .expect("posts_filtered_enable_spot metric");
+        registry
+            .register(Box::new(posts_filtered_enable_spot.clone()))
+            .expect("register posts_filtered_enable_spot");
+
+        let discovery_client_errors = IntCounter::new(
+            "discovery_client_errors_total",
+            "Discovery client request failures",
+        )
+        .expect("discovery_client_errors metric");
+        registry
+            .register(Box::new(discovery_client_errors.clone()))
+            .expect("register discovery_client_errors");
+
         let uptime = myso_indexer_alt_metrics::uptime(env!("CARGO_PKG_VERSION"))
             .expect("uptime metric");
         registry.register(uptime).expect("register uptime");
@@ -77,6 +112,10 @@ impl OracleMetrics {
             chain_tx_total,
             queue_depth,
             rss_wake_total,
+            checkpoint_ingest_total,
+            checkpoint_lag,
+            posts_filtered_enable_spot,
+            discovery_client_errors,
         }
     }
 }

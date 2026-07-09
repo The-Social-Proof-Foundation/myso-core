@@ -41,6 +41,7 @@ CREATE TABLE discovery_assets (
     external_source_url TEXT NOT NULL,
     canonical_metadata JSONB NOT NULL DEFAULT '{}',
     media_type VARCHAR(32) NOT NULL,
+    content_kind VARCHAR(16) NOT NULL DEFAULT 'text',
     content_hash VARCHAR(128),
     metadata_hash VARCHAR(128),
     lifecycle_state VARCHAR(32) NOT NULL DEFAULT 'discovered',
@@ -76,13 +77,15 @@ CREATE TABLE discovery_jobs (
     priority_score BIGINT NOT NULL DEFAULT 0,
     status VARCHAR(32) NOT NULL DEFAULT 'pending',
     attempts INTEGER NOT NULL DEFAULT 0,
+    max_attempts INTEGER NOT NULL DEFAULT 5,
+    run_after TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     last_error TEXT,
     payload JSONB NOT NULL DEFAULT '{}',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_discovery_jobs_claim ON discovery_jobs(status, priority_score DESC, created_at);
+CREATE INDEX idx_discovery_jobs_claim ON discovery_jobs(status, run_after, priority_score DESC, created_at);
 
 CREATE TABLE provenance_hits (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -124,3 +127,17 @@ CREATE TABLE discovery_audit_log (
 );
 
 CREATE INDEX idx_discovery_audit_entity ON discovery_audit_log(entity_type, entity_id, created_at DESC);
+
+-- Factual response cache (keyed by source + fetch identity; used by /v1/* and scheduler).
+CREATE TABLE discovery_factual_cache (
+    cache_key VARCHAR(256) PRIMARY KEY,
+    source_id UUID REFERENCES discovery_sources(id) ON DELETE CASCADE,
+    kind VARCHAR(32) NOT NULL,
+    source_url TEXT NOT NULL,
+    content_hash VARCHAR(128) NOT NULL,
+    normalized_payload JSONB NOT NULL DEFAULT '{}',
+    fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '5 minutes'
+);
+
+CREATE INDEX idx_discovery_factual_cache_expires ON discovery_factual_cache(expires_at);

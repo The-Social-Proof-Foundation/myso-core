@@ -3726,7 +3726,7 @@ const FAUCET_FRONTEND_URL: &str = "https://www.mysocial.network/faucet";
 fn open_testnet_faucet_browser(address: MySoAddress) {
     let url = format!("{FAUCET_FRONTEND_URL}?address={address}");
     println!("Opening your browser to request testnet MySo tokens...");
-    if let Err(_) = open::that(&url) {
+    if open::that(&url).is_err() {
         println!("Could not open browser. Please visit: {url}");
     }
 }

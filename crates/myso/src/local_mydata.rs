@@ -74,12 +74,12 @@ pub fn resolve_mydata_repo(cli_override: Option<PathBuf>) -> PathBuf {
         if candidate.join("Cargo.toml").is_file() {
             return candidate;
         }
-        if base.ends_with("myso-core") {
-            let sibling = base.parent().map(|p| p.join("myso-mydata"));
-            if let Some(ref c) = sibling {
-                if c.join("Cargo.toml").is_file() {
-                    return c.clone();
-                }
+        if base.ends_with("myso-core")
+            && let Some(parent) = base.parent()
+        {
+            let sibling = parent.join("myso-mydata");
+            if sibling.join("Cargo.toml").is_file() {
+                return sibling;
             }
         }
     }
@@ -344,7 +344,7 @@ METRICS_PORT={met}
 }
 
 fn json_arg<T: serde::Serialize>(v: T) -> anyhow::Result<MySoJsonValue> {
-    Ok(MySoJsonValue::new(json!(v))?)
+    MySoJsonValue::new(json!(v))
 }
 
 /// Register a `KeyServer` on the genesis MyData system package ([`MYDATA_PACKAGE_ID`]), write config,
@@ -378,9 +378,9 @@ pub async fn bootstrap_and_spawn_key_server(
     })?;
     let gas_id = gas_ref.0;
 
-    let mydata_package_id = ObjectID::from(MYDATA_PACKAGE_ID);
-    let social_package_id = ObjectID::from(MYSO_SOCIAL_PACKAGE_ID);
-    let messaging_package_id = ObjectID::from(MYSO_MESSAGING_PACKAGE_ID);
+    let mydata_package_id = MYDATA_PACKAGE_ID;
+    let social_package_id = MYSO_SOCIAL_PACKAGE_ID;
+    let messaging_package_id = MYSO_MESSAGING_PACKAGE_ID;
 
     let mut client = context.grpc_client()?;
     let port_u16 = listen.port();

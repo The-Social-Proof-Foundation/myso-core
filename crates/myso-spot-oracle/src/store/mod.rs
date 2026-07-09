@@ -9,11 +9,13 @@
 //! Independence rule: the resolver never reads or writes `discovery_assets`.
 //! `evidence` has no FK to `discovery_assets`; it is resolver-owned.
 
+pub mod claims;
 pub mod evidence;
 pub mod jobs;
 pub mod markets;
 pub mod reviews;
 pub mod transactions;
+pub mod checkpoint;
 
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
@@ -22,7 +24,6 @@ use uuid::Uuid;
 use myso_discovery_service_core::sources::SourceConfig;
 
 use crate::resolver::ResolverDefinition;
-use crate::review::CanonicalClaimFields;
 use crate::store::reviews::ExtractedClaim;
 
 /// Deterministic UUID v5 namespace for `discovery_sources` rows so repeated
@@ -128,6 +129,36 @@ impl OracleStore {
         markets::list_markets(&self.pool, status, limit).await
     }
 
+    pub async fn apply_market_transition(
+        &self,
+        market_id: Uuid,
+        event: &crate::claim::lifecycle::LifecycleEvent,
+        ctx: &crate::claim::lifecycle::TransitionContext,
+    ) -> anyhow::Result<crate::types::MarketStatus> {
+        markets::apply_market_transition(&self.pool, market_id, event, ctx).await
+    }
+
+    pub async fn transition_with_metadata(
+        &self,
+        market_id: Uuid,
+        event: crate::claim::lifecycle::LifecycleEvent,
+        review_id: Option<Uuid>,
+        resolver_definition_id: Option<Uuid>,
+        betting_options: Option<&serde_json::Value>,
+        ctx: crate::claim::lifecycle::TransitionContext,
+    ) -> anyhow::Result<()> {
+        markets::transition_with_metadata(
+            &self.pool,
+            market_id,
+            event,
+            review_id,
+            resolver_definition_id,
+            betting_options,
+            ctx,
+        )
+        .await
+    }
+
     pub async fn update_market_status(
         &self,
         market_id: Uuid,
@@ -218,19 +249,51 @@ impl OracleStore {
         reviews::insert_llm_extraction(&self.pool, post_id, raw_response, parsed, model).await
     }
 
-    pub async fn insert_canonical_claim(
+    pub async fn get_or_insert_canonical_claim(
         &self,
         llm_extraction_id: Uuid,
-        fields: &CanonicalClaimFields,
-        claim_hash: &str,
+        fields: &crate::review::CanonicalClaimFields,
+        semantic_hash: &str,
+        market_key_hash: &str,
     ) -> anyhow::Result<Uuid> {
-        reviews::insert_canonical_claim(&self.pool, llm_extraction_id, fields, claim_hash).await
+        reviews::get_or_insert_canonical_claim(
+            &self.pool,
+            llm_extraction_id,
+            fields,
+            semantic_hash,
+            market_key_hash,
+        )
+        .await
     }
 
-    pub async fn claim_hash_exists(&self, claim_hash: &str) -> anyhow::Result<bool> {
-        reviews::claim_hash_exists(&self.pool, claim_hash).await
+    pub async fn get_claim_by_id(&self, claim_id: Uuid) -> anyhow::Result<Option<claims::SpotClaimRow>> {
+        claims::get_claim_by_id(&self.pool, claim_id).await
     }
 
+    pub async fn get_spot_market_by_id(
+        &self,
+        spot_market_id: Uuid,
+    ) -> anyhow::Result<Option<claims::SpotMarketRow>> {
+        claims::get_spot_market_by_id(&self.pool, spot_market_id).await
+    }
+
+    pub async fn set_spot_claim_object_id(
+        &self,
+        claim_id: Uuid,
+        object_id: &str,
+    ) -> anyhow::Result<()> {
+        claims::set_spot_claim_object_id(&self.pool, claim_id, object_id).await
+    }
+
+    pub async fn set_spot_market_object_id(
+        &self,
+        spot_market_id: Uuid,
+        object_id: &str,
+    ) -> anyhow::Result<()> {
+        claims::set_spot_market_object_id(&self.pool, spot_market_id, object_id).await
+    }
+
+    // --- reviews (continued) ---
     pub async fn insert_oracle_review(
         &self,
         post_id: &str,
@@ -259,8 +322,15 @@ impl OracleStore {
         &self,
         canonical_claim_id: Uuid,
         def: &ResolverDefinition,
+        compile_fingerprint: &str,
     ) -> anyhow::Result<Uuid> {
-        reviews::insert_resolver_definition(&self.pool, canonical_claim_id, def).await
+        reviews::insert_resolver_definition(
+            &self.pool,
+            canonical_claim_id,
+            def,
+            compile_fingerprint,
+        )
+        .await
     }
 
     pub async fn get_resolver_definition(
@@ -271,25 +341,18 @@ impl OracleStore {
     }
 
     // --- evidence ---
-    pub async fn insert_evidence(
+    pub async fn insert_evidence_bundle(
+        &self,
+        bundle: &crate::evidence::EvidenceBundle,
+    ) -> anyhow::Result<Uuid> {
+        evidence::insert_evidence_bundle(&self.pool, bundle).await
+    }
+
+    pub async fn list_bundles_for_market(
         &self,
         market_id: Uuid,
-        resolver_job_id: Option<Uuid>,
-        adapter_id: &str,
-        source_url: &str,
-        content_hash: &str,
-        raw_response: Option<&str>,
-    ) -> anyhow::Result<Uuid> {
-        evidence::insert_evidence(
-            &self.pool,
-            market_id,
-            resolver_job_id,
-            adapter_id,
-            source_url,
-            content_hash,
-            raw_response,
-        )
-        .await
+    ) -> anyhow::Result<Vec<evidence::EvidenceBundleRow>> {
+        evidence::list_bundles_for_market(&self.pool, market_id).await
     }
 
     pub async fn list_evidence_for_market(
