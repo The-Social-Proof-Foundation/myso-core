@@ -30,7 +30,7 @@
 #   ASSUME_YES=1, DRY_RUN=1, POC_AUTO_REFRESH=1, POC_NO_AUTO_REFRESH=1
 #   POC_SKIP_USERNAME=1, POC_SKIP_DISPUTE=1, POC_INCLUDE_SPT=1, POC_INCLUDE_PROFILE_RESERVATION=1
 #   POC_INCLUDE_POST_RESERVATION=1, POC_INCLUDE_DISPUTE_REANALYZE=1
-#   POC_ORACLE_URL=http://127.0.0.1:8000, POC_ORACLE_NETWORK=localnet, POC_USE_DIRECT_MOVE=0
+#   POC_ORACLE_URL=http://127.0.0.1:8001, POC_ORACLE_NETWORK=localnet, POC_USE_DIRECT_MOVE=0
 #   POC_E2E_SUBMIT_OVERRIDE=1 (localnet upload score/creator overrides)
 #   POC_NO_PLATFORM=1, POC_REQUIRE_PLATFORM=1, POC_SKIP_VAULT_FUNDING=1, POC_FORCE_UPDATE_CONFIG=1
 #
@@ -60,10 +60,6 @@ readonly DEFAULT_TIP_AMOUNT='100000000'
 readonly DEFAULT_VOTE_STAKE='1000000000'
 readonly DEFAULT_DISPUTE_EVIDENCE='PoC runtime test dispute evidence'
 readonly DEFAULT_RESERVE_AMOUNT='1000000000'
-readonly POC_MAX_DISPUTES_PER_POST='2'
-readonly POC_MIN_VAULT_DEPOSIT='1'
-readonly SOCIAL_DEFAULT_PLATFORM_LOGO_URL='https://pub-1f3749a8084a44c3abbd97a4875268a1.r2.dev/Logo%20Regular%20-%20Accent-1.png'
-readonly SOCIAL_DEFAULT_PLATFORM_COVER_PHOTO_URL='https://pub-1f3749a8084a44c3abbd97a4875268a1.r2.dev/mysocial-banner.png'
 
 # Session / chain object IDs (populated by GraphQL refresh)
 PKG_SOCIAL="$DEFAULT_PKG_SOCIAL"
@@ -173,7 +169,7 @@ usage() {
 }
 
 session_state_save_path() {
-    printf '%s' "$REPO_ROOT/network.config/poc/poc-session.env"
+    printf '%s' "${SOCIAL_SESSION_SAVE_PATH:-$REPO_ROOT/network.config/poc/poc-session.env}"
 }
 
 apply_session_defaults() {
@@ -185,10 +181,11 @@ apply_session_defaults() {
 }
 
 load_session_state() {
-    local p="$REPO_ROOT/network.config/poc/poc-session.env"
+    local p
     local key val i
     local -a _preserve_keys=()
     local -a _preserve_vals=()
+    p="$(session_state_save_path)"
     for key in "${MANUAL_PRESERVE_KEYS[@]}"; do
         val="${!key:-}"
         if [[ -n "$val" ]]; then
@@ -1798,22 +1795,10 @@ ensure_claim_wallet_without_profile() {
 }
 
 ensure_ephemeral_oracle_for_username_claim() {
-    local mem
     if [[ -n "${USERNAME_CLAIM_ORACLE:-}" ]]; then
         return 0
     fi
-    mem="$(gql_profile_memory_account_id "$ORACLE_ADDRESS")" || true
-    if [[ -z "$mem" ]]; then
-        USERNAME_CLAIM_ORACLE="$(normalize_hex_id "$ORACLE_ADDRESS")"
-        return 0
-    fi
-    log_step "PoC oracle already has MemoryAccount — using ephemeral oracle for username claim"
-    USERNAME_CLAIM_ORACLE="$(myso client new-address ed25519 "poc_oracle_${POC_RUN_ID}" --json | jq -r '.address // empty')"
-    [[ -n "$USERNAME_CLAIM_ORACLE" ]] || { echo "Could not create ephemeral claim oracle" >&2; return 1; }
-    USERNAME_CLAIM_ORACLE="$(normalize_hex_id "$USERNAME_CLAIM_ORACLE")"
-    myso client faucet --address "$USERNAME_CLAIM_ORACLE" >/dev/null 2>&1 || myso client faucet --address "$USERNAME_CLAIM_ORACLE" >&2
-    update_poc_config_oracle "$USERNAME_CLAIM_ORACLE" || return 1
-    log_step "Ephemeral claim oracle: $USERNAME_CLAIM_ORACLE"
+    USERNAME_CLAIM_ORACLE="$(normalize_hex_id "$ORACLE_ADDRESS")"
 }
 
 read_spt_trading_enabled() {
@@ -1918,19 +1903,7 @@ maybe_auto_refresh_session() {
 }
 
 update_poc_config_oracle() {
-    local oracle="$1"
-    oracle="$(normalize_hex_id "$oracle")" || return 1
-    require_session_fields POC_CONFIG_ID POC_ADMIN_CAP_ID CLOCK_ID || return 1
-    log_step "Updating PoCConfig (oracle=$oracle, short voting for runtime test)"
-    SKIP_CONFIRM_RUN=1 run_myso_call proof_of_creativity update_poc_config \
-        --args "$POC_ADMIN_CAP_ID" "@${POC_CONFIG_ID}" "$oracle" \
-        95 95 95 100 \
-        5000000000 1000000000 100000000000 \
-        3000 5000 10 10000 \
-        100 500 3000 \
-        0 10000 10000 500 \
-        "$POC_MAX_DISPUTES_PER_POST" "$POC_MIN_VAULT_DEPOSIT" \
-        "@${CLOCK_ID}"
+    poc_oracle_update_config "$1"
 }
 
 preflight_oracle_and_config() {
@@ -1946,9 +1919,7 @@ preflight_oracle_and_config() {
         fi
         return 0
     fi
-    poc_oracle_load_localnet_env
-    sync_poc_config_oracle_on_chain "$POC_DEFAULT_ORACLE_ADDRESS" || return 1
-    ensure_poc_oracle_key_in_env || return 1
+    poc_oracle_sync_worker_stack || return 1
 }
 
 ensure_memory_account_for_post_flows() {
@@ -2272,6 +2243,7 @@ create_post_poc_enabled() {
         --move-call "${PKG_SOCIAL}::post::create_post" \
         "$ref_ur" "$ref_pr" "$ref_plat" "$ref_blr" "$ref_cfg" "$ref_mcfg" \
         "$body_lit" \
+        none \
         none none none none none none none \
         "$enable_spt_arg" none none \
         "$ref_mr" "$ref_mem" "$ref_clk"

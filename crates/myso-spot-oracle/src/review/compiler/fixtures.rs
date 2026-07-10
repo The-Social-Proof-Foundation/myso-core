@@ -15,7 +15,7 @@ pub fn btc_price_claim() -> crate::review::CanonicalClaim {
         metric: Some("price".to_string()),
         comparison: Some(ComparisonOp::Gt),
         threshold: Some("1".to_string()),
-        deadline: None,
+        deadline: Some(Utc::now() + chrono::Duration::hours(24)),
         outcome_type: OutcomeType::Binary,
         suggested_sources: vec!["coingecko".to_string()],
         suggested_options: vec!["Yes".to_string(), "No".to_string()],

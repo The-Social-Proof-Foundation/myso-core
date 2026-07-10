@@ -9,8 +9,6 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
-use myso_discovery_service_core::api::FetchProvenance;
-
 use crate::sources::SourceEvidence;
 
 /// Provenance metadata for a single evidence fetch.
@@ -22,21 +20,6 @@ pub struct EvidenceProvenance {
     pub fetched_at: DateTime<Utc>,
     #[serde(default)]
     pub cache_hit: bool,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub discovery_job_id: Option<String>,
-}
-
-impl From<FetchProvenance> for EvidenceProvenance {
-    fn from(p: FetchProvenance) -> Self {
-        Self {
-            source_id: p.source_id,
-            source_url: p.source_url,
-            content_hash: p.content_hash,
-            fetched_at: p.fetched_at,
-            cache_hit: p.cache_hit,
-            discovery_job_id: None,
-        }
-    }
 }
 
 /// Optional cryptographic signature for future signed oracle feeds.
@@ -69,7 +52,6 @@ impl EvidenceRecord {
                 content_hash: ev.content_hash.clone(),
                 fetched_at: ev.fetched_at,
                 cache_hit: false,
-                discovery_job_id: None,
             },
             payload: ev.payload.clone(),
             raw_response: ev.raw_response.clone(),
@@ -137,7 +119,6 @@ mod tests {
                 content_hash: "abc".to_string(),
                 fetched_at: Utc::now(),
                 cache_hit: false,
-                discovery_job_id: None,
             },
             payload: serde_json::json!({"bitcoin": {"usd": 1.0}}),
             raw_response: None,
@@ -146,20 +127,5 @@ mod tests {
         let h1 = compute_bundle_hash(&[record.clone()]);
         let h2 = compute_bundle_hash(&[record]);
         assert_eq!(h1, h2);
-    }
-
-    #[test]
-    fn fetch_provenance_roundtrip() {
-        let fp = FetchProvenance {
-            source_id: "coingecko".to_string(),
-            source_url: "https://api.coingecko.com".to_string(),
-            content_hash: "deadbeef".to_string(),
-            fetched_at: Utc::now(),
-            cache_hit: true,
-        };
-        let ep: EvidenceProvenance = fp.clone().into();
-        assert_eq!(ep.source_id, fp.source_id);
-        assert_eq!(ep.content_hash, fp.content_hash);
-        assert!(ep.cache_hit);
     }
 }

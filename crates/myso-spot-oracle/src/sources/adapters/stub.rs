@@ -1,35 +1,22 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-//! Generic `TrustedSource` stub. V1 adapter ids are registered as live placeholders
-//! (`disabled` health, `supports` = false, `resolve` = err) until the v1-adapters
-//! phase replaces them with real HTTP/API impls. Scaffolded non-V1 adapters stay
-//! stubs and are never enabled in V1 E2E.
+//! Generic `TrustedSource` stub for scaffolded non-V1 adapters.
 
 use async_trait::async_trait;
-use myso_discovery_service_core::sources::{DiscoveryDomain, SourceHealth, SourceMetadata};
 
 use crate::resolver::ResolverDefinition;
+use crate::sources::source_config::{SourceDomain, SourceHealth, SourceMetadata};
 use crate::sources::{SourceEvidence, TrustedSource};
 
 pub struct StubTrustedSource {
     id: String,
     description: String,
-    domain: DiscoveryDomain,
+    domain: SourceDomain,
 }
 
 impl StubTrustedSource {
-    /// V1 adapter id whose live impl lands in the v1-adapters phase.
-    pub fn new_live_placeholder(id: &'static str) -> Self {
-        Self {
-            id: id.to_string(),
-            description: format!("{id} live adapter (pending v1-adapters phase)"),
-            domain: DiscoveryDomain::Factual,
-        }
-    }
-
-    /// Non-V1 adapter id, scaffolded only.
-    pub fn new_scaffolded(id: &'static str, domain: DiscoveryDomain) -> Self {
+    pub fn new_scaffolded(id: &'static str, domain: SourceDomain) -> Self {
         Self {
             id: id.to_string(),
             description: format!("{id} scaffolded stub (not in V1 E2E)"),
@@ -44,7 +31,7 @@ impl TrustedSource for StubTrustedSource {
         &self.id
     }
 
-    fn domain(&self) -> DiscoveryDomain {
+    fn domain(&self) -> SourceDomain {
         self.domain
     }
 

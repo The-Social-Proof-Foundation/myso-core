@@ -1,6 +1,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+pub mod chain_lookup;
 pub mod create_market;
 pub mod refund;
 pub mod settle;

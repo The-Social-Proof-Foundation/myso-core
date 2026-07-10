@@ -17,14 +17,12 @@ use crate::local_sidecar_util::{
 
 pub const DEFAULT_SPOT_ORACLE_PORT: u16 = 8097;
 pub const DEFAULT_SPOT_METRICS_PORT: u16 = 9187;
-pub const DEFAULT_DISCOVERY_PORT: u16 = 8096;
 
 pub struct SpotOracleLocalInfo {
     pub listen: SocketAddr,
     pub base_url: String,
     pub myso_rpc: String,
     pub social_server_url: String,
-    pub discovery_client_url: String,
     pub streaming_url: String,
 }
 
@@ -44,8 +42,7 @@ pub async fn spawn_spot_oracle(
     let bin = resolve_workspace_binary("myso-spot-oracle")?;
     let listen_str = listen.to_string();
     let metrics = format!("127.0.0.1:{DEFAULT_SPOT_METRICS_PORT}");
-    let discovery_client_url = format!("http://127.0.0.1:{DEFAULT_DISCOVERY_PORT}");
-    let discovery_client_secret = "local-discovery-client".to_string();
+    let sources_config = root.join("crates/myso-spot-oracle/config/sources.localnet.yaml");
 
     let envs = [
         (
@@ -61,10 +58,9 @@ pub async fn spawn_spot_oracle(
         ),
         ("SPOT_ORACLE_STREAMING_URL", fullnode_rpc_url.to_string()),
         ("SPOT_ORACLE_INGEST_MODE", "checkpoint".to_string()),
-        ("SPOT_ORACLE_DISCOVERY_CLIENT_URL", discovery_client_url.clone()),
         (
-            "SPOT_ORACLE_DISCOVERY_CLIENT_SECRET",
-            discovery_client_secret.clone(),
+            "SPOT_ORACLE_SOURCES_CONFIG",
+            sources_config.display().to_string(),
         ),
         ("SPOT_ORACLE_ENABLED", "true".to_string()),
         ("SPOT_ORACLE_LIVE_SOURCES", "true".to_string()),
@@ -90,7 +86,6 @@ pub async fn spawn_spot_oracle(
         base_url,
         myso_rpc: fullnode_rpc_url.to_string(),
         social_server_url: social_server_url.to_string(),
-        discovery_client_url,
         streaming_url: fullnode_rpc_url.to_string(),
     };
     Ok((info, child))
@@ -104,14 +99,12 @@ pub fn log_spot_once(info: &SpotOracleLocalInfo) {
   listen:              {} ({})
   myso_rpc:            {}
   streaming_url:       {}
-  discovery_client:    {}
   social_server:       {}
 ",
             info.base_url,
             info.listen,
             info.myso_rpc,
             info.streaming_url,
-            info.discovery_client_url,
             info.social_server_url
         )
         .green()

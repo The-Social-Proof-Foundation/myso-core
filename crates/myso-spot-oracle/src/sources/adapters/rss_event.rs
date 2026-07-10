@@ -2,19 +2,23 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use async_trait::async_trait;
-use myso_discovery_service_core::sources::{DiscoveryDomain, SourceHealth, SourceMetadata};
 
 use crate::resolver::{ResolverDefinition, ResolverKind, ResolverSpec};
-use crate::sources::discovery_resolve::{self, DiscoveryResolveCtx};
+use crate::sources::direct_fetch;
+use crate::sources::source_config::{SourceDomain, SourceHealth, SourceMetadata};
 use crate::sources::{SourceEvidence, TrustedSource};
 
-pub struct RssEventAdapter {
-    discovery_ctx: DiscoveryResolveCtx,
-}
+pub struct RssEventAdapter;
 
 impl RssEventAdapter {
-    pub fn new(discovery_ctx: DiscoveryResolveCtx) -> Self {
-        Self { discovery_ctx }
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Default for RssEventAdapter {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -24,40 +28,41 @@ impl TrustedSource for RssEventAdapter {
         "rss_event"
     }
 
-    fn domain(&self) -> DiscoveryDomain {
-        DiscoveryDomain::Factual
+    fn domain(&self) -> SourceDomain {
+        SourceDomain::Factual
     }
 
     fn supports(&self, def: &ResolverDefinition) -> bool {
         def.resolver_kind == ResolverKind::EventOccurrence
+            && matches!(
+                &def.spec,
+                ResolverSpec::EventOccurrence { source_id, .. }
+                    if source_id.is_empty() || source_id == "rss_event"
+            )
     }
 
     async fn resolve(&self, def: &ResolverDefinition) -> anyhow::Result<SourceEvidence> {
-        let ResolverSpec::EventOccurrence { feed_url, source_id, .. } = &def.spec else {
+        let ResolverSpec::EventOccurrence { feed_url, .. } = &def.spec else {
             anyhow::bail!("rss_event: expected EventOccurrence spec");
         };
         if feed_url.is_empty() {
             anyhow::bail!("rss_event: missing feed_url");
         }
-        discovery_resolve::fetch_events(&self.discovery_ctx, self.id(), source_id, feed_url).await
+        direct_fetch::fetch_rss_events(self.id(), feed_url).await
     }
 
     async fn health(&self) -> SourceHealth {
         SourceHealth {
-            healthy: self.discovery_ctx.uses_discovery(),
-            message: if self.discovery_ctx.uses_discovery() {
-                "rss_event via Discovery".to_string()
-            } else {
-                "discovery client not configured".to_string()
-            },
+            healthy: true,
+            message: "rss_event direct HTTP".to_string(),
         }
     }
 
     fn metadata(&self) -> SourceMetadata {
         SourceMetadata {
             id: self.id().to_string(),
-            description: "RSS feed events via Discovery /v1/events".to_string(),
-            domain: DiscoveryDomain::Factual,
+            description: "RSS feed events via direct HTTP".to_string(),
+            domain: SourceDomain::Factual,
         }
     }
 }

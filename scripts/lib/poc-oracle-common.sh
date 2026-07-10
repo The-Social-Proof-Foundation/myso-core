@@ -16,7 +16,7 @@ readonly POC_MAX_DISPUTES_PER_POST='2'
 readonly POC_MIN_VAULT_DEPOSIT='1'
 readonly POC_DEFAULT_GAS_BUDGET='1000000000'
 
-POC_ORACLE_URL="${POC_ORACLE_URL:-http://127.0.0.1:8000}"
+POC_ORACLE_URL="${POC_ORACLE_URL:-http://127.0.0.1:8001}"
 POC_ORACLE_NETWORK="${POC_ORACLE_NETWORK:-localnet}"
 
 POC_ORACLE_SESSION_KEYS=(
@@ -29,10 +29,20 @@ POC_ORACLE_SESSION_KEYS=(
 
 poc_oracle_load_localnet_env() {
     if [[ -f "$POC_ORACLE_LOCALNET_ENV" ]]; then
-        # shellcheck disable=SC1090
-        source "$POC_ORACLE_LOCALNET_ENV"
+        local line key val
+        while IFS= read -r line || [[ -n "$line" ]]; do
+            [[ "$line" =~ ^[[:space:]]*# ]] && continue
+            [[ "$line" != *"="* ]] && continue
+            key="${line%%=*}"
+            val="${line#*=}"
+            val="${val#\'}"; val="${val%\'}"
+            case "$key" in
+                POC_DEFAULT_ORACLE_ADDRESS|POC_DEFAULT_ORACLE_PRIVATE_KEY_HEX) continue ;;
+            esac
+            printf -v "$key" '%s' "$val"
+        done < "$POC_ORACLE_LOCALNET_ENV"
     fi
-    POC_ORACLE_URL="${POC_ORACLE_URL:-http://127.0.0.1:8000}"
+    POC_ORACLE_URL="${POC_ORACLE_URL:-http://127.0.0.1:8001}"
     POC_ORACLE_NETWORK="${POC_ORACLE_NETWORK:-localnet}"
 }
 
@@ -176,29 +186,48 @@ ensure_poc_admin_signer() {
     fi
 }
 
-poc_oracle_run_update_config() {
+# Mirrors proof-of-creativity-runnable.sh run_myso_call (strips @ from shared object args).
+poc_oracle_myso_call_capture() {
+    local module="$1" func="$2" rc=0 out
+    shift 2
+    local -a cmd call_args=()
+    local arg g
+    while IFS= read -r -d '' arg; do call_args+=("$arg"); done < <(normalize_client_call_args "$@")
+    cmd=(myso client call --package "${PKG_SOCIAL:-0x00000000000000000000000000000000000000000000000000000000000050c1}" \
+        --module "$module" --function "$func")
+    while IFS= read -r g; do [[ -n "$g" ]] && cmd+=("$g"); done < <(extra_gas_budget)
+    while IFS= read -r g; do [[ -n "$g" ]] && cmd+=("$g"); done < <(extra_dry)
+    cmd+=("${call_args[@]}")
+    echo "---" >&2
+    printf ' %q\n' "${cmd[@]}" >&2
+    echo "---" >&2
+    out="$("${cmd[@]}" 2>&1)" || rc=$?
+    echo "$out" >&2
+    printf '%s' "$out"
+    return "$rc"
+}
+
+# Shared with proof-of-creativity-runnable.sh update_poc_config_oracle().
+poc_oracle_update_config() {
     local oracle="$1" out digest
+    local admin_cap config_id clock_id
     oracle="$(normalize_hex_id "$oracle")" || return 1
-    [[ -n "${POC_CONFIG_ID:-}" && -n "${POC_ADMIN_CAP_ID:-}" && -n "${CLOCK_ID:-}" ]] || {
-        echo "sync_poc_config_oracle_on_chain: missing POC_CONFIG_ID / POC_ADMIN_CAP_ID / CLOCK_ID" >&2
-        return 1
-    }
+    require_session_fields POC_CONFIG_ID POC_ADMIN_CAP_ID CLOCK_ID || return 1
+    require_hex_ids POC_CONFIG_ID POC_ADMIN_CAP_ID CLOCK_ID || return 1
+    admin_cap="$(normalize_hex_id "$POC_ADMIN_CAP_ID")"
+    config_id="$(normalize_hex_id "$POC_CONFIG_ID")"
+    clock_id="$(normalize_hex_id "$CLOCK_ID")"
     ensure_poc_admin_signer || return 1
     log_step "Updating PoCConfig oracle_address=$oracle"
-    out="$(myso client call \
-        --package "${PKG_SOCIAL:-0x50c1}" \
-        --module proof_of_creativity \
-        --function update_poc_config \
-        --gas-budget "${GAS_BUDGET:-$POC_DEFAULT_GAS_BUDGET}" \
-        --args "$POC_ADMIN_CAP_ID" "@${POC_CONFIG_ID}" "$oracle" \
+    out="$(SKIP_CONFIRM_RUN=1 poc_oracle_myso_call_capture proof_of_creativity update_poc_config \
+        --args "$admin_cap" "@${config_id}" "$oracle" \
         95 95 95 100 \
         5000000000 1000000000 100000000000 \
         3000 5000 10 10000 \
         100 500 3000 \
         0 10000 10000 500 \
         "$POC_MAX_DISPUTES_PER_POST" "$POC_MIN_VAULT_DEPOSIT" \
-        "@${CLOCK_ID}" 2>&1)" || {
-        echo "$out" >&2
+        "@${clock_id}")" || {
         return 1
     }
     digest="$(extract_tx_digest "$out" 2>/dev/null || true)"
@@ -208,6 +237,17 @@ poc_oracle_run_update_config() {
         POC_CONFIG_SYNC_DIGEST="$digest"
     fi
     return 0
+}
+
+poc_oracle_run_update_config() {
+    poc_oracle_update_config "$1"
+}
+
+poc_oracle_sync_worker_stack() {
+    poc_oracle_load_localnet_env
+    sync_poc_config_oracle_on_chain "$POC_DEFAULT_ORACLE_ADDRESS" || return 1
+    ensure_poc_oracle_key_in_env || return 1
+    poc_oracle_health_ok || return 1
 }
 
 sync_poc_config_oracle_on_chain() {
@@ -290,10 +330,9 @@ poc_oracle_stack_ready() {
         echo "PoC API not reachable at ${base}/health" >&2
         return 1
     }
-    curl -sf "${base}/oracle/health?network=${POC_ORACLE_NETWORK}" >/dev/null 2>&1 || {
-        echo "PoC oracle health failed at ${base}/oracle/health" >&2
-        return 1
-    }
+    if declare -F poc_oracle_health_ok >/dev/null 2>&1; then
+        poc_oracle_health_ok || return 1
+    fi
     curl -sf -X POST "$gql" -H 'content-type: application/json' \
         -d '{"query":"{ __typename }"}' >/dev/null 2>&1 || {
         echo "GraphQL not reachable at $gql" >&2

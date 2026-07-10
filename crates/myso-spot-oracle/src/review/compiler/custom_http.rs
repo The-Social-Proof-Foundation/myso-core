@@ -5,13 +5,13 @@ use crate::resolver::ResolverSpec;
 use crate::review::compiler::{build_definition, default_betting_options, CompiledMarketSpec};
 use crate::review::CanonicalClaim;
 use crate::sources::ResolverRegistry;
-use crate::store::DiscoverySourceRow;
-use crate::types::{ClaimCategory, ComparisonOp, ResolverKind};
+use crate::store::SpotTrustedSourceRow;
+use crate::types::{ComparisonOp, ResolverKind};
 
 pub fn compile(
     canonical: &CanonicalClaim,
     registry: &ResolverRegistry,
-    source_rows: &[DiscoverySourceRow],
+    source_rows: &[SpotTrustedSourceRow],
 ) -> anyhow::Result<CompiledMarketSpec> {
     let f = &canonical.normalized_fields;
     let hints = &f.resolver_hints;
@@ -35,7 +35,7 @@ pub fn compile(
 
     let betting_options = default_betting_options(canonical);
     let maturity_schedule =
-        super::maturity::compute_schedule(canonical, ClaimCategory::CustomHttp);
+        super::maturity::compute_schedule(canonical);
 
     let preview = crate::resolver::ResolverDefinition {
         id: uuid::Uuid::new_v4(),

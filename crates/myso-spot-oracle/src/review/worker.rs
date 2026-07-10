@@ -8,8 +8,11 @@ use tracing::{info, warn};
 
 use crate::api::AppState;
 use crate::claim::lifecycle::{default_context_for, LifecycleEvent};
-use crate::review::canonicalize::{canonicalize, market_key_hash_hex, semantic_claim_hash_hex};
+use crate::review::canonicalize::{
+    canonicalize_with_options, market_key_hash_hex, semantic_claim_hash_hex, CanonicalizeOptions,
+};
 use crate::review::compiler::ResolverCompiler;
+use crate::review::deadline::DeadlinePolicy;
 use crate::review::llm::{extract_claim_heuristic, LlmClient};
 use crate::review::rules::ReviewDecision;
 use crate::store::jobs::SpotJob;
@@ -51,16 +54,33 @@ pub async fn process_review_job(state: Arc<AppState>, job: &SpotJob) -> anyhow::
             key.clone(),
             state.args.llm_model.clone(),
         );
-        match llm.extract_claim(content, post_type).await {
+        match llm
+            .extract_claim(content, post_type, &state.event_registry)
+            .await
+        {
             Ok(r) => r,
             Err(err) => {
                 warn!(post_id, error = %err, "LLM extraction failed, using heuristic");
-                (extract_claim_heuristic(content), String::new())
+                (
+                    extract_claim_heuristic(content, &state.event_registry),
+                    String::new(),
+                )
             }
         }
     } else {
-        (extract_claim_heuristic(content), String::new())
+        (
+            extract_claim_heuristic(content, &state.event_registry),
+            String::new(),
+        )
     };
+
+    if let Some(matched) = state.event_registry.match_event(content) {
+        state
+            .metrics
+            .event_match_total
+            .with_label_values(&[&matched.category])
+            .inc();
+    }
 
     let extraction_id = crate::store::reviews::insert_llm_extraction(
         state.store.pool(),
@@ -75,7 +95,15 @@ pub async fn process_review_job(state: Arc<AppState>, job: &SpotJob) -> anyhow::
     )
     .await?;
 
-    let canonical = canonicalize(extraction_id, &extracted);
+    let canonical = canonicalize_with_options(
+        extraction_id,
+        &extracted,
+        &CanonicalizeOptions {
+            price_market_spacing: chrono::Duration::seconds(
+                state.args.price_market_spacing_secs as i64,
+            ),
+        },
+    );
     let semantic_hex = semantic_claim_hash_hex(&canonical);
     let market_hex = market_key_hash_hex(&canonical);
     let market_exists =
@@ -90,7 +118,12 @@ pub async fn process_review_job(state: Arc<AppState>, job: &SpotJob) -> anyhow::
     .await?;
 
     let source_rows = state.store.list_enabled_sources().await.unwrap_or_default();
-    let decision = crate::review::rules::evaluate(&canonical, market_exists, &state.sources);
+    let deadline_policy = DeadlinePolicy::from_secs(
+        state.args.min_deadline_lead_secs,
+        state.args.max_deadline_horizon_secs,
+    );
+    let decision =
+        crate::review::rules::evaluate(&canonical, market_exists, &state.sources, &deadline_policy);
     let (decision_str, reject_reason) = match &decision {
         ReviewDecision::Accepted => ("accepted", None),
         ReviewDecision::LinkedToExisting => ("linked", None),
@@ -113,6 +146,10 @@ pub async fn process_review_job(state: Arc<AppState>, job: &SpotJob) -> anyhow::
 
     match decision {
         ReviewDecision::Accepted => {
+            let deadline = canonical
+                .normalized_fields
+                .deadline
+                .expect("review validated deadline");
             let compiled = ResolverCompiler::compile(&canonical, &state.sources, &source_rows)?;
             let def_id = crate::store::reviews::insert_resolver_definition(
                 state.store.pool(),
@@ -163,6 +200,18 @@ pub async fn process_review_job(state: Arc<AppState>, job: &SpotJob) -> anyhow::
                 )
                 .await?;
 
+            let resolution_window_ms =
+                (deadline - market.created_at).num_milliseconds().max(0);
+            let max_buffer_ms = state.args.max_resolution_buffer_ms as i64;
+            state
+                .store
+                .set_market_resolution_timing(
+                    market_id,
+                    resolution_window_ms,
+                    max_buffer_ms,
+                )
+                .await?;
+
             crate::store::jobs::enqueue_job(
                 state.store.pool(),
                 "SubmitChainTx",
@@ -190,8 +239,7 @@ pub async fn process_review_job(state: Arc<AppState>, job: &SpotJob) -> anyhow::
             )
             .await?;
 
-            let refund_at = market.created_at
-                + chrono::Duration::milliseconds(market.max_resolution_window_ms);
+            let refund_at = deadline + chrono::Duration::milliseconds(max_buffer_ms);
             crate::store::jobs::enqueue_job(
                 state.store.pool(),
                 "SubmitChainTx",

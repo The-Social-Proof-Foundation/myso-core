@@ -13,7 +13,6 @@ pub mod fire_drill;
 pub mod genesis_ceremony;
 pub mod genesis_inspector;
 pub mod keytool;
-mod local_discovery;
 mod local_messaging;
 mod local_mydata;
 mod local_poc;

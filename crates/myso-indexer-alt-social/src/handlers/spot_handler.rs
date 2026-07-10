@@ -437,6 +437,8 @@ impl Handler for SpotHandler {
                                 .eq(excluded(spot_markets::resolution_window_ms)),
                             spot_markets::max_resolution_window_ms
                                 .eq(excluded(spot_markets::max_resolution_window_ms)),
+                            spot_markets::resolution_at_ms
+                                .eq(excluded(spot_markets::resolution_at_ms)),
                             spot_markets::last_resolution_at_ms
                                 .eq(excluded(spot_markets::last_resolution_at_ms)),
                             spot_markets::resolution_timestamp_ms

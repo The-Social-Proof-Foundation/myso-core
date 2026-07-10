@@ -3,12 +3,12 @@
 
 use crate::resolver::{ResolverDefinition, ResolverSpec};
 use crate::sources::ResolverRegistry;
-use crate::store::DiscoverySourceRow;
+use crate::store::SpotTrustedSourceRow;
 
 /// Deterministically pick a `TrustedSource` adapter for a preview definition.
 pub fn select_source(
     registry: &ResolverRegistry,
-    source_rows: &[DiscoverySourceRow],
+    source_rows: &[SpotTrustedSourceRow],
     preview: &ResolverDefinition,
     preferred: &[String],
     fallback_order: &[&str],
@@ -82,7 +82,7 @@ fn set_spec_source_id(def: &mut ResolverDefinition, source_id: &str) {
     def.source_ids = vec![source_id.to_string()];
 }
 
-fn trust_score_for(source_rows: &[DiscoverySourceRow], adapter_id: &str) -> f64 {
+fn trust_score_for(source_rows: &[SpotTrustedSourceRow], adapter_id: &str) -> f64 {
     source_rows
         .iter()
         .find(|r| adapter_id_matches_row(adapter_id, r))
@@ -90,7 +90,7 @@ fn trust_score_for(source_rows: &[DiscoverySourceRow], adapter_id: &str) -> f64 
         .unwrap_or(0.0)
 }
 
-fn adapter_id_matches_row(adapter_id: &str, row: &DiscoverySourceRow) -> bool {
+fn adapter_id_matches_row(adapter_id: &str, row: &SpotTrustedSourceRow) -> bool {
     if row.adapter_type == adapter_id {
         return true;
     }

@@ -8,24 +8,21 @@
 # Prerequisites:
 #   - ./scripts/bootstrap.sh completed; social-proof2 owns SpotOracleAdminCap
 #   - Local indexer GraphQL at http://127.0.0.1:9125/graphql
-#   - Social-server at http://127.0.0.1:9126 (required for --run-all-onchain)
+#   - Social-server at http://127.0.0.1:9126 (required for on-chain walkthrough)
 #   - docker, curl, jq, cargo on PATH
+#   - Live HTTP sources (CoinGecko etc.) OR SPOT_ORACLE_LIVE_SOURCES=false with stubs
+#   - Discovery is NOT required (SPoT fetches trusted sources directly)
 #
 # Session: network.config/spot-oracle/spot-oracle-session.env
 #
 # Usage:
+#   ./scripts/spot-oracle-runnable.sh                              # menu 1 prompts for your prediction
+#   ASSUME_YES=1 ./scripts/spot-oracle-runnable.sh --run-walkthrough  # non-interactive auto claim
 #   ./scripts/spot-oracle-runnable.sh --refresh-session
 #   ASSUME_YES=1 ./scripts/spot-oracle-runnable.sh --run-all          # off-chain SQL seed
-#   ASSUME_YES=1 ./scripts/spot-oracle-runnable.sh --run-all-onchain  # social + chain PTBs
-#   ASSUME_YES=1 ./scripts/spot-oracle-runnable.sh --run-all-onchain  # social + chain PTBs
-#   SPOT_ORACLE_ONCHAIN=1 ASSUME_YES=1 ./scripts/spot-oracle-runnable.sh --run-all
-#   ./scripts/spot-oracle-runnable.sh --run-lazy-payout      # lazy winner + creator claims (Move)
-#   ./scripts/spot-oracle-runnable.sh --run-creator-fee      # per-referrer creator fees (Move)
-#   ./scripts/spot-oracle-runnable.sh --run-expired-reclaim  # expired creator reclaim (Move)
-#   ./scripts/spot-oracle-runnable.sh --run-shared-claim     # shared claim / market (Move)
-#   ./scripts/spot-oracle-runnable.sh --run-router-only      # router rejects wrong post (Move)
-#   ./scripts/spot-oracle-runnable.sh --run-ownership-transfer  # settlement creator gate (Move)
-#   ./scripts/spot-oracle-runnable.sh   # interactive menu
+#   ASSUME_YES=1 ./scripts/spot-oracle-runnable.sh --run-all-onchain
+#   ENABLE_INSURANCE_E2E=1 ASSUME_YES=1 ./scripts/spot-oracle-runnable.sh --run-walkthrough
+#   ./scripts/spot-oracle-runnable.sh --run-lazy-payout              # Move unit test
 
 set -euo pipefail
 
@@ -45,6 +42,25 @@ SVC_PID=""
 RUN_MODE=''
 ASSUME_YES="${ASSUME_YES:-0}"
 ONCHAIN_MODE=0
+BETTOR_ADDRESS=''
+BET_OPTION_ID=''
+BET_AMOUNT_MIST=''
+BET_TX_DIGEST=''
+PAYOUT_TX_DIGEST=''
+SPOT_MARKET_ID=''
+
+SPOT_WALKTHROUGH_SESSION_KEYS=(
+    "${SPOT_ORACLE_SESSION_KEYS[@]}"
+    POST_ID CREATOR_ADDRESS SPOT_CLAIM_TEXT SPOT_CLAIM_ID SPOT_MARKET_ID
+    BETTOR_ADDRESS BET_OPTION_ID BET_AMOUNT_MIST BET_TX_DIGEST PAYOUT_TX_DIGEST
+    INSURANCE_CONFIG_ID INSURANCE_ROUTER_CONFIG_ID INSURANCE_BACKSTOP_ID INSURANCE_ADMIN_CAP_ID
+    INSURANCE_VAULT_ID INSURANCE_POLICY_ID INSURANCE_BUY_TX INSURANCE_CLAIM_TX
+)
+
+save_walkthrough_session() {
+    spot_oracle_map_session_to_oracle_env
+    social_save_session "${SPOT_WALKTHROUGH_SESSION_KEYS[@]}"
+}
 
 usage() {
     sed -n '2,24p' "$0" | sed 's/^# \?//'
@@ -60,7 +76,6 @@ cleanup() {
         kill "$SVC_PID" 2>/dev/null || true
         wait "$SVC_PID" 2>/dev/null || true
     fi
-    stop_discovery_for_spot_e2e
     if [[ "$KEEP_STACK" != "1" ]]; then
         docker compose -f "$COMPOSE_FILE" down -v >/dev/null 2>&1 || true
     fi
@@ -117,8 +132,8 @@ seed_review_job() {
     log_step "Seeding market + ReviewPost job (BTC above \$1)"
     psql_exec "
     INSERT INTO markets (post_id, creator, claim_text, status, betting_options)
-    VALUES ('0xdeadbeef', '0xowner', 'Will BTC trade above \$1?', 'pending_review', '[\"Yes\",\"No\"]'::jsonb)
-    ON CONFLICT (post_id) DO NOTHING;
+    SELECT '0xdeadbeef', '0xowner', 'Will BTC trade above \$1?', 'pending_review', '[\"Yes\",\"No\"]'::jsonb
+    WHERE NOT EXISTS (SELECT 1 FROM markets WHERE post_id = '0xdeadbeef');
     "
     local market_id
     market_id="$(psql_exec "SELECT id::text FROM markets WHERE post_id = '0xdeadbeef' LIMIT 1")"
@@ -136,7 +151,7 @@ seed_review_job() {
 
 wait_for_accepted_review() {
     local post_filter="${1:-}"
-    local reviews=0 accepted=0 i review_sql accepted_sql
+    local reviews=0 accepted=0 reason='' i review_sql accepted_sql
     if [[ -n "$post_filter" ]]; then
         review_sql="SELECT COUNT(*) FROM oracle_reviews WHERE post_id = '${post_filter}'"
         accepted_sql="SELECT COUNT(*) FROM oracle_reviews WHERE post_id = '${post_filter}' AND decision = 'accepted'"
@@ -155,6 +170,14 @@ wait_for_accepted_review() {
             ACCEPTED_COUNT="$accepted"
             return 0
         fi
+        if [[ -n "$post_filter" ]]; then
+            reason="$(psql_exec "SELECT reject_reason FROM oracle_reviews WHERE post_id = '${post_filter}' AND decision = 'rejected' ORDER BY created_at DESC LIMIT 1" || true)"
+            reason="${reason// /}"
+            if [[ "$reason" == "missing_deadline" ]]; then
+                echo "FAIL: claim rejected — add when the claim should be evaluated (e.g. 'by the end of tomorrow' or 'before July 31, 2027')." >&2
+                return 1
+            fi
+        fi
         sleep 2
     done
     echo "FAIL: no accepted oracle_reviews after pipeline (total=${reviews:-0})" >&2
@@ -164,23 +187,23 @@ wait_for_accepted_review() {
 wait_for_market_active() {
     local post_id="$1"
     local require_spot_id="${2:-0}"
-    local status='' spot_id='' i
-    log_step "Waiting for market active${require_spot_id:+ + spot_record_id} (POST_ID=$post_id)..."
+    local status='' market_obj='' i
+    log_step "Waiting for market active${require_spot_id:+ + spot_market_object_id} (POST_ID=$post_id)..."
     for i in $(seq 1 90); do
         status="$(psql_exec "SELECT status FROM markets WHERE post_id = '${post_id}' LIMIT 1" || true)"
         status="${status// /}"
-        spot_id="$(psql_exec "SELECT COALESCE(spot_record_id, '') FROM markets WHERE post_id = '${post_id}' LIMIT 1" || true)"
-        spot_id="${spot_id// /}"
-        if [[ "$status" == "active" || "$status" == "resolving" || "$status" == "resolved" ]]; then
-            if [[ "$require_spot_id" != "1" || -n "$spot_id" ]]; then
+        market_obj="$(psql_exec "SELECT COALESCE(spot_market_object_id, '') FROM markets WHERE post_id = '${post_id}' LIMIT 1" || true)"
+        market_obj="${market_obj// /}"
+        if [[ "$status" == "waiting" || "$status" == "active" || "$status" == "resolving" || "$status" == "resolved" ]]; then
+            if [[ "$require_spot_id" != "1" || -n "$market_obj" ]]; then
                 MARKET_STATUS="$status"
-                SPOT_RECORD_ID="$spot_id"
+                SPOT_MARKET_ID="${market_obj:-$SPOT_MARKET_ID}"
                 return 0
             fi
         fi
         sleep 2
     done
-    echo "FAIL: market not active (status='${status:-}' spot_record_id='${spot_id:-}')" >&2
+    echo "FAIL: market not active (status='${status:-}' spot_market_object_id='${market_obj:-}')" >&2
     return 1
 }
 
@@ -194,8 +217,8 @@ wait_for_evidence() {
         evidence_sql="SELECT COUNT(*) FROM evidence"
         hash_sql="SELECT content_hash FROM evidence ORDER BY fetched_at DESC LIMIT 1"
     fi
-    log_step "Waiting for evidence (maturity ~1 min, up to 3 min)..."
-    for i in $(seq 1 90); do
+    log_step "Waiting for evidence (after claim deadline, up to 5 min)..."
+    for i in $(seq 1 150); do
         evidence="$(psql_exec "$evidence_sql" || echo 0)"
         evidence="${evidence// /}"
         if [[ -n "$evidence" && "$evidence" -gt 0 ]]; then
@@ -214,8 +237,8 @@ wait_for_evidence() {
 wait_for_market_resolved() {
     local post_id="$1"
     local status='' i
-    log_step "Waiting for market resolved (POST_ID=$post_id, up to 3 min)..."
-    for i in $(seq 1 90); do
+    log_step "Waiting for market resolved (POST_ID=$post_id, up to 5 min)..."
+    for i in $(seq 1 150); do
         status="$(psql_exec "SELECT status FROM markets WHERE post_id = '${post_id}' LIMIT 1" || true)"
         status="${status// /}"
         if [[ "$status" == "resolved" ]]; then
@@ -231,6 +254,148 @@ wait_for_market_resolved() {
 wait_for_reviews_and_evidence() {
     wait_for_accepted_review || return 1
     wait_for_evidence || return 1
+}
+
+boot_onchain_oracle_workers() {
+    log_step "Starting spot-oracle workers (on-chain)"
+    export_spot_oracle_env
+    SPOT_ORACLE_REVIEW_POLL_INTERVAL_SECS=5 \
+    SPOT_ORACLE_SCHEDULER_POLL_INTERVAL_SECS=5 \
+    cargo run -p myso-spot-oracle &
+    SVC_PID=$!
+    wait_for_oracle_health || return 1
+}
+
+wait_for_post_ingest() {
+    local post_id="$1"
+    local i found=0
+    log_step "Waiting for checkpoint ingest to ingest ${post_id}..."
+    for i in $(seq 1 90); do
+        found="$(psql_exec "SELECT COUNT(*) FROM markets WHERE post_id = '${post_id}'" || echo 0)"
+        found="${found// /}"
+        if [[ -n "$found" && "$found" -gt 0 ]]; then
+            return 0
+        fi
+        sleep 2
+    done
+    echo "FAIL: market for POST_ID=${post_id} not ingested (is SubscribeCheckpoints streaming and enable_spot=true?)" >&2
+    return 1
+}
+
+walkthrough_ensure_platform() {
+    if [[ -z "${PLATFORM_OBJECT_ID:-}" ]] || ! object_exists_on_fullnode "$PLATFORM_OBJECT_ID"; then
+        SOCIAL_RUN_ID="${SOCIAL_RUN_ID:-$(date +%s)}"
+        log_step "No platform on localnet — creating test platform"
+        create_test_platform || return 1
+        save_walkthrough_session
+    fi
+}
+
+walkthrough_preflight() {
+    require_social_stack_for_onchain || return 1
+    validate_onchain_oracle_key || return 1
+    log_step "Preflight OK (GraphQL + social-server + oracle key; no Discovery)"
+}
+
+walkthrough_refresh_session_if_needed() {
+    if [[ -z "${SPOT_CONFIG_ID:-}" || -z "${SPOT_REGISTRY_ID:-}" || -z "${SPOT_ORACLE_ADMIN_CAP_ID:-}" ]]; then
+        refresh_spot_oracle_session_from_graphql || return 1
+        load_spot_oracle_session
+    fi
+}
+
+run_market_walkthrough() {
+    ONCHAIN_MODE=1
+    trap cleanup EXIT
+
+    spot_prompt_walkthrough_claim || return 1
+    local walkthrough_claim="$SPOT_CLAIM_TEXT"
+    load_spot_oracle_session
+    SPOT_CLAIM_TEXT="$walkthrough_claim"
+    export SPOT_CLAIM_TEXT
+    save_walkthrough_session
+
+    walkthrough_preflight || return 1
+    walkthrough_refresh_session_if_needed || return 1
+
+    start_postgres || return 1
+    run_migrations_boot || return 1
+    walkthrough_ensure_platform || return 1
+    boot_onchain_oracle_workers || return 1
+
+    log_step "Creating enable_spot=true post"
+    SPOT_CLAIM_TEXT="$SPOT_CLAIM_TEXT" ASSUME_YES=1 \
+        "$SCRIPT_DIR/spot-oracle-post-runnable.sh" --run-all || return 1
+    load_spot_oracle_session
+    [[ -n "${POST_ID:-}" ]] || {
+        echo "FAIL: POST_ID missing after spot-oracle-post-runnable" >&2
+        return 1
+    }
+    log_session_use "POST_ID" "$POST_ID"
+    save_walkthrough_session
+
+    wait_for_post_ingest "$POST_ID" || return 1
+    wait_for_accepted_review "$POST_ID" || return 1
+    wait_for_market_active "$POST_ID" 1 || return 1
+
+    SPOT_MARKET_ID="$(spot_resolve_market_id "$POST_ID" "${SPOT_MARKET_ID:-}")" || return 1
+    log_session_use "SPOT_MARKET_ID" "$SPOT_MARKET_ID"
+
+    local options_json
+    options_json="$(psql_exec "SELECT betting_options::text FROM markets WHERE post_id = '${POST_ID}' LIMIT 1" || true)"
+    options_json="${options_json// /}"
+    [[ -n "$options_json" && "$options_json" != "[]" ]] || options_json='["Yes","No"]'
+    log_step "Market active — POST_ID=$POST_ID market=$SPOT_MARKET_ID options=${options_json}"
+
+    spot_prompt_bet_side "$options_json" || return 1
+    spot_prompt_bet_amount_mist
+
+    BETTOR_ADDRESS="${BETTOR_ADDRESS:-${CREATOR_ADDRESS:-}}"
+    [[ -n "$BETTOR_ADDRESS" ]] || BETTOR_ADDRESS="$(resolve_myso_active_address)" || return 1
+    BETTOR_ADDRESS="$(normalize_hex_id "$BETTOR_ADDRESS")"
+    log_session_use "BETTOR_ADDRESS" "$BETTOR_ADDRESS"
+
+    spot_place_bet_for_post "$BETTOR_ADDRESS" "$POST_ID" "$SPOT_MARKET_ID" "$BET_OPTION_ID" "$BET_AMOUNT_MIST" || return 1
+    save_walkthrough_session
+
+    if [[ "${ENABLE_INSURANCE_E2E:-0}" == "1" ]]; then
+        log_step "ENABLE_INSURANCE_E2E=1 — preparing vault + buying coverage"
+        spot_insurance_e2e_prepare || return 1
+        spot_insurance_buy_coverage "$BETTOR_ADDRESS" "$SPOT_MARKET_ID" "$BET_OPTION_ID" || return 1
+        save_walkthrough_session
+    fi
+
+    log_step "Waiting for oracle resolve (~1–3 min for price-threshold claims)..."
+    wait_for_market_resolved "$POST_ID" || return 1
+
+    if [[ "${ENABLE_INSURANCE_E2E:-0}" == "1" ]]; then
+        spot_insurance_claim "$BETTOR_ADDRESS" "$SPOT_MARKET_ID" || return 1
+        spot_insurance_assert_duplicate_claim_fails "$BETTOR_ADDRESS" "$SPOT_MARKET_ID" || return 1
+        save_walkthrough_session
+    fi
+
+    if [[ "${ASSUME_YES:-0}" != "1" ]]; then
+        read -r -p "Market resolved. Press Enter to claim payout (or Ctrl+C to skip)... " _
+    fi
+    spot_claim_payout "$BETTOR_ADDRESS" "$POST_ID" "$SPOT_MARKET_ID" || return 1
+    save_walkthrough_session
+
+    print_run_summary_header "SPoT Market Walkthrough — PASS"
+    print_run_summary_line "Session file" "$SOCIAL_SESSION_SAVE_PATH"
+    print_run_summary_line "Claim" "$SPOT_CLAIM_TEXT"
+    print_run_summary_line "POST_ID" "$POST_ID"
+    print_run_summary_line "SpotMarket" "$SPOT_MARKET_ID"
+    print_run_summary_line "Bettor" "$BETTOR_ADDRESS"
+    print_run_summary_line "Bet side" "option_id=${BET_OPTION_ID}"
+    print_run_summary_line "Bet amount (MIST)" "$BET_AMOUNT_MIST"
+    print_run_summary_line "Bet tx" "${BET_TX_DIGEST:-<none>}"
+    print_run_summary_line "Payout tx" "${PAYOUT_TX_DIGEST:-<none>}"
+    if [[ "${ENABLE_INSURANCE_E2E:-0}" == "1" ]]; then
+        print_run_summary_line "Insurance policy" "${INSURANCE_POLICY_ID:-<none>}"
+        print_run_summary_line "Insurance claim tx" "${INSURANCE_CLAIM_TX:-<none>}"
+    fi
+    print_run_summary_line "Market status" "${MARKET_STATUS:-resolved}"
+    print_run_summary_footer
 }
 
 run_spot_move_tests() {
@@ -296,7 +461,6 @@ run_offchain_e2e() {
         log_step "Off-chain E2E: chain object IDs unset (OK for SQL-seeded review pipeline)"
     fi
     start_postgres
-    start_discovery_for_spot_e2e || return 1
     run_migrations_boot || return 1
     seed_review_job
 
@@ -334,16 +498,8 @@ run_onchain_e2e() {
     validate_onchain_oracle_key || return 1
 
     start_postgres
-    start_discovery_for_spot_e2e || return 1
     run_migrations_boot || return 1
-
-    log_step "Starting spot-oracle workers (on-chain, before post creation)"
-    export_spot_oracle_env
-    SPOT_ORACLE_REVIEW_POLL_INTERVAL_SECS=5 \
-    SPOT_ORACLE_SCHEDULER_POLL_INTERVAL_SECS=5 \
-    cargo run -p myso-spot-oracle &
-    SVC_PID=$!
-    wait_for_oracle_health || return 1
+    boot_onchain_oracle_workers || return 1
 
     log_step "Creating enable_spot=true post via spot-oracle-post-runnable"
     ASSUME_YES=1 "$SCRIPT_DIR/spot-oracle-post-runnable.sh" --run-all || return 1
@@ -358,20 +514,7 @@ run_onchain_e2e() {
     }
     log_session_use "POST_ID" "$POST_ID"
 
-    log_step "Waiting for checkpoint ingest to ingest $POST_ID..."
-    local i found=0
-    for i in $(seq 1 90); do
-        found="$(psql_exec "SELECT COUNT(*) FROM markets WHERE post_id = '${POST_ID}'" || echo 0)"
-        found="${found// /}"
-        if [[ -n "$found" && "$found" -gt 0 ]]; then
-            break
-        fi
-        sleep 2
-    done
-    if [[ -z "$found" || "$found" -eq 0 ]]; then
-        echo "FAIL: market for POST_ID=$POST_ID not ingested (is SubscribeCheckpoints streaming and enable_spot=true?)" >&2
-        return 1
-    fi
+    wait_for_post_ingest "$POST_ID" || return 1
 
     wait_for_accepted_review "$POST_ID" || return 1
     wait_for_market_active "$POST_ID" 1 || return 1
@@ -381,7 +524,8 @@ run_onchain_e2e() {
     print_run_summary_header "SPoT Oracle E2E — PASS (on-chain path)"
     print_run_summary_line "POST_ID" "$POST_ID"
     print_run_summary_line "market status" "${MARKET_STATUS:-<unknown>}"
-    print_run_summary_line "spot_record_id" "${SPOT_RECORD_ID:-<none>}"
+    print_run_summary_line "spot_claim_id" "${SPOT_CLAIM_ID:-<none>}"
+    print_run_summary_line "spot_market_id" "${SPOT_MARKET_ID:-<none>}"
     print_run_summary_line "SpotConfig" "${SPOT_ORACLE_SPOT_CONFIG_OBJECT_ID:-<unset>}"
     print_run_summary_line "SpotClaimRegistry" "${SPOT_ORACLE_REGISTRY_OBJECT_ID:-<unset>}"
     print_run_summary_line "oracle_reviews (accepted)" "${ACCEPTED_COUNT:-$REVIEWS_COUNT}"
@@ -392,30 +536,38 @@ run_onchain_e2e() {
 
 show_menu() {
     echo ""
-    echo "=== SPoT Oracle E2E Menu ==="
-    echo " 0) Refresh session from GraphQL"
-    echo " 1) Run off-chain E2E (--run-all)"
-    echo " 2) Run on-chain E2E (--run-all-onchain)"
-    echo " 3) Lazy payout claims (--run-lazy-payout)"
-    echo " 4) Per-referrer creator fees (--run-creator-fee)"
-    echo " 5) Expired creator reclaim (--run-expired-reclaim)"
-    echo " 6) Shared claim market (--run-shared-claim)"
-    echo " 7) Router-only rejection (--run-router-only)"
-    echo " 8) Settlement creator gate (--run-ownership-transfer)"
-    echo " h) Help"
+    echo "=== SPoT Oracle ==="
+    echo " 1) Full market walkthrough — enter your prediction, then post → bet → resolve"
+    echo " 2) Refresh session from GraphQL (requires indexer at \$GRAPHQL_URL)"
+    echo " ---"
+    echo " Advanced / developer"
+    echo " a) Off-chain review pipeline (--run-all SQL seed)"
+    echo " b) On-chain ingest only (--run-all-onchain, no bet)"
+    echo " c) Move test: lazy payout"
+    echo " d) Move test: creator fees"
+    echo " e) Move test: expired reclaim"
+    echo " f) Move test: shared claim"
+    echo " g) Move test: router-only rejection"
+    echo " h) Move test: settlement creator gate"
+    echo " ?) Help"
     echo " q) Quit"
     read -r -p "Choice: " choice
     case "${choice:-}" in
-        0) refresh_spot_oracle_session_from_graphql; load_spot_oracle_session ;;
-        1) run_offchain_e2e ;;
-        2) run_onchain_e2e ;;
-        3) run_lazy_payout_e2e ;;
-        4) run_creator_fee_e2e ;;
-        5) run_expired_reclaim_e2e ;;
-        6) run_shared_claim_e2e ;;
-        7) run_router_only_e2e ;;
-        8) run_ownership_transfer_e2e ;;
-        [Hh]) usage ;;
+        1) run_market_walkthrough ;;
+        2)
+            refresh_spot_oracle_session_from_graphql && load_spot_oracle_session || {
+                echo "FAIL: session refresh aborted; existing session file unchanged." >&2
+            }
+            ;;
+        [Aa]) run_offchain_e2e ;;
+        [Bb]) run_onchain_e2e ;;
+        [Cc]) run_lazy_payout_e2e ;;
+        [Dd]) run_creator_fee_e2e ;;
+        [Ee]) run_expired_reclaim_e2e ;;
+        [Ff]) run_shared_claim_e2e ;;
+        [Gg]) run_router_only_e2e ;;
+        [Hh]) run_ownership_transfer_e2e ;;
+        \?) usage ;;
         [Qq]) exit 0 ;;
         *) echo "Invalid choice" ;;
     esac
@@ -430,6 +582,7 @@ main() {
             --refresh-session) RUN_MODE=refresh; shift ;;
             --run-all) RUN_MODE=run_all; shift ;;
             --run-all-onchain) RUN_MODE=run_all_onchain; shift ;;
+            --run-walkthrough) RUN_MODE=run_walkthrough; shift ;;
             --run-lazy-payout) RUN_MODE=run_lazy_payout; shift ;;
             --run-creator-fee) RUN_MODE=run_creator_fee; shift ;;
             --run-expired-reclaim) RUN_MODE=run_expired_reclaim; shift ;;
@@ -449,7 +602,17 @@ main() {
             ;;
     esac
 
+    local claim_from_env=''
+    # Walkthrough claim comes from the interactive prompt, not a stale session/env value.
+    if [[ "${RUN_MODE:-}" != "run_walkthrough" && -n "${SPOT_CLAIM_TEXT:-}" ]]; then
+        claim_from_env="$SPOT_CLAIM_TEXT"
+    fi
+
     load_spot_oracle_session
+    if [[ -n "$claim_from_env" ]]; then
+        SPOT_CLAIM_TEXT="$claim_from_env"
+        export SPOT_CLAIM_TEXT
+    fi
 
     case "${RUN_MODE:-}" in
         refresh)
@@ -462,6 +625,7 @@ main() {
             ;;
         run_all) run_offchain_e2e ;;
         run_all_onchain) run_onchain_e2e ;;
+        run_walkthrough) run_market_walkthrough ;;
         run_lazy_payout) run_lazy_payout_e2e ;;
         run_creator_fee) run_creator_fee_e2e ;;
         run_expired_reclaim) run_expired_reclaim_e2e ;;

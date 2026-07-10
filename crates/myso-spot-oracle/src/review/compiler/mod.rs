@@ -29,7 +29,7 @@ impl ResolverCompiler {
     pub fn compile(
         canonical: &CanonicalClaim,
         registry: &crate::sources::ResolverRegistry,
-        source_rows: &[crate::store::DiscoverySourceRow],
+        source_rows: &[crate::store::SpotTrustedSourceRow],
     ) -> anyhow::Result<CompiledMarketSpec> {
         let category = canonical.normalized_fields.claim_category;
         let spec = match category {
@@ -117,7 +117,5 @@ mod tests;
 
 #[cfg(test)]
 pub(crate) fn test_registry() -> crate::sources::ResolverRegistry {
-    crate::sources::build_default_registry(
-        crate::sources::discovery_resolve::DiscoveryResolveCtx::default(),
-    )
+    crate::sources::build_default_registry()
 }

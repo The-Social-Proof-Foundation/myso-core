@@ -1,0 +1,10 @@
+# SPoT event provider registration for localnet/dev.
+# Providers discover future events into Postgres; the in-memory EventRegistry
+# powers implicit deadline inference at review time.
+
+- id: localnet-seed
+  provider_type: yaml_seed
+  enabled: true
+  poll_interval_secs: 86400
+  config:
+    events_file: crates/myso-spot-oracle/config/seed_events.localnet.yaml

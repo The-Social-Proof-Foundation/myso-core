@@ -151,7 +151,7 @@ pub(crate) async fn check_subscription_access(
     let mut conn = db.connect().await?;
     let now_ms = chrono::Utc::now().timestamp_millis();
     let query = "
-        SELECT 1
+        SELECT 1 AS _exists
         FROM (
             SELECT DISTINCT ON (subscription_id) subscription_id, expires_at, cancelled_at
             FROM profile_subscriptions

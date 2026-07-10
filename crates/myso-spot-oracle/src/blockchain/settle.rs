@@ -66,6 +66,22 @@ pub async fn submit_oracle_resolve(state: Arc<AppState>, job: &SpotJob) -> anyho
 
     let high_confidence = is_high_confidence(confidence_bps, state.args.confidence_threshold_bps);
 
+    if let Some(def_id) = market.resolver_definition_id {
+        if let Some(def) = state.store.get_resolver_definition(def_id).await? {
+            if chrono::Utc::now() < def.maturity_schedule.deadline {
+                state
+                    .store
+                    .requeue_job(
+                        job.id,
+                        def.maturity_schedule.deadline,
+                        "before resolution_at for chain submit",
+                    )
+                    .await?;
+                return Ok(());
+            }
+        }
+    }
+
     if !chain_configured(&state.args) {
         tracing::warn!(market_id = %market_id, "chain not configured — marking resolved off-chain");
         let event = LifecycleEvent::ResolveTxConfirmed { high_confidence };
@@ -79,10 +95,10 @@ pub async fn submit_oracle_resolve(state: Arc<AppState>, job: &SpotJob) -> anyho
         return Ok(());
     }
 
-    let spot_record_id = market
-        .spot_record_id
+    let spot_market_object_id = market
+        .spot_market_object_id
         .as_deref()
-        .context("market missing spot_record_id for on-chain resolve")?;
+        .context("market missing spot_market_object_id for on-chain resolve")?;
     let claim_object_id = resolve_claim_object_id(&state, &market.post_id).await?;
     let platform_id = state
         .args
@@ -104,7 +120,7 @@ pub async fn submit_oracle_resolve(state: Arc<AppState>, job: &SpotJob) -> anyho
     match build_and_submit_resolve(
         &state.args,
         &claim_object_id,
-        spot_record_id,
+        spot_market_object_id,
         &market.post_id,
         platform_id,
         treasury_id,

@@ -618,6 +618,11 @@ Prediction market for a claim (evolved from per-post SpotRecord).
 <dd>
 </dd>
 <dt>
+<code>resolution_at_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
 <code>last_resolution_at_ms: u64</code>
 </dt>
 <dd>
@@ -1434,7 +1439,7 @@ A single bet
 <dd>
 </dd>
 <dt>
-<code>resolution_window_ms: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+<code>resolution_at_ms: u64</code>
 </dt>
 <dd>
 </dd>
@@ -3088,7 +3093,7 @@ Oracle-only: register a semantic claim (deduped by hash).
 Oracle-only: open a market for an existing claim.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_create_spot_market_for_claim">create_spot_market_for_claim</a>(_: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotOracleAdminCap">social_contracts::social_proof_of_truth::SpotOracleAdminCap</a>, config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, registry: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaimRegistry">social_contracts::social_proof_of_truth::SpotClaimRegistry</a>, claim: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaim">social_contracts::social_proof_of_truth::SpotClaim</a>, primary_post: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_market_key_hash">market_key_hash</a>: vector&lt;u8&gt;, betting_options: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, resolution_window_ms: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, max_resolution_window_ms: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_create_spot_market_for_claim">create_spot_market_for_claim</a>(_: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotOracleAdminCap">social_contracts::social_proof_of_truth::SpotOracleAdminCap</a>, config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, registry: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaimRegistry">social_contracts::social_proof_of_truth::SpotClaimRegistry</a>, claim: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaim">social_contracts::social_proof_of_truth::SpotClaim</a>, primary_post: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_market_key_hash">market_key_hash</a>: vector&lt;u8&gt;, betting_options: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, resolution_at_ms: u64, max_resolution_window_ms: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3101,11 +3106,11 @@ Oracle-only: open a market for an existing claim.
     _: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotOracleAdminCap">SpotOracleAdminCap</a>,
     config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">SpotConfig</a>,
     registry: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaimRegistry">SpotClaimRegistry</a>,
-    claim: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaim">SpotClaim</a>,
+    claim: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaim">SpotClaim</a>,
     primary_post: &<b>mut</b> Post,
     <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_market_key_hash">market_key_hash</a>: vector&lt;u8&gt;,
     betting_options: vector&lt;String&gt;,
-    resolution_window_ms: Option&lt;u64&gt;,
+    resolution_at_ms: u64,
     max_resolution_window_ms: Option&lt;u64&gt;,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
@@ -3113,6 +3118,8 @@ Oracle-only: open a market for an existing claim.
     <b>assert</b>!(config.truth_enabled, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EDisabled">EDisabled</a>);
     <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_valid_hash">assert_valid_hash</a>(&<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_market_key_hash">market_key_hash</a>);
     <b>assert</b>!(!table::contains(&registry.markets_by_key_hash, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_market_key_hash">market_key_hash</a>), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EMarketExists">EMarketExists</a>);
+    <b>let</b> now_ms = clock::timestamp_ms(clock);
+    <b>assert</b>!(resolution_at_ms &gt; now_ms, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ETooEarly">ETooEarly</a>);
     <b>let</b> options_len = vector::length(&betting_options);
     <b>assert</b>!(options_len &gt;= config.min_betting_options, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
     <b>assert</b>!(options_len &lt;= config.max_betting_options, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
@@ -3128,6 +3135,9 @@ Oracle-only: open a market for an existing claim.
     };
     <b>let</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_claim_id">claim_id</a> = object::uid_to_address(&claim.id);
     <b>let</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_primary_post_id">primary_post_id</a> = <a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(primary_post);
+    <b>if</b> (!table::contains(&registry.post_to_claim, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_primary_post_id">primary_post_id</a>)) {
+        <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_link_post_to_claim_internal">link_post_to_claim_internal</a>(registry, claim, primary_post);
+    };
     <b>let</b> primary_creator = <a href="../social_contracts/post.md#social_contracts_post_get_post_owner">post::get_post_owner</a>(primary_post);
     <b>let</b> market = <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotMarket">SpotMarket</a> {
         id: object::new(ctx),
@@ -3143,8 +3153,9 @@ Oracle-only: open a market for an existing claim.
         option_escrow: table::new(ctx),
         user_option_amounts: table::new(ctx),
         bets: vector::empty(),
-        resolution_window_ms,
+        resolution_window_ms: option::none(),
         max_resolution_window_ms,
+        resolution_at_ms,
         last_resolution_at_ms: 0,
         resolution_timestamp_ms: 0,
         pending_payouts: table::new(ctx),
@@ -3160,8 +3171,8 @@ Oracle-only: open a market for an existing claim.
     <b>let</b> market_id = object::uid_to_address(&market.id);
     <b>let</b> hash_copy = market.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_market_key_hash">market_key_hash</a>;
     <b>let</b> betting_options_copy = market.betting_options;
-    <b>let</b> resolution_window = market.resolution_window_ms;
     <b>let</b> max_resolution_window = market.max_resolution_window_ms;
+    <b>let</b> resolution_at = market.resolution_at_ms;
     <b>let</b> created_at_ms = market.created_at_ms;
     table::add(&<b>mut</b> registry.markets_by_key_hash, hash_copy, market_id);
     <b>if</b> (table::contains(&registry.open_market_by_claim, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_claim_id">claim_id</a>)) {
@@ -3177,7 +3188,7 @@ Oracle-only: open a market for an existing claim.
         <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_primary_post_id">primary_post_id</a>,
         created_at_ms,
         betting_options: betting_options_copy,
-        resolution_window_ms: resolution_window,
+        resolution_at_ms: resolution_at,
         max_resolution_window_ms: max_resolution_window,
     });
 }
@@ -3301,15 +3312,22 @@ Legacy one-shot market creation (claim + market + link) for oracle backward comp
     <b>let</b> <b>mut</b> claim = <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_register_spot_claim">register_spot_claim</a>(registry, semantic_hash, created_at_ms, ctx);
     <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_link_post_to_claim_internal">link_post_to_claim_internal</a>(registry, &<b>mut</b> claim, <a href="../social_contracts/post.md#social_contracts_post">post</a>);
     <b>let</b> betting_options_copy = betting_options;
+    <b>let</b> resolution_at_ms = <b>if</b> (option::is_some(&max_resolution_window_ms)) {
+        created_at_ms + *option::borrow(&max_resolution_window_ms)
+    } <b>else</b> <b>if</b> (option::is_some(&resolution_window_ms)) {
+        created_at_ms + *option::borrow(&resolution_window_ms)
+    } <b>else</b> {
+        created_at_ms + <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MAX_RESOLUTION_WINDOW_MS">DEFAULT_MAX_RESOLUTION_WINDOW_MS</a>
+    };
     <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_create_spot_market_for_claim">create_spot_market_for_claim</a>(
         oracle_cap,
         config,
         registry,
-        &claim,
+        &<b>mut</b> claim,
         <a href="../social_contracts/post.md#social_contracts_post">post</a>,
         semantic_hash,
         betting_options,
-        resolution_window_ms,
+        resolution_at_ms,
         max_resolution_window_ms,
         clock,
         ctx,
@@ -3651,10 +3669,7 @@ Sole public betting entry — registry validates the market is open for this cla
     <b>assert</b>!(market.status == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_OPEN">STATUS_OPEN</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EWrongStatus">EWrongStatus</a>);
     <b>assert</b>!(option::is_none(&market.outcome), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EAlreadyResolved">EAlreadyResolved</a>);
     <b>let</b> now_ms = clock::timestamp_ms(clock);
-    <b>if</b> (option::is_some(&market.resolution_window_ms)) {
-        <b>let</b> window = *option::borrow(&market.resolution_window_ms);
-        <b>assert</b>!(now_ms &gt;= market.created_at_ms + window, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ETooEarly">ETooEarly</a>);
-    };
+    <b>assert</b>!(now_ms &gt;= market.resolution_at_ms, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ETooEarly">ETooEarly</a>);
     <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_valid_option_id">assert_valid_option_id</a>(market, outcome_option_id);
     <b>let</b> reasoning_len = string::length(&reasoning);
     <b>assert</b>!(reasoning_len &gt;= spot_config.min_reasoning_length, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidReasoning">EInvalidReasoning</a>);
@@ -4072,7 +4087,7 @@ Sole public betting entry — registry validates the market is open for this cla
     <b>assert</b>!(option::is_some(&market.max_resolution_window_ms), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
     <b>let</b> now_ms = clock::timestamp_ms(clock);
     <b>let</b> max_window = *option::borrow(&market.max_resolution_window_ms);
-    <b>assert</b>!(now_ms &gt;= market.created_at_ms + max_window, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ETooEarly">ETooEarly</a>);
+    <b>assert</b>!(now_ms &gt;= market.resolution_at_ms + max_window, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ETooEarly">ETooEarly</a>);
     <b>assert</b>!(market.status == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_OPEN">STATUS_OPEN</a> || market.status == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_DAO_REQUIRED">STATUS_DAO_REQUIRED</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EWrongStatus">EWrongStatus</a>);
     <b>assert</b>!(vector::length(&market.bets) &gt; 0, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ENoBets">ENoBets</a>);
     <b>let</b> <b>mut</b> i = 0;
@@ -4729,7 +4744,7 @@ Reclaim expired creator rewards to ecosystem (+ platform remainder).
 
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_patch_spot_record_times_for_migration">patch_spot_record_times_for_migration</a>(_: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotOracleAdminCap">social_contracts::social_proof_of_truth::SpotOracleAdminCap</a>, market: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotMarket">social_contracts::social_proof_of_truth::SpotMarket</a>, created_at_ms: u64, resolution_window_ms: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, max_resolution_window_ms: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, last_resolution_at_ms: u64)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_patch_spot_record_times_for_migration">patch_spot_record_times_for_migration</a>(_: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotOracleAdminCap">social_contracts::social_proof_of_truth::SpotOracleAdminCap</a>, market: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotMarket">social_contracts::social_proof_of_truth::SpotMarket</a>, created_at_ms: u64, resolution_window_ms: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, max_resolution_window_ms: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, resolution_at_ms: u64, last_resolution_at_ms: u64)
 </code></pre>
 
 
@@ -4744,11 +4759,13 @@ Reclaim expired creator rewards to ecosystem (+ platform remainder).
     created_at_ms: u64,
     resolution_window_ms: Option&lt;u64&gt;,
     max_resolution_window_ms: Option&lt;u64&gt;,
+    resolution_at_ms: u64,
     last_resolution_at_ms: u64,
 ) {
     market.created_at_ms = created_at_ms;
     market.resolution_window_ms = resolution_window_ms;
     market.max_resolution_window_ms = max_resolution_window_ms;
+    market.resolution_at_ms = resolution_at_ms;
     market.last_resolution_at_ms = last_resolution_at_ms;
 }
 </code></pre>

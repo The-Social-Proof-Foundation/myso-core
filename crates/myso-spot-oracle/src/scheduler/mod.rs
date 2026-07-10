@@ -38,7 +38,6 @@ async fn dispatch_job(state: Arc<AppState>, job: SpotJob) {
         "ReviewPost" => crate::review::worker::run_review_job_loop(state.clone(), job).await,
         "ResolveMarket" => resolve_market_job(state.clone(), job).await,
         "SubmitChainTx" => crate::blockchain::worker::process_chain_job(state.clone(), job).await,
-        "RssWake" => Ok(()),
         other => {
             error!(job_type = other, "unknown job type");
             state

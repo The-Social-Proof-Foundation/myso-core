@@ -116,7 +116,6 @@ const DEFAULT_SPOT_ORACLE_PORT: u16 = crate::local_spot_oracle::DEFAULT_SPOT_ORA
 const DEFAULT_POC_API_PORT: u16 = crate::local_poc::DEFAULT_POC_API_PORT;
 const DEFAULT_MESSAGING_RELAYER_PORT: u16 =
     crate::local_messaging::DEFAULT_MESSAGING_RELAYER_PORT;
-const DEFAULT_DISCOVERY_PORT: u16 = crate::local_discovery::DEFAULT_DISCOVERY_PORT;
 
 /// Max connections per embedded Postgres pool when `myso start` runs indexers + APIs on one server.
 /// Typical local `max_connections` is 100; several pools must fit under that. Raise Postgres
@@ -335,8 +334,8 @@ pub enum MySoCommand {
         #[clap(long, value_name = "PATH")]
         mydata_repo: Option<PathBuf>,
 
-        /// Start discovery (factual YAML) + SPoT oracle. Default spot listen `0.0.0.0:8097`.
-        /// Requires `--with-social-indexer`. Also starts discovery Postgres on `:5434`.
+        /// Start the SPoT oracle. Default spot listen `0.0.0.0:8097`.
+        /// Requires `--with-social-indexer`. SPoT reads its trusted sources directly.
         #[clap(
             long,
             default_missing_value = "0.0.0.0:8097",
@@ -346,7 +345,7 @@ pub enum MySoCommand {
         )]
         with_spot: Option<String>,
 
-        /// Start discovery (media YAML, embed on) + Proof of Creativity via docker compose
+        /// Start Proof of Creativity via docker compose (includes discovery-worker)
         /// `--profile app` in the sibling `proof-of-creativity` repo. Default API port `8000`.
         /// Override repo with `--poc-repo` or `MYSO_POC_REPO`.
         #[clap(
@@ -1597,11 +1596,10 @@ async fn start(
         mydata_child = Some(child);
     }
 
-    // --- External sidecars: discovery / spot / poc / messaging ---
+    // --- External sidecars: spot / poc / messaging ---
     let mut sidecars = crate::local_sidecars::LocalSidecars::empty();
     sidecars.mydata = mydata_child;
 
-    let need_spot = with_spot.is_some();
     let need_poc = with_poc.is_some();
     let poc_api_port = if let Some(ref input) = with_poc {
         let addr = ensure_bindable_socket_addr(
@@ -1614,33 +1612,8 @@ async fn start(
         DEFAULT_POC_API_PORT
     };
 
-    if let Some(corpus) =
-        crate::local_discovery::DiscoveryCorpus::from_flags(need_spot, need_poc)
-    {
-        let discovery_listen = SocketAddr::from(([127, 0, 0, 1], DEFAULT_DISCOVERY_PORT));
-        let embed = need_poc;
-        info!(
-            "Starting discovery service (corpus={:?}, embed={embed})",
-            match corpus {
-                crate::local_discovery::DiscoveryCorpus::Factual => "factual",
-                crate::local_discovery::DiscoveryCorpus::Media => "media",
-                crate::local_discovery::DiscoveryCorpus::Combined => "combined",
-            }
-        );
-        let (info, child) = crate::local_discovery::spawn_discovery(
-            discovery_listen,
-            corpus,
-            embed,
-            poc_api_port,
-        )
-        .await
-        .context("Failed to start discovery service")?;
-        crate::local_discovery::log_discovery_once(&info);
-        sidecars.discovery = Some(child);
-    }
-
     if need_poc {
-        info!("Starting Proof of Creativity docker stack (--profile app)");
+        info!("Starting Proof of Creativity docker stack (--profile app, includes discovery-worker)");
         let info = crate::local_poc::spawn_poc_stack(poc_repo, poc_api_port)
             .await
             .context("Failed to start PoC docker stack")?;

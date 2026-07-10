@@ -116,6 +116,18 @@ pub async fn resolve_market(state: Arc<AppState>, job: &SpotJob) -> anyhow::Resu
         anyhow::bail!("resolution draft missing evidence urls");
     }
 
+    if now < def.maturity_schedule.deadline {
+        state
+            .store
+            .requeue_job(
+                job.id,
+                def.maturity_schedule.deadline,
+                "before resolution_at",
+            )
+            .await?;
+        return Ok(());
+    }
+
     state
         .store
         .enqueue_job(
@@ -192,36 +204,7 @@ fn evaluate_price_threshold(
         json_path.clone()
     };
 
-    let mut price: Option<f64> = None;
-    let mut urls = Vec::new();
-    for ev in evidence {
-        urls.push(ev.source_url.clone());
-        if let Some(v) = json_path_value(&ev.payload, &path) {
-            price = Some(v);
-            break;
-        }
-        if let Some(v) = json_path_value(&ev.payload, &format!("{asset}.{quote}")) {
-            price = Some(v);
-            break;
-        }
-        if let Some(v) = ev.payload.get("data").and_then(|d| d.get("amount")).and_then(|a| a.as_str()) {
-            if let Ok(p) = v.parse::<f64>() {
-                price = Some(p);
-                break;
-            }
-        }
-    }
-    let price = price.ok_or_else(|| anyhow::anyhow!("could not parse price from evidence"))?;
     let threshold_f: f64 = threshold.parse()?;
-    let condition = match comparator {
-        ComparisonOp::Gt => price > threshold_f,
-        ComparisonOp::Gte => price >= threshold_f,
-        ComparisonOp::Lt => price < threshold_f,
-        ComparisonOp::Lte => price <= threshold_f,
-        ComparisonOp::Eq => (price - threshold_f).abs() < f64::EPSILON,
-        ComparisonOp::Neq => (price - threshold_f).abs() >= f64::EPSILON,
-    };
-
     let yes_label = def
         .betting_options
         .first()
@@ -232,16 +215,87 @@ fn evaluate_price_threshold(
         .get(1)
         .cloned()
         .unwrap_or_else(|| "No".to_string());
-    let outcome = if condition { yes_label } else { no_label };
+
+    let mut urls = Vec::new();
+    let mut outcomes: Vec<String> = Vec::new();
+    let mut prices: Vec<f64> = Vec::new();
+    for ev in evidence {
+        urls.push(ev.source_url.clone());
+        let price = json_path_value(&ev.payload, &path)
+            .or_else(|| json_path_value(&ev.payload, &format!("{asset}.{quote}")))
+            .or_else(|| {
+                ev.payload
+                    .get("data")
+                    .and_then(|d| d.get("amount"))
+                    .and_then(|a| a.as_str())
+                    .and_then(|v| v.parse::<f64>().ok())
+            });
+        let Some(price) = price else {
+            continue;
+        };
+        prices.push(price);
+        let condition = match comparator {
+            ComparisonOp::Gt => price > threshold_f,
+            ComparisonOp::Gte => price >= threshold_f,
+            ComparisonOp::Lt => price < threshold_f,
+            ComparisonOp::Lte => price <= threshold_f,
+            ComparisonOp::Eq => (price - threshold_f).abs() < f64::EPSILON,
+            ComparisonOp::Neq => (price - threshold_f).abs() >= f64::EPSILON,
+        };
+        outcomes.push(if condition {
+            yes_label.clone()
+        } else {
+            no_label.clone()
+        });
+    }
+
+    if outcomes.is_empty() {
+        anyhow::bail!("could not parse price from evidence");
+    }
+
+    let (outcome, confidence_bps, reasoning) = quorum_outcome(
+        &outcomes,
+        &format!(
+            "price {:?} vs threshold {threshold_f} ({comparator:?}) for {asset}/{quote}",
+            prices
+        ),
+    );
 
     Ok(ResolutionDraft {
         outcome_label: Some(outcome),
-        confidence_bps: 9500,
-        reasoning: format!(
-            "price {price} vs threshold {threshold_f} ({comparator:?}) for {asset}/{quote}"
-        ),
+        confidence_bps,
+        reasoning,
         evidence_urls: urls,
     })
+}
+
+/// Majority quorum: unanimous → high confidence; conflict → low confidence (DAO_REQUIRED).
+fn quorum_outcome(outcomes: &[String], base_reasoning: &str) -> (String, u16, String) {
+    let mut counts: std::collections::BTreeMap<&str, usize> = std::collections::BTreeMap::new();
+    for o in outcomes {
+        *counts.entry(o.as_str()).or_default() += 1;
+    }
+    let (winner, count) = counts
+        .into_iter()
+        .max_by_key(|(_, c)| *c)
+        .map(|(k, c)| (k.to_string(), c))
+        .unwrap_or_else(|| (outcomes[0].clone(), 1));
+    if count == outcomes.len() {
+        (
+            winner,
+            9500,
+            format!("{base_reasoning}; quorum={count}/{}", outcomes.len()),
+        )
+    } else {
+        (
+            winner,
+            0,
+            format!(
+                "{base_reasoning}; CONFLICT quorum={count}/{} — escalate DAO_REQUIRED",
+                outcomes.len()
+            ),
+        )
+    }
 }
 
 fn evaluate_release(
@@ -277,8 +331,22 @@ fn evaluate_event(
     };
     let urls: Vec<String> = evidence.iter().map(|e| e.source_url.clone()).collect();
     let matched = evidence.iter().any(|ev| {
+        // Direct RSS fetch returns an array of event objects.
+        if let Some(arr) = ev.payload.as_array() {
+            return arr.iter().any(|item| {
+                let title = item.get("title").and_then(|v| v.as_str()).unwrap_or("");
+                let summary = item.get("summary").and_then(|v| v.as_str()).unwrap_or("");
+                format!("{title} {summary}")
+                    .to_lowercase()
+                    .contains(&match_predicate.to_lowercase())
+            });
+        }
         let title = ev.payload.get("title").and_then(|v| v.as_str()).unwrap_or("");
-        let summary = ev.payload.get("summary").and_then(|v| v.as_str()).unwrap_or("");
+        let summary = ev
+            .payload
+            .get("summary")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
         let blob = format!("{title} {summary}").to_lowercase();
         blob.contains(&match_predicate.to_lowercase())
     });
@@ -412,6 +480,52 @@ mod tests {
         }];
         let draft = evaluate_definition(&def, &evidence).unwrap();
         assert_eq!(draft.outcome_label.as_deref(), Some("Yes"));
+        assert!(draft.confidence_bps >= 9000);
+    }
+
+    #[test]
+    fn price_threshold_conflict_low_confidence() {
+        let def = ResolverDefinition {
+            id: Uuid::new_v4(),
+            resolver_kind: ResolverKind::PriceThreshold,
+            spec: ResolverSpec::PriceThreshold {
+                asset: "bitcoin".to_string(),
+                quote: "usd".to_string(),
+                comparator: ComparisonOp::Gt,
+                threshold: "40000".to_string(),
+                source_id: "coingecko".to_string(),
+                json_path: "bitcoin.usd".to_string(),
+            },
+            source_ids: vec!["coingecko".to_string(), "coinbase".to_string()],
+            betting_options: vec!["Yes".to_string(), "No".to_string()],
+            maturity_schedule: MaturitySchedule {
+                maturity_at: Utc::now(),
+                deadline: Utc::now(),
+            },
+        };
+        let evidence = vec![
+            SourceEvidence {
+                adapter_id: "coingecko".to_string(),
+                source_url: "https://api.coingecko.com".to_string(),
+                content_hash: "a".to_string(),
+                raw_response: None,
+                fetched_at: Utc::now(),
+                payload: serde_json::json!({ "bitcoin": { "usd": 50000.0 } }),
+            },
+            SourceEvidence {
+                adapter_id: "coinbase".to_string(),
+                source_url: "https://api.coinbase.com".to_string(),
+                content_hash: "b".to_string(),
+                raw_response: None,
+                fetched_at: Utc::now(),
+                payload: serde_json::json!({ "bitcoin": { "usd": 10000.0 } }),
+            },
+        ];
+        let draft = evaluate_definition(&def, &evidence).unwrap();
+        assert!(draft.outcome_label.is_some());
+        assert_eq!(draft.confidence_bps, 0);
+        assert!(draft.reasoning.contains("CONFLICT"));
+        assert!(!is_high_confidence(draft.confidence_bps as u64, 7000));
     }
 
     #[test]

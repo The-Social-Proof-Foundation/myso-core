@@ -1,15 +1,12 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-//! SQLx repositories for SPoT-specific tables plus read/write access to the
-//! shared `discovery_sources` table. The PG job-queue pattern (`FOR UPDATE SKIP
-//! LOCKED` + priority + attempts) is re-implemented here against `spot_jobs` —
-//! it is not linked from `myso-discovery-service` (dependency boundary).
-//!
-//! Independence rule: the resolver never reads or writes `discovery_assets`.
-//! `evidence` has no FK to `discovery_assets`; it is resolver-owned.
+//! SQLx repositories for SPoT-specific tables including `spot_trusted_sources`.
+//! The PG job-queue pattern (`FOR UPDATE SKIP LOCKED` + priority + attempts) is
+//! implemented against `spot_jobs`.
 
 pub mod claims;
+pub mod events;
 pub mod evidence;
 pub mod jobs;
 pub mod markets;
@@ -21,15 +18,17 @@ use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use myso_discovery_service_core::sources::SourceConfig;
-
+use crate::events::config::EventProviderConfig;
+use crate::events::types::DiscoveredEvent;
 use crate::resolver::ResolverDefinition;
+use crate::sources::SourceConfig;
 use crate::store::reviews::ExtractedClaim;
 
-/// Deterministic UUID v5 namespace for `discovery_sources` rows so repeated
-/// startup upserts hit the same row. Mirrors the discovery-service namespace.
+pub use events::{EventProviderRow, ScheduledEventRow};
+
+/// Deterministic UUID v5 namespace for `spot_trusted_sources` rows.
 const NAMESPACE: Uuid = Uuid::from_bytes([
-    0x6d, 0x79, 0x73, 0x6f, 0x2d, 0x64, 0x69, 0x73, 0x63, 0x6f, 0x76, 0x65, 0x72, 0x79, 0x2d, 0x73,
+    0x6d, 0x79, 0x73, 0x6f, 0x2d, 0x73, 0x70, 0x6f, 0x74, 0x2d, 0x73, 0x72, 0x63, 0x2d, 0x76, 0x31,
 ]);
 
 pub fn uuid_v5_named(source_id: &str) -> Uuid {
@@ -55,9 +54,11 @@ impl OracleStore {
             let source_url = first_feed_url(cfg).map(|s| s.to_string());
             let row: (Uuid,) = sqlx::query_as(
                 r#"
-                INSERT INTO discovery_sources (id, adapter_type, domain, trust_score, enabled, source_url, config)
-                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                INSERT INTO spot_trusted_sources
+                    (id, source_key, adapter_type, domain, trust_score, enabled, source_url, config)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                 ON CONFLICT (id) DO UPDATE SET
+                    source_key = EXCLUDED.source_key,
                     adapter_type = EXCLUDED.adapter_type,
                     domain = EXCLUDED.domain,
                     trust_score = EXCLUDED.trust_score,
@@ -69,6 +70,7 @@ impl OracleStore {
                 "#,
             )
             .bind(uuid_v5_named(&cfg.id))
+            .bind(&cfg.id)
             .bind(&cfg.adapter_type)
             .bind(cfg.domain.as_str())
             .bind(cfg.trust_score)
@@ -77,16 +79,78 @@ impl OracleStore {
             .bind(&config_json)
             .fetch_one(&self.pool)
             .await?;
-            tracing::debug!(source_id = %cfg.id, db_id = %row.0, "registered discovery source");
+            tracing::debug!(source_id = %cfg.id, db_id = %row.0, "registered trusted source");
         }
         Ok(())
     }
 
-    pub async fn list_enabled_sources(&self) -> anyhow::Result<Vec<DiscoverySourceRow>> {
-        let rows = sqlx::query_as::<_, DiscoverySourceRow>(
+    // --- event providers ---
+    pub async fn upsert_event_provider_rows(
+        &self,
+        providers: &[EventProviderConfig],
+    ) -> anyhow::Result<()> {
+        events::upsert_provider_rows(&self.pool, providers).await
+    }
+
+    pub async fn list_enabled_event_providers(&self) -> anyhow::Result<Vec<EventProviderRow>> {
+        events::list_enabled_providers(&self.pool).await
+    }
+
+    pub async fn list_all_event_providers(&self) -> anyhow::Result<Vec<EventProviderRow>> {
+        events::list_all_providers(&self.pool).await
+    }
+
+    pub async fn get_event_provider(
+        &self,
+        provider_key: &str,
+    ) -> anyhow::Result<Option<EventProviderRow>> {
+        events::get_provider_by_key(&self.pool, provider_key).await
+    }
+
+    pub async fn update_event_provider_sync_status(
+        &self,
+        provider_key: &str,
+        status: &str,
+        healthy: bool,
+        message: &str,
+    ) -> anyhow::Result<()> {
+        events::update_provider_sync_status(&self.pool, provider_key, status, healthy, message)
+            .await
+    }
+
+    pub async fn upsert_discovered_events(
+        &self,
+        provider_key: &str,
+        discovered: &[DiscoveredEvent],
+    ) -> anyhow::Result<usize> {
+        events::upsert_discovered_events(&self.pool, provider_key, discovered).await
+    }
+
+    pub async fn list_active_scheduled_events(&self) -> anyhow::Result<Vec<ScheduledEventRow>> {
+        events::list_active_scheduled_events(&self.pool).await
+    }
+
+    pub async fn list_scheduled_events(
+        &self,
+        active_only: bool,
+        limit: i64,
+    ) -> anyhow::Result<Vec<ScheduledEventRow>> {
+        events::list_scheduled_events(&self.pool, active_only, limit).await
+    }
+
+    pub async fn patch_event_override(
+        &self,
+        event_id: Uuid,
+        override_json: &serde_json::Value,
+    ) -> anyhow::Result<bool> {
+        events::patch_event_override(&self.pool, event_id, override_json).await
+    }
+
+    pub async fn list_enabled_sources(&self) -> anyhow::Result<Vec<SpotTrustedSourceRow>> {
+        let rows = sqlx::query_as::<_, SpotTrustedSourceRow>(
             r#"
-            SELECT id, adapter_type, domain, trust_score, enabled, config
-            FROM discovery_sources
+            SELECT id, source_key, adapter_type, domain, trust_score, enabled, config
+            FROM spot_trusted_sources
             WHERE enabled = true
             ORDER BY trust_score DESC
             "#,
@@ -119,6 +183,21 @@ impl OracleStore {
 
     pub async fn get_market(&self, market_id: Uuid) -> anyhow::Result<Option<markets::MarketRow>> {
         markets::get_market(&self.pool, market_id).await
+    }
+
+    pub async fn set_market_resolution_timing(
+        &self,
+        market_id: Uuid,
+        resolution_window_ms: i64,
+        max_resolution_window_ms: i64,
+    ) -> anyhow::Result<()> {
+        markets::set_market_resolution_timing(
+            &self.pool,
+            market_id,
+            resolution_window_ms,
+            max_resolution_window_ms,
+        )
+        .await
     }
 
     pub async fn list_markets(
@@ -178,12 +257,27 @@ impl OracleStore {
         .await
     }
 
+    pub async fn set_spot_market_object_id_on_market(
+        &self,
+        market_id: Uuid,
+        spot_market_object_id: &str,
+        ctx: crate::claim::lifecycle::TransitionContext,
+    ) -> anyhow::Result<()> {
+        markets::set_spot_market_object_id(&self.pool, market_id, spot_market_object_id, ctx)
+            .await
+    }
+
+    /// Legacy alias — stores the on-chain SpotMarket object id.
     pub async fn set_spot_record_id(
         &self,
         market_id: Uuid,
-        spot_record_id: &str,
+        spot_market_object_id: &str,
     ) -> anyhow::Result<()> {
-        markets::set_spot_record_id(&self.pool, market_id, spot_record_id).await
+        let mut ctx =
+            crate::claim::lifecycle::default_context_for(&crate::claim::lifecycle::LifecycleEvent::CreateTxConfirmed);
+        ctx.on_chain_status = Some(1);
+        self.set_spot_market_object_id_on_market(market_id, spot_market_object_id, ctx)
+            .await
     }
 
     // --- jobs ---
@@ -404,8 +498,9 @@ fn first_feed_url(cfg: &SourceConfig) -> Option<&str> {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
-pub struct DiscoverySourceRow {
+pub struct SpotTrustedSourceRow {
     pub id: Uuid,
+    pub source_key: String,
     pub adapter_type: String,
     pub domain: String,
     pub trust_score: f64,

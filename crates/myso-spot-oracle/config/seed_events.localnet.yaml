@@ -1,0 +1,49 @@
+# Seed scheduled events for localnet/dev (loaded by yaml_seed provider).
+# Production events should come from ical_feed and other dynamic providers.
+
+events:
+  - id: fifa_world_cup_2026
+    label: FIFA World Cup 2026
+    category: sports
+    keywords:
+      - fifa
+      - world cup
+      - worldcup
+      - messi
+      - messy
+      - mbappe
+      - mbappé
+      - ronaldo
+      - soccer
+      - football tournament
+    entities:
+      - name: lionel messi
+        aliases: [messi, messy]
+        role: player
+      - name: kylian mbappe
+        aliases: [mbappe, mbappé, muppet]
+        role: player
+    end_date: "2026-07-19"
+    feed_url: https://www.fifa.com/fifaplus/en/articles/rss.xml
+    match_predicate: world cup
+    preferred_source_keys:
+      - rss_event
+    priority: 100
+
+  - id: us_presidential_election_2028
+    label: 2028 U.S. Presidential Election
+    category: election
+    keywords:
+      - presidential election
+      - president election
+      - us election
+      - u.s. election
+      - white house
+      - electoral college
+      - inauguration
+    end_date: "2028-11-07"
+    feed_url: https://www.federalreserve.gov/feeds/press_all.xml
+    match_predicate: election
+    preferred_source_keys:
+      - rss_event
+    priority: 90

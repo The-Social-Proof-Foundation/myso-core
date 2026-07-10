@@ -1,6 +1,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::review::deadline::{DeadlinePolicy, DeadlineValidation};
 use crate::review::CanonicalClaim;
 use crate::resolver::{ResolverDefinition, ResolverSpec};
 use crate::sources::ResolverRegistry;
@@ -17,6 +18,8 @@ pub enum ReviewDecision {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RejectReason {
     MissingDeadline,
+    DeadlineInPast,
+    DeadlineTooFar,
     MissingThreshold,
     MissingComparison,
     DuplicateClaim,
@@ -34,6 +37,8 @@ impl RejectReason {
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::MissingDeadline => "missing_deadline",
+            Self::DeadlineInPast => "deadline_in_past",
+            Self::DeadlineTooFar => "deadline_too_far",
             Self::MissingThreshold => "missing_threshold",
             Self::MissingComparison => "missing_comparison",
             Self::DuplicateClaim => "duplicate_claim",
@@ -53,6 +58,7 @@ pub fn evaluate(
     canonical: &CanonicalClaim,
     market_exists: bool,
     registry: &ResolverRegistry,
+    deadline_policy: &DeadlinePolicy,
 ) -> ReviewDecision {
     let f = &canonical.normalized_fields;
     if f.claim_category == ClaimCategory::Unsupported {
@@ -73,6 +79,18 @@ pub fn evaluate(
         return ReviewDecision::Rejected(RejectReason::InvalidOptions);
     }
 
+    if f.deadline.is_none() {
+        return ReviewDecision::Rejected(RejectReason::MissingDeadline);
+    }
+    match deadline_policy.validate(f.deadline.unwrap()) {
+        DeadlineValidation::Ok => {}
+        DeadlineValidation::InPast => {
+            return ReviewDecision::Rejected(RejectReason::DeadlineInPast);
+        }
+        DeadlineValidation::TooFar => {
+            return ReviewDecision::Rejected(RejectReason::DeadlineTooFar);
+        }
+    }
 
     match f.claim_category {
         ClaimCategory::PriceThreshold => {
@@ -84,9 +102,6 @@ pub fn evaluate(
             }
         }
         ClaimCategory::ReleasePublished => {
-            if f.deadline.is_none() {
-                return ReviewDecision::Rejected(RejectReason::MissingDeadline);
-            }
             let has_repo = f.resolver_hints.owner.is_some() && f.resolver_hints.repo.is_some()
                 || f.object.contains('/');
             if !has_repo {
@@ -94,9 +109,6 @@ pub fn evaluate(
             }
         }
         ClaimCategory::EventOccurrence => {
-            if f.deadline.is_none() {
-                return ReviewDecision::Rejected(RejectReason::MissingDeadline);
-            }
             if f.resolver_hints.feed_url.as_ref().is_none_or(|s| s.is_empty())
                 && !f.suggested_sources.iter().any(|s| s.contains("rss"))
             {
@@ -104,9 +116,6 @@ pub fn evaluate(
             }
         }
         ClaimCategory::CustomHttp => {
-            if f.deadline.is_none() {
-                return ReviewDecision::Rejected(RejectReason::MissingDeadline);
-            }
             if f.resolver_hints.url.as_ref().is_none_or(|s| s.is_empty()) {
                 return ReviewDecision::Rejected(RejectReason::MissingUrl);
             }
@@ -222,14 +231,18 @@ pub fn is_price_claim(canonical: &CanonicalClaim) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::review::canonicalize::{canonicalize, OutcomeType};
     use crate::review::compiler::fixtures;
     use crate::review::compiler::test_registry;
+    use crate::store::reviews::ExtractedClaim;
+    use crate::types::ResolverHints;
+    use uuid::Uuid;
 
     #[test]
     fn unsupported_claim_rejected() {
         let canonical = fixtures::unsupported_claim();
         let registry = test_registry();
-        let decision = evaluate(&canonical, false, &registry);
+        let decision = evaluate(&canonical, false, &registry, &DeadlinePolicy::default());
         assert_eq!(
             decision,
             ReviewDecision::Rejected(RejectReason::UnsupportedCategory)
@@ -240,7 +253,42 @@ mod tests {
     fn btc_price_accepted() {
         let canonical = fixtures::btc_price_claim();
         let registry = test_registry();
-        let decision = evaluate(&canonical, false, &registry);
+        let decision = evaluate(&canonical, false, &registry, &DeadlinePolicy::default());
         assert_eq!(decision, ReviewDecision::Accepted);
+    }
+
+    #[test]
+    fn price_without_deadline_gets_ongoing_spacing() {
+        let event_registry = crate::events::EventRegistry::new();
+        let mut extracted = ExtractedClaim {
+            subject: "bitcoin".to_string(),
+            predicate: "price".to_string(),
+            object: "usd".to_string(),
+            metric: Some("price".to_string()),
+            comparison: Some(ComparisonOp::Gt),
+            threshold: Some("1".to_string()),
+            deadline: crate::review::deadline::resolve_claim_deadline(
+                "BTC above $1",
+                ClaimCategory::PriceThreshold,
+                &event_registry,
+            ),
+            outcome_type: OutcomeType::Binary,
+            suggested_sources: vec!["coingecko".to_string()],
+            suggested_options: vec!["Yes".to_string(), "No".to_string()],
+            claim_category: ClaimCategory::PriceThreshold,
+            resolver_hints: ResolverHints::default(),
+        };
+        let canonical = canonicalize(Uuid::new_v4(), &extracted);
+        assert!(canonical.normalized_fields.deadline.is_some());
+        let registry = test_registry();
+        let decision = evaluate(&canonical, false, &registry, &DeadlinePolicy::default());
+        assert_eq!(decision, ReviewDecision::Accepted);
+        extracted.deadline = None;
+        let canonical = canonicalize(Uuid::new_v4(), &extracted);
+        let decision = evaluate(&canonical, false, &registry, &DeadlinePolicy::default());
+        assert_eq!(
+            decision,
+            ReviewDecision::Rejected(RejectReason::MissingDeadline)
+        );
     }
 }

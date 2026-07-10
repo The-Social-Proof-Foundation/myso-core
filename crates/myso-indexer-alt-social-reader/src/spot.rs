@@ -571,7 +571,7 @@ pub(crate) async fn get_spot_market_by_object_id(
 
     let query = "
         SELECT market_object_id, claim_object_id, market_key_hash, primary_post_id, status,
-               max_resolution_window_ms AS deadline_ms, betting_options, creator_fee_total,
+               resolution_at_ms AS deadline_ms, betting_options, creator_fee_total,
                NULL::bigint AS winner_pool, resolution_timestamp_ms, created_at_ms
         FROM spot_markets
         WHERE market_object_id = $1

@@ -8,7 +8,6 @@ use tokio::process::Child;
 use crate::local_poc::{self, PocLocalInfo};
 
 pub struct LocalSidecars {
-    pub discovery: Option<Child>,
     pub spot: Option<Child>,
     pub messaging: Option<Child>,
     pub mydata: Option<Child>,
@@ -18,7 +17,6 @@ pub struct LocalSidecars {
 impl LocalSidecars {
     pub fn empty() -> Self {
         Self {
-            discovery: None,
             spot: None,
             messaging: None,
             mydata: None,
@@ -28,7 +26,6 @@ impl LocalSidecars {
 
     pub fn kill_children(&mut self) {
         for child in [
-            &mut self.discovery,
             &mut self.spot,
             &mut self.messaging,
             &mut self.mydata,
@@ -53,7 +50,6 @@ impl LocalSidecars {
 impl Drop for LocalSidecars {
     fn drop(&mut self) {
         self.kill_children();
-        // PoC compose down is async; best-effort sync docker compose down.
         if let Some(info) = self.poc.take() {
             let compose = info.compose_file.clone();
             let repo = info.repo.clone();

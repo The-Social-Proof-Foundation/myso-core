@@ -4,7 +4,7 @@
 #
 # Shared HTTP helpers for proof-of-creativity oracle E2E scripts (myso-core).
 
-: "${POC_ORACLE_URL:=http://127.0.0.1:8000}"
+: "${POC_ORACLE_URL:=http://127.0.0.1:8001}"
 : "${POC_ORACLE_NETWORK:=localnet}"
 : "${POC_USE_DIRECT_MOVE:=0}"
 : "${POC_E2E_SUBMIT_OVERRIDE:=1}"
@@ -16,15 +16,22 @@ poc_oracle_base_url() {
 }
 
 poc_oracle_health_ok() {
-    local base health ready integration
+    local base health mysocial ready integration
     base="$(poc_oracle_base_url)"
-    health="$(curl -sf "${base}/oracle/health?network=${POC_ORACLE_NETWORK}" 2>/dev/null)" || {
-        echo "PoC oracle health check failed at ${base}/oracle/health?network=${POC_ORACLE_NETWORK}" >&2
-        echo "Start PoC stack: myso start --with-poc (or docker compose --profile app in proof-of-creativity)" >&2
-        return 1
-    }
-    ready="$(echo "$health" | jq -r '.mysocial.ready_for_submission // false')"
-    integration="$(echo "$health" | jq -r '.mysocial.integration_requested // false')"
+    health="$(curl -sf "${base}/oracle/health?network=${POC_ORACLE_NETWORK}" 2>/dev/null)" || health=''
+    if [[ -n "$health" ]]; then
+        mysocial="$(echo "$health" | jq -c '.mysocial // empty' 2>/dev/null)"
+    fi
+    if [[ -z "${mysocial:-}" || "$mysocial" == "null" ]]; then
+        health="$(curl -sf "${base}/health" 2>/dev/null)" || {
+            echo "PoC API health check failed at ${base}/health" >&2
+            echo "Start PoC stack: myso start --with-poc (or docker compose --profile app in proof-of-creativity)" >&2
+            return 1
+        }
+        mysocial="$(echo "$health" | jq -c '.components.mysocial // .mysocial // empty' 2>/dev/null)"
+    fi
+    ready="$(echo "$mysocial" | jq -r '.ready_for_submission // false')"
+    integration="$(echo "$mysocial" | jq -r '.integration_requested // false')"
     if [[ "$ready" == "true" ]]; then
         return 0
     fi
@@ -32,7 +39,7 @@ poc_oracle_health_ok() {
         return 0
     fi
     echo "PoC oracle integration is enabled but not ready for submission." >&2
-    echo "  health: $health" >&2
+    echo "  mysocial: $mysocial" >&2
     echo "Fix: set MYSO_INTEGRATION_ENABLED=true and ORACLE_PRIVATE_KEY_LOCALNET in proof-of-creativity/.env" >&2
     echo "  (myso start --with-poc writes these; or run ensure_poc_oracle_key_in_env from poc-oracle-common.sh)" >&2
     echo "For E2E score/creator overrides also set POC_E2E_SUBMIT_OVERRIDE=1 in proof-of-creativity/.env" >&2

@@ -2208,7 +2208,7 @@ pub struct BcsSpotMarketCreatedEvent {
     primary_post_id: AccountAddress,
     created_at_ms: u64,
     betting_options: Vec<String>,
-    resolution_window_ms: Option<u64>,
+    resolution_at_ms: u64,
     max_resolution_window_ms: Option<u64>,
 }
 
@@ -5298,7 +5298,7 @@ fn parse_spot_event(
                 "primary_post_id": addr_to_string(&ev.primary_post_id),
                 "created_at_ms": ev.created_at_ms,
                 "betting_options": ev.betting_options,
-                "resolution_window_ms": ev.resolution_window_ms,
+                "resolution_at_ms": ev.resolution_at_ms,
                 "max_resolution_window_ms": ev.max_resolution_window_ms,
             })))
         }

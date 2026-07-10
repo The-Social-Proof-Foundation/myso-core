@@ -8,6 +8,7 @@
 
 pub mod canonicalize;
 pub mod compiler;
+pub mod deadline;
 pub mod ingest;
 pub mod llm;
 pub mod rules;

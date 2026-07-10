@@ -12,7 +12,7 @@ use crate::types::MarketStatus;
 pub struct MarketRow {
     pub id: Uuid,
     pub post_id: String,
-    pub spot_record_id: Option<String>,
+    pub spot_market_object_id: Option<String>,
     pub creator: Option<String>,
     pub claim_text: String,
     pub betting_options: serde_json::Value,
@@ -29,7 +29,7 @@ pub struct MarketRow {
 }
 
 const MARKET_COLUMNS: &str = r#"
-    id, post_id, spot_record_id, creator, claim_text, betting_options, status,
+    id, post_id, spot_market_object_id, creator, claim_text, betting_options, status,
     status_reason, on_chain_status, last_transition_at,
     review_id, resolver_definition_id, resolution_window_ms, max_resolution_window_ms,
     created_at, updated_at
@@ -49,11 +49,12 @@ pub async fn insert_market(
     creator: &str,
     claim_text: &str,
 ) -> anyhow::Result<Uuid> {
+    // markets.post_id is indexed but not UNIQUE after claim→market redesign; use NOT EXISTS.
     let row: Option<(Uuid,)> = sqlx::query_as(
         r#"
         INSERT INTO markets (post_id, creator, claim_text, status)
-        VALUES ($1, $2, $3, 'post_created')
-        ON CONFLICT (post_id) DO NOTHING
+        SELECT $1, $2, $3, 'post_created'
+        WHERE NOT EXISTS (SELECT 1 FROM markets WHERE post_id = $1)
         RETURNING id
         "#,
     )
@@ -65,7 +66,7 @@ pub async fn insert_market(
     if let Some(id) = row {
         return Ok(id.0);
     }
-    let existing: (Uuid,) = sqlx::query_as("SELECT id FROM markets WHERE post_id = $1")
+    let existing: (Uuid,) = sqlx::query_as("SELECT id FROM markets WHERE post_id = $1 LIMIT 1")
         .bind(post_id)
         .fetch_one(pool)
         .await?;
@@ -218,19 +219,52 @@ pub async fn transition_with_metadata(
     Ok(())
 }
 
+pub async fn set_spot_market_object_id(
+    pool: &PgPool,
+    market_id: Uuid,
+    spot_market_object_id: &str,
+    ctx: TransitionContext,
+) -> anyhow::Result<()> {
+    apply_market_transition(pool, market_id, &LifecycleEvent::CreateTxConfirmed, &ctx).await?;
+    sqlx::query(
+        "UPDATE markets SET spot_market_object_id = $2, updated_at = NOW() WHERE id = $1",
+    )
+    .bind(market_id)
+    .bind(spot_market_object_id)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+/// Legacy name — stores the on-chain SpotMarket object id.
 pub async fn set_spot_record_id(
     pool: &PgPool,
     market_id: Uuid,
-    spot_record_id: &str,
+    spot_market_object_id: &str,
 ) -> anyhow::Result<()> {
     let mut ctx = default_context_for(&LifecycleEvent::CreateTxConfirmed);
     ctx.on_chain_status = Some(1);
-    apply_market_transition(pool, market_id, &LifecycleEvent::CreateTxConfirmed, &ctx).await?;
+    set_spot_market_object_id(pool, market_id, spot_market_object_id, ctx).await
+}
+
+pub async fn set_market_resolution_timing(
+    pool: &PgPool,
+    market_id: Uuid,
+    resolution_window_ms: i64,
+    max_resolution_window_ms: i64,
+) -> anyhow::Result<()> {
     sqlx::query(
-        "UPDATE markets SET spot_record_id = $2, updated_at = NOW() WHERE id = $1",
+        r#"
+        UPDATE markets SET
+            resolution_window_ms = $2,
+            max_resolution_window_ms = $3,
+            updated_at = NOW()
+        WHERE id = $1
+        "#,
     )
     .bind(market_id)
-    .bind(spot_record_id)
+    .bind(resolution_window_ms)
+    .bind(max_resolution_window_ms)
     .execute(pool)
     .await?;
     Ok(())

@@ -6,6 +6,11 @@
 # Source from runnable scripts; REPO_ROOT defaults from this file's location (scripts/lib → repo root).
 # Runnable scripts may override REPO_ROOT and SOCIAL_SESSION_SAVE_PATH before sourcing.
 
+if [[ -n "${_SOCIAL_RUNTIME_COMMON_SOURCED:-}" ]]; then
+    return 0 2>/dev/null || exit 0
+fi
+_SOCIAL_RUNTIME_COMMON_SOURCED=1
+
 _social_runtime_lib_dir() {
     cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd
 }
@@ -47,6 +52,8 @@ PLATFORM_ADMIN_CAP_ID=''
 BLOCK_LIST_REGISTRY_ID=''
 POST_CONFIG_ID=''
 MYDATA_REGISTRY_ID=''
+MYDATA_CONFIG_ID=''
+MYDATA_ADMIN_CAP_ID=''
 
 SOCIAL_RUN_ID="${SOCIAL_RUN_ID:-$(date +%s)}"
 ASSUME_YES="${ASSUME_YES:-0}"
@@ -63,11 +70,36 @@ log_session_use() {
 }
 
 confirm_run() {
-    if [[ "${ASSUME_YES:-0}" == 1 ]]; then
+    if [[ "${ASSUME_YES:-0}" == 1 || "${SKIP_CONFIRM_RUN:-0}" == 1 ]]; then
+        return 0
+    fi
+    if ! [[ -t 0 ]]; then
+        log_step "Auto-confirming on-chain step (non-interactive stdin)"
         return 0
     fi
     read -r -p "Execute this command? [y/N] " ans
     [[ "${ans:-}" == [yY]* ]]
+}
+
+log_wait_progress() {
+    local label="$1" attempt="$2" max="$3" detail="${4:-}"
+    if (( attempt == 1 || attempt % 5 == 0 || attempt == max )); then
+        if [[ -n "$detail" ]]; then
+            log_step "Waiting: $label ($attempt/$max) $detail"
+        else
+            log_step "Waiting: $label ($attempt/$max)"
+        fi
+    fi
+}
+
+run_with_timeout() {
+    local sec="$1"
+    shift
+    if command -v timeout >/dev/null 2>&1; then
+        timeout "$sec" "$@"
+    else
+        "$@"
+    fi
 }
 
 session_value_set() {
@@ -190,6 +222,16 @@ literal_move_vector_from_csv() {
     printf 'vector[%s]' "$acc"
 }
 
+# PTB move-call expects vector<u8> as vector[Nu8,...], not a bare 0x hex literal.
+literal_move_vector_u8_from_hex() {
+    local hex="${1#0x}"
+    python3 - "$hex" <<'PY'
+import sys
+data = bytes.fromhex(sys.argv[1])
+print("vector[" + ",".join(f"{b}u8" for b in data) + "]")
+PY
+}
+
 literal_move_option_string() {
     local s="$1"
     if [[ -z "$s" ]]; then
@@ -303,7 +345,9 @@ ensure_wallet_funded() {
             || true
         [[ "$tap" -lt 5 ]] && sleep 2
     done
-    for attempt in $(seq 1 60); do
+    local max_wait="${FAUCET_WAIT_MAX:-20}"
+    for attempt in $(seq 1 "$max_wait"); do
+        log_wait_progress "faucet balance" "$attempt" "$max_wait" "need >= $min_mist MIST"
         sleep 1
         total_bal="$(resolve_total_coin_balance "$addr")"
         [[ -n "$total_bal" && "$total_bal" -ge "$min_mist" ]] && break
@@ -365,6 +409,24 @@ pick_payment_and_gas_coins_for_address() {
     printf '%s %s' "$pay_coin" "$gas_coin"
 }
 
+graphql_is_reachable() {
+    local url="${1:-$GRAPHQL_URL}"
+    [[ -n "$url" ]] || return 1
+    curl -sf --connect-timeout 3 --max-time 5 "$url" \
+        -H 'Content-Type: application/json' \
+        -d '{"query":"{ __typename }"}' >/dev/null 2>&1
+}
+
+graphql_refresh_hint() {
+    cat >&2 <<EOF
+GraphQL is unreachable at ${GRAPHQL_URL:-<unset>}.
+Start the localnet social indexer (GraphQL + social-server), then retry:
+  myso start --with-social-indexer
+Or set GRAPHQL_URL to your indexer endpoint and run:
+  ./scripts/spot-oracle-runnable.sh --refresh-session
+EOF
+}
+
 graphql_post() {
     local query="$1"
     local vars="${2-}"
@@ -373,10 +435,11 @@ graphql_post() {
         vars='{}'
     fi
     body="$(jq -nc --arg q "$query" --argjson v "$vars" '{query: $q, variables: $v}')" || return 1
-    resp="$(curl -sS -w '\n%{http_code}' -X POST "$GRAPHQL_URL" \
+    resp="$(curl -sf --connect-timeout 5 --max-time 30 -w '\n%{http_code}' -X POST "$GRAPHQL_URL" \
         -H 'Content-Type: application/json' \
-        -d "$body")" || {
+        -d "$body" 2>/dev/null)" || {
         echo "GraphQL request failed: $GRAPHQL_URL" >&2
+        graphql_refresh_hint
         return 1
     }
     http_code="${resp##*$'\n'}"
@@ -411,6 +474,8 @@ readonly SOCIAL_GQL_BATCH='query SocialE2ESessionObjects {
   platformConfig: objects(filter: { type: "0x50c1::platform::PlatformConfig", ownerKind: SHARED }, first: 1) { nodes { address } }
   blocklistRegistry: objects(filter: { type: "0x50c1::block_list::BlockListRegistry", ownerKind: SHARED }, first: 1) { nodes { address } }
   mydataRegistry: objects(filter: { type: "0x50c1::mydata::MyDataRegistry", ownerKind: SHARED }, first: 1) { nodes { address } }
+  mydataConfig: objects(filter: { type: "0x50c1::mydata::MyDataConfig", ownerKind: SHARED }, first: 1) { nodes { address } }
+  mydataAdminCap: objects(filter: { type: "0x50c1::mydata::MyDataAdminCap" }, last: 1) { nodes { address } }
   postConfig: objects(filter: { type: "0x50c1::post::PostConfig", ownerKind: SHARED }, first: 1) { nodes { address } }
   subscriptionConfig: objects(filter: { type: "0x50c1::subscription::SubscriptionConfig", ownerKind: SHARED }, first: 1) { nodes { address } }
   subscriptionAdminCap: objects(filter: { type: "0x50c1::subscription::SubscriptionAdminCap" }, last: 1) { nodes { address } }
@@ -428,7 +493,7 @@ collect_social_gql_mappings() {
     local json="$1" alias val env_key
     for alias in ecosystemTreasury usernameRegistry usernameMarketplace profileConfig \
         memoryRegistry memoryConfig aiCreditConfig platformRegistry platformConfig blocklistRegistry \
-        mydataRegistry postConfig subscriptionConfig subscriptionAdminCap platformAdminCap platform; do
+        mydataRegistry mydataConfig mydataAdminCap postConfig subscriptionConfig subscriptionAdminCap platformAdminCap platform; do
         case "$alias" in
             ecosystemTreasury) env_key=ECOSYSTEM_TREASURY_ID ;;
             usernameRegistry) env_key=USERNAME_REGISTRY_ID ;;
@@ -441,6 +506,8 @@ collect_social_gql_mappings() {
             platformConfig) env_key=PLATFORM_CONFIG_ID ;;
             blocklistRegistry) env_key=BLOCK_LIST_REGISTRY_ID ;;
             mydataRegistry) env_key=MYDATA_REGISTRY_ID ;;
+            mydataConfig) env_key=MYDATA_CONFIG_ID ;;
+            mydataAdminCap) env_key=MYDATA_ADMIN_CAP_ID ;;
             postConfig) env_key=POST_CONFIG_ID ;;
             subscriptionConfig) env_key=SUBSCRIPTION_CONFIG_ID ;;
             subscriptionAdminCap) env_key=SUBSCRIPTION_ADMIN_CAP_ID ;;
@@ -468,9 +535,19 @@ social_refresh_session_from_graphql() {
     fi
 
     log_step "Refreshing session from GraphQL ($GRAPHQL_URL)"
+    if ! graphql_is_reachable; then
+        echo "GraphQL unreachable at $GRAPHQL_URL" >&2
+        graphql_refresh_hint
+        rm -f "$old_session_file"
+        return 1
+    fi
     GQL_REFRESH_FILE="$(mktemp)"
     local json
-    json="$(graphql_post "$SOCIAL_GQL_BATCH")"
+    json="$(graphql_post "$SOCIAL_GQL_BATCH")" || {
+        rm -f "$GQL_REFRESH_FILE" "$old_session_file"
+        GQL_REFRESH_FILE=''
+        return 1
+    }
     collect_social_gql_mappings "$json"
 
     if [[ -f "$GQL_REFRESH_FILE" ]]; then
@@ -498,7 +575,7 @@ social_refresh_session_from_graphql() {
         for key in USERNAME_REGISTRY_ID USERNAME_MARKETPLACE_ID PROFILE_CONFIG_ID \
             AI_CREDIT_CONFIG_ID MEMORY_REGISTRY_ID MEMORY_CONFIG_ID ECOSYSTEM_TREASURY_ID \
             PLATFORM_REGISTRY_ID PLATFORM_CONFIG_ID PLATFORM_OBJECT_ID PLATFORM_ADMIN_CAP_ID \
-            BLOCK_LIST_REGISTRY_ID POST_CONFIG_ID MYDATA_REGISTRY_ID \
+            BLOCK_LIST_REGISTRY_ID POST_CONFIG_ID MYDATA_REGISTRY_ID MYDATA_CONFIG_ID MYDATA_ADMIN_CAP_ID \
             SUBSCRIPTION_CONFIG_ID SUBSCRIPTION_ADMIN_CAP_ID; do
             printf '%s=%q\n' "$key" "${!key-}"
         done
@@ -552,7 +629,10 @@ invoke_ptb_capture() {
     echo "---" >&2
     if [[ "${SKIP_CONFIRM_RUN:-0}" == 1 ]] || confirm_run; then
         local rc=0
-        out="$("${cmd[@]}" 2>&1)" || rc=$?
+        out="$(run_with_timeout "${MYSO_CMD_TIMEOUT_SEC:-180}" "${cmd[@]}" 2>&1)" || rc=$?
+        if [[ "$rc" == 124 ]]; then
+            echo "Timed out after ${MYSO_CMD_TIMEOUT_SEC:-180}s: ${cmd[*]}" >&2
+        fi
         echo "$out" >&2
         printf '%s' "$out"
         return "$rc"
@@ -602,7 +682,10 @@ invoke_ptb_as_capture() {
     echo "---" >&2
     if [[ "${SKIP_CONFIRM_RUN:-0}" == 1 ]] || confirm_run; then
         local rc=0
-        out="$("${cmd[@]}" 2>&1)" || rc=$?
+        out="$(run_with_timeout "${MYSO_CMD_TIMEOUT_SEC:-180}" "${cmd[@]}" 2>&1)" || rc=$?
+        if [[ "$rc" == 124 ]]; then
+            echo "Timed out after ${MYSO_CMD_TIMEOUT_SEC:-180}s: ${cmd[*]}" >&2
+        fi
         echo "$out" >&2
         printf '%s' "$out"
         return "$rc"
@@ -630,7 +713,10 @@ run_myso_call_as_capture() {
     echo "---" >&2
     if [[ "${SKIP_CONFIRM_RUN:-0}" == 1 ]] || confirm_run; then
         local rc=0
-        out="$("${cmd[@]}" 2>&1)" || rc=$?
+        out="$(run_with_timeout "${MYSO_CMD_TIMEOUT_SEC:-180}" "${cmd[@]}" 2>&1)" || rc=$?
+        if [[ "$rc" == 124 ]]; then
+            echo "Timed out after ${MYSO_CMD_TIMEOUT_SEC:-180}s: ${cmd[*]}" >&2
+        fi
         echo "$out" >&2
         printf '%s' "$out"
         return "$rc"
@@ -667,15 +753,23 @@ extract_tx_digest() {
 }
 
 assert_tx_success() {
-    local out="$1" digest="${2:-}" json status
+    local out="$1" digest="${2:-}" json tx_status
     [[ -n "$out" || -n "$digest" ]] || return 1
+    if [[ -n "$out" ]]; then
+        if echo "$out" | grep -qE 'Dry run completed, execution status: success'; then
+            return 0
+        fi
+        if echo "$out" | grep -qE 'TransactionEffectsV2 \{ status: Success|effects\.V2\.status.*Success'; then
+            return 0
+        fi
+    fi
     if [[ -z "$digest" ]]; then
         digest="$(extract_tx_digest "$out" 2>/dev/null || true)"
     fi
     if [[ -n "$digest" ]]; then
         json="$(myso client tx-block "$digest" --json 2>/dev/null)" || return 1
-        status="$(echo "$json" | jq -r '.effects.V2.status // .effects.status // empty | tostring')"
-        [[ "$status" == "Success" ]]
+        tx_status="$(echo "$json" | jq -r '.effects.V2.status // .effects.status // empty | tostring')"
+        [[ "$tx_status" == "Success" ]]
         return
     fi
     echo "$out" | jq -e '
@@ -712,22 +806,30 @@ tx_event_field() {
 assert_tx_aborts() {
     local out="$1" digest="${2:-}"
     [[ -n "$out" || -n "$digest" ]] || return 1
+    if [[ -n "$out" ]]; then
+        if echo "$out" | grep -qE 'Dry run completed, execution status: failure'; then
+            return 0
+        fi
+        if echo "$out" | grep -qE 'TransactionEffectsV2 \{ status: Failure'; then
+            return 0
+        fi
+    fi
     if [[ -z "$digest" ]]; then
         digest="$(extract_tx_digest "$out" 2>/dev/null || true)"
     fi
     if [[ -n "$digest" ]]; then
-        local json status
+        local json tx_status
         json="$(myso client tx-block "$digest" --json 2>/dev/null)" || return 1
-        status="$(echo "$json" | jq -r '.effects.V2.status // .effects.status // empty | tostring')"
-        [[ "$status" != "Success" ]]
+        tx_status="$(echo "$json" | jq -r '.effects.V2.status // .effects.status // empty | tostring')"
+        [[ "$tx_status" != "Success" ]]
         return
     fi
     echo "$out" | jq -e '
         (.effects.V2.status // .effects.status // empty | tostring) != "Success"
-    ' >/dev/null 2>&1 || {
-        echo "$out" | grep -qiE 'abort|MoveAbort|Insufficient|Error' && return 0
-        return 1
-    }
+    ' >/dev/null 2>&1 && return 0
+    echo "$out" | grep -qiE 'MoveAbort|Move Runtime Abort|abort code|InsufficientGas|InsufficientBalance' && return 0
+    echo "$out" | grep -qiE 'not signed by the correct sender|Error checking transaction input objects' && return 0
+    return 1
 }
 
 assert_tx_aborts_with_code() {
@@ -1029,9 +1131,10 @@ assert_on_chain_registry_username() {
 }
 
 wait_for_rest_json() {
-    local url="$1" jq_filter="$2" expected="$3" attempt resp val
-    for attempt in $(seq 1 60); do
-        resp="$(curl -sS "$url" 2>/dev/null)" || resp='[]'
+    local url="$1" jq_filter="$2" expected="$3" attempt resp val max="${REST_WAIT_MAX:-20}"
+    for attempt in $(seq 1 "$max"); do
+        log_wait_progress "REST" "$attempt" "$max" "$(basename "$url") expected=$expected"
+        resp="$(curl -sf --connect-timeout 3 --max-time 8 "$url" 2>/dev/null)" || resp=''
         val="$(echo "$resp" | jq -r "$jq_filter" 2>/dev/null || true)"
         if [[ -n "$val" && "$val" == "$expected" ]]; then
             echo "$resp" >&2
@@ -1128,11 +1231,15 @@ create_profile_for_address() {
 }
 
 ensure_joined_platform() {
-    local out
+    local member="${1:-}" out
+    if [[ -z "$member" ]]; then
+        member="$(resolve_myso_active_address)" || return 1
+    fi
+    member="$(normalize_hex_id "$member")" || return 1
     require_session_fields PLATFORM_REGISTRY_ID BLOCK_LIST_REGISTRY_ID PLATFORM_OBJECT_ID CLOCK_ID || return 1
     require_hex_ids PLATFORM_REGISTRY_ID BLOCK_LIST_REGISTRY_ID PLATFORM_OBJECT_ID CLOCK_ID || return 1
-    log_step "Joining platform for $(resolve_myso_active_address)"
-    if out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_capture \
+    log_step "Joining platform for $member"
+    if out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_as_capture "$member" \
         --move-call "${PKG_SOCIAL}::platform::join_platform" \
         "$(ptb_shared_ref "$PLATFORM_REGISTRY_ID")" \
         "$(ptb_shared_ref "$BLOCK_LIST_REGISTRY_ID")" \

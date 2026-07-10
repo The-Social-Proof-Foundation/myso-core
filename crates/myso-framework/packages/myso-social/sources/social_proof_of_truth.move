@@ -176,6 +176,7 @@ module social_contracts::social_proof_of_truth {
         bets: vector<SpotBet>,
         resolution_window_ms: Option<u64>,
         max_resolution_window_ms: Option<u64>,
+        resolution_at_ms: u64,
         last_resolution_at_ms: u64,
         resolution_timestamp_ms: u64,
         pending_payouts: Table<address, u64>,
@@ -322,7 +323,7 @@ module social_contracts::social_proof_of_truth {
         primary_post_id: address,
         created_at_ms: u64,
         betting_options: vector<String>,
-        resolution_window_ms: Option<u64>,
+        resolution_at_ms: u64,
         max_resolution_window_ms: Option<u64>,
     }
 
@@ -632,11 +633,11 @@ module social_contracts::social_proof_of_truth {
         _: &SpotOracleAdminCap,
         config: &SpotConfig,
         registry: &mut SpotClaimRegistry,
-        claim: &SpotClaim,
+        claim: &mut SpotClaim,
         primary_post: &mut Post,
         market_key_hash: vector<u8>,
         betting_options: vector<String>,
-        resolution_window_ms: Option<u64>,
+        resolution_at_ms: u64,
         max_resolution_window_ms: Option<u64>,
         clock: &Clock,
         ctx: &mut TxContext
@@ -644,6 +645,9 @@ module social_contracts::social_proof_of_truth {
         assert!(config.truth_enabled, EDisabled);
         assert_valid_hash(&market_key_hash);
         assert!(!table::contains(&registry.markets_by_key_hash, market_key_hash), EMarketExists);
+
+        let now_ms = clock::timestamp_ms(clock);
+        assert!(resolution_at_ms > now_ms, ETooEarly);
 
         let options_len = vector::length(&betting_options);
         assert!(options_len >= config.min_betting_options, EInvalidAmount);
@@ -662,6 +666,9 @@ module social_contracts::social_proof_of_truth {
 
         let claim_id = object::uid_to_address(&claim.id);
         let primary_post_id = post::get_id_address(primary_post);
+        if (!table::contains(&registry.post_to_claim, primary_post_id)) {
+            link_post_to_claim_internal(registry, claim, primary_post);
+        };
         let primary_creator = post::get_post_owner(primary_post);
 
         let market = SpotMarket {
@@ -678,8 +685,9 @@ module social_contracts::social_proof_of_truth {
             option_escrow: table::new(ctx),
             user_option_amounts: table::new(ctx),
             bets: vector::empty(),
-            resolution_window_ms,
+            resolution_window_ms: option::none(),
             max_resolution_window_ms,
+            resolution_at_ms,
             last_resolution_at_ms: 0,
             resolution_timestamp_ms: 0,
             pending_payouts: table::new(ctx),
@@ -696,8 +704,8 @@ module social_contracts::social_proof_of_truth {
         let market_id = object::uid_to_address(&market.id);
         let hash_copy = market.market_key_hash;
         let betting_options_copy = market.betting_options;
-        let resolution_window = market.resolution_window_ms;
         let max_resolution_window = market.max_resolution_window_ms;
+        let resolution_at = market.resolution_at_ms;
         let created_at_ms = market.created_at_ms;
 
         table::add(&mut registry.markets_by_key_hash, hash_copy, market_id);
@@ -716,7 +724,7 @@ module social_contracts::social_proof_of_truth {
             primary_post_id,
             created_at_ms,
             betting_options: betting_options_copy,
-            resolution_window_ms: resolution_window,
+            resolution_at_ms: resolution_at,
             max_resolution_window_ms: max_resolution_window,
         });
     }
@@ -785,15 +793,22 @@ module social_contracts::social_proof_of_truth {
         link_post_to_claim_internal(registry, &mut claim, post);
 
         let betting_options_copy = betting_options;
+        let resolution_at_ms = if (option::is_some(&max_resolution_window_ms)) {
+            created_at_ms + *option::borrow(&max_resolution_window_ms)
+        } else if (option::is_some(&resolution_window_ms)) {
+            created_at_ms + *option::borrow(&resolution_window_ms)
+        } else {
+            created_at_ms + DEFAULT_MAX_RESOLUTION_WINDOW_MS
+        };
         create_spot_market_for_claim(
             oracle_cap,
             config,
             registry,
-            &claim,
+            &mut claim,
             post,
             semantic_hash,
             betting_options,
-            resolution_window_ms,
+            resolution_at_ms,
             max_resolution_window_ms,
             clock,
             ctx,
@@ -1052,10 +1067,7 @@ module social_contracts::social_proof_of_truth {
         assert!(option::is_none(&market.outcome), EAlreadyResolved);
 
         let now_ms = clock::timestamp_ms(clock);
-        if (option::is_some(&market.resolution_window_ms)) {
-            let window = *option::borrow(&market.resolution_window_ms);
-            assert!(now_ms >= market.created_at_ms + window, ETooEarly);
-        };
+        assert!(now_ms >= market.resolution_at_ms, ETooEarly);
 
         assert_valid_option_id(market, outcome_option_id);
         let reasoning_len = string::length(&reasoning);
@@ -1327,7 +1339,7 @@ module social_contracts::social_proof_of_truth {
         assert!(option::is_some(&market.max_resolution_window_ms), EInvalidAmount);
         let now_ms = clock::timestamp_ms(clock);
         let max_window = *option::borrow(&market.max_resolution_window_ms);
-        assert!(now_ms >= market.created_at_ms + max_window, ETooEarly);
+        assert!(now_ms >= market.resolution_at_ms + max_window, ETooEarly);
         assert!(market.status == STATUS_OPEN || market.status == STATUS_DAO_REQUIRED, EWrongStatus);
         assert!(vector::length(&market.bets) > 0, ENoBets);
 
@@ -1764,11 +1776,13 @@ module social_contracts::social_proof_of_truth {
         created_at_ms: u64,
         resolution_window_ms: Option<u64>,
         max_resolution_window_ms: Option<u64>,
+        resolution_at_ms: u64,
         last_resolution_at_ms: u64,
     ) {
         market.created_at_ms = created_at_ms;
         market.resolution_window_ms = resolution_window_ms;
         market.max_resolution_window_ms = max_resolution_window_ms;
+        market.resolution_at_ms = resolution_at_ms;
         market.last_resolution_at_ms = last_resolution_at_ms;
     }
 

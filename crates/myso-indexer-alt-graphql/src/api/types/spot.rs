@@ -509,6 +509,10 @@ impl SpotMarket {
         self.inner.deadline_ms
     }
 
+    async fn resolution_at_ms(&self) -> Option<i64> {
+        self.inner.deadline_ms
+    }
+
     async fn betting_options(&self) -> Vec<String> {
         parse_betting_options(&self.inner.betting_options)
     }

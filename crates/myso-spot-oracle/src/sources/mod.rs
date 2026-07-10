@@ -3,13 +3,13 @@
 
 //! `TrustedSource` — the deterministic settlement contract. Produces auditable
 //! evidence (URL + content hash + optional raw body) that can settle a market at
-//! maturity. Separate from `DiscoverySource` (candidate crawl): a factual source
-//! may have a `DiscoverySource` impl in discovery-core and an independent
-//! `TrustedSource` impl here. No adapter implementation is shared across crates;
-//! only the conceptual capability is shared.
+//! maturity. Sources are fetched directly by SPoT at resolution time.
 
 pub mod adapters;
-pub mod discovery_resolve;
+pub mod direct_fetch;
+pub mod http_fetch;
+pub mod rate_limit;
+pub mod source_config;
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -18,21 +18,19 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use myso_discovery_service_core::sources::{DiscoveryDomain, SourceHealth, SourceMetadata};
-
 use crate::resolver::ResolverDefinition;
-use crate::sources::discovery_resolve::DiscoveryResolveCtx;
-use crate::store::DiscoverySourceRow;
+use crate::sources::source_config::{SourceDomain, SourceHealth, SourceMetadata};
+use crate::store::SpotTrustedSourceRow;
 
-/// Auditable evidence produced by a `TrustedSource::resolve` call. Persisted in
-/// `evidence` (resolver-owned — no FK to `discovery_assets`).
+pub use source_config::{load_sources_config, SourceConfig};
+
+/// Auditable evidence produced by a `TrustedSource::resolve` call.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SourceEvidence {
     pub adapter_id: String,
     pub source_url: String,
     /// SHA-256 hex of the fetched response body.
     pub content_hash: String,
-    /// Raw response body when `SPOT_ORACLE_STORE_RAW_EVIDENCE=true`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub raw_response: Option<String>,
     pub fetched_at: DateTime<Utc>,
@@ -40,41 +38,26 @@ pub struct SourceEvidence {
     pub payload: serde_json::Value,
 }
 
-/// Deterministic settlement contract — "produce evidence that can settle a market."
-/// Pure-oracle adapters (chainlink, coingecko, coinbase) and the resolve side of
-/// factual adapters (github_releases, rss_event, http_official) implement this in
-/// spot-oracle. The `DiscoverySource` crawl side of factual adapters lives in
-/// discovery-core and is not shared with these impls.
+/// Deterministic settlement contract — produce evidence that can settle a market.
 #[async_trait]
 pub trait TrustedSource: Send + Sync {
     fn id(&self) -> &str;
-    fn domain(&self) -> DiscoveryDomain;
+    fn domain(&self) -> SourceDomain;
     fn supports(&self, def: &ResolverDefinition) -> bool;
     async fn resolve(&self, def: &ResolverDefinition) -> anyhow::Result<SourceEvidence>;
     async fn health(&self) -> SourceHealth;
     fn metadata(&self) -> SourceMetadata;
 }
 
-/// Holds `TrustedSource` impls present in the binary, keyed by adapter id. Built at
-/// startup by cross-referencing enabled sources with the default registry.
+/// Holds `TrustedSource` impls present in the binary, keyed by adapter id.
 #[derive(Clone, Default)]
 pub struct ResolverRegistry {
     by_id: HashMap<String, Arc<dyn TrustedSource>>,
-    pub discovery_ctx: DiscoveryResolveCtx,
 }
 
 impl ResolverRegistry {
     pub fn new() -> Self {
         Self::default()
-    }
-
-    pub fn with_discovery_ctx(mut self, ctx: DiscoveryResolveCtx) -> Self {
-        self.discovery_ctx = ctx;
-        self
-    }
-
-    pub fn discovery_ctx(&self) -> &DiscoveryResolveCtx {
-        &self.discovery_ctx
     }
 
     pub fn register(&mut self, src: Arc<dyn TrustedSource>) {
@@ -89,8 +72,6 @@ impl ResolverRegistry {
         self.by_id.values().cloned().collect()
     }
 
-    /// Adapters that claim to support a given definition. The resolver engine
-    /// executes `resolve()` on these in trust-score order.
     pub fn supports(&self, def: &ResolverDefinition) -> Vec<Arc<dyn TrustedSource>> {
         self.by_id
             .values()
@@ -108,18 +89,16 @@ impl ResolverRegistry {
     }
 }
 
-/// Build the default registry from every `TrustedSource` impl compiled into the
-/// binary (live V1 adapters + scaffolded stubs).
-pub fn build_default_registry(discovery_ctx: DiscoveryResolveCtx) -> ResolverRegistry {
-    let mut reg = ResolverRegistry::new().with_discovery_ctx(discovery_ctx.clone());
-    for src in adapters::all_default_sources(discovery_ctx) {
+/// Build the default registry from every `TrustedSource` impl compiled into the binary.
+pub fn build_default_registry() -> ResolverRegistry {
+    let mut reg = ResolverRegistry::new();
+    for src in adapters::all_default_sources() {
         reg.register(src);
     }
     reg
 }
 
-/// Map discovery `adapter_type` (+ config hints) to TrustedSource ids in this binary.
-fn trusted_ids_for_row(row: &DiscoverySourceRow) -> Vec<String> {
+fn trusted_ids_for_row(row: &SpotTrustedSourceRow) -> Vec<String> {
     match row.adapter_type.as_str() {
         "rss" => vec!["rss_event".to_string()],
         "github_releases" => vec!["github_releases".to_string()],
@@ -131,6 +110,8 @@ fn trusted_ids_for_row(row: &DiscoverySourceRow) -> Vec<String> {
                 .unwrap_or("");
             if base.contains("coingecko") {
                 vec!["coingecko".to_string(), "http_official".to_string()]
+            } else if base.contains("coinbase") {
+                vec!["coinbase".to_string(), "http_official".to_string()]
             } else {
                 vec!["http_official".to_string()]
             }
@@ -142,13 +123,12 @@ fn trusted_ids_for_row(row: &DiscoverySourceRow) -> Vec<String> {
     }
 }
 
-/// Restrict the default registry to `TrustedSource` impls referenced by enabled
-/// `discovery_sources` rows.
+/// Restrict the default registry to `TrustedSource` impls referenced by enabled rows.
 pub fn build_registry_from_sources(
     default: &ResolverRegistry,
-    rows: &[DiscoverySourceRow],
+    rows: &[SpotTrustedSourceRow],
 ) -> ResolverRegistry {
-    let mut reg = ResolverRegistry::new().with_discovery_ctx(default.discovery_ctx.clone());
+    let mut reg = ResolverRegistry::new();
     for row in rows.iter().filter(|r| r.enabled) {
         for trusted_id in trusted_ids_for_row(row) {
             if let Some(src) = default.get(&trusted_id) {
@@ -159,7 +139,14 @@ pub fn build_registry_from_sources(
     if !rows.iter().any(|r| r.enabled) {
         return reg;
     }
-    for id in ["coingecko", "coinbase", "github_releases", "http_official", "rss_event"] {
+    for id in [
+        "coingecko",
+        "coinbase",
+        "chainlink",
+        "github_releases",
+        "http_official",
+        "rss_event",
+    ] {
         if let Some(src) = default.get(id) {
             if reg.get(id).is_none() {
                 reg.register(src);
@@ -167,23 +154,4 @@ pub fn build_registry_from_sources(
         }
     }
     reg
-}
-
-/// Build registry from Discovery `/v1/sources` summaries (no local YAML).
-pub fn build_registry_from_discovery_summaries(
-    default: &ResolverRegistry,
-    summaries: &[myso_discovery_service_core::api::SourceSummary],
-) -> ResolverRegistry {
-    let rows: Vec<DiscoverySourceRow> = summaries
-        .iter()
-        .map(|s| DiscoverySourceRow {
-            id: crate::store::uuid_v5_named(&s.id),
-            adapter_type: s.adapter_type.clone(),
-            domain: s.domain.clone(),
-            trust_score: s.trust_score,
-            enabled: s.enabled,
-            config: serde_json::json!({}),
-        })
-        .collect();
-    build_registry_from_sources(default, &rows)
 }

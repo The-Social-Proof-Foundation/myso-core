@@ -1,21 +1,26 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+//! Chainlink V1 settlement uses CoinGecko as the localnet price feed stand-in.
+
 use async_trait::async_trait;
-use myso_discovery_service_core::sources::{DiscoveryDomain, SourceHealth, SourceMetadata};
 
 use crate::resolver::{ResolverDefinition, ResolverKind, ResolverSpec};
-use crate::sources::discovery_resolve::{self, DiscoveryResolveCtx};
+use crate::sources::direct_fetch;
+use crate::sources::source_config::{SourceDomain, SourceHealth, SourceMetadata};
 use crate::sources::{SourceEvidence, TrustedSource};
 
-/// Chainlink V1 settlement uses Discovery price feeds (CoinGecko-backed in localnet YAML).
-pub struct ChainlinkAdapter {
-    discovery_ctx: DiscoveryResolveCtx,
-}
+pub struct ChainlinkAdapter;
 
 impl ChainlinkAdapter {
-    pub fn new(discovery_ctx: DiscoveryResolveCtx) -> Self {
-        Self { discovery_ctx }
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Default for ChainlinkAdapter {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -25,45 +30,38 @@ impl TrustedSource for ChainlinkAdapter {
         "chainlink"
     }
 
-    fn domain(&self) -> DiscoveryDomain {
-        DiscoveryDomain::Factual
+    fn domain(&self) -> SourceDomain {
+        SourceDomain::Factual
     }
 
     fn supports(&self, def: &ResolverDefinition) -> bool {
         def.resolver_kind == ResolverKind::PriceThreshold
-            && matches!(&def.spec, ResolverSpec::PriceThreshold { source_id, .. } if source_id == "chainlink")
+            && matches!(
+                &def.spec,
+                ResolverSpec::PriceThreshold { source_id, .. } if source_id == "chainlink"
+            )
     }
 
     async fn resolve(&self, def: &ResolverDefinition) -> anyhow::Result<SourceEvidence> {
         let ResolverSpec::PriceThreshold { asset, quote, .. } = &def.spec else {
             anyhow::bail!("chainlink: expected PriceThreshold spec");
         };
-        discovery_resolve::fetch_price(
-            &self.discovery_ctx,
-            self.id(),
-            "coingecko-simple-price",
-            asset,
-            quote,
-        )
-        .await
+        // V1 localnet: CoinGecko-backed price feed stand-in for Chainlink.
+        direct_fetch::fetch_coingecko_price(self.id(), asset, quote).await
     }
 
     async fn health(&self) -> SourceHealth {
         SourceHealth {
-            healthy: self.discovery_ctx.uses_discovery(),
-            message: if self.discovery_ctx.uses_discovery() {
-                "chainlink via Discovery".to_string()
-            } else {
-                "discovery client not configured".to_string()
-            },
+            healthy: true,
+            message: "chainlink via CoinGecko stand-in".to_string(),
         }
     }
 
     fn metadata(&self) -> SourceMetadata {
         SourceMetadata {
             id: self.id().to_string(),
-            description: "Chainlink price oracle via Discovery /v1/prices".to_string(),
-            domain: DiscoveryDomain::Factual,
+            description: "Chainlink price oracle (CoinGecko stand-in in V1)".to_string(),
+            domain: SourceDomain::Factual,
         }
     }
 }

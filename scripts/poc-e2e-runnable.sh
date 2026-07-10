@@ -9,11 +9,11 @@
 #   - ./scripts/bootstrap.sh completed
 #   - GraphQL :9125, fullnode :9000
 #   - PoC API :8000 (`myso start --with-poc` or manual docker compose --profile app)
-#   - DISCOVERY_EMBED_SECRET=discovery-secret on discovery + PoC
 #
 # Session: network.config/poc/poc-e2e-session.env
 #
 # Usage:
+#   ./scripts/poc-e2e-runnable.sh                              # interactive menu
 #   ASSUME_YES=1 ./scripts/poc-e2e-runnable.sh --run-all
 #   ASSUME_YES=1 ./scripts/poc-e2e-runnable.sh --run-all --skip-discovery
 #   ASSUME_YES=1 ./scripts/poc-e2e-runnable.sh --run-all --skip-claim
@@ -27,7 +27,6 @@ cd "$REPO_ROOT"
 
 SOCIAL_SESSION_SAVE_PATH="$REPO_ROOT/network.config/poc/poc-e2e-session.env"
 export SOCIAL_SESSION_SAVE_PATH
-export DISCOVERY_EMBED_SECRET="${DISCOVERY_EMBED_SECRET:-discovery-secret}"
 export ASSUME_YES="${ASSUME_YES:-0}"
 export SKIP_CONFIRM_RUN="${SKIP_CONFIRM_RUN:-1}"
 
@@ -50,7 +49,7 @@ ANALYZE_TX_DIGEST=''
 POC_CONFIG_SYNC_DIGEST=''
 
 usage() {
-    sed -n '2,22p' "$0" | sed 's/^# \?//'
+    sed -n '2,24p' "$0" | sed 's/^# \?//'
 }
 
 load_e2e_session() {
@@ -66,8 +65,10 @@ invoke_poc_oracle_post() {
 }
 
 preflight_stack() {
-    curl -sf "http://127.0.0.1:9000" >/dev/null 2>&1 || {
-        echo "Fullnode not reachable at http://127.0.0.1:9000" >&2
+    local rpc="${MYSO_RPC_URL:-http://127.0.0.1:9000}"
+    curl -sf -X POST "$rpc" -H 'content-type: application/json' \
+        -d '{"jsonrpc":"2.0","id":1,"method":"rpc.discover","params":[]}' >/dev/null 2>&1 || {
+        echo "Fullnode not reachable at $rpc (JSON-RPC rpc.discover failed)" >&2
         return 1
     }
     poc_oracle_stack_ready || return 1
@@ -75,16 +76,19 @@ preflight_stack() {
 }
 
 step_refresh_session() {
-    log_step "Refreshing PoC E2E session from GraphQL"
+    log_step "Refreshing PoC E2E session from GraphQL (proof-of-creativity-runnable)"
+    SOCIAL_SESSION_SAVE_PATH="$SOCIAL_SESSION_SAVE_PATH" \
+        ASSUME_YES="$ASSUME_YES" \
+        "$SCRIPT_DIR/proof-of-creativity-runnable.sh" --refresh-session
+    log_step "Refreshing PoC oracle post extras (poc-oracle-post-runnable)"
     invoke_poc_oracle_post --refresh-session
     load_e2e_session
+    log_step "Session refreshed (chain object IDs + PoC oracle extras)"
 }
 
 step_sync_oracle_and_env() {
-    poc_oracle_load_localnet_env
-    sync_poc_config_oracle_on_chain "$POC_DEFAULT_ORACLE_ADDRESS" || return 1
-    ensure_poc_oracle_key_in_env || return 1
-    poc_oracle_health_ok || return 1
+    load_e2e_session
+    poc_oracle_sync_worker_stack || return 1
 }
 
 step_create_post() {
@@ -136,20 +140,16 @@ step_tip_and_reserve() {
 }
 
 step_discovery_embed() {
-    log_step "Discovery embed leg (media corpus, REUSE_DB=1 when stack already up)"
-    REUSE_DB="${REUSE_DB:-1}" \
-        DISCOVERY_EMBED_SECRET="$DISCOVERY_EMBED_SECRET" \
-        DISCOVERY_EMBED_ENDPOINT="${DISCOVERY_EMBED_ENDPOINT:-http://127.0.0.1:8000/internal/discovery/embed}" \
-        KEEP_STACK="${KEEP_STACK:-1}" \
+    log_step "Off-network discovery embed leg (self-contained PoC discovery-worker)"
+    POC_ORACLE_URL="${POC_ORACLE_URL:-http://127.0.0.1:8000}" \
+        MYSO_POC_REPO="${MYSO_POC_REPO:-$REPO_ROOT/../proof-of-creativity}" \
         "$SCRIPT_DIR/discovery-poc-runnable.sh"
 }
 
 step_username_provision_and_claim() {
-    local poc_session poc_repo
-    poc_session="$REPO_ROOT/network.config/poc/poc-session.env"
     log_step "Username provision + mock claim (proof-of-creativity-runnable --username-flow)"
-    cp "$SOCIAL_SESSION_SAVE_PATH" "$poc_session"
-    ASSUME_YES="$ASSUME_YES" SKIP_CONFIRM_RUN="$SKIP_CONFIRM_RUN" \
+    SOCIAL_SESSION_SAVE_PATH="$SOCIAL_SESSION_SAVE_PATH" \
+        ASSUME_YES="$ASSUME_YES" SKIP_CONFIRM_RUN="$SKIP_CONFIRM_RUN" \
         "$SCRIPT_DIR/proof-of-creativity-runnable.sh" --username-flow
     load_e2e_session
 }
@@ -206,6 +206,46 @@ run_poc_e2e_all() {
     print_e2e_summary
 }
 
+show_menu() {
+    echo ""
+    echo "=== PoC E2E ==="
+    echo " 1) Full E2E loop (recommended)"
+    echo " 2) Refresh session from GraphQL"
+    echo " ---"
+    echo " Advanced"
+    echo " a) Full E2E — skip discovery embed"
+    echo " b) Full E2E — skip username claim"
+    echo " c) Full E2E — direct-move analyze (no worker wait)"
+    echo " ?) Help"
+    echo " q) Quit"
+    read -r -p "Choice: " choice
+    case "${choice:-}" in
+        1) run_poc_e2e_all ;;
+        2) step_refresh_session ;;
+        [Aa])
+            SKIP_DISCOVERY=1
+            run_poc_e2e_all
+            SKIP_DISCOVERY=0
+            ;;
+        [Bb])
+            SKIP_CLAIM=1
+            run_poc_e2e_all
+            SKIP_CLAIM=0
+            ;;
+        [Cc])
+            POC_USE_DIRECT_MOVE=1
+            export POC_USE_DIRECT_MOVE
+            run_poc_e2e_all
+            POC_USE_DIRECT_MOVE=0
+            export POC_USE_DIRECT_MOVE
+            ;;
+        \?) usage ;;
+        [Qq]) exit 0 ;;
+        *) echo "Invalid choice" ;;
+    esac
+    show_menu
+}
+
 main() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -225,7 +265,13 @@ main() {
     case "${RUN_MODE:-}" in
         refresh) step_refresh_session; exit 0 ;;
         run_all) run_poc_e2e_all; exit 0 ;;
-        '') usage; exit 1 ;;
+        '')
+            if [[ ! -t 0 ]]; then
+                echo "No TTY — use: ASSUME_YES=1 ./scripts/poc-e2e-runnable.sh --run-all" >&2
+                exit 1
+            fi
+            show_menu
+            ;;
         *) echo "Unknown run mode: $RUN_MODE" >&2; exit 1 ;;
     esac
 }

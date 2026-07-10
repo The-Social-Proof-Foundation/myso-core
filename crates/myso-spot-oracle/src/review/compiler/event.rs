@@ -5,13 +5,13 @@ use crate::resolver::ResolverSpec;
 use crate::review::compiler::{build_definition, default_betting_options, CompiledMarketSpec};
 use crate::review::CanonicalClaim;
 use crate::sources::ResolverRegistry;
-use crate::store::DiscoverySourceRow;
-use crate::types::{ClaimCategory, ResolverKind};
+use crate::store::SpotTrustedSourceRow;
+use crate::types::ResolverKind;
 
 pub fn compile(
     canonical: &CanonicalClaim,
     registry: &ResolverRegistry,
-    source_rows: &[DiscoverySourceRow],
+    source_rows: &[SpotTrustedSourceRow],
 ) -> anyhow::Result<CompiledMarketSpec> {
     let f = &canonical.normalized_fields;
     let hints = &f.resolver_hints;
@@ -31,7 +31,7 @@ pub fn compile(
 
     let betting_options = default_betting_options(canonical);
     let maturity_schedule =
-        super::maturity::compute_schedule(canonical, ClaimCategory::EventOccurrence);
+        super::maturity::compute_schedule(canonical);
 
     let preview = crate::resolver::ResolverDefinition {
         id: uuid::Uuid::new_v4(),
@@ -70,7 +70,7 @@ pub fn compile(
     ))
 }
 
-fn feed_url_from_sources(source_rows: &[DiscoverySourceRow]) -> Option<String> {
+fn feed_url_from_sources(source_rows: &[SpotTrustedSourceRow]) -> Option<String> {
     for row in source_rows {
         if row.adapter_type == "rss" {
             if let Some(urls) = row.config.get("feed_urls").and_then(|v| v.as_array()) {

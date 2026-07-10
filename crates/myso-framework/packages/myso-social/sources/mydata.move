@@ -1874,9 +1874,10 @@ module social_contracts::mydata {
 
     /// Key-server policy hook for profile-subscription-gated MyData: grant when [`has_access`] or
     /// [`subscription::is_subscription_valid`] for the linked profile service.
+    /// `id` is first so key-server `ValidPtb` can extract the encryption identity from arg 0.
     public entry fun mydata_approve_profile_subscription(
-        memory_config: &social_contracts::memory::MemoryConfig,
         id: vector<u8>,
+        memory_config: &social_contracts::memory::MemoryConfig,
         mydata: &MyData,
         account: &social_contracts::memory::MemoryAccount,
         service: &ProfileSubscriptionService,

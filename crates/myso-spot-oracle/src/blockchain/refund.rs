@@ -32,7 +32,11 @@ pub async fn submit_refund_unresolved(state: Arc<AppState>, job: &SpotJob) -> an
 
     if matches!(
         crate::types::MarketStatus::from_str(&market.status),
-        Some(crate::types::MarketStatus::Resolved | crate::types::MarketStatus::Refunded | crate::types::MarketStatus::Rejected)
+        Some(
+            crate::types::MarketStatus::Resolved
+                | crate::types::MarketStatus::Refunded
+                | crate::types::MarketStatus::Rejected
+        )
     ) {
         return Ok(());
     }
@@ -49,10 +53,10 @@ pub async fn submit_refund_unresolved(state: Arc<AppState>, job: &SpotJob) -> an
         return Ok(());
     }
 
-    let spot_record_id = market
-        .spot_record_id
+    let spot_market_object_id = market
+        .spot_market_object_id
         .as_deref()
-        .context("market missing spot_record_id for refund")?;
+        .context("market missing spot_market_object_id for refund")?;
 
     let nonce = format!("refund-{market_id}");
     let tx_id = state
@@ -60,7 +64,7 @@ pub async fn submit_refund_unresolved(state: Arc<AppState>, job: &SpotJob) -> an
         .insert_transaction(Some(market_id), "refund_unresolved", &nonce)
         .await?;
 
-    match build_and_submit_refund(&state.args, spot_record_id, &market.post_id).await {
+    match build_and_submit_refund(&state.args, spot_market_object_id, &market.post_id).await {
         Ok(digest) => {
             state
                 .store
@@ -79,7 +83,7 @@ pub async fn submit_refund_unresolved(state: Arc<AppState>, job: &SpotJob) -> an
                 .store
                 .apply_market_transition(market_id, &LifecycleEvent::RefundTxConfirmed, &ctx)
                 .await?;
-            info!(market_id = %market_id, digest, "refund_unresolved submitted");
+            info!(market_id = %market_id, digest = %digest, "refund_unresolved confirmed");
             Ok(())
         }
         Err(err) => {
@@ -99,7 +103,7 @@ pub async fn submit_refund_unresolved(state: Arc<AppState>, job: &SpotJob) -> an
 
 async fn build_and_submit_refund(
     args: &crate::config::OracleArgs,
-    spot_record_id: &str,
+    spot_market_object_id: &str,
     post_id: &str,
 ) -> anyhow::Result<String> {
     let key_hex = args.private_key_hex.as_ref().context("missing private key")?;
@@ -124,7 +128,12 @@ async fn build_and_submit_refund(
     let package = ObjectID::from_hex_literal(SOCIAL_PACKAGE_ID)?;
     let admin_cap = parse_object_id(args.admin_cap_object_id.as_ref().unwrap())?;
     let spot_config = parse_object_id(args.spot_config_object_id.as_ref().unwrap())?;
-    let record = parse_object_id(spot_record_id)?;
+    let registry_id = parse_object_id(
+        args.spot_registry_object_id
+            .as_ref()
+            .context("SPOT_ORACLE_REGISTRY_OBJECT_ID required for refund_unresolved")?,
+    )?;
+    let market = parse_object_id(spot_market_object_id)?;
     let post_obj = parse_object_id(post_id)?;
     let clock = ObjectID::from_hex_literal(CLOCK_OBJECT_ID)?;
 
@@ -137,14 +146,17 @@ async fn build_and_submit_refund(
 
     let config_arg =
         shared_object_arg(&client, spot_config, SharedObjectMutability::Immutable).await?;
-    let record_arg = shared_object_arg(&client, record, SharedObjectMutability::Mutable).await?;
+    let registry_arg =
+        shared_object_arg(&client, registry_id, SharedObjectMutability::Mutable).await?;
+    let market_arg = shared_object_arg(&client, market, SharedObjectMutability::Mutable).await?;
     let post_arg = shared_object_arg(&client, post_obj, SharedObjectMutability::Immutable).await?;
     let clock_arg = shared_object_arg(&client, clock, SharedObjectMutability::Immutable).await?;
 
     let mut ptb = ProgrammableTransactionBuilder::new();
     let admin_input = ptb.obj(admin_arg)?;
     let config_input = ptb.obj(config_arg)?;
-    let record_input = ptb.obj(record_arg)?;
+    let registry_input = ptb.obj(registry_arg)?;
+    let market_input = ptb.obj(market_arg)?;
     let post_input = ptb.obj(post_arg)?;
     let clock_input = ptb.obj(clock_arg)?;
     ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
@@ -155,7 +167,8 @@ async fn build_and_submit_refund(
         arguments: vec![
             admin_input,
             config_input,
-            record_input,
+            registry_input,
+            market_input,
             post_input,
             clock_input,
         ],
@@ -163,7 +176,8 @@ async fn build_and_submit_refund(
 
     let pt = ptb.finish();
     let rgp = client.read_api().get_reference_gas_price().await?;
-    let tx_data = TransactionData::new_programmable(sender, vec![gas_obj.object_ref()], pt, 50_000_000, rgp);
+    let tx_data =
+        TransactionData::new_programmable(sender, vec![gas_obj.object_ref()], pt, 50_000_000, rgp);
     let signed = Transaction::from_data_and_signer(tx_data, vec![&key_pair]);
     let response = client
         .quorum_driver_api()

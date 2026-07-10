@@ -1,0 +1,94 @@
+# SPoT oracle trusted-source registration for localnet/dev — REAL fetch targets.
+# Factual TEXT settlement registration only. YAML declares where to fetch + enable
+# flags + trust scores. TrustedSource adapters perform live HTTP at resolution time.
+
+
+- id: coindesk-rss
+  adapter_type: rss
+  domain: factual
+  trust_score: 0.85
+  enabled: true
+  config:
+    feed_urls:
+      - https://www.coindesk.com/arc/outboundfeeds/rss/
+
+- id: theblock-rss
+  adapter_type: rss
+  domain: factual
+  trust_score: 0.88
+  enabled: true
+  config:
+    feed_urls:
+      - https://www.theblock.co/rss.xml
+
+- id: ethereum-blog-rss
+  adapter_type: rss
+  domain: factual
+  trust_score: 0.90
+  enabled: true
+  config:
+    feed_urls:
+      - https://blog.ethereum.org/en/feed.xml
+
+- id: fed-press-rss
+  adapter_type: rss
+  domain: factual
+  trust_score: 0.98
+  enabled: true
+  config:
+    feed_urls:
+      - https://www.federalreserve.gov/feeds/press_all.xml
+
+- id: sec-press-rss
+  adapter_type: rss
+  domain: factual
+  trust_score: 0.96
+  enabled: true
+  config:
+    feed_urls:
+      - https://www.sec.gov/news/pressreleases.rss
+
+- id: rust-lang-releases
+  adapter_type: github_releases
+  domain: factual
+  trust_score: 0.95
+  enabled: true
+  config:
+    owner: rust-lang
+    repo: rust
+
+- id: mystenlabs-sui-releases
+  adapter_type: github_releases
+  domain: factual
+  trust_score: 0.95
+  enabled: true
+  config:
+    owner: MystenLabs
+    repo: sui
+
+- id: coingecko-simple-price
+  adapter_type: http_official
+  domain: factual
+  trust_score: 0.90
+  enabled: true
+  config:
+    api_base_url: https://api.coingecko.com/api/v3
+    poll_path: /simple/price?ids=bitcoin,ethereum,sui&vs_currencies=usd
+
+- id: coinbase-btc-spot
+  adapter_type: http_official
+  domain: factual
+  trust_score: 0.88
+  enabled: true
+  config:
+    api_base_url: https://api.coinbase.com/v2
+    poll_path: /prices/BTC-USD/spot
+
+- id: coinbase-eth-spot
+  adapter_type: http_official
+  domain: factual
+  trust_score: 0.88
+  enabled: true
+  config:
+    api_base_url: https://api.coinbase.com/v2
+    poll_path: /prices/ETH-USD/spot

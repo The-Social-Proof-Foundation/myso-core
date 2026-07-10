@@ -5922,6 +5922,10 @@ type Post implements Node {
 	"""
 	spotBets(limit: Int, offset: Int): [SpotBet!]
 	"""
+	On-chain SpotClaim object id when this post is linked to a semantic claim.
+	"""
+	spotClaimId: String
+	"""
 	Address of the SpotRecord object (set when a SPoT record is created). Null if no record.
 	"""
 	spotId: String
@@ -7459,13 +7463,29 @@ type Query {
 	"""
 	spotBets(postId: ID!, limit: Int, offset: Int): [SpotBet!]
 	"""
+	Indexed SpotClaim by on-chain object id.
+	"""
+	spotClaim(claimId: ID!): SpotClaim
+	"""
 	SPoT (Social Proof of Truth) configuration. Returns null when social DB not configured or no config.
 	"""
 	spotConfiguration: SpotConfig
 	"""
+	Aggregated SPoT creator earnings (claimed + pending).
+	"""
+	spotCreatorStats(creator: MySoAddress!): SpotCreatorStats
+	"""
+	Indexed SpotMarket by on-chain object id.
+	"""
+	spotMarket(marketId: ID!): SpotMarket
+	"""
 	Spot payouts for a post. Returns empty when social DB not configured.
 	"""
 	spotPayouts(postId: ID!, limit: Int, offset: Int): [SpotPayout!]
+	"""
+	Unclaimed pending creator payouts for a wallet.
+	"""
+	spotPendingCreatorPayouts(creator: MySoAddress!, limit: Int, offset: Int): [SpotPendingCreatorPayout!]
 	"""
 	Spot record for a post (1:1). Returns null when social DB not configured or no record.
 	"""
@@ -7478,6 +7498,10 @@ type Query {
 	Spot resolution for a post (1:1). Returns null when social DB not configured or not resolved.
 	"""
 	spotResolution(postId: ID!): SpotResolution
+	"""
+	Mandatory SPoT betting route: post → claim → open market.
+	"""
+	spotRoute(postId: ID!): SpotRoute
 	"""
 	SPT exchange configuration. Returns null when social DB not configured or no config.
 	"""
@@ -8046,15 +8070,38 @@ type SpotBetWithdrawal {
 	withdrawnAt: Int!
 }
 
+type SpotClaim {
+	claimId: MySoAddress!
+	createdAtMs: Int
+	semanticClaimHash: String
+}
+
+type SpotClaimEarnings {
+	claimId: MySoAddress!
+	totalAmount: Int!
+}
+
 type SpotConfig {
 	"""
 	Confidence threshold in basis points.
 	"""
 	confidenceThresholdBps: Int!
 	"""
+	Window after resolution during which creators may claim referral rewards.
+	"""
+	creatorClaimWindowMs: Int!
+	"""
+	Creator referral fee in basis points (default 100 = 1.00%).
+	"""
+	creatorFeeBps: Int!
+	"""
 	Ecosystem treasury fee as a direct percentage of gross bet amount, in basis points (10000 = 100%).
 	"""
 	ecosystemFeeBps: Int!
+	"""
+	Share of expired unclaimed creator rewards routed to ecosystem on reclaim.
+	"""
+	expiredCreatorEcosystemBps: Int!
 	"""
 	Maximum number of betting options allowed on a SPoT record.
 	"""
@@ -8125,6 +8172,37 @@ type SpotConfig {
 	version: Int!
 }
 
+type SpotCreatorStats {
+	creator: MySoAddress!
+	earningsByMarket: [SpotMarketEarnings!]!
+	earningsByPost: [SpotPostEarnings!]!
+	earningsLast30D: Int!
+	lifetimeEarnings: Int!
+	pendingEarnings: Int!
+	topClaims: [SpotClaimEarnings!]!
+}
+
+type SpotMarket {
+	bettingOptions: [String!]!
+	claim: SpotClaim
+	claimId: MySoAddress!
+	createdAtMs: Int
+	creatorFeeTotal: Int
+	deadlineMs: Int
+	marketId: MySoAddress!
+	marketKeyHash: String
+	primaryPostId: String
+	resolutionAtMs: Int
+	resolutionTimestampMs: Int
+	status: Int!
+	winnerPool: Int
+}
+
+type SpotMarketEarnings {
+	marketId: MySoAddress!
+	totalAmount: Int!
+}
+
 type SpotOptionEscrow {
 	"""
 	Escrow amount for this option.
@@ -8157,6 +8235,22 @@ type SpotPayout {
 	Transaction ID.
 	"""
 	transactionId: String!
+}
+
+type SpotPendingCreatorPayout {
+	amount: Int!
+	creator: MySoAddress!
+	expiresAtMs: Int!
+	isClaimable: Boolean!
+	isExpired: Boolean!
+	marketId: MySoAddress!
+	payoutId: Int!
+	referrerPostId: String!
+}
+
+type SpotPostEarnings {
+	referrerPostId: String!
+	totalAmount: Int!
 }
 
 type SpotRecord {
@@ -8286,6 +8380,16 @@ type SpotResolution {
 	Transaction ID.
 	"""
 	transactionId: String!
+}
+
+type SpotRoute {
+	claimId: MySoAddress
+	linkKind: String
+	postId: String!
+	routingReason: String!
+	spotClaim: SpotClaim
+	spotMarket: SpotMarket
+	targetMarketId: MySoAddress
 }
 
 type SptExchangeConfig {

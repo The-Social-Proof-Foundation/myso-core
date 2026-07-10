@@ -11,11 +11,13 @@ pub struct OracleMetrics {
     pub resolver_latency_seconds: IntCounter,
     pub chain_tx_total: IntCounterVec,
     pub queue_depth: IntGaugeVec,
-    pub rss_wake_total: IntCounter,
     pub checkpoint_ingest_total: IntCounterVec,
     pub checkpoint_lag: IntGauge,
     pub posts_filtered_enable_spot: IntCounter,
-    pub discovery_client_errors: IntCounter,
+    pub source_fetch_errors: IntCounter,
+    pub event_provider_sync_total: IntCounterVec,
+    pub scheduled_events_active: IntGauge,
+    pub event_match_total: IntCounterVec,
 }
 
 impl OracleMetrics {
@@ -59,15 +61,6 @@ impl OracleMetrics {
             .register(Box::new(queue_depth.clone()))
             .expect("register queue_depth");
 
-        let rss_wake_total = IntCounter::new(
-            "rss_wake_total",
-            "RSS watcher wake events that enqueued resolver jobs",
-        )
-        .expect("rss_wake_total metric");
-        registry
-            .register(Box::new(rss_wake_total.clone()))
-            .expect("register rss_wake_total");
-
         let checkpoint_ingest_total = IntCounterVec::new(
             Opts::new("checkpoint_ingest_total", "Checkpoint ingest outcomes"),
             &["result"],
@@ -92,14 +85,41 @@ impl OracleMetrics {
             .register(Box::new(posts_filtered_enable_spot.clone()))
             .expect("register posts_filtered_enable_spot");
 
-        let discovery_client_errors = IntCounter::new(
-            "discovery_client_errors_total",
-            "Discovery client request failures",
+        let source_fetch_errors = IntCounter::new(
+            "source_fetch_errors_total",
+            "Trusted-source direct HTTP fetch failures",
         )
-        .expect("discovery_client_errors metric");
+        .expect("source_fetch_errors metric");
         registry
-            .register(Box::new(discovery_client_errors.clone()))
-            .expect("register discovery_client_errors");
+            .register(Box::new(source_fetch_errors.clone()))
+            .expect("register source_fetch_errors");
+
+        let event_provider_sync_total = IntCounterVec::new(
+            Opts::new("event_provider_sync_total", "Event provider sync outcomes"),
+            &["provider", "status"],
+        )
+        .expect("event_provider_sync_total metric");
+        registry
+            .register(Box::new(event_provider_sync_total.clone()))
+            .expect("register event_provider_sync_total");
+
+        let scheduled_events_active = IntGauge::new(
+            "scheduled_events_active",
+            "Active scheduled events in registry",
+        )
+        .expect("scheduled_events_active metric");
+        registry
+            .register(Box::new(scheduled_events_active.clone()))
+            .expect("register scheduled_events_active");
+
+        let event_match_total = IntCounterVec::new(
+            Opts::new("event_match_total", "Scheduled event matches at review time"),
+            &["category"],
+        )
+        .expect("event_match_total metric");
+        registry
+            .register(Box::new(event_match_total.clone()))
+            .expect("register event_match_total");
 
         let uptime = myso_indexer_alt_metrics::uptime(env!("CARGO_PKG_VERSION"))
             .expect("uptime metric");
@@ -111,11 +131,13 @@ impl OracleMetrics {
             resolver_latency_seconds,
             chain_tx_total,
             queue_depth,
-            rss_wake_total,
             checkpoint_ingest_total,
             checkpoint_lag,
             posts_filtered_enable_spot,
-            discovery_client_errors,
+            source_fetch_errors,
+            event_provider_sync_total,
+            scheduled_events_active,
+            event_match_total,
         }
     }
 }

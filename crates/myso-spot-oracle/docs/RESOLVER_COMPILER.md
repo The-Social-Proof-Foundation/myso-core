@@ -23,7 +23,7 @@ The scheduler and resolver engine **never** read post text or call the LLM.
 | `metric` | price claims | e.g. `"price"` |
 | `comparison` | price/custom | `lt\|lte\|gt\|gte\|eq\|neq` |
 | `threshold` | price | Decimal string |
-| `deadline` | non-price | ISO-8601 UTC |
+| `deadline` | **all claims** | ISO-8601 UTC; when the claim must be evaluated |
 | `outcome_type` | yes | `binary\|multi_choice\|scalar` |
 | `suggested_sources` | no | Adapter hints |
 | `suggested_options` | yes | 2–10 unique labels |
@@ -34,7 +34,7 @@ The scheduler and resolver engine **never** read post text or call the LLM.
 
 | Value | `ResolverKind` | Required hints |
 |-------|----------------|------------------|
-| `price_threshold` | `PriceThreshold` | threshold + comparison |
+| `price_threshold` | `PriceThreshold` | threshold + comparison + **deadline** |
 | `release_published` | `ReleasePublished` | owner + repo (or `object` as `owner/repo`) |
 | `event_occurrence` | `EventOccurrence` | feed_url + match_predicate |
 | `custom_http` | `CustomHttp` | url + json_path + expected |
@@ -51,20 +51,34 @@ The scheduler and resolver engine **never** read post text or call the LLM.
 
 1. Dispatch by `claim_category` to `price.rs`, `release.rs`, `event.rs`, or `custom_http.rs`.
 2. `source_select.rs` picks a registered `TrustedSource` deterministically (preferred → fallback order → trust score → lexicographic id).
-3. `maturity.rs` sets `maturity_at` and `deadline`.
-4. `validate.rs` ensures every spec field is non-empty and adapters support the definition.
+3. `maturity.rs` sets `maturity_at` (poll start, up to 1h before deadline) and `deadline` (hard resolution time). All categories including price use the extracted deadline — there is no fast-path 1-minute resolve.
+4. `validate.rs` ensures every spec field is non-empty, deadline is present, and adapters support the definition.
 5. `compile_fingerprint` = SHA-256(canonical fields + spec + sorted source_ids).
 
 ## Examples
 
 ### BTC price (E2E runnable default)
 
-Post: *"Will BTC trade above $1?"*
+Post: *"Will BTC trade above $1 in 3 minutes?"*
 
 - category: `price_threshold`
 - asset: `bitcoin`, quote: `usd`, comparator: `gt`, threshold: `1`
+- deadline: parsed to UTC (`in 3 minutes` for local E2E; `by the end of tomorrow` for calendar claims)
 - source: `coingecko`, json_path: `bitcoin.usd`
 - options: `["Yes", "No"]`
+
+Claims without an extractable deadline are **rejected** (`missing_deadline`), except:
+
+- **Known public events** (FIFA World Cup, U.S. presidential election, …) — deadline inferred from the **Event Provider** registry (`events/registry.rs`), populated by pluggable providers into Postgres
+- **Ongoing price claims** — deadline defaults to the next 30-minute spacing boundary; posts with the same semantic claim in the same bucket share one market (`market_key_hash` uses floored deadline)
+
+## Event-implied deadlines
+
+When claim text references a scheduled event (player names, tournament keywords, election phrases), the oracle matches `EventRegistry` entries (synced from `spot_scheduled_events`) and uses the event end date as `resolution_at_ms` without requiring the user to state a date explicitly.
+
+## Price market spacing
+
+Price-threshold claims bucket `market_key_hash` deadlines to 30-minute wall-clock windows (configurable via `SPOT_ORACLE_PRICE_MARKET_SPACING_SECS`) so repeated BTC/ETH posts in the same window merge into one market instead of spawning hundreds of near-duplicate markets.
 
 ### GitHub release
 

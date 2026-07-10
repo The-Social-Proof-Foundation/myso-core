@@ -399,3 +399,59 @@ Moved `HttpDiscoveryClient` from deleted `myso-discovery-client` crate into
 ### Lessons
 - Separate `-client` crate added no dependency-boundary value once SPoT already depended on `-core`.
 
+---
+
+## SPoT Independence from Discovery (2026-07-10)
+
+### Background and Motivation
+Make `myso-spot-oracle` compile and run without any Discovery crate, schema, API, source
+table, configuration, or sidecar. Discovery remains unchanged for Proof of Creativity.
+The target lifecycle is `Post → SpotClaim → SpotMarket → PostLink → scheduled direct
+source resolution → indexed result → optional insurance claim`.
+
+### Key Challenges and Analysis
+- The six live `TrustedSource` adapters currently proxy all factual fetches through
+  `HttpDiscoveryClient`; direct fetch and normalization must move into the existing SPoT
+  adapter layer.
+- The SPoT database still reads `discovery_sources`, and its schema documentation requires
+  Discovery migrations even though runtime currently executes only SPoT migrations.
+- Oracle creation still calls legacy `create_spot_record_for_post`; the Move contract's
+  canonical model exposes separate `create_spot_claim` and `create_spot_market_for_claim`
+  entry points.
+- The refund PTB omits the `SpotClaimRegistry` argument required by `refund_unresolved`.
+- Local scripts and `myso start --with-spot` currently start or configure Discovery.
+
+### High-Level Task Breakdown
+1. Replace Discovery source rows/config with SPoT-owned source definitions.
+2. Port direct HTTP fetch and factual normalization into `TrustedSource` adapters.
+3. Remove all Discovery Cargo imports, clients, metrics, jobs, and runtime wiring.
+4. Align creation/refund PTBs with the Claim → Market → Post contract model.
+5. Add deterministic source quorum and DAO escalation for conflicts.
+6. Decouple CLI, Docker, environment, and E2E scripts from Discovery.
+7. Expose existing claim/market/resolution data through GraphQL.
+8. Add the minimal existing-contract insurance leg to the runnable.
+
+### Project Status Board
+- [x] Inventory SPoT compile-time/runtime Discovery coupling.
+- [x] Add SPoT-owned trusted-source schema and config.
+- [x] Implement direct trusted-source HTTP resolvers.
+- [x] Remove Discovery Cargo dependencies and imports.
+- [x] Fix Claim → Market PTBs and refund registry input.
+- [x] Add quorum/conflict escalation.
+- [x] Decouple scripts, CLI, Docker, and environment.
+- [x] Complete no-Discovery SPoT E2E (scripts no longer start Discovery).
+- [x] Export claim/market/resolution GraphQL schema (`spotClaim` / `spotMarket` / `spotRoute` / `Post.spotClaimId`).
+- [x] Add minimal insurance E2E leg (`ENABLE_INSURANCE_E2E=1` walkthrough helpers).
+- [x] Remove legacy SPoT oracle paths and update documentation.
+
+### Executor's Feedback or Assistance Requests
+- Compile green: `cargo check -p myso-spot-oracle`; resolver quorum unit tests pass.
+- GraphQL SDL regenerated via `test_schema_sdl_export`.
+- Live walkthrough / insurance E2E still needs a funded localnet to exercise end-to-end (helpers are in place).
+
+### Lessons
+- `SpotRecord` is no longer an on-chain object; legacy names now refer to `SpotMarket`.
+- Existing SPoT evidence types already provide the correct persistence boundary, so no
+  generic HTTP/provenance crate is needed.
+- Quorum conflict must lower confidence (DAO_REQUIRED) rather than picking a silent winner.
+

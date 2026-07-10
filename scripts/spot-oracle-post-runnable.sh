@@ -16,7 +16,10 @@
 # Usage:
 #   ./scripts/spot-oracle-post-runnable.sh --refresh-session
 #   ASSUME_YES=1 ./scripts/spot-oracle-post-runnable.sh --run-all
-#   ./scripts/spot-oracle-post-runnable.sh   # interactive
+#   SPOT_CLAIM_TEXT='Will ETH trade above $3000?' ASSUME_YES=1 ./scripts/spot-oracle-post-runnable.sh --run-all
+#   ./scripts/spot-oracle-post-runnable.sh   # interactive (prompts for claim)
+#
+# Parent walkthrough sets SPOT_CLAIM_TEXT via spot-oracle-runnable.sh menu 1.
 
 set -euo pipefail
 
@@ -120,6 +123,9 @@ create_spot_enabled_post() {
         log_step "Refreshing session for post creation"
         refresh_spot_oracle_session_from_graphql || return 1
         load_spot_oracle_session
+    fi
+    if [[ -t 0 && "${ASSUME_YES:-0}" != "1" && -z "${SPOT_CLAIM_TEXT:-}" ]]; then
+        spot_prompt_claim_text
     fi
     step_creator_profile_and_join || return 1
 

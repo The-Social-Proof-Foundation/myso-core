@@ -25,7 +25,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-SOCIAL_SESSION_SAVE_PATH="$REPO_ROOT/network.config/poc-oracle/poc-oracle-session.env"
+: "${SOCIAL_SESSION_SAVE_PATH:=$REPO_ROOT/network.config/poc-oracle/poc-oracle-session.env}"
 # shellcheck source=lib/social-runtime-common.sh
 source "${SCRIPT_DIR}/lib/social-runtime-common.sh"
 # shellcheck source=lib/runnable-summary-common.sh
@@ -51,7 +51,6 @@ readonly POC_ORACLE_GQL_EXTRAS='query PocOracleSessionExtras {
 
 readonly DEFAULT_TIP_AMOUNT='100000000'
 readonly DEFAULT_RESERVE_AMOUNT='1000000000'
-readonly POC_MIN_VAULT_DEPOSIT='1'
 
 SOCIAL_RUN_ID="$(date +%s)"
 RUN_MODE=''

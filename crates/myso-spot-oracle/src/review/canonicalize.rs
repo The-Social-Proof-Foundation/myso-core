@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
+use crate::review::deadline::{bucket_deadline_for_market_key, DEFAULT_PRICE_MARKET_SPACING};
 use crate::store::reviews::ExtractedClaim;
 use crate::types::{ClaimCategory, ComparisonOp, ResolverHints};
 
@@ -89,7 +90,28 @@ const ASSET_ALIASES: &[(&str, &str)] = &[
     ("sol", "solana"),
 ];
 
+#[derive(Debug, Clone, Copy)]
+pub struct CanonicalizeOptions {
+    pub price_market_spacing: chrono::Duration,
+}
+
+impl Default for CanonicalizeOptions {
+    fn default() -> Self {
+        Self {
+            price_market_spacing: DEFAULT_PRICE_MARKET_SPACING,
+        }
+    }
+}
+
 pub fn canonicalize(extraction_id: Uuid, extracted: &ExtractedClaim) -> CanonicalClaim {
+    canonicalize_with_options(extraction_id, extracted, &CanonicalizeOptions::default())
+}
+
+pub fn canonicalize_with_options(
+    extraction_id: Uuid,
+    extracted: &ExtractedClaim,
+    opts: &CanonicalizeOptions,
+) -> CanonicalClaim {
     let subject = normalize_asset(&extracted.subject);
     let object = normalize_repo_or_asset(&extracted.object);
     let threshold = extracted.threshold.as_ref().map(|t| normalize_number(t));
@@ -153,9 +175,16 @@ pub fn canonicalize(extraction_id: Uuid, extracted: &ExtractedClaim) -> Canonica
         resolver_hints,
     };
 
+    let market_key_deadline = match claim_category {
+        ClaimCategory::PriceThreshold => extracted
+            .deadline
+            .map(|d| bucket_deadline_for_market_key(d, opts.price_market_spacing)),
+        _ => extracted.deadline,
+    };
+
     let market_key = MarketKeyFields {
         semantic,
-        deadline: extracted.deadline,
+        deadline: market_key_deadline,
         betting_options: suggested_options,
     };
     let market_key_hash = hash_json(&market_key);
@@ -282,6 +311,7 @@ fn hash_json<T: Serialize>(value: &T) -> [u8; 32] {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::Utc;
     use crate::store::reviews::ExtractedClaim;
     use crate::types::ComparisonOp;
 
@@ -307,5 +337,33 @@ mod tests {
             claim.normalized_fields.claim_category,
             ClaimCategory::PriceThreshold
         );
+    }
+
+    #[test]
+    fn price_claims_in_same_spacing_bucket_share_market_key() {
+        use crate::store::reviews::ExtractedClaim;
+        use crate::types::{ComparisonOp, ResolverHints};
+
+        let base = Utc::now() + chrono::Duration::minutes(10);
+        let mk = |deadline: chrono::DateTime<Utc>| {
+            let extracted = ExtractedClaim {
+                subject: "bitcoin".to_string(),
+                predicate: "price".to_string(),
+                object: "usd".to_string(),
+                metric: Some("price".to_string()),
+                comparison: Some(ComparisonOp::Gt),
+                threshold: Some("100".to_string()),
+                deadline: Some(deadline),
+                outcome_type: OutcomeType::Binary,
+                suggested_sources: vec!["coingecko".to_string()],
+                suggested_options: vec!["Yes".to_string(), "No".to_string()],
+                claim_category: ClaimCategory::PriceThreshold,
+                resolver_hints: ResolverHints::default(),
+            };
+            canonicalize(Uuid::new_v4(), &extracted).market_key_hash
+        };
+        let a = mk(base + chrono::Duration::minutes(3));
+        let b = mk(base + chrono::Duration::minutes(8));
+        assert_eq!(a, b);
     }
 }

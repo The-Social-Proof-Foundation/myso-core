@@ -24,7 +24,7 @@ pub struct OracleArgs {
     )]
     pub metrics_addr: SocketAddr,
 
-    /// Postgres DSN for the `spot_oracle` DB (runs discovery + spot schemas).
+    /// Postgres DSN for the `spot_oracle` DB (spot schema only).
     #[arg(
         long,
         env = "SPOT_ORACLE_DATABASE_URL",
@@ -35,13 +35,25 @@ pub struct OracleArgs {
     #[arg(long, env = "SPOT_ORACLE_DB_MAX_CONNECTIONS", default_value = "10")]
     pub db_max_connections: u32,
 
-    /// Path to the discovery source-registration YAML (where to fetch, not fake data).
+    /// Path to the SPoT trusted-source registration YAML.
     #[arg(
         long,
         env = "SPOT_ORACLE_SOURCES_CONFIG",
-        default_value = "crates/myso-spot-oracle/config/discovery/sources.localnet.yaml"
+        default_value = "crates/myso-spot-oracle/config/sources.localnet.yaml"
     )]
     pub sources_config: PathBuf,
+
+    /// Path to the SPoT event provider registration YAML.
+    #[arg(
+        long,
+        env = "SPOT_ORACLE_EVENT_PROVIDERS_CONFIG",
+        default_value = "crates/myso-spot-oracle/config/event_providers.localnet.yaml"
+    )]
+    pub event_providers_config: PathBuf,
+
+    /// Event provider sync loop tick interval (seconds).
+    #[arg(long, env = "SPOT_ORACLE_EVENT_SYNC_INTERVAL_SECS", default_value = "300")]
+    pub event_sync_interval_secs: u64,
 
     /// MySo RPC URL for PTB submission (create / resolve / refund).
     #[arg(long, env = "SPOT_ORACLE_MYSO_RPC", default_value = "http://127.0.0.1:9000")]
@@ -51,7 +63,7 @@ pub struct OracleArgs {
     #[arg(long, env = "SPOT_ORACLE_PRIVATE_KEY_HEX")]
     pub private_key_hex: Option<String>,
 
-    /// `SpotConfig` shared object ID (required for `create_spot_record_for_post`).
+    /// `SpotConfig` shared object ID (required for claim/market PTBs).
     #[arg(long, env = "SPOT_ORACLE_SPOT_CONFIG_OBJECT_ID")]
     pub spot_config_object_id: Option<String>,
 
@@ -113,6 +125,26 @@ pub struct OracleArgs {
     #[arg(long, env = "SPOT_ORACLE_CONFIDENCE_THRESHOLD_BPS", default_value = "7000")]
     pub confidence_threshold_bps: u64,
 
+    /// Minimum lead time before a parsed claim deadline (seconds).
+    #[arg(long, env = "SPOT_ORACLE_MIN_DEADLINE_LEAD_SECS", default_value = "300")]
+    pub min_deadline_lead_secs: u64,
+
+    /// Maximum horizon for claim deadlines (seconds; default 730 days).
+    #[arg(long, env = "SPOT_ORACLE_MAX_DEADLINE_HORIZON_SECS", default_value = "63072000")]
+    pub max_deadline_horizon_secs: u64,
+
+    /// Buffer after resolution_at before refund_unresolved may run (ms; default 72h).
+    #[arg(
+        long,
+        env = "SPOT_ORACLE_MAX_RESOLUTION_BUFFER_MS",
+        default_value = "259200000"
+    )]
+    pub max_resolution_buffer_ms: u64,
+
+    /// Minimum spacing between price market keys (seconds; default 30 minutes).
+    #[arg(long, env = "SPOT_ORACLE_PRICE_MARKET_SPACING_SECS", default_value = "1800")]
+    pub price_market_spacing_secs: u64,
+
     /// Persist raw evidence bodies (config: `SPOT_ORACLE_STORE_RAW_EVIDENCE=true`).
     #[arg(long, env = "SPOT_ORACLE_STORE_RAW_EVIDENCE", default_value = "true")]
     pub store_raw_evidence: bool,
@@ -132,14 +164,6 @@ pub struct OracleArgs {
     /// Claim ingest mode: `checkpoint`, `http`, or `both`.
     #[arg(long, env = "SPOT_ORACLE_INGEST_MODE", default_value = "checkpoint")]
     pub ingest_mode: String,
-
-    /// Discovery service base URL for factual `/v1/*` settlement fetches.
-    #[arg(long, env = "SPOT_ORACLE_DISCOVERY_CLIENT_URL")]
-    pub discovery_client_url: Option<String>,
-
-    /// Secret for `x-discovery-client-secret` on Discovery factual API.
-    #[arg(long, env = "SPOT_ORACLE_DISCOVERY_CLIENT_SECRET")]
-    pub discovery_client_secret: Option<String>,
 
     /// On-chain social package id for filtering `PostCreatedEvent`.
     #[arg(long, env = "SPOT_ORACLE_SOCIAL_PACKAGE_ID", default_value = "0x50c1")]
@@ -167,9 +191,5 @@ impl OracleArgs {
 
     pub fn uses_http_ingest(&self) -> bool {
         matches!(self.ingest_mode.as_str(), "http" | "both")
-    }
-
-    pub fn uses_discovery_client(&self) -> bool {
-        self.discovery_client_url.is_some()
     }
 }

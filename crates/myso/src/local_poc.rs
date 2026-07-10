@@ -9,7 +9,6 @@ use std::time::Duration;
 use anyhow::{Context, bail};
 use colored::Colorize;
 
-use crate::local_discovery::LOCAL_EMBED_SECRET;
 use crate::local_sidecar_util::{
     docker_compose_down, docker_compose_up, myso_core_root, resolve_sibling_repo, wait_http_ok,
 };
@@ -25,8 +24,6 @@ pub struct PocLocalInfo {
     pub compose_file: PathBuf,
     pub api_port: u16,
     pub api_base_url: String,
-    pub embed_secret: String,
-    pub discovery_service_url: String,
     pub oracle_address: String,
 }
 
@@ -64,18 +61,19 @@ fn ensure_poc_env(repo: &Path, api_port: u16) -> anyhow::Result<()> {
         }
     };
 
-    upsert(&mut lines, "DISCOVERY_EMBED_SECRET", LOCAL_EMBED_SECRET);
-    upsert(
-        &mut lines,
-        "DISCOVERY_SERVICE_URL",
-        "http://host.docker.internal:8096",
-    );
-    upsert(&mut lines, "DISCOVERY_ENABLED", "true");
     upsert(&mut lines, "API_PORT", &api_port.to_string());
     upsert(&mut lines, "MYSO_INTEGRATION_ENABLED", "true");
     upsert(&mut lines, "MYSO_REFRESH_SESSION_OBJECTS", "true");
     upsert(&mut lines, "POC_E2E_SUBMIT_OVERRIDE", "1");
     upsert(&mut lines, "POC_IDENTITY_VERIFIER", "mock");
+    upsert(&mut lines, "DISCOVERY_ENABLED", "true");
+    upsert(&mut lines, "DISCOVERY_EMBED_ENABLED", "true");
+    upsert(&mut lines, "POC_USE_MANUAL_CURATED", "1");
+    upsert(
+        &mut lines,
+        "DISCOVERY_SOURCES_CONFIG",
+        "config/discovery/sources.localnet.yaml",
+    );
     upsert(
         &mut lines,
         "ORACLE_PRIVATE_KEY_LOCALNET",
@@ -127,7 +125,14 @@ pub async fn spawn_poc_stack(
 
     docker_compose_up(
         &compose,
-        &["postgres", "redis", "api", "grpc-sync", "oracle-worker"],
+        &[
+            "postgres",
+            "redis",
+            "api",
+            "grpc-sync",
+            "oracle-worker",
+            "discovery-worker",
+        ],
         Some(&repo),
         &["app"],
     )
@@ -158,8 +163,6 @@ pub async fn spawn_poc_stack(
         compose_file: compose,
         api_port,
         api_base_url,
-        embed_secret: LOCAL_EMBED_SECRET.to_string(),
-        discovery_service_url: "http://host.docker.internal:8096".to_string(),
         oracle_address,
     })
 }
@@ -175,18 +178,15 @@ pub fn log_poc_once(info: &PocLocalInfo) {
             r"Proof of Creativity (local docker):
   api:             {} (port {})
   repo:            {:?}
-  embed_secret:    {}
-  discovery_url:   {}
   oracle_address:  {}
   grpc-sync:       running (profile app)
+  discovery-worker:   running (profile app)
   validate:        ASSUME_YES=1 ./scripts/poc-e2e-runnable.sh --run-all
   note:            on-chain PoCConfig.oracle_address must match oracle_address (poc-e2e syncs it)
 ",
             info.api_base_url,
             info.api_port,
             info.repo,
-            info.embed_secret,
-            info.discovery_service_url,
             info.oracle_address,
         )
         .green()

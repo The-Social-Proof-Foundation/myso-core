@@ -13,8 +13,8 @@ use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
 use crate::config::OracleArgs;
+use crate::events::EventRegistry;
 use crate::metrics::OracleMetrics;
-use crate::sources::discovery_resolve::SharedDiscoveryClient;
 use crate::sources::ResolverRegistry;
 use crate::store::OracleStore;
 
@@ -24,7 +24,7 @@ pub struct AppState {
     pub args: Arc<OracleArgs>,
     pub metrics: Arc<OracleMetrics>,
     pub sources: Arc<ResolverRegistry>,
-    pub discovery_client: Option<SharedDiscoveryClient>,
+    pub event_registry: Arc<EventRegistry>,
     pub cancel: CancellationToken,
 }
 
@@ -38,6 +38,13 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/v1/jobs", get(list_jobs))
         .route("/v1/evidence/:market_id", get(list_evidence))
         .route("/v1/sources/health", get(sources_health))
+        .route("/v1/events", get(list_events))
+        .route("/v1/event-providers/health", get(event_providers_health))
+        .route(
+            "/v1/event-providers/:key/sync",
+            post(sync_event_provider),
+        )
+        .route("/v1/events/:id/override", axum::routing::patch(patch_event_override))
         .route("/v1/markets/:id/recheck", post(recheck_market))
         .with_state(state)
 }
@@ -165,6 +172,95 @@ async fn sources_health(State(state): State<Arc<AppState>>) -> Json<serde_json::
         }));
     }
     Json(serde_json::json!({ "sources": out }))
+}
+
+#[derive(Debug, Deserialize)]
+struct EventsQuery {
+    active: Option<bool>,
+    limit: Option<i64>,
+}
+
+async fn list_events(
+    State(state): State<Arc<AppState>>,
+    Query(q): Query<EventsQuery>,
+) -> Json<serde_json::Value> {
+    let limit = q.limit.unwrap_or(50).clamp(1, 500);
+    let active_only = q.active.unwrap_or(true);
+    let events = state
+        .store
+        .list_scheduled_events(active_only, limit)
+        .await
+        .unwrap_or_default();
+    Json(serde_json::json!({ "events": events }))
+}
+
+async fn event_providers_health(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
+    let providers = state
+        .store
+        .list_all_event_providers()
+        .await
+        .unwrap_or_default();
+    let out: Vec<serde_json::Value> = providers
+        .into_iter()
+        .map(|p| {
+            serde_json::json!({
+                "provider_key": p.provider_key,
+                "provider_type": p.provider_type,
+                "enabled": p.enabled,
+                "last_sync_at": p.last_sync_at,
+                "last_sync_status": p.last_sync_status,
+                "healthy": p.health_healthy,
+                "message": p.health_message,
+            })
+        })
+        .collect();
+    Json(serde_json::json!({ "providers": out }))
+}
+
+async fn sync_event_provider(
+    State(state): State<Arc<AppState>>,
+    Path(key): Path<String>,
+    headers: HeaderMap,
+) -> Json<serde_json::Value> {
+    if !check_admin_secret(&headers, state.args.admin_secret.as_deref()) {
+        return Json(serde_json::json!({ "error": "unauthorized" }));
+    }
+    match crate::events::sync::sync_provider(&state, &key).await {
+        Ok(count) => {
+            if let Err(err) = crate::events::sync::reload_registry(&state).await {
+                return Json(serde_json::json!({ "error": err.to_string() }));
+            }
+            Json(serde_json::json!({ "ok": true, "provider_key": key, "synced": count }))
+        }
+        Err(err) => Json(serde_json::json!({ "error": err.to_string() })),
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct EventOverrideBody {
+    #[serde(default)]
+    override_data: serde_json::Value,
+}
+
+async fn patch_event_override(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<Uuid>,
+    headers: HeaderMap,
+    Json(body): Json<EventOverrideBody>,
+) -> Json<serde_json::Value> {
+    if !check_admin_secret(&headers, state.args.admin_secret.as_deref()) {
+        return Json(serde_json::json!({ "error": "unauthorized" }));
+    }
+    match state.store.patch_event_override(id, &body.override_data).await {
+        Ok(true) => {
+            if let Err(err) = crate::events::sync::reload_registry(&state).await {
+                return Json(serde_json::json!({ "error": err.to_string() }));
+            }
+            Json(serde_json::json!({ "ok": true, "event_id": id }))
+        }
+        Ok(false) => Json(serde_json::json!({ "error": "not_found" })),
+        Err(err) => Json(serde_json::json!({ "error": err.to_string() })),
+    }
 }
 
 async fn recheck_market(
