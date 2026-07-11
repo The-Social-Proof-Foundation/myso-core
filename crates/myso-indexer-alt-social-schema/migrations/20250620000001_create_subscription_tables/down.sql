@@ -31,13 +31,16 @@ DROP TABLE IF EXISTS subscription_events;
 DROP TABLE IF EXISTS profile_subscriptions;
 
 -- Drop regular tables
+DROP TABLE IF EXISTS profile_subscription_plans;
 DROP TABLE IF EXISTS profile_subscription_services;
 
 -- Remove subscription-related fields from posts table
 ALTER TABLE posts DROP COLUMN IF EXISTS requires_subscription;
 ALTER TABLE posts DROP COLUMN IF EXISTS subscription_service_id;
 ALTER TABLE posts DROP COLUMN IF EXISTS subscription_price;
+ALTER TABLE posts DROP COLUMN IF EXISTS subscription_min_tier_level;
 ALTER TABLE posts DROP COLUMN IF EXISTS encrypted_content_hash;
+ALTER TABLE posts DROP COLUMN IF EXISTS post_access_kind;
 
 -- Remove subscription service reference from profiles table
 ALTER TABLE profiles DROP COLUMN IF EXISTS subscription_service_id;

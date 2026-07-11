@@ -45,6 +45,7 @@ use crate::mydata::{
     check_mydata_has_access, get_mydata_access_analytics, get_mydata_access_logs,
     get_mydata_config, get_mydata_distribution_round, get_mydata_merkle_root, get_mydata_purchases,
     get_mydata_record, get_mydata_revenue, get_mydata_revenue_timeline, get_mydata_snapshot_anchor,
+    get_mydata_snapshot_escrow,
     get_mydata_stats, get_mydata_subscriptions, get_popular_mydata, list_mydata,
     list_mydata_broad_pools, list_mydata_claims_for_snapshot, list_mydata_distribution_rounds,
     list_mydata_listings_for_sub_pool, list_mydata_purchases_by_buyer,
@@ -1693,6 +1694,7 @@ impl SocialPgReader {
         &self,
         subscriber: &str,
         service_id: &str,
+        min_tier_level: Option<i64>,
     ) -> anyhow::Result<bool> {
         let mut conn = self.connect().await?;
         crate::subscription::check_profile_subscription_access(
@@ -1700,6 +1702,39 @@ impl SocialPgReader {
             &self.metrics,
             subscriber,
             service_id,
+            min_tier_level,
+        )
+        .await
+    }
+
+    pub async fn list_profile_subscription_plans_by_service(
+        &self,
+        service_id: &str,
+        active_only: bool,
+        limit: u64,
+        offset: u64,
+    ) -> anyhow::Result<Vec<crate::subscription::ProfileSubscriptionPlanRow>> {
+        let mut conn = self.connect().await?;
+        crate::subscription::list_profile_subscription_plans_by_service(
+            &mut conn,
+            &self.metrics,
+            service_id,
+            active_only,
+            limit as i64,
+            offset as i64,
+        )
+        .await
+    }
+
+    pub async fn get_profile_subscription_plan_by_id(
+        &self,
+        plan_id: &str,
+    ) -> anyhow::Result<Option<crate::subscription::ProfileSubscriptionPlanRow>> {
+        let mut conn = self.connect().await?;
+        crate::subscription::get_profile_subscription_plan_by_id(
+            &mut conn,
+            &self.metrics,
+            plan_id,
         )
         .await
     }
@@ -2274,6 +2309,14 @@ impl SocialPgReader {
     ) -> anyhow::Result<Option<myso_indexer_alt_social_schema::models::MyDataMerkleRootRow>> {
         let mut conn = self.connect().await?;
         get_mydata_merkle_root(&mut conn, snapshot_id, &self.metrics).await
+    }
+
+    pub async fn get_mydata_snapshot_escrow(
+        &self,
+        snapshot_id: &str,
+    ) -> anyhow::Result<Option<myso_indexer_alt_social_schema::models::MyDataSnapshotEscrowRow>> {
+        let mut conn = self.connect().await?;
+        get_mydata_snapshot_escrow(&mut conn, snapshot_id, &self.metrics).await
     }
 
     /// Claim events for a snapshot.

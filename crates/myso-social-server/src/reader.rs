@@ -359,6 +359,13 @@ impl Reader {
         mydata::get_mydata_merkle_root(&self.db, snapshot_id).await
     }
 
+    pub async fn get_mydata_snapshot_escrow(
+        &self,
+        snapshot_id: &str,
+    ) -> Result<Option<MyDataSnapshotEscrowInfo>, crate::error::SocialError> {
+        mydata::get_mydata_snapshot_escrow(&self.db, snapshot_id).await
+    }
+
     pub async fn list_mydata_claims_for_snapshot(
         &self,
         snapshot_id: &str,
@@ -1151,7 +1158,7 @@ impl Reader {
                 profile_subscription_services::service_id,
                 profile_subscription_services::profile_owner,
                 profile_subscription_services::profile_id,
-                profile_subscription_services::monthly_fee,
+                profile_subscription_services::plan_count,
                 profile_subscription_services::active,
                 profile_subscription_services::subscriber_count,
                 profile_subscription_services::created_at,
@@ -1166,20 +1173,19 @@ impl Reader {
                     service_id,
                     profile_owner,
                     profile_id,
-                    monthly_fee,
+                    plan_count,
                     active,
                     subscriber_count,
                     _created_at,
                 )| {
-                    let mrr = monthly_fee * subscriber_count;
                     (
                         service_id,
                         profile_owner,
                         profile_id,
-                        monthly_fee,
+                        plan_count,
                         active,
                         subscriber_count,
-                        mrr,
+                        subscriber_count,
                     )
                 },
             )
@@ -1189,10 +1195,10 @@ impl Reader {
             service_id,
             profile_owner,
             profile_id,
-            monthly_fee,
+            plan_count,
             active,
             subscriber_count,
-            mrr,
+            _mrr_placeholder,
         ) in services
         {
             use diesel::sql_query;
@@ -1206,6 +1212,11 @@ impl Reader {
             struct RevenueRow {
                 #[diesel(sql_type = Nullable<BigInt>)]
                 total: Option<i64>,
+            }
+            #[derive(QueryableByName)]
+            struct MrrRow {
+                #[diesel(sql_type = Nullable<BigInt>)]
+                mrr: Option<i64>,
             }
             let active_subscribers: i64 = sql_query(
                 "SELECT COUNT(*) AS count FROM (
@@ -1230,6 +1241,21 @@ impl Reader {
             .ok()
             .and_then(|r| r.total)
             .unwrap_or(0);
+            let mrr: i64 = sql_query(
+                "SELECT COALESCE(SUM(sub.price), 0) AS mrr FROM (
+                    SELECT DISTINCT ON (subscription_id) subscription_id, price, expires_at, cancelled_at
+                    FROM profile_subscriptions
+                    WHERE service_id = $1
+                    ORDER BY subscription_id, time DESC
+                ) sub WHERE sub.cancelled_at IS NULL AND sub.expires_at > $2",
+            )
+            .bind::<Text, _>(&service_id)
+            .bind::<BigInt, _>(now_ms)
+            .get_result::<MrrRow>(&mut conn)
+            .await
+            .ok()
+            .and_then(|r| r.mrr)
+            .unwrap_or(0);
             let churn_rate = if subscriber_count > 0 {
                 (subscriber_count - active_subscribers).max(0) as f64 / subscriber_count as f64
             } else {
@@ -1239,7 +1265,7 @@ impl Reader {
                 "service_id": service_id,
                 "profile_owner": profile_owner,
                 "profile_id": profile_id,
-                "monthly_fee": monthly_fee,
+                "plan_count": plan_count,
                 "active": active,
                 "total_subscribers": subscriber_count,
                 "active_subscribers": active_subscribers,
@@ -1333,8 +1359,10 @@ impl Reader {
         &self,
         subscriber: &str,
         service_id: &str,
+        min_tier_level: Option<i64>,
     ) -> Result<bool, crate::error::SocialError> {
-        subscription::check_subscription_access(&self.db, subscriber, service_id).await
+        subscription::check_subscription_access(&self.db, subscriber, service_id, min_tier_level)
+            .await
     }
 
     pub async fn get_system_stats(&self) -> Result<SystemStatsResponse, crate::error::SocialError> {
@@ -2295,9 +2323,10 @@ impl Reader {
     ) -> Result<Vec<ProfileSubscriptionInfo>, crate::error::SocialError> {
         let mut conn = self.db.connect().await?;
         let query = "
-            SELECT sub.subscription_id, sub.service_id, sub.subscriber, sub.created_at,
+            SELECT sub.subscription_id, sub.service_id, sub.plan_id, sub.tier_level, sub.platform_id,
+                   sub.price, sub.duration_ms, sub.subscriber, sub.created_at,
                    sub.expires_at, sub.auto_renew, sub.renewal_balance, sub.renewal_count,
-                   sub.cancelled_at, s.monthly_fee, s.profile_owner,
+                   sub.cancelled_at, s.profile_owner,
                    p.username, p.display_name
             FROM (
                 SELECT DISTINCT ON (subscription_id) *
@@ -2319,6 +2348,23 @@ impl Reader {
             .load::<ProfileSubscriptionInfo>(&mut conn)
             .await?;
         Ok(results)
+    }
+
+    pub async fn list_subscription_plans_by_service(
+        &self,
+        service_id: &str,
+        active_only: bool,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<ProfileSubscriptionPlanInfo>, crate::error::SocialError> {
+        subscription::get_profile_subscription_plans_by_service(
+            &self.db,
+            service_id,
+            active_only,
+            limit,
+            offset,
+        )
+        .await
     }
 
     pub async fn list_subscription_services(

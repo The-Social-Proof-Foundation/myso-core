@@ -4,7 +4,7 @@
 /// Universal MyData module for encrypted data monetization (one-time purchase, subscription, owner vault).
 ///
 /// **Production decrypt path (client-only):** Plaintext must only exist off-chain. Callers encrypt before
-/// `create` / `create_and_share`, then authorized users use the MyData SDK: resolve access (indexer or
+/// `create` / dedicated `create_and_share_*` entry points, then authorized users use the MyData SDK: resolve access (indexer or
 /// `has_access`), request keys via the key server (`fetch_key`) with policy approval (`mydata_approve`),
 /// and decrypt locally. Do not rely on Move to produce user content plaintext for marketplace listings.
 ///
@@ -14,7 +14,7 @@
 /// AES-GCM (or other app-managed schemes), ciphertext does not parse as `EncryptedObject`; encode the
 /// scheme in `media_type` (e.g. prefix `aes_gcm:`) or app metadata so indexers pick the right decrypt path.
 ///
-/// **Revocation:** Owners may call [`revoke_access`] to remove a buyer from `purchasers` / `subscribers`.
+/// **Revocation:** Owners may call [`revoke_access`] to remove a buyer from marketplace access tables.
 /// Permissioned key servers re-check [`mydata_approve`] on every `fetch_key`, so revoked buyers cannot
 /// obtain new derived keys. Already-fetched keys may still decrypt offline client-side.
 ///
@@ -49,6 +49,7 @@ module social_contracts::mydata {
     use social_contracts::platform::{Self, Platform};
     use social_contracts::profile::{Self, EcosystemTreasury};
     use social_contracts::subscription::{Self, ProfileSubscriptionService, ProfileSubscription};
+    use social_contracts::block_list;
 
     // === Default constants for config initialization ===
     const DEFAULT_MARKETPLACE_ENABLED: bool = false;
@@ -59,6 +60,19 @@ module social_contracts::mydata {
     const DEFAULT_MYDATA_MARKETPLACE_ECOSYSTEM_FEE_BPS: u64 = 250;
     const DEFAULT_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS: u64 = 0;
     const DEFAULT_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS: u64 = 10_000;
+    const DEFAULT_MAX_ENCRYPTED_DATA_BYTES: u64 = 262_144;
+    const DEFAULT_MAX_TAG_BYTES: u64 = 64;
+    const DEFAULT_MAX_METADATA_BYTES: u64 = 1_024;
+    const DEFAULT_MAX_PAYMENT_REFERENCE_BYTES: u64 = 256;
+    const DEFAULT_MAX_POOL_ASSIGNMENTS: u64 = 32;
+    const DEFAULT_MAX_MERKLE_PROOF_DEPTH: u64 = 64;
+    const DEFAULT_MAX_PAID_ACCESS_ENTRIES: u64 = 100_000;
+    const DEFAULT_CLAIM_WINDOW_MS: u64 = 2_592_000_000;
+
+    /// Event/indexer tags for [`AccessConfiguration`] (not used for on-chain policy).
+    const ACCESS_KIND_PROFILE: u8 = 1;
+    const ACCESS_KIND_ONE_TIME: u8 = 2;
+    const ACCESS_KIND_RECURRING: u8 = 3;
 
     // === Error codes ===
     const EUnauthorized: u64 = 1;
@@ -96,6 +110,28 @@ module social_contracts::mydata {
     const EPqAnchorNotFound: u64 = 8;
     const EPqEscrowExceeded: u64 = 9;
     const EPqSnapshotEscrowMissing: u64 = 10;
+    const EPqDistributionNotFound: u64 = 11;
+    const EPqClaimExpired: u64 = 12;
+    const EPqClaimNotExpired: u64 = 13;
+    const EPqPlatformMismatch: u64 = 14;
+    const EPqDistributionPublished: u64 = 15;
+
+    /// Mutually exclusive access model for a MyData listing.
+    public enum AccessConfiguration has store {
+        /// Gated by profile subscription on a linked post (no marketplace pricing).
+        ProfileSubscription,
+        /// One-time marketplace purchase.
+        MarketplaceOneTime {
+            price: u64,
+            purchasers: Table<address, bool>,
+        },
+        /// Recurring marketplace subscription with fixed duration per purchase.
+        MarketplaceRecurring {
+            price: u64,
+            duration_days: u64,
+            subscribers: Table<address, u64>,
+        },
+    }
 
     /// Universal MyData for encrypted data monetization
     public struct MyData has key {
@@ -117,15 +153,9 @@ module social_contracts::mydata {
         encrypted_data: vector<u8>,
         /// Encryption identity bytes: must match `id` inside the MyData ciphertext and in `mydata_approve`.
         encryption_id: vector<u8>,
-        
-        /// Pricing options - user controlled
-        one_time_price: Option<u64>,            // Price for one-time access (0 = free)
-        subscription_price: Option<u64>,        // Price for subscription access
-        subscription_duration_days: u64,       // Subscription duration in days
-        
-        /// Access tracking
-        purchasers: Table<address, bool>,       // One-time purchase access
-        subscribers: Table<address, u64>,       // address -> expiry timestamp
+
+        /// Access model (profile subscription gate or marketplace one-time/recurring).
+        access: AccessConfiguration,
         
         /// Extended metadata for data discovery
         geographic_region: Option<String>,
@@ -152,6 +182,14 @@ module social_contracts::mydata {
         max_subscription_days: u64,
         max_free_access_grants: u64,
         max_encryption_id_bytes: u64,
+        max_encrypted_data_bytes: u64,
+        max_tag_bytes: u64,
+        max_metadata_bytes: u64,
+        max_payment_reference_bytes: u64,
+        max_pool_assignments: u64,
+        max_merkle_proof_depth: u64,
+        max_paid_access_entries: u64,
+        default_claim_window_ms: u64,
         p2p_platform_fee_bps: u64,
         p2p_ecosystem_fee_bps: u64,
         mydata_marketplace_platform_fee_bps: u64,
@@ -172,6 +210,7 @@ module social_contracts::mydata {
         id: ID,
         name: String,
         description: String,
+        platform_id: Option<address>,
         created_at: u64,
         version: u64,
     }
@@ -206,6 +245,7 @@ module social_contracts::mydata {
     public struct BroadPoolCreatedEvent has copy, drop {
         pool_id: ID,
         name: String,
+        platform_id: Option<address>,
         created_at: u64,
     }
 
@@ -231,6 +271,7 @@ module social_contracts::mydata {
         created_at: u64,
         snapshot_manifest_hash: vector<u8>,
         payment_reference: vector<u8>,
+        platform_id: Option<address>,
     }
 
     public struct SnapshotAnchorRegistry has key {
@@ -244,6 +285,9 @@ module social_contracts::mydata {
         snapshot_id: ID,
         buyer_address: address,
         price_paid: u64,
+        source_pool_id: ID,
+        source_sub_pool_id: ID,
+        platform_id: Option<address>,
         created_at: u64,
         snapshot_manifest_hash: vector<u8>,
         payment_reference: vector<u8>,
@@ -254,7 +298,24 @@ module social_contracts::mydata {
         total_amount: u64,
         contributor_count: u64,
         merkle_root: vector<u8>,
+        platform_id: Option<address>,
+        claim_deadline_ms: u64,
         published_at: u64,
+    }
+
+    public struct SnapshotEscrowFundedEvent has copy, drop {
+        snapshot_id: ID,
+        funder: address,
+        amount: u64,
+        total_funded: u64,
+        funded_at: u64,
+    }
+
+    public struct SnapshotEscrowReclaimedEvent has copy, drop {
+        snapshot_id: ID,
+        buyer_address: address,
+        amount: u64,
+        reclaimed_at: u64,
     }
 
     public struct MyDataClaimVault has key {
@@ -288,6 +349,8 @@ module social_contracts::mydata {
         total_amount: u64,
         contributor_count: u64,
         merkle_root: vector<u8>,
+        platform_id: Option<address>,
+        claim_deadline_ms: u64,
         published_at: u64,
     }
 
@@ -304,8 +367,8 @@ module social_contracts::mydata {
         owner: address,
         media_type: String,
         platform_id: Option<address>,
-        one_time_price: Option<u64>,
-        subscription_price: Option<u64>,
+        /// [`ACCESS_KIND_*`] tag for indexers (1=profile, 2=one_time, 3=recurring).
+        access_configuration_kind: u8,
         created_at: u64,
     }
 
@@ -339,6 +402,23 @@ module social_contracts::mydata {
         timestamp: u64,
     }
 
+    public struct MyDataPricingUpdatedEvent has copy, drop {
+        ip_id: address,
+        one_time_price: Option<u64>,
+        subscription_price: Option<u64>,
+        subscription_duration_days: Option<u64>,
+        updated_by: address,
+        timestamp: u64,
+    }
+
+    public struct MyDataContentUpdatedEvent has copy, drop {
+        ip_id: address,
+        encrypted_data_updated: bool,
+        tags_updated: bool,
+        updated_by: address,
+        timestamp: u64,
+    }
+
     public struct MyDataRegisteredEvent has copy, drop {
         ip_id: address,
         owner: address,
@@ -358,6 +438,14 @@ module social_contracts::mydata {
         max_subscription_days: u64,
         max_free_access_grants: u64,
         max_encryption_id_bytes: u64,
+        max_encrypted_data_bytes: u64,
+        max_tag_bytes: u64,
+        max_metadata_bytes: u64,
+        max_payment_reference_bytes: u64,
+        max_pool_assignments: u64,
+        max_merkle_proof_depth: u64,
+        max_paid_access_entries: u64,
+        default_claim_window_ms: u64,
         p2p_platform_fee_bps: u64,
         p2p_ecosystem_fee_bps: u64,
         mydata_marketplace_platform_fee_bps: u64,
@@ -499,6 +587,14 @@ module social_contracts::mydata {
             max_subscription_days: config.max_subscription_days,
             max_free_access_grants: config.max_free_access_grants,
             max_encryption_id_bytes: config.max_encryption_id_bytes,
+            max_encrypted_data_bytes: config.max_encrypted_data_bytes,
+            max_tag_bytes: config.max_tag_bytes,
+            max_metadata_bytes: config.max_metadata_bytes,
+            max_payment_reference_bytes: config.max_payment_reference_bytes,
+            max_pool_assignments: config.max_pool_assignments,
+            max_merkle_proof_depth: config.max_merkle_proof_depth,
+            max_paid_access_entries: config.max_paid_access_entries,
+            default_claim_window_ms: config.default_claim_window_ms,
             p2p_platform_fee_bps: config.p2p_platform_fee_bps,
             p2p_ecosystem_fee_bps: config.p2p_ecosystem_fee_bps,
             mydata_marketplace_platform_fee_bps: config.mydata_marketplace_platform_fee_bps,
@@ -527,6 +623,14 @@ module social_contracts::mydata {
         max_subscription_days: u64,
         max_free_access_grants: u64,
         max_encryption_id_bytes: u64,
+        max_encrypted_data_bytes: u64,
+        max_tag_bytes: u64,
+        max_metadata_bytes: u64,
+        max_payment_reference_bytes: u64,
+        max_pool_assignments: u64,
+        max_merkle_proof_depth: u64,
+        max_paid_access_entries: u64,
+        default_claim_window_ms: u64,
         p2p_platform_fee_bps: u64,
         p2p_ecosystem_fee_bps: u64,
         mydata_marketplace_platform_fee_bps: u64,
@@ -540,6 +644,14 @@ module social_contracts::mydata {
         assert!(max_tags > 0, EInvalidInput);
         assert!(max_free_access_grants > 0, EInvalidInput);
         assert!(max_encryption_id_bytes > 0, EInvalidInput);
+        assert!(max_encrypted_data_bytes > 0, EInvalidInput);
+        assert!(max_tag_bytes > 0, EInvalidInput);
+        assert!(max_metadata_bytes > 0, EInvalidInput);
+        assert!(max_payment_reference_bytes > 0, EInvalidInput);
+        assert!(max_pool_assignments > 0, EInvalidInput);
+        assert!(max_merkle_proof_depth > 0, EInvalidInput);
+        assert!(max_paid_access_entries > 0, EInvalidInput);
+        assert!(default_claim_window_ms > 0, EInvalidInput);
         validate_fee_config(
             p2p_platform_fee_bps,
             p2p_ecosystem_fee_bps,
@@ -554,6 +666,14 @@ module social_contracts::mydata {
         config.max_subscription_days = max_subscription_days;
         config.max_free_access_grants = max_free_access_grants;
         config.max_encryption_id_bytes = max_encryption_id_bytes;
+        config.max_encrypted_data_bytes = max_encrypted_data_bytes;
+        config.max_tag_bytes = max_tag_bytes;
+        config.max_metadata_bytes = max_metadata_bytes;
+        config.max_payment_reference_bytes = max_payment_reference_bytes;
+        config.max_pool_assignments = max_pool_assignments;
+        config.max_merkle_proof_depth = max_merkle_proof_depth;
+        config.max_paid_access_entries = max_paid_access_entries;
+        config.default_claim_window_ms = default_claim_window_ms;
         config.p2p_platform_fee_bps = p2p_platform_fee_bps;
         config.p2p_ecosystem_fee_bps = p2p_ecosystem_fee_bps;
         config.mydata_marketplace_platform_fee_bps = mydata_marketplace_platform_fee_bps;
@@ -584,6 +704,14 @@ module social_contracts::mydata {
             max_subscription_days: MAX_SUBSCRIPTION_DAYS,
             max_free_access_grants: MAX_FREE_ACCESS_GRANTS,
             max_encryption_id_bytes: DEFAULT_MAX_ENCRYPTION_ID_BYTES,
+            max_encrypted_data_bytes: DEFAULT_MAX_ENCRYPTED_DATA_BYTES,
+            max_tag_bytes: DEFAULT_MAX_TAG_BYTES,
+            max_metadata_bytes: DEFAULT_MAX_METADATA_BYTES,
+            max_payment_reference_bytes: DEFAULT_MAX_PAYMENT_REFERENCE_BYTES,
+            max_pool_assignments: DEFAULT_MAX_POOL_ASSIGNMENTS,
+            max_merkle_proof_depth: DEFAULT_MAX_MERKLE_PROOF_DEPTH,
+            max_paid_access_entries: DEFAULT_MAX_PAID_ACCESS_ENTRIES,
+            default_claim_window_ms: DEFAULT_CLAIM_WINDOW_MS,
             p2p_platform_fee_bps: DEFAULT_P2P_PLATFORM_FEE_BPS,
             p2p_ecosystem_fee_bps: DEFAULT_P2P_ECOSYSTEM_FEE_BPS,
             mydata_marketplace_platform_fee_bps: DEFAULT_MYDATA_MARKETPLACE_PLATFORM_FEE_BPS,
@@ -642,7 +770,7 @@ module social_contracts::mydata {
         share_mydata_system_objects(clock, ctx, DEFAULT_MARKETPLACE_ENABLED);
     }
 
-    public fun create_mydata_pool_admin_cap(ctx: &mut TxContext): MyDataPoolAdminCap {
+    public(package) fun create_mydata_pool_admin_cap(ctx: &mut TxContext): MyDataPoolAdminCap {
         MyDataPoolAdminCap { id: object::new(ctx) }
     }
 
@@ -652,13 +780,17 @@ module social_contracts::mydata {
         object::id_from_bytes(hash::blake2b256(&data))
     }
 
-    public entry fun create_broad_pool(
+    fun create_broad_pool_internal(
+        config: &MyDataConfig,
         _: &MyDataPoolAdminCap,
         registry: &mut MyDataPoolRegistry,
         name: String,
         description: String,
+        platform_id: Option<address>,
         clock: &Clock,
     ) {
+        assert!(string::length(&name) > 0 && string::length(&name) <= config.max_metadata_bytes, EPqInvalidInput);
+        assert!(string::length(&description) <= config.max_metadata_bytes, EPqInvalidInput);
         let nonce = registry.next_broad_pool_nonce;
         registry.next_broad_pool_nonce = nonce + 1;
 
@@ -667,6 +799,7 @@ module social_contracts::mydata {
             id: pool_id,
             name,
             description,
+            platform_id,
             created_at: clock::timestamp_ms(clock),
             version: registry.version,
         };
@@ -678,11 +811,44 @@ module social_contracts::mydata {
         event::emit(BroadPoolCreatedEvent {
             pool_id,
             name: broad_pool.name,
+            platform_id,
             created_at: broad_pool.created_at,
         });
     }
 
+    public entry fun create_broad_pool(
+        config: &MyDataConfig,
+        cap: &MyDataPoolAdminCap,
+        registry: &mut MyDataPoolRegistry,
+        name: String,
+        description: String,
+        clock: &Clock,
+    ) {
+        create_broad_pool_internal(config, cap, registry, name, description, option::none(), clock);
+    }
+
+    public entry fun create_broad_pool_with_platform(
+        config: &MyDataConfig,
+        cap: &MyDataPoolAdminCap,
+        registry: &mut MyDataPoolRegistry,
+        platform: &Platform,
+        name: String,
+        description: String,
+        clock: &Clock,
+    ) {
+        create_broad_pool_internal(
+            config,
+            cap,
+            registry,
+            name,
+            description,
+            option::some(object::uid_to_address(platform::id(platform))),
+            clock,
+        );
+    }
+
     public entry fun create_sub_pool(
+        config: &MyDataConfig,
         _: &MyDataPoolAdminCap,
         registry: &mut MyDataPoolRegistry,
         broad_pool_id: ID,
@@ -692,6 +858,11 @@ module social_contracts::mydata {
         clock: &Clock,
     ) {
         assert!(table::contains(&registry.broad_pools, broad_pool_id), EPqPoolNotFound);
+        assert!(string::length(&name) > 0 && string::length(&name) <= config.max_metadata_bytes, EPqInvalidInput);
+        assert!(string::length(&description) <= config.max_metadata_bytes, EPqInvalidInput);
+        if (option::is_some(&schema_metadata)) {
+            assert!(vector::length(option::borrow(&schema_metadata)) <= config.max_metadata_bytes, EPqInvalidInput);
+        };
 
         let nonce = registry.next_sub_pool_nonce;
         registry.next_sub_pool_nonce = nonce + 1;
@@ -722,11 +893,14 @@ module social_contracts::mydata {
     }
 
     fun assign_mydata_to_sub_pools(
+        config: &MyDataConfig,
         registry: &mut MyDataPoolRegistry,
         ip_id: address,
         sub_pool_ids: vector<ID>,
         clock: &Clock,
     ) {
+        assert!(vector::length(&sub_pool_ids) > 0, EPqInvalidInput);
+        assert!(vector::length(&sub_pool_ids) <= config.max_pool_assignments, EPqInvalidInput);
         let mut existing = if (table::contains(&registry.mydata_to_sub_pools, ip_id)) {
             *table::borrow(&registry.mydata_to_sub_pools, ip_id)
         } else {
@@ -740,6 +914,7 @@ module social_contracts::mydata {
             let (has, _) = vector::index_of(&existing, &sub_id);
             if (!has) {
                 vector::push_back(&mut existing, sub_id);
+                assert!(vector::length(&existing) <= config.max_pool_assignments, EPqInvalidInput);
             };
             i = i + 1;
         };
@@ -776,6 +951,7 @@ module social_contracts::mydata {
     }
 
     public entry fun record_snapshot_anchor(
+        config: &MyDataConfig,
         anchor_registry: &mut SnapshotAnchorRegistry,
         vault: &mut MyDataClaimVault,
         pool_registry: &MyDataPoolRegistry,
@@ -787,8 +963,14 @@ module social_contracts::mydata {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
+        assert!(config.marketplace_enabled, EDisabled);
         assert!(table::contains(&pool_registry.broad_pools, source_pool_id), EPqPoolNotFound);
         assert!(table::contains(&pool_registry.sub_pools, source_sub_pool_id), EPqSubPoolNotFound);
+        let broad_pool = table::borrow(&pool_registry.broad_pools, source_pool_id);
+        let sub_pool = table::borrow(&pool_registry.sub_pools, source_sub_pool_id);
+        assert!(sub_pool.broad_pool_id == source_pool_id, EPqSubPoolNotFound);
+        assert!(vector::length(&manifest_hash) == 32, EPqInvalidInput);
+        assert!(vector::length(&payment_reference) <= config.max_payment_reference_bytes, EPqInvalidInput);
 
         let price_paid = coin::value(&payment);
         assert!(price_paid > 0, EPqInsufficientPayment);
@@ -808,6 +990,7 @@ module social_contracts::mydata {
             created_at: clock::timestamp_ms(clock),
             snapshot_manifest_hash: manifest_hash,
             payment_reference,
+            platform_id: broad_pool.platform_id,
         };
 
         let created_at = anchor.created_at;
@@ -822,6 +1005,9 @@ module social_contracts::mydata {
             snapshot_id,
             buyer_address: buyer,
             price_paid,
+            source_pool_id,
+            source_sub_pool_id,
+            platform_id: broad_pool.platform_id,
             created_at,
             snapshot_manifest_hash: snapshot_manifest_hash_ev,
             payment_reference: payment_reference_ev,
@@ -839,23 +1025,84 @@ module social_contracts::mydata {
         }
     }
 
-    public entry fun publish_merkle_root(
+    public entry fun deposit_snapshot_escrow(
         _: &MyDataPoolAdminCap,
         anchor_registry: &SnapshotAnchorRegistry,
         vault: &mut MyDataClaimVault,
         snapshot_id: ID,
-        root_hash: vector<u8>,
+        payment: Coin<MYSO>,
         clock: &Clock,
+        ctx: &TxContext,
     ) {
         assert!(table::contains(&anchor_registry.anchors, snapshot_id), EPqAnchorNotFound);
+        assert!(!table::contains(&vault.merkle_roots, snapshot_id), EPqDistributionPublished);
+        assert!(table::contains(&vault.snapshot_escrow, snapshot_id), EPqSnapshotEscrowMissing);
+        let amount = coin::value(&payment);
+        assert!(amount > 0, EPqInsufficientPayment);
+        let escrow = table::borrow_mut(&mut vault.snapshot_escrow, snapshot_id);
+        assert!(*escrow <= MAX_U64 - amount, EOverflow);
+        *escrow = *escrow + amount;
+        let total_funded = *escrow;
+        balance::join(&mut vault.balance, coin::into_balance(payment));
+
+        event::emit(SnapshotEscrowFundedEvent {
+            snapshot_id,
+            funder: tx_context::sender(ctx),
+            amount,
+            total_funded,
+            funded_at: clock::timestamp_ms(clock),
+        });
+    }
+
+    public entry fun publish_distribution(
+        config: &MyDataConfig,
+        _: &MyDataPoolAdminCap,
+        anchor_registry: &SnapshotAnchorRegistry,
+        dist_registry: &mut DistributionRegistry,
+        vault: &mut MyDataClaimVault,
+        snapshot_id: ID,
+        root_hash: vector<u8>,
+        total_amount: u64,
+        contributor_count: u64,
+        clock: &Clock,
+    ) {
+        assert!(config.marketplace_enabled, EDisabled);
+        assert!(table::contains(&anchor_registry.anchors, snapshot_id), EPqAnchorNotFound);
+        assert!(table::contains(&vault.snapshot_escrow, snapshot_id), EPqSnapshotEscrowMissing);
         assert!(vector::length(&root_hash) == 32, EPqInvalidInput);
-        assert!(!table::contains(&vault.merkle_roots, snapshot_id), EPqInvalidInput);
-        table::add(&mut vault.merkle_roots, snapshot_id, root_hash);
+        assert!(total_amount > 0 && contributor_count > 0, EPqInvalidInput);
+        assert!(*table::borrow(&vault.snapshot_escrow, snapshot_id) == total_amount, EPqEscrowExceeded);
+        assert!(!table::contains(&vault.merkle_roots, snapshot_id), EPqDistributionPublished);
+        assert!(!table::contains(&dist_registry.rounds, snapshot_id), EPqDistributionPublished);
+
+        let now = clock::timestamp_ms(clock);
+        assert!(now <= MAX_U64 - config.default_claim_window_ms, EOverflow);
+        let claim_deadline_ms = now + config.default_claim_window_ms;
+        let platform_id = table::borrow(&anchor_registry.anchors, snapshot_id).platform_id;
+        table::add(&mut vault.merkle_roots, snapshot_id, copy root_hash);
+        table::add(&mut dist_registry.rounds, snapshot_id, DistributionRound {
+            snapshot_id,
+            total_amount,
+            contributor_count,
+            merkle_root: copy root_hash,
+            platform_id,
+            claim_deadline_ms,
+            published_at: now,
+        });
 
         event::emit(MerkleRootPublishedEvent {
             snapshot_id,
-            root_hash,
-            published_at: clock::timestamp_ms(clock),
+            root_hash: copy root_hash,
+            published_at: now,
+        });
+        event::emit(DistributionRecordedEvent {
+            snapshot_id,
+            total_amount,
+            contributor_count,
+            merkle_root: root_hash,
+            platform_id,
+            claim_deadline_ms,
+            published_at: now,
         });
     }
 
@@ -922,6 +1169,7 @@ module social_contracts::mydata {
 
     fun claim_internal_no_platform(
         config: &MyDataConfig,
+        dist_registry: &DistributionRegistry,
         vault: &mut MyDataClaimVault,
         treasury: &EcosystemTreasury,
         snapshot_id: ID,
@@ -931,12 +1179,23 @@ module social_contracts::mydata {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
+        assert!(amount > 0, EPqInvalidInput);
+        assert!(vector::length(&proof) <= config.max_merkle_proof_depth, EPqInvalidProof);
+        assert!(table::contains(&dist_registry.rounds, snapshot_id), EPqDistributionNotFound);
+        let round = table::borrow(&dist_registry.rounds, snapshot_id);
+        assert!(option::is_none(&round.platform_id), EPqPlatformMismatch);
+        assert!(clock::timestamp_ms(clock) <= round.claim_deadline_ms, EPqClaimExpired);
         assert!(table::contains(&vault.merkle_roots, snapshot_id), EPqMerkleRootNotPublished);
         assert!(table::contains(&vault.snapshot_escrow, snapshot_id), EPqSnapshotEscrowMissing);
         assert!(*table::borrow(&vault.snapshot_escrow, snapshot_id) >= amount, EPqEscrowExceeded);
 
         let claimant = tx_context::sender(ctx);
-        let leaf = merkle::leaf_hash(claimant, amount, object::id_to_bytes(&snapshot_id));
+        let leaf = merkle::leaf_hash_with_platform(
+            claimant,
+            amount,
+            object::id_to_bytes(&snapshot_id),
+            option::none(),
+        );
         let root = *table::borrow(&vault.merkle_roots, snapshot_id);
         assert!(merkle::verify_proof(leaf, &proof, leaf_index, root), EPqInvalidProof);
 
@@ -976,6 +1235,7 @@ module social_contracts::mydata {
 
     fun claim_internal_with_platform(
         config: &MyDataConfig,
+        dist_registry: &DistributionRegistry,
         vault: &mut MyDataClaimVault,
         treasury: &EcosystemTreasury,
         platform: &mut Platform,
@@ -986,12 +1246,25 @@ module social_contracts::mydata {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
+        assert!(amount > 0, EPqInvalidInput);
+        assert!(vector::length(&proof) <= config.max_merkle_proof_depth, EPqInvalidProof);
+        assert!(table::contains(&dist_registry.rounds, snapshot_id), EPqDistributionNotFound);
+        let round = table::borrow(&dist_registry.rounds, snapshot_id);
+        assert!(option::is_some(&round.platform_id), EPqPlatformMismatch);
+        assert!(clock::timestamp_ms(clock) <= round.claim_deadline_ms, EPqClaimExpired);
+        let platform_id = object::uid_to_address(platform::id(platform));
+        assert!(*option::borrow(&round.platform_id) == platform_id, EPqPlatformMismatch);
         assert!(table::contains(&vault.merkle_roots, snapshot_id), EPqMerkleRootNotPublished);
         assert!(table::contains(&vault.snapshot_escrow, snapshot_id), EPqSnapshotEscrowMissing);
         assert!(*table::borrow(&vault.snapshot_escrow, snapshot_id) >= amount, EPqEscrowExceeded);
 
         let claimant = tx_context::sender(ctx);
-        let leaf = merkle::leaf_hash(claimant, amount, object::id_to_bytes(&snapshot_id));
+        let leaf = merkle::leaf_hash_with_platform(
+            claimant,
+            amount,
+            object::id_to_bytes(&snapshot_id),
+            option::some(platform_id),
+        );
         let root = *table::borrow(&vault.merkle_roots, snapshot_id);
         assert!(merkle::verify_proof(leaf, &proof, leaf_index, root), EPqInvalidProof);
 
@@ -1008,7 +1281,6 @@ module social_contracts::mydata {
         let claimed_table = table::borrow_mut(&mut vault.claimed, snapshot_id);
         table::add(claimed_table, claimant, true);
 
-        let platform_id = object::uid_to_address(platform::id(platform));
         let (platform_fee, ecosystem_fee, net_amount) = distribute_mydata_marketplace_claim_fees_with_platform(
             config,
             treasury,
@@ -1035,6 +1307,7 @@ module social_contracts::mydata {
     /// Claim MyData marketplace pool payout from vault escrow (no platform).
     public entry fun claim(
         config: &MyDataConfig,
+        dist_registry: &DistributionRegistry,
         vault: &mut MyDataClaimVault,
         treasury: &EcosystemTreasury,
         snapshot_id: ID,
@@ -1046,6 +1319,7 @@ module social_contracts::mydata {
     ) {
         claim_internal_no_platform(
             config,
+            dist_registry,
             vault,
             treasury,
             snapshot_id,
@@ -1060,6 +1334,7 @@ module social_contracts::mydata {
     /// Claim MyData marketplace pool payout with platform treasury routing.
     public entry fun claim_with_platform(
         config: &MyDataConfig,
+        dist_registry: &DistributionRegistry,
         vault: &mut MyDataClaimVault,
         treasury: &EcosystemTreasury,
         platform: &mut Platform,
@@ -1072,6 +1347,7 @@ module social_contracts::mydata {
     ) {
         claim_internal_with_platform(
             config,
+            dist_registry,
             vault,
             treasury,
             platform,
@@ -1084,42 +1360,33 @@ module social_contracts::mydata {
         );
     }
 
-    public entry fun deposit(
-        _: &MyDataPoolAdminCap,
+    public entry fun reclaim_expired_snapshot_escrow(
+        anchor_registry: &SnapshotAnchorRegistry,
+        dist_registry: &DistributionRegistry,
         vault: &mut MyDataClaimVault,
-        _snapshot_id: ID,
-        payment: Coin<MYSO>,
-    ) {
-        balance::join(&mut vault.balance, coin::into_balance(payment));
-    }
-
-    public entry fun record_distribution(
-        _: &MyDataPoolAdminCap,
-        dist_registry: &mut DistributionRegistry,
-        vault: &MyDataClaimVault,
         snapshot_id: ID,
-        total_amount: u64,
-        contributor_count: u64,
         clock: &Clock,
+        ctx: &mut TxContext,
     ) {
-        assert!(table::contains(&vault.merkle_roots, snapshot_id), EPqMerkleRootNotPublished);
-        let root = *table::borrow(&vault.merkle_roots, snapshot_id);
-        let published_at = clock::timestamp_ms(clock);
-
-        let round = DistributionRound {
+        assert!(table::contains(&anchor_registry.anchors, snapshot_id), EPqAnchorNotFound);
+        assert!(table::contains(&dist_registry.rounds, snapshot_id), EPqDistributionNotFound);
+        assert!(table::contains(&vault.snapshot_escrow, snapshot_id), EPqSnapshotEscrowMissing);
+        let anchor = table::borrow(&anchor_registry.anchors, snapshot_id);
+        assert!(tx_context::sender(ctx) == anchor.buyer_address, EUnauthorized);
+        let round = table::borrow(&dist_registry.rounds, snapshot_id);
+        let now = clock::timestamp_ms(clock);
+        assert!(now > round.claim_deadline_ms, EPqClaimNotExpired);
+        let remaining = table::borrow_mut(&mut vault.snapshot_escrow, snapshot_id);
+        let amount = *remaining;
+        assert!(amount > 0, EPqEscrowExceeded);
+        *remaining = 0;
+        let refund = coin::from_balance(balance::split(&mut vault.balance, amount), ctx);
+        transfer::public_transfer(refund, anchor.buyer_address);
+        event::emit(SnapshotEscrowReclaimedEvent {
             snapshot_id,
-            total_amount,
-            contributor_count,
-            merkle_root: copy root,
-            published_at,
-        };
-        table::add(&mut dist_registry.rounds, snapshot_id, round);
-        event::emit(DistributionRecordedEvent {
-            snapshot_id,
-            total_amount,
-            contributor_count,
-            merkle_root: root,
-            published_at,
+            buyer_address: anchor.buyer_address,
+            amount,
+            reclaimed_at: now,
         });
     }
 
@@ -1161,6 +1428,95 @@ module social_contracts::mydata {
     public fun broad_pool_id(pool: &BroadPool): ID { pool.id }
     public fun sub_pool_id(pool: &SubPool): ID { pool.id }
 
+    fun access_configuration(mydata: &MyData): &AccessConfiguration {
+        &mydata.access
+    }
+
+    public fun requires_profile_subscription_access(mydata: &MyData): bool {
+        match (access_configuration(mydata)) {
+            AccessConfiguration::ProfileSubscription => true,
+            _ => false,
+        }
+    }
+
+    public fun requires_marketplace_purchase(mydata: &MyData): bool {
+        match (access_configuration(mydata)) {
+            AccessConfiguration::MarketplaceOneTime { .. } => true,
+            _ => false,
+        }
+    }
+
+    public fun requires_marketplace_subscription(mydata: &MyData): bool {
+        match (access_configuration(mydata)) {
+            AccessConfiguration::MarketplaceRecurring { .. } => true,
+            _ => false,
+        }
+    }
+
+    public fun linked_one_time_price(mydata: &MyData): Option<u64> {
+        match (access_configuration(mydata)) {
+            AccessConfiguration::MarketplaceOneTime { price, .. } => option::some(*price),
+            _ => option::none(),
+        }
+    }
+
+    public fun access_configuration_kind(mydata: &MyData): u8 {
+        match (access_configuration(mydata)) {
+            AccessConfiguration::ProfileSubscription => ACCESS_KIND_PROFILE,
+            AccessConfiguration::MarketplaceOneTime { .. } => ACCESS_KIND_ONE_TIME,
+            AccessConfiguration::MarketplaceRecurring { .. } => ACCESS_KIND_RECURRING,
+        }
+    }
+
+    fun validate_marketplace_price(price: u64) {
+        assert!(price > 0 && price <= MAX_U64, EInvalidInput);
+    }
+
+    fun validate_recurring_duration(config: &MyDataConfig, duration_days: u64): u64 {
+        let sub_duration = if (duration_days == 0) { 30 } else { duration_days };
+        assert!(sub_duration <= config.max_subscription_days, EInvalidInput);
+        let duration_ms = (sub_duration as u128) * (MILLISECONDS_PER_DAY as u128);
+        assert!(duration_ms <= (MAX_U64 as u128), EOverflow);
+        sub_duration
+    }
+
+    fun validate_access_configuration(config: &MyDataConfig, access: &AccessConfiguration) {
+        match (access) {
+            AccessConfiguration::ProfileSubscription => {},
+            AccessConfiguration::MarketplaceOneTime { price, .. } => validate_marketplace_price(*price),
+            AccessConfiguration::MarketplaceRecurring { price, duration_days, .. } => {
+                validate_marketplace_price(*price);
+                let _ = validate_recurring_duration(config, *duration_days);
+            },
+        }
+    }
+
+    fun validate_optional_metadata(config: &MyDataConfig, value: &Option<String>) {
+        if (option::is_some(value)) {
+            assert!(string::length(option::borrow(value)) <= config.max_metadata_bytes, EInvalidInput);
+        };
+    }
+
+    fun validate_tags(config: &MyDataConfig, tags: &vector<String>) {
+        assert!(vector::length(tags) <= config.max_tags, EInvalidInput);
+        let mut i = 0;
+        while (i < vector::length(tags)) {
+            assert!(string::length(vector::borrow(tags, i)) <= config.max_tag_bytes, EInvalidInput);
+            i = i + 1;
+        };
+    }
+
+    fun emit_mydata_created_event(mydata: &MyData, ip_id: address) {
+        event::emit(MyDataCreatedEvent {
+            ip_id,
+            owner: mydata.owner,
+            media_type: mydata.media_type,
+            platform_id: mydata.platform_id,
+            access_configuration_kind: access_configuration_kind(mydata),
+            created_at: mydata.created_at,
+        });
+    }
+
     /// Create new MyData data with proper MyData encryption
     public fun create(
         config: &MyDataConfig,
@@ -1171,9 +1527,7 @@ module social_contracts::mydata {
         timestamp_end: Option<u64>,
         encrypted_data: vector<u8>,  // Pre-encrypted data from client
         encryption_id: vector<u8>,   // MyData encryption ID
-        one_time_price: Option<u64>,
-        subscription_price: Option<u64>,
-        subscription_duration_days: u64,
+        access: AccessConfiguration,
         geographic_region: Option<String>,
         data_quality: Option<String>,
         sample_size: Option<u64>,
@@ -1184,28 +1538,17 @@ module social_contracts::mydata {
         ctx: &mut TxContext,
     ): MyData {
         // Input validation
-        assert!(vector::length(&tags) <= config.max_tags, EInvalidInput);
+        validate_tags(config, &tags);
+        assert!(string::length(&media_type) > 0 && string::length(&media_type) <= config.max_metadata_bytes, EInvalidInput);
+        assert!(!vector::is_empty(&encrypted_data), EInvalidInput);
+        assert!(vector::length(&encrypted_data) <= config.max_encrypted_data_bytes, EInvalidInput);
         assert!(!vector::is_empty(&encryption_id), EInvalidInput);
         assert!(vector::length(&encryption_id) <= config.max_encryption_id_bytes, EInvalidInput);
-        
-        // Validate prices with overflow protection
-        if (option::is_some(&one_time_price)) {
-            let price_val = *option::borrow(&one_time_price);
-            assert!(price_val > 0 && price_val <= MAX_U64, EInvalidInput);
-        };
-        
-        if (option::is_some(&subscription_price)) {
-            let price_val = *option::borrow(&subscription_price);
-            assert!(price_val > 0 && price_val <= MAX_U64, EInvalidInput);
-        };
-        
-        // Validate subscription duration with overflow protection
-        let sub_duration = if (subscription_duration_days == 0) { 30 } else { subscription_duration_days };
-        assert!(sub_duration <= config.max_subscription_days, EInvalidInput);
-        
-        // Check for potential overflow in millisecond conversion
-        let duration_ms = (sub_duration as u128) * (MILLISECONDS_PER_DAY as u128);
-        assert!(duration_ms <= (MAX_U64 as u128), EOverflow);
+        validate_optional_metadata(config, &geographic_region);
+        validate_optional_metadata(config, &data_quality);
+        validate_optional_metadata(config, &collection_method);
+        validate_optional_metadata(config, &update_frequency);
+        validate_access_configuration(config, &access);
         
         // Validate time range
         if (option::is_some(&timestamp_end)) {
@@ -1227,11 +1570,7 @@ module social_contracts::mydata {
             last_updated: current_time,
             encrypted_data,
             encryption_id,
-            one_time_price,
-            subscription_price,
-            subscription_duration_days: sub_duration,
-            purchasers: table::new(ctx),
-            subscribers: table::new(ctx),
+            access,
             geographic_region,
             data_quality,
             sample_size,
@@ -1242,23 +1581,18 @@ module social_contracts::mydata {
         };
 
         let ip_id = object::uid_to_address(&mydata.id);
-        
-        event::emit(MyDataCreatedEvent {
-            ip_id,
-            owner: mydata.owner,
-            media_type: mydata.media_type,
-            platform_id: mydata.platform_id,
-            one_time_price: mydata.one_time_price,
-            subscription_price: mydata.subscription_price,
-            created_at: mydata.created_at,
-        });
+        emit_mydata_created_event(&mydata, ip_id);
 
         mydata
     }
 
-    /// Create and share MyData publicly
-    #[allow(lint(share_owned))]
-    public entry fun create_and_share(
+    fun share_created_mydata(registry: &mut MyDataRegistry, mydata: MyData) {
+        let ip_id = object::uid_to_address(&mydata.id);
+        table::add(&mut registry.ip_to_owner, ip_id, mydata.owner);
+        transfer::share_object(mydata);
+    }
+
+    fun create_and_share_internal(
         config: &MyDataConfig,
         registry: &mut MyDataRegistry,
         media_type: String,
@@ -1268,9 +1602,7 @@ module social_contracts::mydata {
         timestamp_end: Option<u64>,
         encrypted_data: vector<u8>,
         encryption_id: vector<u8>,
-        one_time_price: Option<u64>,
-        subscription_price: Option<u64>,
-        subscription_duration_days: u64,
+        access: AccessConfiguration,
         geographic_region: Option<String>,
         data_quality: Option<String>,
         sample_size: Option<u64>,
@@ -1281,7 +1613,7 @@ module social_contracts::mydata {
         ctx: &mut TxContext,
     ) {
         assert!(config.marketplace_enabled, EDisabled);
-        
+
         let mydata = create(
             config,
             media_type,
@@ -1291,9 +1623,7 @@ module social_contracts::mydata {
             timestamp_end,
             encrypted_data,
             encryption_id,
-            one_time_price,
-            subscription_price,
-            subscription_duration_days,
+            access,
             geographic_region,
             data_quality,
             sample_size,
@@ -1304,15 +1634,154 @@ module social_contracts::mydata {
             ctx,
         );
 
-        // Register in the registry
-        let ip_id = object::uid_to_address(&mydata.id);
-        table::add(&mut registry.ip_to_owner, ip_id, mydata.owner);
+        share_created_mydata(registry, mydata);
+    }
 
-        transfer::share_object(mydata);
+    /// Create and share profile-subscription-gated MyData (no marketplace pricing).
+    #[allow(lint(share_owned))]
+    public entry fun create_and_share_profile_subscription_mydata(
+        config: &MyDataConfig,
+        registry: &mut MyDataRegistry,
+        media_type: String,
+        tags: vector<String>,
+        platform_id: Option<address>,
+        timestamp_start: u64,
+        timestamp_end: Option<u64>,
+        encrypted_data: vector<u8>,
+        encryption_id: vector<u8>,
+        geographic_region: Option<String>,
+        data_quality: Option<String>,
+        sample_size: Option<u64>,
+        collection_method: Option<String>,
+        is_updating: bool,
+        update_frequency: Option<String>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        create_and_share_internal(
+            config,
+            registry,
+            media_type,
+            tags,
+            platform_id,
+            timestamp_start,
+            timestamp_end,
+            encrypted_data,
+            encryption_id,
+            AccessConfiguration::ProfileSubscription,
+            geographic_region,
+            data_quality,
+            sample_size,
+            collection_method,
+            is_updating,
+            update_frequency,
+            clock,
+            ctx,
+        );
+    }
+
+    /// Create and share marketplace one-time purchase MyData.
+    #[allow(lint(share_owned))]
+    public entry fun create_and_share_marketplace_one_time_mydata(
+        config: &MyDataConfig,
+        registry: &mut MyDataRegistry,
+        media_type: String,
+        tags: vector<String>,
+        platform_id: Option<address>,
+        timestamp_start: u64,
+        timestamp_end: Option<u64>,
+        encrypted_data: vector<u8>,
+        encryption_id: vector<u8>,
+        price: u64,
+        geographic_region: Option<String>,
+        data_quality: Option<String>,
+        sample_size: Option<u64>,
+        collection_method: Option<String>,
+        is_updating: bool,
+        update_frequency: Option<String>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        validate_marketplace_price(price);
+        create_and_share_internal(
+            config,
+            registry,
+            media_type,
+            tags,
+            platform_id,
+            timestamp_start,
+            timestamp_end,
+            encrypted_data,
+            encryption_id,
+            AccessConfiguration::MarketplaceOneTime {
+                price,
+                purchasers: table::new(ctx),
+            },
+            geographic_region,
+            data_quality,
+            sample_size,
+            collection_method,
+            is_updating,
+            update_frequency,
+            clock,
+            ctx,
+        );
+    }
+
+    /// Create and share marketplace recurring subscription MyData.
+    #[allow(lint(share_owned))]
+    public entry fun create_and_share_marketplace_recurring_mydata(
+        config: &MyDataConfig,
+        registry: &mut MyDataRegistry,
+        media_type: String,
+        tags: vector<String>,
+        platform_id: Option<address>,
+        timestamp_start: u64,
+        timestamp_end: Option<u64>,
+        encrypted_data: vector<u8>,
+        encryption_id: vector<u8>,
+        price: u64,
+        duration_days: u64,
+        geographic_region: Option<String>,
+        data_quality: Option<String>,
+        sample_size: Option<u64>,
+        collection_method: Option<String>,
+        is_updating: bool,
+        update_frequency: Option<String>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        validate_marketplace_price(price);
+        let sub_duration = validate_recurring_duration(config, duration_days);
+        create_and_share_internal(
+            config,
+            registry,
+            media_type,
+            tags,
+            platform_id,
+            timestamp_start,
+            timestamp_end,
+            encrypted_data,
+            encryption_id,
+            AccessConfiguration::MarketplaceRecurring {
+                price,
+                duration_days: sub_duration,
+                subscribers: table::new(ctx),
+            },
+            geographic_region,
+            data_quality,
+            sample_size,
+            collection_method,
+            is_updating,
+            update_frequency,
+            clock,
+            ctx,
+        );
     }
 
     fun purchase_one_time_no_platform(
         config: &MyDataConfig,
+        block_list_registry: &block_list::BlockListRegistry,
         memory_config: &social_contracts::memory::MemoryConfig,
         mydata: &mut MyData,
         treasury: &EcosystemTreasury,
@@ -1325,8 +1794,12 @@ module social_contracts::mydata {
         assert!(mydata.version == upgrade::current_version(), EInvalidInput);
 
         let buyer = tx_context::sender(ctx);
-        assert!(option::is_some(&mydata.one_time_price), ENotForSale);
-        let price = *option::borrow(&mydata.one_time_price);
+        block_list::assert_not_blocked(block_list_registry, buyer, mydata.owner);
+        assert!(requires_marketplace_purchase(mydata), ENotForSale);
+        let price = match (&mydata.access) {
+            AccessConfiguration::MarketplaceOneTime { price, .. } => *price,
+            _ => abort ENotForSale,
+        };
 
         let mut sub_agent_id = option::none();
         let mut organization_id = option::none();
@@ -1345,7 +1818,13 @@ module social_contracts::mydata {
         };
 
         assert!(coin::value(payment) >= price, EPriceMismatch);
-        assert!(!table::contains(&mydata.purchasers, buyer), EAlreadyPurchased);
+        match (&mydata.access) {
+            AccessConfiguration::MarketplaceOneTime { purchasers, .. } => {
+                assert!(!table::contains(purchasers, buyer), EAlreadyPurchased);
+                assert!(table::length(purchasers) < config.max_paid_access_entries, EInvalidInput);
+            },
+            _ => abort ENotForSale,
+        };
         assert!(buyer != mydata.owner, ESelfPurchase);
 
         let price_coin = coin::split(payment, price, ctx);
@@ -1357,7 +1836,12 @@ module social_contracts::mydata {
             ctx,
         );
 
-        table::add(&mut mydata.purchasers, buyer, true);
+        match (&mut mydata.access) {
+            AccessConfiguration::MarketplaceOneTime { purchasers, .. } => {
+                table::add(purchasers, buyer, true);
+            },
+            _ => abort ENotForSale,
+        };
 
         event::emit(PurchaseEvent {
             ip_id: object::uid_to_address(&mydata.id),
@@ -1376,6 +1860,7 @@ module social_contracts::mydata {
 
     fun purchase_one_time_with_platform_internal(
         config: &MyDataConfig,
+        block_list_registry: &block_list::BlockListRegistry,
         memory_config: &social_contracts::memory::MemoryConfig,
         mydata: &mut MyData,
         treasury: &EcosystemTreasury,
@@ -1390,8 +1875,12 @@ module social_contracts::mydata {
         assert_platform_matches_listing(mydata, platform);
 
         let buyer = tx_context::sender(ctx);
-        assert!(option::is_some(&mydata.one_time_price), ENotForSale);
-        let price = *option::borrow(&mydata.one_time_price);
+        block_list::assert_not_blocked(block_list_registry, buyer, mydata.owner);
+        assert!(requires_marketplace_purchase(mydata), ENotForSale);
+        let price = match (&mydata.access) {
+            AccessConfiguration::MarketplaceOneTime { price, .. } => *price,
+            _ => abort ENotForSale,
+        };
 
         let mut sub_agent_id = option::none();
         let mut organization_id = option::none();
@@ -1410,7 +1899,13 @@ module social_contracts::mydata {
         };
 
         assert!(coin::value(payment) >= price, EPriceMismatch);
-        assert!(!table::contains(&mydata.purchasers, buyer), EAlreadyPurchased);
+        match (&mydata.access) {
+            AccessConfiguration::MarketplaceOneTime { purchasers, .. } => {
+                assert!(!table::contains(purchasers, buyer), EAlreadyPurchased);
+                assert!(table::length(purchasers) < config.max_paid_access_entries, EInvalidInput);
+            },
+            _ => abort ENotForSale,
+        };
         assert!(buyer != mydata.owner, ESelfPurchase);
 
         let price_coin = coin::split(payment, price, ctx);
@@ -1424,7 +1919,12 @@ module social_contracts::mydata {
             ctx,
         );
 
-        table::add(&mut mydata.purchasers, buyer, true);
+        match (&mut mydata.access) {
+            AccessConfiguration::MarketplaceOneTime { purchasers, .. } => {
+                table::add(purchasers, buyer, true);
+            },
+            _ => abort ENotForSale,
+        };
 
         event::emit(PurchaseEvent {
             ip_id: object::uid_to_address(&mydata.id),
@@ -1444,6 +1944,7 @@ module social_contracts::mydata {
     /// Purchase one-time access to MyData data.
     public entry fun purchase_one_time(
         config: &MyDataConfig,
+        block_list_registry: &block_list::BlockListRegistry,
         memory_config: &social_contracts::memory::MemoryConfig,
         mydata: &mut MyData,
         treasury: &EcosystemTreasury,
@@ -1454,6 +1955,7 @@ module social_contracts::mydata {
     ) {
         purchase_one_time_no_platform(
             config,
+            block_list_registry,
             memory_config,
             mydata,
             treasury,
@@ -1467,6 +1969,7 @@ module social_contracts::mydata {
     /// Purchase one-time access with platform treasury routing.
     public entry fun purchase_one_time_with_platform(
         config: &MyDataConfig,
+        block_list_registry: &block_list::BlockListRegistry,
         memory_config: &social_contracts::memory::MemoryConfig,
         mydata: &mut MyData,
         treasury: &EcosystemTreasury,
@@ -1478,6 +1981,7 @@ module social_contracts::mydata {
     ) {
         purchase_one_time_with_platform_internal(
             config,
+            block_list_registry,
             memory_config,
             mydata,
             treasury,
@@ -1491,6 +1995,7 @@ module social_contracts::mydata {
 
     fun purchase_subscription_no_platform(
         config: &MyDataConfig,
+        block_list_registry: &block_list::BlockListRegistry,
         memory_config: &social_contracts::memory::MemoryConfig,
         mydata: &mut MyData,
         treasury: &EcosystemTreasury,
@@ -1503,8 +2008,12 @@ module social_contracts::mydata {
         assert!(mydata.version == upgrade::current_version(), EInvalidInput);
 
         let buyer = tx_context::sender(ctx);
-        assert!(option::is_some(&mydata.subscription_price), ENotForSale);
-        let price = *option::borrow(&mydata.subscription_price);
+        block_list::assert_not_blocked(block_list_registry, buyer, mydata.owner);
+        assert!(requires_marketplace_subscription(mydata), ENotForSale);
+        let (price, duration_days) = match (&mydata.access) {
+            AccessConfiguration::MarketplaceRecurring { price, duration_days, .. } => (*price, *duration_days),
+            _ => abort ENotForSale,
+        };
 
         let mut sub_agent_id = option::none();
         let mut organization_id = option::none();
@@ -1524,11 +2033,11 @@ module social_contracts::mydata {
 
         assert!(coin::value(payment) >= price, EPriceMismatch);
         assert!(buyer != mydata.owner, ESelfPurchase);
-        assert!(mydata.subscription_duration_days > 0, EInvalidInput);
-        assert!(mydata.subscription_duration_days <= config.max_subscription_days, EInvalidInput);
+        assert!(duration_days > 0, EInvalidInput);
+        assert!(duration_days <= config.max_subscription_days, EInvalidInput);
 
         let current_time = clock::timestamp_ms(clock);
-        let duration_ms = (mydata.subscription_duration_days as u128) * (MILLISECONDS_PER_DAY as u128);
+        let duration_ms = (duration_days as u128) * (MILLISECONDS_PER_DAY as u128);
         let expiry_time = (current_time as u128) + duration_ms;
         assert!(expiry_time <= (MAX_U64 as u128), EOverflow);
         let expiry_time_u64 = expiry_time as u64;
@@ -1542,18 +2051,24 @@ module social_contracts::mydata {
             ctx,
         );
 
-        if (table::contains(&mydata.subscribers, buyer)) {
-            let current_expiry = table::remove(&mut mydata.subscribers, buyer);
-            let new_expiry = if (current_expiry > current_time) {
-                let extended_time = (current_expiry as u128) + duration_ms;
-                assert!(extended_time <= (MAX_U64 as u128), EOverflow);
-                extended_time as u64
-            } else {
-                expiry_time_u64
-            };
-            table::add(&mut mydata.subscribers, buyer, new_expiry);
-        } else {
-            table::add(&mut mydata.subscribers, buyer, expiry_time_u64);
+        match (&mut mydata.access) {
+            AccessConfiguration::MarketplaceRecurring { subscribers, .. } => {
+                if (table::contains(subscribers, buyer)) {
+                    let current_expiry = table::remove(subscribers, buyer);
+                    let new_expiry = if (current_expiry > current_time) {
+                        let extended_time = (current_expiry as u128) + duration_ms;
+                        assert!(extended_time <= (MAX_U64 as u128), EOverflow);
+                        extended_time as u64
+                    } else {
+                        expiry_time_u64
+                    };
+                    table::add(subscribers, buyer, new_expiry);
+                } else {
+                    assert!(table::length(subscribers) < config.max_paid_access_entries, EInvalidInput);
+                    table::add(subscribers, buyer, expiry_time_u64);
+                };
+            },
+            _ => abort ENotForSale,
         };
 
         event::emit(PurchaseEvent {
@@ -1573,6 +2088,7 @@ module social_contracts::mydata {
 
     fun purchase_subscription_with_platform_internal(
         config: &MyDataConfig,
+        block_list_registry: &block_list::BlockListRegistry,
         memory_config: &social_contracts::memory::MemoryConfig,
         mydata: &mut MyData,
         treasury: &EcosystemTreasury,
@@ -1587,8 +2103,12 @@ module social_contracts::mydata {
         assert_platform_matches_listing(mydata, platform);
 
         let buyer = tx_context::sender(ctx);
-        assert!(option::is_some(&mydata.subscription_price), ENotForSale);
-        let price = *option::borrow(&mydata.subscription_price);
+        block_list::assert_not_blocked(block_list_registry, buyer, mydata.owner);
+        assert!(requires_marketplace_subscription(mydata), ENotForSale);
+        let (price, duration_days) = match (&mydata.access) {
+            AccessConfiguration::MarketplaceRecurring { price, duration_days, .. } => (*price, *duration_days),
+            _ => abort ENotForSale,
+        };
 
         let mut sub_agent_id = option::none();
         let mut organization_id = option::none();
@@ -1608,11 +2128,11 @@ module social_contracts::mydata {
 
         assert!(coin::value(payment) >= price, EPriceMismatch);
         assert!(buyer != mydata.owner, ESelfPurchase);
-        assert!(mydata.subscription_duration_days > 0, EInvalidInput);
-        assert!(mydata.subscription_duration_days <= config.max_subscription_days, EInvalidInput);
+        assert!(duration_days > 0, EInvalidInput);
+        assert!(duration_days <= config.max_subscription_days, EInvalidInput);
 
         let current_time = clock::timestamp_ms(clock);
-        let duration_ms = (mydata.subscription_duration_days as u128) * (MILLISECONDS_PER_DAY as u128);
+        let duration_ms = (duration_days as u128) * (MILLISECONDS_PER_DAY as u128);
         let expiry_time = (current_time as u128) + duration_ms;
         assert!(expiry_time <= (MAX_U64 as u128), EOverflow);
         let expiry_time_u64 = expiry_time as u64;
@@ -1628,18 +2148,24 @@ module social_contracts::mydata {
             ctx,
         );
 
-        if (table::contains(&mydata.subscribers, buyer)) {
-            let current_expiry = table::remove(&mut mydata.subscribers, buyer);
-            let new_expiry = if (current_expiry > current_time) {
-                let extended_time = (current_expiry as u128) + duration_ms;
-                assert!(extended_time <= (MAX_U64 as u128), EOverflow);
-                extended_time as u64
-            } else {
-                expiry_time_u64
-            };
-            table::add(&mut mydata.subscribers, buyer, new_expiry);
-        } else {
-            table::add(&mut mydata.subscribers, buyer, expiry_time_u64);
+        match (&mut mydata.access) {
+            AccessConfiguration::MarketplaceRecurring { subscribers, .. } => {
+                if (table::contains(subscribers, buyer)) {
+                    let current_expiry = table::remove(subscribers, buyer);
+                    let new_expiry = if (current_expiry > current_time) {
+                        let extended_time = (current_expiry as u128) + duration_ms;
+                        assert!(extended_time <= (MAX_U64 as u128), EOverflow);
+                        extended_time as u64
+                    } else {
+                        expiry_time_u64
+                    };
+                    table::add(subscribers, buyer, new_expiry);
+                } else {
+                    assert!(table::length(subscribers) < config.max_paid_access_entries, EInvalidInput);
+                    table::add(subscribers, buyer, expiry_time_u64);
+                };
+            },
+            _ => abort ENotForSale,
         };
 
         event::emit(PurchaseEvent {
@@ -1660,6 +2186,7 @@ module social_contracts::mydata {
     /// Purchase subscription access to MyData data.
     public entry fun purchase_subscription(
         config: &MyDataConfig,
+        block_list_registry: &block_list::BlockListRegistry,
         memory_config: &social_contracts::memory::MemoryConfig,
         mydata: &mut MyData,
         treasury: &EcosystemTreasury,
@@ -1670,6 +2197,7 @@ module social_contracts::mydata {
     ) {
         purchase_subscription_no_platform(
             config,
+            block_list_registry,
             memory_config,
             mydata,
             treasury,
@@ -1683,6 +2211,7 @@ module social_contracts::mydata {
     /// Purchase subscription access with platform treasury routing.
     public entry fun purchase_subscription_with_platform(
         config: &MyDataConfig,
+        block_list_registry: &block_list::BlockListRegistry,
         memory_config: &social_contracts::memory::MemoryConfig,
         mydata: &mut MyData,
         treasury: &EcosystemTreasury,
@@ -1694,6 +2223,7 @@ module social_contracts::mydata {
     ) {
         purchase_subscription_with_platform_internal(
             config,
+            block_list_registry,
             memory_config,
             mydata,
             treasury,
@@ -1705,8 +2235,9 @@ module social_contracts::mydata {
         );
     }
 
-    /// Update pricing (owner only)
+    /// Update pricing (owner only; marketplace listings only).
     public entry fun update_pricing(
+        config: &MyDataConfig,
         mydata: &mut MyData,
         new_one_time_price: Option<u64>,
         new_subscription_price: Option<u64>,
@@ -1714,45 +2245,54 @@ module social_contracts::mydata {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
-        // Check version compatibility
         assert!(mydata.version == upgrade::current_version(), EInvalidInput);
-        
         assert!(tx_context::sender(ctx) == mydata.owner, EUnauthorized);
-        
-        // Validate new prices
-        if (option::is_some(&new_one_time_price)) {
-            let price_val = *option::borrow(&new_one_time_price);
-            assert!(price_val > 0, EInvalidInput);
-        };
-        
-        if (option::is_some(&new_subscription_price)) {
-            let price_val = *option::borrow(&new_subscription_price);
-            assert!(price_val > 0, EInvalidInput);
+
+        match (&mut mydata.access) {
+            AccessConfiguration::MarketplaceOneTime { price, .. } => {
+                assert!(option::is_some(&new_one_time_price), EInvalidInput);
+                let price_val = *option::borrow(&new_one_time_price);
+                validate_marketplace_price(price_val);
+                *price = price_val;
+            },
+            AccessConfiguration::MarketplaceRecurring { price, duration_days, .. } => {
+                assert!(option::is_some(&new_subscription_price) || option::is_some(&new_subscription_duration_days), EInvalidInput);
+                if (option::is_some(&new_subscription_price)) {
+                    let price_val = *option::borrow(&new_subscription_price);
+                    validate_marketplace_price(price_val);
+                    *price = price_val;
+                };
+                if (option::is_some(&new_subscription_duration_days)) {
+                    let duration = *option::borrow(&new_subscription_duration_days);
+                    *duration_days = validate_recurring_duration(config, duration);
+                };
+            },
+            AccessConfiguration::ProfileSubscription => abort ENotForSale,
         };
 
-        mydata.one_time_price = new_one_time_price;
-        mydata.subscription_price = new_subscription_price;
-        
-        if (option::is_some(&new_subscription_duration_days)) {
-            let duration = *option::borrow(&new_subscription_duration_days);
-            if (duration > 0) {
-                mydata.subscription_duration_days = duration;
-            };
+        let (one_time_price, subscription_price, subscription_duration_days) = match (&mydata.access) {
+            AccessConfiguration::ProfileSubscription => (option::none(), option::none(), option::none()),
+            AccessConfiguration::MarketplaceOneTime { price, .. } => (option::some(*price), option::none(), option::none()),
+            AccessConfiguration::MarketplaceRecurring { price, duration_days, .. } => {
+                (option::none(), option::some(*price), option::some(*duration_days))
+            },
         };
-
-        event::emit(AccessGrantedEvent {
+        event::emit(MyDataPricingUpdatedEvent {
             ip_id: object::uid_to_address(&mydata.id),
-            user: mydata.owner,
-            access_type: string::utf8(b"pricing_update"),
-            granted_by: tx_context::sender(ctx),
+            one_time_price,
+            subscription_price,
+            subscription_duration_days,
+            updated_by: tx_context::sender(ctx),
             timestamp: clock::timestamp_ms(clock),
         });
     }
 
     /// Update MyData content and metadata (owner only)
     public entry fun update_content(
+        config: &MyDataConfig,
         mydata: &mut MyData,
         new_encrypted_data: Option<vector<u8>>,
+        new_encryption_id: Option<vector<u8>>,
         new_tags: Option<vector<String>>,
         clock: &Clock,
         ctx: &mut TxContext,
@@ -1761,28 +2301,40 @@ module social_contracts::mydata {
         assert!(mydata.version == upgrade::current_version(), EInvalidInput);
         
         assert!(tx_context::sender(ctx) == mydata.owner, EUnauthorized);
-        
-        if (option::is_some(&new_encrypted_data)) {
+        let encrypted_data_updated = option::is_some(&new_encrypted_data);
+        let encryption_id_updated = option::is_some(&new_encryption_id);
+        let tags_updated = option::is_some(&new_tags);
+        assert!(encrypted_data_updated == encryption_id_updated, EInvalidInput);
+        assert!(encrypted_data_updated || tags_updated, EInvalidInput);
+
+        if (encrypted_data_updated) {
+            let data = option::borrow(&new_encrypted_data);
+            let encryption_id = option::borrow(&new_encryption_id);
+            assert!(!vector::is_empty(data) && vector::length(data) <= config.max_encrypted_data_bytes, EInvalidInput);
+            assert!(!vector::is_empty(encryption_id) && vector::length(encryption_id) <= config.max_encryption_id_bytes, EInvalidInput);
             mydata.encrypted_data = *option::borrow(&new_encrypted_data);
+            mydata.encryption_id = *option::borrow(&new_encryption_id);
         };
         
-        if (option::is_some(&new_tags)) {
+        if (tags_updated) {
+            validate_tags(config, option::borrow(&new_tags));
             mydata.tags = *option::borrow(&new_tags);
         };
         
         mydata.last_updated = clock::timestamp_ms(clock);
 
-        event::emit(AccessGrantedEvent {
+        event::emit(MyDataContentUpdatedEvent {
             ip_id: object::uid_to_address(&mydata.id),
-            user: mydata.owner,
-            access_type: string::utf8(b"content_update"),
-            granted_by: tx_context::sender(ctx),
+            encrypted_data_updated,
+            tags_updated,
+            updated_by: tx_context::sender(ctx),
             timestamp: clock::timestamp_ms(clock),
         });
     }
 
     /// Assign MyData to sub-pools (owner only).
     public entry fun assign_mydata_to_pools(
+        config: &MyDataConfig,
         mydata: &MyData,
         pool_registry: &mut MyDataPoolRegistry,
         sub_pool_ids: vector<ID>,
@@ -1791,7 +2343,7 @@ module social_contracts::mydata {
     ) {
         assert!(tx_context::sender(ctx) == mydata.owner, EUnauthorized);
         let ip_id = object::uid_to_address(&mydata.id);
-        assign_mydata_to_sub_pools(pool_registry, ip_id, sub_pool_ids, clock);
+        assign_mydata_to_sub_pools(config, pool_registry, ip_id, sub_pool_ids, clock);
     }
 
     /// Remove this listing from a sub-pool (owner only).
@@ -1808,20 +2360,20 @@ module social_contracts::mydata {
 
     /// Check if user has access to MyData data
     public fun has_access(mydata: &MyData, user: address, clock: &Clock): bool {
-        // Owner always has access
         if (user == mydata.owner) return true;
-        
-        // Check one-time purchase
-        if (table::contains(&mydata.purchasers, user)) return true;
-        
-        // Check active subscription
-        if (table::contains(&mydata.subscribers, user)) {
-            let expiry = *table::borrow(&mydata.subscribers, user);
-            let current_time = clock::timestamp_ms(clock);
-            return current_time <= expiry
-        };
-        
-        false
+
+        match (&mydata.access) {
+            AccessConfiguration::ProfileSubscription => false,
+            AccessConfiguration::MarketplaceOneTime { purchasers, .. } => {
+                table::contains(purchasers, user)
+            },
+            AccessConfiguration::MarketplaceRecurring { subscribers, .. } => {
+                if (!table::contains(subscribers, user)) return false;
+                let expiry = *table::borrow(subscribers, user);
+                let current_time = clock::timestamp_ms(clock);
+                current_time <= expiry
+            },
+        }
     }
 
     /// True if `candidate` matches this listing’s `encryption_id` (the MyData policy `id` bytes).
@@ -1829,21 +2381,26 @@ module social_contracts::mydata {
         bytes_equal_u8(&mydata.encryption_id, candidate)
     }
 
-    /// Key-server policy hook for `fetch_key`: `id` must match `encryption_id`, and the sender must have
-    /// [`has_access`] (owner, purchaser, or active subscriber), or be a registered sub-agent of the
-    /// owner with `CAP_MYDATA_READ`. Register this package on the key server when using permissioned
-    /// mode; `EncryptedObject.package_id` at encrypt time must match this package.
+    /// Key-server policy hook for `fetch_key`: marketplace listings only.
     public entry fun mydata_approve(
-        memory_config: &social_contracts::memory::MemoryConfig,
         id: vector<u8>,
+        block_list_registry: &block_list::BlockListRegistry,
+        memory_config: &social_contracts::memory::MemoryConfig,
         mydata: &MyData,
         account: &social_contracts::memory::MemoryAccount,
         clock: &Clock,
         ctx: &TxContext,
     ) {
         assert!(encryption_id_matches(mydata, &id), EPolicyIdMismatch);
+        assert!(
+            requires_marketplace_purchase(mydata) || requires_marketplace_subscription(mydata),
+            EPolicyNotEntitled,
+        );
 
         let sender = tx_context::sender(ctx);
+        if (sender != mydata.owner) {
+            block_list::assert_not_blocked(block_list_registry, sender, mydata.owner);
+        };
         if (has_access(mydata, sender, clock)) {
             return
         };
@@ -1872,11 +2429,15 @@ module social_contracts::mydata {
         );
     }
 
-    /// Key-server policy hook for profile-subscription-gated MyData: grant when [`has_access`] or
-    /// [`subscription::is_subscription_valid`] for the linked profile service.
+    /// Key-server policy hook for profile-subscription-gated MyData linked to a post.
     /// `id` is first so key-server `ValidPtb` can extract the encryption identity from arg 0.
+    /// `post_service_id` / `post_linked_mydata_id` come from the linked post's [`PostAccess`] fields.
     public entry fun mydata_approve_profile_subscription(
         id: vector<u8>,
+        block_list_registry: &block_list::BlockListRegistry,
+        post_service_id: ID,
+        post_linked_mydata_id: ID,
+        post_min_tier_level: Option<u64>,
         memory_config: &social_contracts::memory::MemoryConfig,
         mydata: &MyData,
         account: &social_contracts::memory::MemoryAccount,
@@ -1886,13 +2447,26 @@ module social_contracts::mydata {
         ctx: &TxContext,
     ) {
         assert!(encryption_id_matches(mydata, &id), EPolicyIdMismatch);
+        assert!(requires_profile_subscription_access(mydata), EPolicyNotEntitled);
+        assert!(post_linked_mydata_id == object::id(mydata), EPolicyNotEntitled);
+        assert!(post_service_id == object::id(service), EPolicyNotEntitled);
 
         let sender = tx_context::sender(ctx);
-        if (has_access(mydata, sender, clock)) {
+        if (sender == mydata.owner) {
             return
         };
 
-        if (subscription::is_subscription_valid_for(subscription, service, sender, clock)) {
+        block_list::assert_not_blocked(block_list_registry, sender, mydata.owner);
+
+        let content_platform_id = mydata.platform_id;
+        if (subscription::subscription_satisfies_access(
+            subscription,
+            service,
+            sender,
+            post_min_tier_level,
+            content_platform_id,
+            clock,
+        )) {
             return
         };
 
@@ -1951,39 +2525,51 @@ module social_contracts::mydata {
         assert!(mydata.version == upgrade::current_version(), EInvalidInput);
         
         assert!(tx_context::sender(ctx) == mydata.owner, EUnauthorized);
-        assert!(user != mydata.owner, ESelfPurchase); // Owner doesn't need granted access
-        
-        // Check max free access grants limit
-        let total_grants = table::length(&mydata.purchasers) + table::length(&mydata.subscribers);
+        assert!(user != mydata.owner, ESelfPurchase);
+
+        let total_grants = match (&mydata.access) {
+            AccessConfiguration::ProfileSubscription => abort ENotForSale,
+            AccessConfiguration::MarketplaceOneTime { purchasers, .. } => table::length(purchasers),
+            AccessConfiguration::MarketplaceRecurring { subscribers, .. } => table::length(subscribers),
+        };
         assert!(total_grants < config.max_free_access_grants, EInvalidInput);
         
         if (access_type == 0) {
-            // Grant one-time access
-            if (!table::contains(&mydata.purchasers, user)) {
-                table::add(&mut mydata.purchasers, user, true);
+            match (&mut mydata.access) {
+                AccessConfiguration::MarketplaceOneTime { purchasers, .. } => {
+                    if (!table::contains(purchasers, user)) {
+                        table::add(purchasers, user, true);
+                    };
+                },
+                _ => abort ENotForSale,
             };
         } else {
-            // Grant subscription access
             let duration_days = if (option::is_some(&subscription_days)) {
                 let days = *option::borrow(&subscription_days);
                 assert!(days > 0 && days <= config.max_subscription_days, EInvalidInput);
                 days
             } else {
-                mydata.subscription_duration_days
+                match (&mydata.access) {
+                    AccessConfiguration::MarketplaceRecurring { duration_days, .. } => *duration_days,
+                    _ => abort ENotForSale,
+                }
             };
             
             let current_time = clock::timestamp_ms(clock);
             let duration_ms = (duration_days as u128) * (MILLISECONDS_PER_DAY as u128);
             let expiry_time = (current_time as u128) + duration_ms;
-            
-            // Ensure we don't overflow u64
             assert!(expiry_time <= (MAX_U64 as u128), EOverflow);
             let expiry_time_u64 = expiry_time as u64;
             
-            if (table::contains(&mydata.subscribers, user)) {
-                table::remove(&mut mydata.subscribers, user);
+            match (&mut mydata.access) {
+                AccessConfiguration::MarketplaceRecurring { subscribers, .. } => {
+                    if (table::contains(subscribers, user)) {
+                        table::remove(subscribers, user);
+                    };
+                    table::add(subscribers, user, expiry_time_u64);
+                },
+                _ => abort ENotForSale,
             };
-            table::add(&mut mydata.subscribers, user, expiry_time_u64);
         };
 
         event::emit(AccessGrantedEvent {
@@ -1995,7 +2581,7 @@ module social_contracts::mydata {
         });
     }
 
-    /// Revoke a buyer's access (owner only). Removes the user from `purchasers` and/or `subscribers`.
+    /// Revoke a buyer's access (owner only). Removes the user from marketplace access tables.
     /// `access_type`: 0 = one-time, 1 = subscription, 2 = both.
     public entry fun revoke_access(
         mydata: &mut MyData,
@@ -2013,16 +2599,26 @@ module social_contracts::mydata {
         let mut revoked_subscription = false;
 
         if (access_type == 0 || access_type == 2) {
-            if (table::contains(&mydata.purchasers, user)) {
-                table::remove(&mut mydata.purchasers, user);
-                revoked_one_time = true;
+            match (&mut mydata.access) {
+                AccessConfiguration::MarketplaceOneTime { purchasers, .. } => {
+                    if (table::contains(purchasers, user)) {
+                        table::remove(purchasers, user);
+                        revoked_one_time = true;
+                    };
+                },
+                _ => {},
             };
         };
 
         if (access_type == 1 || access_type == 2) {
-            if (table::contains(&mydata.subscribers, user)) {
-                table::remove(&mut mydata.subscribers, user);
-                revoked_subscription = true;
+            match (&mut mydata.access) {
+                AccessConfiguration::MarketplaceRecurring { subscribers, .. } => {
+                    if (table::contains(subscribers, user)) {
+                        table::remove(subscribers, user);
+                        revoked_subscription = true;
+                    };
+                },
+                _ => {},
             };
         };
 
@@ -2056,9 +2652,19 @@ module social_contracts::mydata {
     public fun media_type(mydata: &MyData): String { mydata.media_type }
     public fun tags(mydata: &MyData): vector<String> { mydata.tags }
     public fun platform_id(mydata: &MyData): Option<address> { mydata.platform_id }
-    public fun one_time_price(mydata: &MyData): Option<u64> { mydata.one_time_price }
-    public fun subscription_price(mydata: &MyData): Option<u64> { mydata.subscription_price }
-    public fun subscription_duration_days(mydata: &MyData): u64 { mydata.subscription_duration_days }
+    public fun one_time_price(mydata: &MyData): Option<u64> { linked_one_time_price(mydata) }
+    public fun subscription_price(mydata: &MyData): Option<u64> {
+        match (access_configuration(mydata)) {
+            AccessConfiguration::MarketplaceRecurring { price, .. } => option::some(*price),
+            _ => option::none(),
+        }
+    }
+    public fun subscription_duration_days(mydata: &MyData): u64 {
+        match (access_configuration(mydata)) {
+            AccessConfiguration::MarketplaceRecurring { duration_days, .. } => *duration_days,
+            _ => 0,
+        }
+    }
     public fun created_at(mydata: &MyData): u64 { mydata.created_at }
     public fun last_updated(mydata: &MyData): u64 { mydata.last_updated }
     public fun timestamp_start(mydata: &MyData): u64 { mydata.timestamp_start }
@@ -2069,56 +2675,74 @@ module social_contracts::mydata {
     public fun collection_method(mydata: &MyData): Option<String> { mydata.collection_method }
     public fun is_updating(mydata: &MyData): bool { mydata.is_updating }
     public fun update_frequency(mydata: &MyData): Option<String> { mydata.update_frequency }
-    public fun purchaser_count(mydata: &MyData): u64 { table::length(&mydata.purchasers) }
-    public fun subscriber_count(mydata: &MyData): u64 { table::length(&mydata.subscribers) }
-    public fun is_one_time_for_sale(mydata: &MyData): bool { option::is_some(&mydata.one_time_price) }
-    public fun is_subscription_available(mydata: &MyData): bool { option::is_some(&mydata.subscription_price) }
+    public fun purchaser_count(mydata: &MyData): u64 {
+        match (access_configuration(mydata)) {
+            AccessConfiguration::MarketplaceOneTime { purchasers, .. } => table::length(purchasers),
+            _ => 0,
+        }
+    }
+    public fun subscriber_count(mydata: &MyData): u64 {
+        match (access_configuration(mydata)) {
+            AccessConfiguration::MarketplaceRecurring { subscribers, .. } => table::length(subscribers),
+            _ => 0,
+        }
+    }
+    public fun is_one_time_for_sale(mydata: &MyData): bool { requires_marketplace_purchase(mydata) }
+    public fun is_subscription_available(mydata: &MyData): bool { requires_marketplace_subscription(mydata) }
 
     /// Check if a user has an active subscription
     public fun has_active_subscription(mydata: &MyData, user: address, clock: &Clock): bool {
-        if (!table::contains(&mydata.subscribers, user)) return false;
-        let expiry = *table::borrow(&mydata.subscribers, user);
-        let current_time = clock::timestamp_ms(clock);
-        current_time <= expiry
+        match (&mydata.access) {
+            AccessConfiguration::MarketplaceRecurring { subscribers, .. } => {
+                if (!table::contains(subscribers, user)) return false;
+                let expiry = *table::borrow(subscribers, user);
+                let current_time = clock::timestamp_ms(clock);
+                current_time <= expiry
+            },
+            _ => false,
+        }
     }
 
     /// Get subscription expiry time for a user
     public fun get_subscription_expiry(mydata: &MyData, user: address): Option<u64> {
-        if (table::contains(&mydata.subscribers, user)) {
-            option::some(*table::borrow(&mydata.subscribers, user))
-        } else {
-            option::none()
+        match (&mydata.access) {
+            AccessConfiguration::MarketplaceRecurring { subscribers, .. } => {
+                if (table::contains(subscribers, user)) {
+                    option::some(*table::borrow(subscribers, user))
+                } else {
+                    option::none()
+                }
+            },
+            _ => option::none(),
         }
     }
 
     /// Get total revenue potential (for analytics) with overflow protection
     public fun get_revenue_potential(mydata: &MyData): u64 {
-        let one_time_revenue = if (option::is_some(&mydata.one_time_price)) {
-            let price = *option::borrow(&mydata.one_time_price);
-            let count = table::length(&mydata.purchasers);
-            // Use u128 for calculation to detect overflow
-            let revenue = (price as u128) * (count as u128);
-            if (revenue > (MAX_U64 as u128)) {
-                MAX_U64
-            } else {
-                revenue as u64
-            }
-        } else {
-            0
+        let one_time_revenue = match (access_configuration(mydata)) {
+            AccessConfiguration::MarketplaceOneTime { price, purchasers, .. } => {
+                let count = table::length(purchasers);
+                let revenue = (*price as u128) * (count as u128);
+                if (revenue > (MAX_U64 as u128)) {
+                    MAX_U64
+                } else {
+                    revenue as u64
+                }
+            },
+            _ => 0,
         };
         
-        let subscription_revenue = if (option::is_some(&mydata.subscription_price)) {
-            let price = *option::borrow(&mydata.subscription_price);
-            let count = table::length(&mydata.subscribers);
-            // Use u128 for calculation to detect overflow
-            let revenue = (price as u128) * (count as u128);
-            if (revenue > (MAX_U64 as u128)) {
-                MAX_U64
-            } else {
-                revenue as u64
-            }
-        } else {
-            0
+        let subscription_revenue = match (access_configuration(mydata)) {
+            AccessConfiguration::MarketplaceRecurring { price, subscribers, .. } => {
+                let count = table::length(subscribers);
+                let revenue = (*price as u128) * (count as u128);
+                if (revenue > (MAX_U64 as u128)) {
+                    MAX_U64
+                } else {
+                    revenue as u64
+                }
+            },
+            _ => 0,
         };
         
         // Safe addition with overflow protection
@@ -2132,7 +2756,7 @@ module social_contracts::mydata {
 
     /// Check if MyData has any sales (one-time or subscription)
     public fun has_any_sales(mydata: &MyData): bool {
-        table::length(&mydata.purchasers) > 0 || table::length(&mydata.subscribers) > 0
+        purchaser_count(mydata) > 0 || subscriber_count(mydata) > 0
     }
 
     // === Registry Functions ===
@@ -2273,6 +2897,14 @@ module social_contracts::mydata {
         
         // Remember old version and update to new version
         let old_version = config.version;
+        config.max_encrypted_data_bytes = DEFAULT_MAX_ENCRYPTED_DATA_BYTES;
+        config.max_tag_bytes = DEFAULT_MAX_TAG_BYTES;
+        config.max_metadata_bytes = DEFAULT_MAX_METADATA_BYTES;
+        config.max_payment_reference_bytes = DEFAULT_MAX_PAYMENT_REFERENCE_BYTES;
+        config.max_pool_assignments = DEFAULT_MAX_POOL_ASSIGNMENTS;
+        config.max_merkle_proof_depth = DEFAULT_MAX_MERKLE_PROOF_DEPTH;
+        config.max_paid_access_entries = DEFAULT_MAX_PAID_ACCESS_ENTRIES;
+        config.default_claim_window_ms = DEFAULT_CLAIM_WINDOW_MS;
         config.p2p_platform_fee_bps = DEFAULT_P2P_PLATFORM_FEE_BPS;
         config.p2p_ecosystem_fee_bps = DEFAULT_P2P_ECOSYSTEM_FEE_BPS;
         config.mydata_marketplace_platform_fee_bps = DEFAULT_MYDATA_MARKETPLACE_PLATFORM_FEE_BPS;
@@ -2328,13 +2960,15 @@ module social_contracts::mydata {
         let MyData { 
             id, owner: _, media_type: _, tags: _, platform_id: _,
             timestamp_start: _, timestamp_end: _, created_at: _, last_updated: _,
-            encrypted_data: _, encryption_id: _, one_time_price: _, subscription_price: _,
-            subscription_duration_days: _, purchasers, subscribers, geographic_region: _,
-            data_quality: _, sample_size: _, collection_method: _, is_updating: _,
-            update_frequency: _, version: _
+            encrypted_data: _, encryption_id: _, access,
+            geographic_region: _, data_quality: _, sample_size: _, collection_method: _,
+            is_updating: _, update_frequency: _, version: _
         } = mydata;
-        table::drop(purchasers);
-        table::drop(subscribers);
+        match (access) {
+            AccessConfiguration::ProfileSubscription => {},
+            AccessConfiguration::MarketplaceOneTime { purchasers, .. } => table::drop(purchasers),
+            AccessConfiguration::MarketplaceRecurring { subscribers, .. } => table::drop(subscribers),
+        };
         object::delete(id);
     }
 }

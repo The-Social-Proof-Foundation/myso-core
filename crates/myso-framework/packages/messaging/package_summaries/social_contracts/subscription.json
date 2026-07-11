@@ -31,6 +31,10 @@
     },
     {
       "address": "myso",
+      "name": "table"
+    },
+    {
+      "address": "myso",
       "name": "transfer"
     },
     {
@@ -39,7 +43,23 @@
     },
     {
       "address": "social_contracts",
+      "name": "block_list"
+    },
+    {
+      "address": "social_contracts",
+      "name": "platform"
+    },
+    {
+      "address": "social_contracts",
+      "name": "profile"
+    },
+    {
+      "address": "social_contracts",
       "name": "upgrade"
+    },
+    {
+      "address": "std",
+      "name": "option"
     },
     {
       "address": "std",
@@ -69,10 +89,789 @@
     }
   ],
   "functions": {
-    "create_profile_service": {
+    "assert_subscriber_not_blocked": {
       "source_index": 0,
       "index": 0,
-      "doc": " Create a subscription service for a profile (called by profile owner)",
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "block_list"
+                  },
+                  "name": "BlockListRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "subscriber",
+          "type_": "address"
+        },
+        {
+          "name": "profile_owner",
+          "type_": "address"
+        }
+      ],
+      "return_": []
+    },
+    "validate_fee_config": {
+      "source_index": 1,
+      "index": 1,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "platform_fee_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "ecosystem_fee_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "non_platform_platform_to_creator_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "non_platform_platform_to_treasury_bps",
+          "type_": "u64"
+        }
+      ],
+      "return_": []
+    },
+    "calculate_subscription_fees": {
+      "source_index": 2,
+      "index": 2,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "SubscriptionConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "gross",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        "u64",
+        "u64",
+        "u64"
+      ]
+    },
+    "route_non_platform_platform_fee": {
+      "source_index": 3,
+      "index": 3,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "SubscriptionConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "platform_fee",
+          "type_": "u64"
+        },
+        {
+          "name": "creator_amount",
+          "type_": "u64"
+        },
+        {
+          "name": "payment",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "coin"
+                  },
+                  "name": "Coin",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "myso"
+                          },
+                          "name": "MYSO",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "distribute_subscription_payment_fees_no_platform": {
+      "source_index": 4,
+      "index": 4,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "SubscriptionConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "profile_owner",
+          "type_": "address"
+        },
+        {
+          "name": "payment",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "coin"
+              },
+              "name": "Coin",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "myso"
+                      },
+                      "name": "MYSO",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64",
+        "u64",
+        "u64"
+      ]
+    },
+    "distribute_subscription_payment_fees_with_platform": {
+      "source_index": 5,
+      "index": 5,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "SubscriptionConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "profile_owner",
+          "type_": "address"
+        },
+        {
+          "name": "payment",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "coin"
+              },
+              "name": "Coin",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "myso"
+                      },
+                      "name": "MYSO",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "platform",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "Platform",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64",
+        "u64",
+        "u64"
+      ]
+    },
+    "emit_subscription_config_updated": {
+      "source_index": 6,
+      "index": 6,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "SubscriptionConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "updated_by",
+          "type_": "address"
+        },
+        {
+          "name": "timestamp",
+          "type_": "u64"
+        }
+      ],
+      "return_": []
+    },
+    "new_plan_id": {
+      "source_index": 7,
+      "index": 7,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "object"
+            },
+            "name": "ID",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "effective_tier_level": {
+      "source_index": 8,
+      "index": 8,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "tier_level",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "u64"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "tier_satisfies": {
+      "source_index": 9,
+      "index": 9,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "subscription_tier",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "u64"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "min_tier",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "u64"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "platform_satisfies": {
+      "source_index": 10,
+      "index": 10,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "subscription_platform",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "address"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "content_platform_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "address"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "borrow_active_plan": {
+      "source_index": 11,
+      "index": 11,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "service",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "ProfileSubscriptionService",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "plan_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            false,
+            {
+              "Datatype": {
+                "module": {
+                  "address": "social_contracts",
+                  "name": "subscription"
+                },
+                "name": "SubscriptionPlan",
+                "type_arguments": []
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "borrow_plan_for_renewal": {
+      "source_index": 12,
+      "index": 12,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "service",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "ProfileSubscriptionService",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "plan_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            false,
+            {
+              "Datatype": {
+                "module": {
+                  "address": "social_contracts",
+                  "name": "subscription"
+                },
+                "name": "SubscriptionPlan",
+                "type_arguments": []
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "create_profile_service": {
+      "source_index": 13,
+      "index": 13,
+      "doc": " Create a subscription service container for a profile (called by profile owner)",
       "attributes": [],
       "visibility": "Public",
       "entry": false,
@@ -83,8 +882,17 @@
           "type_": "address"
         },
         {
-          "name": "monthly_fee",
-          "type_": "u64"
+          "name": "profile_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
         },
         {
           "name": "ctx",
@@ -119,8 +927,8 @@
       ]
     },
     "create_profile_service_entry": {
-      "source_index": 1,
-      "index": 1,
+      "source_index": 14,
+      "index": 14,
       "doc": " Entry function to create and share a profile subscription service",
       "attributes": [],
       "visibility": "Public",
@@ -128,8 +936,22 @@
       "type_parameters": [],
       "parameters": [
         {
-          "name": "monthly_fee",
-          "type_": "u64"
+          "name": "profile",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "Profile",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
         },
         {
           "name": "clock",
@@ -170,10 +992,10 @@
       ],
       "return_": []
     },
-    "subscribe_to_profile": {
-      "source_index": 2,
-      "index": 2,
-      "doc": " Subscribe to a profile with optional auto-renewal",
+    "create_subscription_plan": {
+      "source_index": 15,
+      "index": 15,
+      "doc": " Create a sellable plan on a profile subscription service (profile owner only).",
       "attributes": [],
       "visibility": "Public",
       "entry": true,
@@ -209,6 +1031,483 @@
                     "name": "subscription"
                   },
                   "name": "ProfileSubscriptionService",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "title",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "string"
+              },
+              "name": "String",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "description",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "std",
+                        "name": "string"
+                      },
+                      "name": "String",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "price",
+          "type_": "u64"
+        },
+        {
+          "name": "duration_ms",
+          "type_": "u64"
+        },
+        {
+          "name": "tier_level",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "u64"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "platform_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "address"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "update_subscription_plan": {
+      "source_index": 16,
+      "index": 16,
+      "doc": " Update an existing plan (profile owner only).",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "SubscriptionConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "service",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "ProfileSubscriptionService",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "plan_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "title",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "string"
+              },
+              "name": "String",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "description",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "std",
+                        "name": "string"
+                      },
+                      "name": "String",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "price",
+          "type_": "u64"
+        },
+        {
+          "name": "duration_ms",
+          "type_": "u64"
+        },
+        {
+          "name": "tier_level",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "u64"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "platform_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "address"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "deactivate_subscription_plan": {
+      "source_index": 17,
+      "index": 17,
+      "doc": " Deactivate a plan so it no longer accepts new subscriptions (profile owner only).",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "service",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "ProfileSubscriptionService",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "plan_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "subscribe_to_profile_internal_no_platform": {
+      "source_index": 18,
+      "index": 18,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "block_list_registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "block_list"
+                  },
+                  "name": "BlockListRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "SubscriptionConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "service",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "ProfileSubscriptionService",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "plan_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
                   "type_arguments": []
                 }
               }
@@ -252,7 +1551,7 @@
           "type_": "bool"
         },
         {
-          "name": "renewal_months",
+          "name": "renewal_periods",
           "type_": "u64"
         },
         {
@@ -294,15 +1593,771 @@
       ],
       "return_": []
     },
-    "renew_subscription": {
-      "source_index": 3,
-      "index": 3,
-      "doc": " Manually renew a subscription",
+    "subscribe_to_profile_internal_with_platform": {
+      "source_index": 19,
+      "index": 19,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "block_list_registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "block_list"
+                  },
+                  "name": "BlockListRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "SubscriptionConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "service",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "ProfileSubscriptionService",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "plan_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "platform",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "Platform",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "payment",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "coin"
+                  },
+                  "name": "Coin",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "myso"
+                          },
+                          "name": "MYSO",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "auto_renew",
+          "type_": "bool"
+        },
+        {
+          "name": "renewal_periods",
+          "type_": "u64"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "finish_subscribe": {
+      "source_index": 20,
+      "index": 20,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "service",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "ProfileSubscriptionService",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "plan_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "plan_price",
+          "type_": "u64"
+        },
+        {
+          "name": "plan_duration_ms",
+          "type_": "u64"
+        },
+        {
+          "name": "plan_tier_level",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "u64"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "plan_platform_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "address"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "payment",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "coin"
+                  },
+                  "name": "Coin",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "myso"
+                          },
+                          "name": "MYSO",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "auto_renew",
+          "type_": "bool"
+        },
+        {
+          "name": "renewal_periods",
+          "type_": "u64"
+        },
+        {
+          "name": "subscriber",
+          "type_": "address"
+        },
+        {
+          "name": "now",
+          "type_": "u64"
+        },
+        {
+          "name": "platform_fee",
+          "type_": "u64"
+        },
+        {
+          "name": "ecosystem_fee",
+          "type_": "u64"
+        },
+        {
+          "name": "creator_amount",
+          "type_": "u64"
+        },
+        {
+          "name": "payment_platform_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "address"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "subscribe_to_profile": {
+      "source_index": 21,
+      "index": 21,
+      "doc": " Subscribe to a profile plan with optional auto-renewal (no platform fee recipient).",
       "attributes": [],
       "visibility": "Public",
       "entry": true,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "block_list_registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "block_list"
+                  },
+                  "name": "BlockListRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "SubscriptionConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "service",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "ProfileSubscriptionService",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "plan_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "payment",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "coin"
+                  },
+                  "name": "Coin",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "myso"
+                          },
+                          "name": "MYSO",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "auto_renew",
+          "type_": "bool"
+        },
+        {
+          "name": "renewal_periods",
+          "type_": "u64"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "subscribe_to_profile_with_platform": {
+      "source_index": 22,
+      "index": 22,
+      "doc": " Subscribe to a profile plan with platform treasury routing for the platform-fee slice.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "block_list_registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "block_list"
+                  },
+                  "name": "BlockListRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "SubscriptionConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "service",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "ProfileSubscriptionService",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "plan_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "platform",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "Platform",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "payment",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "coin"
+                  },
+                  "name": "Coin",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "myso"
+                          },
+                          "name": "MYSO",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "auto_renew",
+          "type_": "bool"
+        },
+        {
+          "name": "renewal_periods",
+          "type_": "u64"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "renew_subscription_internal_no_platform": {
+      "source_index": 23,
+      "index": 23,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "block_list_registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "block_list"
+                  },
+                  "name": "BlockListRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "config",
           "type_": {
@@ -385,6 +2440,24 @@
           }
         },
         {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
           "name": "clock",
           "type_": {
             "Reference": [
@@ -423,15 +2496,33 @@
       ],
       "return_": []
     },
-    "auto_renew_subscription": {
-      "source_index": 4,
-      "index": 4,
-      "doc": " Gas-optimized auto-renew using pre-funded renewal balance\n Now includes protection against fee changes and service deactivation",
+    "renew_subscription_internal_with_platform": {
+      "source_index": 24,
+      "index": 24,
+      "doc": null,
       "attributes": [],
-      "visibility": "Public",
-      "entry": true,
+      "visibility": "Private",
+      "entry": false,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "block_list_registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "block_list"
+                  },
+                  "name": "BlockListRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "config",
           "type_": {
@@ -487,6 +2578,1109 @@
           }
         },
         {
+          "name": "payment",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "coin"
+              },
+              "name": "Coin",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "myso"
+                      },
+                      "name": "MYSO",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "platform",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "Platform",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "emit_subscription_renewed": {
+      "source_index": 25,
+      "index": 25,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "subscription",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "ProfileSubscription",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "subscriber",
+          "type_": "address"
+        },
+        {
+          "name": "service",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "ProfileSubscriptionService",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "platform_fee",
+          "type_": "u64"
+        },
+        {
+          "name": "ecosystem_fee",
+          "type_": "u64"
+        },
+        {
+          "name": "creator_amount",
+          "type_": "u64"
+        },
+        {
+          "name": "payment_platform_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "address"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "auto_renewed",
+          "type_": "bool"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "renew_subscription": {
+      "source_index": 26,
+      "index": 26,
+      "doc": " Manually renew a subscription (no platform).",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "block_list_registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "block_list"
+                  },
+                  "name": "BlockListRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "SubscriptionConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "service",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "ProfileSubscriptionService",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "subscription",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "ProfileSubscription",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "payment",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "coin"
+              },
+              "name": "Coin",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "myso"
+                      },
+                      "name": "MYSO",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "renew_subscription_with_platform": {
+      "source_index": 27,
+      "index": 27,
+      "doc": " Manually renew a subscription with platform treasury routing.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "block_list_registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "block_list"
+                  },
+                  "name": "BlockListRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "SubscriptionConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "service",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "ProfileSubscriptionService",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "subscription",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "ProfileSubscription",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "platform",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "Platform",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "payment",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "coin"
+              },
+              "name": "Coin",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "myso"
+                      },
+                      "name": "MYSO",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "auto_renew_subscription_internal_no_platform": {
+      "source_index": 28,
+      "index": 28,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "block_list_registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "block_list"
+                  },
+                  "name": "BlockListRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "SubscriptionConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "service",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "ProfileSubscriptionService",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "subscription",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "ProfileSubscription",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "auto_renew_subscription_internal_with_platform": {
+      "source_index": 29,
+      "index": 29,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "block_list_registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "block_list"
+                  },
+                  "name": "BlockListRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "SubscriptionConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "service",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "ProfileSubscriptionService",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "subscription",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "ProfileSubscription",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "platform",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "Platform",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "auto_renew_subscription": {
+      "source_index": 30,
+      "index": 30,
+      "doc": " Gas-optimized auto-renew using pre-funded renewal balance (no platform).",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "block_list_registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "block_list"
+                  },
+                  "name": "BlockListRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "SubscriptionConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "service",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "ProfileSubscriptionService",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "subscription",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "ProfileSubscription",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "auto_renew_subscription_with_platform": {
+      "source_index": 31,
+      "index": 31,
+      "doc": " Gas-optimized auto-renew with platform treasury routing.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "block_list_registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "block_list"
+                  },
+                  "name": "BlockListRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "SubscriptionConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "service",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "ProfileSubscriptionService",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "subscription",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "ProfileSubscription",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "platform",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "Platform",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
           "name": "clock",
           "type_": {
             "Reference": [
@@ -526,9 +3720,9 @@
       "return_": []
     },
     "can_auto_renew": {
-      "source_index": 5,
-      "index": 5,
-      "doc": " Check if subscription is eligible for auto-renewal without expensive operations\n Now includes service activation check",
+      "source_index": 32,
+      "index": 32,
+      "doc": " Check if subscription is eligible for auto-renewal without expensive operations",
       "attributes": [],
       "visibility": "Public",
       "entry": false,
@@ -594,14 +3788,50 @@
       ]
     },
     "fund_renewal_balance": {
-      "source_index": 6,
-      "index": 6,
+      "source_index": 33,
+      "index": 33,
       "doc": " User funds their renewal balance for auto-renewal",
       "attributes": [],
       "visibility": "Public",
       "entry": true,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "block_list_registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "block_list"
+                  },
+                  "name": "BlockListRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "service",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "ProfileSubscriptionService",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "subscription",
           "type_": {
@@ -687,8 +3917,8 @@
       "return_": []
     },
     "is_subscription_valid": {
-      "source_index": 7,
-      "index": 7,
+      "source_index": 34,
+      "index": 34,
       "doc": " Check if a subscription is valid for access",
       "attributes": [],
       "visibility": "Public",
@@ -754,20 +3984,102 @@
         "bool"
       ]
     },
-    "update_service_fee": {
-      "source_index": 8,
-      "index": 8,
-      "doc": " Update service fee (profile owner only)\n Now emits event when fee changes",
+    "service_profile_owner": {
+      "source_index": 35,
+      "index": 35,
+      "doc": " Profile owner for a subscription service (for cross-module gate checks).",
       "attributes": [],
       "visibility": "Public",
-      "entry": true,
+      "entry": false,
       "type_parameters": [],
       "parameters": [
         {
           "name": "service",
           "type_": {
             "Reference": [
-              true,
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "ProfileSubscriptionService",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "address"
+      ]
+    },
+    "service_is_active": {
+      "source_index": 36,
+      "index": 36,
+      "doc": " Whether the service accepts new subscriptions.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "service",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "ProfileSubscriptionService",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "is_subscription_valid_for": {
+      "source_index": 37,
+      "index": 37,
+      "doc": " Whether `subscriber` holds a valid subscription to `service` at `clock`.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "subscription",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "ProfileSubscription",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "service",
+          "type_": {
+            "Reference": [
+              false,
               {
                 "Datatype": {
                   "module": {
@@ -782,21 +4094,21 @@
           }
         },
         {
-          "name": "new_fee",
-          "type_": "u64"
+          "name": "subscriber",
+          "type_": "address"
         },
         {
-          "name": "ctx",
+          "name": "clock",
           "type_": {
             "Reference": [
-              true,
+              false,
               {
                 "Datatype": {
                   "module": {
                     "address": "myso",
-                    "name": "tx_context"
+                    "name": "clock"
                   },
-                  "name": "TxContext",
+                  "name": "Clock",
                   "type_arguments": []
                 }
               }
@@ -804,11 +4116,121 @@
           }
         }
       ],
-      "return_": []
+      "return_": [
+        "bool"
+      ]
+    },
+    "subscription_satisfies_access": {
+      "source_index": 38,
+      "index": 38,
+      "doc": " Whether subscription satisfies optional tier and platform constraints for content access.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "subscription",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "ProfileSubscription",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "service",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "ProfileSubscriptionService",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "subscriber",
+          "type_": "address"
+        },
+        {
+          "name": "min_tier_level",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "u64"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "content_platform_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "address"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
     },
     "deactivate_service": {
-      "source_index": 9,
-      "index": 9,
+      "source_index": 39,
+      "index": 39,
       "doc": " Deactivate service (profile owner only)",
       "attributes": [],
       "visibility": "Public",
@@ -873,8 +4295,8 @@
       "return_": []
     },
     "cancel_subscription": {
-      "source_index": 10,
-      "index": 10,
+      "source_index": 40,
+      "index": 40,
       "doc": " Cancel subscription and get refund of unused renewal balance",
       "attributes": [],
       "visibility": "Public",
@@ -933,9 +4355,50 @@
       ],
       "return_": []
     },
-    "service_monthly_fee": {
-      "source_index": 11,
-      "index": 11,
+    "service_profile_id": {
+      "source_index": 41,
+      "index": 41,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "service",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "ProfileSubscriptionService",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "object"
+            },
+            "name": "ID",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "service_plan_count": {
+      "source_index": 42,
+      "index": 42,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -965,9 +4428,142 @@
         "u64"
       ]
     },
+    "subscription_plan_id": {
+      "source_index": 43,
+      "index": 43,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "subscription",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "ProfileSubscription",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "object"
+            },
+            "name": "ID",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "subscription_tier_level": {
+      "source_index": 44,
+      "index": 44,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "subscription",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "ProfileSubscription",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "std",
+              "name": "option"
+            },
+            "name": "Option",
+            "type_arguments": [
+              {
+                "phantom": false,
+                "argument": "u64"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "subscription_platform_id": {
+      "source_index": 45,
+      "index": 45,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "subscription",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "ProfileSubscription",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "std",
+              "name": "option"
+            },
+            "name": "Option",
+            "type_arguments": [
+              {
+                "phantom": false,
+                "argument": "address"
+              }
+            ]
+          }
+        }
+      ]
+    },
     "service_subscriber_count": {
-      "source_index": 12,
-      "index": 12,
+      "source_index": 46,
+      "index": 46,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -998,8 +4594,8 @@
       ]
     },
     "subscription_expires_at": {
-      "source_index": 13,
-      "index": 13,
+      "source_index": 47,
+      "index": 47,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -1030,8 +4626,8 @@
       ]
     },
     "subscription_auto_renew": {
-      "source_index": 14,
-      "index": 14,
+      "source_index": 48,
+      "index": 48,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -1062,8 +4658,8 @@
       ]
     },
     "subscription_renewal_balance": {
-      "source_index": 15,
-      "index": 15,
+      "source_index": 49,
+      "index": 49,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -1094,8 +4690,8 @@
       ]
     },
     "bootstrap_init": {
-      "source_index": 16,
-      "index": 16,
+      "source_index": 50,
+      "index": 50,
       "doc": null,
       "attributes": [],
       "visibility": "Package",
@@ -1142,8 +4738,8 @@
       "return_": []
     },
     "create_subscription_admin_cap": {
-      "source_index": 17,
-      "index": 17,
+      "source_index": 51,
+      "index": 51,
       "doc": " Create a SubscriptionAdminCap for bootstrap (package visibility only)",
       "attributes": [],
       "visibility": "Package",
@@ -1183,8 +4779,8 @@
       ]
     },
     "update_subscription_config": {
-      "source_index": 18,
-      "index": 18,
+      "source_index": 52,
+      "index": 52,
       "doc": " Update subscription configuration (admin only)",
       "attributes": [],
       "visibility": "Public",
@@ -1228,11 +4824,27 @@
           }
         },
         {
-          "name": "billing_period_ms",
+          "name": "default_billing_period_ms",
           "type_": "u64"
         },
         {
           "name": "max_renewal_months",
+          "type_": "u64"
+        },
+        {
+          "name": "platform_fee_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "ecosystem_fee_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "non_platform_platform_to_creator_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "non_platform_platform_to_treasury_bps",
           "type_": "u64"
         },
         {
@@ -1274,9 +4886,75 @@
       ],
       "return_": []
     },
+    "migrate_config": {
+      "source_index": 53,
+      "index": 53,
+      "doc": " Migration function for SubscriptionConfig",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "SubscriptionConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "upgrade"
+                  },
+                  "name": "UpgradeAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
     "migrate_service": {
-      "source_index": 19,
-      "index": 19,
+      "source_index": 54,
+      "index": 54,
       "doc": " Migration function for ProfileSubscriptionService",
       "attributes": [],
       "visibility": "Public",
@@ -1396,7 +5074,7 @@
               }
             }
           },
-          "billing_period_ms": {
+          "default_billing_period_ms": {
             "index": 1,
             "doc": null,
             "type_": "u64"
@@ -1406,8 +5084,28 @@
             "doc": null,
             "type_": "u64"
           },
-          "version": {
+          "platform_fee_bps": {
             "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "ecosystem_fee_bps": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "non_platform_platform_to_creator_bps": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "non_platform_platform_to_treasury_bps": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "version": {
+            "index": 7,
             "doc": null,
             "type_": "u64"
           }
@@ -1431,7 +5129,7 @@
             "doc": null,
             "type_": "address"
           },
-          "billing_period_ms": {
+          "default_billing_period_ms": {
             "index": 1,
             "doc": null,
             "type_": "u64"
@@ -1441,8 +5139,148 @@
             "doc": null,
             "type_": "u64"
           },
-          "timestamp": {
+          "platform_fee_bps": {
             "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "ecosystem_fee_bps": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "non_platform_platform_to_creator_bps": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "non_platform_platform_to_treasury_bps": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "timestamp": {
+            "index": 7,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "SubscriptionPlan": {
+      "index": 3,
+      "doc": " Sellable plan on a profile subscription service.",
+      "attributes": [],
+      "abilities": [
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "title": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "string"
+                },
+                "name": "String",
+                "type_arguments": []
+              }
+            }
+          },
+          "description": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "std",
+                          "name": "string"
+                        },
+                        "name": "String",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "price": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "duration_ms": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "tier_level": {
+            "index": 4,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "u64"
+                  }
+                ]
+              }
+            }
+          },
+          "platform_id": {
+            "index": 5,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "address"
+                  }
+                ]
+              }
+            }
+          },
+          "active": {
+            "index": 6,
+            "doc": null,
+            "type_": "bool"
+          },
+          "created_at": {
+            "index": 7,
+            "doc": null,
+            "type_": "u64"
+          },
+          "updated_at": {
+            "index": 8,
             "doc": null,
             "type_": "u64"
           }
@@ -1450,8 +5288,8 @@
       }
     },
     "ProfileSubscriptionService": {
-      "index": 3,
-      "doc": " Profile subscription service - one per profile",
+      "index": 4,
+      "doc": " Profile subscription service - one per profile, holds multiple plans",
       "attributes": [],
       "abilities": [
         "Key"
@@ -1479,23 +5317,78 @@
             "doc": " Profile owner who receives subscription fees",
             "type_": "address"
           },
-          "monthly_fee": {
+          "profile_id": {
             "index": 2,
-            "doc": " Monthly subscription fee in MYSO",
+            "doc": " Profile object this service belongs to",
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "plans": {
+            "index": 3,
+            "doc": " Active and inactive plans keyed by plan id",
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "table"
+                },
+                "name": "Table",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "object"
+                        },
+                        "name": "ID",
+                        "type_arguments": []
+                      }
+                    }
+                  },
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "social_contracts",
+                          "name": "subscription"
+                        },
+                        "name": "SubscriptionPlan",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "plan_count": {
+            "index": 4,
+            "doc": " Number of plans ever created on this service",
             "type_": "u64"
           },
           "active": {
-            "index": 3,
+            "index": 5,
             "doc": " Whether this service allows new subscriptions",
             "type_": "bool"
           },
           "subscriber_count": {
-            "index": 4,
+            "index": 6,
             "doc": " Total number of active subscribers",
             "type_": "u64"
           },
           "version": {
-            "index": 5,
+            "index": 7,
             "doc": " Version for upgrades",
             "type_": "u64"
           }
@@ -1503,7 +5396,7 @@
       }
     },
     "ProfileSubscription": {
-      "index": 4,
+      "index": 5,
       "doc": " Individual subscription to a profile",
       "attributes": [],
       "abilities": [
@@ -1541,28 +5434,80 @@
               }
             }
           },
-          "subscriber": {
+          "plan_id": {
             "index": 2,
+            "doc": " Plan purchased at subscribe time",
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "tier_level": {
+            "index": 3,
+            "doc": " Tier copied from plan at purchase time",
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "u64"
+                  }
+                ]
+              }
+            }
+          },
+          "platform_id": {
+            "index": 4,
+            "doc": " Platform scope copied from plan at purchase time",
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "address"
+                  }
+                ]
+              }
+            }
+          },
+          "subscriber": {
+            "index": 5,
             "doc": " Subscriber's address",
             "type_": "address"
           },
           "created_at": {
-            "index": 3,
+            "index": 6,
             "doc": " When the subscription was created",
             "type_": "u64"
           },
           "expires_at": {
-            "index": 4,
+            "index": 7,
             "doc": " When the subscription expires (timestamp in ms)",
             "type_": "u64"
           },
           "auto_renew": {
-            "index": 5,
+            "index": 8,
             "doc": " Whether auto-renewal is enabled",
             "type_": "bool"
           },
           "renewal_balance": {
-            "index": 6,
+            "index": 9,
             "doc": " Balance for auto-renewal payments",
             "type_": {
               "Datatype": {
@@ -1590,7 +5535,7 @@
             }
           },
           "renewal_count": {
-            "index": 7,
+            "index": 10,
             "doc": " Number of times this subscription has been renewed",
             "type_": "u64"
           }
@@ -1598,7 +5543,7 @@
       }
     },
     "ProfileSubscriptionCreatedEvent": {
-      "index": 5,
+      "index": 6,
       "doc": " Events",
       "attributes": [],
       "abilities": [
@@ -1609,7 +5554,7 @@
       "fields": {
         "positional_fields": false,
         "fields": {
-          "service_id": {
+          "subscription_id": {
             "index": 0,
             "doc": null,
             "type_": {
@@ -1623,31 +5568,136 @@
               }
             }
           },
-          "subscriber": {
+          "service_id": {
             "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "plan_id": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "subscriber": {
+            "index": 3,
             "doc": null,
             "type_": "address"
           },
           "expires_at": {
-            "index": 2,
-            "doc": null,
-            "type_": "u64"
-          },
-          "monthly_fee": {
-            "index": 3,
-            "doc": null,
-            "type_": "u64"
-          },
-          "auto_renew": {
             "index": 4,
             "doc": null,
+            "type_": "u64"
+          },
+          "price": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "duration_ms": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "tier_level": {
+            "index": 7,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "u64"
+                  }
+                ]
+              }
+            }
+          },
+          "platform_id": {
+            "index": 8,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "address"
+                  }
+                ]
+              }
+            }
+          },
+          "auto_renew": {
+            "index": 9,
+            "doc": null,
             "type_": "bool"
+          },
+          "platform_fee": {
+            "index": 10,
+            "doc": null,
+            "type_": "u64"
+          },
+          "ecosystem_fee": {
+            "index": 11,
+            "doc": null,
+            "type_": "u64"
+          },
+          "creator_amount": {
+            "index": 12,
+            "doc": null,
+            "type_": "u64"
+          },
+          "payment_platform_id": {
+            "index": 13,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "address"
+                  }
+                ]
+              }
+            }
           }
         }
       }
     },
     "ProfileSubscriptionRenewedEvent": {
-      "index": 6,
+      "index": 7,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -1677,26 +5727,122 @@
             "doc": null,
             "type_": "address"
           },
-          "new_expires_at": {
+          "plan_id": {
             "index": 2,
             "doc": null,
-            "type_": "u64"
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
           },
-          "renewal_count": {
+          "new_expires_at": {
             "index": 3,
             "doc": null,
             "type_": "u64"
           },
-          "auto_renewed": {
+          "renewal_count": {
             "index": 4,
             "doc": null,
+            "type_": "u64"
+          },
+          "auto_renewed": {
+            "index": 5,
+            "doc": null,
             "type_": "bool"
+          },
+          "price": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "duration_ms": {
+            "index": 7,
+            "doc": null,
+            "type_": "u64"
+          },
+          "tier_level": {
+            "index": 8,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "u64"
+                  }
+                ]
+              }
+            }
+          },
+          "platform_id": {
+            "index": 9,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "address"
+                  }
+                ]
+              }
+            }
+          },
+          "platform_fee": {
+            "index": 10,
+            "doc": null,
+            "type_": "u64"
+          },
+          "ecosystem_fee": {
+            "index": 11,
+            "doc": null,
+            "type_": "u64"
+          },
+          "creator_amount": {
+            "index": 12,
+            "doc": null,
+            "type_": "u64"
+          },
+          "payment_platform_id": {
+            "index": 13,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "address"
+                  }
+                ]
+              }
+            }
           }
         }
       }
     },
     "ProfileSubscriptionCancelledEvent": {
-      "index": 7,
+      "index": 8,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -1734,9 +5880,9 @@
         }
       }
     },
-    "ProfileSubscriptionUpdatedEvent": {
-      "index": 8,
-      "doc": " Additional event for fee updates",
+    "SubscriptionPlanUpdatedEvent": {
+      "index": 9,
+      "doc": " Additional event for plan updates",
       "attributes": [],
       "abilities": [
         "Copy",
@@ -1760,26 +5906,130 @@
               }
             }
           },
-          "old_fee": {
+          "plan_id": {
             "index": 1,
             "doc": null,
-            "type_": "u64"
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
           },
-          "new_fee": {
+          "title": {
             "index": 2,
             "doc": null,
-            "type_": "u64"
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "string"
+                },
+                "name": "String",
+                "type_arguments": []
+              }
+            }
           },
-          "updated_by": {
+          "description": {
             "index": 3,
             "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "std",
+                          "name": "string"
+                        },
+                        "name": "String",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "price": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "duration_ms": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "tier_level": {
+            "index": 6,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "u64"
+                  }
+                ]
+              }
+            }
+          },
+          "platform_id": {
+            "index": 7,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "address"
+                  }
+                ]
+              }
+            }
+          },
+          "active": {
+            "index": 8,
+            "doc": null,
+            "type_": "bool"
+          },
+          "updated_by": {
+            "index": 9,
+            "doc": null,
             "type_": "address"
+          },
+          "updated_at": {
+            "index": 10,
+            "doc": null,
+            "type_": "u64"
           }
         }
       }
     },
     "ProfileSubscriptionServiceCreatedEvent": {
-      "index": 9,
+      "index": 10,
       "doc": " Event emitted when a subscription service is created",
       "attributes": [],
       "abilities": [
@@ -1809,10 +6059,19 @@
             "doc": null,
             "type_": "address"
           },
-          "monthly_fee": {
+          "profile_id": {
             "index": 2,
             "doc": null,
-            "type_": "u64"
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
           },
           "created_at": {
             "index": 3,
@@ -1822,8 +6081,194 @@
         }
       }
     },
+    "SubscriptionPlanCreatedEvent": {
+      "index": 11,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "service_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "plan_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "title": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "string"
+                },
+                "name": "String",
+                "type_arguments": []
+              }
+            }
+          },
+          "description": {
+            "index": 3,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "std",
+                          "name": "string"
+                        },
+                        "name": "String",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "price": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "duration_ms": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "tier_level": {
+            "index": 6,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "u64"
+                  }
+                ]
+              }
+            }
+          },
+          "platform_id": {
+            "index": 7,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "address"
+                  }
+                ]
+              }
+            }
+          },
+          "created_at": {
+            "index": 8,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "SubscriptionPlanDeactivatedEvent": {
+      "index": 12,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "service_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "plan_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "deactivated_at": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
     "RenewalBalanceFundedEvent": {
-      "index": 10,
+      "index": 13,
       "doc": " Event emitted when renewal balance is funded",
       "attributes": [],
       "abilities": [
@@ -1872,7 +6317,7 @@
       }
     },
     "ProfileSubscriptionServiceDeactivatedEvent": {
-      "index": 11,
+      "index": 14,
       "doc": " Event emitted when a subscription service is deactivated",
       "attributes": [],
       "abilities": [

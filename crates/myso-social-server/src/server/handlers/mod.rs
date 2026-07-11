@@ -62,6 +62,7 @@ pub use mydata::{
     get_creator_mydata, get_mydata_access_analytics, get_mydata_access_logs, get_mydata_by_id,
     get_mydata_configuration, get_mydata_distribution_round, get_mydata_has_access,
     get_mydata_merkle_root, get_mydata_purchases, get_mydata_revenue, get_mydata_revenue_timeline,
+    get_mydata_snapshot_escrow,
     get_mydata_snapshot_anchor, get_mydata_stats, get_mydata_subscriptions, get_popular_mydata,
     list_mydata, list_mydata_broad_pools, list_mydata_claims_for_snapshot,
     list_mydata_distribution_rounds, list_mydata_listings_for_sub_pool,
@@ -130,7 +131,7 @@ pub use spt::{
 pub use subscription::{
     check_subscription_access, get_profile_subscription_service, get_subscriber_summary,
     get_subscription_by_id, get_subscription_config, get_subscription_revenue_by_service,
-    get_subscription_status, list_profile_subscription_services, list_subscription_revenue,
+    get_subscription_status, list_profile_subscription_plans, list_profile_subscription_services, list_subscription_revenue,
     list_subscription_services, list_subscriptions, list_subscriptions_by_subscriber,
 };
 pub use system::{check_username_availability, get_system_stats};

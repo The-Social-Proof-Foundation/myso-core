@@ -3,7 +3,7 @@
     "address": "social_contracts",
     "name": "mydata"
   },
-  "doc": " Universal MyData module for encrypted data monetization (one-time purchase, subscription, owner vault).\n\n **Production decrypt path (client-only):** Plaintext must only exist off-chain. Callers encrypt before\n `create` / `create_and_share`, then authorized users use the MyData SDK: resolve access (indexer or\n `has_access`), request keys via the key server (`fetch_key`) with policy approval (`mydata_approve`),\n and decrypt locally. Do not rely on Move to produce user content plaintext for marketplace listings.\n\n **On-chain state:** `encrypted_data` is opaque ciphertext. For BF-HMAC MyData blobs,\n `mydata::bf_hmac_encryption::EncryptedObject` embeds `package_id` and `id`; the `encryption_id` field\n must be the same `id` bytes used when encrypting so policy and clients stay aligned. For client-only\n AES-GCM (or other app-managed schemes), ciphertext does not parse as `EncryptedObject`; encode the\n scheme in `media_type` (e.g. prefix `aes_gcm:`) or app metadata so indexers pick the right decrypt path.\n\n **Revocation:** Owners may call [`revoke_access`] to remove a buyer from `purchasers` / `subscribers`.\n Permissioned key servers re-check [`mydata_approve`] on every `fetch_key`, so revoked buyers cannot\n obtain new derived keys. Already-fetched keys may still decrypt offline client-side.\n\n **Query marketplace:** Broad pools, snapshot anchors, claim vault, and Merkle settlement live in this\n module. Manifest hash and payout trees are operator-defined; the chain records price paid and anchors,\n not row-level dataset membership.\n",
+  "doc": " Universal MyData module for encrypted data monetization (one-time purchase, subscription, owner vault).\n\n **Production decrypt path (client-only):** Plaintext must only exist off-chain. Callers encrypt before\n `create` / dedicated `create_and_share_*` entry points, then authorized users use the MyData SDK: resolve access (indexer or\n `has_access`), request keys via the key server (`fetch_key`) with policy approval (`mydata_approve`),\n and decrypt locally. Do not rely on Move to produce user content plaintext for marketplace listings.\n\n **On-chain state:** `encrypted_data` is opaque ciphertext. For BF-HMAC MyData blobs,\n `mydata::bf_hmac_encryption::EncryptedObject` embeds `package_id` and `id`; the `encryption_id` field\n must be the same `id` bytes used when encrypting so policy and clients stay aligned. For client-only\n AES-GCM (or other app-managed schemes), ciphertext does not parse as `EncryptedObject`; encode the\n scheme in `media_type` (e.g. prefix `aes_gcm:`) or app metadata so indexers pick the right decrypt path.\n\n **Revocation:** Owners may call [`revoke_access`] to remove a buyer from marketplace access tables.\n Permissioned key servers re-check [`mydata_approve`] on every `fetch_key`, so revoked buyers cannot\n obtain new derived keys. Already-fetched keys may still decrypt offline client-side.\n\n **Query marketplace:** Broad pools, snapshot anchors, claim vault, and Merkle settlement live in this\n module. Manifest hash and payout trees are operator-defined; the chain records price paid and anchors,\n not row-level dataset membership.\n",
   "immediate_dependencies": [
     {
       "address": "mydata",
@@ -55,7 +55,23 @@
     },
     {
       "address": "social_contracts",
+      "name": "block_list"
+    },
+    {
+      "address": "social_contracts",
       "name": "memory"
+    },
+    {
+      "address": "social_contracts",
+      "name": "platform"
+    },
+    {
+      "address": "social_contracts",
+      "name": "profile"
+    },
+    {
+      "address": "social_contracts",
+      "name": "subscription"
     },
     {
       "address": "social_contracts",
@@ -103,9 +119,553 @@
     }
   ],
   "functions": {
-    "create_mydata_admin_cap": {
+    "validate_fee_config": {
       "source_index": 0,
       "index": 0,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "p2p_platform_fee_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "p2p_ecosystem_fee_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "mydata_marketplace_platform_fee_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "mydata_marketplace_ecosystem_fee_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "non_platform_platform_to_creator_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "non_platform_platform_to_treasury_bps",
+          "type_": "u64"
+        }
+      ],
+      "return_": []
+    },
+    "calculate_p2p_fees": {
+      "source_index": 1,
+      "index": 1,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "gross",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        "u64",
+        "u64",
+        "u64"
+      ]
+    },
+    "calculate_mydata_marketplace_fees": {
+      "source_index": 2,
+      "index": 2,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "gross",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        "u64",
+        "u64",
+        "u64"
+      ]
+    },
+    "route_non_platform_platform_fee": {
+      "source_index": 3,
+      "index": 3,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "platform_fee",
+          "type_": "u64"
+        },
+        {
+          "name": "recipient_amount",
+          "type_": "u64"
+        },
+        {
+          "name": "payment",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "coin"
+                  },
+                  "name": "Coin",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "myso"
+                          },
+                          "name": "MYSO",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "distribute_p2p_fees_no_platform": {
+      "source_index": 4,
+      "index": 4,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner",
+          "type_": "address"
+        },
+        {
+          "name": "payment",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "coin"
+              },
+              "name": "Coin",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "myso"
+                      },
+                      "name": "MYSO",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64",
+        "u64",
+        "u64"
+      ]
+    },
+    "distribute_p2p_fees_with_platform": {
+      "source_index": 5,
+      "index": 5,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner",
+          "type_": "address"
+        },
+        {
+          "name": "payment",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "coin"
+              },
+              "name": "Coin",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "myso"
+                      },
+                      "name": "MYSO",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "platform",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "Platform",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64",
+        "u64",
+        "u64"
+      ]
+    },
+    "assert_platform_matches_listing": {
+      "source_index": 6,
+      "index": 6,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "mydata",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyData",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "platform",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "Platform",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "emit_mydata_config_updated": {
+      "source_index": 7,
+      "index": 7,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "updated_by",
+          "type_": "address"
+        },
+        {
+          "name": "timestamp",
+          "type_": "u64"
+        }
+      ],
+      "return_": []
+    },
+    "create_mydata_admin_cap": {
+      "source_index": 8,
+      "index": 8,
       "doc": " Create a MyDataAdminCap for bootstrap (package visibility only)",
       "attributes": [],
       "visibility": "Package",
@@ -145,8 +705,8 @@
       ]
     },
     "update_mydata_config": {
-      "source_index": 1,
-      "index": 1,
+      "source_index": 9,
+      "index": 9,
       "doc": " Update MyData configuration (admin only)",
       "attributes": [],
       "visibility": "Public",
@@ -190,7 +750,7 @@
           }
         },
         {
-          "name": "enable_flag",
+          "name": "marketplace_enabled",
           "type_": "bool"
         },
         {
@@ -207,6 +767,62 @@
         },
         {
           "name": "max_encryption_id_bytes",
+          "type_": "u64"
+        },
+        {
+          "name": "max_encrypted_data_bytes",
+          "type_": "u64"
+        },
+        {
+          "name": "max_tag_bytes",
+          "type_": "u64"
+        },
+        {
+          "name": "max_metadata_bytes",
+          "type_": "u64"
+        },
+        {
+          "name": "max_payment_reference_bytes",
+          "type_": "u64"
+        },
+        {
+          "name": "max_pool_assignments",
+          "type_": "u64"
+        },
+        {
+          "name": "max_merkle_proof_depth",
+          "type_": "u64"
+        },
+        {
+          "name": "max_paid_access_entries",
+          "type_": "u64"
+        },
+        {
+          "name": "default_claim_window_ms",
+          "type_": "u64"
+        },
+        {
+          "name": "p2p_platform_fee_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "p2p_ecosystem_fee_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "mydata_marketplace_platform_fee_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "mydata_marketplace_ecosystem_fee_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "non_platform_platform_to_creator_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "non_platform_platform_to_treasury_bps",
           "type_": "u64"
         },
         {
@@ -248,9 +864,41 @@
       ],
       "return_": []
     },
+    "marketplace_enabled": {
+      "source_index": 10,
+      "index": 10,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
     "share_mydata_system_objects": {
-      "source_index": 2,
-      "index": 2,
+      "source_index": 11,
+      "index": 11,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -294,15 +942,15 @@
           }
         },
         {
-          "name": "enable_flag",
+          "name": "marketplace_enabled",
           "type_": "bool"
         }
       ],
       "return_": []
     },
     "bootstrap_init": {
-      "source_index": 3,
-      "index": 3,
+      "source_index": 12,
+      "index": 12,
       "doc": " Bootstrap: shared config, ownership registry, and query-marketplace objects (pools, anchors, vault).",
       "attributes": [],
       "visibility": "Package",
@@ -349,11 +997,11 @@
       "return_": []
     },
     "create_mydata_pool_admin_cap": {
-      "source_index": 4,
-      "index": 4,
+      "source_index": 13,
+      "index": 13,
       "doc": null,
       "attributes": [],
-      "visibility": "Public",
+      "visibility": "Package",
       "entry": false,
       "type_parameters": [],
       "parameters": [
@@ -390,8 +1038,8 @@
       ]
     },
     "gen_pool_id": {
-      "source_index": 5,
-      "index": 5,
+      "source_index": 14,
+      "index": 14,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -434,9 +1082,137 @@
         }
       ]
     },
+    "create_broad_pool_internal": {
+      "source_index": 15,
+      "index": 15,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataPoolAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataPoolRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "name",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "string"
+              },
+              "name": "String",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "description",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "string"
+              },
+              "name": "String",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "platform_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "address"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
     "create_broad_pool": {
-      "source_index": 6,
-      "index": 6,
+      "source_index": 16,
+      "index": 16,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -444,7 +1220,25 @@
       "type_parameters": [],
       "parameters": [
         {
-          "name": "_",
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "cap",
           "type_": {
             "Reference": [
               false,
@@ -526,15 +1320,161 @@
       ],
       "return_": []
     },
-    "create_sub_pool": {
-      "source_index": 7,
-      "index": 7,
+    "create_broad_pool_with_platform": {
+      "source_index": 17,
+      "index": 17,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
       "entry": true,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "cap",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataPoolAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataPoolRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "platform",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "Platform",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "name",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "string"
+              },
+              "name": "String",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "description",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "string"
+              },
+              "name": "String",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "create_sub_pool": {
+      "source_index": 18,
+      "index": 18,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "_",
           "type_": {
@@ -652,14 +1592,32 @@
       "return_": []
     },
     "assign_mydata_to_sub_pools": {
-      "source_index": 8,
-      "index": 8,
+      "source_index": 19,
+      "index": 19,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
       "entry": false,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "registry",
           "type_": {
@@ -719,8 +1677,8 @@
       "return_": []
     },
     "remove_mydata_from_sub_pool": {
-      "source_index": 9,
-      "index": 9,
+      "source_index": 20,
+      "index": 20,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -766,8 +1724,8 @@
       "return_": []
     },
     "gen_snapshot_id": {
-      "source_index": 10,
-      "index": 10,
+      "source_index": 21,
+      "index": 21,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -811,14 +1769,32 @@
       ]
     },
     "record_snapshot_anchor": {
-      "source_index": 11,
-      "index": 11,
+      "source_index": 22,
+      "index": 22,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
       "entry": true,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "anchor_registry",
           "type_": {
@@ -978,8 +1954,8 @@
       "return_": []
     },
     "get_snapshot_anchor": {
-      "source_index": 12,
-      "index": 12,
+      "source_index": 23,
+      "index": 23,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -1045,9 +2021,9 @@
         }
       ]
     },
-    "publish_merkle_root": {
-      "source_index": 13,
-      "index": 13,
+    "deposit_snapshot_escrow": {
+      "source_index": 24,
+      "index": 24,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -1122,10 +2098,196 @@
           }
         },
         {
+          "name": "payment",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "coin"
+              },
+              "name": "Coin",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "myso"
+                      },
+                      "name": "MYSO",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "publish_distribution": {
+      "source_index": 25,
+      "index": 25,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataPoolAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "anchor_registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "SnapshotAnchorRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "dist_registry",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "DistributionRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataClaimVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "snapshot_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
           "name": "root_hash",
           "type_": {
             "vector": "u8"
           }
+        },
+        {
+          "name": "total_amount",
+          "type_": "u64"
+        },
+        {
+          "name": "contributor_count",
+          "type_": "u64"
         },
         {
           "name": "clock",
@@ -1148,15 +2310,307 @@
       ],
       "return_": []
     },
-    "claim": {
-      "source_index": 14,
-      "index": 14,
+    "distribute_mydata_marketplace_claim_fees_no_platform": {
+      "source_index": 26,
+      "index": 26,
       "doc": null,
       "attributes": [],
-      "visibility": "Public",
-      "entry": true,
+      "visibility": "Private",
+      "entry": false,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "claimant",
+          "type_": "address"
+        },
+        {
+          "name": "gross_amount",
+          "type_": "u64"
+        },
+        {
+          "name": "vault_balance",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "balance"
+                  },
+                  "name": "Balance",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "myso"
+                          },
+                          "name": "MYSO",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64",
+        "u64",
+        "u64"
+      ]
+    },
+    "distribute_mydata_marketplace_claim_fees_with_platform": {
+      "source_index": 27,
+      "index": 27,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "claimant",
+          "type_": "address"
+        },
+        {
+          "name": "gross_amount",
+          "type_": "u64"
+        },
+        {
+          "name": "platform",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "Platform",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault_balance",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "balance"
+                  },
+                  "name": "Balance",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "myso"
+                          },
+                          "name": "MYSO",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64",
+        "u64",
+        "u64"
+      ]
+    },
+    "claim_internal_no_platform": {
+      "source_index": 28,
+      "index": 28,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "dist_registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "DistributionRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "vault",
           "type_": {
@@ -1169,6 +2623,24 @@
                     "name": "mydata"
                   },
                   "name": "MyDataClaimVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
                   "type_arguments": []
                 }
               }
@@ -1243,17 +2715,17 @@
       ],
       "return_": []
     },
-    "deposit": {
-      "source_index": 15,
-      "index": 15,
+    "claim_internal_with_platform": {
+      "source_index": 29,
+      "index": 29,
       "doc": null,
       "attributes": [],
-      "visibility": "Public",
-      "entry": true,
+      "visibility": "Private",
+      "entry": false,
       "type_parameters": [],
       "parameters": [
         {
-          "name": "_",
+          "name": "config",
           "type_": {
             "Reference": [
               false,
@@ -1263,7 +2735,25 @@
                     "address": "social_contracts",
                     "name": "mydata"
                   },
-                  "name": "MyDataPoolAdminCap",
+                  "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "dist_registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "DistributionRegistry",
                   "type_arguments": []
                 }
               }
@@ -1289,7 +2779,43 @@
           }
         },
         {
-          "name": "_snapshot_id",
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "platform",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "Platform",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "snapshot_id",
           "type_": {
             "Datatype": {
               "module": {
@@ -1302,46 +2828,71 @@
           }
         },
         {
-          "name": "payment",
+          "name": "amount",
+          "type_": "u64"
+        },
+        {
+          "name": "leaf_index",
+          "type_": "u64"
+        },
+        {
+          "name": "proof",
           "type_": {
-            "Datatype": {
-              "module": {
-                "address": "myso",
-                "name": "coin"
-              },
-              "name": "Coin",
-              "type_arguments": [
-                {
-                  "phantom": true,
-                  "argument": {
-                    "Datatype": {
-                      "module": {
-                        "address": "myso",
-                        "name": "myso"
-                      },
-                      "name": "MYSO",
-                      "type_arguments": []
-                    }
-                  }
-                }
-              ]
+            "vector": {
+              "vector": "u8"
             }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
           }
         }
       ],
       "return_": []
     },
-    "record_distribution": {
-      "source_index": 16,
-      "index": 16,
-      "doc": null,
+    "claim": {
+      "source_index": 30,
+      "index": 30,
+      "doc": " Claim MyData marketplace pool payout from vault escrow (no platform).",
       "attributes": [],
       "visibility": "Public",
       "entry": true,
       "type_parameters": [],
       "parameters": [
         {
-          "name": "_",
+          "name": "config",
           "type_": {
             "Reference": [
               false,
@@ -1351,7 +2902,7 @@
                     "address": "social_contracts",
                     "name": "mydata"
                   },
-                  "name": "MyDataPoolAdminCap",
+                  "name": "MyDataConfig",
                   "type_arguments": []
                 }
               }
@@ -1362,7 +2913,7 @@
           "name": "dist_registry",
           "type_": {
             "Reference": [
-              true,
+              false,
               {
                 "Datatype": {
                   "module": {
@@ -1380,7 +2931,323 @@
           "name": "vault",
           "type_": {
             "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataClaimVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
               false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "snapshot_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "amount",
+          "type_": "u64"
+        },
+        {
+          "name": "leaf_index",
+          "type_": "u64"
+        },
+        {
+          "name": "proof",
+          "type_": {
+            "vector": {
+              "vector": "u8"
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "claim_with_platform": {
+      "source_index": 31,
+      "index": 31,
+      "doc": " Claim MyData marketplace pool payout with platform treasury routing.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "dist_registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "DistributionRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataClaimVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "platform",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "Platform",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "snapshot_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "amount",
+          "type_": "u64"
+        },
+        {
+          "name": "leaf_index",
+          "type_": "u64"
+        },
+        {
+          "name": "proof",
+          "type_": {
+            "vector": {
+              "vector": "u8"
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "reclaim_expired_snapshot_escrow": {
+      "source_index": 32,
+      "index": 32,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "anchor_registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "SnapshotAnchorRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "dist_registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "DistributionRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "type_": {
+            "Reference": [
+              true,
               {
                 "Datatype": {
                   "module": {
@@ -1408,14 +3275,6 @@
           }
         },
         {
-          "name": "total_amount",
-          "type_": "u64"
-        },
-        {
-          "name": "contributor_count",
-          "type_": "u64"
-        },
-        {
           "name": "clock",
           "type_": {
             "Reference": [
@@ -1432,13 +3291,31 @@
               }
             ]
           }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
         }
       ],
       "return_": []
     },
     "get_broad_pool": {
-      "source_index": 17,
-      "index": 17,
+      "source_index": 33,
+      "index": 33,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -1505,8 +3382,8 @@
       ]
     },
     "get_sub_pool": {
-      "source_index": 18,
-      "index": 18,
+      "source_index": 34,
+      "index": 34,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -1573,8 +3450,8 @@
       ]
     },
     "get_mydata_sub_pools": {
-      "source_index": 19,
-      "index": 19,
+      "source_index": 35,
+      "index": 35,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -1634,8 +3511,8 @@
       ]
     },
     "get_distribution_round": {
-      "source_index": 20,
-      "index": 20,
+      "source_index": 36,
+      "index": 36,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -1702,8 +3579,8 @@
       ]
     },
     "broad_pool_id": {
-      "source_index": 21,
-      "index": 21,
+      "source_index": 37,
+      "index": 37,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -1743,8 +3620,8 @@
       ]
     },
     "sub_pool_id": {
-      "source_index": 22,
-      "index": 22,
+      "source_index": 38,
+      "index": 38,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -1783,9 +3660,475 @@
         }
       ]
     },
+    "access_configuration": {
+      "source_index": 39,
+      "index": 39,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "mydata",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyData",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            false,
+            {
+              "Datatype": {
+                "module": {
+                  "address": "social_contracts",
+                  "name": "mydata"
+                },
+                "name": "AccessConfiguration",
+                "type_arguments": []
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "requires_profile_subscription_access": {
+      "source_index": 40,
+      "index": 40,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "mydata",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyData",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "requires_marketplace_purchase": {
+      "source_index": 41,
+      "index": 41,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "mydata",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyData",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "requires_marketplace_subscription": {
+      "source_index": 42,
+      "index": 42,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "mydata",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyData",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "linked_one_time_price": {
+      "source_index": 43,
+      "index": 43,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "mydata",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyData",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "std",
+              "name": "option"
+            },
+            "name": "Option",
+            "type_arguments": [
+              {
+                "phantom": false,
+                "argument": "u64"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "access_configuration_kind": {
+      "source_index": 44,
+      "index": 44,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "mydata",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyData",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u8"
+      ]
+    },
+    "validate_marketplace_price": {
+      "source_index": 45,
+      "index": 45,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "price",
+          "type_": "u64"
+        }
+      ],
+      "return_": []
+    },
+    "validate_recurring_duration": {
+      "source_index": 46,
+      "index": 46,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "duration_days",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "validate_access_configuration": {
+      "source_index": 47,
+      "index": 47,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "access",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "AccessConfiguration",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "validate_optional_metadata": {
+      "source_index": 48,
+      "index": 48,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "value",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "std",
+                    "name": "option"
+                  },
+                  "name": "Option",
+                  "type_arguments": [
+                    {
+                      "phantom": false,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "std",
+                            "name": "string"
+                          },
+                          "name": "String",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "validate_tags": {
+      "source_index": 49,
+      "index": 49,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "tags",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "vector": {
+                  "Datatype": {
+                    "module": {
+                      "address": "std",
+                      "name": "string"
+                    },
+                    "name": "String",
+                    "type_arguments": []
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "emit_mydata_created_event": {
+      "source_index": 50,
+      "index": 50,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "mydata",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyData",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ip_id",
+          "type_": "address"
+        }
+      ],
+      "return_": []
+    },
     "create": {
-      "source_index": 23,
-      "index": 23,
+      "source_index": 51,
+      "index": 51,
       "doc": " Create new MyData data with proper MyData encryption",
       "attributes": [],
       "visibility": "Public",
@@ -1891,44 +4234,17 @@
           }
         },
         {
-          "name": "one_time_price",
+          "name": "access",
           "type_": {
             "Datatype": {
               "module": {
-                "address": "std",
-                "name": "option"
+                "address": "social_contracts",
+                "name": "mydata"
               },
-              "name": "Option",
-              "type_arguments": [
-                {
-                  "phantom": false,
-                  "argument": "u64"
-                }
-              ]
+              "name": "AccessConfiguration",
+              "type_arguments": []
             }
           }
-        },
-        {
-          "name": "subscription_price",
-          "type_": {
-            "Datatype": {
-              "module": {
-                "address": "std",
-                "name": "option"
-              },
-              "name": "Option",
-              "type_arguments": [
-                {
-                  "phantom": false,
-                  "argument": "u64"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "subscription_duration_days",
-          "type_": "u64"
         },
         {
           "name": "geographic_region",
@@ -2110,10 +4426,360 @@
         }
       ]
     },
-    "create_and_share": {
-      "source_index": 24,
-      "index": 24,
-      "doc": " Create and share MyData publicly",
+    "share_created_mydata": {
+      "source_index": 52,
+      "index": 52,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "mydata",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "social_contracts",
+                "name": "mydata"
+              },
+              "name": "MyData",
+              "type_arguments": []
+            }
+          }
+        }
+      ],
+      "return_": []
+    },
+    "create_and_share_internal": {
+      "source_index": 53,
+      "index": 53,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "media_type",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "string"
+              },
+              "name": "String",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "tags",
+          "type_": {
+            "vector": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "string"
+                },
+                "name": "String",
+                "type_arguments": []
+              }
+            }
+          }
+        },
+        {
+          "name": "platform_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "address"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "timestamp_start",
+          "type_": "u64"
+        },
+        {
+          "name": "timestamp_end",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "u64"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "encrypted_data",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "encryption_id",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "access",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "social_contracts",
+                "name": "mydata"
+              },
+              "name": "AccessConfiguration",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "geographic_region",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "std",
+                        "name": "string"
+                      },
+                      "name": "String",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "data_quality",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "std",
+                        "name": "string"
+                      },
+                      "name": "String",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "sample_size",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "u64"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "collection_method",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "std",
+                        "name": "string"
+                      },
+                      "name": "String",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "is_updating",
+          "type_": "bool"
+        },
+        {
+          "name": "update_frequency",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "std",
+                        "name": "string"
+                      },
+                      "name": "String",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "create_and_share_profile_subscription_mydata": {
+      "source_index": 54,
+      "index": 54,
+      "doc": " Create and share profile-subscription-gated MyData (no marketplace pricing).",
       "attributes": [
         {
           "Parameterized": [
@@ -2254,7 +4920,61 @@
           }
         },
         {
-          "name": "one_time_price",
+          "name": "geographic_region",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "std",
+                        "name": "string"
+                      },
+                      "name": "String",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "data_quality",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "std",
+                        "name": "string"
+                      },
+                      "name": "String",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "sample_size",
           "type_": {
             "Datatype": {
               "module": {
@@ -2272,7 +4992,217 @@
           }
         },
         {
-          "name": "subscription_price",
+          "name": "collection_method",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "std",
+                        "name": "string"
+                      },
+                      "name": "String",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "is_updating",
+          "type_": "bool"
+        },
+        {
+          "name": "update_frequency",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "std",
+                        "name": "string"
+                      },
+                      "name": "String",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "create_and_share_marketplace_one_time_mydata": {
+      "source_index": 55,
+      "index": 55,
+      "doc": " Create and share marketplace one-time purchase MyData.",
+      "attributes": [
+        {
+          "Parameterized": [
+            "allow",
+            [
+              {
+                "Parameterized": [
+                  "lint",
+                  [
+                    {
+                      "Name": "share_owned"
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "media_type",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "string"
+              },
+              "name": "String",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "tags",
+          "type_": {
+            "vector": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "string"
+                },
+                "name": "String",
+                "type_arguments": []
+              }
+            }
+          }
+        },
+        {
+          "name": "platform_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "address"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "timestamp_start",
+          "type_": "u64"
+        },
+        {
+          "name": "timestamp_end",
           "type_": {
             "Datatype": {
               "module": {
@@ -2290,7 +5220,19 @@
           }
         },
         {
-          "name": "subscription_duration_days",
+          "name": "encrypted_data",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "encryption_id",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "price",
           "type_": "u64"
         },
         {
@@ -2462,11 +5404,29 @@
       ],
       "return_": []
     },
-    "purchase_one_time": {
-      "source_index": 25,
-      "index": 25,
-      "doc": " Purchase one-time access to MyData data.\n Sub-agent buyers must satisfy `max_action_spend` for `price` on `account`.",
-      "attributes": [],
+    "create_and_share_marketplace_recurring_mydata": {
+      "source_index": 56,
+      "index": 56,
+      "doc": " Create and share marketplace recurring subscription MyData.",
+      "attributes": [
+        {
+          "Parameterized": [
+            "allow",
+            [
+              {
+                "Parameterized": [
+                  "lint",
+                  [
+                    {
+                      "Name": "share_owned"
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      ],
       "visibility": "Public",
       "entry": true,
       "type_parameters": [],
@@ -2483,6 +5443,326 @@
                     "name": "mydata"
                   },
                   "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "media_type",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "string"
+              },
+              "name": "String",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "tags",
+          "type_": {
+            "vector": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "string"
+                },
+                "name": "String",
+                "type_arguments": []
+              }
+            }
+          }
+        },
+        {
+          "name": "platform_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "address"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "timestamp_start",
+          "type_": "u64"
+        },
+        {
+          "name": "timestamp_end",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "u64"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "encrypted_data",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "encryption_id",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "price",
+          "type_": "u64"
+        },
+        {
+          "name": "duration_days",
+          "type_": "u64"
+        },
+        {
+          "name": "geographic_region",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "std",
+                        "name": "string"
+                      },
+                      "name": "String",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "data_quality",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "std",
+                        "name": "string"
+                      },
+                      "name": "String",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "sample_size",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "u64"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "collection_method",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "std",
+                        "name": "string"
+                      },
+                      "name": "String",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "is_updating",
+          "type_": "bool"
+        },
+        {
+          "name": "update_frequency",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "std",
+                        "name": "string"
+                      },
+                      "name": "String",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "purchase_one_time_no_platform": {
+      "source_index": 57,
+      "index": 57,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "block_list_registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "block_list"
+                  },
+                  "name": "BlockListRegistry",
                   "type_arguments": []
                 }
               }
@@ -2526,30 +5806,1047 @@
           }
         },
         {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
           "name": "payment",
           "type_": {
-            "Datatype": {
-              "module": {
-                "address": "myso",
-                "name": "coin"
-              },
-              "name": "Coin",
-              "type_arguments": [
-                {
-                  "phantom": true,
-                  "argument": {
-                    "Datatype": {
-                      "module": {
-                        "address": "myso",
-                        "name": "myso"
-                      },
-                      "name": "MYSO",
-                      "type_arguments": []
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "coin"
+                  },
+                  "name": "Coin",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "myso"
+                          },
+                          "name": "MYSO",
+                          "type_arguments": []
+                        }
+                      }
                     }
-                  }
+                  ]
                 }
-              ]
-            }
+              }
+            ]
+          }
+        },
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryAccount",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "purchase_one_time_with_platform_internal": {
+      "source_index": 58,
+      "index": 58,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "block_list_registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "block_list"
+                  },
+                  "name": "BlockListRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "memory_config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "mydata",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyData",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "platform",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "Platform",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "payment",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "coin"
+                  },
+                  "name": "Coin",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "myso"
+                          },
+                          "name": "MYSO",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryAccount",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "purchase_one_time": {
+      "source_index": 59,
+      "index": 59,
+      "doc": " Purchase one-time access to MyData data.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "block_list_registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "block_list"
+                  },
+                  "name": "BlockListRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "memory_config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "mydata",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyData",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "payment",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "coin"
+                  },
+                  "name": "Coin",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "myso"
+                          },
+                          "name": "MYSO",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryAccount",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "purchase_one_time_with_platform": {
+      "source_index": 60,
+      "index": 60,
+      "doc": " Purchase one-time access with platform treasury routing.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "block_list_registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "block_list"
+                  },
+                  "name": "BlockListRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "memory_config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "mydata",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyData",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "platform",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "Platform",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "payment",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "coin"
+                  },
+                  "name": "Coin",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "myso"
+                          },
+                          "name": "MYSO",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryAccount",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "purchase_subscription_no_platform": {
+      "source_index": 61,
+      "index": 61,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "block_list_registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "block_list"
+                  },
+                  "name": "BlockListRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "memory_config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "mydata",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyData",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "payment",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "coin"
+                  },
+                  "name": "Coin",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "myso"
+                          },
+                          "name": "MYSO",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryAccount",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "purchase_subscription_with_platform_internal": {
+      "source_index": 62,
+      "index": 62,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "block_list_registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "block_list"
+                  },
+                  "name": "BlockListRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "memory_config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "mydata",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyData",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "platform",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "Platform",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "payment",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "coin"
+                  },
+                  "name": "Coin",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "myso"
+                          },
+                          "name": "MYSO",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
           }
         },
         {
@@ -2610,9 +6907,9 @@
       "return_": []
     },
     "purchase_subscription": {
-      "source_index": 26,
-      "index": 26,
-      "doc": " Purchase subscription access to MyData data.\n Sub-agent buyers must satisfy `max_action_spend` for `price` on `account`.",
+      "source_index": 63,
+      "index": 63,
+      "doc": " Purchase subscription access to MyData data.",
       "attributes": [],
       "visibility": "Public",
       "entry": true,
@@ -2630,6 +6927,24 @@
                     "name": "mydata"
                   },
                   "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "block_list_registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "block_list"
+                  },
+                  "name": "BlockListRegistry",
                   "type_arguments": []
                 }
               }
@@ -2673,30 +6988,259 @@
           }
         },
         {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
           "name": "payment",
           "type_": {
-            "Datatype": {
-              "module": {
-                "address": "myso",
-                "name": "coin"
-              },
-              "name": "Coin",
-              "type_arguments": [
-                {
-                  "phantom": true,
-                  "argument": {
-                    "Datatype": {
-                      "module": {
-                        "address": "myso",
-                        "name": "myso"
-                      },
-                      "name": "MYSO",
-                      "type_arguments": []
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "coin"
+                  },
+                  "name": "Coin",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "myso"
+                          },
+                          "name": "MYSO",
+                          "type_arguments": []
+                        }
+                      }
                     }
-                  }
+                  ]
                 }
-              ]
-            }
+              }
+            ]
+          }
+        },
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryAccount",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "purchase_subscription_with_platform": {
+      "source_index": 64,
+      "index": 64,
+      "doc": " Purchase subscription access with platform treasury routing.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "block_list_registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "block_list"
+                  },
+                  "name": "BlockListRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "memory_config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "mydata",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyData",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "platform",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "Platform",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "payment",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "coin"
+                  },
+                  "name": "Coin",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "myso"
+                          },
+                          "name": "MYSO",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
           }
         },
         {
@@ -2757,14 +7301,32 @@
       "return_": []
     },
     "update_pricing": {
-      "source_index": 27,
-      "index": 27,
-      "doc": " Update pricing (owner only)",
+      "source_index": 65,
+      "index": 65,
+      "doc": " Update pricing (owner only; marketplace listings only).",
       "attributes": [],
       "visibility": "Public",
       "entry": true,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "mydata",
           "type_": {
@@ -2877,14 +7439,32 @@
       "return_": []
     },
     "update_content": {
-      "source_index": 28,
-      "index": 28,
+      "source_index": 66,
+      "index": 66,
       "doc": " Update MyData content and metadata (owner only)",
       "attributes": [],
       "visibility": "Public",
       "entry": true,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "mydata",
           "type_": {
@@ -2905,6 +7485,26 @@
         },
         {
           "name": "new_encrypted_data",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "vector": "u8"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "new_encryption_id",
           "type_": {
             "Datatype": {
               "module": {
@@ -2992,14 +7592,32 @@
       "return_": []
     },
     "assign_mydata_to_pools": {
-      "source_index": 29,
-      "index": 29,
+      "source_index": 67,
+      "index": 67,
       "doc": " Assign MyData to sub-pools (owner only).",
       "attributes": [],
       "visibility": "Public",
       "entry": true,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "mydata",
           "type_": {
@@ -3091,8 +7709,8 @@
       "return_": []
     },
     "remove_mydata_from_sub_pools": {
-      "source_index": 30,
-      "index": 30,
+      "source_index": 68,
+      "index": 68,
       "doc": " Remove this listing from a sub-pool (owner only).",
       "attributes": [],
       "visibility": "Public",
@@ -3170,8 +7788,8 @@
       "return_": []
     },
     "has_access": {
-      "source_index": 31,
-      "index": 31,
+      "source_index": 69,
+      "index": 69,
       "doc": " Check if user has access to MyData data",
       "attributes": [],
       "visibility": "Public",
@@ -3224,8 +7842,8 @@
       ]
     },
     "encryption_id_matches": {
-      "source_index": 32,
-      "index": 32,
+      "source_index": 70,
+      "index": 70,
       "doc": " True if `candidate` matches this listing’s `encryption_id` (the MyData policy `id` bytes).",
       "attributes": [],
       "visibility": "Public",
@@ -3267,14 +7885,32 @@
       ]
     },
     "mydata_approve": {
-      "source_index": 33,
-      "index": 33,
-      "doc": " Key-server policy hook for `fetch_key`: `id` must match `encryption_id`, and the sender must have\n [`has_access`] (owner, purchaser, or active subscriber), or be a registered sub-agent of the\n owner with `CAP_MYDATA_READ`. Register this package on the key server when using permissioned\n mode; `EncryptedObject.package_id` at encrypt time must match this package.",
+      "source_index": 71,
+      "index": 71,
+      "doc": " Key-server policy hook for `fetch_key`: marketplace listings only.",
       "attributes": [],
       "visibility": "Public",
       "entry": true,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "block_list_registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "block_list"
+                  },
+                  "name": "BlockListRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "memory_config",
           "type_": {
@@ -3374,9 +8010,215 @@
       ],
       "return_": []
     },
+    "mydata_approve_profile_subscription": {
+      "source_index": 72,
+      "index": 72,
+      "doc": " Key-server policy hook for profile-subscription-gated MyData linked to a post.\n `id` is first so key-server `ValidPtb` can extract the encryption identity from arg 0.\n `post_service_id` / `post_linked_mydata_id` come from the linked post's [`PostAccess`] fields.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "block_list_registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "block_list"
+                  },
+                  "name": "BlockListRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "id",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "post_service_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "post_linked_mydata_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "post_min_tier_level",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "u64"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "memory_config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "mydata",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyData",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryAccount",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "service",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "ProfileSubscriptionService",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "subscription",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "subscription"
+                  },
+                  "name": "ProfileSubscription",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
     "bytes_equal_u8": {
-      "source_index": 34,
-      "index": 34,
+      "source_index": 73,
+      "index": 73,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -3411,8 +8253,8 @@
       ]
     },
     "grant_access": {
-      "source_index": 35,
-      "index": 35,
+      "source_index": 74,
+      "index": 74,
       "doc": " Grant free access (owner only) - useful for samples or promotions",
       "attributes": [],
       "visibility": "Public",
@@ -3521,9 +8363,9 @@
       "return_": []
     },
     "revoke_access": {
-      "source_index": 36,
-      "index": 36,
-      "doc": " Revoke a buyer's access (owner only). Removes the user from `purchasers` and/or `subscribers`.\n `access_type`: 0 = one-time, 1 = subscription, 2 = both.",
+      "source_index": 75,
+      "index": 75,
+      "doc": " Revoke a buyer's access (owner only). Removes the user from marketplace access tables.\n `access_type`: 0 = one-time, 1 = subscription, 2 = both.",
       "attributes": [],
       "visibility": "Public",
       "entry": true,
@@ -3595,8 +8437,8 @@
       "return_": []
     },
     "owner": {
-      "source_index": 37,
-      "index": 37,
+      "source_index": 76,
+      "index": 76,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3627,8 +8469,8 @@
       ]
     },
     "object_address": {
-      "source_index": 38,
-      "index": 38,
+      "source_index": 77,
+      "index": 77,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3659,8 +8501,8 @@
       ]
     },
     "listing_id": {
-      "source_index": 39,
-      "index": 39,
+      "source_index": 78,
+      "index": 78,
       "doc": " Listing object address for PTB binding in `fetch_key` policy transactions.",
       "attributes": [],
       "visibility": "Public",
@@ -3691,8 +8533,8 @@
       ]
     },
     "encryption_identity": {
-      "source_index": 40,
-      "index": 40,
+      "source_index": 79,
+      "index": 79,
       "doc": " Encryption identity bytes; must match `EncryptedObject.id` and the `id` arg to `mydata_approve`.",
       "attributes": [],
       "visibility": "Public",
@@ -3725,8 +8567,8 @@
       ]
     },
     "media_type": {
-      "source_index": 41,
-      "index": 41,
+      "source_index": 80,
+      "index": 80,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3766,8 +8608,8 @@
       ]
     },
     "tags": {
-      "source_index": 42,
-      "index": 42,
+      "source_index": 81,
+      "index": 81,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3809,8 +8651,8 @@
       ]
     },
     "platform_id": {
-      "source_index": 43,
-      "index": 43,
+      "source_index": 82,
+      "index": 82,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3855,8 +8697,8 @@
       ]
     },
     "one_time_price": {
-      "source_index": 44,
-      "index": 44,
+      "source_index": 83,
+      "index": 83,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3901,8 +8743,8 @@
       ]
     },
     "subscription_price": {
-      "source_index": 45,
-      "index": 45,
+      "source_index": 84,
+      "index": 84,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3947,8 +8789,8 @@
       ]
     },
     "subscription_duration_days": {
-      "source_index": 46,
-      "index": 46,
+      "source_index": 85,
+      "index": 85,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3979,8 +8821,8 @@
       ]
     },
     "created_at": {
-      "source_index": 47,
-      "index": 47,
+      "source_index": 86,
+      "index": 86,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -4011,8 +8853,8 @@
       ]
     },
     "last_updated": {
-      "source_index": 48,
-      "index": 48,
+      "source_index": 87,
+      "index": 87,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -4043,8 +8885,8 @@
       ]
     },
     "timestamp_start": {
-      "source_index": 49,
-      "index": 49,
+      "source_index": 88,
+      "index": 88,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -4075,8 +8917,8 @@
       ]
     },
     "timestamp_end": {
-      "source_index": 50,
-      "index": 50,
+      "source_index": 89,
+      "index": 89,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -4121,8 +8963,8 @@
       ]
     },
     "geographic_region": {
-      "source_index": 51,
-      "index": 51,
+      "source_index": 90,
+      "index": 90,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -4176,8 +9018,8 @@
       ]
     },
     "data_quality": {
-      "source_index": 52,
-      "index": 52,
+      "source_index": 91,
+      "index": 91,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -4231,8 +9073,8 @@
       ]
     },
     "sample_size": {
-      "source_index": 53,
-      "index": 53,
+      "source_index": 92,
+      "index": 92,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -4277,8 +9119,8 @@
       ]
     },
     "collection_method": {
-      "source_index": 54,
-      "index": 54,
+      "source_index": 93,
+      "index": 93,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -4332,8 +9174,8 @@
       ]
     },
     "is_updating": {
-      "source_index": 55,
-      "index": 55,
+      "source_index": 94,
+      "index": 94,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -4364,8 +9206,8 @@
       ]
     },
     "update_frequency": {
-      "source_index": 56,
-      "index": 56,
+      "source_index": 95,
+      "index": 95,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -4419,8 +9261,8 @@
       ]
     },
     "purchaser_count": {
-      "source_index": 57,
-      "index": 57,
+      "source_index": 96,
+      "index": 96,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -4451,8 +9293,8 @@
       ]
     },
     "subscriber_count": {
-      "source_index": 58,
-      "index": 58,
+      "source_index": 97,
+      "index": 97,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -4483,8 +9325,8 @@
       ]
     },
     "is_one_time_for_sale": {
-      "source_index": 59,
-      "index": 59,
+      "source_index": 98,
+      "index": 98,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -4515,8 +9357,8 @@
       ]
     },
     "is_subscription_available": {
-      "source_index": 60,
-      "index": 60,
+      "source_index": 99,
+      "index": 99,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -4547,8 +9389,8 @@
       ]
     },
     "has_active_subscription": {
-      "source_index": 61,
-      "index": 61,
+      "source_index": 100,
+      "index": 100,
       "doc": " Check if a user has an active subscription",
       "attributes": [],
       "visibility": "Public",
@@ -4601,8 +9443,8 @@
       ]
     },
     "get_subscription_expiry": {
-      "source_index": 62,
-      "index": 62,
+      "source_index": 101,
+      "index": 101,
       "doc": " Get subscription expiry time for a user",
       "attributes": [],
       "visibility": "Public",
@@ -4651,8 +9493,8 @@
       ]
     },
     "get_revenue_potential": {
-      "source_index": 63,
-      "index": 63,
+      "source_index": 102,
+      "index": 102,
       "doc": " Get total revenue potential (for analytics) with overflow protection",
       "attributes": [],
       "visibility": "Public",
@@ -4683,8 +9525,8 @@
       ]
     },
     "has_any_sales": {
-      "source_index": 64,
-      "index": 64,
+      "source_index": 103,
+      "index": 103,
       "doc": " Check if MyData has any sales (one-time or subscription)",
       "attributes": [],
       "visibility": "Public",
@@ -4715,8 +9557,8 @@
       ]
     },
     "registry_get_owner": {
-      "source_index": 65,
-      "index": 65,
+      "source_index": 104,
+      "index": 104,
       "doc": " Get owner of a MyData by ID",
       "attributes": [],
       "visibility": "Public",
@@ -4765,8 +9607,8 @@
       ]
     },
     "is_registered": {
-      "source_index": 66,
-      "index": 66,
+      "source_index": 105,
+      "index": 105,
       "doc": " Check if a MyData is registered",
       "attributes": [],
       "visibility": "Public",
@@ -4801,8 +9643,8 @@
       ]
     },
     "register_in_registry": {
-      "source_index": 67,
-      "index": 67,
+      "source_index": 106,
+      "index": 106,
       "doc": " Register a MyData in the registry",
       "attributes": [],
       "visibility": "Public",
@@ -4885,8 +9727,8 @@
       "return_": []
     },
     "unregister_from_registry": {
-      "source_index": 68,
-      "index": 68,
+      "source_index": 107,
+      "index": 107,
       "doc": " Remove a MyData from the registry",
       "attributes": [],
       "visibility": "Public",
@@ -4955,8 +9797,8 @@
       "return_": []
     },
     "version": {
-      "source_index": 69,
-      "index": 69,
+      "source_index": 108,
+      "index": 108,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -4987,8 +9829,8 @@
       ]
     },
     "borrow_version_mut": {
-      "source_index": 70,
-      "index": 70,
+      "source_index": 109,
+      "index": 109,
       "doc": null,
       "attributes": [],
       "visibility": "Package",
@@ -5024,8 +9866,8 @@
       ]
     },
     "registry_version": {
-      "source_index": 71,
-      "index": 71,
+      "source_index": 110,
+      "index": 110,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -5056,8 +9898,8 @@
       ]
     },
     "borrow_registry_version_mut": {
-      "source_index": 72,
-      "index": 72,
+      "source_index": 111,
+      "index": 111,
       "doc": null,
       "attributes": [],
       "visibility": "Package",
@@ -5093,8 +9935,8 @@
       ]
     },
     "migrate_mydata": {
-      "source_index": 73,
-      "index": 73,
+      "source_index": 112,
+      "index": 112,
       "doc": " Migration function for MyData",
       "attributes": [],
       "visibility": "Public",
@@ -5159,8 +10001,8 @@
       "return_": []
     },
     "migrate_registry": {
-      "source_index": 74,
-      "index": 74,
+      "source_index": 113,
+      "index": 113,
       "doc": " Migration function for MyDataRegistry",
       "attributes": [],
       "visibility": "Public",
@@ -5225,8 +10067,8 @@
       "return_": []
     },
     "migrate_config": {
-      "source_index": 75,
-      "index": 75,
+      "source_index": 114,
+      "index": 114,
       "doc": " Migration function for MyDataConfig",
       "attributes": [],
       "visibility": "Public",
@@ -5419,97 +10261,22 @@
               "vector": "u8"
             }
           },
-          "one_time_price": {
+          "access": {
             "index": 11,
-            "doc": " Pricing options - user controlled",
+            "doc": " Access model (profile subscription gate or marketplace one-time/recurring).",
             "type_": {
               "Datatype": {
                 "module": {
-                  "address": "std",
-                  "name": "option"
+                  "address": "social_contracts",
+                  "name": "mydata"
                 },
-                "name": "Option",
-                "type_arguments": [
-                  {
-                    "phantom": false,
-                    "argument": "u64"
-                  }
-                ]
-              }
-            }
-          },
-          "subscription_price": {
-            "index": 12,
-            "doc": null,
-            "type_": {
-              "Datatype": {
-                "module": {
-                  "address": "std",
-                  "name": "option"
-                },
-                "name": "Option",
-                "type_arguments": [
-                  {
-                    "phantom": false,
-                    "argument": "u64"
-                  }
-                ]
-              }
-            }
-          },
-          "subscription_duration_days": {
-            "index": 13,
-            "doc": null,
-            "type_": "u64"
-          },
-          "purchasers": {
-            "index": 14,
-            "doc": " Access tracking",
-            "type_": {
-              "Datatype": {
-                "module": {
-                  "address": "myso",
-                  "name": "table"
-                },
-                "name": "Table",
-                "type_arguments": [
-                  {
-                    "phantom": true,
-                    "argument": "address"
-                  },
-                  {
-                    "phantom": true,
-                    "argument": "bool"
-                  }
-                ]
-              }
-            }
-          },
-          "subscribers": {
-            "index": 15,
-            "doc": null,
-            "type_": {
-              "Datatype": {
-                "module": {
-                  "address": "myso",
-                  "name": "table"
-                },
-                "name": "Table",
-                "type_arguments": [
-                  {
-                    "phantom": true,
-                    "argument": "address"
-                  },
-                  {
-                    "phantom": true,
-                    "argument": "u64"
-                  }
-                ]
+                "name": "AccessConfiguration",
+                "type_arguments": []
               }
             }
           },
           "geographic_region": {
-            "index": 16,
+            "index": 12,
             "doc": " Extended metadata for data discovery",
             "type_": {
               "Datatype": {
@@ -5537,7 +10304,7 @@
             }
           },
           "data_quality": {
-            "index": 17,
+            "index": 13,
             "doc": null,
             "type_": {
               "Datatype": {
@@ -5565,7 +10332,7 @@
             }
           },
           "sample_size": {
-            "index": 18,
+            "index": 14,
             "doc": null,
             "type_": {
               "Datatype": {
@@ -5584,7 +10351,7 @@
             }
           },
           "collection_method": {
-            "index": 19,
+            "index": 15,
             "doc": null,
             "type_": {
               "Datatype": {
@@ -5612,12 +10379,12 @@
             }
           },
           "is_updating": {
-            "index": 20,
+            "index": 16,
             "doc": null,
             "type_": "bool"
           },
           "update_frequency": {
-            "index": 21,
+            "index": 17,
             "doc": null,
             "type_": {
               "Datatype": {
@@ -5645,7 +10412,7 @@
             }
           },
           "version": {
-            "index": 22,
+            "index": 18,
             "doc": " Version for future upgrades",
             "type_": "u64"
           }
@@ -5706,7 +10473,7 @@
               }
             }
           },
-          "enable_flag": {
+          "marketplace_enabled": {
             "index": 1,
             "doc": null,
             "type_": "bool"
@@ -5731,8 +10498,78 @@
             "doc": null,
             "type_": "u64"
           },
-          "version": {
+          "max_encrypted_data_bytes": {
             "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_tag_bytes": {
+            "index": 7,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_metadata_bytes": {
+            "index": 8,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_payment_reference_bytes": {
+            "index": 9,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_pool_assignments": {
+            "index": 10,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_merkle_proof_depth": {
+            "index": 11,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_paid_access_entries": {
+            "index": 12,
+            "doc": null,
+            "type_": "u64"
+          },
+          "default_claim_window_ms": {
+            "index": 13,
+            "doc": null,
+            "type_": "u64"
+          },
+          "p2p_platform_fee_bps": {
+            "index": 14,
+            "doc": null,
+            "type_": "u64"
+          },
+          "p2p_ecosystem_fee_bps": {
+            "index": 15,
+            "doc": null,
+            "type_": "u64"
+          },
+          "mydata_marketplace_platform_fee_bps": {
+            "index": 16,
+            "doc": null,
+            "type_": "u64"
+          },
+          "mydata_marketplace_ecosystem_fee_bps": {
+            "index": 17,
+            "doc": null,
+            "type_": "u64"
+          },
+          "non_platform_platform_to_creator_bps": {
+            "index": 18,
+            "doc": null,
+            "type_": "u64"
+          },
+          "non_platform_platform_to_treasury_bps": {
+            "index": 19,
+            "doc": null,
+            "type_": "u64"
+          },
+          "version": {
+            "index": 20,
             "doc": null,
             "type_": "u64"
           }
@@ -5850,13 +10687,32 @@
               }
             }
           },
-          "created_at": {
+          "platform_id": {
             "index": 3,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "address"
+                  }
+                ]
+              }
+            }
+          },
+          "created_at": {
+            "index": 4,
             "doc": null,
             "type_": "u64"
           },
           "version": {
-            "index": 4,
+            "index": 5,
             "doc": null,
             "type_": "u64"
           }
@@ -6293,8 +11149,27 @@
               }
             }
           },
-          "created_at": {
+          "platform_id": {
             "index": 2,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "address"
+                  }
+                ]
+              }
+            }
+          },
+          "created_at": {
+            "index": 3,
             "doc": null,
             "type_": "u64"
           }
@@ -6487,6 +11362,25 @@
             "type_": {
               "vector": "u8"
             }
+          },
+          "platform_id": {
+            "index": 8,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "address"
+                  }
+                ]
+              }
+            }
           }
         }
       }
@@ -6606,20 +11500,67 @@
             "doc": null,
             "type_": "u64"
           },
-          "created_at": {
+          "source_pool_id": {
             "index": 3,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "source_sub_pool_id": {
+            "index": 4,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "platform_id": {
+            "index": 5,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "address"
+                  }
+                ]
+              }
+            }
+          },
+          "created_at": {
+            "index": 6,
             "doc": null,
             "type_": "u64"
           },
           "snapshot_manifest_hash": {
-            "index": 4,
+            "index": 7,
             "doc": null,
             "type_": {
               "vector": "u8"
             }
           },
           "payment_reference": {
-            "index": 5,
+            "index": 8,
             "doc": null,
             "type_": {
               "vector": "u8"
@@ -6671,7 +11612,80 @@
               "vector": "u8"
             }
           },
+          "platform_id": {
+            "index": 4,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "address"
+                  }
+                ]
+              }
+            }
+          },
+          "claim_deadline_ms": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
           "published_at": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "SnapshotEscrowFundedEvent": {
+      "index": 15,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "snapshot_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "funder": {
+            "index": 1,
+            "doc": null,
+            "type_": "address"
+          },
+          "amount": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "total_funded": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "funded_at": {
             "index": 4,
             "doc": null,
             "type_": "u64"
@@ -6679,8 +11693,52 @@
         }
       }
     },
+    "SnapshotEscrowReclaimedEvent": {
+      "index": 16,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "snapshot_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "buyer_address": {
+            "index": 1,
+            "doc": null,
+            "type_": "address"
+          },
+          "amount": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "reclaimed_at": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
     "MyDataClaimVault": {
-      "index": 15,
+      "index": 17,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -6857,7 +11915,7 @@
       }
     },
     "MerkleRootPublishedEvent": {
-      "index": 16,
+      "index": 18,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -6898,7 +11956,7 @@
       }
     },
     "ClaimExecutedEvent": {
-      "index": 17,
+      "index": 19,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -6928,13 +11986,47 @@
             "doc": null,
             "type_": "address"
           },
-          "amount": {
+          "gross_amount": {
             "index": 2,
             "doc": null,
             "type_": "u64"
           },
-          "claimed_at": {
+          "platform_fee": {
             "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "ecosystem_fee": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "net_amount": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "platform_id": {
+            "index": 6,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "address"
+                  }
+                ]
+              }
+            }
+          },
+          "claimed_at": {
+            "index": 7,
             "doc": null,
             "type_": "u64"
           }
@@ -6942,7 +12034,7 @@
       }
     },
     "DistributionRound": {
-      "index": 18,
+      "index": 20,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -6985,8 +12077,32 @@
               "vector": "u8"
             }
           },
-          "published_at": {
+          "platform_id": {
             "index": 4,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "address"
+                  }
+                ]
+              }
+            }
+          },
+          "claim_deadline_ms": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "published_at": {
+            "index": 6,
             "doc": null,
             "type_": "u64"
           }
@@ -6994,7 +12110,7 @@
       }
     },
     "DistributionRegistry": {
-      "index": 19,
+      "index": 21,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -7068,7 +12184,7 @@
       }
     },
     "MyDataCreatedEvent": {
-      "index": 20,
+      "index": 22,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -7122,46 +12238,13 @@
               }
             }
           },
-          "one_time_price": {
+          "access_configuration_kind": {
             "index": 4,
-            "doc": null,
-            "type_": {
-              "Datatype": {
-                "module": {
-                  "address": "std",
-                  "name": "option"
-                },
-                "name": "Option",
-                "type_arguments": [
-                  {
-                    "phantom": false,
-                    "argument": "u64"
-                  }
-                ]
-              }
-            }
-          },
-          "subscription_price": {
-            "index": 5,
-            "doc": null,
-            "type_": {
-              "Datatype": {
-                "module": {
-                  "address": "std",
-                  "name": "option"
-                },
-                "name": "Option",
-                "type_arguments": [
-                  {
-                    "phantom": false,
-                    "argument": "u64"
-                  }
-                ]
-              }
-            }
+            "doc": " [`ACCESS_KIND_*`] tag for indexers (1=profile, 2=one_time, 3=recurring).",
+            "type_": "u8"
           },
           "created_at": {
-            "index": 6,
+            "index": 5,
             "doc": null,
             "type_": "u64"
           }
@@ -7169,7 +12252,7 @@
       }
     },
     "PurchaseEvent": {
-      "index": 21,
+      "index": 23,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -7269,12 +12352,46 @@
                 ]
               }
             }
+          },
+          "platform_fee": {
+            "index": 7,
+            "doc": null,
+            "type_": "u64"
+          },
+          "ecosystem_fee": {
+            "index": 8,
+            "doc": null,
+            "type_": "u64"
+          },
+          "creator_amount": {
+            "index": 9,
+            "doc": null,
+            "type_": "u64"
+          },
+          "platform_id": {
+            "index": 10,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "address"
+                  }
+                ]
+              }
+            }
           }
         }
       }
     },
     "AccessGrantedEvent": {
-      "index": 22,
+      "index": 24,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -7323,7 +12440,7 @@
       }
     },
     "AccessRevokedEvent": {
-      "index": 23,
+      "index": 25,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -7371,8 +12488,135 @@
         }
       }
     },
+    "MyDataPricingUpdatedEvent": {
+      "index": 26,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "ip_id": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "one_time_price": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "u64"
+                  }
+                ]
+              }
+            }
+          },
+          "subscription_price": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "u64"
+                  }
+                ]
+              }
+            }
+          },
+          "subscription_duration_days": {
+            "index": 3,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "u64"
+                  }
+                ]
+              }
+            }
+          },
+          "updated_by": {
+            "index": 4,
+            "doc": null,
+            "type_": "address"
+          },
+          "timestamp": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "MyDataContentUpdatedEvent": {
+      "index": 27,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "ip_id": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "encrypted_data_updated": {
+            "index": 1,
+            "doc": null,
+            "type_": "bool"
+          },
+          "tags_updated": {
+            "index": 2,
+            "doc": null,
+            "type_": "bool"
+          },
+          "updated_by": {
+            "index": 3,
+            "doc": null,
+            "type_": "address"
+          },
+          "timestamp": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
     "MyDataRegisteredEvent": {
-      "index": 24,
+      "index": 28,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -7402,7 +12646,7 @@
       }
     },
     "MyDataUnregisteredEvent": {
-      "index": 25,
+      "index": 29,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -7432,7 +12676,7 @@
       }
     },
     "MyDataConfigUpdatedEvent": {
-      "index": 26,
+      "index": 30,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -7448,7 +12692,7 @@
             "doc": null,
             "type_": "address"
           },
-          "enable_flag": {
+          "marketplace_enabled": {
             "index": 1,
             "doc": null,
             "type_": "bool"
@@ -7473,8 +12717,78 @@
             "doc": null,
             "type_": "u64"
           },
-          "timestamp": {
+          "max_encrypted_data_bytes": {
             "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_tag_bytes": {
+            "index": 7,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_metadata_bytes": {
+            "index": 8,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_payment_reference_bytes": {
+            "index": 9,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_pool_assignments": {
+            "index": 10,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_merkle_proof_depth": {
+            "index": 11,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_paid_access_entries": {
+            "index": 12,
+            "doc": null,
+            "type_": "u64"
+          },
+          "default_claim_window_ms": {
+            "index": 13,
+            "doc": null,
+            "type_": "u64"
+          },
+          "p2p_platform_fee_bps": {
+            "index": 14,
+            "doc": null,
+            "type_": "u64"
+          },
+          "p2p_ecosystem_fee_bps": {
+            "index": 15,
+            "doc": null,
+            "type_": "u64"
+          },
+          "mydata_marketplace_platform_fee_bps": {
+            "index": 16,
+            "doc": null,
+            "type_": "u64"
+          },
+          "mydata_marketplace_ecosystem_fee_bps": {
+            "index": 17,
+            "doc": null,
+            "type_": "u64"
+          },
+          "non_platform_platform_to_creator_bps": {
+            "index": 18,
+            "doc": null,
+            "type_": "u64"
+          },
+          "non_platform_platform_to_treasury_bps": {
+            "index": 19,
+            "doc": null,
+            "type_": "u64"
+          },
+          "timestamp": {
+            "index": 20,
             "doc": null,
             "type_": "u64"
           }
@@ -7482,5 +12796,104 @@
       }
     }
   },
-  "enums": {}
+  "enums": {
+    "AccessConfiguration": {
+      "index": 0,
+      "doc": " Mutually exclusive access model for a MyData listing.",
+      "attributes": [],
+      "abilities": [
+        "Store"
+      ],
+      "type_parameters": [],
+      "variants": {
+        "ProfileSubscription": {
+          "index": 0,
+          "doc": " Gated by profile subscription on a linked post (no marketplace pricing).",
+          "fields": {
+            "positional_fields": false,
+            "fields": {}
+          }
+        },
+        "MarketplaceOneTime": {
+          "index": 1,
+          "doc": " One-time marketplace purchase.",
+          "fields": {
+            "positional_fields": false,
+            "fields": {
+              "price": {
+                "index": 0,
+                "doc": null,
+                "type_": "u64"
+              },
+              "purchasers": {
+                "index": 1,
+                "doc": null,
+                "type_": {
+                  "Datatype": {
+                    "module": {
+                      "address": "myso",
+                      "name": "table"
+                    },
+                    "name": "Table",
+                    "type_arguments": [
+                      {
+                        "phantom": true,
+                        "argument": "address"
+                      },
+                      {
+                        "phantom": true,
+                        "argument": "bool"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "MarketplaceRecurring": {
+          "index": 2,
+          "doc": " Recurring marketplace subscription with fixed duration per purchase.",
+          "fields": {
+            "positional_fields": false,
+            "fields": {
+              "price": {
+                "index": 0,
+                "doc": null,
+                "type_": "u64"
+              },
+              "duration_days": {
+                "index": 1,
+                "doc": null,
+                "type_": "u64"
+              },
+              "subscribers": {
+                "index": 2,
+                "doc": null,
+                "type_": {
+                  "Datatype": {
+                    "module": {
+                      "address": "myso",
+                      "name": "table"
+                    },
+                    "name": "Table",
+                    "type_arguments": [
+                      {
+                        "phantom": true,
+                        "argument": "address"
+                      },
+                      {
+                        "phantom": true,
+                        "argument": "u64"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 }

@@ -3,6 +3,7 @@
 
 use axum::extract::{Path, Query, State};
 use axum::Json;
+use serde::Deserialize;
 use std::sync::Arc;
 
 use crate::error::SocialError;
@@ -111,6 +112,20 @@ pub async fn get_profile_subscription_service(
     Ok(Json(service))
 }
 
+pub async fn list_profile_subscription_plans(
+    State(state): State<Arc<AppState>>,
+    Path(service_id): Path<String>,
+    Query(params): Query<PageParams>,
+) -> Result<Json<Vec<crate::reader::ProfileSubscriptionPlanInfo>>, SocialError> {
+    let limit = params.limit();
+    let offset = params.offset();
+    let plans = state
+        .reader
+        .list_subscription_plans_by_service(&service_id, true, limit, offset)
+        .await?;
+    Ok(Json(plans))
+}
+
 pub async fn list_subscriptions_by_subscriber(
     State(state): State<Arc<AppState>>,
     Path(address): Path<String>,
@@ -154,12 +169,18 @@ pub async fn get_subscription_revenue_by_service(
 pub async fn check_subscription_access(
     State(state): State<Arc<AppState>>,
     Path((subscriber, service_id)): Path<(String, String)>,
+    Query(params): Query<SubscriptionAccessQuery>,
 ) -> Result<Json<serde_json::Value>, SocialError> {
     let has_access = state
         .reader
-        .check_subscription_access(&subscriber, &service_id)
+        .check_subscription_access(&subscriber, &service_id, params.min_tier_level)
         .await?;
     Ok(Json(serde_json::json!({ "has_access": has_access })))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SubscriptionAccessQuery {
+    pub min_tier_level: Option<i64>,
 }
 
 pub async fn get_subscription_config(

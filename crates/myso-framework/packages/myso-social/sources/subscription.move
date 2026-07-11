@@ -16,12 +16,14 @@ module social_contracts::subscription {
         clock::{Self, Clock},
         coin::{Self, Coin},
         balance::{Self, Balance},
-        event
+        event,
+        table::{Self, Table},
     };
     use myso::myso::MYSO;
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
     use social_contracts::platform::{Self, Platform};
     use social_contracts::profile::{Self, EcosystemTreasury, Profile};
+    use social_contracts::block_list::{Self, BlockListRegistry};
 
     /// Error codes
     const EInvalidFee: u64 = 12;
@@ -33,9 +35,11 @@ module social_contracts::subscription {
     const EOverflow: u64 = 82;
     const EInvalidInput: u64 = 83;
     const EInvalidConfig: u64 = 84;
+    const EPlanNotFound: u64 = 85;
+    const ENoActivePlans: u64 = 86;
 
     /// Default bootstrap values (used only at init)
-    const MAX_RENEWAL_MONTHS: u64 = 120;
+    const MAX_RENEWAL_MONTHS: u64 = 12;
     const MAX_U64: u64 = 18446744073709551615;
     const THIRTY_DAYS_MS: u64 = 2_592_000_000;
     const BPS_DENOM: u64 = 10_000;
@@ -43,6 +47,14 @@ module social_contracts::subscription {
     const DEFAULT_ECOSYSTEM_FEE_BPS: u64 = 250;
     const DEFAULT_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS: u64 = 0;
     const DEFAULT_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS: u64 = 10_000;
+
+    fun assert_subscriber_not_blocked(
+        registry: &BlockListRegistry,
+        subscriber: address,
+        profile_owner: address,
+    ) {
+        block_list::assert_not_blocked(registry, subscriber, profile_owner);
+    }
 
     /// Admin capability for subscription configuration
     public struct SubscriptionAdminCap has key, store {
@@ -52,7 +64,7 @@ module social_contracts::subscription {
     /// Global subscription feature configuration
     public struct SubscriptionConfig has key {
         id: UID,
-        billing_period_ms: u64,
+        default_billing_period_ms: u64,
         max_renewal_months: u64,
         platform_fee_bps: u64,
         ecosystem_fee_bps: u64,
@@ -63,7 +75,7 @@ module social_contracts::subscription {
 
     public struct SubscriptionConfigUpdatedEvent has copy, drop {
         updated_by: address,
-        billing_period_ms: u64,
+        default_billing_period_ms: u64,
         max_renewal_months: u64,
         platform_fee_bps: u64,
         ecosystem_fee_bps: u64,
@@ -72,13 +84,30 @@ module social_contracts::subscription {
         timestamp: u64,
     }
 
-    /// Profile subscription service - one per profile
+    /// Sellable plan on a profile subscription service.
+    public struct SubscriptionPlan has store, drop {
+        title: string::String,
+        description: Option<string::String>,
+        price: u64,
+        duration_ms: u64,
+        tier_level: Option<u64>,
+        platform_id: Option<address>,
+        active: bool,
+        created_at: u64,
+        updated_at: u64,
+    }
+
+    /// Profile subscription service - one per profile, holds multiple plans
     public struct ProfileSubscriptionService has key {
         id: UID,
         /// Profile owner who receives subscription fees
         profile_owner: address,
-        /// Monthly subscription fee in MYSO
-        monthly_fee: u64,
+        /// Profile object this service belongs to
+        profile_id: ID,
+        /// Active and inactive plans keyed by plan id
+        plans: Table<ID, SubscriptionPlan>,
+        /// Number of plans ever created on this service
+        plan_count: u64,
         /// Whether this service allows new subscriptions
         active: bool,
         /// Total number of active subscribers
@@ -92,6 +121,12 @@ module social_contracts::subscription {
         id: UID,
         /// The profile service this subscription is for
         service_id: ID,
+        /// Plan purchased at subscribe time
+        plan_id: ID,
+        /// Tier copied from plan at purchase time
+        tier_level: Option<u64>,
+        /// Platform scope copied from plan at purchase time
+        platform_id: Option<address>,
         /// Subscriber's address
         subscriber: address,
         /// When the subscription was created
@@ -108,27 +143,37 @@ module social_contracts::subscription {
 
     /// Events
     public struct ProfileSubscriptionCreatedEvent has copy, drop {
+        subscription_id: ID,
         service_id: ID,
+        plan_id: ID,
         subscriber: address,
         expires_at: u64,
-        monthly_fee: u64,
+        price: u64,
+        duration_ms: u64,
+        tier_level: Option<u64>,
+        platform_id: Option<address>,
         auto_renew: bool,
         platform_fee: u64,
         ecosystem_fee: u64,
         creator_amount: u64,
-        platform_id: Option<address>,
+        payment_platform_id: Option<address>,
     }
 
     public struct ProfileSubscriptionRenewedEvent has copy, drop {
         subscription_id: ID,
         subscriber: address,
+        plan_id: ID,
         new_expires_at: u64,
         renewal_count: u64,
         auto_renewed: bool,
+        price: u64,
+        duration_ms: u64,
+        tier_level: Option<u64>,
+        platform_id: Option<address>,
         platform_fee: u64,
         ecosystem_fee: u64,
         creator_amount: u64,
-        platform_id: Option<address>,
+        payment_platform_id: Option<address>,
     }
 
     public struct ProfileSubscriptionCancelledEvent has copy, drop {
@@ -137,20 +182,45 @@ module social_contracts::subscription {
         refunded_amount: u64,
     }
 
-    /// Additional event for fee updates
-    public struct ProfileSubscriptionUpdatedEvent has copy, drop {
+    /// Additional event for plan updates
+    public struct SubscriptionPlanUpdatedEvent has copy, drop {
         service_id: ID,
-        old_fee: u64,
-        new_fee: u64,
+        plan_id: ID,
+        title: string::String,
+        description: Option<string::String>,
+        price: u64,
+        duration_ms: u64,
+        tier_level: Option<u64>,
+        platform_id: Option<address>,
+        active: bool,
         updated_by: address,
+        updated_at: u64,
     }
 
     /// Event emitted when a subscription service is created
     public struct ProfileSubscriptionServiceCreatedEvent has copy, drop {
         service_id: ID,
         profile_owner: address,
-        monthly_fee: u64,
+        profile_id: ID,
         created_at: u64,
+    }
+
+    public struct SubscriptionPlanCreatedEvent has copy, drop {
+        service_id: ID,
+        plan_id: ID,
+        title: string::String,
+        description: Option<string::String>,
+        price: u64,
+        duration_ms: u64,
+        tier_level: Option<u64>,
+        platform_id: Option<address>,
+        created_at: u64,
+    }
+
+    public struct SubscriptionPlanDeactivatedEvent has copy, drop {
+        service_id: ID,
+        plan_id: ID,
+        deactivated_at: u64,
     }
 
     /// Event emitted when renewal balance is funded
@@ -280,7 +350,7 @@ module social_contracts::subscription {
     ) {
         event::emit(SubscriptionConfigUpdatedEvent {
             updated_by,
-            billing_period_ms: config.billing_period_ms,
+            default_billing_period_ms: config.default_billing_period_ms,
             max_renewal_months: config.max_renewal_months,
             platform_fee_bps: config.platform_fee_bps,
             ecosystem_fee_bps: config.ecosystem_fee_bps,
@@ -290,18 +360,69 @@ module social_contracts::subscription {
         });
     }
 
-    /// Create a subscription service for a profile (called by profile owner)
+    fun new_plan_id(ctx: &mut TxContext): ID {
+        let id = object::new(ctx);
+        let plan_id = object::uid_to_inner(&id);
+        object::delete(id);
+        plan_id
+    }
+
+    fun effective_tier_level(tier_level: Option<u64>): u64 {
+        if (option::is_some(&tier_level)) {
+            *option::borrow(&tier_level)
+        } else {
+            0
+        }
+    }
+
+    fun tier_satisfies(subscription_tier: Option<u64>, min_tier: Option<u64>): bool {
+        if (option::is_none(&min_tier)) {
+            true
+        } else {
+            effective_tier_level(subscription_tier) >= *option::borrow(&min_tier)
+        }
+    }
+
+    fun platform_satisfies(
+        subscription_platform: Option<address>,
+        content_platform_id: Option<address>,
+    ): bool {
+        if (option::is_none(&subscription_platform)) {
+            true
+        } else if (option::is_none(&content_platform_id)) {
+            false
+        } else {
+            *option::borrow(&subscription_platform) == *option::borrow(&content_platform_id)
+        }
+    }
+
+    fun borrow_active_plan(service: &ProfileSubscriptionService, plan_id: ID): &SubscriptionPlan {
+        assert!(table::contains(&service.plans, plan_id), EPlanNotFound);
+        let plan = table::borrow(&service.plans, plan_id);
+        assert!(plan.active, EPlanNotFound);
+        plan
+    }
+
+    fun borrow_plan_for_renewal(
+        service: &ProfileSubscriptionService,
+        plan_id: ID,
+    ): &SubscriptionPlan {
+        assert!(table::contains(&service.plans, plan_id), EPlanNotFound);
+        table::borrow(&service.plans, plan_id)
+    }
+
+    /// Create a subscription service container for a profile (called by profile owner)
     public fun create_profile_service(
         profile_owner: address,
-        monthly_fee: u64,
-        ctx: &mut TxContext
+        profile_id: ID,
+        ctx: &mut TxContext,
     ): ProfileSubscriptionService {
-        assert!(monthly_fee > 0, EInvalidFee);
-
         ProfileSubscriptionService {
             id: object::new(ctx),
             profile_owner,
-            monthly_fee,
+            profile_id,
+            plans: table::new(ctx),
+            plan_count: 0,
             active: true,
             subscriber_count: 0,
             version: upgrade::current_version(),
@@ -311,19 +432,14 @@ module social_contracts::subscription {
     /// Entry function to create and share a profile subscription service
     public entry fun create_profile_service_entry(
         profile: &Profile,
-        monthly_fee: u64,
         clock: &Clock,
-        ctx: &mut TxContext
+        ctx: &mut TxContext,
     ) {
         assert!(tx_context::sender(ctx) == profile::get_owner(profile), ENoAccess);
-        assert!(monthly_fee > 0, EInvalidFee);
 
         let profile_owner = profile::get_owner(profile);
-        let service = create_profile_service(
-            profile_owner,
-            monthly_fee,
-            ctx
-        );
+        let profile_id = object::id(profile);
+        let service = create_profile_service(profile_owner, profile_id, ctx);
         let service_id = object::id(&service);
 
         transfer::share_object(service);
@@ -331,52 +447,200 @@ module social_contracts::subscription {
         event::emit(ProfileSubscriptionServiceCreatedEvent {
             service_id,
             profile_owner,
-            monthly_fee,
+            profile_id,
             created_at: clock::timestamp_ms(clock),
         });
     }
 
-    fun subscribe_to_profile_internal_no_platform(
+    fun resolve_plan_duration_ms(config: &SubscriptionConfig, duration_ms: u64): u64 {
+        let resolved_duration_ms = if (duration_ms == 0) {
+            config.default_billing_period_ms
+        } else {
+            duration_ms
+        };
+        assert!(resolved_duration_ms > 0, EInvalidInput);
+        resolved_duration_ms
+    }
+
+    /// Create a sellable plan on a profile subscription service (profile owner only).
+    public entry fun create_subscription_plan(
         config: &SubscriptionConfig,
         service: &mut ProfileSubscriptionService,
+        title: string::String,
+        description: Option<string::String>,
+        price: u64,
+        duration_ms: u64,
+        tier_level: Option<u64>,
+        platform_id: Option<address>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(service.version == upgrade::current_version(), EWrongVersion);
+        assert!(tx_context::sender(ctx) == service.profile_owner, ENotSubscriptionOwner);
+        assert!(price > 0, EInvalidFee);
+        let resolved_duration_ms = resolve_plan_duration_ms(config, duration_ms);
+
+        let now = clock::timestamp_ms(clock);
+        let plan_id = new_plan_id(ctx);
+        let service_id = object::id(service);
+        let plan = SubscriptionPlan {
+            title,
+            description,
+            price,
+            duration_ms: resolved_duration_ms,
+            tier_level,
+            platform_id,
+            active: true,
+            created_at: now,
+            updated_at: now,
+        };
+
+        table::add(&mut service.plans, plan_id, plan);
+        assert!(service.plan_count <= MAX_U64 - 1, EOverflow);
+        service.plan_count = service.plan_count + 1;
+
+        event::emit(SubscriptionPlanCreatedEvent {
+            service_id,
+            plan_id,
+            title: table::borrow(&service.plans, plan_id).title,
+            description: table::borrow(&service.plans, plan_id).description,
+            price,
+            duration_ms: resolved_duration_ms,
+            tier_level,
+            platform_id,
+            created_at: now,
+        });
+    }
+
+    /// Update an existing plan (profile owner only).
+    public entry fun update_subscription_plan(
+        config: &SubscriptionConfig,
+        service: &mut ProfileSubscriptionService,
+        plan_id: ID,
+        title: string::String,
+        description: Option<string::String>,
+        price: u64,
+        duration_ms: u64,
+        tier_level: Option<u64>,
+        platform_id: Option<address>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(service.version == upgrade::current_version(), EWrongVersion);
+        assert!(tx_context::sender(ctx) == service.profile_owner, ENotSubscriptionOwner);
+        assert!(table::contains(&service.plans, plan_id), EPlanNotFound);
+        assert!(price > 0, EInvalidFee);
+        let resolved_duration_ms = resolve_plan_duration_ms(config, duration_ms);
+
+        let service_id = object::id(service);
+        let updated_by = tx_context::sender(ctx);
+        {
+            let plan = table::borrow_mut(&mut service.plans, plan_id);
+            plan.title = title;
+            plan.description = description;
+            plan.price = price;
+            plan.duration_ms = resolved_duration_ms;
+            plan.tier_level = tier_level;
+            plan.platform_id = platform_id;
+            plan.updated_at = clock::timestamp_ms(clock);
+        };
+
+        let plan = table::borrow(&service.plans, plan_id);
+        event::emit(SubscriptionPlanUpdatedEvent {
+            service_id,
+            plan_id,
+            title: plan.title,
+            description: plan.description,
+            price: plan.price,
+            duration_ms: plan.duration_ms,
+            tier_level: plan.tier_level,
+            platform_id: plan.platform_id,
+            active: plan.active,
+            updated_by,
+            updated_at: plan.updated_at,
+        });
+    }
+
+    /// Deactivate a plan so it no longer accepts new subscriptions (profile owner only).
+    public entry fun deactivate_subscription_plan(
+        service: &mut ProfileSubscriptionService,
+        plan_id: ID,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(service.version == upgrade::current_version(), EWrongVersion);
+        assert!(tx_context::sender(ctx) == service.profile_owner, ENotSubscriptionOwner);
+        assert!(table::contains(&service.plans, plan_id), EPlanNotFound);
+
+        let service_id = object::id(service);
+        {
+            let plan = table::borrow_mut(&mut service.plans, plan_id);
+            plan.active = false;
+            plan.updated_at = clock::timestamp_ms(clock);
+        };
+
+        event::emit(SubscriptionPlanDeactivatedEvent {
+            service_id,
+            plan_id,
+            deactivated_at: table::borrow(&service.plans, plan_id).updated_at,
+        });
+    }
+
+    fun subscribe_to_profile_internal_no_platform(
+        block_list_registry: &BlockListRegistry,
+        config: &SubscriptionConfig,
+        service: &mut ProfileSubscriptionService,
+        plan_id: ID,
         treasury: &EcosystemTreasury,
         payment: &mut Coin<MYSO>,
         auto_renew: bool,
-        renewal_months: u64,
+        renewal_periods: u64,
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
         assert!(service.version == upgrade::current_version(), EWrongVersion);
         assert!(service.active, ENoAccess);
+        assert!(service.plan_count > 0, ENoActivePlans);
 
         if (auto_renew) {
-            assert!(renewal_months <= config.max_renewal_months, EInvalidInput);
+            assert!(renewal_periods <= config.max_renewal_months, EInvalidInput);
         };
 
+        let plan = borrow_active_plan(service, plan_id);
+        let plan_price = plan.price;
+        let plan_duration_ms = plan.duration_ms;
+        let plan_tier_level = plan.tier_level;
+        let plan_platform_id = plan.platform_id;
+
         let subscriber = tx_context::sender(ctx);
+        assert_subscriber_not_blocked(block_list_registry, subscriber, service.profile_owner);
         let now = clock::timestamp_ms(clock);
 
-        let months_to_pay = if (auto_renew) { 1 + renewal_months } else { 1 };
-        assert!(months_to_pay <= MAX_U64 / service.monthly_fee, EOverflow);
-        let total_required = service.monthly_fee * months_to_pay;
+        let periods_to_pay = if (auto_renew) { 1 + renewal_periods } else { 1 };
+        assert!(periods_to_pay <= MAX_U64 / plan_price, EOverflow);
+        let total_required = plan_price * periods_to_pay;
         assert!(coin::value(payment) >= total_required, EInvalidFee);
 
-        let first_month_payment = coin::split(payment, service.monthly_fee, ctx);
+        let first_period_payment = coin::split(payment, plan_price, ctx);
         let (platform_fee, ecosystem_fee, creator_amount) =
             distribute_subscription_payment_fees_no_platform(
                 config,
                 treasury,
                 service.profile_owner,
-                first_month_payment,
+                first_period_payment,
                 ctx,
             );
 
         finish_subscribe(
-            config,
             service,
+            plan_id,
+            plan_price,
+            plan_duration_ms,
+            plan_tier_level,
+            plan_platform_id,
             payment,
             auto_renew,
-            renewal_months,
+            renewal_periods,
             subscriber,
             now,
             platform_fee,
@@ -388,49 +652,63 @@ module social_contracts::subscription {
     }
 
     fun subscribe_to_profile_internal_with_platform(
+        block_list_registry: &BlockListRegistry,
         config: &SubscriptionConfig,
         service: &mut ProfileSubscriptionService,
+        plan_id: ID,
         treasury: &EcosystemTreasury,
         platform: &mut Platform,
         payment: &mut Coin<MYSO>,
         auto_renew: bool,
-        renewal_months: u64,
+        renewal_periods: u64,
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
         assert!(service.version == upgrade::current_version(), EWrongVersion);
         assert!(service.active, ENoAccess);
+        assert!(service.plan_count > 0, ENoActivePlans);
 
         if (auto_renew) {
-            assert!(renewal_months <= config.max_renewal_months, EInvalidInput);
+            assert!(renewal_periods <= config.max_renewal_months, EInvalidInput);
         };
 
+        let plan = borrow_active_plan(service, plan_id);
+        let plan_price = plan.price;
+        let plan_duration_ms = plan.duration_ms;
+        let plan_tier_level = plan.tier_level;
+        let plan_platform_id = plan.platform_id;
+
         let subscriber = tx_context::sender(ctx);
+        assert_subscriber_not_blocked(block_list_registry, subscriber, service.profile_owner);
         let now = clock::timestamp_ms(clock);
 
-        let months_to_pay = if (auto_renew) { 1 + renewal_months } else { 1 };
-        assert!(months_to_pay <= MAX_U64 / service.monthly_fee, EOverflow);
-        let total_required = service.monthly_fee * months_to_pay;
+        let periods_to_pay = if (auto_renew) { 1 + renewal_periods } else { 1 };
+        assert!(periods_to_pay <= MAX_U64 / plan_price, EOverflow);
+        let total_required = plan_price * periods_to_pay;
         assert!(coin::value(payment) >= total_required, EInvalidFee);
 
-        let first_month_payment = coin::split(payment, service.monthly_fee, ctx);
+        let first_period_payment = coin::split(payment, plan_price, ctx);
         let (platform_fee, ecosystem_fee, creator_amount) =
             distribute_subscription_payment_fees_with_platform(
                 config,
                 treasury,
                 service.profile_owner,
-                first_month_payment,
+                first_period_payment,
                 platform,
                 clock,
                 ctx,
             );
 
         finish_subscribe(
-            config,
             service,
+            plan_id,
+            plan_price,
+            plan_duration_ms,
+            plan_tier_level,
+            plan_platform_id,
             payment,
             auto_renew,
-            renewal_months,
+            renewal_periods,
             subscriber,
             now,
             platform_fee,
@@ -442,35 +720,41 @@ module social_contracts::subscription {
     }
 
     fun finish_subscribe(
-        config: &SubscriptionConfig,
         service: &mut ProfileSubscriptionService,
+        plan_id: ID,
+        plan_price: u64,
+        plan_duration_ms: u64,
+        plan_tier_level: Option<u64>,
+        plan_platform_id: Option<address>,
         payment: &mut Coin<MYSO>,
         auto_renew: bool,
-        renewal_months: u64,
+        renewal_periods: u64,
         subscriber: address,
         now: u64,
         platform_fee: u64,
         ecosystem_fee: u64,
         creator_amount: u64,
-        platform_id: Option<address>,
+        payment_platform_id: Option<address>,
         ctx: &mut TxContext,
     ) {
-        let renewal_balance = if (auto_renew && renewal_months > 0) {
-            assert!(renewal_months <= MAX_U64 / service.monthly_fee, EOverflow);
-            let renewal_amount = service.monthly_fee * renewal_months;
+        let renewal_balance = if (auto_renew && renewal_periods > 0) {
+            assert!(renewal_periods <= MAX_U64 / plan_price, EOverflow);
+            let renewal_amount = plan_price * renewal_periods;
             let renewal_payment = coin::split(payment, renewal_amount, ctx);
             coin::into_balance(renewal_payment)
         } else {
             balance::zero<MYSO>()
         };
 
-        let billing_period_ms = config.billing_period_ms;
-        assert!(now <= MAX_U64 - billing_period_ms, EOverflow);
-        let expires_at = now + billing_period_ms;
+        assert!(now <= MAX_U64 - plan_duration_ms, EOverflow);
+        let expires_at = now + plan_duration_ms;
 
         let subscription = ProfileSubscription {
             id: object::new(ctx),
             service_id: object::id(service),
+            plan_id,
+            tier_level: plan_tier_level,
+            platform_id: plan_platform_id,
             subscriber,
             created_at: now,
             expires_at,
@@ -482,70 +766,85 @@ module social_contracts::subscription {
         assert!(service.subscriber_count <= MAX_U64 - 1, EOverflow);
         service.subscriber_count = service.subscriber_count + 1;
 
+        let subscription_id = object::id(&subscription);
         event::emit(ProfileSubscriptionCreatedEvent {
+            subscription_id,
             service_id: object::id(service),
+            plan_id,
             subscriber,
             expires_at,
-            monthly_fee: service.monthly_fee,
+            price: plan_price,
+            duration_ms: plan_duration_ms,
+            tier_level: plan_tier_level,
+            platform_id: plan_platform_id,
             auto_renew,
             platform_fee,
             ecosystem_fee,
             creator_amount,
-            platform_id,
+            payment_platform_id,
         });
 
         transfer::transfer(subscription, subscriber);
     }
 
-    /// Subscribe to a profile with optional auto-renewal (no platform fee recipient).
+    /// Subscribe to a profile plan with optional auto-renewal (no platform fee recipient).
     public entry fun subscribe_to_profile(
+        block_list_registry: &BlockListRegistry,
         config: &SubscriptionConfig,
         service: &mut ProfileSubscriptionService,
+        plan_id: ID,
         treasury: &EcosystemTreasury,
         payment: &mut Coin<MYSO>,
         auto_renew: bool,
-        renewal_months: u64,
+        renewal_periods: u64,
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
         subscribe_to_profile_internal_no_platform(
+            block_list_registry,
             config,
             service,
+            plan_id,
             treasury,
             payment,
             auto_renew,
-            renewal_months,
+            renewal_periods,
             clock,
             ctx,
         );
     }
 
-    /// Subscribe to a profile with platform treasury routing for the platform-fee slice.
+    /// Subscribe to a profile plan with platform treasury routing for the platform-fee slice.
     public entry fun subscribe_to_profile_with_platform(
+        block_list_registry: &BlockListRegistry,
         config: &SubscriptionConfig,
         service: &mut ProfileSubscriptionService,
+        plan_id: ID,
         treasury: &EcosystemTreasury,
         platform: &mut Platform,
         payment: &mut Coin<MYSO>,
         auto_renew: bool,
-        renewal_months: u64,
+        renewal_periods: u64,
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
         subscribe_to_profile_internal_with_platform(
+            block_list_registry,
             config,
             service,
+            plan_id,
             treasury,
             platform,
             payment,
             auto_renew,
-            renewal_months,
+            renewal_periods,
             clock,
             ctx,
         );
     }
 
     fun renew_subscription_internal_no_platform(
+        block_list_registry: &BlockListRegistry,
         config: &SubscriptionConfig,
         service: &ProfileSubscriptionService,
         subscription: &mut ProfileSubscription,
@@ -559,7 +858,10 @@ module social_contracts::subscription {
         let subscriber = tx_context::sender(ctx);
         assert!(subscription.subscriber == subscriber, ENotSubscriptionOwner);
         assert!(subscription.service_id == object::id(service), ENoAccess);
-        assert!(coin::value(&payment) >= service.monthly_fee, EInvalidFee);
+        assert_subscriber_not_blocked(block_list_registry, subscriber, service.profile_owner);
+
+        let plan = borrow_plan_for_renewal(service, subscription.plan_id);
+        assert!(coin::value(&payment) >= plan.price, EInvalidFee);
 
         let (platform_fee, ecosystem_fee, creator_amount) =
             distribute_subscription_payment_fees_no_platform(
@@ -573,7 +875,7 @@ module social_contracts::subscription {
         emit_subscription_renewed(
             subscription,
             subscriber,
-            config,
+            service,
             platform_fee,
             ecosystem_fee,
             creator_amount,
@@ -584,6 +886,7 @@ module social_contracts::subscription {
     }
 
     fun renew_subscription_internal_with_platform(
+        block_list_registry: &BlockListRegistry,
         config: &SubscriptionConfig,
         service: &ProfileSubscriptionService,
         subscription: &mut ProfileSubscription,
@@ -598,7 +901,10 @@ module social_contracts::subscription {
         let subscriber = tx_context::sender(ctx);
         assert!(subscription.subscriber == subscriber, ENotSubscriptionOwner);
         assert!(subscription.service_id == object::id(service), ENoAccess);
-        assert!(coin::value(&payment) >= service.monthly_fee, EInvalidFee);
+        assert_subscriber_not_blocked(block_list_registry, subscriber, service.profile_owner);
+
+        let plan = borrow_plan_for_renewal(service, subscription.plan_id);
+        assert!(coin::value(&payment) >= plan.price, EInvalidFee);
 
         let (platform_fee, ecosystem_fee, creator_amount) =
             distribute_subscription_payment_fees_with_platform(
@@ -614,7 +920,7 @@ module social_contracts::subscription {
         emit_subscription_renewed(
             subscription,
             subscriber,
-            config,
+            service,
             platform_fee,
             ecosystem_fee,
             creator_amount,
@@ -627,16 +933,17 @@ module social_contracts::subscription {
     fun emit_subscription_renewed(
         subscription: &mut ProfileSubscription,
         subscriber: address,
-        config: &SubscriptionConfig,
+        service: &ProfileSubscriptionService,
         platform_fee: u64,
         ecosystem_fee: u64,
         creator_amount: u64,
-        platform_id: Option<address>,
+        payment_platform_id: Option<address>,
         auto_renewed: bool,
         clock: &Clock,
     ) {
+        let plan = borrow_plan_for_renewal(service, subscription.plan_id);
+        let extension = plan.duration_ms;
         let now = clock::timestamp_ms(clock);
-        let extension = config.billing_period_ms;
 
         subscription.expires_at = if (now > subscription.expires_at) {
             assert!(now <= MAX_U64 - extension, EOverflow);
@@ -652,18 +959,24 @@ module social_contracts::subscription {
         event::emit(ProfileSubscriptionRenewedEvent {
             subscription_id: object::id(subscription),
             subscriber,
+            plan_id: subscription.plan_id,
             new_expires_at: subscription.expires_at,
             renewal_count: subscription.renewal_count,
             auto_renewed,
+            price: plan.price,
+            duration_ms: plan.duration_ms,
+            tier_level: subscription.tier_level,
+            platform_id: subscription.platform_id,
             platform_fee,
             ecosystem_fee,
             creator_amount,
-            platform_id,
+            payment_platform_id,
         });
     }
 
     /// Manually renew a subscription (no platform).
     public entry fun renew_subscription(
+        block_list_registry: &BlockListRegistry,
         config: &SubscriptionConfig,
         service: &ProfileSubscriptionService,
         subscription: &mut ProfileSubscription,
@@ -673,6 +986,7 @@ module social_contracts::subscription {
         ctx: &mut TxContext,
     ) {
         renew_subscription_internal_no_platform(
+            block_list_registry,
             config,
             service,
             subscription,
@@ -685,6 +999,7 @@ module social_contracts::subscription {
 
     /// Manually renew a subscription with platform treasury routing.
     public entry fun renew_subscription_with_platform(
+        block_list_registry: &BlockListRegistry,
         config: &SubscriptionConfig,
         service: &ProfileSubscriptionService,
         subscription: &mut ProfileSubscription,
@@ -695,6 +1010,7 @@ module social_contracts::subscription {
         ctx: &mut TxContext,
     ) {
         renew_subscription_internal_with_platform(
+            block_list_registry,
             config,
             service,
             subscription,
@@ -707,6 +1023,7 @@ module social_contracts::subscription {
     }
 
     fun auto_renew_subscription_internal_no_platform(
+        block_list_registry: &BlockListRegistry,
         config: &SubscriptionConfig,
         service: &ProfileSubscriptionService,
         subscription: &mut ProfileSubscription,
@@ -718,12 +1035,20 @@ module social_contracts::subscription {
         assert!(subscription.service_id == object::id(service), ENoAccess);
         assert!(subscription.auto_renew, EAutoRenewalDisabled);
         assert!(service.active, ENoAccess);
+        assert_subscriber_not_blocked(
+            block_list_registry,
+            subscription.subscriber,
+            service.profile_owner,
+        );
+
+        let plan = borrow_plan_for_renewal(service, subscription.plan_id);
+        let plan_price = plan.price;
 
         let now = clock::timestamp_ms(clock);
         assert!(subscription.expires_at <= now, ESubscriptionExpired);
 
         let renewal_balance_value = balance::value(&subscription.renewal_balance);
-        if (renewal_balance_value < service.monthly_fee) {
+        if (renewal_balance_value < plan_price) {
             subscription.auto_renew = false;
             event::emit(ProfileSubscriptionCancelledEvent {
                 subscription_id: object::id(subscription),
@@ -734,7 +1059,7 @@ module social_contracts::subscription {
         };
 
         let renewal_payment = coin::from_balance(
-            balance::split(&mut subscription.renewal_balance, service.monthly_fee),
+            balance::split(&mut subscription.renewal_balance, plan_price),
             ctx
         );
         let (platform_fee, ecosystem_fee, creator_amount) =
@@ -750,7 +1075,7 @@ module social_contracts::subscription {
         emit_subscription_renewed(
             subscription,
             subscriber,
-            config,
+            service,
             platform_fee,
             ecosystem_fee,
             creator_amount,
@@ -761,6 +1086,7 @@ module social_contracts::subscription {
     }
 
     fun auto_renew_subscription_internal_with_platform(
+        block_list_registry: &BlockListRegistry,
         config: &SubscriptionConfig,
         service: &ProfileSubscriptionService,
         subscription: &mut ProfileSubscription,
@@ -773,12 +1099,20 @@ module social_contracts::subscription {
         assert!(subscription.service_id == object::id(service), ENoAccess);
         assert!(subscription.auto_renew, EAutoRenewalDisabled);
         assert!(service.active, ENoAccess);
+        assert_subscriber_not_blocked(
+            block_list_registry,
+            subscription.subscriber,
+            service.profile_owner,
+        );
+
+        let plan = borrow_plan_for_renewal(service, subscription.plan_id);
+        let plan_price = plan.price;
 
         let now = clock::timestamp_ms(clock);
         assert!(subscription.expires_at <= now, ESubscriptionExpired);
 
         let renewal_balance_value = balance::value(&subscription.renewal_balance);
-        if (renewal_balance_value < service.monthly_fee) {
+        if (renewal_balance_value < plan_price) {
             subscription.auto_renew = false;
             event::emit(ProfileSubscriptionCancelledEvent {
                 subscription_id: object::id(subscription),
@@ -789,7 +1123,7 @@ module social_contracts::subscription {
         };
 
         let renewal_payment = coin::from_balance(
-            balance::split(&mut subscription.renewal_balance, service.monthly_fee),
+            balance::split(&mut subscription.renewal_balance, plan_price),
             ctx
         );
         let (platform_fee, ecosystem_fee, creator_amount) =
@@ -807,7 +1141,7 @@ module social_contracts::subscription {
         emit_subscription_renewed(
             subscription,
             subscriber,
-            config,
+            service,
             platform_fee,
             ecosystem_fee,
             creator_amount,
@@ -819,6 +1153,7 @@ module social_contracts::subscription {
 
     /// Gas-optimized auto-renew using pre-funded renewal balance (no platform).
     public entry fun auto_renew_subscription(
+        block_list_registry: &BlockListRegistry,
         config: &SubscriptionConfig,
         service: &ProfileSubscriptionService,
         subscription: &mut ProfileSubscription,
@@ -827,6 +1162,7 @@ module social_contracts::subscription {
         ctx: &mut TxContext,
     ) {
         auto_renew_subscription_internal_no_platform(
+            block_list_registry,
             config,
             service,
             subscription,
@@ -838,6 +1174,7 @@ module social_contracts::subscription {
 
     /// Gas-optimized auto-renew with platform treasury routing.
     public entry fun auto_renew_subscription_with_platform(
+        block_list_registry: &BlockListRegistry,
         config: &SubscriptionConfig,
         service: &ProfileSubscriptionService,
         subscription: &mut ProfileSubscription,
@@ -847,6 +1184,7 @@ module social_contracts::subscription {
         ctx: &mut TxContext,
     ) {
         auto_renew_subscription_internal_with_platform(
+            block_list_registry,
             config,
             service,
             subscription,
@@ -861,20 +1199,24 @@ module social_contracts::subscription {
     public fun can_auto_renew(
         subscription: &ProfileSubscription,
         service: &ProfileSubscriptionService,
-        clock: &Clock
+        clock: &Clock,
     ): bool {
         if (!subscription.auto_renew) return false;
         if (subscription.service_id != object::id(service)) return false;
         if (!service.active) return false;
+        if (!table::contains(&service.plans, subscription.plan_id)) return false;
 
         let now = clock::timestamp_ms(clock);
         if (subscription.expires_at > now) return false;
 
-        balance::value(&subscription.renewal_balance) >= service.monthly_fee
+        let plan = table::borrow(&service.plans, subscription.plan_id);
+        balance::value(&subscription.renewal_balance) >= plan.price
     }
 
     /// User funds their renewal balance for auto-renewal
     public entry fun fund_renewal_balance(
+        block_list_registry: &BlockListRegistry,
+        service: &ProfileSubscriptionService,
         subscription: &mut ProfileSubscription,
         payment: Coin<MYSO>,
         clock: &Clock,
@@ -882,6 +1224,8 @@ module social_contracts::subscription {
     ) {
         let subscriber = tx_context::sender(ctx);
         assert!(subscription.subscriber == subscriber, ENotSubscriptionOwner);
+        assert!(subscription.service_id == object::id(service), ENoAccess);
+        assert_subscriber_not_blocked(block_list_registry, subscriber, service.profile_owner);
 
         let funded_amount = coin::value(&payment);
         balance::join(&mut subscription.renewal_balance, coin::into_balance(payment));
@@ -930,25 +1274,22 @@ module social_contracts::subscription {
             && is_subscription_valid(subscription, service, clock)
     }
 
-    /// Update service fee (profile owner only)
-    public entry fun update_service_fee(
-        service: &mut ProfileSubscriptionService,
-        new_fee: u64,
-        ctx: &mut TxContext,
-    ) {
-        assert!(service.version == upgrade::current_version(), EWrongVersion);
-        assert!(tx_context::sender(ctx) == service.profile_owner, ENotSubscriptionOwner);
-        assert!(new_fee > 0, EInvalidFee);
-
-        let old_fee = service.monthly_fee;
-        service.monthly_fee = new_fee;
-
-        event::emit(ProfileSubscriptionUpdatedEvent {
-            service_id: object::id(service),
-            old_fee,
-            new_fee,
-            updated_by: tx_context::sender(ctx),
-        });
+    /// Whether subscription satisfies optional tier and platform constraints for content access.
+    public fun subscription_satisfies_access(
+        subscription: &ProfileSubscription,
+        service: &ProfileSubscriptionService,
+        subscriber: address,
+        min_tier_level: Option<u64>,
+        content_platform_id: Option<address>,
+        clock: &Clock,
+    ): bool {
+        if (!is_subscription_valid_for(subscription, service, subscriber, clock)) {
+            return false
+        };
+        if (!tier_satisfies(subscription.tier_level, min_tier_level)) {
+            return false
+        };
+        platform_satisfies(subscription.platform_id, content_platform_id)
     }
 
     /// Deactivate service (profile owner only)
@@ -1001,6 +1342,9 @@ module social_contracts::subscription {
         let ProfileSubscription {
             id,
             service_id: _,
+            plan_id: _,
+            tier_level: _,
+            platform_id: _,
             subscriber: _,
             created_at: _,
             expires_at: _,
@@ -1015,8 +1359,24 @@ module social_contracts::subscription {
 
     // === Read-only functions ===
 
-    public fun service_monthly_fee(service: &ProfileSubscriptionService): u64 {
-        service.monthly_fee
+    public fun service_profile_id(service: &ProfileSubscriptionService): ID {
+        service.profile_id
+    }
+
+    public fun service_plan_count(service: &ProfileSubscriptionService): u64 {
+        service.plan_count
+    }
+
+    public fun subscription_plan_id(subscription: &ProfileSubscription): ID {
+        subscription.plan_id
+    }
+
+    public fun subscription_tier_level(subscription: &ProfileSubscription): Option<u64> {
+        subscription.tier_level
+    }
+
+    public fun subscription_platform_id(subscription: &ProfileSubscription): Option<address> {
+        subscription.platform_id
     }
 
     public fun service_subscriber_count(service: &ProfileSubscriptionService): u64 {
@@ -1039,7 +1399,7 @@ module social_contracts::subscription {
         let admin = tx_context::sender(ctx);
         let config = SubscriptionConfig {
             id: object::new(ctx),
-            billing_period_ms: THIRTY_DAYS_MS,
+            default_billing_period_ms: THIRTY_DAYS_MS,
             max_renewal_months: MAX_RENEWAL_MONTHS,
             platform_fee_bps: DEFAULT_PLATFORM_FEE_BPS,
             ecosystem_fee_bps: DEFAULT_ECOSYSTEM_FEE_BPS,
@@ -1066,7 +1426,7 @@ module social_contracts::subscription {
     public entry fun update_subscription_config(
         _: &SubscriptionAdminCap,
         config: &mut SubscriptionConfig,
-        billing_period_ms: u64,
+        default_billing_period_ms: u64,
         max_renewal_months: u64,
         platform_fee_bps: u64,
         ecosystem_fee_bps: u64,
@@ -1075,7 +1435,7 @@ module social_contracts::subscription {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
-        assert!(billing_period_ms > 0, EInvalidConfig);
+        assert!(default_billing_period_ms > 0, EInvalidConfig);
         assert!(max_renewal_months > 0, EInvalidConfig);
         validate_fee_config(
             platform_fee_bps,
@@ -1084,7 +1444,7 @@ module social_contracts::subscription {
             non_platform_platform_to_treasury_bps,
         );
 
-        config.billing_period_ms = billing_period_ms;
+        config.default_billing_period_ms = default_billing_period_ms;
         config.max_renewal_months = max_renewal_months;
         config.platform_fee_bps = platform_fee_bps;
         config.ecosystem_fee_bps = ecosystem_fee_bps;
@@ -1124,7 +1484,8 @@ module social_contracts::subscription {
 
     #[test_only]
     public fun destroy_for_testing(service: ProfileSubscriptionService, subscription: ProfileSubscription) {
-        let ProfileSubscriptionService { id, .. } = service;
+        let ProfileSubscriptionService { id, plans, .. } = service;
+        table::destroy_empty(plans);
         object::delete(id);
         let ProfileSubscription { id, renewal_balance, .. } = subscription;
         balance::destroy_zero(renewal_balance);
@@ -1140,7 +1501,7 @@ module social_contracts::subscription {
     public fun create_config_for_testing(ctx: &mut TxContext): SubscriptionConfig {
         SubscriptionConfig {
             id: object::new(ctx),
-            billing_period_ms: THIRTY_DAYS_MS,
+            default_billing_period_ms: THIRTY_DAYS_MS,
             max_renewal_months: MAX_RENEWAL_MONTHS,
             platform_fee_bps: DEFAULT_PLATFORM_FEE_BPS,
             ecosystem_fee_bps: DEFAULT_ECOSYSTEM_FEE_BPS,
@@ -1154,6 +1515,101 @@ module social_contracts::subscription {
     public fun destroy_config_for_testing(config: SubscriptionConfig) {
         let SubscriptionConfig { id, .. } = config;
         object::delete(id);
+    }
+
+    #[test_only]
+    public fun resolve_plan_duration_ms_for_testing(
+        config: &SubscriptionConfig,
+        duration_ms: u64,
+    ): u64 {
+        resolve_plan_duration_ms(config, duration_ms)
+    }
+
+    #[test_only]
+    public fun test_init(clock: &Clock, ctx: &mut TxContext) {
+        bootstrap_init(clock, ctx);
+    }
+
+    #[test_only]
+    public fun test_share_empty_service(
+        profile_owner: address,
+        profile_id: ID,
+        ctx: &mut TxContext,
+    ) {
+        transfer::share_object(create_profile_service(profile_owner, profile_id, ctx));
+    }
+
+    #[test_only]
+    public struct TestPlanRef has key, store {
+        id: UID,
+        plan_id: ID,
+    }
+
+    #[test_only]
+    public fun test_share_service_with_plan(
+        profile_owner: address,
+        profile_id: ID,
+        plan_recipient: address,
+        price: u64,
+        duration_ms: u64,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        let mut service = create_profile_service(profile_owner, profile_id, ctx);
+        let plan_id = test_create_plan(
+            &mut service,
+            b"Basic",
+            price,
+            duration_ms,
+            option::none(),
+            option::none(),
+            clock,
+            ctx,
+        );
+        transfer::share_object(service);
+        transfer::transfer(
+            TestPlanRef {
+                id: object::new(ctx),
+                plan_id,
+            },
+            plan_recipient,
+        );
+    }
+
+    #[test_only]
+    public fun test_take_plan_id(plan_ref: TestPlanRef): ID {
+        let TestPlanRef { id, plan_id } = plan_ref;
+        object::delete(id);
+        plan_id
+    }
+
+    #[test_only]
+    public fun test_create_plan(
+        service: &mut ProfileSubscriptionService,
+        title: vector<u8>,
+        price: u64,
+        duration_ms: u64,
+        tier_level: Option<u64>,
+        platform_id: Option<address>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ): ID {
+        let plan_id = new_plan_id(ctx);
+        let now = clock::timestamp_ms(clock);
+        let plan = SubscriptionPlan {
+            title: string::utf8(title),
+            description: option::none(),
+            price,
+            duration_ms,
+            tier_level,
+            platform_id,
+            active: true,
+            created_at: now,
+            updated_at: now,
+        };
+        table::add(&mut service.plans, plan_id, plan);
+        service.plan_count = service.plan_count + 1;
+        plan_id
     }
 
     /// Migration function for ProfileSubscriptionService

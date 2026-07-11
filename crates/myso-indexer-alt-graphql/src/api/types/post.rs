@@ -15,6 +15,7 @@ use crate::api::scalars::date_time::DateTime;
 use crate::api::scalars::id::Id;
 use crate::api::scalars::json::Json;
 use crate::api::scalars::myso_address::MySoAddress;
+use crate::api::types::access::PostAccess;
 use crate::api::types::memory::SocialAttribution;
 use crate::api::types::mydata::MyDataRecord;
 use crate::api::types::poc::{PocAnalysisResult, PocBadge, PocDispute, PocRevenueRedirection};
@@ -259,12 +260,27 @@ impl Post {
         self.inner.revenue_recipient.as_deref()
     }
 
-    async fn requires_subscription(&self) -> Option<bool> {
-        self.inner.requires_subscription
+    /// Content access model for this post.
+    async fn access(&self) -> PostAccess {
+        PostAccess::from(self.inner.resolve_post_access())
     }
 
-    async fn subscription_service_id(&self) -> Option<&str> {
-        self.inner.subscription_service_id.as_deref()
+    #[graphql(deprecation = "Use `access.kind` instead.")]
+    async fn requires_subscription(&self) -> Option<bool> {
+        Some(
+            self.inner
+                .resolve_post_access()
+                .kind
+                == myso_indexer_alt_social_reader::PostAccessKind::ProfileSubscription,
+        )
+    }
+
+    #[graphql(deprecation = "Use `access.subscriptionServiceId` instead.")]
+    async fn subscription_service_id(&self) -> Option<String> {
+        self.inner
+            .resolve_post_access()
+            .subscription_service_id
+            .clone()
     }
 
     async fn subscription_price(&self) -> Option<i64> {

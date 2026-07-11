@@ -6,8 +6,8 @@ use async_graphql::{Context, Enum, Object, SimpleObject};
 use chrono::Utc;
 use myso_indexer_alt_social_reader::{
     OrganizationCategoryInfo, OrganizationLeaderboardEntry as LeaderboardEntryRow,
-    OrganizationLeaderboardResult, OrganizationLeaderboardSort, OrganizationStatistics,
-    OrganizationStatsWindow,
+    OrganizationLeaderboardResult, OrganizationLeaderboardSort as DbOrganizationLeaderboardSort,
+    OrganizationStatistics, OrganizationStatsWindow as DbOrganizationStatsWindow,
 };
 use myso_indexer_alt_social_schema::models::{
     AgenticOrganizationRow, ORG_TYPE_BRAND, ORG_TYPE_COMMUNITY, ORG_TYPE_COMPANY,
@@ -19,7 +19,7 @@ use myso_indexer_alt_social_schema::models::{
 use crate::api::scalars::big_int::BigInt;
 use crate::api::types::enterprise::{
     AgentSpendBreakdown, AuditLogConnection, AuditLogEntry, AuditLogFilterInput, OrgInvitation,
-    OrgMemoryPermission, OrgRole, OrgRoleAssignment, SpendApproval, window_from_gql,
+    OrgMemoryPermission, OrgRole, OrgRoleAssignment, SpendApproval, resolve_stats_window,
 };
 use crate::api::types::memory::SubAgent;
 
@@ -82,7 +82,7 @@ impl OrganizationType {
 }
 
 #[derive(Enum, Copy, Clone, Eq, PartialEq, Debug, Default)]
-pub(crate) enum OrganizationStatsWindowGql {
+pub(crate) enum OrganizationStatsWindow {
     #[default]
     All,
     Days7,
@@ -91,20 +91,20 @@ pub(crate) enum OrganizationStatsWindowGql {
     Days365,
 }
 
-impl From<OrganizationStatsWindowGql> for OrganizationStatsWindow {
-    fn from(value: OrganizationStatsWindowGql) -> Self {
+impl From<OrganizationStatsWindow> for DbOrganizationStatsWindow {
+    fn from(value: OrganizationStatsWindow) -> Self {
         match value {
-            OrganizationStatsWindowGql::All => Self::All,
-            OrganizationStatsWindowGql::Days7 => Self::Days7,
-            OrganizationStatsWindowGql::Days30 => Self::Days30,
-            OrganizationStatsWindowGql::Days180 => Self::Days180,
-            OrganizationStatsWindowGql::Days365 => Self::Days365,
+            OrganizationStatsWindow::All => Self::All,
+            OrganizationStatsWindow::Days7 => Self::Days7,
+            OrganizationStatsWindow::Days30 => Self::Days30,
+            OrganizationStatsWindow::Days180 => Self::Days180,
+            OrganizationStatsWindow::Days365 => Self::Days365,
         }
     }
 }
 
 #[derive(Enum, Copy, Clone, Eq, PartialEq, Debug)]
-pub(crate) enum OrganizationLeaderboardSortGql {
+pub(crate) enum OrganizationLeaderboardSort {
     HighestNetCashFlow,
     FastestGrowing,
     HighestAccuracy,
@@ -113,15 +113,15 @@ pub(crate) enum OrganizationLeaderboardSortGql {
     LargestEstimatedAum,
 }
 
-impl From<OrganizationLeaderboardSortGql> for OrganizationLeaderboardSort {
-    fn from(value: OrganizationLeaderboardSortGql) -> Self {
+impl From<OrganizationLeaderboardSort> for DbOrganizationLeaderboardSort {
+    fn from(value: OrganizationLeaderboardSort) -> Self {
         match value {
-            OrganizationLeaderboardSortGql::HighestNetCashFlow => Self::HighestNetCashFlow,
-            OrganizationLeaderboardSortGql::FastestGrowing => Self::FastestGrowing,
-            OrganizationLeaderboardSortGql::HighestAccuracy => Self::HighestAccuracy,
-            OrganizationLeaderboardSortGql::MostActive => Self::MostActive,
-            OrganizationLeaderboardSortGql::HighestRevenue => Self::HighestRevenue,
-            OrganizationLeaderboardSortGql::LargestEstimatedAum => Self::LargestEstimatedAum,
+            OrganizationLeaderboardSort::HighestNetCashFlow => Self::HighestNetCashFlow,
+            OrganizationLeaderboardSort::FastestGrowing => Self::FastestGrowing,
+            OrganizationLeaderboardSort::HighestAccuracy => Self::HighestAccuracy,
+            OrganizationLeaderboardSort::MostActive => Self::MostActive,
+            OrganizationLeaderboardSort::HighestRevenue => Self::HighestRevenue,
+            OrganizationLeaderboardSort::LargestEstimatedAum => Self::LargestEstimatedAum,
         }
     }
 }
@@ -184,7 +184,7 @@ impl AgenticOrganization {
     async fn statistics(
         &self,
         ctx: &Context<'_>,
-        window: Option<OrganizationStatsWindowGql>,
+        window: Option<OrganizationStatsWindow>,
     ) -> Option<GraphOrganizationStatistics> {
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
@@ -201,7 +201,7 @@ impl AgenticOrganization {
     async fn agent_spend_breakdown(
         &self,
         ctx: &Context<'_>,
-        window: Option<OrganizationStatsWindowGql>,
+        window: Option<OrganizationStatsWindow>,
         #[graphql(default = 20)] limit: i32,
     ) -> Option<Vec<AgentSpendBreakdown>> {
         let reader_opt = ctx
@@ -210,7 +210,7 @@ impl AgenticOrganization {
         reader
             .list_agent_spend_breakdown(
                 &self.inner.organization_id,
-                window_from_gql(window),
+                resolve_stats_window(window),
                 limit as i64,
             )
             .await

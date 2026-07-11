@@ -3,7 +3,7 @@
 
 use async_graphql::Object;
 use myso_indexer_alt_social_reader::subscription::{
-    ProfileSubscriptionRow, ProfileSubscriptionServiceRow,
+    ProfileSubscriptionPlanRow, ProfileSubscriptionRow, ProfileSubscriptionServiceRow,
 };
 
 #[derive(Clone)]
@@ -31,8 +31,8 @@ impl ProfileSubscriptionService {
         &self.inner.profile_id
     }
 
-    async fn monthly_fee(&self) -> i64 {
-        self.inner.monthly_fee
+    async fn plan_count(&self) -> i64 {
+        self.inner.plan_count
     }
 
     async fn active(&self) -> bool {
@@ -41,6 +41,64 @@ impl ProfileSubscriptionService {
 
     async fn subscriber_count(&self) -> i64 {
         self.inner.subscriber_count
+    }
+
+    async fn created_at(&self) -> i64 {
+        self.inner.created_at
+    }
+
+    async fn updated_at(&self) -> Option<i64> {
+        self.inner.updated_at
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct ProfileSubscriptionPlan {
+    inner: ProfileSubscriptionPlanRow,
+}
+
+impl ProfileSubscriptionPlan {
+    pub(crate) fn from_row(inner: ProfileSubscriptionPlanRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl ProfileSubscriptionPlan {
+    async fn plan_id(&self) -> &str {
+        &self.inner.plan_id
+    }
+
+    async fn service_id(&self) -> &str {
+        &self.inner.service_id
+    }
+
+    async fn title(&self) -> &str {
+        &self.inner.title
+    }
+
+    async fn description(&self) -> Option<&str> {
+        self.inner.description.as_deref()
+    }
+
+    async fn price(&self) -> i64 {
+        self.inner.price
+    }
+
+    async fn duration_ms(&self) -> i64 {
+        self.inner.duration_ms
+    }
+
+    async fn tier_level(&self) -> Option<i64> {
+        self.inner.tier_level
+    }
+
+    async fn platform_id(&self) -> Option<&str> {
+        self.inner.platform_id.as_deref()
+    }
+
+    async fn active(&self) -> bool {
+        self.inner.active
     }
 
     async fn created_at(&self) -> i64 {
@@ -73,6 +131,26 @@ impl ProfileSubscription {
         &self.inner.service_id
     }
 
+    async fn plan_id(&self) -> &str {
+        &self.inner.plan_id
+    }
+
+    async fn tier_level(&self) -> Option<i64> {
+        self.inner.tier_level
+    }
+
+    async fn platform_id(&self) -> Option<&str> {
+        self.inner.platform_id.as_deref()
+    }
+
+    async fn price(&self) -> i64 {
+        self.inner.price
+    }
+
+    async fn duration_ms(&self) -> i64 {
+        self.inner.duration_ms
+    }
+
     async fn subscriber(&self) -> &str {
         &self.inner.subscriber
     }
@@ -103,10 +181,6 @@ impl ProfileSubscription {
 
     async fn cancelled_at(&self) -> Option<i64> {
         self.inner.cancelled_at
-    }
-
-    async fn monthly_fee(&self) -> i64 {
-        self.inner.monthly_fee
     }
 
     async fn active(&self) -> bool {

@@ -225,7 +225,7 @@ type AgentSpendBreakdown {
 type AgenticOrganization {
 	active: Boolean!
 	ageMs: BigInt!
-	agentSpendBreakdown(window: OrganizationStatsWindowGql, limit: Int! = 20): [AgentSpendBreakdown!]
+	agentSpendBreakdown(window: OrganizationStatsWindow, limit: Int! = 20): [AgentSpendBreakdown!]
 	auditLog(filter: AuditLogFilterInput, limit: Int! = 20, offset: Int! = 0): AuditLogConnection
 	createdAt: Int!
 	description: String
@@ -238,7 +238,7 @@ type AgenticOrganization {
 	roles: [OrgRole!]
 	rootAgent: SubAgent
 	spendApprovals(status: String, agent: String, limit: Int! = 20): [SpendApproval!]
-	statistics(window: OrganizationStatsWindowGql): GraphOrganizationStatistics
+	statistics(window: OrganizationStatsWindow): GraphOrganizationStatistics
 }
 
 type AgenticOrganizationLeaderboardEntry {
@@ -3819,6 +3819,12 @@ type MyDataAccessAnalytics {
 	uniqueUsers: Int!
 }
 
+enum MyDataAccessConfigurationKind {
+	PROFILE_SUBSCRIPTION
+	MARKETPLACE_ONE_TIME
+	MARKETPLACE_RECURRING
+}
+
 type MyDataAccessLog {
 	"""
 	Epoch timestamp when access occurred.
@@ -3850,6 +3856,7 @@ type MyDataBroadPool {
 	createdAtMs: Int!
 	eventId: String!
 	name: String!
+	platformId: MySoAddress
 	poolId: String!
 	time: DateTime!
 	transactionId: String!
@@ -3888,10 +3895,12 @@ type MyDataClaim {
 }
 
 type MyDataConfig {
+	defaultClaimWindowMs: Int!
 	"""
 	Whether MyData marketplace is enabled.
 	"""
 	marketplaceEnabled: Boolean!
+	maxEncryptedDataBytes: Int!
 	"""
 	Maximum encryption id byte length accepted when creating a MyData record.
 	"""
@@ -3900,10 +3909,16 @@ type MyDataConfig {
 	Maximum free access grants.
 	"""
 	maxFreeAccessGrants: Int!
+	maxMerkleProofDepth: Int!
+	maxMetadataBytes: Int!
+	maxPaidAccessEntries: Int!
+	maxPaymentReferenceBytes: Int!
+	maxPoolAssignments: Int!
 	"""
 	Maximum subscription duration in days.
 	"""
 	maxSubscriptionDays: Int!
+	maxTagBytes: Int!
 	"""
 	Maximum tags per record.
 	"""
@@ -3970,9 +3985,11 @@ type MyDataDailyRevenue {
 }
 
 type MyDataDistributionRound {
+	claimDeadlineMs: Int!
 	contributorCount: Int!
 	eventId: String!
 	merkleRoot: String!
+	platformId: MySoAddress
 	publishedAtMs: Int!
 	snapshotId: String!
 	time: DateTime!
@@ -4066,6 +4083,10 @@ type MyDataRecord {
 	Access analytics for this MyData record.
 	"""
 	accessAnalytics: [MyDataAccessAnalytics!]
+	"""
+	Mutually exclusive access configuration for this MyData listing.
+	"""
+	accessConfiguration: MyDataAccessConfigurationKind!
 	"""
 	Access logs for this MyData record (paginated).
 	"""
@@ -4229,12 +4250,29 @@ type MyDataSnapshotAnchor {
 	createdAtMs: Int!
 	eventId: String!
 	id: Int!
+	initialEscrow: Int!
 	manifestHash: String
 	paymentReference: String
+	platformId: MySoAddress
 	pricePaid: Int!
 	snapshotId: String!
+	sourcePoolId: String!
+	sourceSubPoolId: String!
 	time: DateTime!
 	transactionId: String!
+}
+
+type MyDataSnapshotEscrow {
+	claimDeadlineMs: Int
+	reclaimedAtMs: Int
+	remainingAmount: Int!
+	snapshotId: String!
+	status: String!
+	time: DateTime!
+	totalClaimed: Int!
+	totalFunded: Int!
+	transactionId: String!
+	updatedAtMs: Int!
 }
 
 type MyDataStats {
@@ -4743,7 +4781,7 @@ type OrganizationCategory {
 	value: Int!
 }
 
-enum OrganizationLeaderboardSortGql {
+enum OrganizationLeaderboardSort {
 	HIGHEST_NET_CASH_FLOW
 	FASTEST_GROWING
 	HIGHEST_ACCURACY
@@ -4752,7 +4790,7 @@ enum OrganizationLeaderboardSortGql {
 	LARGEST_ESTIMATED_AUM
 }
 
-enum OrganizationStatsWindowGql {
+enum OrganizationStatsWindow {
 	ALL
 	DAYS_7
 	DAYS_30
@@ -4892,12 +4930,12 @@ type PaidMessageEscrow {
 	recipientProfile: ProfileSummary
 	refundedAtMs: Int
 	seq: Int!
-	status: PaidMessageEscrowStatusGql!
+	status: PaidMessageEscrowStatus!
 	transactionId: String!
 	treasuryFee: Int
 }
 
-enum PaidMessageEscrowStatusGql {
+enum PaidMessageEscrowStatus {
 	ESCROWED
 	CLAIMED
 	SETTLED
@@ -5719,6 +5757,10 @@ type PocVaultDeposit {
 
 type Post implements Node {
 	"""
+	Content access model for this post.
+	"""
+	access: PostAccess!
+	"""
 	Actor vs principal attribution for delegated sub-agent actions.
 	"""
 	attribution: SocialAttribution!
@@ -5900,7 +5942,7 @@ type Post implements Node {
 	Reposts of this post (paginated).
 	"""
 	reposts(limit: Int, offset: Int): [RepostSummary!]
-	requiresSubscription: Boolean
+	requiresSubscription: Boolean @deprecated(reason: "Use `access.kind` instead.")
 	"""
 	Optional off-chain / indexed revenue recipient address.
 	"""
@@ -5954,7 +5996,7 @@ type Post implements Node {
 	"""
 	sptId: String
 	subscriptionPrice: Int
-	subscriptionServiceId: String
+	subscriptionServiceId: String @deprecated(reason: "Use `access.subscriptionServiceId` instead.")
 	"""
 	Tips received for this post (paginated).
 	"""
@@ -5975,6 +6017,19 @@ type Post implements Node {
 	When the post was last updated (Unix timestamp in milliseconds).
 	"""
 	updatedAt: Int
+}
+
+type PostAccess {
+	kind: PostAccessKind!
+	mydataId: String
+	subscriptionMinTierLevel: Int
+	subscriptionServiceId: String
+}
+
+enum PostAccessKind {
+	PUBLIC
+	PROFILE_SUBSCRIPTION
+	MARKETPLACE_ONE_TIME
 }
 
 type PostConfig {
@@ -6264,7 +6319,7 @@ type Profile implements Node {
 	Cash-flow P&L for this profile's owner wallet (MYSO base units; not realized/FIFO P&L).
 	When `windows` is omitted, defaults to 7d, 30d, and all-time.
 	"""
-	pnl(windows: [ProfilePnLWindowGql!]): [ProfilePnLWindowStats!]
+	pnl(windows: [ProfilePnLWindow!]): [ProfilePnLWindowStats!]
 	"""
 	Number of posts.
 	"""
@@ -6460,7 +6515,7 @@ type ProfileConfig {
 """
 Time window for P&L aggregation (cutoff from database `NOW()`).
 """
-enum ProfilePnLWindowGql {
+enum ProfilePnLWindow {
 	DAYS_7
 	DAYS_30
 	DAYS_180
@@ -6484,7 +6539,7 @@ type ProfilePnLWindowStats {
 	swapNetMyso: Int!
 	tipsMyso: Int!
 	usernameMarketplaceMyso: Int!
-	window: ProfilePnLWindowGql!
+	window: ProfilePnLWindow!
 }
 
 type ProfileSubscription {
@@ -6492,20 +6547,38 @@ type ProfileSubscription {
 	autoRenew: Boolean!
 	cancelledAt: Int
 	createdAt: Int!
+	durationMs: Int!
 	expiresAt: Int!
-	monthlyFee: Int!
+	planId: String!
+	platformId: String
+	price: Int!
 	profileOwner: String!
 	renewalBalance: Int!
 	renewalCount: Int!
 	serviceId: String!
 	subscriber: String!
 	subscriptionId: String!
+	tierLevel: Int
+}
+
+type ProfileSubscriptionPlan {
+	active: Boolean!
+	createdAt: Int!
+	description: String
+	durationMs: Int!
+	planId: String!
+	platformId: String
+	price: Int!
+	serviceId: String!
+	tierLevel: Int
+	title: String!
+	updatedAt: Int
 }
 
 type ProfileSubscriptionService {
 	active: Boolean!
 	createdAt: Int!
-	monthlyFee: Int!
+	planCount: Int!
 	profileId: String!
 	profileOwner: String!
 	serviceId: String!
@@ -6988,7 +7061,7 @@ type Query {
 	"""
 	Category-scoped agentic organization leaderboard. Returns empty when social DB not configured.
 	"""
-	agenticOrganizationsLeaderboard(sort: OrganizationLeaderboardSortGql!, category: OrganizationType!, window: OrganizationStatsWindowGql, limit: Int, offset: Int): AgenticOrganizationLeaderboardResponse
+	agenticOrganizationsLeaderboard(sort: OrganizationLeaderboardSort!, category: OrganizationType!, window: OrganizationStatsWindow, limit: Int, offset: Int): AgenticOrganizationLeaderboardResponse
 	"""
 	AI credit configuration. Returns null when social DB not configured or no config.
 	"""
@@ -7223,6 +7296,7 @@ type Query {
 	Recent snapshot anchors (paginated).
 	"""
 	mydataSnapshotAnchors(limit: Int, offset: Int): [MyDataSnapshotAnchor!]
+	mydataSnapshotEscrow(snapshotId: String!): MyDataSnapshotEscrow
 	"""
 	Sub-pools under a broad pool.
 	"""
@@ -7380,6 +7454,14 @@ type Query {
 	Profile subscription by on-chain subscription object ID.
 	"""
 	profileSubscription(subscriptionId: ID!): ProfileSubscription
+	"""
+	Subscription plan by on-chain plan object ID.
+	"""
+	profileSubscriptionPlan(planId: ID!): ProfileSubscriptionPlan
+	"""
+	Subscription plans for a profile subscription service.
+	"""
+	profileSubscriptionPlans(serviceId: ID!, activeOnly: Boolean, limit: Int, offset: Int): [ProfileSubscriptionPlan!]
 	"""
 	Profile subscription service by on-chain service object ID.
 	"""
@@ -7549,7 +7631,7 @@ type Query {
 	"""
 	Whether a subscriber currently has access to a profile subscription service.
 	"""
-	subscriptionAccess(subscriber: MySoAddress!, serviceId: ID!): SubscriptionAccess
+	subscriptionAccess(subscriber: MySoAddress!, serviceId: ID!, minTierLevel: Int): SubscriptionAccess
 	subscriptionConfiguration: SubscriptionConfig
 	"""
 	Tips received for a post (paginated). Returns empty when social DB not configured.
@@ -7969,12 +8051,12 @@ type SpendApproval {
 	organizationId: String
 	requestedAmountMist: BigInt
 	requestedAt: DateTime!
-	status: SpendApprovalStatusGql!
+	status: SpendApprovalStatus!
 	thresholdMist: BigInt
 	updatedAt: DateTime!
 }
 
-enum SpendApprovalStatusGql {
+enum SpendApprovalStatus {
 	REQUESTED
 	APPROVED
 	CONSUMED
@@ -8886,7 +8968,7 @@ type SubscriptionConfig {
 	"""
 	Billing period duration in milliseconds.
 	"""
-	billingPeriodMs: Int!
+	defaultBillingPeriodMs: Int!
 	"""
 	Ecosystem treasury fee in bps deducted from gross subscription payments (default 250 = 2.5%).
 	"""

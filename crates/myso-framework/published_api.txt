@@ -7249,6 +7249,9 @@ hash_pair
 leaf_hash
 	public fun
 	0xda7a::merkle
+leaf_hash_with_platform
+	public fun
+	0xda7a::merkle
 check_staleness
 	public fun
 	0xda7a::time
@@ -9562,6 +9565,9 @@ SubscriptionConfig
 SubscriptionConfigUpdatedEvent
 	public struct
 	0x50c1::subscription
+SubscriptionPlan
+	public struct
+	0x50c1::subscription
 ProfileSubscriptionService
 	public struct
 	0x50c1::subscription
@@ -9577,10 +9583,16 @@ ProfileSubscriptionRenewedEvent
 ProfileSubscriptionCancelledEvent
 	public struct
 	0x50c1::subscription
-ProfileSubscriptionUpdatedEvent
+SubscriptionPlanUpdatedEvent
 	public struct
 	0x50c1::subscription
 ProfileSubscriptionServiceCreatedEvent
+	public struct
+	0x50c1::subscription
+SubscriptionPlanCreatedEvent
+	public struct
+	0x50c1::subscription
+SubscriptionPlanDeactivatedEvent
 	public struct
 	0x50c1::subscription
 RenewalBalanceFundedEvent
@@ -9588,6 +9600,9 @@ RenewalBalanceFundedEvent
 	0x50c1::subscription
 ProfileSubscriptionServiceDeactivatedEvent
 	public struct
+	0x50c1::subscription
+assert_subscriber_not_blocked
+	fun
 	0x50c1::subscription
 validate_fee_config
 	fun
@@ -9607,10 +9622,40 @@ distribute_subscription_payment_fees_with_platform
 emit_subscription_config_updated
 	fun
 	0x50c1::subscription
+new_plan_id
+	fun
+	0x50c1::subscription
+effective_tier_level
+	fun
+	0x50c1::subscription
+tier_satisfies
+	fun
+	0x50c1::subscription
+platform_satisfies
+	fun
+	0x50c1::subscription
+borrow_active_plan
+	fun
+	0x50c1::subscription
+borrow_plan_for_renewal
+	fun
+	0x50c1::subscription
 create_profile_service
 	public fun
 	0x50c1::subscription
 create_profile_service_entry
+	public entry fun
+	0x50c1::subscription
+resolve_plan_duration_ms
+	fun
+	0x50c1::subscription
+create_subscription_plan
+	public entry fun
+	0x50c1::subscription
+update_subscription_plan
+	public entry fun
+	0x50c1::subscription
+deactivate_subscription_plan
 	public entry fun
 	0x50c1::subscription
 subscribe_to_profile_internal_no_platform
@@ -9673,8 +9718,8 @@ service_is_active
 is_subscription_valid_for
 	public fun
 	0x50c1::subscription
-update_service_fee
-	public entry fun
+subscription_satisfies_access
+	public fun
 	0x50c1::subscription
 deactivate_service
 	public entry fun
@@ -9682,7 +9727,19 @@ deactivate_service
 cancel_subscription
 	public entry fun
 	0x50c1::subscription
-service_monthly_fee
+service_profile_id
+	public fun
+	0x50c1::subscription
+service_plan_count
+	public fun
+	0x50c1::subscription
+subscription_plan_id
+	public fun
+	0x50c1::subscription
+subscription_tier_level
+	public fun
+	0x50c1::subscription
+subscription_platform_id
 	public fun
 	0x50c1::subscription
 service_subscriber_count
@@ -9814,6 +9871,12 @@ SnapshotAnchorRecordedEvent
 DistributionRecordedEvent
 	public struct
 	0x50c1::mydata
+SnapshotEscrowFundedEvent
+	public struct
+	0x50c1::mydata
+SnapshotEscrowReclaimedEvent
+	public struct
+	0x50c1::mydata
 MyDataClaimVault
 	public struct
 	0x50c1::mydata
@@ -9841,6 +9904,12 @@ AccessGrantedEvent
 AccessRevokedEvent
 	public struct
 	0x50c1::mydata
+MyDataPricingUpdatedEvent
+	public struct
+	0x50c1::mydata
+MyDataContentUpdatedEvent
+	public struct
+	0x50c1::mydata
 MyDataRegisteredEvent
 	public struct
 	0x50c1::mydata
@@ -9849,6 +9918,9 @@ MyDataUnregisteredEvent
 	0x50c1::mydata
 MyDataConfigUpdatedEvent
 	public struct
+	0x50c1::mydata
+AccessConfiguration
+	public enum
 	0x50c1::mydata
 validate_fee_config
 	fun
@@ -9890,12 +9962,18 @@ bootstrap_init
 	public(package) fun
 	0x50c1::mydata
 create_mydata_pool_admin_cap
-	public fun
+	public(package) fun
 	0x50c1::mydata
 gen_pool_id
 	fun
 	0x50c1::mydata
+create_broad_pool_internal
+	fun
+	0x50c1::mydata
 create_broad_pool
+	public entry fun
+	0x50c1::mydata
+create_broad_pool_with_platform
 	public entry fun
 	0x50c1::mydata
 create_sub_pool
@@ -9916,7 +9994,10 @@ record_snapshot_anchor
 get_snapshot_anchor
 	public fun
 	0x50c1::mydata
-publish_merkle_root
+deposit_snapshot_escrow
+	public entry fun
+	0x50c1::mydata
+publish_distribution
 	public entry fun
 	0x50c1::mydata
 distribute_mydata_marketplace_claim_fees_no_platform
@@ -9937,10 +10018,7 @@ claim
 claim_with_platform
 	public entry fun
 	0x50c1::mydata
-deposit
-	public entry fun
-	0x50c1::mydata
-record_distribution
+reclaim_expired_snapshot_escrow
 	public entry fun
 	0x50c1::mydata
 get_broad_pool
@@ -9961,10 +10039,58 @@ broad_pool_id
 sub_pool_id
 	public fun
 	0x50c1::mydata
+access_configuration
+	fun
+	0x50c1::mydata
+requires_profile_subscription_access
+	public fun
+	0x50c1::mydata
+requires_marketplace_purchase
+	public fun
+	0x50c1::mydata
+requires_marketplace_subscription
+	public fun
+	0x50c1::mydata
+linked_one_time_price
+	public fun
+	0x50c1::mydata
+access_configuration_kind
+	public fun
+	0x50c1::mydata
+validate_marketplace_price
+	fun
+	0x50c1::mydata
+validate_recurring_duration
+	fun
+	0x50c1::mydata
+validate_access_configuration
+	fun
+	0x50c1::mydata
+validate_optional_metadata
+	fun
+	0x50c1::mydata
+validate_tags
+	fun
+	0x50c1::mydata
+emit_mydata_created_event
+	fun
+	0x50c1::mydata
 create
 	public fun
 	0x50c1::mydata
-create_and_share
+share_created_mydata
+	fun
+	0x50c1::mydata
+create_and_share_internal
+	fun
+	0x50c1::mydata
+create_and_share_profile_subscription_mydata
+	public entry fun
+	0x50c1::mydata
+create_and_share_marketplace_one_time_mydata
+	public entry fun
+	0x50c1::mydata
+create_and_share_marketplace_recurring_mydata
 	public entry fun
 	0x50c1::mydata
 purchase_one_time_no_platform
@@ -10231,14 +10357,11 @@ PromotionFundsWithdrawnEvent
 ModerationRecord
 	public struct
 	0x50c1::post
-PostSubscriptionGate
-	public struct
-	0x50c1::post
-PostSubscriptionGateEnabledEvent
-	public struct
-	0x50c1::post
 PostSubscriptionAccessEvent
 	public struct
+	0x50c1::post
+PostAccess
+	public enum
 	0x50c1::post
 has_flag
 	fun
@@ -10250,6 +10373,30 @@ clear_flag
 	fun
 	0x50c1::post
 permissions_bitfield
+	fun
+	0x50c1::post
+post_access_fields
+	fun
+	0x50c1::post
+requires_profile_subscription
+	public fun
+	0x50c1::post
+requires_marketplace_purchase
+	public fun
+	0x50c1::post
+linked_mydata
+	public fun
+	0x50c1::post
+subscription_service
+	public fun
+	0x50c1::post
+subscription_min_tier_level
+	public fun
+	0x50c1::post
+post_access_kind
+	public fun
+	0x50c1::post
+post_access_from_parts
 	fun
 	0x50c1::post
 allow_comments
@@ -10381,10 +10528,37 @@ create_post_internal
 share_post
 	public(package) fun
 	0x50c1::post
-assert_mydata_id_allowed_for_owner
+assert_post_access_mydata_binding
+	fun
+	0x50c1::post
+assert_post_access_mydata_object_binding
+	fun
+	0x50c1::post
+linked_mydata_from_access
+	fun
+	0x50c1::post
+assert_profile_subscription_access_service
+	fun
+	0x50c1::post
+create_post_entry_body
 	fun
 	0x50c1::post
 create_post
+	public entry fun
+	0x50c1::post
+validate_post_mydata_binding
+	public entry fun
+	0x50c1::post
+create_public_post
+	public entry fun
+	0x50c1::post
+create_profile_subscription_post
+	public entry fun
+	0x50c1::post
+create_profile_subscription_post_with_mydata
+	public entry fun
+	0x50c1::post
+create_marketplace_one_time_post
 	public entry fun
 	0x50c1::post
 create_comment
@@ -10557,21 +10731,6 @@ set_moderation_status
 	0x50c1::post
 is_content_approved
 	public fun
-	0x50c1::post
-post_subscription_gate
-	fun
-	0x50c1::post
-post_subscription_service_id
-	public fun
-	0x50c1::post
-post_requires_profile_subscription
-	public fun
-	0x50c1::post
-enable_post_subscription_gate
-	public entry fun
-	0x50c1::post
-disable_post_subscription_gate
-	public entry fun
 	0x50c1::post
 assert_can_view_post
 	public entry fun

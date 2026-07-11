@@ -1,5 +1,5 @@
 -- Sub-agent registry + social action attribution (actor vs human principal).
--- owner/profile_id on posts & comments = human principal; actor_address = tx signer.
+-- owner/profile_id on posts & comments = human principal; sub_agent_id links delegated actors.
 
 CREATE TABLE IF NOT EXISTS memory_accounts (
     account_id TEXT NOT NULL PRIMARY KEY,
@@ -105,7 +105,6 @@ CREATE INDEX IF NOT EXISTS idx_sub_agent_events_registry
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS memory_account_id TEXT;
 CREATE INDEX IF NOT EXISTS idx_profiles_memory_account_id ON profiles (memory_account_id);
 
-ALTER TABLE posts ADD COLUMN IF NOT EXISTS actor_address TEXT;
 ALTER TABLE posts ADD COLUMN IF NOT EXISTS sub_agent_id TEXT;
 ALTER TABLE posts ADD COLUMN IF NOT EXISTS action_identity_class SMALLINT;
 

@@ -6,6 +6,7 @@
 //! Filters events by MYSO_SOCIAL_PACKAGE_ID, routes by module/event name, and inserts into
 //! profiles, social_graph_relationships, social_graph_events, etc.
 
+mod access;
 mod ai_credit;
 mod ai_credit_handler;
 mod blocking;
@@ -68,7 +69,8 @@ use myso_indexer_alt_social_schema::models::{
     NewPocCreatorIdentityLink, NewPocDispute, NewPocDisputeVote, NewPocRevenueRedirection,
     NewPocUsernameBeneficiary, NewPocUsernameBeneficiaryEvent, NewPost, NewPostTransfer,
     NewProfile, NewProfileBadge, NewProfileConfig, NewProfileEvent, NewUsernameListing,
-    NewUsernameOffer, NewUsernameSaleFee, NewProfileSubscription, NewProfileSubscriptionService, NewProposal,
+    NewUsernameOffer, NewUsernameSaleFee, NewProfileSubscription, NewProfileSubscriptionPlan,
+    NewProfileSubscriptionService, NewProposal,
     NewReaction, NewReport, NewRepost, NewRewardDistribution, NewSocialGraphEvent,
     NewSocialGraphRelationship, NewSocialProofTokensEvent, NewSpotBet,
     NewSpotBetWithdrawal, NewSpotClaim, NewSpotConfig, NewSpotCreatorPayout, NewSpotEventLog,
@@ -76,7 +78,7 @@ use myso_indexer_alt_social_schema::models::{
     NewSpotResolution, NewSptConfigEvent, NewSptHolding, NewSptPool,
     NewSptPriceHistory, NewSptReservation, NewSptReservationPool, NewSptTransaction,
     NewSubAgentEvent, NewSubscriptionAccessLog, NewSubscriptionConfig, NewSubscriptionEvent, NewTip, NewUnifiedRevenue,
-    NewUpgradeEvent, NewUsernameRegistry, NewVestingEvent, NewVestingWallet,
+    NewUpgradeEvent, NewUsernameRegistry, NewUsernameReservation, NewVestingEvent, NewVestingWallet,
     NewVoteDecryptionFailure, ProposalUpdateSet,
 };
 
@@ -114,6 +116,14 @@ pub enum SocialEventRow {
         username: String,
         new_profile_id: String,
         transaction_id: String,
+    },
+    UsernameReservation(NewUsernameReservation),
+    UsernameReservationRelease {
+        username: String,
+        reason: i16,
+        released_by: String,
+        released_at: i64,
+        release_transaction_id: String,
     },
     ProfileUsernameSet {
         profile_id: String,
@@ -499,6 +509,37 @@ pub enum SocialEventRow {
     MyDataDistributionRound(NewMyDataDistributionRound),
     MyDataMerkleRoot(NewMyDataMerkleRoot),
     MyDataClaim(NewMyDataClaim),
+    MyDataEscrowCreated {
+        snapshot_id: String,
+        amount: i64,
+        updated_at_ms: i64,
+        transaction_id: String,
+    },
+    MyDataEscrowFunded {
+        snapshot_id: String,
+        amount: i64,
+        total_funded: i64,
+        updated_at_ms: i64,
+        transaction_id: String,
+    },
+    MyDataEscrowPublished {
+        snapshot_id: String,
+        claim_deadline_ms: i64,
+        updated_at_ms: i64,
+        transaction_id: String,
+    },
+    MyDataEscrowClaimed {
+        snapshot_id: String,
+        amount: i64,
+        updated_at_ms: i64,
+        transaction_id: String,
+    },
+    MyDataEscrowReclaimed {
+        snapshot_id: String,
+        amount: i64,
+        reclaimed_at_ms: i64,
+        transaction_id: String,
+    },
     InsuranceConfig(insurance::InsuranceConfigSnapshot),
     InsuranceRouterConfig(NewInsuranceRouterConfig),
     InsuranceVault(NewInsuranceVault),
@@ -700,23 +741,42 @@ pub enum SocialEventRow {
     },
     ProfileSubscriptionService(NewProfileSubscriptionService),
     ProfileSubscription(NewProfileSubscription),
+    ProfileSubscriptionPlan(NewProfileSubscriptionPlan),
     SubscriptionEvent(NewSubscriptionEvent),
     SubscriptionConfig(NewSubscriptionConfig),
     ProfileSubscriptionServiceSubscriberIncrement {
         service_id: String,
     },
+    ProfileSubscriptionServicePlanCountIncrement {
+        service_id: String,
+    },
+    ProfileSubscriptionPlanUpdate {
+        plan_id: String,
+        title: String,
+        description: Option<String>,
+        price: i64,
+        duration_ms: i64,
+        tier_level: Option<i64>,
+        platform_id: Option<String>,
+        active: bool,
+        updated_at: i64,
+    },
+    ProfileSubscriptionPlanDeactivate {
+        plan_id: String,
+        updated_at: i64,
+    },
     ProfileSubscriptionUpdate {
         subscription_id: String,
         expires_at: i64,
         renewal_count: i64,
+        plan_id: Option<String>,
+        tier_level: Option<i64>,
+        platform_id: Option<String>,
+        price: Option<i64>,
+        duration_ms: Option<i64>,
     },
     ProfileSubscriptionCancel {
         subscription_id: String,
-    },
-    ProfileSubscriptionServiceUpdate {
-        service_id: String,
-        monthly_fee: i64,
-        updated_at: i64,
     },
     ProfileSubscriptionRenewalBalanceUpdate {
         subscription_id: String,
@@ -728,11 +788,6 @@ pub enum SocialEventRow {
     },
     ProfileSubscriptionServiceSubscriberDecrementBySubscription {
         subscription_id: String,
-    },
-    PostSubscriptionGateUpdate {
-        post_id: String,
-        service_id: Option<String>,
-        enabled: bool,
     },
     SubscriptionAccessLog(NewSubscriptionAccessLog),
     SubscriptionRevenueFromCreated {
@@ -760,6 +815,8 @@ pub enum SocialEventRow {
         new_expires_at: i64,
         renewal_count: i64,
         auto_renewed: bool,
+        price: i64,
+        duration_ms: i64,
         platform_fee: i64,
         ecosystem_fee: i64,
         creator_amount: i64,

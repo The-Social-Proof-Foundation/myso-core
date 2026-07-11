@@ -10,6 +10,7 @@ use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
 use diesel::QueryDsl;
 use diesel::Queryable;
+use diesel::QueryableByName;
 use diesel_async::RunQueryDsl;
 use fastcrypto::hash::{Blake2b256, HashFunction};
 use move_core_types::account_address::AccountAddress;
@@ -21,14 +22,21 @@ use myso_indexer_alt_social_schema::schema::{mydata_data, posts};
 use myso_types::storage::ObjectKey;
 use myso_types::MYSO_SOCIAL_ADDRESS;
 
+use super::access::{
+    POST_ACCESS_KIND_MARKETPLACE_ONE_TIME, POST_ACCESS_KIND_PROFILE_SUB,
+};
 use super::mydata::u64_to_db_i64;
-use super::mydata_object::{parse_mydata_object_contents, BcsMyData};
+use super::mydata_object::{
+    mydata_one_time_price_from_bcs, mydata_subscription_price_from_bcs, parse_mydata_object_contents,
+    BcsMyData,
+};
 use crate::metrics::SocialMetrics;
 
 /// Paywall-relevant fields extracted from a MyData object at index time.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct MyDataPaywallSnapshot {
     pub subscription_price: Option<i64>,
+    pub one_time_price: Option<i64>,
     pub encrypted_content_hash: Option<String>,
 }
 
@@ -51,7 +59,8 @@ pub(crate) fn compute_encrypted_content_hash(data: &[u8]) -> Option<String> {
 
 pub(crate) fn paywall_snapshot_from_bcs(mydata: &BcsMyData) -> MyDataPaywallSnapshot {
     MyDataPaywallSnapshot {
-        subscription_price: mydata.subscription_price.map(u64_to_db_i64),
+        subscription_price: mydata_subscription_price_from_bcs(mydata).map(u64_to_db_i64),
+        one_time_price: mydata_one_time_price_from_bcs(mydata).map(u64_to_db_i64),
         encrypted_content_hash: compute_encrypted_content_hash(&mydata.encrypted_data),
     }
 }
@@ -81,13 +90,25 @@ pub(crate) fn enrich_post_from_snapshot(post: &mut NewPost, snapshot: &MyDataPay
     apply_paywall_fields(post, &fields);
 }
 
+fn enrich_post_from_snapshot_for_access_kind(post: &mut NewPost, snapshot: &MyDataPaywallSnapshot) {
+    post.encrypted_content_hash = snapshot.encrypted_content_hash.clone();
+    match post.post_access_kind.as_deref() {
+        Some(POST_ACCESS_KIND_PROFILE_SUB) => {}
+        Some(POST_ACCESS_KIND_MARKETPLACE_ONE_TIME) => {
+            post.requires_subscription = Some(false);
+            post.subscription_price = snapshot.one_time_price;
+        }
+        _ => enrich_post_from_snapshot(post, snapshot),
+    }
+}
+
 pub(crate) fn enrich_post_from_mydata_id(
     post: &mut NewPost,
     mydata_id: &str,
     snapshots: &HashMap<String, MyDataPaywallSnapshot>,
 ) {
     if let Some(snapshot) = snapshots.get(mydata_id) {
-        enrich_post_from_snapshot(post, snapshot);
+        enrich_post_from_snapshot_for_access_kind(post, snapshot);
     }
 }
 
@@ -136,14 +157,24 @@ pub(crate) fn build_checkpoint_mydata_snapshots(
     snapshots
 }
 
+#[derive(Debug, QueryableByName)]
+struct MinPlanPriceRow {
+    #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::BigInt>)]
+    min_price: Option<i64>,
+}
+
 #[derive(Debug, Queryable)]
 struct MyDataPaywallDbRow {
     subscription_price: Option<i64>,
+    one_time_price: Option<i64>,
     encrypted_content_hash: Option<String>,
 }
 
 pub(crate) fn post_paywall_needs_db_fallback(post: &NewPost) -> bool {
-    post.mydata_id.is_some() && post.requires_subscription.is_none()
+    post.mydata_id.is_some()
+        && (post.requires_subscription.is_none()
+            || (post.post_access_kind.as_deref() == Some(POST_ACCESS_KIND_MARKETPLACE_ONE_TIME)
+                && post.subscription_price.is_none()))
 }
 
 pub(crate) async fn enrich_post_paywall_from_db<'a>(
@@ -153,7 +184,7 @@ pub(crate) async fn enrich_post_paywall_from_db<'a>(
     let Some(mydata_id) = post.mydata_id.as_deref() else {
         return Ok(());
     };
-    if !post_paywall_needs_db_fallback(post) {
+    if !post_paywall_needs_db_fallback(post) && post.subscription_price.is_some() {
         return Ok(());
     }
 
@@ -161,6 +192,7 @@ pub(crate) async fn enrich_post_paywall_from_db<'a>(
         .filter(mydata_data::mydata_id.eq(mydata_id))
         .select((
             mydata_data::subscription_price,
+            mydata_data::one_time_price,
             mydata_data::encrypted_content_hash,
         ))
         .first(conn)
@@ -171,8 +203,51 @@ pub(crate) async fn enrich_post_paywall_from_db<'a>(
         return Ok(());
     };
 
-    let fields = paywall_from_mydata(row.subscription_price, row.encrypted_content_hash);
-    apply_paywall_fields(post, &fields);
+    match post.post_access_kind.as_deref() {
+        Some(POST_ACCESS_KIND_PROFILE_SUB) => {
+            if post.encrypted_content_hash.is_none() {
+                post.encrypted_content_hash = row.encrypted_content_hash;
+            }
+        }
+        Some(POST_ACCESS_KIND_MARKETPLACE_ONE_TIME) => {
+            let fields = PostPaywallFields {
+                requires_subscription: Some(false),
+                subscription_price: row.one_time_price,
+                encrypted_content_hash: row.encrypted_content_hash,
+            };
+            apply_paywall_fields(post, &fields);
+        }
+        _ => {
+            let fields = paywall_from_mydata(row.subscription_price, row.encrypted_content_hash);
+            apply_paywall_fields(post, &fields);
+        }
+    }
+    Ok(())
+}
+
+pub(crate) async fn enrich_post_subscription_price_from_db<'a>(
+    post: &mut NewPost,
+    conn: &mut Connection<'a>,
+) -> Result<()> {
+    if post.subscription_price.is_some() {
+        return Ok(());
+    }
+    if post.post_access_kind.as_deref() != Some(POST_ACCESS_KIND_PROFILE_SUB) {
+        return Ok(());
+    }
+    let Some(service_id) = post.subscription_service_id.as_deref() else {
+        return Ok(());
+    };
+    let min_price: Option<i64> = diesel::sql_query(
+        "SELECT MIN(price) AS min_price FROM profile_subscription_plans \
+         WHERE service_id = $1 AND active = true",
+    )
+    .bind::<diesel::sql_types::Text, _>(service_id)
+    .get_result::<MinPlanPriceRow>(conn)
+    .await
+    .optional()?
+    .and_then(|row| row.min_price);
+    post.subscription_price = min_price;
     Ok(())
 }
 

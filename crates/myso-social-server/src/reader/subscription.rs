@@ -1,14 +1,26 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use diesel::sql_types::{BigInt, Integer, Text};
+use diesel::sql_types::{BigInt, Nullable, Text};
 use diesel::OptionalExtension;
 use diesel::QueryableByName;
 use diesel_async::RunQueryDsl;
 use myso_pg_db::Db;
 
 use crate::error::SocialError;
+use crate::reader::social_graph::check_either_profile_blocked;
 use crate::reader::types::*;
+
+fn effective_tier_level(tier_level: Option<i64>) -> i64 {
+    tier_level.unwrap_or(0)
+}
+
+fn tier_satisfies(subscription_tier: Option<i64>, min_tier: Option<i64>) -> bool {
+    match min_tier {
+        None => true,
+        Some(min) => effective_tier_level(subscription_tier) >= min,
+    }
+}
 
 pub(crate) async fn get_profile_subscription_service(
     db: &Db,
@@ -16,7 +28,7 @@ pub(crate) async fn get_profile_subscription_service(
 ) -> Result<Option<ProfileSubscriptionServiceInfo>, SocialError> {
     let mut conn = db.connect().await?;
     let query = "
-        SELECT s.service_id, s.profile_owner, s.profile_id, s.monthly_fee, s.active,
+        SELECT s.service_id, s.profile_owner, s.profile_id, s.plan_count, s.active,
                s.subscriber_count, s.created_at, s.updated_at,
                p.username, p.display_name, p.profile_photo
         FROM profile_subscription_services s
@@ -31,6 +43,42 @@ pub(crate) async fn get_profile_subscription_service(
     Ok(result)
 }
 
+pub(crate) async fn get_profile_subscription_plans_by_service(
+    db: &Db,
+    service_id: &str,
+    active_only: bool,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<ProfileSubscriptionPlanInfo>, SocialError> {
+    let mut conn = db.connect().await?;
+    let query = if active_only {
+        "
+        SELECT plan_id, service_id, title, description, price, duration_ms,
+               tier_level, platform_id, active, created_at, updated_at
+        FROM profile_subscription_plans
+        WHERE service_id = $1 AND active = true
+        ORDER BY tier_level NULLS FIRST, price ASC
+        LIMIT $2 OFFSET $3
+        "
+    } else {
+        "
+        SELECT plan_id, service_id, title, description, price, duration_ms,
+               tier_level, platform_id, active, created_at, updated_at
+        FROM profile_subscription_plans
+        WHERE service_id = $1
+        ORDER BY created_at ASC
+        LIMIT $2 OFFSET $3
+        "
+    };
+    let results = diesel::sql_query(query)
+        .bind::<Text, _>(service_id)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<ProfileSubscriptionPlanInfo>(&mut conn)
+        .await?;
+    Ok(results)
+}
+
 pub(crate) async fn get_profile_subscription_services_by_owner(
     db: &Db,
     profile_owner: &str,
@@ -39,7 +87,7 @@ pub(crate) async fn get_profile_subscription_services_by_owner(
 ) -> Result<Vec<ProfileSubscriptionServiceInfo>, SocialError> {
     let mut conn = db.connect().await?;
     let query = "
-        SELECT s.service_id, s.profile_owner, s.profile_id, s.monthly_fee, s.active,
+        SELECT s.service_id, s.profile_owner, s.profile_id, s.plan_count, s.active,
                s.subscriber_count, s.created_at, s.updated_at,
                p.username, p.display_name, p.profile_photo
         FROM profile_subscription_services s
@@ -66,9 +114,10 @@ pub(crate) async fn get_active_subscriptions_by_subscriber(
     let mut conn = db.connect().await?;
     let now_ms = chrono::Utc::now().timestamp_millis();
     let query = "
-        SELECT sub.subscription_id, sub.service_id, sub.subscriber, sub.created_at,
+        SELECT sub.subscription_id, sub.service_id, sub.plan_id, sub.tier_level, sub.platform_id,
+               sub.price, sub.duration_ms, sub.subscriber, sub.created_at,
                sub.expires_at, sub.auto_renew, sub.renewal_balance, sub.renewal_count,
-               sub.cancelled_at, s.monthly_fee, s.profile_owner,
+               sub.cancelled_at, s.profile_owner,
                p.username, p.display_name
         FROM (
             SELECT DISTINCT ON (subscription_id) *
@@ -97,9 +146,10 @@ pub(crate) async fn get_subscription_by_id(
 ) -> Result<Option<ProfileSubscriptionInfo>, SocialError> {
     let mut conn = db.connect().await?;
     let query = "
-        SELECT sub.subscription_id, sub.service_id, sub.subscriber, sub.created_at,
+        SELECT sub.subscription_id, sub.service_id, sub.plan_id, sub.tier_level, sub.platform_id,
+               sub.price, sub.duration_ms, sub.subscriber, sub.created_at,
                sub.expires_at, sub.auto_renew, sub.renewal_balance, sub.renewal_count,
-               sub.cancelled_at, s.monthly_fee, s.profile_owner,
+               sub.cancelled_at, s.profile_owner,
                p.username, p.display_name
         FROM (
             SELECT * FROM profile_subscriptions
@@ -147,13 +197,25 @@ pub(crate) async fn check_subscription_access(
     db: &Db,
     subscriber: &str,
     service_id: &str,
+    min_tier_level: Option<i64>,
 ) -> Result<bool, SocialError> {
+    if let Some(service) = get_profile_subscription_service(db, service_id).await? {
+        if check_either_profile_blocked(db, subscriber, &service.profile_owner).await? {
+            return Ok(false);
+        }
+    }
+
     let mut conn = db.connect().await?;
     let now_ms = chrono::Utc::now().timestamp_millis();
+    #[derive(QueryableByName)]
+    struct TierRow {
+        #[diesel(sql_type = Nullable<BigInt>)]
+        tier_level: Option<i64>,
+    }
     let query = "
-        SELECT 1 AS _exists
+        SELECT sub.tier_level
         FROM (
-            SELECT DISTINCT ON (subscription_id) subscription_id, expires_at, cancelled_at
+            SELECT DISTINCT ON (subscription_id) subscription_id, expires_at, cancelled_at, tier_level
             FROM profile_subscriptions
             WHERE subscriber = $1 AND service_id = $2
             ORDER BY subscription_id, time DESC
@@ -161,19 +223,16 @@ pub(crate) async fn check_subscription_access(
         WHERE sub.cancelled_at IS NULL AND sub.expires_at > $3
         LIMIT 1
     ";
-    #[derive(QueryableByName)]
-    struct ExistsRow {
-        #[diesel(sql_type = Integer)]
-        _exists: i32,
-    }
     let result = diesel::sql_query(query)
         .bind::<Text, _>(subscriber)
         .bind::<Text, _>(service_id)
         .bind::<BigInt, _>(now_ms)
-        .get_result::<ExistsRow>(&mut conn)
+        .get_result::<TierRow>(&mut conn)
         .await
         .optional()?;
-    Ok(result.is_some())
+    Ok(result
+        .map(|row| tier_satisfies(row.tier_level, min_tier_level))
+        .unwrap_or(false))
 }
 
 pub(crate) async fn list_subscription_services(
@@ -183,7 +242,7 @@ pub(crate) async fn list_subscription_services(
 ) -> Result<Vec<ProfileSubscriptionServiceInfo>, SocialError> {
     let mut conn = db.connect().await?;
     let query = "
-        SELECT s.service_id, s.profile_owner, s.profile_id, s.monthly_fee, s.active,
+        SELECT s.service_id, s.profile_owner, s.profile_id, s.plan_count, s.active,
                s.subscriber_count, s.created_at, s.updated_at,
                p.username, p.display_name, p.profile_photo
         FROM profile_subscription_services s
@@ -278,7 +337,7 @@ pub(crate) async fn get_subscription_configuration(
 ) -> Result<Option<SubscriptionConfigInfo>, SocialError> {
     let mut conn = db.connect().await?;
     let query = "
-        SELECT updated_by, billing_period_ms, max_renewal_months,
+        SELECT updated_by, default_billing_period_ms, max_renewal_months,
                platform_fee_bps, ecosystem_fee_bps,
                non_platform_platform_to_creator_bps, non_platform_platform_to_treasury_bps,
                version, updated_at

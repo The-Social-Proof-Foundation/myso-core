@@ -26,14 +26,16 @@ use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
     NewAiCreditBalance, NewEcosystemTreasury, NewMemoryAccount, NewProfile, NewProfileBadge,
     NewProfileConfig, NewProfileEvent, NewUnifiedRevenue, NewUsernameListing, NewUsernameOffer,
-    NewUsernameSaleFee, NewUsernameRegistry, NewVestingEvent, NewVestingWallet, ProfileUpdateSet,
+    NewUsernameSaleFee, NewUsernameRegistry, NewUsernameReservation, NewVestingEvent,
+    NewVestingWallet, ProfileUpdateSet, USERNAME_RESERVATION_STATUS_ACTIVE,
+    USERNAME_RESERVATION_STATUS_RELEASED,
     REVENUE_TYPE_USERNAME_MARKETPLACE_ECOSYSTEM_FEE, REVENUE_TYPE_USERNAME_MARKETPLACE_SELLER_NET,
     default_profile_config, merge_profile_config,
 };
 use myso_indexer_alt_social_schema::schema::{
     ai_credit_balances, ecosystem_treasury, memory_accounts, profile_badges, profile_config,
     profile_events, profiles, unified_revenue, username_listings, username_offers, username_registry,
-    username_sale_fees, vesting_events,
+    username_reservations, username_sale_fees, vesting_events,
     vesting_wallets,
 };
 
@@ -66,6 +68,14 @@ pub enum ProfileRow {
         username: String,
         new_profile_id: String,
         transaction_id: String,
+    },
+    UsernameReservation(NewUsernameReservation),
+    UsernameReservationRelease {
+        username: String,
+        reason: i16,
+        released_by: String,
+        released_at: i64,
+        release_transaction_id: String,
     },
     ProfileUsernameSet {
         profile_id: String,
@@ -137,6 +147,22 @@ impl ProfileRow {
                 username,
                 new_profile_id,
                 transaction_id,
+            }),
+            crate::handlers::SocialEventRow::UsernameReservation(reservation) => {
+                Some(ProfileRow::UsernameReservation(reservation))
+            }
+            crate::handlers::SocialEventRow::UsernameReservationRelease {
+                username,
+                reason,
+                released_by,
+                released_at,
+                release_transaction_id,
+            } => Some(ProfileRow::UsernameReservationRelease {
+                username,
+                reason,
+                released_by,
+                released_at,
+                release_transaction_id,
             }),
             crate::handlers::SocialEventRow::ProfileUsernameSet {
                 profile_id,
@@ -330,7 +356,9 @@ fn profile_row_commit_pass(row: &ProfileRow) -> u8 {
         ProfileRow::UsernameOffer(_)
         | ProfileRow::UsernameSaleFee(_)
         | ProfileRow::UsernameListing(_)
-        | ProfileRow::UsernameListingStatusUpdate { .. } => COMMIT_PASS_MARKETPLACE,
+        | ProfileRow::UsernameListingStatusUpdate { .. }
+        | ProfileRow::UsernameReservation(_)
+        | ProfileRow::UsernameReservationRelease { .. } => COMMIT_PASS_MARKETPLACE,
         ProfileRow::UsernameRegistryReassign { .. } | ProfileRow::UsernameRegistryDelete { .. } => {
             COMMIT_PASS_REGISTRY_REASSIGN
         }
@@ -754,6 +782,62 @@ async fn commit_profile_row<'a>(row: &ProfileRow, conn: &mut Connection<'a>) -> 
                 .execute(conn)
                 .await?;
         }
+        ProfileRow::UsernameReservation(reservation) => {
+            let existing_tx: Option<String> = username_reservations::table
+                .filter(username_reservations::username.eq(&reservation.username))
+                .filter(username_reservations::reason.eq(reservation.reason))
+                .filter(username_reservations::status.eq(USERNAME_RESERVATION_STATUS_ACTIVE))
+                .select(username_reservations::reserve_transaction_id)
+                .first(conn)
+                .await
+                .optional()?;
+            if let Some(tx) = existing_tx {
+                if tx == reservation.reserve_transaction_id {
+                    // Idempotent replay of the same reserve event.
+                } else {
+                    tracing::warn!(
+                        username = %reservation.username,
+                        reason = reservation.reason,
+                        existing_transaction_id = %tx,
+                        new_transaction_id = %reservation.reserve_transaction_id,
+                        "UsernameReservation active row already exists for username/reason"
+                    );
+                }
+            } else {
+                total += diesel::insert_into(username_reservations::table)
+                    .values(reservation)
+                    .execute(conn)
+                    .await?;
+            }
+        }
+        ProfileRow::UsernameReservationRelease {
+            username,
+            reason,
+            released_by,
+            released_at,
+            release_transaction_id,
+        } => {
+            let updated = diesel::update(username_reservations::table)
+                .filter(username_reservations::username.eq(username))
+                .filter(username_reservations::reason.eq(*reason))
+                .filter(username_reservations::status.eq(USERNAME_RESERVATION_STATUS_ACTIVE))
+                .set((
+                    username_reservations::status.eq(USERNAME_RESERVATION_STATUS_RELEASED),
+                    username_reservations::released_by.eq(released_by),
+                    username_reservations::released_at.eq(*released_at),
+                    username_reservations::release_transaction_id.eq(release_transaction_id),
+                ))
+                .execute(conn)
+                .await?;
+            if updated == 0 {
+                tracing::warn!(
+                    username = %username,
+                    reason = reason,
+                    "UsernameReservationRelease updated 0 rows"
+                );
+            }
+            total += updated;
+        }
         ProfileRow::UsernameListingStatusUpdate {
             username,
             status,
@@ -933,10 +1017,13 @@ mod tests {
     use diesel::OptionalExtension;
     use myso_indexer_alt_social_schema::MIGRATIONS;
     use myso_indexer_alt_social_schema::models::{
-        NewProfile, NewUsernameRegistry, NewUsernameSaleFee,
+        NewProfile, NewUsernameRegistry, NewUsernameSaleFee, USERNAME_RESERVATION_STATUS_ACTIVE,
+        USERNAME_RESERVATION_STATUS_RELEASED,
         REVENUE_TYPE_USERNAME_MARKETPLACE_ECOSYSTEM_FEE, REVENUE_TYPE_USERNAME_MARKETPLACE_SELLER_NET,
     };
-    use myso_indexer_alt_social_schema::schema::{profile_events, profiles, unified_revenue, username_registry};
+    use myso_indexer_alt_social_schema::schema::{
+        profile_events, profiles, unified_revenue, username_registry, username_reservations,
+    };
     use myso_pg_db::temp::TempDb;
     use myso_pg_db::Db;
 
@@ -1389,5 +1476,123 @@ mod tests {
             .await
             .expect("unified revenue row count");
         assert_eq!(unified_row_count, 2);
+    }
+
+    #[tokio::test]
+    async fn username_reservation_commit_tracks_lock_state_without_registry_mutation() {
+        let Some(store) = setup_temp_db().await else {
+            return;
+        };
+
+        let profile_id = addr_hex(41);
+        let owner = addr_hex(42);
+        let reserved_by = addr_hex(43);
+        let mut conn = store.connect().await.expect("connection");
+
+        diesel::insert_into(profiles::table)
+            .values(sample_profile(&owner, &profile_id, "creator1"))
+            .execute(&mut conn)
+            .await
+            .expect("insert profile");
+
+        let reserve_json = serde_json::json!({
+            "username": "locked_name",
+            "reason": 1,
+            "reserved_by": reserved_by,
+        });
+        let release_json = serde_json::json!({
+            "username": "locked_name",
+            "reason": 1,
+            "released_by": reserved_by,
+        });
+
+        let mut reserve_rows = Vec::new();
+        for row in profile::handle_profile_event(
+            "UsernameReservedEvent",
+            &reserve_json,
+            "tx:reserve:0",
+            1_700_000_000_000,
+        )
+        .expect("reserve handler")
+        {
+            if let Some(r) = ProfileRow::from_social(row) {
+                reserve_rows.push(r);
+            }
+        }
+        ProfilesHandler::commit(&reserve_rows, &mut conn)
+            .await
+            .expect("commit reserve rows");
+
+        use diesel::ExpressionMethods;
+        use diesel::QueryDsl;
+        use diesel_async::RunQueryDsl;
+
+        let registry_count: i64 = username_registry::table.count().get_result(&mut conn).await.expect("registry count");
+        assert_eq!(registry_count, 0);
+
+        let profile_username: String = profiles::table
+            .filter(profiles::profile_id.eq(&profile_id))
+            .select(profiles::username)
+            .first(&mut conn)
+            .await
+            .expect("profile username");
+        assert_eq!(profile_username, "creator1");
+
+        let (status, reserve_tx): (String, String) = username_reservations::table
+            .filter(username_reservations::username.eq("locked_name"))
+            .select((
+                username_reservations::status,
+                username_reservations::reserve_transaction_id,
+            ))
+            .first(&mut conn)
+            .await
+            .expect("active reservation");
+        assert_eq!(status, USERNAME_RESERVATION_STATUS_ACTIVE);
+        assert_eq!(reserve_tx, "tx:reserve:0");
+
+        let audit_count: i64 = profile_events::table
+            .filter(profile_events::event_type.eq("UsernameReserved"))
+            .count()
+            .get_result(&mut conn)
+            .await
+            .expect("reserve audit count");
+        assert_eq!(audit_count, 1);
+
+        let mut release_rows = Vec::new();
+        for row in profile::handle_profile_event(
+            "UsernameReleasedEvent",
+            &release_json,
+            "tx:release:0",
+            1_700_000_001_000,
+        )
+        .expect("release handler")
+        {
+            if let Some(r) = ProfileRow::from_social(row) {
+                release_rows.push(r);
+            }
+        }
+        ProfilesHandler::commit(&release_rows, &mut conn)
+            .await
+            .expect("commit release rows");
+
+        let (status, release_tx): (String, Option<String>) = username_reservations::table
+            .filter(username_reservations::username.eq("locked_name"))
+            .select((
+                username_reservations::status,
+                username_reservations::release_transaction_id,
+            ))
+            .first(&mut conn)
+            .await
+            .expect("released reservation");
+        assert_eq!(status, USERNAME_RESERVATION_STATUS_RELEASED);
+        assert_eq!(release_tx.as_deref(), Some("tx:release:0"));
+
+        let release_audit_count: i64 = profile_events::table
+            .filter(profile_events::event_type.eq("UsernameReleased"))
+            .count()
+            .get_result(&mut conn)
+            .await
+            .expect("release audit count");
+        assert_eq!(release_audit_count, 1);
     }
 }

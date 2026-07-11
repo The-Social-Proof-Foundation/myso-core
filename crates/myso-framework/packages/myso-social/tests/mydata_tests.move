@@ -27,6 +27,7 @@ module social_contracts::mydata_tests {
     use social_contracts::profile::{Self, Profile, UsernameRegistry,
         ProfileConfig, EcosystemTreasury};
     use social_contracts::ai_credit::AiCreditConfig;
+    use social_contracts::block_list::{Self, BlockListRegistry};
     use social_contracts::memory::{Self, MemoryRegistry, MemoryAccount, SubAgent, AgenticOrganization,
         MemoryConfig};
     use social_contracts::memory_test_helpers;
@@ -143,25 +144,23 @@ module social_contracts::mydata_tests {
             let mut registry = test_scenario::take_shared<MyDataRegistry>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             
-            mydata::create_and_share(
+            mydata::create_and_share_marketplace_one_time_mydata(
                 &config,
                 &mut registry,
                 string::utf8(b"data"),
                 vector[string::utf8(b"analytics"), string::utf8(b"personal")],
-                option::none<address>(), // platform_id
-                1000, // timestamp_start
-                option::some(2000), // timestamp_end
-                b"encrypted_test_data", // encrypted_data
-                b"encryption_id_123", // encryption_id
-                option::some(100), // one_time_price (100 MYSO)
-                option::some(50), // subscription_price (50 MYSO/month)
-                30, // subscription_duration_days
-                option::some(string::utf8(b"US")), // geographic_region
-                option::some(string::utf8(b"high")), // data_quality
-                option::some(1000), // sample_size
-                option::some(string::utf8(b"automated")), // collection_method
-                true, // is_updating
-                option::some(string::utf8(b"daily")), // update_frequency
+                option::none<address>(),
+                1000,
+                option::some(2000),
+                b"encrypted_test_data",
+                b"encryption_id_123",
+                100,
+                option::some(string::utf8(b"US")),
+                option::some(string::utf8(b"high")),
+                option::some(1000),
+                option::some(string::utf8(b"automated")),
+                true,
+                option::some(string::utf8(b"daily")),
                 &clock,
                 test_scenario::ctx(&mut scenario)
             );
@@ -179,10 +178,8 @@ module social_contracts::mydata_tests {
             assert_eq!(mydata::owner(&mydata), CREATOR);
             assert_eq!(mydata::media_type(&mydata), string::utf8(b"data"));
             assert_eq!(mydata::one_time_price(&mydata), option::some(100));
-            assert_eq!(mydata::subscription_price(&mydata), option::some(50));
-            assert_eq!(mydata::subscription_duration_days(&mydata), 30);
-            assert_eq!(mydata::is_one_time_for_sale(&mydata), true);
-            assert_eq!(mydata::is_subscription_available(&mydata), true);
+            assert_eq!(mydata::requires_marketplace_purchase(&mydata), true);
+            assert_eq!(mydata::requires_profile_subscription_access(&mydata), false);
             
             test_scenario::return_shared(mydata);
         };
@@ -209,6 +206,7 @@ module social_contracts::mydata_tests {
         {
             test_scenario::next_tx(&mut scenario, BUYER);
             let config = test_scenario::take_shared<MyDataConfig>(&scenario);
+            let block_list = test_scenario::take_shared<BlockListRegistry>(&scenario);
             let mut mydata = test_scenario::take_shared<MyData>(&scenario);
             let mut payment = test_scenario::take_from_sender<Coin<myso::myso::MYSO>>(&scenario);
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
@@ -217,6 +215,7 @@ module social_contracts::mydata_tests {
             let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
             mydata::purchase_one_time(
                 &config,
+                &block_list,
                 &memory_config,
                 &mut mydata,
                 &treasury,
@@ -229,6 +228,7 @@ module social_contracts::mydata_tests {
 
             test_scenario::return_shared(treasury);
             test_scenario::return_shared(config);
+            test_scenario::return_shared(block_list);
             test_scenario::return_shared(mydata);
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(memory_config);
@@ -257,7 +257,7 @@ module social_contracts::mydata_tests {
         
         // Setup and create MyData
         init_test_environment(&mut scenario);
-        create_test_mydata(&mut scenario);
+        create_test_recurring_mydata(&mut scenario);
         
         // Give BUYER some coins
         test_scenario::next_tx(&mut scenario, CREATOR);
@@ -270,6 +270,7 @@ module social_contracts::mydata_tests {
         {
             test_scenario::next_tx(&mut scenario, BUYER);
             let config = test_scenario::take_shared<MyDataConfig>(&scenario);
+            let block_list = test_scenario::take_shared<BlockListRegistry>(&scenario);
             let mut mydata = test_scenario::take_shared<MyData>(&scenario);
             let mut payment = test_scenario::take_from_sender<Coin<myso::myso::MYSO>>(&scenario);
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
@@ -278,6 +279,7 @@ module social_contracts::mydata_tests {
             let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
             mydata::purchase_subscription(
                 &config,
+                &block_list,
                 &memory_config,
                 &mut mydata,
                 &treasury,
@@ -290,6 +292,7 @@ module social_contracts::mydata_tests {
 
             test_scenario::return_shared(treasury);
             test_scenario::return_shared(config);
+            test_scenario::return_shared(block_list);
             test_scenario::return_shared(mydata);
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(memory_config);
@@ -325,23 +328,23 @@ module social_contracts::mydata_tests {
         {
             test_scenario::next_tx(&mut scenario, CREATOR);
             let mut mydata = test_scenario::take_shared<MyData>(&scenario);
+            let config = test_scenario::take_shared<MyDataConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             
             mydata::update_pricing(
+                &config,
                 &mut mydata,
-                option::some(150), // new one_time_price
-                option::some(75), // new subscription_price
-                option::some(60), // new subscription_duration_days
+                option::some(150),
+                option::none(),
+                option::none(),
                 &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
-            // Verify pricing was updated
             assert_eq!(mydata::one_time_price(&mydata), option::some(150));
-            assert_eq!(mydata::subscription_price(&mydata), option::some(75));
-            assert_eq!(mydata::subscription_duration_days(&mydata), 60);
             
             test_scenario::return_shared(mydata);
+            test_scenario::return_shared(config);
             test_scenario::return_shared(clock);
         };
         
@@ -458,6 +461,7 @@ module social_contracts::mydata_tests {
         {
             let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
             let config = test_scenario::take_shared<MyDataConfig>(&scenario);
+            let block_list = test_scenario::take_shared<BlockListRegistry>(&scenario);
             let mut mydata = test_scenario::take_shared<MyData>(&scenario);
             let mut payment = test_scenario::take_from_sender<Coin<myso::myso::MYSO>>(&scenario);
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
@@ -465,6 +469,7 @@ module social_contracts::mydata_tests {
             let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
             mydata::purchase_one_time(
                 &config,
+                &block_list,
                 &memory_config,
                 &mut mydata,
                 &treasury,
@@ -477,6 +482,7 @@ module social_contracts::mydata_tests {
 
             test_scenario::return_shared(treasury);
             test_scenario::return_shared(config);
+            test_scenario::return_shared(block_list);
             test_scenario::return_shared(mydata);
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(clock);
@@ -486,12 +492,14 @@ module social_contracts::mydata_tests {
         test_scenario::next_tx(&mut scenario, BUYER);
         {
             let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
+            let block_list = test_scenario::take_shared<BlockListRegistry>(&scenario);
             let mydata = test_scenario::take_shared<MyData>(&scenario);
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             mydata::mydata_approve(
-                &memory_config,
                 b"encryption_id",
+                &block_list,
+                &memory_config,
                 &mydata,
                 &memory_account,
                 &clock,
@@ -499,6 +507,7 @@ module social_contracts::mydata_tests {
             );
 
             test_scenario::return_shared(mydata);
+            test_scenario::return_shared(block_list);
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(clock);
         test_scenario::return_shared(memory_config);
@@ -524,6 +533,7 @@ module social_contracts::mydata_tests {
         {
             let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
             let config = test_scenario::take_shared<MyDataConfig>(&scenario);
+            let block_list = test_scenario::take_shared<BlockListRegistry>(&scenario);
             let mut mydata = test_scenario::take_shared<MyData>(&scenario);
             let mut payment = test_scenario::take_from_sender<Coin<myso::myso::MYSO>>(&scenario);
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
@@ -531,6 +541,7 @@ module social_contracts::mydata_tests {
             let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
             mydata::purchase_one_time(
                 &config,
+                &block_list,
                 &memory_config,
                 &mut mydata,
                 &treasury,
@@ -543,6 +554,7 @@ module social_contracts::mydata_tests {
 
             test_scenario::return_shared(treasury);
             test_scenario::return_shared(config);
+            test_scenario::return_shared(block_list);
             test_scenario::return_shared(mydata);
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(clock);
@@ -552,12 +564,14 @@ module social_contracts::mydata_tests {
         test_scenario::next_tx(&mut scenario, BUYER);
         {
             let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
+            let block_list = test_scenario::take_shared<BlockListRegistry>(&scenario);
             let mydata = test_scenario::take_shared<MyData>(&scenario);
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             mydata::mydata_approve(
-                &memory_config,
                 b"wrong_id",
+                &block_list,
+                &memory_config,
                 &mydata,
                 &memory_account,
                 &clock,
@@ -565,6 +579,7 @@ module social_contracts::mydata_tests {
             );
 
             test_scenario::return_shared(mydata);
+            test_scenario::return_shared(block_list);
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(clock);
         test_scenario::return_shared(memory_config);
@@ -583,12 +598,14 @@ module social_contracts::mydata_tests {
         test_scenario::next_tx(&mut scenario, ANOTHER_USER);
         {
             let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
+            let block_list = test_scenario::take_shared<BlockListRegistry>(&scenario);
             let mydata = test_scenario::take_shared<MyData>(&scenario);
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             mydata::mydata_approve(
-                &memory_config,
                 b"encryption_id",
+                &block_list,
+                &memory_config,
                 &mydata,
                 &memory_account,
                 &clock,
@@ -596,6 +613,7 @@ module social_contracts::mydata_tests {
             );
 
             test_scenario::return_shared(mydata);
+            test_scenario::return_shared(block_list);
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(clock);
         test_scenario::return_shared(memory_config);
@@ -620,6 +638,7 @@ module social_contracts::mydata_tests {
         {
             let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
             let config = test_scenario::take_shared<MyDataConfig>(&scenario);
+            let block_list = test_scenario::take_shared<BlockListRegistry>(&scenario);
             let mut mydata = test_scenario::take_shared<MyData>(&scenario);
             let mut payment = test_scenario::take_from_sender<Coin<myso::myso::MYSO>>(&scenario);
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
@@ -627,6 +646,7 @@ module social_contracts::mydata_tests {
             let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
             mydata::purchase_one_time(
                 &config,
+                &block_list,
                 &memory_config,
                 &mut mydata,
                 &treasury,
@@ -640,6 +660,7 @@ module social_contracts::mydata_tests {
 
             test_scenario::return_shared(treasury);
             test_scenario::return_shared(config);
+            test_scenario::return_shared(block_list);
             test_scenario::return_shared(mydata);
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(clock);
@@ -664,7 +685,7 @@ module social_contracts::mydata_tests {
     fun test_revoke_subscription_buyer_loses_access() {
         let mut scenario = test_scenario::begin(CREATOR);
         init_test_environment(&mut scenario);
-        create_test_mydata(&mut scenario);
+        create_test_recurring_mydata(&mut scenario);
 
         test_scenario::next_tx(&mut scenario, CREATOR);
         {
@@ -676,6 +697,7 @@ module social_contracts::mydata_tests {
         {
             let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
             let config = test_scenario::take_shared<MyDataConfig>(&scenario);
+            let block_list = test_scenario::take_shared<BlockListRegistry>(&scenario);
             let mut mydata = test_scenario::take_shared<MyData>(&scenario);
             let mut payment = test_scenario::take_from_sender<Coin<myso::myso::MYSO>>(&scenario);
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
@@ -683,6 +705,7 @@ module social_contracts::mydata_tests {
             let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
             mydata::purchase_subscription(
                 &config,
+                &block_list,
                 &memory_config,
                 &mut mydata,
                 &treasury,
@@ -696,6 +719,7 @@ module social_contracts::mydata_tests {
 
             test_scenario::return_shared(treasury);
             test_scenario::return_shared(config);
+            test_scenario::return_shared(block_list);
             test_scenario::return_shared(mydata);
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(clock);
@@ -733,6 +757,7 @@ module social_contracts::mydata_tests {
         {
             let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
             let config = test_scenario::take_shared<MyDataConfig>(&scenario);
+            let block_list = test_scenario::take_shared<BlockListRegistry>(&scenario);
             let mut mydata = test_scenario::take_shared<MyData>(&scenario);
             let mut payment = test_scenario::take_from_sender<Coin<myso::myso::MYSO>>(&scenario);
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
@@ -740,6 +765,7 @@ module social_contracts::mydata_tests {
             let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
             mydata::purchase_one_time(
                 &config,
+                &block_list,
                 &memory_config,
                 &mut mydata,
                 &treasury,
@@ -752,6 +778,7 @@ module social_contracts::mydata_tests {
 
             test_scenario::return_shared(treasury);
             test_scenario::return_shared(config);
+            test_scenario::return_shared(block_list);
             test_scenario::return_shared(mydata);
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(clock);
@@ -770,12 +797,14 @@ module social_contracts::mydata_tests {
         test_scenario::next_tx(&mut scenario, BUYER);
         {
             let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
+            let block_list = test_scenario::take_shared<BlockListRegistry>(&scenario);
             let mydata = test_scenario::take_shared<MyData>(&scenario);
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             mydata::mydata_approve(
-                &memory_config,
                 b"encryption_id",
+                &block_list,
+                &memory_config,
                 &mydata,
                 &memory_account,
                 &clock,
@@ -783,6 +812,7 @@ module social_contracts::mydata_tests {
             );
 
             test_scenario::return_shared(mydata);
+            test_scenario::return_shared(block_list);
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(clock);
         test_scenario::return_shared(memory_config);
@@ -817,11 +847,13 @@ module social_contracts::mydata_tests {
 
         {
             test_scenario::next_tx(&mut scenario, CREATOR);
+            let config = test_scenario::take_shared<MyDataConfig>(&scenario);
             let admin = test_scenario::take_from_sender<MyDataPoolAdminCap>(&scenario);
             let mut pool_registry = test_scenario::take_shared<MyDataPoolRegistry>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
 
             mydata::create_broad_pool(
+                &config,
                 &admin,
                 &mut pool_registry,
                 string::utf8(b"coffee_pool"),
@@ -830,6 +862,7 @@ module social_contracts::mydata_tests {
             );
 
             test_scenario::return_to_sender(&scenario, admin);
+            test_scenario::return_shared(config);
             test_scenario::return_shared(pool_registry);
             test_scenario::return_shared(clock);
         };
@@ -844,11 +877,13 @@ module social_contracts::mydata_tests {
 
         {
             test_scenario::next_tx(&mut scenario, CREATOR);
+            let config = test_scenario::take_shared<MyDataConfig>(&scenario);
             let admin = test_scenario::take_from_sender<MyDataPoolAdminCap>(&scenario);
             let mut pool_registry = test_scenario::take_shared<MyDataPoolRegistry>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
 
             mydata::create_broad_pool(
+                &config,
                 &admin,
                 &mut pool_registry,
                 string::utf8(b"coffee_pool"),
@@ -861,6 +896,7 @@ module social_contracts::mydata_tests {
             let broad_pool_id = mydata::broad_pool_id(option::borrow(&broad_pool));
 
             mydata::create_sub_pool(
+                &config,
                 &admin,
                 &mut pool_registry,
                 broad_pool_id,
@@ -871,6 +907,7 @@ module social_contracts::mydata_tests {
             );
 
             test_scenario::return_to_sender(&scenario, admin);
+            test_scenario::return_shared(config);
             test_scenario::return_shared(pool_registry);
             test_scenario::return_shared(clock);
         };
@@ -886,12 +923,14 @@ module social_contracts::mydata_tests {
 
         {
             test_scenario::next_tx(&mut scenario, CREATOR);
+            let config = test_scenario::take_shared<MyDataConfig>(&scenario);
             let admin = test_scenario::take_from_sender<MyDataPoolAdminCap>(&scenario);
             let mut pool_registry = test_scenario::take_shared<MyDataPoolRegistry>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             let mydata = test_scenario::take_shared<MyData>(&scenario);
 
             mydata::create_broad_pool(
+                &config,
                 &admin,
                 &mut pool_registry,
                 string::utf8(b"test_pool"),
@@ -903,6 +942,7 @@ module social_contracts::mydata_tests {
             let broad_pool_id = mydata::broad_pool_id(option::borrow(&broad_pool));
 
             mydata::create_sub_pool(
+                &config,
                 &admin,
                 &mut pool_registry,
                 broad_pool_id,
@@ -914,6 +954,7 @@ module social_contracts::mydata_tests {
 
             let sub_pool_id = mydata::last_created_sub_pool_id(&pool_registry);
             mydata::assign_mydata_to_pools(
+                &config,
                 &mydata,
                 &mut pool_registry,
                 vector[sub_pool_id],
@@ -927,6 +968,7 @@ module social_contracts::mydata_tests {
             assert!(vector::length(option::borrow(&sub_pools)) == 1, 0);
 
             test_scenario::return_to_sender(&scenario, admin);
+            test_scenario::return_shared(config);
             test_scenario::return_shared(pool_registry);
             test_scenario::return_shared(mydata);
             test_scenario::return_shared(clock);
@@ -960,19 +1002,22 @@ module social_contracts::mydata_tests {
         test_scenario::next_tx(&mut scenario, AGENT_ADDR);
         {
             let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
+            let block_list = test_scenario::take_shared<BlockListRegistry>(&scenario);
             let mydata = test_scenario::take_shared<MyData>(&scenario);
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
 
             mydata::mydata_approve(
-                &memory_config,
                 b"encryption_id",
+                &block_list,
+                &memory_config,
                 &mydata,
                 &memory_account,
                 &clock,
                 test_scenario::ctx(&mut scenario),
             );
             test_scenario::return_shared(mydata);
+            test_scenario::return_shared(block_list);
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(clock);
         test_scenario::return_shared(memory_config);
@@ -1007,19 +1052,22 @@ module social_contracts::mydata_tests {
         test_scenario::next_tx(&mut scenario, AGENT_ADDR);
         {
             let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
+            let block_list = test_scenario::take_shared<BlockListRegistry>(&scenario);
             let mydata = test_scenario::take_shared<MyData>(&scenario);
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
 
             mydata::mydata_approve(
-                &memory_config,
                 b"encryption_id",
+                &block_list,
+                &memory_config,
                 &mydata,
                 &memory_account,
                 &clock,
                 test_scenario::ctx(&mut scenario),
             );
             test_scenario::return_shared(mydata);
+            test_scenario::return_shared(block_list);
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(clock);
         test_scenario::return_shared(memory_config);
@@ -1061,6 +1109,7 @@ module social_contracts::mydata_tests {
         {
             let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
             let config = test_scenario::take_shared<MyDataConfig>(&scenario);
+            let block_list = test_scenario::take_shared<BlockListRegistry>(&scenario);
             let mut mydata = test_scenario::take_shared<MyData>(&scenario);
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let mut payment = test_scenario::take_from_sender<Coin<myso::myso::MYSO>>(&scenario);
@@ -1069,6 +1118,7 @@ module social_contracts::mydata_tests {
             let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
             mydata::purchase_one_time(
                 &config,
+                &block_list,
                 &memory_config,
                 &mut mydata,
                 &treasury,
@@ -1080,6 +1130,7 @@ module social_contracts::mydata_tests {
             finish_purchase_payment(payment, AGENT_ADDR);
             test_scenario::return_shared(treasury);
             test_scenario::return_shared(config);
+            test_scenario::return_shared(block_list);
             test_scenario::return_shared(mydata);
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(clock);
@@ -1097,6 +1148,7 @@ module social_contracts::mydata_tests {
         {
             let clock = clock::create_for_testing(test_scenario::ctx(scenario));
             mydata::test_init(&clock, test_scenario::ctx(scenario));
+            block_list::test_init(&clock, test_scenario::ctx(scenario));
 
             profile::init_for_testing(&clock, test_scenario::ctx(scenario));
             clock::share_for_testing(clock);
@@ -1148,6 +1200,41 @@ module social_contracts::mydata_tests {
         };
     }
     
+    fun create_test_recurring_mydata(scenario: &mut test_scenario::Scenario) {
+        test_scenario::next_tx(scenario, CREATOR);
+        {
+            let config = test_scenario::take_shared<MyDataConfig>(scenario);
+            let mut registry = test_scenario::take_shared<MyDataRegistry>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+
+            mydata::create_and_share_marketplace_recurring_mydata(
+                &config,
+                &mut registry,
+                string::utf8(b"data"),
+                vector[string::utf8(b"recurring")],
+                option::none<address>(),
+                1000,
+                option::none<u64>(),
+                b"encrypted_recurring_data",
+                b"encryption_recurring",
+                100,
+                30,
+                option::none<string::String>(),
+                option::none<string::String>(),
+                option::none<u64>(),
+                option::none<string::String>(),
+                false,
+                option::none<string::String>(),
+                &clock,
+                test_scenario::ctx(scenario)
+            );
+
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(clock);
+        };
+    }
+
     fun create_test_mydata(scenario: &mut test_scenario::Scenario) {
         test_scenario::next_tx(scenario, CREATOR);
         {
@@ -1155,25 +1242,23 @@ module social_contracts::mydata_tests {
             let mut registry = test_scenario::take_shared<MyDataRegistry>(scenario);
             let clock = test_scenario::take_shared<Clock>(scenario);
             
-            mydata::create_and_share(
+            mydata::create_and_share_marketplace_one_time_mydata(
                 &config,
                 &mut registry,
                 string::utf8(b"data"),
                 vector[string::utf8(b"test")],
-                option::none<address>(), // platform_id
-                1000, // timestamp_start
-                option::none<u64>(), // timestamp_end
-                b"encrypted_data", // encrypted_data
-                b"encryption_id", // encryption_id
-                option::some(100), // one_time_price
-                option::some(50), // subscription_price
-                30, // subscription_duration_days
-                option::none<string::String>(), // geographic_region
-                option::none<string::String>(), // data_quality
-                option::none<u64>(), // sample_size
-                option::none<string::String>(), // collection_method
-                false, // is_updating
-                option::none<string::String>(), // update_frequency
+                option::none<address>(),
+                1000,
+                option::none<u64>(),
+                b"encrypted_data",
+                b"encryption_id",
+                100,
+                option::none<string::String>(),
+                option::none<string::String>(),
+                option::none<u64>(),
+                option::none<string::String>(),
+                false,
+                option::none<string::String>(),
                 &clock,
                 test_scenario::ctx(scenario)
             );
@@ -1183,4 +1268,4 @@ module social_contracts::mydata_tests {
             test_scenario::return_shared(clock);
         };
     }
-} 
+}

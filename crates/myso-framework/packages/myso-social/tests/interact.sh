@@ -418,59 +418,79 @@ subscription_menu() {
 
 subscription_create_service() {
     read -r -p "Profile object ID: " profile_id
-    read -r -p "monthly_fee (MIST): " fee
     read -r -p "Clock [${CLOCK_ID}]: " clk
     clk="${clk:-$CLOCK_ID}"
     myso client call --package "$PACKAGE_ID" --module subscription --function create_profile_service_entry \
-        --args "@${profile_id}" "$fee" "@${clk}" --gas-budget "$GAS_BUDGET"
+        --args "@${profile_id}" "@${clk}" --gas-budget "$GAS_BUDGET"
+    press_enter
+    subscription_menu
+}
+
+subscription_create_plan() {
+    read -r -p "SubscriptionConfig: " cfg
+    read -r -p "ProfileSubscriptionService: " svc
+    read -r -p "title: " title
+    read -r -p "price (MIST): " price
+    read -r -p "duration_ms: " duration_ms
+    read -r -p "Clock [${CLOCK_ID}]: " clk
+    clk="${clk:-$CLOCK_ID}"
+    myso client call --package "$PACKAGE_ID" --module subscription --function create_subscription_plan \
+        --args "@${cfg}" "@${svc}" "\"${title}\"" none "$price" "$duration_ms" none none "@${clk}" --gas-budget "$GAS_BUDGET"
     press_enter
     subscription_menu
 }
 
 subscription_subscribe() {
+    read -r -p "BlockListRegistry [${BLOCK_LIST_REGISTRY_ID:-}]: " blr
+    blr="${blr:-$BLOCK_LIST_REGISTRY_ID}"
     read -r -p "SubscriptionConfig: " cfg
     read -r -p "ProfileSubscriptionService: " svc
+    read -r -p "Plan ID: " plan_id
     read -r -p "EcosystemTreasury: " tre
     read -r -p "Payment coin object: " coin
     read -r -p "auto_renew (true/false): " ar
-    read -r -p "renewal_months: " rm
+    read -r -p "renewal_periods: " rm
     read -r -p "Clock [${CLOCK_ID}]: " clk
     clk="${clk:-$CLOCK_ID}"
     myso client call --package "$PACKAGE_ID" --module subscription --function subscribe_to_profile \
-        --args "@${cfg}" "@${svc}" "@${tre}" "$coin" "$ar" "$rm" "@${clk}" --gas-budget "$GAS_BUDGET"
+        --args "@${blr}" "@${cfg}" "@${svc}" "@${plan_id}" "@${tre}" "$coin" "$ar" "$rm" "@${clk}" --gas-budget "$GAS_BUDGET"
     press_enter
     subscription_menu
 }
 
 subscription_enable_post_gate() {
-    read -r -p "Post object ID: " post_id
-    read -r -p "ProfileSubscriptionService: " svc
-    myso client call --package "$PACKAGE_ID" --module post --function enable_post_subscription_gate \
-        --args "@${post_id}" "@${svc}" --gas-budget "$GAS_BUDGET"
+    echo "PostSubscriptionGate was removed. Create posts with PostAccess at creation time:" >&2
+    echo "  post::create_profile_subscription_post (plaintext or optional mydata_id)" >&2
+    echo "  post::create_profile_subscription_post_with_mydata (encrypted + MyData in same PTB)" >&2
+    echo "  post::create_marketplace_one_time_post (one-time purchase + MyData in same PTB)" >&2
     press_enter
     subscription_menu
 }
 
 subscription_assert_view() {
+    read -r -p "BlockListRegistry [${BLOCK_LIST_REGISTRY_ID:-}]: " blr
+    blr="${blr:-$BLOCK_LIST_REGISTRY_ID}"
     read -r -p "Post object ID: " post_id
     read -r -p "ProfileSubscriptionService: " svc
     read -r -p "ProfileSubscription: " sub
     read -r -p "Clock [${CLOCK_ID}]: " clk
     clk="${clk:-$CLOCK_ID}"
     myso client call --package "$PACKAGE_ID" --module post --function assert_can_view_post \
-        --args "@${post_id}" "@${svc}" "@${sub}" "@${clk}" --gas-budget "$GAS_BUDGET"
+        --args "@${blr}" "@${post_id}" "@${svc}" "@${sub}" "@${clk}" --gas-budget "$GAS_BUDGET"
     press_enter
     subscription_menu
 }
 
 subscription_record_view() {
+    read -r -p "BlockListRegistry [${BLOCK_LIST_REGISTRY_ID:-}]: " blr
+    blr="${blr:-$BLOCK_LIST_REGISTRY_ID}"
     read -r -p "Post object ID: " post_id
     read -r -p "ProfileSubscriptionService: " svc
     read -r -p "ProfileSubscription: " sub
     read -r -p "Clock [${CLOCK_ID}]: " clk
     clk="${clk:-$CLOCK_ID}"
     myso client call --package "$PACKAGE_ID" --module post --function record_post_subscription_view \
-        --args "@${post_id}" "@${svc}" "@${sub}" "@${clk}" --gas-budget "$GAS_BUDGET"
+        --args "@${blr}" "@${post_id}" "@${svc}" "@${sub}" "@${clk}" --gas-budget "$GAS_BUDGET"
     press_enter
     subscription_menu
 }
@@ -782,7 +802,7 @@ unfollow_user() {
 
 ip_menu() {
     print_header "MyData Menu"
-    echo "1. create_and_share (public entry)"
+    echo "1. create_and_share_* (AccessConfiguration variant)"
     echo "2. Back to Main Menu"
     echo ""
     read -r -p "Select an option [1-2]: " choice
@@ -795,7 +815,12 @@ ip_menu() {
 }
 
 mydata_create_and_share() {
-    print_header "mydata::create_and_share"
+    print_header "mydata::create_and_share_* (AccessConfiguration variants)"
+    echo "  1) profile_subscription (no marketplace pricing)"
+    echo "  2) marketplace_one_time"
+    echo "  3) marketplace_recurring"
+    read -r -p "Variant [2]: " variant
+    variant="${variant:-2}"
     read -r -p "MyDataConfig shared object ID [${MYDATA_CONFIG_ID:-}]: " cfg_id
     cfg_id="${cfg_id:-$MYDATA_CONFIG_ID}"
     read -r -p "MyDataRegistry (mutable) ID [${MYDATA_REGISTRY_ID:-}]: " reg_id
@@ -834,20 +859,24 @@ mydata_create_and_share() {
     print_info "Using vector[] placeholders for encrypted_data/encryption_id; edit PTB manually for real payloads."
     EDATA="vector[]"
     EID="vector[]"
-    read -r -p "one_time_price optional u64 (empty none): " otp
-    if [ -z "$otp" ]; then
-        OTP_ARG="none"
-    else
-        OTP_ARG="some($otp)"
-    fi
-    read -r -p "subscription_price optional (empty none): " sp
-    if [ -z "$sp" ]; then
-        SP_ARG="none"
-    else
-        SP_ARG="some($sp)"
-    fi
-    read -r -p "subscription_duration_days (u64): " sdd
-    sdd="${sdd:-0}"
+    local price_arg duration_arg fn
+    case "$variant" in
+        1)
+            fn="create_and_share_profile_subscription_mydata"
+            ;;
+        3)
+            fn="create_and_share_marketplace_recurring_mydata"
+            read -r -p "recurring price u64: " price_arg
+            price_arg="${price_arg:-100}"
+            read -r -p "subscription_duration_days u64: " duration_arg
+            duration_arg="${duration_arg:-30}"
+            ;;
+        *)
+            fn="create_and_share_marketplace_one_time_mydata"
+            read -r -p "one_time_price u64: " price_arg
+            price_arg="${price_arg:-100}"
+            ;;
+    esac
     read -r -p "geographic_region (optional, empty none): " gr
     if [ -z "$gr" ]; then
         GR_ARG="none"
@@ -891,29 +920,71 @@ mydata_create_and_share() {
         return
     fi
 
-    print_info "Calling mydata::create_and_share ..."
-    myso client call --package "$PACKAGE_ID" --module mydata --function create_and_share \
-        --args \
-        "$cfg_id" \
-        "$reg_id" \
-        "$(literal_move_string "$media_type")" \
-        "$TAGS_ARG" \
-        "$PLAT_ARG" \
-        "$ts" \
-        "$TE_ARG" \
-        "$EDATA" \
-        "$EID" \
-        "$OTP_ARG" \
-        "$SP_ARG" \
-        "$sdd" \
-        "$GR_ARG" \
-        "$DQ_ARG" \
-        "$SSA" \
-        "$CM_ARG" \
-        "$iu" \
-        "$UF_ARG" \
-        "$CLOCK_ID" \
-        --gas-budget "$GAS_BUDGET"
+    print_info "Calling mydata::${fn} ..."
+    if [[ "$fn" == "create_and_share_marketplace_recurring_mydata" ]]; then
+        myso client call --package "$PACKAGE_ID" --module mydata --function "$fn" \
+            --args \
+            "$cfg_id" \
+            "$reg_id" \
+            "$(literal_move_string "$media_type")" \
+            "$TAGS_ARG" \
+            "$PLAT_ARG" \
+            "$ts" \
+            "$TE_ARG" \
+            "$EDATA" \
+            "$EID" \
+            "$price_arg" \
+            "$duration_arg" \
+            "$GR_ARG" \
+            "$DQ_ARG" \
+            "$SSA" \
+            "$CM_ARG" \
+            "$iu" \
+            "$UF_ARG" \
+            "$CLOCK_ID" \
+            --gas-budget "$GAS_BUDGET"
+    elif [[ "$fn" == "create_and_share_marketplace_one_time_mydata" ]]; then
+        myso client call --package "$PACKAGE_ID" --module mydata --function "$fn" \
+            --args \
+            "$cfg_id" \
+            "$reg_id" \
+            "$(literal_move_string "$media_type")" \
+            "$TAGS_ARG" \
+            "$PLAT_ARG" \
+            "$ts" \
+            "$TE_ARG" \
+            "$EDATA" \
+            "$EID" \
+            "$price_arg" \
+            "$GR_ARG" \
+            "$DQ_ARG" \
+            "$SSA" \
+            "$CM_ARG" \
+            "$iu" \
+            "$UF_ARG" \
+            "$CLOCK_ID" \
+            --gas-budget "$GAS_BUDGET"
+    else
+        myso client call --package "$PACKAGE_ID" --module mydata --function "$fn" \
+            --args \
+            "$cfg_id" \
+            "$reg_id" \
+            "$(literal_move_string "$media_type")" \
+            "$TAGS_ARG" \
+            "$PLAT_ARG" \
+            "$ts" \
+            "$TE_ARG" \
+            "$EDATA" \
+            "$EID" \
+            "$GR_ARG" \
+            "$DQ_ARG" \
+            "$SSA" \
+            "$CM_ARG" \
+            "$iu" \
+            "$UF_ARG" \
+            "$CLOCK_ID" \
+            --gas-budget "$GAS_BUDGET"
+    fi
 
     print_success "Submitted."
     press_enter
@@ -1629,9 +1700,10 @@ EOF
 #
 # Subscription & MyData platform/ecosystem fees (post-upgrade):
 #   1. Call subscription::migrate_config and mydata::migrate_config on shared configs.
-#   2. Client entry functions now require &EcosystemTreasury on payment paths:
-#        subscription::{subscribe_to_profile,renew_subscription,auto_renew_subscription}
-#        mydata::{purchase_one_time,purchase_subscription,claim}
+#   2. Client entry functions now require &BlockListRegistry (first) and &EcosystemTreasury on payment paths:
+#        subscription::{subscribe_to_profile,renew_subscription,auto_renew_subscription,fund_renewal_balance}
+#        post::{assert_can_view_post,record_post_subscription_view}
+#        mydata::{mydata_approve_profile_subscription,purchase_one_time,purchase_subscription,claim}
 #   3. Optional platform routing via *_with_platform variants:
 #        subscription::{subscribe_to_profile_with_platform,...}
 #        mydata::{purchase_one_time_with_platform,purchase_subscription_with_platform,claim_with_platform}

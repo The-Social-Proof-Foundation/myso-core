@@ -263,6 +263,18 @@ pub async fn get_mydata_merkle_root(
     Ok(Json(data))
 }
 
+pub async fn get_mydata_snapshot_escrow(
+    State(state): State<Arc<AppState>>,
+    Path(snapshot_id): Path<String>,
+) -> Result<Json<crate::reader::MyDataSnapshotEscrowInfo>, SocialError> {
+    let data = state
+        .reader
+        .get_mydata_snapshot_escrow(&snapshot_id)
+        .await?
+        .ok_or_else(|| SocialError::not_found(format!("snapshot escrow '{}'", snapshot_id)))?;
+    Ok(Json(data))
+}
+
 pub async fn list_mydata_claims_for_snapshot(
     State(state): State<Arc<AppState>>,
     Path(snapshot_id): Path<String>,

@@ -219,9 +219,13 @@ pub(crate) struct SocialAttribution {
 
 impl SocialAttribution {
     pub(crate) fn from_post(owner: &str, row: &myso_indexer_alt_social_reader::PostRow) -> Self {
+        let actor = row
+            .actor_address
+            .clone()
+            .unwrap_or_else(|| owner.to_string());
         Self {
             inner: SocialAttributionRow::from_parts(
-                row.actor_address.clone(),
+                Some(actor),
                 row.sub_agent_id.clone(),
                 row.action_identity_class,
                 None,

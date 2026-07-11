@@ -1,6 +1,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use super::access::{self, mydata_access_kind_from_json};
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
     NewMyDataAccessLog, NewMyDataBroadPool, NewMyDataClaim, NewMyDataConfig, NewMyDataData,
@@ -95,6 +96,10 @@ pub fn handle_mydata_event(
         "DistributionRecordedEvent" => process_query_distribution_recorded(data, event_id),
         "MerkleRootPublishedEvent" => process_query_merkle_root_published(data, event_id),
         "ClaimExecutedEvent" => process_query_claim_executed(data, event_id),
+        "SnapshotEscrowFundedEvent" => process_snapshot_escrow_funded(data, event_id),
+        "SnapshotEscrowReclaimedEvent" => process_snapshot_escrow_reclaimed(data, event_id),
+        "MyDataPricingUpdatedEvent" => process_mydata_pricing_updated(data, &transaction_id),
+        "MyDataContentUpdatedEvent" => process_mydata_content_updated(data, &transaction_id),
         _ => None,
     }
 }
@@ -136,8 +141,16 @@ fn process_mydata_created_event(
     let owner = data.get("owner")?.as_str()?.to_string();
     let media_type = data.get("media_type")?.as_str()?.to_string();
     let platform_id = json_opt_string_field(data, "platform_id");
-    let one_time_price = json_opt_i64_field(data, "one_time_price");
-    let subscription_price = json_opt_i64_field(data, "subscription_price");
+    let access_configuration_kind = mydata_access_kind_from_json(data);
+    let (one_time_price, subscription_price) = match access_configuration_kind.as_deref() {
+        Some(access::ACCESS_CONFIG_KIND_ONE_TIME) => {
+            (json_opt_i64_field(data, "one_time_price"), None)
+        }
+        Some(access::ACCESS_CONFIG_KIND_RECURRING) => {
+            (None, json_opt_i64_field(data, "subscription_price"))
+        }
+        _ => (None, None),
+    };
     let created_at = json_to_i64(data.get("created_at")?);
 
     let new_data = NewMyDataData {
@@ -152,6 +165,7 @@ fn process_mydata_created_event(
         last_updated: json_opt_i64_field(data, "last_updated").unwrap_or(created_at),
         one_time_price,
         subscription_price,
+        access_configuration_kind,
         subscription_duration_days: json_opt_i64_field(data, "subscription_duration_days")
             .unwrap_or(30),
         geographic_region: json_opt_string_field(data, "geographic_region"),
@@ -349,6 +363,14 @@ fn process_mydata_config_updated_event(
     let max_subscription_days = json_to_i64(data.get("max_subscription_days")?);
     let max_free_access_grants = json_to_i64(data.get("max_free_access_grants")?);
     let max_encryption_id_bytes = json_to_i64(data.get("max_encryption_id_bytes")?);
+    let max_encrypted_data_bytes = data.get("max_encrypted_data_bytes").map(json_to_i64).unwrap_or(262_144);
+    let max_tag_bytes = data.get("max_tag_bytes").map(json_to_i64).unwrap_or(64);
+    let max_metadata_bytes = data.get("max_metadata_bytes").map(json_to_i64).unwrap_or(1_024);
+    let max_payment_reference_bytes = data.get("max_payment_reference_bytes").map(json_to_i64).unwrap_or(256);
+    let max_pool_assignments = data.get("max_pool_assignments").map(json_to_i64).unwrap_or(32);
+    let max_merkle_proof_depth = data.get("max_merkle_proof_depth").map(json_to_i64).unwrap_or(64);
+    let max_paid_access_entries = data.get("max_paid_access_entries").map(json_to_i64).unwrap_or(100_000);
+    let default_claim_window_ms = data.get("default_claim_window_ms").map(json_to_i64).unwrap_or(2_592_000_000);
     let p2p_platform_fee_bps = data
         .get("p2p_platform_fee_bps")
         .map(json_to_i64)
@@ -386,6 +408,14 @@ fn process_mydata_config_updated_event(
         max_subscription_days,
         max_free_access_grants,
         max_encryption_id_bytes,
+        max_encrypted_data_bytes,
+        max_tag_bytes,
+        max_metadata_bytes,
+        max_payment_reference_bytes,
+        max_pool_assignments,
+        max_merkle_proof_depth,
+        max_paid_access_entries,
+        default_claim_window_ms,
         p2p_platform_fee_bps,
         p2p_ecosystem_fee_bps,
         mydata_marketplace_platform_fee_bps,
@@ -407,10 +437,12 @@ fn process_query_broad_pool_created(
     let transaction_id = event_id.split(':').next()?.to_string();
     let pool_id = data.get("pool_id")?.as_str()?.to_string();
     let name = data.get("name")?.as_str()?.to_string();
+    let platform_address = json_opt_string_field(data, "platform_id");
     let created_at_ms = json_to_i64(data.get("created_at")?);
     Some(vec![SocialEventRow::MyDataBroadPool(NewMyDataBroadPool {
         pool_id,
         name,
+        platform_address,
         created_at_ms,
         event_id: event_id.to_string(),
         transaction_id,
@@ -472,6 +504,17 @@ fn process_query_snapshot_anchor_recorded(
     let price_paid = price_raw
         .as_i64()
         .or_else(|| price_raw.as_u64().map(u64_to_db_i64))?;
+    let source_pool_id = data
+        .get("source_pool_id")
+        .and_then(|v| v.as_str())
+        .unwrap_or_default()
+        .to_string();
+    let source_sub_pool_id = data
+        .get("source_sub_pool_id")
+        .and_then(|v| v.as_str())
+        .unwrap_or_default()
+        .to_string();
+    let platform_address = json_opt_string_field(data, "platform_id");
     let created_at_ms = json_to_i64(data.get("created_at")?);
     let manifest_hash = data
         .get("manifest_hash")
@@ -481,18 +524,28 @@ fn process_query_snapshot_anchor_recorded(
         .get("payment_reference")
         .and_then(|v| v.as_str())
         .map(String::from);
-    Some(vec![SocialEventRow::MyDataSnapshotAnchor(
-        NewMyDataSnapshotAnchor {
+    Some(vec![
+        SocialEventRow::MyDataSnapshotAnchor(NewMyDataSnapshotAnchor {
             snapshot_id,
             buyer_address,
             price_paid,
+            source_pool_id,
+            source_sub_pool_id,
+            platform_address,
+            initial_escrow: price_paid,
             created_at_ms,
             event_id: event_id.to_string(),
             transaction_id,
             manifest_hash,
             payment_reference,
+        }),
+        SocialEventRow::MyDataEscrowCreated {
+            snapshot_id: data.get("snapshot_id")?.as_str()?.to_string(),
+            amount: price_paid,
+            updated_at_ms: created_at_ms,
+            transaction_id: event_id.split(':').next()?.to_string(),
         },
-    )])
+    ])
 }
 
 fn process_query_distribution_recorded(
@@ -510,18 +563,28 @@ fn process_query_distribution_recorded(
         .as_i64()
         .or_else(|| count_raw.as_u64().map(u64_to_db_i64))?;
     let merkle_root = data.get("merkle_root")?.as_str()?.to_string();
+    let platform_address = json_opt_string_field(data, "platform_id");
+    let claim_deadline_ms = data.get("claim_deadline_ms").map(json_to_i64).unwrap_or(0);
     let published_at_ms = json_to_i64(data.get("published_at")?);
-    Some(vec![SocialEventRow::MyDataDistributionRound(
-        NewMyDataDistributionRound {
+    Some(vec![
+        SocialEventRow::MyDataDistributionRound(NewMyDataDistributionRound {
             snapshot_id,
             total_amount,
             contributor_count,
             merkle_root,
+            platform_address,
+            claim_deadline_ms,
             published_at_ms,
             event_id: event_id.to_string(),
             transaction_id,
+        }),
+        SocialEventRow::MyDataEscrowPublished {
+            snapshot_id: data.get("snapshot_id")?.as_str()?.to_string(),
+            claim_deadline_ms,
+            updated_at_ms: published_at_ms,
+            transaction_id: event_id.split(':').next()?.to_string(),
         },
-    )])
+    ])
 }
 
 fn process_query_merkle_root_published(
@@ -572,8 +635,9 @@ fn process_query_claim_executed(
         .unwrap_or(gross_amount - platform_fee - ecosystem_fee);
     let platform_id = json_opt_string_field(data, "platform_id");
     let claimed_at_ms = json_to_i64(data.get("claimed_at")?);
-    Some(vec![SocialEventRow::MyDataClaim(NewMyDataClaim {
-        snapshot_id,
+    Some(vec![
+        SocialEventRow::MyDataClaim(NewMyDataClaim {
+        snapshot_id: snapshot_id.clone(),
         claimant,
         amount: gross_amount,
         gross_amount,
@@ -584,7 +648,57 @@ fn process_query_claim_executed(
         claimed_at_ms,
         event_id: event_id.to_string(),
         transaction_id,
-    })])
+        }),
+        SocialEventRow::MyDataEscrowClaimed {
+            snapshot_id,
+            amount: gross_amount,
+            updated_at_ms: claimed_at_ms,
+            transaction_id: event_id.split(':').next()?.to_string(),
+        },
+    ])
+}
+
+fn process_snapshot_escrow_funded(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    Some(vec![SocialEventRow::MyDataEscrowFunded {
+        snapshot_id: data.get("snapshot_id")?.as_str()?.to_string(),
+        amount: json_to_i64(data.get("amount")?),
+        total_funded: json_to_i64(data.get("total_funded")?),
+        updated_at_ms: json_to_i64(data.get("funded_at")?),
+        transaction_id: event_id.split(':').next()?.to_string(),
+    }])
+}
+
+fn process_snapshot_escrow_reclaimed(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    Some(vec![SocialEventRow::MyDataEscrowReclaimed {
+        snapshot_id: data.get("snapshot_id")?.as_str()?.to_string(),
+        amount: json_to_i64(data.get("amount")?),
+        reclaimed_at_ms: json_to_i64(data.get("reclaimed_at")?),
+        transaction_id: event_id.split(':').next()?.to_string(),
+    }])
+}
+
+fn process_mydata_pricing_updated(
+    data: &serde_json::Value,
+    transaction_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    Some(vec![SocialEventRow::MyDataContentUpdate {
+        mydata_id: data.get("ip_id")?.as_str()?.to_string(),
+        last_updated: json_to_i64(data.get("timestamp")?),
+        transaction_id: transaction_id.to_string(),
+    }])
+}
+
+fn process_mydata_content_updated(
+    data: &serde_json::Value,
+    transaction_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    process_mydata_pricing_updated(data, transaction_id)
 }
 
 #[cfg(test)]

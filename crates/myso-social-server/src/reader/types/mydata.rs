@@ -250,6 +250,8 @@ pub struct MyDataBroadPoolInfo {
     pub pool_id: String,
     #[diesel(sql_type = Text)]
     pub name: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub platform_address: Option<String>,
     #[diesel(sql_type = BigInt)]
     pub created_at_ms: i64,
     #[diesel(sql_type = Text)]
@@ -304,6 +306,14 @@ pub struct MyDataSnapshotAnchorInfo {
     pub buyer_address: String,
     #[diesel(sql_type = BigInt)]
     pub price_paid: i64,
+    #[diesel(sql_type = Text)]
+    pub source_pool_id: String,
+    #[diesel(sql_type = Text)]
+    pub source_sub_pool_id: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub platform_address: Option<String>,
+    #[diesel(sql_type = BigInt)]
+    pub initial_escrow: i64,
     #[diesel(sql_type = BigInt)]
     pub created_at_ms: i64,
     #[diesel(sql_type = Text)]
@@ -328,10 +338,38 @@ pub struct MyDataDistributionRoundInfo {
     pub contributor_count: i64,
     #[diesel(sql_type = Text)]
     pub merkle_root: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub platform_address: Option<String>,
+    #[diesel(sql_type = BigInt)]
+    pub claim_deadline_ms: i64,
     #[diesel(sql_type = BigInt)]
     pub published_at_ms: i64,
     #[diesel(sql_type = Text)]
     pub event_id: String,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Serialize, QueryableByName)]
+pub struct MyDataSnapshotEscrowInfo {
+    #[diesel(sql_type = Text)]
+    pub snapshot_id: String,
+    #[diesel(sql_type = BigInt)]
+    pub total_funded: i64,
+    #[diesel(sql_type = BigInt)]
+    pub total_claimed: i64,
+    #[diesel(sql_type = BigInt)]
+    pub remaining_amount: i64,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub claim_deadline_ms: Option<i64>,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub reclaimed_at_ms: Option<i64>,
+    #[diesel(sql_type = Text)]
+    pub status: String,
+    #[diesel(sql_type = BigInt)]
+    pub updated_at_ms: i64,
     #[diesel(sql_type = Text)]
     pub transaction_id: String,
     #[diesel(sql_type = Timestamptz)]

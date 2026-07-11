@@ -19,6 +19,15 @@ readonly MYDATA_DEFAULT_MAX_TAGS='10'
 readonly MYDATA_DEFAULT_MAX_SUBSCRIPTION_DAYS='365'
 readonly MYDATA_DEFAULT_MAX_FREE_ACCESS_GRANTS='100000'
 readonly MYDATA_DEFAULT_MAX_ENCRYPTION_ID_BYTES='1024'
+# Byte/limit fields (match mydata.move DEFAULT_* constants).
+readonly MYDATA_DEFAULT_MAX_ENCRYPTED_DATA_BYTES='262144'
+readonly MYDATA_DEFAULT_MAX_TAG_BYTES='64'
+readonly MYDATA_DEFAULT_MAX_METADATA_BYTES='1024'
+readonly MYDATA_DEFAULT_MAX_PAYMENT_REFERENCE_BYTES='256'
+readonly MYDATA_DEFAULT_MAX_POOL_ASSIGNMENTS='32'
+readonly MYDATA_DEFAULT_MAX_MERKLE_PROOF_DEPTH='64'
+readonly MYDATA_DEFAULT_MAX_PAID_ACCESS_ENTRIES='100000'
+readonly MYDATA_DEFAULT_CLAIM_WINDOW_MS='2592000000'
 readonly MYDATA_DEFAULT_P2P_PLATFORM_FEE_BPS='250'
 readonly MYDATA_DEFAULT_P2P_ECOSYSTEM_FEE_BPS='250'
 readonly MYDATA_DEFAULT_MYDATA_MARKETPLACE_PLATFORM_FEE_BPS='250'
@@ -178,6 +187,26 @@ mydata_resolve_mydata_repo_root() {
     printf '%s' "${root:-}"
 }
 
+mydata_ensure_fresh_cli() {
+    [[ "${MYDATA_CLI_BUILT:-}" == 1 ]] && return 0
+    local root bin src manifest
+    root="$(mydata_resolve_mydata_repo_root)"
+    [[ -n "$root" && -f "$root/Cargo.toml" ]] || return 0
+    manifest="$root/Cargo.toml"
+    # cargo build -p mydata-cli writes debug; release may exist but be stale.
+    bin="$root/target/debug/mydata"
+    src="$root/crates/mydata-cli/src/profile_subscription_fetch.rs"
+    if [[ ! -x "$bin" ]] \
+        || [[ "$src" -nt "$bin" ]] \
+        || [[ "$manifest" -nt "$bin" ]]; then
+        log_step "Rebuilding mydata-cli (binary missing or older than sources)"
+        (cd "$root" && cargo build -p mydata-cli) || return 1
+    fi
+    MYDATA="$bin"
+    export MYDATA
+    MYDATA_CLI_BUILT=1
+}
+
 mydata_resolve_mydata() {
     if [[ -n "${MYDATA:-}" && -x "${MYDATA}" ]]; then
         echo "$MYDATA"
@@ -186,7 +215,7 @@ mydata_resolve_mydata() {
     local root cand
     root="$(mydata_resolve_mydata_repo_root)"
     if [[ -n "$root" ]]; then
-        for cand in "$root/target/release/mydata" "$root/target/debug/mydata"; do
+        for cand in "$root/target/debug/mydata" "$root/target/release/mydata"; do
             if [[ -x "$cand" ]]; then
                 echo "$cand"
                 return 0
@@ -317,34 +346,82 @@ mydata_load_mydata_config_params_from_graphql() {
     MYDATA_CFG_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS="$(echo "$resp" | jq -r '.data.mydataConfiguration.nonPlatformPlatformToTreasuryBps // empty')"
 }
 
+mydata_resolve_admin_sender() {
+    local admin_addr
+    if [[ -z "${MYDATA_ADMIN_CAP_ID:-}" ]] || ! object_exists_on_fullnode "$MYDATA_ADMIN_CAP_ID"; then
+        if declare -f social_validate_session_id_on_fullnode >/dev/null 2>&1; then
+            social_validate_session_id_on_fullnode MYDATA_ADMIN_CAP_ID \
+                '0x50c1::mydata::MyDataAdminCap' ANY 0 || return 1
+        else
+            return 1
+        fi
+    fi
+    [[ -n "${MYDATA_ADMIN_CAP_ID:-}" ]] || return 1
+    admin_addr="$(object_address_owner "$MYDATA_ADMIN_CAP_ID" 2>/dev/null)" || return 1
+    normalize_hex_id "$admin_addr"
+}
+
+mydata_ensure_live_config_ids() {
+    if ! declare -f social_validate_session_id_on_fullnode >/dev/null 2>&1; then
+        return 0
+    fi
+    if [[ -z "${MYDATA_CONFIG_ID:-}" ]] || ! object_exists_on_fullnode "$MYDATA_CONFIG_ID"; then
+        social_validate_session_id_on_fullnode MYDATA_CONFIG_ID \
+            '0x50c1::mydata::MyDataConfig' SHARED 1 || return 1
+    fi
+    if [[ -n "${MYDATA_ADMIN_CAP_ID:-}" ]] && ! object_exists_on_fullnode "$MYDATA_ADMIN_CAP_ID"; then
+        social_validate_session_id_on_fullnode MYDATA_ADMIN_CAP_ID \
+            '0x50c1::mydata::MyDataAdminCap' ANY 0 || true
+    fi
+}
+
 mydata_run_update_config_call() {
     local sender="$1"
     local marketplace_enabled="$2" max_tags="$3" max_sub="$4" max_grants="$5" max_enc_id="$6"
     local p2p_plat="$7" p2p_eco="$8" md_plat="$9" md_eco="${10}" np_creator="${11}" np_treasury="${12}"
+    # Byte/limit fields sit between max_encryption_id_bytes and the fee bps args in the
+    # deployed update_mydata_config signature; default to mydata.move DEFAULT_* constants.
+    local max_enc_data="${MYDATA_CFG_MAX_ENCRYPTED_DATA_BYTES:-$MYDATA_DEFAULT_MAX_ENCRYPTED_DATA_BYTES}"
+    local max_tag_bytes="${MYDATA_CFG_MAX_TAG_BYTES:-$MYDATA_DEFAULT_MAX_TAG_BYTES}"
+    local max_meta_bytes="${MYDATA_CFG_MAX_METADATA_BYTES:-$MYDATA_DEFAULT_MAX_METADATA_BYTES}"
+    local max_pay_ref_bytes="${MYDATA_CFG_MAX_PAYMENT_REFERENCE_BYTES:-$MYDATA_DEFAULT_MAX_PAYMENT_REFERENCE_BYTES}"
+    local max_pool_assign="${MYDATA_CFG_MAX_POOL_ASSIGNMENTS:-$MYDATA_DEFAULT_MAX_POOL_ASSIGNMENTS}"
+    local max_merkle_depth="${MYDATA_CFG_MAX_MERKLE_PROOF_DEPTH:-$MYDATA_DEFAULT_MAX_MERKLE_PROOF_DEPTH}"
+    local max_paid_entries="${MYDATA_CFG_MAX_PAID_ACCESS_ENTRIES:-$MYDATA_DEFAULT_MAX_PAID_ACCESS_ENTRIES}"
+    local claim_window_ms="${MYDATA_CFG_DEFAULT_CLAIM_WINDOW_MS:-$MYDATA_DEFAULT_CLAIM_WINDOW_MS}"
     require_session_fields MYDATA_ADMIN_CAP_ID MYDATA_CONFIG_ID CLOCK_ID || return 1
     run_myso_call_as_capture "$sender" mydata update_mydata_config \
         "@$(normalize_hex_id "$MYDATA_ADMIN_CAP_ID")" \
         "@$(normalize_hex_id "$MYDATA_CONFIG_ID")" \
         "$marketplace_enabled" \
         "$max_tags" "$max_sub" "$max_grants" "$max_enc_id" \
+        "$max_enc_data" "$max_tag_bytes" "$max_meta_bytes" "$max_pay_ref_bytes" \
+        "$max_pool_assign" "$max_merkle_depth" "$max_paid_entries" "$claim_window_ms" \
         "$p2p_plat" "$p2p_eco" "$md_plat" "$md_eco" "$np_creator" "$np_treasury" \
         "@$(normalize_hex_id "$CLOCK_ID")"
 }
 
-# Args: creator_address plaintext
+# Args: creator_address (unused; admin cap owner signs config updates)
 mydata_ensure_marketplace_enabled() {
-    local sender="$1"
+    local _creator="$1"
+    local admin_sender
     [[ -n "${MYDATA_CONFIG_ID:-}" ]] || return 0
     [[ -n "${MYDATA_ADMIN_CAP_ID:-}" ]] || {
         echo "Note: MYDATA_ADMIN_CAP_ID unset; create_and_share may abort if marketplace_enabled=false" >&2
         return 0
     }
+    mydata_ensure_live_config_ids || return 1
     mydata_load_mydata_config_params_from_graphql || true
     if [[ "${MYDATA_CFG_MARKETPLACE_ENABLED:-false}" == "true" ]]; then
         return 0
     fi
-    log_step "Enabling MyDataConfig.marketplace_enabled for create_and_share"
-    SKIP_CONFIRM_RUN=1 mydata_run_update_config_call "$sender" true \
+    admin_sender="$(mydata_resolve_admin_sender)" || {
+        echo "Note: could not resolve MyData admin cap owner; create_and_share may abort if marketplace_enabled=false" >&2
+        return 0
+    }
+    ensure_wallet_funded "$admin_sender" "${SOCIAL_DEFAULT_GAS_BUDGET:-1000000000}" || return 1
+    log_step "Enabling MyDataConfig.marketplace_enabled for create_and_share (admin=$admin_sender)"
+    SKIP_CONFIRM_RUN=1 mydata_run_update_config_call "$admin_sender" true \
         "${MYDATA_CFG_MAX_TAGS:-$MYDATA_DEFAULT_MAX_TAGS}" \
         "${MYDATA_CFG_MAX_SUBSCRIPTION_DAYS:-$MYDATA_DEFAULT_MAX_SUBSCRIPTION_DAYS}" \
         "${MYDATA_CFG_MAX_FREE_ACCESS_GRANTS:-$MYDATA_DEFAULT_MAX_FREE_ACCESS_GRANTS}" \
@@ -367,6 +444,7 @@ mydata_create_and_share_encrypted() {
 
     require_session_fields MYDATA_CONFIG_ID MYDATA_REGISTRY_ID PKG_SOCIAL CLOCK_ID || return 1
     mydata_resolve_encrypt_credentials || return 1
+    mydata_ensure_fresh_cli || return 1
     mydata_bin="$(mydata_resolve_mydata)"
     [[ -n "$mydata_bin" ]] || {
         echo "mydata CLI not found; build myso-mydata (cargo build -p mydata-cli)" >&2
@@ -387,19 +465,69 @@ mydata_create_and_share_encrypted() {
     enc_arg="\"0x${ENCRYPT_OUT_HEX}\""
     id_arg="\"0x${ENCRYPTION_ID_HEX}\""
 
-    log_step "create_and_share MyData (subscription-gated, no marketplace prices)"
-    out="$(SKIP_CONFIRM_RUN=1 run_myso_call_as_capture "$creator" mydata create_and_share \
+    log_step "create_and_share_profile_subscription MyData (no marketplace pricing)"
+    out="$(SKIP_CONFIRM_RUN=1 run_myso_call_as_capture "$creator" mydata create_and_share_profile_subscription_mydata \
         "@$(normalize_hex_id "$MYDATA_CONFIG_ID")" \
         "@$(normalize_hex_id "$MYDATA_REGISTRY_ID")" \
         "$(literal_move_string "subscription-post:bf-hmac")" \
         '["subscription-e2e"]' \
         '[]' 0 '[]' \
-        "$enc_arg" "$id_arg" '[]' '[]' 30 '[]' '[]' '[]' '[]' false '[]' \
+        "$enc_arg" "$id_arg" '[]' '[]' '[]' '[]' false '[]' \
         "@$(normalize_hex_id "$CLOCK_ID")")" || return 1
     assert_tx_success "$out" || return 1
     digest="$(extract_tx_digest "$out")"
     MYDATA_ID="$(extract_created_object_by_type "$digest" "mydata::MyData")" || return 1
     log_session_use "MYDATA_ID" "$MYDATA_ID"
     log_session_use "ENCRYPTION_ID_HEX" "$ENCRYPTION_ID_HEX"
+    return 0
+}
+
+# Args: creator_address plaintext [price_mist]
+# Sets MYDATA_ID, ENCRYPTION_ID_HEX, ENCRYPT_CIPHERTEXT_HEX, ENCRYPTED_PLAINTEXT_EXPECTED
+mydata_create_and_share_marketplace_one_time_encrypted() {
+    local creator="$1"
+    local plaintext="$2"
+    local price_mist="${3:-1000000000}"
+    local mydata_bin enc_id msg_hex pk_naked out digest
+
+    require_session_fields MYDATA_CONFIG_ID MYDATA_REGISTRY_ID PKG_SOCIAL CLOCK_ID || return 1
+    mydata_resolve_encrypt_credentials || return 1
+    mydata_ensure_fresh_cli || return 1
+    mydata_bin="$(mydata_resolve_mydata)"
+    [[ -n "$mydata_bin" ]] || {
+        echo "mydata CLI not found; build myso-mydata (cargo build -p mydata-cli)" >&2
+        return 1
+    }
+    mydata_probe_key_server "$KEY_SERVER_URL" || return 1
+    mydata_ensure_marketplace_enabled "$creator" || return 1
+
+    ENCRYPTED_PLAINTEXT_EXPECTED="$plaintext"
+    msg_hex="$(printf '%s' "$plaintext" | xxd -p -c 65536 | tr -d '\n')"
+    enc_id="$(openssl rand -hex 32)"
+    pk_naked="$(mydata_strip_0x "$PUBLIC_KEY")"
+
+    log_step "Encrypting marketplace one-time post body (encrypt-hmac)"
+    mydata_run_encrypt_hmac_cli "$mydata_bin" "$msg_hex" "$PKG_SOCIAL" "$enc_id" 1 "$pk_naked" "$KEY_SERVER_OBJECT_ID" || return 1
+
+    local enc_arg id_arg
+    enc_arg="\"0x${ENCRYPT_OUT_HEX}\""
+    id_arg="\"0x${ENCRYPTION_ID_HEX}\""
+
+    log_step "create_and_share_marketplace_one_time_mydata (price=$price_mist)"
+    out="$(SKIP_CONFIRM_RUN=1 run_myso_call_as_capture "$creator" mydata create_and_share_marketplace_one_time_mydata \
+        "@$(normalize_hex_id "$MYDATA_CONFIG_ID")" \
+        "@$(normalize_hex_id "$MYDATA_REGISTRY_ID")" \
+        "$(literal_move_string "marketplace-post:bf-hmac")" \
+        '["marketplace-e2e"]' \
+        '[]' 0 '[]' \
+        "$enc_arg" "$id_arg" "$price_mist" \
+        '[]' '[]' '[]' '[]' false '[]' \
+        "@$(normalize_hex_id "$CLOCK_ID")")" || return 1
+    assert_tx_success "$out" || return 1
+    digest="$(extract_tx_digest "$out")"
+    MYDATA_ID="$(extract_created_object_by_type "$digest" "mydata::MyData")" || return 1
+    log_session_use "MYDATA_ID" "$MYDATA_ID"
+    log_session_use "ENCRYPTION_ID_HEX" "$ENCRYPTION_ID_HEX"
+    log_session_use "MYDATA_ONE_TIME_PRICE" "$price_mist"
     return 0
 }

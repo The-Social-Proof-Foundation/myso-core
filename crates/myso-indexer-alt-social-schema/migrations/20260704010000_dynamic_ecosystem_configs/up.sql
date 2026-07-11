@@ -140,6 +140,17 @@ COMMENT ON COLUMN mydata_config.mydata_marketplace_ecosystem_fee_bps IS 'MyData 
 COMMENT ON COLUMN mydata_config.non_platform_platform_to_creator_bps IS 'Non-platform path: recipient share of platform-fee bucket in bps (default: 0)';
 COMMENT ON COLUMN mydata_config.non_platform_platform_to_treasury_bps IS 'Non-platform path: ecosystem share of platform-fee bucket in bps (default: 10000)';
 
+-- 1.10b mydata_config — production input and settlement bounds
+ALTER TABLE mydata_config
+ADD COLUMN IF NOT EXISTS max_encrypted_data_bytes BIGINT NOT NULL DEFAULT 262144,
+ADD COLUMN IF NOT EXISTS max_tag_bytes BIGINT NOT NULL DEFAULT 64,
+ADD COLUMN IF NOT EXISTS max_metadata_bytes BIGINT NOT NULL DEFAULT 1024,
+ADD COLUMN IF NOT EXISTS max_payment_reference_bytes BIGINT NOT NULL DEFAULT 256,
+ADD COLUMN IF NOT EXISTS max_pool_assignments BIGINT NOT NULL DEFAULT 32,
+ADD COLUMN IF NOT EXISTS max_merkle_proof_depth BIGINT NOT NULL DEFAULT 64,
+ADD COLUMN IF NOT EXISTS max_paid_access_entries BIGINT NOT NULL DEFAULT 100000,
+ADD COLUMN IF NOT EXISTS default_claim_window_ms BIGINT NOT NULL DEFAULT 2592000000;
+
 -- 1.11 subscription_revenue — fee breakdown
 ALTER TABLE subscription_revenue
 ADD COLUMN IF NOT EXISTS platform_fee BIGINT NOT NULL DEFAULT 0,
@@ -245,8 +256,8 @@ COMMENT ON COLUMN insurance_router_config.max_route_legs IS 'Maximum number of l
 CREATE TABLE IF NOT EXISTS subscription_config (
     id SERIAL NOT NULL,
     updated_by TEXT NOT NULL,
-    billing_period_ms BIGINT NOT NULL DEFAULT 2592000000,
-    max_renewal_months BIGINT NOT NULL DEFAULT 120,
+    default_billing_period_ms BIGINT NOT NULL DEFAULT 2592000000,
+    max_renewal_months BIGINT NOT NULL DEFAULT 12,
     platform_fee_bps BIGINT NOT NULL DEFAULT 250,
     ecosystem_fee_bps BIGINT NOT NULL DEFAULT 250,
     non_platform_platform_to_creator_bps BIGINT NOT NULL DEFAULT 0,
@@ -284,8 +295,8 @@ CREATE INDEX IF NOT EXISTS idx_subscription_config_time ON subscription_config(t
 CREATE INDEX IF NOT EXISTS idx_subscription_config_updated_by ON subscription_config(updated_by, time);
 CREATE INDEX IF NOT EXISTS idx_subscription_config_transaction_id ON subscription_config(transaction_id);
 COMMENT ON TABLE subscription_config IS 'Tracks SubscriptionConfig changes over time (global subscription billing parameters). Each row represents a configuration update.';
-COMMENT ON COLUMN subscription_config.billing_period_ms IS 'Billing period duration in ms (default: 2592000000 = 30 days)';
-COMMENT ON COLUMN subscription_config.max_renewal_months IS 'Maximum number of renewal months allowed per subscription (default: 120)';
+COMMENT ON COLUMN subscription_config.default_billing_period_ms IS 'Default plan billing period in ms when duration_ms is zero (default: 2592000000 = 30 days)';
+COMMENT ON COLUMN subscription_config.max_renewal_months IS 'Maximum number of renewal months allowed per subscription (default: 12)';
 COMMENT ON COLUMN subscription_config.platform_fee_bps IS 'Platform fee as direct % of gross subscription payment in bps (default: 250 = 2.5%)';
 COMMENT ON COLUMN subscription_config.ecosystem_fee_bps IS 'Ecosystem treasury fee as direct % of gross in bps (default: 250 = 2.5%)';
 COMMENT ON COLUMN subscription_config.non_platform_platform_to_creator_bps IS 'Non-platform path: creator share of platform-fee bucket in bps (default: 0)';

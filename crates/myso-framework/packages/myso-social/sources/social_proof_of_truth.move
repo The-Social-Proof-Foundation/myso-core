@@ -647,7 +647,7 @@ module social_contracts::social_proof_of_truth {
         assert!(!table::contains(&registry.markets_by_key_hash, market_key_hash), EMarketExists);
 
         let now_ms = clock::timestamp_ms(clock);
-        assert!(resolution_at_ms > now_ms, ETooEarly);
+        assert!(resolution_at_ms >= now_ms, ETooEarly);
 
         let options_len = vector::length(&betting_options);
         assert!(options_len >= config.min_betting_options, EInvalidAmount);

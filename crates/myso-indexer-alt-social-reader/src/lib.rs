@@ -4,6 +4,7 @@
 pub mod governance;
 
 pub use governance::{DelegateRatingViewerTarget, delegate_rating_viewer_lookup_key};
+pub mod access;
 pub mod ai_credit;
 pub mod enterprise;
 pub mod insurance;
@@ -30,6 +31,10 @@ pub mod subscription;
 pub mod username;
 pub mod vesting;
 
+pub use access::{
+    MyDataAccessConfigurationKind, PostAccessKind, ResolvedPostAccess,
+    resolve_mydata_access_configuration_kind, resolve_post_access,
+};
 pub use ai_credit::AiCreditConfigRow;
 pub use enterprise::{AgentSpendBreakdownEntry, AuditLogFilter};
 pub use insurance::{
@@ -48,6 +53,7 @@ pub use myso_indexer_alt_social_schema::models::{
     DelegateRow, GovernanceRegistryRow, GovernanceStatsRow, InsurancePolicyRow, InsuranceVaultRow,
     MyDataBroadPoolRow, MyDataClaimRow, MyDataDistributionRoundRow, MyDataListingSubPoolRow,
     MyDataMerkleRootRow, MyDataPurchaseRow, MyDataRecordRow, MyDataSnapshotAnchorRow,
+    MyDataSnapshotEscrowRow,
     MyDataSubPoolRow, PlatformRevenueSummaryRow, PromotedPostRow, PromotionHourlyRow,
     PromotionStatsRow, PromotionTimeSeriesRow, PromotionViewRow, ProposalRow, SpotBetRow,
     SpotBetWithdrawalRow, SpotPayoutRow, SpotRecordRow, SpotRefundRow, SpotResolutionRow,
@@ -106,7 +112,10 @@ pub use social_graph::{
 pub use spt::{
     SptReservationVolumeBucket, SptReservationVolumeInterval, SptSortBy, SptTransactionsWithViewer,
 };
-pub use subscription::SubscriptionConfigRow;
+pub use subscription::{
+    ProfileSubscriptionPlanRow, ProfileSubscriptionRow, ProfileSubscriptionServiceRow,
+    SubscriptionConfigRow,
+};
 pub use username::{InvalidUsername, UsernameAvailabilityDetail, UsernameRegistryEntry, canonical_username_key};
 
 /// Combined username registry + PoC beneficiary availability for REST services.

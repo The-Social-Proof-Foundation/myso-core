@@ -10,7 +10,8 @@ use super::common;
 use super::{ProfileUpdate, SocialEventRow};
 use myso_indexer_alt_social_schema::models::{
     NewEcosystemTreasury, NewProfile, NewProfileConfig, NewProfileEvent, NewUsernameListing,
-    NewUsernameOffer, NewUsernameSaleFee, NewUsernameRegistry, NewVestingEvent, NewVestingWallet,
+    NewUsernameOffer, NewUsernameSaleFee, NewUsernameRegistry, NewUsernameReservation,
+    NewVestingEvent, NewVestingWallet, USERNAME_RESERVATION_STATUS_ACTIVE,
 };
 
 fn deserialize_number_from_string<'de, T, D>(deserializer: D) -> Result<T, D::Error>
@@ -269,6 +270,12 @@ pub fn handle_profile_event(
         "UsernameOfferRejectedEvent" => process_username_offer_rejected_event(data, event_id),
         "UsernameSaleSettledEvent" => process_username_sale_settled_event(data, event_id),
         "UsernameSaleFeeEvent" => process_username_sale_fee_event(data, event_id),
+        "UsernameReservedEvent" => {
+            process_username_reserved_event(data, event_id, checkpoint_timestamp_ms)
+        }
+        "UsernameReleasedEvent" => {
+            process_username_released_event(data, event_id, checkpoint_timestamp_ms)
+        }
         _ => None,
     }
 }
@@ -1520,6 +1527,110 @@ fn process_vesting_wallet_deleted_event(
     ])
 }
 
+/// Emitted when a username is reserved (PoC beneficiary or marketplace listing escrow).
+#[derive(Debug, Clone, Deserialize)]
+struct UsernameReservedEvent {
+    username: String,
+    reason: u8,
+    #[serde(rename = "reserved_by", default)]
+    reserved_by: String,
+}
+
+fn process_username_reserved_event(
+    data: &serde_json::Value,
+    event_id: &str,
+    checkpoint_timestamp_ms: u64,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: UsernameReservedEvent = common::deserialize_social_event_json(
+        "profile",
+        "UsernameReservedEvent",
+        event_id,
+        data,
+        "profile UsernameReservedEvent JSON did not match UsernameReservedEvent",
+    )?;
+    let reserved_at = checkpoint_timestamp_ms as i64;
+    let reserved_by = common::normalize_hex_address(&ev.reserved_by);
+    let now = common::chain_time_from_ms(reserved_at).naive_utc();
+    let audit_event = NewProfileEvent {
+        event_type: "UsernameReserved".to_string(),
+        profile_id: reserved_by.clone(),
+        event_data: serde_json::json!({
+            "username": ev.username,
+            "reason": ev.reason,
+            "reserved_by": reserved_by,
+            "reserved_at": reserved_at,
+        }),
+        event_id: Some(event_id.to_string()),
+        created_at: now,
+        updated_at: now,
+    };
+    let reservation = NewUsernameReservation {
+        username: ev.username,
+        reason: ev.reason as i16,
+        reserved_by,
+        reserved_at,
+        released_by: None,
+        released_at: None,
+        status: USERNAME_RESERVATION_STATUS_ACTIVE.to_string(),
+        reserve_transaction_id: event_id.to_string(),
+        release_transaction_id: None,
+        time: common::chain_time_from_ms(reserved_at),
+    };
+    Some(vec![
+        SocialEventRow::UsernameReservation(reservation),
+        SocialEventRow::ProfileEvent(audit_event),
+    ])
+}
+
+/// Emitted when a username reservation is released.
+#[derive(Debug, Clone, Deserialize)]
+struct UsernameReleasedEvent {
+    username: String,
+    reason: u8,
+    #[serde(rename = "released_by", default)]
+    released_by: String,
+}
+
+fn process_username_released_event(
+    data: &serde_json::Value,
+    event_id: &str,
+    checkpoint_timestamp_ms: u64,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: UsernameReleasedEvent = common::deserialize_social_event_json(
+        "profile",
+        "UsernameReleasedEvent",
+        event_id,
+        data,
+        "profile UsernameReleasedEvent JSON did not match UsernameReleasedEvent",
+    )?;
+    let released_at = checkpoint_timestamp_ms as i64;
+    let released_by = common::normalize_hex_address(&ev.released_by);
+    let now = common::chain_time_from_ms(released_at).naive_utc();
+    let audit_event = NewProfileEvent {
+        event_type: "UsernameReleased".to_string(),
+        profile_id: released_by.clone(),
+        event_data: serde_json::json!({
+            "username": ev.username,
+            "reason": ev.reason,
+            "released_by": released_by,
+            "released_at": released_at,
+        }),
+        event_id: Some(event_id.to_string()),
+        created_at: now,
+        updated_at: now,
+    };
+    Some(vec![
+        SocialEventRow::UsernameReservationRelease {
+            username: ev.username,
+            reason: ev.reason as i16,
+            released_by,
+            released_at,
+            release_transaction_id: event_id.to_string(),
+        },
+        SocialEventRow::ProfileEvent(audit_event),
+    ])
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1915,5 +2026,92 @@ mod tests {
                 if e.event_type == "UsernameRevoked"
                     && e.event_data.get("reason_code").and_then(|v| v.as_u64()) == Some(2)
         )));
+    }
+
+    #[test]
+    fn test_username_reserved_event_handler() {
+        let reserved_by = move_core_types::account_address::AccountAddress::random();
+        let json = serde_json::json!({
+            "username": "locked_name",
+            "reason": 1,
+            "reserved_by": reserved_by.to_canonical_string(true),
+        });
+        let rows =
+            handle_profile_event("UsernameReservedEvent", &json, "tx:reserve:0", CK_MS).expect("handler");
+        assert!(rows.iter().any(|r| matches!(
+            r,
+            SocialEventRow::UsernameReservation(reservation)
+                if reservation.username == "locked_name"
+                    && reservation.reason == 1
+                    && reservation.status == USERNAME_RESERVATION_STATUS_ACTIVE
+        )));
+        assert!(rows.iter().any(|r| matches!(
+            r,
+            SocialEventRow::ProfileEvent(e)
+                if e.event_type == "UsernameReserved"
+                    && e.event_data.get("username").and_then(|v| v.as_str()) == Some("locked_name")
+        )));
+    }
+
+    #[test]
+    fn test_username_released_event_handler() {
+        let released_by = move_core_types::account_address::AccountAddress::random();
+        let json = serde_json::json!({
+            "username": "locked_name",
+            "reason": 1,
+            "released_by": released_by.to_canonical_string(true),
+        });
+        let rows =
+            handle_profile_event("UsernameReleasedEvent", &json, "tx:release:0", CK_MS).expect("handler");
+        assert!(rows.iter().any(|r| matches!(
+            r,
+            SocialEventRow::UsernameReservationRelease {
+                username,
+                reason,
+                ..
+            } if username == "locked_name" && *reason == 1
+        )));
+        assert!(rows.iter().any(|r| matches!(
+            r,
+            SocialEventRow::ProfileEvent(e)
+                if e.event_type == "UsernameReleased"
+                    && e.event_data.get("username").and_then(|v| v.as_str()) == Some("locked_name")
+        )));
+    }
+
+    #[test]
+    fn test_username_reserved_bcs_parse() {
+        let reserved_by = move_core_types::account_address::AccountAddress::random();
+        let ev = crate::handlers::events::BcsUsernameReservedEvent {
+            username: "locked_name".to_string(),
+            reason: 2,
+            reserved_by,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("serialize");
+        let json = parse_event_contents("profile", "UsernameReservedEvent", &bytes).expect("parse");
+        assert_eq!(json.get("username").and_then(|v| v.as_str()), Some("locked_name"));
+        assert_eq!(json.get("reason").and_then(|v| v.as_u64()), Some(2));
+        assert_eq!(
+            json.get("reserved_by").and_then(|v| v.as_str()),
+            Some(reserved_by.to_canonical_string(true).as_str())
+        );
+    }
+
+    #[test]
+    fn test_username_released_bcs_parse() {
+        let released_by = move_core_types::account_address::AccountAddress::random();
+        let ev = crate::handlers::events::BcsUsernameReleasedEvent {
+            username: "locked_name".to_string(),
+            reason: 3,
+            released_by,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("serialize");
+        let json = parse_event_contents("profile", "UsernameReleasedEvent", &bytes).expect("parse");
+        assert_eq!(json.get("username").and_then(|v| v.as_str()), Some("locked_name"));
+        assert_eq!(json.get("reason").and_then(|v| v.as_u64()), Some(3));
+        assert_eq!(
+            json.get("released_by").and_then(|v| v.as_str()),
+            Some(released_by.to_canonical_string(true).as_str())
+        );
     }
 }

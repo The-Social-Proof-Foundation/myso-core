@@ -41,10 +41,10 @@
 #   1) Admin: 11 create_broad_pool → 12 create_sub_pool (copy sub-pool id into SUB_POOL_ID in menu 0)
 #   2) Owner: 2 create_and_share → 13 assign_mydata_to_pools (sign as listing owner)
 #   3) Buyer: 15 record_snapshot_anchor (pay MYSO; off-chain query server validates amount + runs query)
-#   4) Admin: 16 publish_merkle_root (Merkle tree built off-chain)
-#   5) Contributors: 17 claim (help only; needs Merkle proof offline or via SDK)
-#   Menus 13–14 require `myso client active-address` = listing owner. Assignment is on-chain metadata
-#   for pool membership (get_mydata_sub_pools); record_snapshot_anchor does not enforce membership.
+#   4) Admin: 16 fund additional escrow (optional) → 17 publish_distribution atomically
+#   5) Contributors: 18/19 claim with a locally validated proof; buyer: 20 refund after expiry
+#   Menus 13–14 require `myso client active-address` = listing owner. Snapshot recording verifies
+#   broad/sub-pool membership and inherits the broad pool's optional platform binding.
 #
 # Environment:
 #   MYSO              Path to myso binary (optional)
@@ -105,6 +105,14 @@ readonly DEFAULT_SECRETS_REL='network.config/mydata/local-mydata-secrets.env'
 readonly G2_PUBLIC_KEY_HEX_LEN=192
 
 readonly DEFAULT_MAX_ENCRYPTION_ID_BYTES='1024'
+readonly DEFAULT_MAX_ENCRYPTED_DATA_BYTES='262144'
+readonly DEFAULT_MAX_TAG_BYTES='64'
+readonly DEFAULT_MAX_METADATA_BYTES='1024'
+readonly DEFAULT_MAX_PAYMENT_REFERENCE_BYTES='256'
+readonly DEFAULT_MAX_POOL_ASSIGNMENTS='32'
+readonly DEFAULT_MAX_MERKLE_PROOF_DEPTH='64'
+readonly DEFAULT_MAX_PAID_ACCESS_ENTRIES='100000'
+readonly DEFAULT_CLAIM_WINDOW_MS='2592000000'
 readonly DEFAULT_P2P_PLATFORM_FEE_BPS='250'
 readonly DEFAULT_P2P_ECOSYSTEM_FEE_BPS='250'
 readonly DEFAULT_MYDATA_MARKETPLACE_PLATFORM_FEE_BPS='250'
@@ -122,6 +130,14 @@ readonly MYDATA_CONFIG_GQL='query MyDataConfiguration {
     maxSubscriptionDays
     maxFreeAccessGrants
     maxEncryptionIdBytes
+    maxEncryptedDataBytes
+    maxTagBytes
+    maxMetadataBytes
+    maxPaymentReferenceBytes
+    maxPoolAssignments
+    maxMerkleProofDepth
+    maxPaidAccessEntries
+    defaultClaimWindowMs
     p2PPlatformFeeBps
     p2PEcosystemFeeBps
     mydataMarketplacePlatformFeeBps
@@ -138,6 +154,10 @@ readonly MYDATA_MARKETPLACE_GQL_EXTRAS='query MyDataMarketplaceSessionObjects {
   snapshotAnchorRegistry: objects(filter: { type: "0x50c1::mydata::SnapshotAnchorRegistry", ownerKind: SHARED }, first: 1) { nodes { address } }
   mydataClaimVault: objects(filter: { type: "0x50c1::mydata::MyDataClaimVault", ownerKind: SHARED }, first: 1) { nodes { address } }
   distributionRegistry: objects(filter: { type: "0x50c1::mydata::DistributionRegistry", ownerKind: SHARED }, first: 1) { nodes { address } }
+  memoryConfig: objects(filter: { type: "0x50c1::memory::MemoryConfig", ownerKind: SHARED }, first: 1) { nodes { address } }
+  ecosystemTreasury: objects(filter: { type: "0x50c1::profile::EcosystemTreasury", ownerKind: SHARED }, first: 1) { nodes { address } }
+  blockListRegistry: objects(filter: { type: "0x50c1::block_list::BlockListRegistry", ownerKind: SHARED }, first: 1) { nodes { address } }
+  platform: objects(filter: { type: "0x50c1::platform::Platform" }, last: 1) { nodes { address } }
   mydataAdminCap: objects(filter: { type: "0x50c1::mydata::MyDataAdminCap" }, last: 1) { nodes { address } }
   mydataPoolAdminCap: objects(filter: { type: "0x50c1::mydata::MyDataPoolAdminCap" }, last: 1) { nodes { address } }
 }'
@@ -145,6 +165,7 @@ readonly MYDATA_MARKETPLACE_GQL_EXTRAS='query MyDataMarketplaceSessionObjects {
 MYDATA_SESSION_PRESERVED_KEYS=(
     CLIENT_CONFIG KEY_SERVER_URL LISTING_ID SUB_POOL_ID PAY_COIN_ID
     MEMORY_ACCOUNT_ID REVOKE_BUYER_ID MYDATA_SECRETS_FILE PUBLIC_KEY KEY_SERVER_OBJECT_ID
+    MEMORY_CONFIG_ID ECOSYSTEM_TREASURY_ID BLOCK_LIST_REGISTRY_ID PLATFORM_OBJECT_ID
 )
 
 DO_REFRESH=0
@@ -187,7 +208,8 @@ session_state_save_path() {
 collect_mydata_marketplace_gql_mappings() {
     local json="$1" alias val env_key
     for alias in mydataConfig mydataRegistry mydataPoolRegistry snapshotAnchorRegistry \
-        mydataClaimVault distributionRegistry mydataAdminCap mydataPoolAdminCap; do
+        mydataClaimVault distributionRegistry memoryConfig ecosystemTreasury blockListRegistry platform \
+        mydataAdminCap mydataPoolAdminCap; do
         case "$alias" in
             mydataConfig) env_key=MYDATA_CONFIG_ID ;;
             mydataRegistry) env_key=MYDATA_REGISTRY_ID ;;
@@ -195,6 +217,10 @@ collect_mydata_marketplace_gql_mappings() {
             snapshotAnchorRegistry) env_key=ANCHOR_REGISTRY_ID ;;
             mydataClaimVault) env_key=CLAIM_VAULT_ID ;;
             distributionRegistry) env_key=DIST_REGISTRY_ID ;;
+            memoryConfig) env_key=MEMORY_CONFIG_ID ;;
+            ecosystemTreasury) env_key=ECOSYSTEM_TREASURY_ID ;;
+            blockListRegistry) env_key=BLOCK_LIST_REGISTRY_ID ;;
+            platform) env_key=PLATFORM_OBJECT_ID ;;
             mydataAdminCap) env_key=MYDATA_ADMIN_CAP_ID ;;
             mydataPoolAdminCap) env_key=POOL_ADMIN_CAP_ID ;;
             *) continue ;;
@@ -204,6 +230,41 @@ collect_mydata_marketplace_gql_mappings() {
         printf -v "$env_key" '%s' "$(normalize_hex_id "$val")"
         log_session_use "$env_key" "${!env_key}"
     done
+}
+
+resolve_owned_admin_cap() {
+    local type_suffix="$1" active json
+    active="$(resolve_myso_active_address)" || return 1
+    json="$(myso client --client.config "$CLIENT_CONFIG" objects "$active" --json 2>/dev/null)" || return 1
+    echo "$json" | jq -r --arg suffix "$type_suffix" '
+        .[]?
+        | select(
+            ((.type? // .objectType? // .data.type? // "" | tostring) | endswith($suffix))
+            or (
+                (.data.Move.type_.Other.module? // "") == "mydata"
+                and (.data.Move.type_.Other.name? // "") == ($suffix | split("::") | last)
+            )
+          )
+        | .data.objectId // .objectId // .object_id // .address // empty
+    ' | head -n1
+}
+
+bind_admin_caps_to_active_address() {
+    local cap
+    cap="$(resolve_owned_admin_cap 'mydata::MyDataAdminCap')" || cap=''
+    if [[ -n "$cap" ]]; then
+        MYDATA_ADMIN_CAP_ID="$(normalize_hex_id "$cap")"
+    else
+        MYDATA_ADMIN_CAP_ID=''
+        echo "No MyDataAdminCap owned by the active administrator; refusing an arbitrary GraphQL cap." >&2
+    fi
+    cap="$(resolve_owned_admin_cap 'mydata::MyDataPoolAdminCap')" || cap=''
+    if [[ -n "$cap" ]]; then
+        POOL_ADMIN_CAP_ID="$(normalize_hex_id "$cap")"
+    else
+        POOL_ADMIN_CAP_ID=''
+        echo "No MyDataPoolAdminCap owned by the active administrator; refusing an arbitrary GraphQL cap." >&2
+    fi
 }
 
 refresh_mydata_marketplace_session_from_graphql() {
@@ -235,11 +296,11 @@ refresh_mydata_marketplace_session_from_graphql() {
     CLOCK_ID="$SOCIAL_DEFAULT_CLOCK"
     COIN_TYPE="$SOCIAL_DEFAULT_COIN_TYPE"
     apply_session_defaults
-    collect_mydata_marketplace_gql_mappings "$json"
-
     if [[ -z "${CLIENT_CONFIG:-}" ]]; then
         CLIENT_CONFIG="$PWD/network.config/client.yaml"
     fi
+    collect_mydata_marketplace_gql_mappings "$json"
+    bind_admin_caps_to_active_address || true
 
     if [[ -n "$preserve_file" && -s "$preserve_file" ]]; then
         # shellcheck disable=SC1090
@@ -274,7 +335,8 @@ session_field_count() {
     local key count=0
     for key in CLIENT_CONFIG MYDATA_CONFIG_ID MYDATA_REGISTRY_ID POOL_REGISTRY_ID ANCHOR_REGISTRY_ID \
         CLAIM_VAULT_ID DIST_REGISTRY_ID MYDATA_ADMIN_CAP_ID POOL_ADMIN_CAP_ID GAS_BUDGET \
-        LISTING_ID SUB_POOL_ID PAY_COIN_ID MEMORY_ACCOUNT_ID MYDATA_SECRETS_FILE PUBLIC_KEY KEY_SERVER_OBJECT_ID; do
+        LISTING_ID SUB_POOL_ID PAY_COIN_ID MEMORY_ACCOUNT_ID MYDATA_SECRETS_FILE PUBLIC_KEY KEY_SERVER_OBJECT_ID \
+        MEMORY_CONFIG_ID ECOSYSTEM_TREASURY_ID BLOCK_LIST_REGISTRY_ID PLATFORM_OBJECT_ID; do
         session_value_set "$key" && count=$((count + 1))
     done
     printf '%s' "$count"
@@ -314,7 +376,7 @@ save_session_state() {
     {
         echo "# Local session for scripts/mydata-marketplace-runnable.sh — paths/ids only; do not commit if sensitive."
         local key
-        for key in CLIENT_CONFIG PKG_SOCIAL CLOCK_ID COIN_TYPE KEY_SERVER_URL MYDATA_CONFIG_ID MYDATA_REGISTRY_ID POOL_REGISTRY_ID ANCHOR_REGISTRY_ID CLAIM_VAULT_ID DIST_REGISTRY_ID MYDATA_ADMIN_CAP_ID POOL_ADMIN_CAP_ID GAS_BUDGET LISTING_ID SUB_POOL_ID PAY_COIN_ID MEMORY_ACCOUNT_ID REVOKE_BUYER_ID MYDATA_SECRETS_FILE PUBLIC_KEY KEY_SERVER_OBJECT_ID; do
+        for key in CLIENT_CONFIG PKG_SOCIAL CLOCK_ID COIN_TYPE KEY_SERVER_URL MYDATA_CONFIG_ID MYDATA_REGISTRY_ID POOL_REGISTRY_ID ANCHOR_REGISTRY_ID CLAIM_VAULT_ID DIST_REGISTRY_ID MYDATA_ADMIN_CAP_ID POOL_ADMIN_CAP_ID GAS_BUDGET LISTING_ID SUB_POOL_ID PAY_COIN_ID MEMORY_ACCOUNT_ID REVOKE_BUYER_ID MYDATA_SECRETS_FILE PUBLIC_KEY KEY_SERVER_OBJECT_ID MEMORY_CONFIG_ID ECOSYSTEM_TREASURY_ID BLOCK_LIST_REGISTRY_ID PLATFORM_OBJECT_ID; do
             printf '%s=%q\n' "$key" "${!key-}"
         done
     } > "${f}.tmp"
@@ -899,6 +961,10 @@ set_context_interactive() {
     DIST_REGISTRY_ID="$(prompt_with_default "DistributionRegistry object id" "${DIST_REGISTRY_ID:-}")"
     MYDATA_ADMIN_CAP_ID="$(prompt_with_default "MyDataAdminCap object id" "${MYDATA_ADMIN_CAP_ID:-}")"
     POOL_ADMIN_CAP_ID="$(prompt_with_default "MyDataPoolAdminCap object id" "${POOL_ADMIN_CAP_ID:-}")"
+    MEMORY_CONFIG_ID="$(prompt_with_default "MemoryConfig object id" "${MEMORY_CONFIG_ID:-}")"
+    ECOSYSTEM_TREASURY_ID="$(prompt_with_default "EcosystemTreasury object id" "${ECOSYSTEM_TREASURY_ID:-}")"
+    BLOCK_LIST_REGISTRY_ID="$(prompt_with_default "BlockListRegistry object id" "${BLOCK_LIST_REGISTRY_ID:-}")"
+    PLATFORM_OBJECT_ID="$(prompt_with_default "Platform object id (optional)" "${PLATFORM_OBJECT_ID:-}")"
     GAS_BUDGET="$(prompt_with_default "Gas budget in MIST (default 1 MYSO)" "${GAS_BUDGET:-$DEFAULT_GAS_BUDGET}")"
     LISTING_ID="$(prompt_with_default "Default listing (MyData) object id" "${LISTING_ID:-}")"
     SUB_POOL_ID="$(prompt_with_default "Default sub-pool id (menus 13–15; from menu 12 tx effects)" "${SUB_POOL_ID:-}")"
@@ -949,7 +1015,8 @@ run_myso_call() {
 
 menu_update_config() {
     require_session_fields MYDATA_ADMIN_CAP_ID MYDATA_CONFIG_ID CLOCK_ID || return 1
-    local en max_tags max_sub max_grants max_enc_id
+    local en max_tags max_sub max_grants max_enc_id max_data max_tag_bytes max_metadata
+    local max_payment_ref max_pool_assignments max_proof_depth max_paid_entries claim_window
     local p2p_plat p2p_eco md_plat md_eco np_creator np_treasury
     load_mydata_config_params_from_graphql || true
     en="$(prompt_or_default "marketplace_enabled (true/false)" "${MYDATA_CFG_MARKETPLACE_ENABLED:-true}")"
@@ -957,6 +1024,14 @@ menu_update_config() {
     max_sub="$(prompt_or_default "max_subscription_days" "${MYDATA_CFG_MAX_SUBSCRIPTION_DAYS:-$DEFAULT_MAX_SUBSCRIPTION_DAYS}")"
     max_grants="$(prompt_or_default "max_free_access_grants" "${MYDATA_CFG_MAX_FREE_ACCESS_GRANTS:-$DEFAULT_MAX_FREE_ACCESS_GRANTS}")"
     max_enc_id="$(prompt_or_default "max_encryption_id_bytes" "${MYDATA_CFG_MAX_ENCRYPTION_ID_BYTES:-$DEFAULT_MAX_ENCRYPTION_ID_BYTES}")"
+    max_data="$(prompt_or_default "max_encrypted_data_bytes" "${MYDATA_CFG_MAX_ENCRYPTED_DATA_BYTES:-$DEFAULT_MAX_ENCRYPTED_DATA_BYTES}")"
+    max_tag_bytes="$(prompt_or_default "max_tag_bytes" "${MYDATA_CFG_MAX_TAG_BYTES:-$DEFAULT_MAX_TAG_BYTES}")"
+    max_metadata="$(prompt_or_default "max_metadata_bytes" "${MYDATA_CFG_MAX_METADATA_BYTES:-$DEFAULT_MAX_METADATA_BYTES}")"
+    max_payment_ref="$(prompt_or_default "max_payment_reference_bytes" "${MYDATA_CFG_MAX_PAYMENT_REFERENCE_BYTES:-$DEFAULT_MAX_PAYMENT_REFERENCE_BYTES}")"
+    max_pool_assignments="$(prompt_or_default "max_pool_assignments" "${MYDATA_CFG_MAX_POOL_ASSIGNMENTS:-$DEFAULT_MAX_POOL_ASSIGNMENTS}")"
+    max_proof_depth="$(prompt_or_default "max_merkle_proof_depth" "${MYDATA_CFG_MAX_MERKLE_PROOF_DEPTH:-$DEFAULT_MAX_MERKLE_PROOF_DEPTH}")"
+    max_paid_entries="$(prompt_or_default "max_paid_access_entries" "${MYDATA_CFG_MAX_PAID_ACCESS_ENTRIES:-$DEFAULT_MAX_PAID_ACCESS_ENTRIES}")"
+    claim_window="$(prompt_or_default "default_claim_window_ms" "${MYDATA_CFG_DEFAULT_CLAIM_WINDOW_MS:-$DEFAULT_CLAIM_WINDOW_MS}")"
     p2p_plat="$(prompt_or_default "p2p_platform_fee_bps" "${MYDATA_CFG_P2P_PLATFORM_FEE_BPS:-$DEFAULT_P2P_PLATFORM_FEE_BPS}")"
     p2p_eco="$(prompt_or_default "p2p_ecosystem_fee_bps" "${MYDATA_CFG_P2P_ECOSYSTEM_FEE_BPS:-$DEFAULT_P2P_ECOSYSTEM_FEE_BPS}")"
     md_plat="$(prompt_or_default "mydata_marketplace_platform_fee_bps" "${MYDATA_CFG_MYDATA_MARKETPLACE_PLATFORM_FEE_BPS:-$DEFAULT_MYDATA_MARKETPLACE_PLATFORM_FEE_BPS}")"
@@ -964,6 +1039,8 @@ menu_update_config() {
     np_creator="$(prompt_or_default "non_platform_platform_to_creator_bps" "${MYDATA_CFG_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS:-$DEFAULT_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS}")"
     np_treasury="$(prompt_or_default "non_platform_platform_to_treasury_bps" "${MYDATA_CFG_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS:-$DEFAULT_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS}")"
     run_update_mydata_config_call "$en" "$max_tags" "$max_sub" "$max_grants" "$max_enc_id" \
+        "$max_data" "$max_tag_bytes" "$max_metadata" "$max_payment_ref" "$max_pool_assignments" \
+        "$max_proof_depth" "$max_paid_entries" "$claim_window" \
         "$p2p_plat" "$p2p_eco" "$md_plat" "$md_eco" "$np_creator" "$np_treasury"
 }
 
@@ -979,6 +1056,14 @@ load_mydata_config_params_from_graphql() {
     MYDATA_CFG_MAX_SUBSCRIPTION_DAYS="$(echo "$resp" | jq -r '.data.mydataConfiguration.maxSubscriptionDays // empty')"
     MYDATA_CFG_MAX_FREE_ACCESS_GRANTS="$(echo "$resp" | jq -r '.data.mydataConfiguration.maxFreeAccessGrants // empty')"
     MYDATA_CFG_MAX_ENCRYPTION_ID_BYTES="$(echo "$resp" | jq -r '.data.mydataConfiguration.maxEncryptionIdBytes // empty')"
+    MYDATA_CFG_MAX_ENCRYPTED_DATA_BYTES="$(echo "$resp" | jq -r '.data.mydataConfiguration.maxEncryptedDataBytes // empty')"
+    MYDATA_CFG_MAX_TAG_BYTES="$(echo "$resp" | jq -r '.data.mydataConfiguration.maxTagBytes // empty')"
+    MYDATA_CFG_MAX_METADATA_BYTES="$(echo "$resp" | jq -r '.data.mydataConfiguration.maxMetadataBytes // empty')"
+    MYDATA_CFG_MAX_PAYMENT_REFERENCE_BYTES="$(echo "$resp" | jq -r '.data.mydataConfiguration.maxPaymentReferenceBytes // empty')"
+    MYDATA_CFG_MAX_POOL_ASSIGNMENTS="$(echo "$resp" | jq -r '.data.mydataConfiguration.maxPoolAssignments // empty')"
+    MYDATA_CFG_MAX_MERKLE_PROOF_DEPTH="$(echo "$resp" | jq -r '.data.mydataConfiguration.maxMerkleProofDepth // empty')"
+    MYDATA_CFG_MAX_PAID_ACCESS_ENTRIES="$(echo "$resp" | jq -r '.data.mydataConfiguration.maxPaidAccessEntries // empty')"
+    MYDATA_CFG_DEFAULT_CLAIM_WINDOW_MS="$(echo "$resp" | jq -r '.data.mydataConfiguration.defaultClaimWindowMs // empty')"
     MYDATA_CFG_P2P_PLATFORM_FEE_BPS="$(echo "$resp" | jq -r '.data.mydataConfiguration.p2PPlatformFeeBps // empty')"
     MYDATA_CFG_P2P_ECOSYSTEM_FEE_BPS="$(echo "$resp" | jq -r '.data.mydataConfiguration.p2PEcosystemFeeBps // empty')"
     MYDATA_CFG_MYDATA_MARKETPLACE_PLATFORM_FEE_BPS="$(echo "$resp" | jq -r '.data.mydataConfiguration.mydataMarketplacePlatformFeeBps // empty')"
@@ -989,11 +1074,15 @@ load_mydata_config_params_from_graphql() {
 
 run_update_mydata_config_call() {
     local marketplace_enabled="$1" max_tags="$2" max_sub="$3" max_grants="$4" max_enc_id="$5"
-    local p2p_plat="$6" p2p_eco="$7" md_plat="$8" md_eco="$9" np_creator="${10}" np_treasury="${11}"
+    local max_data="$6" max_tag_bytes="$7" max_metadata="$8" max_payment_ref="$9"
+    local max_pool_assignments="${10}" max_proof_depth="${11}" max_paid_entries="${12}" claim_window="${13}"
+    local p2p_plat="${14}" p2p_eco="${15}" md_plat="${16}" md_eco="${17}" np_creator="${18}" np_treasury="${19}"
     require_session_fields MYDATA_ADMIN_CAP_ID MYDATA_CONFIG_ID CLOCK_ID || return 1
     run_myso_call update_mydata_config \
         --args "$MYDATA_ADMIN_CAP_ID" "$MYDATA_CONFIG_ID" "$marketplace_enabled" \
         "$max_tags" "$max_sub" "$max_grants" "$max_enc_id" \
+        "$max_data" "$max_tag_bytes" "$max_metadata" "$max_payment_ref" \
+        "$max_pool_assignments" "$max_proof_depth" "$max_paid_entries" "$claim_window" \
         "$p2p_plat" "$p2p_eco" "$md_plat" "$md_eco" "$np_creator" "$np_treasury" \
         "$CLOCK_ID"
 }
@@ -1028,6 +1117,14 @@ ensure_mydata_enabled_for_listing() {
             "${MYDATA_CFG_MAX_SUBSCRIPTION_DAYS:-$DEFAULT_MAX_SUBSCRIPTION_DAYS}" \
             "${MYDATA_CFG_MAX_FREE_ACCESS_GRANTS:-$DEFAULT_MAX_FREE_ACCESS_GRANTS}" \
             "${MYDATA_CFG_MAX_ENCRYPTION_ID_BYTES:-$DEFAULT_MAX_ENCRYPTION_ID_BYTES}" \
+            "${MYDATA_CFG_MAX_ENCRYPTED_DATA_BYTES:-$DEFAULT_MAX_ENCRYPTED_DATA_BYTES}" \
+            "${MYDATA_CFG_MAX_TAG_BYTES:-$DEFAULT_MAX_TAG_BYTES}" \
+            "${MYDATA_CFG_MAX_METADATA_BYTES:-$DEFAULT_MAX_METADATA_BYTES}" \
+            "${MYDATA_CFG_MAX_PAYMENT_REFERENCE_BYTES:-$DEFAULT_MAX_PAYMENT_REFERENCE_BYTES}" \
+            "${MYDATA_CFG_MAX_POOL_ASSIGNMENTS:-$DEFAULT_MAX_POOL_ASSIGNMENTS}" \
+            "${MYDATA_CFG_MAX_MERKLE_PROOF_DEPTH:-$DEFAULT_MAX_MERKLE_PROOF_DEPTH}" \
+            "${MYDATA_CFG_MAX_PAID_ACCESS_ENTRIES:-$DEFAULT_MAX_PAID_ACCESS_ENTRIES}" \
+            "${MYDATA_CFG_DEFAULT_CLAIM_WINDOW_MS:-$DEFAULT_CLAIM_WINDOW_MS}" \
             "${MYDATA_CFG_P2P_PLATFORM_FEE_BPS:-$DEFAULT_P2P_PLATFORM_FEE_BPS}" \
             "${MYDATA_CFG_P2P_ECOSYSTEM_FEE_BPS:-$DEFAULT_P2P_ECOSYSTEM_FEE_BPS}" \
             "${MYDATA_CFG_MYDATA_MARKETPLACE_PLATFORM_FEE_BPS:-$DEFAULT_MYDATA_MARKETPLACE_PLATFORM_FEE_BPS}" \
@@ -1088,14 +1185,25 @@ menu_create_and_share() {
     enc_arg="\"0x${ENCRYPT_OUT_HEX}\""
     id_arg="\"0x${ENCRYPT_ID_HEX}\""
 
-    local media tags_json tstart tend otp sp subdur_raw geo dq sample coll upd freq
+    local model media tags_json platform_opt tstart tend price subdur_raw geo dq sample coll upd freq function_name
+    model="$(prompt_or_default "listing model (profile|one-time|recurring)" "one-time")"
+    case "$model" in
+        profile|one-time|recurring) ;;
+        *) echo "listing model must be profile, one-time, or recurring" >&2; return 1 ;;
+    esac
     media="$(prompt_or_default "media_type" "demo:bf-hmac-encrypt-hmac")"
     tags_json="$(prompt_or_default 'tags (JSON array of strings)' '["cli-demo"]')"
+    platform_opt="$(prompt_or_default 'platform_id Option<address> — [] or ["0x..."]' '[]')"
     tstart="$(prompt_or_default "timestamp_start (u64)" "0")"
     tend="$(prompt_or_default 'timestamp_end Option — [] or ["123"]' '[]')"
-    otp="$(prompt_or_default 'one_time_price Option — [] or ["1000000000"]' '["1000000000"]')"
-    sp="$(prompt_or_default 'subscription_price Option — [] or ["500000000"]' '["500000000"]')"
-    subdur_raw="$(prompt_or_default "subscription_duration_days" "30")"
+    price=''
+    subdur_raw=''
+    if [[ "$model" == one-time ]]; then
+        price="$(prompt_or_default 'one_time_price (MIST)' '1000000000')"
+    elif [[ "$model" == recurring ]]; then
+        price="$(prompt_or_default 'subscription_price (MIST)' '500000000')"
+        subdur_raw="$(prompt_or_default "subscription_duration_days" "30")"
+    fi
     geo="$(prompt_or_default "geographic_region Option<String> — [] or [\"US-CA\"]" '[]')"
     dq="$(prompt_or_default "data_quality Option<String> — [] or [\"high\"] (not a number)" '[]')"
     sample="$(prompt_or_default "sample_size Option<u64> — [] or [1000]" '[]')"
@@ -1103,23 +1211,40 @@ menu_create_and_share() {
     upd="$(prompt_or_default "is_updating (true/false)" "false")"
     freq="$(prompt_or_default "update_frequency Option" '[]')"
 
-    run_myso_call create_and_share \
-        --args "$MYDATA_CONFIG_ID" "$MYDATA_REGISTRY_ID" "\"$media\"" "$tags_json" [] "$tstart" "$tend" \
-        "$enc_arg" "$id_arg" "$otp" "$sp" "$subdur_raw" "$geo" "$dq" "$sample" "$coll" "$upd" "$freq" "$CLOCK_ID"
+    case "$model" in
+        profile)
+            function_name=create_and_share_profile_subscription_mydata
+            run_myso_call "$function_name" \
+                --args "$MYDATA_CONFIG_ID" "$MYDATA_REGISTRY_ID" "\"$media\"" "$tags_json" "$platform_opt" "$tstart" "$tend" \
+                "$enc_arg" "$id_arg" "$geo" "$dq" "$sample" "$coll" "$upd" "$freq" "$CLOCK_ID"
+            ;;
+        one-time)
+            function_name=create_and_share_marketplace_one_time_mydata
+            run_myso_call "$function_name" \
+                --args "$MYDATA_CONFIG_ID" "$MYDATA_REGISTRY_ID" "\"$media\"" "$tags_json" "$platform_opt" "$tstart" "$tend" \
+                "$enc_arg" "$id_arg" "$price" "$geo" "$dq" "$sample" "$coll" "$upd" "$freq" "$CLOCK_ID"
+            ;;
+        recurring)
+            function_name=create_and_share_marketplace_recurring_mydata
+            run_myso_call "$function_name" \
+                --args "$MYDATA_CONFIG_ID" "$MYDATA_REGISTRY_ID" "\"$media\"" "$tags_json" "$platform_opt" "$tstart" "$tend" \
+                "$enc_arg" "$id_arg" "$price" "$subdur_raw" "$geo" "$dq" "$sample" "$coll" "$upd" "$freq" "$CLOCK_ID"
+            ;;
+    esac
 
     apply_session_defaults
     save_session_state
-    print_mydata_operation_summary "create_and_share (encrypt + list)" \
+    print_mydata_operation_summary "${function_name} (encrypt + list)" \
+        "Listing model" "$model" \
         "Media type" "$media" \
-        "One-time price option" "$otp" \
-        "Subscription price option" "$sp" \
-        "Subscription days" "$subdur_raw" \
+        "Price" "${price:-n/a}" \
+        "Subscription days" "${subdur_raw:-n/a}" \
         "Encrypted object id" "0x${ENCRYPT_ID_HEX:-}" \
         "Key server object" "$ks"
 }
 
 menu_purchase_one_time() {
-    require_session_fields MYDATA_CONFIG_ID || return 1
+    require_session_fields MYDATA_CONFIG_ID BLOCK_LIST_REGISTRY_ID MEMORY_CONFIG_ID ECOSYSTEM_TREASURY_ID || return 1
     local listing pay account
     listing="$(resolve_purchase_listing_id)" || return 1
     pay="$(resolve_purchase_pay_coin)" || return 1
@@ -1129,7 +1254,8 @@ menu_purchase_one_time() {
     PAY_COIN_ID="$pay"
     MEMORY_ACCOUNT_ID="$account"
     save_session_state
-    run_myso_call purchase_one_time --args "$MYDATA_CONFIG_ID" "$listing" "$pay" "$account" "$CLOCK_ID"
+    run_myso_call purchase_one_time --args "$MYDATA_CONFIG_ID" "$BLOCK_LIST_REGISTRY_ID" "$MEMORY_CONFIG_ID" \
+        "$listing" "$ECOSYSTEM_TREASURY_ID" "$pay" "$account" "$CLOCK_ID"
     print_mydata_operation_summary "purchase_one_time" \
         "Listing" "$listing" \
         "Payment coin" "$pay" \
@@ -1138,7 +1264,7 @@ menu_purchase_one_time() {
 }
 
 menu_purchase_sub() {
-    require_session_fields MYDATA_CONFIG_ID || return 1
+    require_session_fields MYDATA_CONFIG_ID BLOCK_LIST_REGISTRY_ID MEMORY_CONFIG_ID ECOSYSTEM_TREASURY_ID || return 1
     local listing pay account
     listing="$(resolve_purchase_listing_id)" || return 1
     pay="$(resolve_purchase_pay_coin)" || return 1
@@ -1148,7 +1274,8 @@ menu_purchase_sub() {
     PAY_COIN_ID="$pay"
     MEMORY_ACCOUNT_ID="$account"
     save_session_state
-    run_myso_call purchase_subscription --args "$MYDATA_CONFIG_ID" "$listing" "$pay" "$account" "$CLOCK_ID"
+    run_myso_call purchase_subscription --args "$MYDATA_CONFIG_ID" "$BLOCK_LIST_REGISTRY_ID" "$MEMORY_CONFIG_ID" \
+        "$listing" "$ECOSYSTEM_TREASURY_ID" "$pay" "$account" "$CLOCK_ID"
     print_mydata_operation_summary "purchase_subscription" \
         "Listing" "$listing" \
         "Payment coin" "$pay" \
@@ -1157,6 +1284,7 @@ menu_purchase_sub() {
 }
 
 menu_update_pricing() {
+    require_session_fields MYDATA_CONFIG_ID || return 1
     local listing
     listing="$(resolve_session_or_prompt LISTING_ID "MyData listing id")"
     LISTING_ID="$listing"
@@ -1164,19 +1292,26 @@ menu_update_pricing() {
     o="$(prompt_or_default 'new_one_time_price Option' '["1500000000"]')"
     sp="$(prompt_or_default 'new_subscription_price Option' '["750000000"]')"
     dur="$(prompt_or_default 'new_subscription_duration_days Option' '["45"]')"
-    run_myso_call update_pricing --args "$listing" "$o" "$sp" "$dur" "$CLOCK_ID"
+    run_myso_call update_pricing --args "$MYDATA_CONFIG_ID" "$listing" "$o" "$sp" "$dur" "$CLOCK_ID"
 }
 
 menu_update_content() {
-    local listing ed tags
+    require_session_fields MYDATA_CONFIG_ID || return 1
+    local listing ed eid tags
     listing="$(resolve_session_or_prompt LISTING_ID "MyData listing id")"
     LISTING_ID="$listing"
-    ed="$(prompt_or_default 'new_encrypted_data Option — [] or "0x..."' '[]')"
+    ed="$(prompt_or_default 'new_encrypted_data Option — [] or ["0x..."]' '[]')"
+    eid="$(prompt_or_default 'new_encryption_id Option — [] or ["0x..."] (required with encrypted data)' '[]')"
     tags="$(prompt_or_default 'new_tags Option' '[]')"
-    run_myso_call update_content --args "$listing" "$ed" "$tags" "$CLOCK_ID"
+    if [[ "$ed" == '[]' && "$eid" != '[]' ]] || [[ "$ed" != '[]' && "$eid" == '[]' ]]; then
+        echo "new_encrypted_data and new_encryption_id must both be set or both be []" >&2
+        return 1
+    fi
+    run_myso_call update_content --args "$MYDATA_CONFIG_ID" "$listing" "$ed" "$eid" "$tags" "$CLOCK_ID"
 }
 
 menu_mydata_approve() {
+    require_session_fields BLOCK_LIST_REGISTRY_ID MEMORY_CONFIG_ID || return 1
     local listing idv account
     listing="$(resolve_session_or_prompt LISTING_ID "MyData listing id")"
     LISTING_ID="$listing"
@@ -1186,7 +1321,7 @@ menu_mydata_approve() {
     account="$(resolve_session_or_prompt MEMORY_ACCOUNT_ID "Listing owner's MemoryAccount (purchaser with access or owner's agent with CAP_MYDATA_READ)")"
     MEMORY_ACCOUNT_ID="$account"
     save_session_state
-    run_myso_call mydata_approve --args "\"$idv\"" "$listing" "$account" "$CLOCK_ID"
+    run_myso_call mydata_approve --args "\"$idv\"" "$BLOCK_LIST_REGISTRY_ID" "$MEMORY_CONFIG_ID" "$listing" "$account" "$CLOCK_ID"
     print_mydata_operation_summary "mydata_approve (access grant)" \
         "Listing" "$listing" \
         "Encryption id" "$idv" \
@@ -1234,31 +1369,39 @@ menu_register() {
 }
 
 menu_unregister() {
+    require_session_fields MYDATA_REGISTRY_ID || return 1
     local ip
     ip="$(prompt_with_default "ip_id (listing address)" "")"
     run_myso_call unregister_from_registry --args "$MYDATA_REGISTRY_ID" "$ip" "$CLOCK_ID"
 }
 
 menu_create_broad_pool() {
-    require_session_fields POOL_ADMIN_CAP_ID POOL_REGISTRY_ID || return 1
-    local n d
+    require_session_fields MYDATA_CONFIG_ID POOL_ADMIN_CAP_ID POOL_REGISTRY_ID || return 1
+    local n d platform
     n="$(prompt_or_default "pool name" "demo-pool")"
     d="$(prompt_or_default "description" "CLI demo")"
-    run_myso_call create_broad_pool --args "$POOL_ADMIN_CAP_ID" "$POOL_REGISTRY_ID" "\"$n\"" "\"$d\"" "$CLOCK_ID"
+    platform="$(prompt_or_default "bind platform? (y/N)" "n")"
+    if [[ "$platform" == [yY]* ]]; then
+        require_session_fields PLATFORM_OBJECT_ID || return 1
+        run_myso_call create_broad_pool_with_platform --args "$MYDATA_CONFIG_ID" "$POOL_ADMIN_CAP_ID" "$POOL_REGISTRY_ID" \
+            "$PLATFORM_OBJECT_ID" "\"$n\"" "\"$d\"" "$CLOCK_ID"
+    else
+        run_myso_call create_broad_pool --args "$MYDATA_CONFIG_ID" "$POOL_ADMIN_CAP_ID" "$POOL_REGISTRY_ID" "\"$n\"" "\"$d\"" "$CLOCK_ID"
+    fi
 }
 
 menu_create_sub_pool() {
-    require_session_fields POOL_ADMIN_CAP_ID POOL_REGISTRY_ID || return 1
+    require_session_fields MYDATA_CONFIG_ID POOL_ADMIN_CAP_ID POOL_REGISTRY_ID || return 1
     local bid n d
     bid="$(prompt_with_default "broad_pool_id (ID value)" "")"
     n="$(prompt_or_default "sub pool name" "demo-sub")"
     d="$(prompt_or_default "description" "CLI demo sub")"
-    run_myso_call create_sub_pool --args "$POOL_ADMIN_CAP_ID" "$POOL_REGISTRY_ID" "$bid" "\"$n\"" "\"$d\"" [] "$CLOCK_ID"
+    run_myso_call create_sub_pool --args "$MYDATA_CONFIG_ID" "$POOL_ADMIN_CAP_ID" "$POOL_REGISTRY_ID" "$bid" "\"$n\"" "\"$d\"" [] "$CLOCK_ID"
     echo "After tx succeeds, copy the sub-pool id from effects and save as SUB_POOL_ID (menu 0)." >&2
 }
 
 menu_assign_to_pools() {
-    require_session_fields POOL_REGISTRY_ID || return 1
+    require_session_fields MYDATA_CONFIG_ID POOL_REGISTRY_ID || return 1
     local listing sub_raw sub_ids_vec
     listing="$(resolve_session_or_prompt LISTING_ID "MyData listing id")"
     LISTING_ID="$listing"
@@ -1268,7 +1411,7 @@ menu_assign_to_pools() {
     sub_ids_vec="$(format_sub_pool_ids_vector "$sub_raw")" || return 1
     echo "Sign as listing owner (assign_mydata_to_pools checks mydata.owner)." >&2
     run_myso_call assign_mydata_to_pools \
-        --args "$listing" "$POOL_REGISTRY_ID" "$sub_ids_vec" "$CLOCK_ID"
+        --args "$MYDATA_CONFIG_ID" "$listing" "$POOL_REGISTRY_ID" "$sub_ids_vec" "$CLOCK_ID"
     echo "Pool membership recorded on-chain (get_mydata_sub_pools / MyDataAssignedToSubPoolEvent)." >&2
 }
 
@@ -1286,30 +1429,97 @@ menu_remove_from_pool() {
 }
 
 menu_record_anchor() {
-    require_session_fields ANCHOR_REGISTRY_ID CLAIM_VAULT_ID POOL_REGISTRY_ID || return 1
-    local b_sub pay mf pr pc
+    require_session_fields MYDATA_CONFIG_ID ANCHOR_REGISTRY_ID CLAIM_VAULT_ID POOL_REGISTRY_ID || return 1
+    local b_sub pay mf mf_hex pr pr_hex pc
     b_sub="$(prompt_with_default "source_pool_id (broad pool)" "")"
     pay="$(resolve_sub_pool_id "source_sub_pool_id")"
     [[ -n "$pay" ]] || { echo "source_sub_pool_id is required." >&2; return 1; }
     SUB_POOL_ID="$pay"
-    mf="$(prompt_or_default "manifest_hash (JSON string bytes)" "\"01020304\"")"
-    pr="$(prompt_or_default "payment_reference (JSON string bytes)" "\"05060708\"")"
+    mf="$(prompt_or_default "manifest_hash (exactly 32-byte hex)" "$(openssl rand -hex 32)")"
+    mf_hex="$(strip_0x "$mf")"
+    [[ "$mf_hex" =~ ^[0-9a-fA-F]{64}$ ]] || { echo "manifest_hash must be exactly 32 bytes (64 hex characters)" >&2; return 1; }
+    pr="$(prompt_or_default "payment_reference (non-empty hex, max ${DEFAULT_MAX_PAYMENT_REFERENCE_BYTES} bytes)" "$(openssl rand -hex 16)")"
+    pr_hex="$(strip_0x "$pr")"
+    [[ "$pr_hex" =~ ^[0-9a-fA-F]+$ && $(( ${#pr_hex} % 2 )) -eq 0 && ${#pr_hex} -le $((DEFAULT_MAX_PAYMENT_REFERENCE_BYTES * 2)) ]] || {
+        echo "payment_reference must be non-empty even-length hex within the configured byte limit" >&2; return 1;
+    }
     pc="$(prompt_with_default "Coin<MYSO> object id" "")"
+    validate_purchase_coin_ownership "$pc" || return 1
     run_myso_call record_snapshot_anchor \
-        --args "$ANCHOR_REGISTRY_ID" "$CLAIM_VAULT_ID" "$POOL_REGISTRY_ID" "$b_sub" "$pay" "$mf" "$pr" "$pc" "$CLOCK_ID"
+        --args "$MYDATA_CONFIG_ID" "$ANCHOR_REGISTRY_ID" "$CLAIM_VAULT_ID" "$POOL_REGISTRY_ID" "$b_sub" "$pay" \
+        "\"0x${mf_hex}\"" "\"0x${pr_hex}\"" "$pc" "$CLOCK_ID"
 }
 
-menu_publish_merkle() {
+menu_deposit_snapshot_escrow() {
     require_session_fields POOL_ADMIN_CAP_ID ANCHOR_REGISTRY_ID CLAIM_VAULT_ID || return 1
-    local sid root
+    local sid coin
+    sid="$(prompt_with_default "snapshot_id" "")"
+    coin="$(prompt_with_default "additional escrow Coin<MYSO> object id" "")"
+    validate_purchase_coin_ownership "$coin" || return 1
+    run_myso_call deposit_snapshot_escrow --args "$POOL_ADMIN_CAP_ID" "$ANCHOR_REGISTRY_ID" "$CLAIM_VAULT_ID" "$sid" "$coin" "$CLOCK_ID"
+}
+
+menu_publish_distribution() {
+    require_session_fields MYDATA_CONFIG_ID POOL_ADMIN_CAP_ID ANCHOR_REGISTRY_ID DIST_REGISTRY_ID CLAIM_VAULT_ID || return 1
+    local sid root root_hex total contributors
     sid="$(prompt_with_default "snapshot_id" "")"
     root="$(prompt_with_default "root_hash (32 bytes hex, with or without 0x)" "")"
-    root="0x$(strip_0x "$root")"
-    run_myso_call publish_merkle_root --args "$POOL_ADMIN_CAP_ID" "$ANCHOR_REGISTRY_ID" "$CLAIM_VAULT_ID" "$sid" "\"${root}\"" "$CLOCK_ID"
+    root_hex="$(strip_0x "$root")"
+    [[ "$root_hex" =~ ^[0-9a-fA-F]{64}$ ]] || { echo "root_hash must be exactly 32 bytes" >&2; return 1; }
+    total="$(prompt_with_default "total allocation (must equal funded escrow)" "")"
+    contributors="$(prompt_with_default "positive contributor_count" "")"
+    [[ "$total" =~ ^[1-9][0-9]*$ && "$contributors" =~ ^[1-9][0-9]*$ ]] || { echo "total and contributor_count must be positive integers" >&2; return 1; }
+    run_myso_call publish_distribution --args "$MYDATA_CONFIG_ID" "$POOL_ADMIN_CAP_ID" "$ANCHOR_REGISTRY_ID" \
+        "$DIST_REGISTRY_ID" "$CLAIM_VAULT_ID" "$sid" "\"0x${root_hex}\"" "$total" "$contributors" "$CLOCK_ID"
 }
 
-menu_claim_hint() {
-    echo "claim() needs Merkle proof (vector<vector<u8>>), leaf_index, amount — construct offline or via SDK."
+prompt_claim_inputs() {
+    CLAIM_SNAPSHOT_ID="$(prompt_with_default "snapshot_id" "")"
+    CLAIM_AMOUNT="$(prompt_with_default "positive claim amount" "")"
+    CLAIM_LEAF_INDEX="$(prompt_with_default "leaf_index" "")"
+    CLAIM_PROOF="$(prompt_or_default 'Merkle proof JSON vector, e.g. ["0x<64 hex>"]' '[]')"
+    [[ "$CLAIM_AMOUNT" =~ ^[1-9][0-9]*$ && "$CLAIM_LEAF_INDEX" =~ ^[0-9]+$ ]] || { echo "claim amount must be positive and leaf_index non-negative" >&2; return 1; }
+    echo "$CLAIM_PROOF" | jq -e 'type == "array" and all(.[]; type == "string" and test("^0x[0-9a-fA-F]{64}$"))' >/dev/null || {
+        echo "proof must be a JSON array of 32-byte 0x-prefixed hashes" >&2; return 1;
+    }
+    local depth
+    depth="$(echo "$CLAIM_PROOF" | jq 'length')"
+    (( depth <= ${MYDATA_CFG_MAX_MERKLE_PROOF_DEPTH:-$DEFAULT_MAX_MERKLE_PROOF_DEPTH} )) || { echo "proof exceeds configured max depth" >&2; return 1; }
+}
+
+resolve_snapshot_platform_from_graphql() {
+    local sid="$1" resp
+    resp="$(graphql_post "query { mydataSnapshotAnchor(snapshotId: \"$sid\") { platformId } }")" || return 1
+    echo "$resp" | jq -r '.data.mydataSnapshotAnchor.platformId // empty'
+}
+
+menu_claim() {
+    require_session_fields MYDATA_CONFIG_ID DIST_REGISTRY_ID CLAIM_VAULT_ID ECOSYSTEM_TREASURY_ID || return 1
+    load_mydata_config_params_from_graphql || true
+    prompt_claim_inputs || return 1
+    run_myso_call claim --args "$MYDATA_CONFIG_ID" "$DIST_REGISTRY_ID" "$CLAIM_VAULT_ID" "$ECOSYSTEM_TREASURY_ID" \
+        "$CLAIM_SNAPSHOT_ID" "$CLAIM_AMOUNT" "$CLAIM_LEAF_INDEX" "$CLAIM_PROOF" "$CLOCK_ID"
+}
+
+menu_claim_with_platform() {
+    require_session_fields MYDATA_CONFIG_ID DIST_REGISTRY_ID CLAIM_VAULT_ID ECOSYSTEM_TREASURY_ID PLATFORM_OBJECT_ID || return 1
+    load_mydata_config_params_from_graphql || true
+    prompt_claim_inputs || return 1
+    local indexed_platform
+    indexed_platform="$(resolve_snapshot_platform_from_graphql "$CLAIM_SNAPSHOT_ID")" || return 1
+    [[ -n "$indexed_platform" ]] || { echo "snapshot is not platform-bound; use the non-platform claim path" >&2; return 1; }
+    [[ "$(normalize_hex_id "$indexed_platform")" == "$(normalize_hex_id "$PLATFORM_OBJECT_ID")" ]] || {
+        echo "session platform $PLATFORM_OBJECT_ID does not match indexed snapshot platform $indexed_platform" >&2; return 1;
+    }
+    run_myso_call claim_with_platform --args "$MYDATA_CONFIG_ID" "$DIST_REGISTRY_ID" "$CLAIM_VAULT_ID" "$ECOSYSTEM_TREASURY_ID" \
+        "$PLATFORM_OBJECT_ID" "$CLAIM_SNAPSHOT_ID" "$CLAIM_AMOUNT" "$CLAIM_LEAF_INDEX" "$CLAIM_PROOF" "$CLOCK_ID"
+}
+
+menu_reclaim_expired() {
+    require_session_fields ANCHOR_REGISTRY_ID DIST_REGISTRY_ID CLAIM_VAULT_ID || return 1
+    local sid
+    sid="$(prompt_with_default "snapshot_id (sign as original buyer after deadline)" "")"
+    run_myso_call reclaim_expired_snapshot_escrow --args "$ANCHOR_REGISTRY_ID" "$DIST_REGISTRY_ID" "$CLAIM_VAULT_ID" "$sid" "$CLOCK_ID"
 }
 
 main_menu() {
@@ -1319,7 +1529,7 @@ main_menu() {
         echo " 0) Refresh session from GraphQL"
         echo " s) Set / show session context (manual secrets + listing ids)"
         echo " 1) update_mydata_config"
-        echo " 2) create_and_share (encrypt + list; auto-offers enable if admin cap set)"
+        echo " 2) create and share listing (profile, one-time, or recurring)"
         echo " 3) purchase_one_time"
         echo " 4) purchase_subscription"
         echo " 5) update_pricing"
@@ -1333,9 +1543,12 @@ main_menu() {
         echo "13) assign_mydata_to_pools (owner)"
         echo "14) remove_mydata_from_sub_pools (owner)"
         echo "15) record_snapshot_anchor"
-        echo "16) publish_merkle_root"
-        echo "17) claim (help only)"
-        echo "18) revoke_access (owner; blocks future fetch_key for buyer)"
+        echo "16) deposit_snapshot_escrow"
+        echo "17) publish_distribution (atomic root + allocation)"
+        echo "18) claim"
+        echo "19) claim_with_platform (platform derived from indexed snapshot)"
+        echo "20) reclaim_expired_snapshot_escrow (buyer)"
+        echo "21) revoke_access (owner; blocks future fetch_key for buyer)"
         echo " q) Quit"
         local c
         read -r -p "Choice: " c || break
@@ -1357,43 +1570,53 @@ main_menu() {
             13) menu_assign_to_pools ;;
             14) menu_remove_from_pool ;;
             15) menu_record_anchor ;;
-            16) menu_publish_merkle ;;
-            17) menu_claim_hint ;;
-            18) menu_revoke_access ;;
+            16) menu_deposit_snapshot_escrow ;;
+            17) menu_publish_distribution ;;
+            18) menu_claim ;;
+            19) menu_claim_with_platform ;;
+            20) menu_reclaim_expired ;;
+            21) menu_revoke_access ;;
             q|Q) break ;;
             *) echo "Unknown choice." ;;
         esac
     done
 }
 
-for arg in "$@"; do
-    case "$arg" in
-        -h|--help)
-            usage
-            exit 0
-            ;;
-        -y)
-            ASSUME_YES=1
-            ;;
-        --no-session)
-            NO_SESSION_FILE=1
-            ;;
-        --refresh-session)
-            DO_REFRESH=1
-            ;;
-        --no-auto-refresh)
-            MYDATA_NO_AUTO_REFRESH=1
-            ;;
-    esac
-done
+mydata_marketplace_main() {
+    local arg
+    for arg in "$@"; do
+        case "$arg" in
+            -h|--help)
+                usage
+                return 0
+                ;;
+            -y)
+                ASSUME_YES=1
+                ;;
+            --no-session)
+                NO_SESSION_FILE=1
+                ;;
+            --refresh-session)
+                DO_REFRESH=1
+                ;;
+            --no-auto-refresh)
+                MYDATA_NO_AUTO_REFRESH=1
+                ;;
+        esac
+    done
 
-load_session_state
-maybe_auto_refresh_mydata_session
-load_session_state
+    load_session_state
+    maybe_auto_refresh_mydata_session
+    load_session_state
 
-if [[ "$DO_REFRESH" == 1 ]]; then
-    refresh_mydata_marketplace_session_from_graphql
-    exit 0
+    if [[ "$DO_REFRESH" == 1 ]]; then
+        refresh_mydata_marketplace_session_from_graphql
+        return 0
+    fi
+
+    main_menu
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    mydata_marketplace_main "$@"
 fi
-
-main_menu

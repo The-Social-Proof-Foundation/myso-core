@@ -13,7 +13,6 @@ ALTER TABLE comments DROP COLUMN IF EXISTS actor_address;
 
 ALTER TABLE posts DROP COLUMN IF EXISTS action_identity_class;
 ALTER TABLE posts DROP COLUMN IF EXISTS sub_agent_id;
-ALTER TABLE posts DROP COLUMN IF EXISTS actor_address;
 
 DROP INDEX IF EXISTS idx_profiles_memory_account_id;
 ALTER TABLE profiles DROP COLUMN IF EXISTS memory_account_id;

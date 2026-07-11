@@ -763,6 +763,10 @@ fn make_router(state: Arc<AppState>) -> Router {
             get(get_profile_subscription_service),
         )
         .route(
+            "/subscription-services/:service_id/plans",
+            get(list_profile_subscription_plans),
+        )
+        .route(
             "/subscription-services/:service_id/revenue",
             get(get_subscription_revenue_by_service),
         )
@@ -807,6 +811,10 @@ fn make_router(state: Arc<AppState>) -> Router {
         .route(
             "/mydata/snapshots/:snapshot_id/merkle-root",
             get(get_mydata_merkle_root),
+        )
+        .route(
+            "/mydata/snapshots/:snapshot_id/escrow",
+            get(get_mydata_snapshot_escrow),
         )
         .route(
             "/mydata/snapshots/:snapshot_id/claims",

@@ -1,5 +1,6 @@
 ---
 source: crates/myso-indexer-alt-graphql/src/api/types/available_range.rs
+assertion_line: 619
 expression: output
 ---
 AccumulatorRootCreateTransaction._

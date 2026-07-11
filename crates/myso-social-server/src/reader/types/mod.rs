@@ -37,7 +37,8 @@ pub use messaging::{
 pub use mydata::{
     AccessAnalytics, AccessLogInfo, DailyRevenue, MyDataBasic, MyDataBroadPoolInfo,
     MyDataClaimInfo, MyDataConfigInfo, MyDataDistributionRoundInfo, MyDataHasAccessResponse,
-    MyDataListingSubPoolInfo, MyDataMerkleRootInfo, MyDataSnapshotAnchorInfo, MyDataStatsResponse,
+    MyDataListingSubPoolInfo, MyDataMerkleRootInfo, MyDataSnapshotAnchorInfo,
+    MyDataSnapshotEscrowInfo, MyDataStatsResponse,
     MyDataSubPoolInfo, PurchaseInfo, RevenueInfo, SubscriptionInfo,
 };
 pub use myso_indexer_alt_social_schema::models::{
@@ -80,8 +81,8 @@ pub use spt::{
     SptRevenueRow, SptTransactionRow, SptUserHoldingItem,
 };
 pub use subscription::{
-    ProfileSubscriptionInfo, ProfileSubscriptionRevenueRow, ProfileSubscriptionServiceInfo,
-    SubscriberSummaryRow, SubscriptionConfigInfo,
+    ProfileSubscriptionInfo, ProfileSubscriptionPlanInfo, ProfileSubscriptionRevenueRow,
+    ProfileSubscriptionServiceInfo, SubscriberSummaryRow, SubscriptionConfigInfo,
 };
 pub use upgrade::{ObjectMigratedEventRow, UpgradeEventRow};
 pub use vesting::{

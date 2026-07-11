@@ -11,6 +11,7 @@ Uses Blake2b-256 for hashing, aligned with accumulator_settlement pattern.
 -  [Function `verify_proof`](#mydata_merkle_verify_proof)
 -  [Function `hash_pair`](#mydata_merkle_hash_pair)
 -  [Function `leaf_hash`](#mydata_merkle_leaf_hash)
+-  [Function `leaf_hash_with_platform`](#mydata_merkle_leaf_hash_with_platform)
 
 
 <pre><code><b>use</b> <a href="../myso/address.md#myso_address">myso::address</a>;
@@ -144,6 +145,41 @@ Leaf = blake2b256(address || amount || snapshot_id).
     <b>let</b> <b>mut</b> data = bcs::to_bytes(&addr);
     vector::append(&<b>mut</b> data, bcs::to_bytes(&amount));
     vector::append(&<b>mut</b> data, snapshot_id);
+    hash::blake2b256(&data)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="mydata_merkle_leaf_hash_with_platform"></a>
+
+## Function `leaf_hash_with_platform`
+
+Construct a MyData marketplace leaf that also commits to the fee-routing platform.
+<code>platform_id = none</code> identifies the non-platform settlement path.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../mydata/merkle.md#mydata_merkle_leaf_hash_with_platform">leaf_hash_with_platform</a>(addr: <b>address</b>, amount: u64, snapshot_id: vector&lt;u8&gt;, platform_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;): vector&lt;u8&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../mydata/merkle.md#mydata_merkle_leaf_hash_with_platform">leaf_hash_with_platform</a>(
+    addr: <b>address</b>,
+    amount: u64,
+    snapshot_id: vector&lt;u8&gt;,
+    platform_id: Option&lt;<b>address</b>&gt;,
+): vector&lt;u8&gt; {
+    <b>let</b> <b>mut</b> data = bcs::to_bytes(&addr);
+    vector::append(&<b>mut</b> data, bcs::to_bytes(&amount));
+    vector::append(&<b>mut</b> data, snapshot_id);
+    vector::append(&<b>mut</b> data, bcs::to_bytes(&platform_id));
     hash::blake2b256(&data)
 }
 </code></pre>

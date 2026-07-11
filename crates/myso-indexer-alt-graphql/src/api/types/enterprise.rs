@@ -3,7 +3,7 @@
 
 use async_graphql::{Context, Enum, InputObject, Object, SimpleObject};
 use myso_indexer_alt_social_reader::{
-    AgentSpendBreakdownEntry, AuditLogFilter, OrganizationStatsWindow,
+    AgentSpendBreakdownEntry, AuditLogFilter, OrganizationStatsWindow as DbOrganizationStatsWindow,
 };
 use myso_indexer_alt_social_schema::models::{
     AiCreditAgentBudgetRow, AiCreditSpendApprovalRow, AuditLogRow, OrgInvitationRow,
@@ -16,10 +16,10 @@ use crate::api::scalars::date_time::DateTime as GqlDateTime;
 use crate::api::scalars::json::Json;
 use crate::api::scalars::myso_address::MySoAddress;
 use crate::api::types::memory::SubAgent;
-use crate::api::types::organization::OrganizationStatsWindowGql;
+use crate::api::types::organization::OrganizationStatsWindow;
 
 #[derive(Enum, Copy, Clone, Eq, PartialEq, Debug)]
-pub(crate) enum SpendApprovalStatusGql {
+pub(crate) enum SpendApprovalStatus {
     Requested,
     Approved,
     Consumed,
@@ -27,7 +27,7 @@ pub(crate) enum SpendApprovalStatusGql {
     Expired,
 }
 
-impl SpendApprovalStatusGql {
+impl SpendApprovalStatus {
     fn from_db(status: &str) -> Self {
         match status {
             "approved" => Self::Approved,
@@ -60,8 +60,8 @@ impl SpendApproval {
         &self.inner.agent_object_id
     }
 
-    async fn status(&self) -> SpendApprovalStatusGql {
-        SpendApprovalStatusGql::from_db(&self.inner.status)
+    async fn status(&self) -> SpendApprovalStatus {
+        SpendApprovalStatus::from_db(&self.inner.status)
     }
 
     async fn requested_amount_mist(&self) -> Option<BigInt> {
@@ -479,9 +479,9 @@ impl AgentSpendBreakdown {
     }
 }
 
-pub(crate) fn window_from_gql(
-    window: Option<OrganizationStatsWindowGql>,
-) -> OrganizationStatsWindow {
+pub(crate) fn resolve_stats_window(
+    window: Option<OrganizationStatsWindow>,
+) -> DbOrganizationStatsWindow {
     window.unwrap_or_default().into()
 }
 

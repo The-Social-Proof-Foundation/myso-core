@@ -17,14 +17,15 @@ use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
-    NewProfileSubscription, NewProfileSubscriptionService, NewSubscriptionConfig,
-    NewSubscriptionEvent, NewSubscriptionRevenue, NewUnifiedRevenue,
+    NewProfileSubscription, NewProfileSubscriptionPlan, NewProfileSubscriptionService,
+    NewSubscriptionConfig, NewSubscriptionEvent, NewSubscriptionRevenue, NewUnifiedRevenue,
     REVENUE_TYPE_SUBSCRIPTION_CREATOR_AMOUNT, REVENUE_TYPE_SUBSCRIPTION_ECOSYSTEM_FEE,
     REVENUE_TYPE_SUBSCRIPTION_PLATFORM_FEE,
 };
 use myso_indexer_alt_social_schema::schema::{
-    ecosystem_treasury, profile_subscription_services, profile_subscriptions, profiles,
-    subscription_config, subscription_events, subscription_revenue, unified_revenue,
+    ecosystem_treasury, profile_subscription_plans, profile_subscription_services,
+    profile_subscriptions, profiles, subscription_config, subscription_events,
+    subscription_revenue, unified_revenue,
 };
 
 use super::common;
@@ -38,24 +39,43 @@ const SUBSCRIPTION_MODULES: &[&str] = &["subscription"];
 #[derive(Debug, Clone)]
 pub enum SubscriptionRow {
     ProfileSubscriptionService(NewProfileSubscriptionService),
+    ProfileSubscriptionPlan(NewProfileSubscriptionPlan),
     ProfileSubscription(NewProfileSubscription),
     SubscriptionEvent(NewSubscriptionEvent),
     SubscriptionConfig(NewSubscriptionConfig),
     ProfileSubscriptionServiceSubscriberIncrement {
         service_id: String,
     },
+    ProfileSubscriptionServicePlanCountIncrement {
+        service_id: String,
+    },
+    ProfileSubscriptionPlanUpdate {
+        plan_id: String,
+        title: String,
+        description: Option<String>,
+        price: i64,
+        duration_ms: i64,
+        tier_level: Option<i64>,
+        platform_id: Option<String>,
+        active: bool,
+        updated_at: i64,
+    },
+    ProfileSubscriptionPlanDeactivate {
+        plan_id: String,
+        updated_at: i64,
+    },
     ProfileSubscriptionUpdate {
         subscription_id: String,
         expires_at: i64,
         renewal_count: i64,
+        plan_id: Option<String>,
+        tier_level: Option<i64>,
+        platform_id: Option<String>,
+        price: Option<i64>,
+        duration_ms: Option<i64>,
     },
     ProfileSubscriptionCancel {
         subscription_id: String,
-    },
-    ProfileSubscriptionServiceUpdate {
-        service_id: String,
-        monthly_fee: i64,
-        updated_at: i64,
     },
     ProfileSubscriptionRenewalBalanceUpdate {
         subscription_id: String,
@@ -93,6 +113,8 @@ pub enum SubscriptionRow {
         new_expires_at: i64,
         renewal_count: i64,
         auto_renewed: bool,
+        price: i64,
+        duration_ms: i64,
         platform_fee: i64,
         ecosystem_fee: i64,
         creator_amount: i64,
@@ -106,6 +128,9 @@ impl SubscriptionRow {
         match row {
             crate::handlers::SocialEventRow::ProfileSubscriptionService(s) => {
                 Some(SubscriptionRow::ProfileSubscriptionService(s))
+            }
+            crate::handlers::SocialEventRow::ProfileSubscriptionPlan(p) => {
+                Some(SubscriptionRow::ProfileSubscriptionPlan(p))
             }
             crate::handlers::SocialEventRow::ProfileSubscription(s) => {
                 Some(SubscriptionRow::ProfileSubscription(s))
@@ -121,29 +146,63 @@ impl SubscriptionRow {
             } => Some(SubscriptionRow::ProfileSubscriptionServiceSubscriberIncrement {
                 service_id,
             }),
+            crate::handlers::SocialEventRow::ProfileSubscriptionServicePlanCountIncrement {
+                service_id,
+            } => Some(SubscriptionRow::ProfileSubscriptionServicePlanCountIncrement {
+                service_id,
+            }),
+            crate::handlers::SocialEventRow::ProfileSubscriptionPlanUpdate {
+                plan_id,
+                title,
+                description,
+                price,
+                duration_ms,
+                tier_level,
+                platform_id,
+                active,
+                updated_at,
+            } => Some(SubscriptionRow::ProfileSubscriptionPlanUpdate {
+                plan_id,
+                title,
+                description,
+                price,
+                duration_ms,
+                tier_level,
+                platform_id,
+                active,
+                updated_at,
+            }),
+            crate::handlers::SocialEventRow::ProfileSubscriptionPlanDeactivate {
+                plan_id,
+                updated_at,
+            } => Some(SubscriptionRow::ProfileSubscriptionPlanDeactivate {
+                plan_id,
+                updated_at,
+            }),
             crate::handlers::SocialEventRow::ProfileSubscriptionUpdate {
                 subscription_id,
                 expires_at,
                 renewal_count,
+                plan_id,
+                tier_level,
+                platform_id,
+                price,
+                duration_ms,
             } => Some(SubscriptionRow::ProfileSubscriptionUpdate {
                 subscription_id,
                 expires_at,
                 renewal_count,
+                plan_id,
+                tier_level,
+                platform_id,
+                price,
+                duration_ms,
             }),
             crate::handlers::SocialEventRow::ProfileSubscriptionCancel { subscription_id } => {
                 Some(SubscriptionRow::ProfileSubscriptionCancel {
                     subscription_id,
                 })
             }
-            crate::handlers::SocialEventRow::ProfileSubscriptionServiceUpdate {
-                service_id,
-                monthly_fee,
-                updated_at,
-            } => Some(SubscriptionRow::ProfileSubscriptionServiceUpdate {
-                service_id,
-                monthly_fee,
-                updated_at,
-            }),
             crate::handlers::SocialEventRow::ProfileSubscriptionRenewalBalanceUpdate {
                 subscription_id,
                 new_balance,
@@ -207,6 +266,8 @@ impl SubscriptionRow {
                 new_expires_at,
                 renewal_count,
                 auto_renewed,
+                price,
+                duration_ms,
                 platform_fee,
                 ecosystem_fee,
                 creator_amount,
@@ -218,6 +279,8 @@ impl SubscriptionRow {
                 new_expires_at,
                 renewal_count,
                 auto_renewed,
+                price,
+                duration_ms,
                 platform_fee,
                 ecosystem_fee,
                 creator_amount,
@@ -325,20 +388,8 @@ impl Handler for SubscriptionHandler {
                         .await?;
                 }
                 SubscriptionRow::ProfileSubscriptionService(s) => {
-                    let profile_id = profiles::table
-                        .filter(profiles::owner_address.eq(&s.profile_owner))
-                        .select(profiles::profile_id)
-                        .first::<Option<String>>(conn)
-                        .await
-                        .ok()
-                        .flatten()
-                        .unwrap_or_else(|| s.profile_owner.clone());
-                    let service = NewProfileSubscriptionService {
-                        profile_id,
-                        ..s.clone()
-                    };
                     total += diesel::insert_into(profile_subscription_services::table)
-                        .values(&service)
+                        .values(s)
                         .on_conflict(profile_subscription_services::service_id)
                         .do_nothing()
                         .execute(conn)
@@ -351,6 +402,14 @@ impl Handler for SubscriptionHandler {
                         ))
                         .execute(conn)
                         .await;
+                }
+                SubscriptionRow::ProfileSubscriptionPlan(p) => {
+                    total += diesel::insert_into(profile_subscription_plans::table)
+                        .values(p)
+                        .on_conflict(profile_subscription_plans::plan_id)
+                        .do_nothing()
+                        .execute(conn)
+                        .await?;
                 }
                 SubscriptionRow::ProfileSubscription(s) => {
                     total += diesel::insert_into(profile_subscriptions::table)
@@ -379,6 +438,55 @@ impl Handler for SubscriptionHandler {
                         .execute(conn)
                         .await;
                 }
+                SubscriptionRow::ProfileSubscriptionServicePlanCountIncrement { service_id } => {
+                    let _ = diesel::update(profile_subscription_services::table)
+                        .filter(profile_subscription_services::service_id.eq(service_id))
+                        .set(
+                            profile_subscription_services::plan_count
+                                .eq(profile_subscription_services::plan_count + 1),
+                        )
+                        .execute(conn)
+                        .await;
+                }
+                SubscriptionRow::ProfileSubscriptionPlanUpdate {
+                    plan_id,
+                    title,
+                    description,
+                    price,
+                    duration_ms,
+                    tier_level,
+                    platform_id,
+                    active,
+                    updated_at,
+                } => {
+                    total += diesel::update(profile_subscription_plans::table)
+                        .filter(profile_subscription_plans::plan_id.eq(plan_id))
+                        .set((
+                            profile_subscription_plans::title.eq(title),
+                            profile_subscription_plans::description.eq(description),
+                            profile_subscription_plans::price.eq(price),
+                            profile_subscription_plans::duration_ms.eq(duration_ms),
+                            profile_subscription_plans::tier_level.eq(tier_level),
+                            profile_subscription_plans::platform_id.eq(platform_id),
+                            profile_subscription_plans::active.eq(active),
+                            profile_subscription_plans::updated_at.eq(Some(updated_at)),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                SubscriptionRow::ProfileSubscriptionPlanDeactivate {
+                    plan_id,
+                    updated_at,
+                } => {
+                    total += diesel::update(profile_subscription_plans::table)
+                        .filter(profile_subscription_plans::plan_id.eq(plan_id))
+                        .set((
+                            profile_subscription_plans::active.eq(false),
+                            profile_subscription_plans::updated_at.eq(Some(updated_at)),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
                 SubscriptionRow::ProfileSubscriptionServiceSubscriberDecrementBySubscription {
                     subscription_id,
                 } => {
@@ -404,12 +512,28 @@ impl Handler for SubscriptionHandler {
                     subscription_id,
                     expires_at,
                     renewal_count,
+                    plan_id,
+                    tier_level,
+                    platform_id,
+                    price,
+                    duration_ms,
                 } => {
-                    let update_sql = "UPDATE profile_subscriptions SET expires_at = $1, renewal_count = $2 \
-                        WHERE subscription_id = $3 AND time = (SELECT time FROM profile_subscriptions WHERE subscription_id = $3 ORDER BY time DESC LIMIT 1)";
+                    let update_sql = "UPDATE profile_subscriptions SET \
+                        expires_at = $1, renewal_count = $2, \
+                        plan_id = COALESCE($3, plan_id), \
+                        tier_level = COALESCE($4, tier_level), \
+                        platform_id = COALESCE($5, platform_id), \
+                        price = COALESCE($6, price), \
+                        duration_ms = COALESCE($7, duration_ms) \
+                        WHERE subscription_id = $8 AND time = (SELECT time FROM profile_subscriptions WHERE subscription_id = $8 ORDER BY time DESC LIMIT 1)";
                     total += diesel::sql_query(update_sql)
                         .bind::<BigInt, _>(expires_at)
                         .bind::<BigInt, _>(renewal_count)
+                        .bind::<Nullable<Text>, _>(plan_id.as_deref())
+                        .bind::<Nullable<BigInt>, _>(tier_level)
+                        .bind::<Nullable<Text>, _>(platform_id.as_deref())
+                        .bind::<Nullable<BigInt>, _>(price)
+                        .bind::<Nullable<BigInt>, _>(duration_ms)
                         .bind::<Text, _>(subscription_id)
                         .execute(conn)
                         .await?;
@@ -421,20 +545,6 @@ impl Handler for SubscriptionHandler {
                     total += diesel::sql_query(update_sql)
                         .bind::<Nullable<BigInt>, _>(Some(now))
                         .bind::<Text, _>(subscription_id)
-                        .execute(conn)
-                        .await?;
-                }
-                SubscriptionRow::ProfileSubscriptionServiceUpdate {
-                    service_id,
-                    monthly_fee,
-                    updated_at,
-                } => {
-                    total += diesel::update(profile_subscription_services::table)
-                        .filter(profile_subscription_services::service_id.eq(service_id))
-                        .set((
-                            profile_subscription_services::monthly_fee.eq(monthly_fee),
-                            profile_subscription_services::updated_at.eq(Some(updated_at)),
-                        ))
                         .execute(conn)
                         .await?;
                 }
@@ -592,6 +702,8 @@ impl Handler for SubscriptionHandler {
                     new_expires_at,
                     renewal_count: _,
                     auto_renewed,
+                    price,
+                    duration_ms,
                     platform_fee,
                     ecosystem_fee,
                     creator_amount,
@@ -615,31 +727,24 @@ impl Handler for SubscriptionHandler {
                             .first(conn)
                             .await
                             .ok();
-                        let monthly_fee: Option<i64> = profile_subscription_services::table
-                            .filter(profile_subscription_services::service_id.eq(&service_id))
-                            .select(profile_subscription_services::monthly_fee)
-                            .first(conn)
-                            .await
-                            .ok();
-                        if let (Some(to_address), Some(gross_amount)) = (profile_owner, monthly_fee)
-                        {
+                        if let Some(to_address) = profile_owner {
                             let revenue_type = if *auto_renewed {
                                 "auto_renewal"
                             } else {
                                 "renewal"
                             };
-                            let payment_time = *new_expires_at - (30 * 24 * 60 * 60 * 1000);
+                            let payment_time = *new_expires_at - *duration_ms;
                             let creator_net = if *creator_amount > 0 {
                                 *creator_amount
                             } else {
-                                gross_amount - *platform_fee - *ecosystem_fee
+                                *price - *platform_fee - *ecosystem_fee
                             };
                             let revenue = NewSubscriptionRevenue {
                                 service_id: service_id.clone(),
                                 subscription_id: Some(subscription_id.clone()),
                                 from_address: subscriber.clone(),
                                 to_address: to_address.clone(),
-                                amount: gross_amount,
+                                amount: *price,
                                 platform_fee: *platform_fee,
                                 ecosystem_fee: *ecosystem_fee,
                                 creator_amount: creator_net,

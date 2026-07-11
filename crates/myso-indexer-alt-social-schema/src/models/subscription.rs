@@ -5,8 +5,8 @@ use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::schema::{
-    profile_subscription_services, profile_subscriptions, subscription_access_logs,
-    subscription_config, subscription_events, subscription_revenue,
+    profile_subscription_plans, profile_subscription_services, profile_subscriptions,
+    subscription_access_logs, subscription_config, subscription_events, subscription_revenue,
 };
 
 pub const MIN_SUBSCRIPTION_DURATION_DAYS: i64 = 1;
@@ -25,7 +25,7 @@ pub struct ProfileSubscriptionService {
     pub service_id: String,
     pub profile_owner: String,
     pub profile_id: String,
-    pub monthly_fee: i64,
+    pub plan_count: i64,
     pub active: bool,
     pub subscriber_count: i64,
     pub created_at: i64,
@@ -40,7 +40,7 @@ pub struct NewProfileSubscriptionService {
     pub service_id: String,
     pub profile_owner: String,
     pub profile_id: String,
-    pub monthly_fee: i64,
+    pub plan_count: i64,
     pub active: bool,
     pub subscriber_count: i64,
     pub created_at: i64,
@@ -52,9 +52,58 @@ pub struct NewProfileSubscriptionService {
 #[derive(Debug, Clone, AsChangeset)]
 #[diesel(table_name = profile_subscription_services)]
 pub struct UpdateProfileSubscriptionService {
-    pub monthly_fee: Option<i64>,
+    pub plan_count: Option<i64>,
     pub active: Option<bool>,
     pub subscriber_count: Option<i64>,
+    pub updated_at: Option<i64>,
+}
+
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = profile_subscription_plans)]
+pub struct ProfileSubscriptionPlan {
+    pub plan_id: String,
+    pub service_id: String,
+    pub title: String,
+    pub description: Option<String>,
+    pub price: i64,
+    pub duration_ms: i64,
+    pub tier_level: Option<i64>,
+    pub platform_id: Option<String>,
+    pub active: bool,
+    pub created_at: i64,
+    pub updated_at: Option<i64>,
+    pub time: chrono::DateTime<chrono::Utc>,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = profile_subscription_plans)]
+pub struct NewProfileSubscriptionPlan {
+    pub plan_id: String,
+    pub service_id: String,
+    pub title: String,
+    pub description: Option<String>,
+    pub price: i64,
+    pub duration_ms: i64,
+    pub tier_level: Option<i64>,
+    pub platform_id: Option<String>,
+    pub active: bool,
+    pub created_at: i64,
+    pub updated_at: Option<i64>,
+    pub time: chrono::DateTime<chrono::Utc>,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, AsChangeset)]
+#[diesel(table_name = profile_subscription_plans)]
+pub struct UpdateProfileSubscriptionPlan {
+    pub title: Option<String>,
+    pub description: Option<String>,
+    pub price: Option<i64>,
+    pub duration_ms: Option<i64>,
+    pub tier_level: Option<i64>,
+    pub platform_id: Option<String>,
+    pub active: Option<bool>,
     pub updated_at: Option<i64>,
 }
 
@@ -63,6 +112,11 @@ pub struct UpdateProfileSubscriptionService {
 pub struct ProfileSubscription {
     pub subscription_id: String,
     pub service_id: String,
+    pub plan_id: String,
+    pub tier_level: Option<i64>,
+    pub platform_id: Option<String>,
+    pub price: i64,
+    pub duration_ms: i64,
     pub subscriber: String,
     pub created_at: i64,
     pub expires_at: i64,
@@ -81,6 +135,11 @@ pub struct ProfileSubscription {
 pub struct NewProfileSubscription {
     pub subscription_id: String,
     pub service_id: String,
+    pub plan_id: String,
+    pub tier_level: Option<i64>,
+    pub platform_id: Option<String>,
+    pub price: i64,
+    pub duration_ms: i64,
     pub subscriber: String,
     pub created_at: i64,
     pub expires_at: i64,
@@ -101,6 +160,11 @@ pub struct UpdateProfileSubscription {
     pub auto_renew: Option<bool>,
     pub renewal_balance: Option<i64>,
     pub renewal_count: Option<i64>,
+    pub plan_id: Option<String>,
+    pub tier_level: Option<i64>,
+    pub platform_id: Option<String>,
+    pub price: Option<i64>,
+    pub duration_ms: Option<i64>,
     pub cancelled_at: Option<i64>,
     pub processing_success: Option<bool>,
     pub processing_error: Option<String>,
@@ -208,7 +272,7 @@ pub struct NewSubscriptionAccessLog {
 #[diesel(table_name = subscription_config)]
 pub struct NewSubscriptionConfig {
     pub updated_by: String,
-    pub billing_period_ms: i64,
+    pub default_billing_period_ms: i64,
     pub max_renewal_months: i64,
     pub platform_fee_bps: i64,
     pub ecosystem_fee_bps: i64,
@@ -223,7 +287,7 @@ pub struct NewSubscriptionConfig {
 impl NewSubscriptionConfig {
     pub fn from_event(
         updated_by: String,
-        billing_period_ms: u64,
+        default_billing_period_ms: u64,
         max_renewal_months: u64,
         platform_fee_bps: u64,
         ecosystem_fee_bps: u64,
@@ -237,7 +301,7 @@ impl NewSubscriptionConfig {
             .unwrap_or_else(chrono::Utc::now);
         Self {
             updated_by,
-            billing_period_ms: billing_period_ms as i64,
+            default_billing_period_ms: default_billing_period_ms as i64,
             max_renewal_months: max_renewal_months as i64,
             platform_fee_bps: platform_fee_bps as i64,
             ecosystem_fee_bps: ecosystem_fee_bps as i64,

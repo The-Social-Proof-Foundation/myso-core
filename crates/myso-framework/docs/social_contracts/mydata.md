@@ -5,7 +5,7 @@ title: Module `social_contracts::mydata`
 Universal MyData module for encrypted data monetization (one-time purchase, subscription, owner vault).
 
 **Production decrypt path (client-only):** Plaintext must only exist off-chain. Callers encrypt before
-<code><a href="../social_contracts/mydata.md#social_contracts_mydata_create">create</a></code> / <code><a href="../social_contracts/mydata.md#social_contracts_mydata_create_and_share">create_and_share</a></code>, then authorized users use the MyData SDK: resolve access (indexer or
+<code><a href="../social_contracts/mydata.md#social_contracts_mydata_create">create</a></code> / dedicated <code>create_and_share_*</code> entry points, then authorized users use the MyData SDK: resolve access (indexer or
 <code><a href="../social_contracts/mydata.md#social_contracts_mydata_has_access">has_access</a></code>), request keys via the key server (<code>fetch_key</code>) with policy approval (<code><a href="../social_contracts/mydata.md#social_contracts_mydata_mydata_approve">mydata_approve</a></code>),
 and decrypt locally. Do not rely on Move to produce user content plaintext for marketplace listings.
 
@@ -15,7 +15,7 @@ must be the same <code>id</code> bytes used when encrypting so policy and client
 AES-GCM (or other app-managed schemes), ciphertext does not parse as <code>EncryptedObject</code>; encode the
 scheme in <code><a href="../social_contracts/mydata.md#social_contracts_mydata_media_type">media_type</a></code> (e.g. prefix <code>aes_gcm:</code>) or app metadata so indexers pick the right decrypt path.
 
-**Revocation:** Owners may call [<code><a href="../social_contracts/mydata.md#social_contracts_mydata_revoke_access">revoke_access</a></code>] to remove a buyer from <code>purchasers</code> / <code>subscribers</code>.
+**Revocation:** Owners may call [<code><a href="../social_contracts/mydata.md#social_contracts_mydata_revoke_access">revoke_access</a></code>] to remove a buyer from marketplace access tables.
 Permissioned key servers re-check [<code><a href="../social_contracts/mydata.md#social_contracts_mydata_mydata_approve">mydata_approve</a></code>] on every <code>fetch_key</code>, so revoked buyers cannot
 obtain new derived keys. Already-fetched keys may still decrypt offline client-side.
 
@@ -39,6 +39,8 @@ not row-level dataset membership.
 -  [Struct `SnapshotAnchorRegistry`](#social_contracts_mydata_SnapshotAnchorRegistry)
 -  [Struct `SnapshotAnchorRecordedEvent`](#social_contracts_mydata_SnapshotAnchorRecordedEvent)
 -  [Struct `DistributionRecordedEvent`](#social_contracts_mydata_DistributionRecordedEvent)
+-  [Struct `SnapshotEscrowFundedEvent`](#social_contracts_mydata_SnapshotEscrowFundedEvent)
+-  [Struct `SnapshotEscrowReclaimedEvent`](#social_contracts_mydata_SnapshotEscrowReclaimedEvent)
 -  [Struct `MyDataClaimVault`](#social_contracts_mydata_MyDataClaimVault)
 -  [Struct `MerkleRootPublishedEvent`](#social_contracts_mydata_MerkleRootPublishedEvent)
 -  [Struct `ClaimExecutedEvent`](#social_contracts_mydata_ClaimExecutedEvent)
@@ -48,9 +50,12 @@ not row-level dataset membership.
 -  [Struct `PurchaseEvent`](#social_contracts_mydata_PurchaseEvent)
 -  [Struct `AccessGrantedEvent`](#social_contracts_mydata_AccessGrantedEvent)
 -  [Struct `AccessRevokedEvent`](#social_contracts_mydata_AccessRevokedEvent)
+-  [Struct `MyDataPricingUpdatedEvent`](#social_contracts_mydata_MyDataPricingUpdatedEvent)
+-  [Struct `MyDataContentUpdatedEvent`](#social_contracts_mydata_MyDataContentUpdatedEvent)
 -  [Struct `MyDataRegisteredEvent`](#social_contracts_mydata_MyDataRegisteredEvent)
 -  [Struct `MyDataUnregisteredEvent`](#social_contracts_mydata_MyDataUnregisteredEvent)
 -  [Struct `MyDataConfigUpdatedEvent`](#social_contracts_mydata_MyDataConfigUpdatedEvent)
+-  [Enum `AccessConfiguration`](#social_contracts_mydata_AccessConfiguration)
 -  [Constants](#@Constants_0)
 -  [Function `validate_fee_config`](#social_contracts_mydata_validate_fee_config)
 -  [Function `calculate_p2p_fees`](#social_contracts_mydata_calculate_p2p_fees)
@@ -67,30 +72,48 @@ not row-level dataset membership.
 -  [Function `bootstrap_init`](#social_contracts_mydata_bootstrap_init)
 -  [Function `create_mydata_pool_admin_cap`](#social_contracts_mydata_create_mydata_pool_admin_cap)
 -  [Function `gen_pool_id`](#social_contracts_mydata_gen_pool_id)
+-  [Function `create_broad_pool_internal`](#social_contracts_mydata_create_broad_pool_internal)
 -  [Function `create_broad_pool`](#social_contracts_mydata_create_broad_pool)
+-  [Function `create_broad_pool_with_platform`](#social_contracts_mydata_create_broad_pool_with_platform)
 -  [Function `create_sub_pool`](#social_contracts_mydata_create_sub_pool)
 -  [Function `assign_mydata_to_sub_pools`](#social_contracts_mydata_assign_mydata_to_sub_pools)
 -  [Function `remove_mydata_from_sub_pool`](#social_contracts_mydata_remove_mydata_from_sub_pool)
 -  [Function `gen_snapshot_id`](#social_contracts_mydata_gen_snapshot_id)
 -  [Function `record_snapshot_anchor`](#social_contracts_mydata_record_snapshot_anchor)
 -  [Function `get_snapshot_anchor`](#social_contracts_mydata_get_snapshot_anchor)
--  [Function `publish_merkle_root`](#social_contracts_mydata_publish_merkle_root)
+-  [Function `deposit_snapshot_escrow`](#social_contracts_mydata_deposit_snapshot_escrow)
+-  [Function `publish_distribution`](#social_contracts_mydata_publish_distribution)
 -  [Function `distribute_mydata_marketplace_claim_fees_no_platform`](#social_contracts_mydata_distribute_mydata_marketplace_claim_fees_no_platform)
 -  [Function `distribute_mydata_marketplace_claim_fees_with_platform`](#social_contracts_mydata_distribute_mydata_marketplace_claim_fees_with_platform)
 -  [Function `claim_internal_no_platform`](#social_contracts_mydata_claim_internal_no_platform)
 -  [Function `claim_internal_with_platform`](#social_contracts_mydata_claim_internal_with_platform)
 -  [Function `claim`](#social_contracts_mydata_claim)
 -  [Function `claim_with_platform`](#social_contracts_mydata_claim_with_platform)
--  [Function `deposit`](#social_contracts_mydata_deposit)
--  [Function `record_distribution`](#social_contracts_mydata_record_distribution)
+-  [Function `reclaim_expired_snapshot_escrow`](#social_contracts_mydata_reclaim_expired_snapshot_escrow)
 -  [Function `get_broad_pool`](#social_contracts_mydata_get_broad_pool)
 -  [Function `get_sub_pool`](#social_contracts_mydata_get_sub_pool)
 -  [Function `get_mydata_sub_pools`](#social_contracts_mydata_get_mydata_sub_pools)
 -  [Function `get_distribution_round`](#social_contracts_mydata_get_distribution_round)
 -  [Function `broad_pool_id`](#social_contracts_mydata_broad_pool_id)
 -  [Function `sub_pool_id`](#social_contracts_mydata_sub_pool_id)
+-  [Function `access_configuration`](#social_contracts_mydata_access_configuration)
+-  [Function `requires_profile_subscription_access`](#social_contracts_mydata_requires_profile_subscription_access)
+-  [Function `requires_marketplace_purchase`](#social_contracts_mydata_requires_marketplace_purchase)
+-  [Function `requires_marketplace_subscription`](#social_contracts_mydata_requires_marketplace_subscription)
+-  [Function `linked_one_time_price`](#social_contracts_mydata_linked_one_time_price)
+-  [Function `access_configuration_kind`](#social_contracts_mydata_access_configuration_kind)
+-  [Function `validate_marketplace_price`](#social_contracts_mydata_validate_marketplace_price)
+-  [Function `validate_recurring_duration`](#social_contracts_mydata_validate_recurring_duration)
+-  [Function `validate_access_configuration`](#social_contracts_mydata_validate_access_configuration)
+-  [Function `validate_optional_metadata`](#social_contracts_mydata_validate_optional_metadata)
+-  [Function `validate_tags`](#social_contracts_mydata_validate_tags)
+-  [Function `emit_mydata_created_event`](#social_contracts_mydata_emit_mydata_created_event)
 -  [Function `create`](#social_contracts_mydata_create)
--  [Function `create_and_share`](#social_contracts_mydata_create_and_share)
+-  [Function `share_created_mydata`](#social_contracts_mydata_share_created_mydata)
+-  [Function `create_and_share_internal`](#social_contracts_mydata_create_and_share_internal)
+-  [Function `create_and_share_profile_subscription_mydata`](#social_contracts_mydata_create_and_share_profile_subscription_mydata)
+-  [Function `create_and_share_marketplace_one_time_mydata`](#social_contracts_mydata_create_and_share_marketplace_one_time_mydata)
+-  [Function `create_and_share_marketplace_recurring_mydata`](#social_contracts_mydata_create_and_share_marketplace_recurring_mydata)
 -  [Function `purchase_one_time_no_platform`](#social_contracts_mydata_purchase_one_time_no_platform)
 -  [Function `purchase_one_time_with_platform_internal`](#social_contracts_mydata_purchase_one_time_with_platform_internal)
 -  [Function `purchase_one_time`](#social_contracts_mydata_purchase_one_time)
@@ -294,31 +317,10 @@ Universal MyData for encrypted data monetization
  Encryption identity bytes: must match <code>id</code> inside the MyData ciphertext and in <code><a href="../social_contracts/mydata.md#social_contracts_mydata_mydata_approve">mydata_approve</a></code>.
 </dd>
 <dt>
-<code><a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+<code>access: <a href="../social_contracts/mydata.md#social_contracts_mydata_AccessConfiguration">social_contracts::mydata::AccessConfiguration</a></code>
 </dt>
 <dd>
- Pricing options - user controlled
-</dd>
-<dt>
-<code><a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_price">subscription_price</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code><a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_duration_days">subscription_duration_days</a>: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>purchasers: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<b>address</b>, bool&gt;</code>
-</dt>
-<dd>
- Access tracking
-</dd>
-<dt>
-<code>subscribers: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<b>address</b>, u64&gt;</code>
-</dt>
-<dd>
+ Access model (profile subscription gate or marketplace one-time/recurring).
 </dd>
 <dt>
 <code><a href="../social_contracts/mydata.md#social_contracts_mydata_geographic_region">geographic_region</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
@@ -437,6 +439,46 @@ Global configuration for MyData system
 <dd>
 </dd>
 <dt>
+<code>max_encrypted_data_bytes: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_tag_bytes: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_metadata_bytes: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_payment_reference_bytes: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_pool_assignments: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_merkle_proof_depth: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_paid_access_entries: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>default_claim_window_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
 <code>p2p_platform_fee_bps: u64</code>
 </dt>
 <dd>
@@ -541,6 +583,11 @@ Registry for tracking MyData ownership
 </dd>
 <dt>
 <code>description: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
 </dt>
 <dd>
 </dd>
@@ -739,6 +786,11 @@ Registry for tracking MyData ownership
 <dd>
 </dd>
 <dt>
+<code><a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
 <code><a href="../social_contracts/mydata.md#social_contracts_mydata_created_at">created_at</a>: u64</code>
 </dt>
 <dd>
@@ -881,6 +933,11 @@ Registry for tracking MyData ownership
 </dt>
 <dd>
 </dd>
+<dt>
+<code><a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
+</dt>
+<dd>
+</dd>
 </dl>
 
 
@@ -959,6 +1016,21 @@ Registry for tracking MyData ownership
 <dd>
 </dd>
 <dt>
+<code>source_pool_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>source_sub_pool_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
 <code><a href="../social_contracts/mydata.md#social_contracts_mydata_created_at">created_at</a>: u64</code>
 </dt>
 <dd>
@@ -1015,7 +1087,104 @@ Registry for tracking MyData ownership
 <dd>
 </dd>
 <dt>
+<code><a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>claim_deadline_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
 <code>published_at: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_mydata_SnapshotEscrowFundedEvent"></a>
+
+## Struct `SnapshotEscrowFundedEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_SnapshotEscrowFundedEvent">SnapshotEscrowFundedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>snapshot_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>funder: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>amount: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>total_funded: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>funded_at: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_mydata_SnapshotEscrowReclaimedEvent"></a>
+
+## Struct `SnapshotEscrowReclaimedEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_SnapshotEscrowReclaimedEvent">SnapshotEscrowReclaimedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>snapshot_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>buyer_address: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>amount: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>reclaimed_at: u64</code>
 </dt>
 <dd>
 </dd>
@@ -1209,6 +1378,16 @@ Registry for tracking MyData ownership
 <dd>
 </dd>
 <dt>
+<code><a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>claim_deadline_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
 <code>published_at: u64</code>
 </dt>
 <dd>
@@ -1291,14 +1470,10 @@ Registry for tracking MyData ownership
 <dd>
 </dd>
 <dt>
-<code><a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+<code><a href="../social_contracts/mydata.md#social_contracts_mydata_access_configuration_kind">access_configuration_kind</a>: u8</code>
 </dt>
 <dd>
-</dd>
-<dt>
-<code><a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_price">subscription_price</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
-</dt>
-<dd>
+ [<code>ACCESS_KIND_*</code>] tag for indexers (1=profile, 2=one_time, 3=recurring).
 </dd>
 <dt>
 <code><a href="../social_contracts/mydata.md#social_contracts_mydata_created_at">created_at</a>: u64</code>
@@ -1478,6 +1653,103 @@ Registry for tracking MyData ownership
 
 </details>
 
+<a name="social_contracts_mydata_MyDataPricingUpdatedEvent"></a>
+
+## Struct `MyDataPricingUpdatedEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPricingUpdatedEvent">MyDataPricingUpdatedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>ip_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_price">subscription_price</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_duration_days">subscription_duration_days</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>updated_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_mydata_MyDataContentUpdatedEvent"></a>
+
+## Struct `MyDataContentUpdatedEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataContentUpdatedEvent">MyDataContentUpdatedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>ip_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>encrypted_data_updated: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>tags_updated: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>updated_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="social_contracts_mydata_MyDataRegisteredEvent"></a>
 
 ## Struct `MyDataRegisteredEvent`
@@ -1597,6 +1869,46 @@ Registry for tracking MyData ownership
 <dd>
 </dd>
 <dt>
+<code>max_encrypted_data_bytes: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_tag_bytes: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_metadata_bytes: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_payment_reference_bytes: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_pool_assignments: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_merkle_proof_depth: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_paid_access_entries: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>default_claim_window_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
 <code>p2p_platform_fee_bps: u64</code>
 </dt>
 <dd>
@@ -1631,6 +1943,91 @@ Registry for tracking MyData ownership
 </dt>
 <dd>
 </dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_mydata_AccessConfiguration"></a>
+
+## Enum `AccessConfiguration`
+
+Mutually exclusive access model for a MyData listing.
+
+
+<pre><code><b>public</b> <b>enum</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_AccessConfiguration">AccessConfiguration</a> <b>has</b> store
+</code></pre>
+
+
+
+<details>
+<summary>Variants</summary>
+
+
+<dl>
+<dt>
+Variant <code>ProfileSubscription</code>
+</dt>
+<dd>
+ Gated by profile subscription on a linked post (no marketplace pricing).
+</dd>
+<dt>
+Variant <code>MarketplaceOneTime</code>
+</dt>
+<dd>
+ One-time marketplace purchase.
+</dd>
+
+<dl>
+<dt>
+<code>price: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+<dl>
+<dt>
+<code>purchasers: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<b>address</b>, bool&gt;</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+<dt>
+Variant <code>MarketplaceRecurring</code>
+</dt>
+<dd>
+ Recurring marketplace subscription with fixed duration per purchase.
+</dd>
+
+<dl>
+<dt>
+<code>price: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+<dl>
+<dt>
+<code>duration_days: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+<dl>
+<dt>
+<code>subscribers: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<b>address</b>, u64&gt;</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
 </dl>
 
 
@@ -1709,6 +2106,106 @@ Registry for tracking MyData ownership
 
 
 <pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS">DEFAULT_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS</a>: u64 = 10000;
+</code></pre>
+
+
+
+<a name="social_contracts_mydata_DEFAULT_MAX_ENCRYPTED_DATA_BYTES"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MAX_ENCRYPTED_DATA_BYTES">DEFAULT_MAX_ENCRYPTED_DATA_BYTES</a>: u64 = 262144;
+</code></pre>
+
+
+
+<a name="social_contracts_mydata_DEFAULT_MAX_TAG_BYTES"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MAX_TAG_BYTES">DEFAULT_MAX_TAG_BYTES</a>: u64 = 64;
+</code></pre>
+
+
+
+<a name="social_contracts_mydata_DEFAULT_MAX_METADATA_BYTES"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MAX_METADATA_BYTES">DEFAULT_MAX_METADATA_BYTES</a>: u64 = 1024;
+</code></pre>
+
+
+
+<a name="social_contracts_mydata_DEFAULT_MAX_PAYMENT_REFERENCE_BYTES"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MAX_PAYMENT_REFERENCE_BYTES">DEFAULT_MAX_PAYMENT_REFERENCE_BYTES</a>: u64 = 256;
+</code></pre>
+
+
+
+<a name="social_contracts_mydata_DEFAULT_MAX_POOL_ASSIGNMENTS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MAX_POOL_ASSIGNMENTS">DEFAULT_MAX_POOL_ASSIGNMENTS</a>: u64 = 32;
+</code></pre>
+
+
+
+<a name="social_contracts_mydata_DEFAULT_MAX_MERKLE_PROOF_DEPTH"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MAX_MERKLE_PROOF_DEPTH">DEFAULT_MAX_MERKLE_PROOF_DEPTH</a>: u64 = 64;
+</code></pre>
+
+
+
+<a name="social_contracts_mydata_DEFAULT_MAX_PAID_ACCESS_ENTRIES"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MAX_PAID_ACCESS_ENTRIES">DEFAULT_MAX_PAID_ACCESS_ENTRIES</a>: u64 = 100000;
+</code></pre>
+
+
+
+<a name="social_contracts_mydata_DEFAULT_CLAIM_WINDOW_MS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_CLAIM_WINDOW_MS">DEFAULT_CLAIM_WINDOW_MS</a>: u64 = 2592000000;
+</code></pre>
+
+
+
+<a name="social_contracts_mydata_ACCESS_KIND_PROFILE"></a>
+
+Event/indexer tags for [<code><a href="../social_contracts/mydata.md#social_contracts_mydata_AccessConfiguration">AccessConfiguration</a></code>] (not used for on-chain policy).
+
+
+<pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_ACCESS_KIND_PROFILE">ACCESS_KIND_PROFILE</a>: u8 = 1;
+</code></pre>
+
+
+
+<a name="social_contracts_mydata_ACCESS_KIND_ONE_TIME"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_ACCESS_KIND_ONE_TIME">ACCESS_KIND_ONE_TIME</a>: u8 = 2;
+</code></pre>
+
+
+
+<a name="social_contracts_mydata_ACCESS_KIND_RECURRING"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_ACCESS_KIND_RECURRING">ACCESS_KIND_RECURRING</a>: u8 = 3;
 </code></pre>
 
 
@@ -2001,6 +2498,51 @@ Registry for tracking MyData ownership
 
 
 
+<a name="social_contracts_mydata_EPqDistributionNotFound"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqDistributionNotFound">EPqDistributionNotFound</a>: u64 = 11;
+</code></pre>
+
+
+
+<a name="social_contracts_mydata_EPqClaimExpired"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqClaimExpired">EPqClaimExpired</a>: u64 = 12;
+</code></pre>
+
+
+
+<a name="social_contracts_mydata_EPqClaimNotExpired"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqClaimNotExpired">EPqClaimNotExpired</a>: u64 = 13;
+</code></pre>
+
+
+
+<a name="social_contracts_mydata_EPqPlatformMismatch"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqPlatformMismatch">EPqPlatformMismatch</a>: u64 = 14;
+</code></pre>
+
+
+
+<a name="social_contracts_mydata_EPqDistributionPublished"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqDistributionPublished">EPqDistributionPublished</a>: u64 = 15;
+</code></pre>
+
+
+
 <a name="social_contracts_mydata_validate_fee_config"></a>
 
 ## Function `validate_fee_config`
@@ -2282,6 +2824,14 @@ Registry for tracking MyData ownership
         max_subscription_days: config.max_subscription_days,
         max_free_access_grants: config.max_free_access_grants,
         max_encryption_id_bytes: config.max_encryption_id_bytes,
+        max_encrypted_data_bytes: config.max_encrypted_data_bytes,
+        max_tag_bytes: config.max_tag_bytes,
+        max_metadata_bytes: config.max_metadata_bytes,
+        max_payment_reference_bytes: config.max_payment_reference_bytes,
+        max_pool_assignments: config.max_pool_assignments,
+        max_merkle_proof_depth: config.max_merkle_proof_depth,
+        max_paid_access_entries: config.max_paid_access_entries,
+        default_claim_window_ms: config.default_claim_window_ms,
         p2p_platform_fee_bps: config.p2p_platform_fee_bps,
         p2p_ecosystem_fee_bps: config.p2p_ecosystem_fee_bps,
         mydata_marketplace_platform_fee_bps: config.mydata_marketplace_platform_fee_bps,
@@ -2331,7 +2881,7 @@ Create a MyDataAdminCap for bootstrap (package visibility only)
 Update MyData configuration (admin only)
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_update_mydata_config">update_mydata_config</a>(_: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataAdminCap">social_contracts::mydata::MyDataAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>: bool, max_tags: u64, max_subscription_days: u64, max_free_access_grants: u64, max_encryption_id_bytes: u64, p2p_platform_fee_bps: u64, p2p_ecosystem_fee_bps: u64, mydata_marketplace_platform_fee_bps: u64, mydata_marketplace_ecosystem_fee_bps: u64, non_platform_platform_to_creator_bps: u64, non_platform_platform_to_treasury_bps: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_update_mydata_config">update_mydata_config</a>(_: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataAdminCap">social_contracts::mydata::MyDataAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>: bool, max_tags: u64, max_subscription_days: u64, max_free_access_grants: u64, max_encryption_id_bytes: u64, max_encrypted_data_bytes: u64, max_tag_bytes: u64, max_metadata_bytes: u64, max_payment_reference_bytes: u64, max_pool_assignments: u64, max_merkle_proof_depth: u64, max_paid_access_entries: u64, default_claim_window_ms: u64, p2p_platform_fee_bps: u64, p2p_ecosystem_fee_bps: u64, mydata_marketplace_platform_fee_bps: u64, mydata_marketplace_ecosystem_fee_bps: u64, non_platform_platform_to_creator_bps: u64, non_platform_platform_to_treasury_bps: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2348,6 +2898,14 @@ Update MyData configuration (admin only)
     max_subscription_days: u64,
     max_free_access_grants: u64,
     max_encryption_id_bytes: u64,
+    max_encrypted_data_bytes: u64,
+    max_tag_bytes: u64,
+    max_metadata_bytes: u64,
+    max_payment_reference_bytes: u64,
+    max_pool_assignments: u64,
+    max_merkle_proof_depth: u64,
+    max_paid_access_entries: u64,
+    default_claim_window_ms: u64,
     p2p_platform_fee_bps: u64,
     p2p_ecosystem_fee_bps: u64,
     mydata_marketplace_platform_fee_bps: u64,
@@ -2361,6 +2919,14 @@ Update MyData configuration (admin only)
     <b>assert</b>!(max_tags &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>assert</b>!(max_free_access_grants &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>assert</b>!(max_encryption_id_bytes &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <b>assert</b>!(max_encrypted_data_bytes &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <b>assert</b>!(max_tag_bytes &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <b>assert</b>!(max_metadata_bytes &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <b>assert</b>!(max_payment_reference_bytes &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <b>assert</b>!(max_pool_assignments &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <b>assert</b>!(max_merkle_proof_depth &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <b>assert</b>!(max_paid_access_entries &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <b>assert</b>!(default_claim_window_ms &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <a href="../social_contracts/mydata.md#social_contracts_mydata_validate_fee_config">validate_fee_config</a>(
         p2p_platform_fee_bps,
         p2p_ecosystem_fee_bps,
@@ -2374,6 +2940,14 @@ Update MyData configuration (admin only)
     config.max_subscription_days = max_subscription_days;
     config.max_free_access_grants = max_free_access_grants;
     config.max_encryption_id_bytes = max_encryption_id_bytes;
+    config.max_encrypted_data_bytes = max_encrypted_data_bytes;
+    config.max_tag_bytes = max_tag_bytes;
+    config.max_metadata_bytes = max_metadata_bytes;
+    config.max_payment_reference_bytes = max_payment_reference_bytes;
+    config.max_pool_assignments = max_pool_assignments;
+    config.max_merkle_proof_depth = max_merkle_proof_depth;
+    config.max_paid_access_entries = max_paid_access_entries;
+    config.default_claim_window_ms = default_claim_window_ms;
     config.p2p_platform_fee_bps = p2p_platform_fee_bps;
     config.p2p_ecosystem_fee_bps = p2p_ecosystem_fee_bps;
     config.mydata_marketplace_platform_fee_bps = mydata_marketplace_platform_fee_bps;
@@ -2441,6 +3015,14 @@ Update MyData configuration (admin only)
         max_subscription_days: <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_SUBSCRIPTION_DAYS">MAX_SUBSCRIPTION_DAYS</a>,
         max_free_access_grants: <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_FREE_ACCESS_GRANTS">MAX_FREE_ACCESS_GRANTS</a>,
         max_encryption_id_bytes: <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MAX_ENCRYPTION_ID_BYTES">DEFAULT_MAX_ENCRYPTION_ID_BYTES</a>,
+        max_encrypted_data_bytes: <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MAX_ENCRYPTED_DATA_BYTES">DEFAULT_MAX_ENCRYPTED_DATA_BYTES</a>,
+        max_tag_bytes: <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MAX_TAG_BYTES">DEFAULT_MAX_TAG_BYTES</a>,
+        max_metadata_bytes: <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MAX_METADATA_BYTES">DEFAULT_MAX_METADATA_BYTES</a>,
+        max_payment_reference_bytes: <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MAX_PAYMENT_REFERENCE_BYTES">DEFAULT_MAX_PAYMENT_REFERENCE_BYTES</a>,
+        max_pool_assignments: <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MAX_POOL_ASSIGNMENTS">DEFAULT_MAX_POOL_ASSIGNMENTS</a>,
+        max_merkle_proof_depth: <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MAX_MERKLE_PROOF_DEPTH">DEFAULT_MAX_MERKLE_PROOF_DEPTH</a>,
+        max_paid_access_entries: <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MAX_PAID_ACCESS_ENTRIES">DEFAULT_MAX_PAID_ACCESS_ENTRIES</a>,
+        default_claim_window_ms: <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_CLAIM_WINDOW_MS">DEFAULT_CLAIM_WINDOW_MS</a>,
         p2p_platform_fee_bps: <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_P2P_PLATFORM_FEE_BPS">DEFAULT_P2P_PLATFORM_FEE_BPS</a>,
         p2p_ecosystem_fee_bps: <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_P2P_ECOSYSTEM_FEE_BPS">DEFAULT_P2P_ECOSYSTEM_FEE_BPS</a>,
         mydata_marketplace_platform_fee_bps: <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MYDATA_MARKETPLACE_PLATFORM_FEE_BPS">DEFAULT_MYDATA_MARKETPLACE_PLATFORM_FEE_BPS</a>,
@@ -2525,7 +3107,7 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
 
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_create_mydata_pool_admin_cap">create_mydata_pool_admin_cap</a>(ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolAdminCap">social_contracts::mydata::MyDataPoolAdminCap</a>
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_create_mydata_pool_admin_cap">create_mydata_pool_admin_cap</a>(ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolAdminCap">social_contracts::mydata::MyDataPoolAdminCap</a>
 </code></pre>
 
 
@@ -2534,7 +3116,7 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_create_mydata_pool_admin_cap">create_mydata_pool_admin_cap</a>(ctx: &<b>mut</b> TxContext): <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolAdminCap">MyDataPoolAdminCap</a> {
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_create_mydata_pool_admin_cap">create_mydata_pool_admin_cap</a>(ctx: &<b>mut</b> TxContext): <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolAdminCap">MyDataPoolAdminCap</a> {
     <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolAdminCap">MyDataPoolAdminCap</a> { id: object::new(ctx) }
 }
 </code></pre>
@@ -2569,13 +3151,13 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
 
 </details>
 
-<a name="social_contracts_mydata_create_broad_pool"></a>
+<a name="social_contracts_mydata_create_broad_pool_internal"></a>
 
-## Function `create_broad_pool`
+## Function `create_broad_pool_internal`
 
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_create_broad_pool">create_broad_pool</a>(_: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolAdminCap">social_contracts::mydata::MyDataPoolAdminCap</a>, registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolRegistry">social_contracts::mydata::MyDataPoolRegistry</a>, name: <a href="../std/string.md#std_string_String">std::string::String</a>, description: <a href="../std/string.md#std_string_String">std::string::String</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_create_broad_pool_internal">create_broad_pool_internal</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, _: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolAdminCap">social_contracts::mydata::MyDataPoolAdminCap</a>, registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolRegistry">social_contracts::mydata::MyDataPoolRegistry</a>, name: <a href="../std/string.md#std_string_String">std::string::String</a>, description: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>)
 </code></pre>
 
 
@@ -2584,13 +3166,17 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_create_broad_pool">create_broad_pool</a>(
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_create_broad_pool_internal">create_broad_pool_internal</a>(
+    config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
     _: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolAdminCap">MyDataPoolAdminCap</a>,
     registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolRegistry">MyDataPoolRegistry</a>,
     name: String,
     description: String,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>: Option&lt;<b>address</b>&gt;,
     clock: &Clock,
 ) {
+    <b>assert</b>!(string::length(&name) &gt; 0 && string::length(&name) &lt;= config.max_metadata_bytes, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqInvalidInput">EPqInvalidInput</a>);
+    <b>assert</b>!(string::length(&description) &lt;= config.max_metadata_bytes, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqInvalidInput">EPqInvalidInput</a>);
     <b>let</b> nonce = registry.next_broad_pool_nonce;
     registry.next_broad_pool_nonce = nonce + 1;
     <b>let</b> pool_id = <a href="../social_contracts/mydata.md#social_contracts_mydata_gen_pool_id">gen_pool_id</a>(registry, nonce);
@@ -2598,6 +3184,7 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
         id: pool_id,
         name,
         description,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>,
         <a href="../social_contracts/mydata.md#social_contracts_mydata_created_at">created_at</a>: clock::timestamp_ms(clock),
         <a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a>: registry.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a>,
     };
@@ -2607,8 +3194,80 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
     event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_BroadPoolCreatedEvent">BroadPoolCreatedEvent</a> {
         pool_id,
         name: broad_pool.name,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>,
         <a href="../social_contracts/mydata.md#social_contracts_mydata_created_at">created_at</a>: broad_pool.<a href="../social_contracts/mydata.md#social_contracts_mydata_created_at">created_at</a>,
     });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_create_broad_pool"></a>
+
+## Function `create_broad_pool`
+
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_create_broad_pool">create_broad_pool</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, cap: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolAdminCap">social_contracts::mydata::MyDataPoolAdminCap</a>, registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolRegistry">social_contracts::mydata::MyDataPoolRegistry</a>, name: <a href="../std/string.md#std_string_String">std::string::String</a>, description: <a href="../std/string.md#std_string_String">std::string::String</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_create_broad_pool">create_broad_pool</a>(
+    config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    cap: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolAdminCap">MyDataPoolAdminCap</a>,
+    registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolRegistry">MyDataPoolRegistry</a>,
+    name: String,
+    description: String,
+    clock: &Clock,
+) {
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_create_broad_pool_internal">create_broad_pool_internal</a>(config, cap, registry, name, description, option::none(), clock);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_create_broad_pool_with_platform"></a>
+
+## Function `create_broad_pool_with_platform`
+
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_create_broad_pool_with_platform">create_broad_pool_with_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, cap: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolAdminCap">social_contracts::mydata::MyDataPoolAdminCap</a>, registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolRegistry">social_contracts::mydata::MyDataPoolRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, name: <a href="../std/string.md#std_string_String">std::string::String</a>, description: <a href="../std/string.md#std_string_String">std::string::String</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_create_broad_pool_with_platform">create_broad_pool_with_platform</a>(
+    config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    cap: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolAdminCap">MyDataPoolAdminCap</a>,
+    registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolRegistry">MyDataPoolRegistry</a>,
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &Platform,
+    name: String,
+    description: String,
+    clock: &Clock,
+) {
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_create_broad_pool_internal">create_broad_pool_internal</a>(
+        config,
+        cap,
+        registry,
+        name,
+        description,
+        option::some(object::uid_to_address(<a href="../social_contracts/platform.md#social_contracts_platform_id">platform::id</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>))),
+        clock,
+    );
 }
 </code></pre>
 
@@ -2622,7 +3281,7 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
 
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_create_sub_pool">create_sub_pool</a>(_: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolAdminCap">social_contracts::mydata::MyDataPoolAdminCap</a>, registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolRegistry">social_contracts::mydata::MyDataPoolRegistry</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_broad_pool_id">broad_pool_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, name: <a href="../std/string.md#std_string_String">std::string::String</a>, description: <a href="../std/string.md#std_string_String">std::string::String</a>, schema_metadata: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;u8&gt;&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_create_sub_pool">create_sub_pool</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, _: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolAdminCap">social_contracts::mydata::MyDataPoolAdminCap</a>, registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolRegistry">social_contracts::mydata::MyDataPoolRegistry</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_broad_pool_id">broad_pool_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, name: <a href="../std/string.md#std_string_String">std::string::String</a>, description: <a href="../std/string.md#std_string_String">std::string::String</a>, schema_metadata: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;u8&gt;&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>)
 </code></pre>
 
 
@@ -2632,6 +3291,7 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
 
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_create_sub_pool">create_sub_pool</a>(
+    config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
     _: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolAdminCap">MyDataPoolAdminCap</a>,
     registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolRegistry">MyDataPoolRegistry</a>,
     <a href="../social_contracts/mydata.md#social_contracts_mydata_broad_pool_id">broad_pool_id</a>: ID,
@@ -2641,6 +3301,11 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
     clock: &Clock,
 ) {
     <b>assert</b>!(table::contains(&registry.broad_pools, <a href="../social_contracts/mydata.md#social_contracts_mydata_broad_pool_id">broad_pool_id</a>), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqPoolNotFound">EPqPoolNotFound</a>);
+    <b>assert</b>!(string::length(&name) &gt; 0 && string::length(&name) &lt;= config.max_metadata_bytes, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqInvalidInput">EPqInvalidInput</a>);
+    <b>assert</b>!(string::length(&description) &lt;= config.max_metadata_bytes, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqInvalidInput">EPqInvalidInput</a>);
+    <b>if</b> (option::is_some(&schema_metadata)) {
+        <b>assert</b>!(vector::length(option::borrow(&schema_metadata)) &lt;= config.max_metadata_bytes, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqInvalidInput">EPqInvalidInput</a>);
+    };
     <b>let</b> nonce = registry.next_sub_pool_nonce;
     registry.next_sub_pool_nonce = nonce + 1;
     <b>let</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_sub_pool_id">sub_pool_id</a> = <a href="../social_contracts/mydata.md#social_contracts_mydata_gen_pool_id">gen_pool_id</a>(registry, 0x100000000 | nonce);
@@ -2676,7 +3341,7 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_assign_mydata_to_sub_pools">assign_mydata_to_sub_pools</a>(registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolRegistry">social_contracts::mydata::MyDataPoolRegistry</a>, ip_id: <b>address</b>, sub_pool_ids: vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_assign_mydata_to_sub_pools">assign_mydata_to_sub_pools</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolRegistry">social_contracts::mydata::MyDataPoolRegistry</a>, ip_id: <b>address</b>, sub_pool_ids: vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>)
 </code></pre>
 
 
@@ -2686,11 +3351,14 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
 
 
 <pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_assign_mydata_to_sub_pools">assign_mydata_to_sub_pools</a>(
+    config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
     registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolRegistry">MyDataPoolRegistry</a>,
     ip_id: <b>address</b>,
     sub_pool_ids: vector&lt;ID&gt;,
     clock: &Clock,
 ) {
+    <b>assert</b>!(vector::length(&sub_pool_ids) &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqInvalidInput">EPqInvalidInput</a>);
+    <b>assert</b>!(vector::length(&sub_pool_ids) &lt;= config.max_pool_assignments, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqInvalidInput">EPqInvalidInput</a>);
     <b>let</b> <b>mut</b> existing = <b>if</b> (table::contains(&registry.mydata_to_sub_pools, ip_id)) {
         *table::borrow(&registry.mydata_to_sub_pools, ip_id)
     } <b>else</b> {
@@ -2703,6 +3371,7 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
         <b>let</b> (<b>has</b>, _) = vector::index_of(&existing, &sub_id);
         <b>if</b> (!<b>has</b>) {
             vector::push_back(&<b>mut</b> existing, sub_id);
+            <b>assert</b>!(vector::length(&existing) &lt;= config.max_pool_assignments, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqInvalidInput">EPqInvalidInput</a>);
         };
         i = i + 1;
     };
@@ -2787,7 +3456,7 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
 
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_record_snapshot_anchor">record_snapshot_anchor</a>(anchor_registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_SnapshotAnchorRegistry">social_contracts::mydata::SnapshotAnchorRegistry</a>, vault: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">social_contracts::mydata::MyDataClaimVault</a>, pool_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolRegistry">social_contracts::mydata::MyDataPoolRegistry</a>, source_pool_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, source_sub_pool_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, manifest_hash: vector&lt;u8&gt;, payment_reference: vector&lt;u8&gt;, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_record_snapshot_anchor">record_snapshot_anchor</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, anchor_registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_SnapshotAnchorRegistry">social_contracts::mydata::SnapshotAnchorRegistry</a>, vault: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">social_contracts::mydata::MyDataClaimVault</a>, pool_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolRegistry">social_contracts::mydata::MyDataPoolRegistry</a>, source_pool_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, source_sub_pool_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, manifest_hash: vector&lt;u8&gt;, payment_reference: vector&lt;u8&gt;, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2797,6 +3466,7 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
 
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_record_snapshot_anchor">record_snapshot_anchor</a>(
+    config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
     anchor_registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_SnapshotAnchorRegistry">SnapshotAnchorRegistry</a>,
     vault: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">MyDataClaimVault</a>,
     pool_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolRegistry">MyDataPoolRegistry</a>,
@@ -2808,8 +3478,14 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
+    <b>assert</b>!(config.<a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EDisabled">EDisabled</a>);
     <b>assert</b>!(table::contains(&pool_registry.broad_pools, source_pool_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqPoolNotFound">EPqPoolNotFound</a>);
     <b>assert</b>!(table::contains(&pool_registry.sub_pools, source_sub_pool_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqSubPoolNotFound">EPqSubPoolNotFound</a>);
+    <b>let</b> broad_pool = table::borrow(&pool_registry.broad_pools, source_pool_id);
+    <b>let</b> sub_pool = table::borrow(&pool_registry.sub_pools, source_sub_pool_id);
+    <b>assert</b>!(sub_pool.<a href="../social_contracts/mydata.md#social_contracts_mydata_broad_pool_id">broad_pool_id</a> == source_pool_id, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqSubPoolNotFound">EPqSubPoolNotFound</a>);
+    <b>assert</b>!(vector::length(&manifest_hash) == 32, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqInvalidInput">EPqInvalidInput</a>);
+    <b>assert</b>!(vector::length(&payment_reference) &lt;= config.max_payment_reference_bytes, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqInvalidInput">EPqInvalidInput</a>);
     <b>let</b> price_paid = coin::value(&payment);
     <b>assert</b>!(price_paid &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqInsufficientPayment">EPqInsufficientPayment</a>);
     <b>let</b> nonce = anchor_registry.next_snapshot_nonce;
@@ -2825,6 +3501,7 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
         <a href="../social_contracts/mydata.md#social_contracts_mydata_created_at">created_at</a>: clock::timestamp_ms(clock),
         snapshot_manifest_hash: manifest_hash,
         payment_reference,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>: broad_pool.<a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>,
     };
     <b>let</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_created_at">created_at</a> = anchor.<a href="../social_contracts/mydata.md#social_contracts_mydata_created_at">created_at</a>;
     <b>let</b> snapshot_manifest_hash_ev = <b>copy</b> anchor.snapshot_manifest_hash;
@@ -2837,6 +3514,9 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
         snapshot_id,
         buyer_address: buyer,
         price_paid,
+        source_pool_id,
+        source_sub_pool_id,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>: broad_pool.<a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>,
         <a href="../social_contracts/mydata.md#social_contracts_mydata_created_at">created_at</a>,
         snapshot_manifest_hash: snapshot_manifest_hash_ev,
         payment_reference: payment_reference_ev,
@@ -2879,13 +3559,13 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
 
 </details>
 
-<a name="social_contracts_mydata_publish_merkle_root"></a>
+<a name="social_contracts_mydata_deposit_snapshot_escrow"></a>
 
-## Function `publish_merkle_root`
+## Function `deposit_snapshot_escrow`
 
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_publish_merkle_root">publish_merkle_root</a>(_: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolAdminCap">social_contracts::mydata::MyDataPoolAdminCap</a>, anchor_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_SnapshotAnchorRegistry">social_contracts::mydata::SnapshotAnchorRegistry</a>, vault: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">social_contracts::mydata::MyDataClaimVault</a>, snapshot_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, root_hash: vector&lt;u8&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_deposit_snapshot_escrow">deposit_snapshot_escrow</a>(_: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolAdminCap">social_contracts::mydata::MyDataPoolAdminCap</a>, anchor_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_SnapshotAnchorRegistry">social_contracts::mydata::SnapshotAnchorRegistry</a>, vault: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">social_contracts::mydata::MyDataClaimVault</a>, snapshot_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2894,22 +3574,101 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_publish_merkle_root">publish_merkle_root</a>(
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_deposit_snapshot_escrow">deposit_snapshot_escrow</a>(
     _: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolAdminCap">MyDataPoolAdminCap</a>,
     anchor_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_SnapshotAnchorRegistry">SnapshotAnchorRegistry</a>,
     vault: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">MyDataClaimVault</a>,
     snapshot_id: ID,
-    root_hash: vector&lt;u8&gt;,
+    payment: Coin&lt;MYSO&gt;,
     clock: &Clock,
+    ctx: &TxContext,
 ) {
     <b>assert</b>!(table::contains(&anchor_registry.anchors, snapshot_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqAnchorNotFound">EPqAnchorNotFound</a>);
+    <b>assert</b>!(!table::contains(&vault.merkle_roots, snapshot_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqDistributionPublished">EPqDistributionPublished</a>);
+    <b>assert</b>!(table::contains(&vault.snapshot_escrow, snapshot_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqSnapshotEscrowMissing">EPqSnapshotEscrowMissing</a>);
+    <b>let</b> amount = coin::value(&payment);
+    <b>assert</b>!(amount &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqInsufficientPayment">EPqInsufficientPayment</a>);
+    <b>let</b> escrow = table::borrow_mut(&<b>mut</b> vault.snapshot_escrow, snapshot_id);
+    <b>assert</b>!(*escrow &lt;= <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_U64">MAX_U64</a> - amount, <a href="../social_contracts/mydata.md#social_contracts_mydata_EOverflow">EOverflow</a>);
+    *escrow = *escrow + amount;
+    <b>let</b> total_funded = *escrow;
+    balance::join(&<b>mut</b> vault.balance, coin::into_balance(payment));
+    event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_SnapshotEscrowFundedEvent">SnapshotEscrowFundedEvent</a> {
+        snapshot_id,
+        funder: tx_context::sender(ctx),
+        amount,
+        total_funded,
+        funded_at: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_publish_distribution"></a>
+
+## Function `publish_distribution`
+
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_publish_distribution">publish_distribution</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, _: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolAdminCap">social_contracts::mydata::MyDataPoolAdminCap</a>, anchor_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_SnapshotAnchorRegistry">social_contracts::mydata::SnapshotAnchorRegistry</a>, dist_registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_DistributionRegistry">social_contracts::mydata::DistributionRegistry</a>, vault: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">social_contracts::mydata::MyDataClaimVault</a>, snapshot_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, root_hash: vector&lt;u8&gt;, total_amount: u64, contributor_count: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_publish_distribution">publish_distribution</a>(
+    config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    _: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolAdminCap">MyDataPoolAdminCap</a>,
+    anchor_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_SnapshotAnchorRegistry">SnapshotAnchorRegistry</a>,
+    dist_registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_DistributionRegistry">DistributionRegistry</a>,
+    vault: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">MyDataClaimVault</a>,
+    snapshot_id: ID,
+    root_hash: vector&lt;u8&gt;,
+    total_amount: u64,
+    contributor_count: u64,
+    clock: &Clock,
+) {
+    <b>assert</b>!(config.<a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EDisabled">EDisabled</a>);
+    <b>assert</b>!(table::contains(&anchor_registry.anchors, snapshot_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqAnchorNotFound">EPqAnchorNotFound</a>);
+    <b>assert</b>!(table::contains(&vault.snapshot_escrow, snapshot_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqSnapshotEscrowMissing">EPqSnapshotEscrowMissing</a>);
     <b>assert</b>!(vector::length(&root_hash) == 32, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqInvalidInput">EPqInvalidInput</a>);
-    <b>assert</b>!(!table::contains(&vault.merkle_roots, snapshot_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqInvalidInput">EPqInvalidInput</a>);
-    table::add(&<b>mut</b> vault.merkle_roots, snapshot_id, root_hash);
+    <b>assert</b>!(total_amount &gt; 0 && contributor_count &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqInvalidInput">EPqInvalidInput</a>);
+    <b>assert</b>!(*table::borrow(&vault.snapshot_escrow, snapshot_id) == total_amount, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqEscrowExceeded">EPqEscrowExceeded</a>);
+    <b>assert</b>!(!table::contains(&vault.merkle_roots, snapshot_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqDistributionPublished">EPqDistributionPublished</a>);
+    <b>assert</b>!(!table::contains(&dist_registry.rounds, snapshot_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqDistributionPublished">EPqDistributionPublished</a>);
+    <b>let</b> now = clock::timestamp_ms(clock);
+    <b>assert</b>!(now &lt;= <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_U64">MAX_U64</a> - config.default_claim_window_ms, <a href="../social_contracts/mydata.md#social_contracts_mydata_EOverflow">EOverflow</a>);
+    <b>let</b> claim_deadline_ms = now + config.default_claim_window_ms;
+    <b>let</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a> = table::borrow(&anchor_registry.anchors, snapshot_id).<a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>;
+    table::add(&<b>mut</b> vault.merkle_roots, snapshot_id, <b>copy</b> root_hash);
+    table::add(&<b>mut</b> dist_registry.rounds, snapshot_id, <a href="../social_contracts/mydata.md#social_contracts_mydata_DistributionRound">DistributionRound</a> {
+        snapshot_id,
+        total_amount,
+        contributor_count,
+        merkle_root: <b>copy</b> root_hash,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>,
+        claim_deadline_ms,
+        published_at: now,
+    });
     event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_MerkleRootPublishedEvent">MerkleRootPublishedEvent</a> {
         snapshot_id,
-        root_hash,
-        published_at: clock::timestamp_ms(clock),
+        root_hash: <b>copy</b> root_hash,
+        published_at: now,
+    });
+    event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_DistributionRecordedEvent">DistributionRecordedEvent</a> {
+        snapshot_id,
+        total_amount,
+        contributor_count,
+        merkle_root: root_hash,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>,
+        claim_deadline_ms,
+        published_at: now,
     });
 }
 </code></pre>
@@ -3019,7 +3778,7 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_claim_internal_no_platform">claim_internal_no_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, vault: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">social_contracts::mydata::MyDataClaimVault</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, snapshot_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, amount: u64, leaf_index: u64, proof: vector&lt;vector&lt;u8&gt;&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_claim_internal_no_platform">claim_internal_no_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, dist_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_DistributionRegistry">social_contracts::mydata::DistributionRegistry</a>, vault: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">social_contracts::mydata::MyDataClaimVault</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, snapshot_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, amount: u64, leaf_index: u64, proof: vector&lt;vector&lt;u8&gt;&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3030,6 +3789,7 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
 
 <pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_claim_internal_no_platform">claim_internal_no_platform</a>(
     config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    dist_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_DistributionRegistry">DistributionRegistry</a>,
     vault: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">MyDataClaimVault</a>,
     treasury: &EcosystemTreasury,
     snapshot_id: ID,
@@ -3039,11 +3799,22 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
+    <b>assert</b>!(amount &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqInvalidInput">EPqInvalidInput</a>);
+    <b>assert</b>!(vector::length(&proof) &lt;= config.max_merkle_proof_depth, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqInvalidProof">EPqInvalidProof</a>);
+    <b>assert</b>!(table::contains(&dist_registry.rounds, snapshot_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqDistributionNotFound">EPqDistributionNotFound</a>);
+    <b>let</b> round = table::borrow(&dist_registry.rounds, snapshot_id);
+    <b>assert</b>!(option::is_none(&round.<a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqPlatformMismatch">EPqPlatformMismatch</a>);
+    <b>assert</b>!(clock::timestamp_ms(clock) &lt;= round.claim_deadline_ms, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqClaimExpired">EPqClaimExpired</a>);
     <b>assert</b>!(table::contains(&vault.merkle_roots, snapshot_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqMerkleRootNotPublished">EPqMerkleRootNotPublished</a>);
     <b>assert</b>!(table::contains(&vault.snapshot_escrow, snapshot_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqSnapshotEscrowMissing">EPqSnapshotEscrowMissing</a>);
     <b>assert</b>!(*table::borrow(&vault.snapshot_escrow, snapshot_id) &gt;= amount, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqEscrowExceeded">EPqEscrowExceeded</a>);
     <b>let</b> claimant = tx_context::sender(ctx);
-    <b>let</b> leaf = merkle::leaf_hash(claimant, amount, object::id_to_bytes(&snapshot_id));
+    <b>let</b> leaf = merkle::leaf_hash_with_platform(
+        claimant,
+        amount,
+        object::id_to_bytes(&snapshot_id),
+        option::none(),
+    );
     <b>let</b> root = *table::borrow(&vault.merkle_roots, snapshot_id);
     <b>assert</b>!(merkle::verify_proof(leaf, &proof, leaf_index, root), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqInvalidProof">EPqInvalidProof</a>);
     <b>if</b> (table::contains(&vault.claimed, snapshot_id)) {
@@ -3087,7 +3858,7 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_claim_internal_with_platform">claim_internal_with_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, vault: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">social_contracts::mydata::MyDataClaimVault</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, snapshot_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, amount: u64, leaf_index: u64, proof: vector&lt;vector&lt;u8&gt;&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_claim_internal_with_platform">claim_internal_with_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, dist_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_DistributionRegistry">social_contracts::mydata::DistributionRegistry</a>, vault: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">social_contracts::mydata::MyDataClaimVault</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, snapshot_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, amount: u64, leaf_index: u64, proof: vector&lt;vector&lt;u8&gt;&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3098,6 +3869,7 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
 
 <pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_claim_internal_with_platform">claim_internal_with_platform</a>(
     config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    dist_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_DistributionRegistry">DistributionRegistry</a>,
     vault: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">MyDataClaimVault</a>,
     treasury: &EcosystemTreasury,
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> Platform,
@@ -3108,11 +3880,24 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
+    <b>assert</b>!(amount &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqInvalidInput">EPqInvalidInput</a>);
+    <b>assert</b>!(vector::length(&proof) &lt;= config.max_merkle_proof_depth, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqInvalidProof">EPqInvalidProof</a>);
+    <b>assert</b>!(table::contains(&dist_registry.rounds, snapshot_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqDistributionNotFound">EPqDistributionNotFound</a>);
+    <b>let</b> round = table::borrow(&dist_registry.rounds, snapshot_id);
+    <b>assert</b>!(option::is_some(&round.<a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqPlatformMismatch">EPqPlatformMismatch</a>);
+    <b>assert</b>!(clock::timestamp_ms(clock) &lt;= round.claim_deadline_ms, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqClaimExpired">EPqClaimExpired</a>);
+    <b>let</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a> = object::uid_to_address(<a href="../social_contracts/platform.md#social_contracts_platform_id">platform::id</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>));
+    <b>assert</b>!(*option::borrow(&round.<a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>) == <a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqPlatformMismatch">EPqPlatformMismatch</a>);
     <b>assert</b>!(table::contains(&vault.merkle_roots, snapshot_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqMerkleRootNotPublished">EPqMerkleRootNotPublished</a>);
     <b>assert</b>!(table::contains(&vault.snapshot_escrow, snapshot_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqSnapshotEscrowMissing">EPqSnapshotEscrowMissing</a>);
     <b>assert</b>!(*table::borrow(&vault.snapshot_escrow, snapshot_id) &gt;= amount, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqEscrowExceeded">EPqEscrowExceeded</a>);
     <b>let</b> claimant = tx_context::sender(ctx);
-    <b>let</b> leaf = merkle::leaf_hash(claimant, amount, object::id_to_bytes(&snapshot_id));
+    <b>let</b> leaf = merkle::leaf_hash_with_platform(
+        claimant,
+        amount,
+        object::id_to_bytes(&snapshot_id),
+        option::some(<a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>),
+    );
     <b>let</b> root = *table::borrow(&vault.merkle_roots, snapshot_id);
     <b>assert</b>!(merkle::verify_proof(leaf, &proof, leaf_index, root), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqInvalidProof">EPqInvalidProof</a>);
     <b>if</b> (table::contains(&vault.claimed, snapshot_id)) {
@@ -3125,7 +3910,6 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
     };
     <b>let</b> claimed_table = table::borrow_mut(&<b>mut</b> vault.claimed, snapshot_id);
     table::add(claimed_table, claimant, <b>true</b>);
-    <b>let</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a> = object::uid_to_address(<a href="../social_contracts/platform.md#social_contracts_platform_id">platform::id</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>));
     <b>let</b> (platform_fee, ecosystem_fee, net_amount) = <a href="../social_contracts/mydata.md#social_contracts_mydata_distribute_mydata_marketplace_claim_fees_with_platform">distribute_mydata_marketplace_claim_fees_with_platform</a>(
         config,
         treasury,
@@ -3160,7 +3944,7 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
 Claim MyData marketplace pool payout from vault escrow (no platform).
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_claim">claim</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, vault: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">social_contracts::mydata::MyDataClaimVault</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, snapshot_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, amount: u64, leaf_index: u64, proof: vector&lt;vector&lt;u8&gt;&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_claim">claim</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, dist_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_DistributionRegistry">social_contracts::mydata::DistributionRegistry</a>, vault: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">social_contracts::mydata::MyDataClaimVault</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, snapshot_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, amount: u64, leaf_index: u64, proof: vector&lt;vector&lt;u8&gt;&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3171,6 +3955,7 @@ Claim MyData marketplace pool payout from vault escrow (no platform).
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_claim">claim</a>(
     config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    dist_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_DistributionRegistry">DistributionRegistry</a>,
     vault: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">MyDataClaimVault</a>,
     treasury: &EcosystemTreasury,
     snapshot_id: ID,
@@ -3182,6 +3967,7 @@ Claim MyData marketplace pool payout from vault escrow (no platform).
 ) {
     <a href="../social_contracts/mydata.md#social_contracts_mydata_claim_internal_no_platform">claim_internal_no_platform</a>(
         config,
+        dist_registry,
         vault,
         treasury,
         snapshot_id,
@@ -3205,7 +3991,7 @@ Claim MyData marketplace pool payout from vault escrow (no platform).
 Claim MyData marketplace pool payout with platform treasury routing.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_claim_with_platform">claim_with_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, vault: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">social_contracts::mydata::MyDataClaimVault</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, snapshot_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, amount: u64, leaf_index: u64, proof: vector&lt;vector&lt;u8&gt;&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_claim_with_platform">claim_with_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, dist_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_DistributionRegistry">social_contracts::mydata::DistributionRegistry</a>, vault: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">social_contracts::mydata::MyDataClaimVault</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, snapshot_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, amount: u64, leaf_index: u64, proof: vector&lt;vector&lt;u8&gt;&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3216,6 +4002,7 @@ Claim MyData marketplace pool payout with platform treasury routing.
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_claim_with_platform">claim_with_platform</a>(
     config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    dist_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_DistributionRegistry">DistributionRegistry</a>,
     vault: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">MyDataClaimVault</a>,
     treasury: &EcosystemTreasury,
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> Platform,
@@ -3228,6 +4015,7 @@ Claim MyData marketplace pool payout with platform treasury routing.
 ) {
     <a href="../social_contracts/mydata.md#social_contracts_mydata_claim_internal_with_platform">claim_internal_with_platform</a>(
         config,
+        dist_registry,
         vault,
         treasury,
         <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>,
@@ -3245,13 +4033,13 @@ Claim MyData marketplace pool payout with platform treasury routing.
 
 </details>
 
-<a name="social_contracts_mydata_deposit"></a>
+<a name="social_contracts_mydata_reclaim_expired_snapshot_escrow"></a>
 
-## Function `deposit`
+## Function `reclaim_expired_snapshot_escrow`
 
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_deposit">deposit</a>(_: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolAdminCap">social_contracts::mydata::MyDataPoolAdminCap</a>, vault: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">social_contracts::mydata::MyDataClaimVault</a>, _snapshot_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_reclaim_expired_snapshot_escrow">reclaim_expired_snapshot_escrow</a>(anchor_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_SnapshotAnchorRegistry">social_contracts::mydata::SnapshotAnchorRegistry</a>, dist_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_DistributionRegistry">social_contracts::mydata::DistributionRegistry</a>, vault: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">social_contracts::mydata::MyDataClaimVault</a>, snapshot_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3260,61 +4048,33 @@ Claim MyData marketplace pool payout with platform treasury routing.
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_deposit">deposit</a>(
-    _: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolAdminCap">MyDataPoolAdminCap</a>,
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_reclaim_expired_snapshot_escrow">reclaim_expired_snapshot_escrow</a>(
+    anchor_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_SnapshotAnchorRegistry">SnapshotAnchorRegistry</a>,
+    dist_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_DistributionRegistry">DistributionRegistry</a>,
     vault: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">MyDataClaimVault</a>,
-    _snapshot_id: ID,
-    payment: Coin&lt;MYSO&gt;,
-) {
-    balance::join(&<b>mut</b> vault.balance, coin::into_balance(payment));
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_mydata_record_distribution"></a>
-
-## Function `record_distribution`
-
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_record_distribution">record_distribution</a>(_: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolAdminCap">social_contracts::mydata::MyDataPoolAdminCap</a>, dist_registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_DistributionRegistry">social_contracts::mydata::DistributionRegistry</a>, vault: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">social_contracts::mydata::MyDataClaimVault</a>, snapshot_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, total_amount: u64, contributor_count: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_record_distribution">record_distribution</a>(
-    _: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolAdminCap">MyDataPoolAdminCap</a>,
-    dist_registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_DistributionRegistry">DistributionRegistry</a>,
-    vault: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">MyDataClaimVault</a>,
     snapshot_id: ID,
-    total_amount: u64,
-    contributor_count: u64,
     clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
 ) {
-    <b>assert</b>!(table::contains(&vault.merkle_roots, snapshot_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqMerkleRootNotPublished">EPqMerkleRootNotPublished</a>);
-    <b>let</b> root = *table::borrow(&vault.merkle_roots, snapshot_id);
-    <b>let</b> published_at = clock::timestamp_ms(clock);
-    <b>let</b> round = <a href="../social_contracts/mydata.md#social_contracts_mydata_DistributionRound">DistributionRound</a> {
+    <b>assert</b>!(table::contains(&anchor_registry.anchors, snapshot_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqAnchorNotFound">EPqAnchorNotFound</a>);
+    <b>assert</b>!(table::contains(&dist_registry.rounds, snapshot_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqDistributionNotFound">EPqDistributionNotFound</a>);
+    <b>assert</b>!(table::contains(&vault.snapshot_escrow, snapshot_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqSnapshotEscrowMissing">EPqSnapshotEscrowMissing</a>);
+    <b>let</b> anchor = table::borrow(&anchor_registry.anchors, snapshot_id);
+    <b>assert</b>!(tx_context::sender(ctx) == anchor.buyer_address, <a href="../social_contracts/mydata.md#social_contracts_mydata_EUnauthorized">EUnauthorized</a>);
+    <b>let</b> round = table::borrow(&dist_registry.rounds, snapshot_id);
+    <b>let</b> now = clock::timestamp_ms(clock);
+    <b>assert</b>!(now &gt; round.claim_deadline_ms, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqClaimNotExpired">EPqClaimNotExpired</a>);
+    <b>let</b> remaining = table::borrow_mut(&<b>mut</b> vault.snapshot_escrow, snapshot_id);
+    <b>let</b> amount = *remaining;
+    <b>assert</b>!(amount &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqEscrowExceeded">EPqEscrowExceeded</a>);
+    *remaining = 0;
+    <b>let</b> refund = coin::from_balance(balance::split(&<b>mut</b> vault.balance, amount), ctx);
+    transfer::public_transfer(refund, anchor.buyer_address);
+    event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_SnapshotEscrowReclaimedEvent">SnapshotEscrowReclaimedEvent</a> {
         snapshot_id,
-        total_amount,
-        contributor_count,
-        merkle_root: <b>copy</b> root,
-        published_at,
-    };
-    table::add(&<b>mut</b> dist_registry.rounds, snapshot_id, round);
-    event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_DistributionRecordedEvent">DistributionRecordedEvent</a> {
-        snapshot_id,
-        total_amount,
-        contributor_count,
-        merkle_root: root,
-        published_at,
+        buyer_address: anchor.buyer_address,
+        amount,
+        reclaimed_at: now,
     });
 }
 </code></pre>
@@ -3482,6 +4242,335 @@ Claim MyData marketplace pool payout with platform treasury routing.
 
 </details>
 
+<a name="social_contracts_mydata_access_configuration"></a>
+
+## Function `access_configuration`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_access_configuration">access_configuration</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>): &<a href="../social_contracts/mydata.md#social_contracts_mydata_AccessConfiguration">social_contracts::mydata::AccessConfiguration</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_access_configuration">access_configuration</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>): &<a href="../social_contracts/mydata.md#social_contracts_mydata_AccessConfiguration">AccessConfiguration</a> {
+    &<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.access
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_requires_profile_subscription_access"></a>
+
+## Function `requires_profile_subscription_access`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_requires_profile_subscription_access">requires_profile_subscription_access</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_requires_profile_subscription_access">requires_profile_subscription_access</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>): bool {
+    match (<a href="../social_contracts/mydata.md#social_contracts_mydata_access_configuration">access_configuration</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>)) {
+        AccessConfiguration::ProfileSubscription =&gt; <b>true</b>,
+        _ =&gt; <b>false</b>,
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_requires_marketplace_purchase"></a>
+
+## Function `requires_marketplace_purchase`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_requires_marketplace_purchase">requires_marketplace_purchase</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_requires_marketplace_purchase">requires_marketplace_purchase</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>): bool {
+    match (<a href="../social_contracts/mydata.md#social_contracts_mydata_access_configuration">access_configuration</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>)) {
+        AccessConfiguration::MarketplaceOneTime { .. } =&gt; <b>true</b>,
+        _ =&gt; <b>false</b>,
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_requires_marketplace_subscription"></a>
+
+## Function `requires_marketplace_subscription`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_requires_marketplace_subscription">requires_marketplace_subscription</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_requires_marketplace_subscription">requires_marketplace_subscription</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>): bool {
+    match (<a href="../social_contracts/mydata.md#social_contracts_mydata_access_configuration">access_configuration</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>)) {
+        AccessConfiguration::MarketplaceRecurring { .. } =&gt; <b>true</b>,
+        _ =&gt; <b>false</b>,
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_linked_one_time_price"></a>
+
+## Function `linked_one_time_price`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_linked_one_time_price">linked_one_time_price</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_linked_one_time_price">linked_one_time_price</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>): Option&lt;u64&gt; {
+    match (<a href="../social_contracts/mydata.md#social_contracts_mydata_access_configuration">access_configuration</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>)) {
+        AccessConfiguration::MarketplaceOneTime { price, .. } =&gt; option::some(*price),
+        _ =&gt; option::none(),
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_access_configuration_kind"></a>
+
+## Function `access_configuration_kind`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_access_configuration_kind">access_configuration_kind</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_access_configuration_kind">access_configuration_kind</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>): u8 {
+    match (<a href="../social_contracts/mydata.md#social_contracts_mydata_access_configuration">access_configuration</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>)) {
+        AccessConfiguration::ProfileSubscription =&gt; <a href="../social_contracts/mydata.md#social_contracts_mydata_ACCESS_KIND_PROFILE">ACCESS_KIND_PROFILE</a>,
+        AccessConfiguration::MarketplaceOneTime { .. } =&gt; <a href="../social_contracts/mydata.md#social_contracts_mydata_ACCESS_KIND_ONE_TIME">ACCESS_KIND_ONE_TIME</a>,
+        AccessConfiguration::MarketplaceRecurring { .. } =&gt; <a href="../social_contracts/mydata.md#social_contracts_mydata_ACCESS_KIND_RECURRING">ACCESS_KIND_RECURRING</a>,
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_validate_marketplace_price"></a>
+
+## Function `validate_marketplace_price`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_validate_marketplace_price">validate_marketplace_price</a>(price: u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_validate_marketplace_price">validate_marketplace_price</a>(price: u64) {
+    <b>assert</b>!(price &gt; 0 && price &lt;= <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_U64">MAX_U64</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_validate_recurring_duration"></a>
+
+## Function `validate_recurring_duration`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_validate_recurring_duration">validate_recurring_duration</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, duration_days: u64): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_validate_recurring_duration">validate_recurring_duration</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>, duration_days: u64): u64 {
+    <b>let</b> sub_duration = <b>if</b> (duration_days == 0) { 30 } <b>else</b> { duration_days };
+    <b>assert</b>!(sub_duration &lt;= config.max_subscription_days, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <b>let</b> duration_ms = (sub_duration <b>as</b> u128) * (<a href="../social_contracts/mydata.md#social_contracts_mydata_MILLISECONDS_PER_DAY">MILLISECONDS_PER_DAY</a> <b>as</b> u128);
+    <b>assert</b>!(duration_ms &lt;= (<a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_U64">MAX_U64</a> <b>as</b> u128), <a href="../social_contracts/mydata.md#social_contracts_mydata_EOverflow">EOverflow</a>);
+    sub_duration
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_validate_access_configuration"></a>
+
+## Function `validate_access_configuration`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_validate_access_configuration">validate_access_configuration</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, access: &<a href="../social_contracts/mydata.md#social_contracts_mydata_AccessConfiguration">social_contracts::mydata::AccessConfiguration</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_validate_access_configuration">validate_access_configuration</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>, access: &<a href="../social_contracts/mydata.md#social_contracts_mydata_AccessConfiguration">AccessConfiguration</a>) {
+    match (access) {
+        AccessConfiguration::ProfileSubscription =&gt; {},
+        AccessConfiguration::MarketplaceOneTime { price, .. } =&gt; <a href="../social_contracts/mydata.md#social_contracts_mydata_validate_marketplace_price">validate_marketplace_price</a>(*price),
+        AccessConfiguration::MarketplaceRecurring { price, duration_days, .. } =&gt; {
+            <a href="../social_contracts/mydata.md#social_contracts_mydata_validate_marketplace_price">validate_marketplace_price</a>(*price);
+            <b>let</b> _ = <a href="../social_contracts/mydata.md#social_contracts_mydata_validate_recurring_duration">validate_recurring_duration</a>(config, *duration_days);
+        },
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_validate_optional_metadata"></a>
+
+## Function `validate_optional_metadata`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_validate_optional_metadata">validate_optional_metadata</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, value: &<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_validate_optional_metadata">validate_optional_metadata</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>, value: &Option&lt;String&gt;) {
+    <b>if</b> (option::is_some(value)) {
+        <b>assert</b>!(string::length(option::borrow(value)) &lt;= config.max_metadata_bytes, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_validate_tags"></a>
+
+## Function `validate_tags`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_validate_tags">validate_tags</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_tags">tags</a>: &vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_validate_tags">validate_tags</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_tags">tags</a>: &vector&lt;String&gt;) {
+    <b>assert</b>!(vector::length(<a href="../social_contracts/mydata.md#social_contracts_mydata_tags">tags</a>) &lt;= config.max_tags, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <b>let</b> <b>mut</b> i = 0;
+    <b>while</b> (i &lt; vector::length(<a href="../social_contracts/mydata.md#social_contracts_mydata_tags">tags</a>)) {
+        <b>assert</b>!(string::length(vector::borrow(<a href="../social_contracts/mydata.md#social_contracts_mydata_tags">tags</a>, i)) &lt;= config.max_tag_bytes, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+        i = i + 1;
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_emit_mydata_created_event"></a>
+
+## Function `emit_mydata_created_event`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_emit_mydata_created_event">emit_mydata_created_event</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, ip_id: <b>address</b>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_emit_mydata_created_event">emit_mydata_created_event</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>, ip_id: <b>address</b>) {
+    event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataCreatedEvent">MyDataCreatedEvent</a> {
+        ip_id,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>: <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_media_type">media_type</a>: <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_media_type">media_type</a>,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>: <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_access_configuration_kind">access_configuration_kind</a>: <a href="../social_contracts/mydata.md#social_contracts_mydata_access_configuration_kind">access_configuration_kind</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>),
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_created_at">created_at</a>: <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_created_at">created_at</a>,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_mydata_create"></a>
 
 ## Function `create`
@@ -3489,7 +4578,7 @@ Claim MyData marketplace pool payout with platform treasury routing.
 Create new MyData data with proper MyData encryption
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_create">create</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_media_type">media_type</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_tags">tags</a>: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_timestamp_start">timestamp_start</a>: u64, <a href="../social_contracts/mydata.md#social_contracts_mydata_timestamp_end">timestamp_end</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, encrypted_data: vector&lt;u8&gt;, encryption_id: vector&lt;u8&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_price">subscription_price</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_duration_days">subscription_duration_days</a>: u64, <a href="../social_contracts/mydata.md#social_contracts_mydata_geographic_region">geographic_region</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_data_quality">data_quality</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_sample_size">sample_size</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_collection_method">collection_method</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_is_updating">is_updating</a>: bool, <a href="../social_contracts/mydata.md#social_contracts_mydata_update_frequency">update_frequency</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_create">create</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_media_type">media_type</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_tags">tags</a>: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_timestamp_start">timestamp_start</a>: u64, <a href="../social_contracts/mydata.md#social_contracts_mydata_timestamp_end">timestamp_end</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, encrypted_data: vector&lt;u8&gt;, encryption_id: vector&lt;u8&gt;, access: <a href="../social_contracts/mydata.md#social_contracts_mydata_AccessConfiguration">social_contracts::mydata::AccessConfiguration</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_geographic_region">geographic_region</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_data_quality">data_quality</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_sample_size">sample_size</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_collection_method">collection_method</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_is_updating">is_updating</a>: bool, <a href="../social_contracts/mydata.md#social_contracts_mydata_update_frequency">update_frequency</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>
 </code></pre>
 
 
@@ -3507,9 +4596,7 @@ Create new MyData data with proper MyData encryption
     <a href="../social_contracts/mydata.md#social_contracts_mydata_timestamp_end">timestamp_end</a>: Option&lt;u64&gt;,
     encrypted_data: vector&lt;u8&gt;,  // Pre-encrypted data from client
     encryption_id: vector&lt;u8&gt;,   // <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a> encryption ID
-    <a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a>: Option&lt;u64&gt;,
-    <a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_price">subscription_price</a>: Option&lt;u64&gt;,
-    <a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_duration_days">subscription_duration_days</a>: u64,
+    access: <a href="../social_contracts/mydata.md#social_contracts_mydata_AccessConfiguration">AccessConfiguration</a>,
     <a href="../social_contracts/mydata.md#social_contracts_mydata_geographic_region">geographic_region</a>: Option&lt;String&gt;,
     <a href="../social_contracts/mydata.md#social_contracts_mydata_data_quality">data_quality</a>: Option&lt;String&gt;,
     <a href="../social_contracts/mydata.md#social_contracts_mydata_sample_size">sample_size</a>: Option&lt;u64&gt;,
@@ -3520,24 +4607,17 @@ Create new MyData data with proper MyData encryption
     ctx: &<b>mut</b> TxContext,
 ): <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a> {
     // Input validation
-    <b>assert</b>!(vector::length(&<a href="../social_contracts/mydata.md#social_contracts_mydata_tags">tags</a>) &lt;= config.max_tags, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_validate_tags">validate_tags</a>(config, &<a href="../social_contracts/mydata.md#social_contracts_mydata_tags">tags</a>);
+    <b>assert</b>!(string::length(&<a href="../social_contracts/mydata.md#social_contracts_mydata_media_type">media_type</a>) &gt; 0 && string::length(&<a href="../social_contracts/mydata.md#social_contracts_mydata_media_type">media_type</a>) &lt;= config.max_metadata_bytes, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <b>assert</b>!(!vector::is_empty(&encrypted_data), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <b>assert</b>!(vector::length(&encrypted_data) &lt;= config.max_encrypted_data_bytes, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>assert</b>!(!vector::is_empty(&encryption_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>assert</b>!(vector::length(&encryption_id) &lt;= config.max_encryption_id_bytes, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
-    // Validate prices with overflow protection
-    <b>if</b> (option::is_some(&<a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a>)) {
-        <b>let</b> price_val = *option::borrow(&<a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a>);
-        <b>assert</b>!(price_val &gt; 0 && price_val &lt;= <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_U64">MAX_U64</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
-    };
-    <b>if</b> (option::is_some(&<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_price">subscription_price</a>)) {
-        <b>let</b> price_val = *option::borrow(&<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_price">subscription_price</a>);
-        <b>assert</b>!(price_val &gt; 0 && price_val &lt;= <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_U64">MAX_U64</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
-    };
-    // Validate <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a> duration with overflow protection
-    <b>let</b> sub_duration = <b>if</b> (<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_duration_days">subscription_duration_days</a> == 0) { 30 } <b>else</b> { <a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_duration_days">subscription_duration_days</a> };
-    <b>assert</b>!(sub_duration &lt;= config.max_subscription_days, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
-    // Check <b>for</b> potential overflow in millisecond conversion
-    <b>let</b> duration_ms = (sub_duration <b>as</b> u128) * (<a href="../social_contracts/mydata.md#social_contracts_mydata_MILLISECONDS_PER_DAY">MILLISECONDS_PER_DAY</a> <b>as</b> u128);
-    <b>assert</b>!(duration_ms &lt;= (<a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_U64">MAX_U64</a> <b>as</b> u128), <a href="../social_contracts/mydata.md#social_contracts_mydata_EOverflow">EOverflow</a>);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_validate_optional_metadata">validate_optional_metadata</a>(config, &<a href="../social_contracts/mydata.md#social_contracts_mydata_geographic_region">geographic_region</a>);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_validate_optional_metadata">validate_optional_metadata</a>(config, &<a href="../social_contracts/mydata.md#social_contracts_mydata_data_quality">data_quality</a>);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_validate_optional_metadata">validate_optional_metadata</a>(config, &<a href="../social_contracts/mydata.md#social_contracts_mydata_collection_method">collection_method</a>);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_validate_optional_metadata">validate_optional_metadata</a>(config, &<a href="../social_contracts/mydata.md#social_contracts_mydata_update_frequency">update_frequency</a>);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_validate_access_configuration">validate_access_configuration</a>(config, &access);
     // Validate time range
     <b>if</b> (option::is_some(&<a href="../social_contracts/mydata.md#social_contracts_mydata_timestamp_end">timestamp_end</a>)) {
         <b>let</b> end_time = *option::borrow(&<a href="../social_contracts/mydata.md#social_contracts_mydata_timestamp_end">timestamp_end</a>);
@@ -3556,11 +4636,7 @@ Create new MyData data with proper MyData encryption
         <a href="../social_contracts/mydata.md#social_contracts_mydata_last_updated">last_updated</a>: current_time,
         encrypted_data,
         encryption_id,
-        <a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a>,
-        <a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_price">subscription_price</a>,
-        <a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_duration_days">subscription_duration_days</a>: sub_duration,
-        purchasers: table::new(ctx),
-        subscribers: table::new(ctx),
+        access,
         <a href="../social_contracts/mydata.md#social_contracts_mydata_geographic_region">geographic_region</a>,
         <a href="../social_contracts/mydata.md#social_contracts_mydata_data_quality">data_quality</a>,
         <a href="../social_contracts/mydata.md#social_contracts_mydata_sample_size">sample_size</a>,
@@ -3570,15 +4646,7 @@ Create new MyData data with proper MyData encryption
         <a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a>: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     };
     <b>let</b> ip_id = object::uid_to_address(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id);
-    event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataCreatedEvent">MyDataCreatedEvent</a> {
-        ip_id,
-        <a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>: <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>,
-        <a href="../social_contracts/mydata.md#social_contracts_mydata_media_type">media_type</a>: <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_media_type">media_type</a>,
-        <a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>: <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>,
-        <a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a>: <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a>,
-        <a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_price">subscription_price</a>: <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_price">subscription_price</a>,
-        <a href="../social_contracts/mydata.md#social_contracts_mydata_created_at">created_at</a>: <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_created_at">created_at</a>,
-    });
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_emit_mydata_created_event">emit_mydata_created_event</a>(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, ip_id);
     <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>
 }
 </code></pre>
@@ -3587,14 +4655,13 @@ Create new MyData data with proper MyData encryption
 
 </details>
 
-<a name="social_contracts_mydata_create_and_share"></a>
+<a name="social_contracts_mydata_share_created_mydata"></a>
 
-## Function `create_and_share`
-
-Create and share MyData publicly
+## Function `share_created_mydata`
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_create_and_share">create_and_share</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">social_contracts::mydata::MyDataRegistry</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_media_type">media_type</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_tags">tags</a>: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_timestamp_start">timestamp_start</a>: u64, <a href="../social_contracts/mydata.md#social_contracts_mydata_timestamp_end">timestamp_end</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, encrypted_data: vector&lt;u8&gt;, encryption_id: vector&lt;u8&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_price">subscription_price</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_duration_days">subscription_duration_days</a>: u64, <a href="../social_contracts/mydata.md#social_contracts_mydata_geographic_region">geographic_region</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_data_quality">data_quality</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_sample_size">sample_size</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_collection_method">collection_method</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_is_updating">is_updating</a>: bool, <a href="../social_contracts/mydata.md#social_contracts_mydata_update_frequency">update_frequency</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_share_created_mydata">share_created_mydata</a>(registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">social_contracts::mydata::MyDataRegistry</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>)
 </code></pre>
 
 
@@ -3603,7 +4670,33 @@ Create and share MyData publicly
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_create_and_share">create_and_share</a>(
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_share_created_mydata">share_created_mydata</a>(registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">MyDataRegistry</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>) {
+    <b>let</b> ip_id = object::uid_to_address(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id);
+    table::add(&<b>mut</b> registry.ip_to_owner, ip_id, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>);
+    transfer::share_object(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_create_and_share_internal"></a>
+
+## Function `create_and_share_internal`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_create_and_share_internal">create_and_share_internal</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">social_contracts::mydata::MyDataRegistry</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_media_type">media_type</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_tags">tags</a>: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_timestamp_start">timestamp_start</a>: u64, <a href="../social_contracts/mydata.md#social_contracts_mydata_timestamp_end">timestamp_end</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, encrypted_data: vector&lt;u8&gt;, encryption_id: vector&lt;u8&gt;, access: <a href="../social_contracts/mydata.md#social_contracts_mydata_AccessConfiguration">social_contracts::mydata::AccessConfiguration</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_geographic_region">geographic_region</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_data_quality">data_quality</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_sample_size">sample_size</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_collection_method">collection_method</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_is_updating">is_updating</a>: bool, <a href="../social_contracts/mydata.md#social_contracts_mydata_update_frequency">update_frequency</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_create_and_share_internal">create_and_share_internal</a>(
     config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
     registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">MyDataRegistry</a>,
     <a href="../social_contracts/mydata.md#social_contracts_mydata_media_type">media_type</a>: String,
@@ -3613,9 +4706,7 @@ Create and share MyData publicly
     <a href="../social_contracts/mydata.md#social_contracts_mydata_timestamp_end">timestamp_end</a>: Option&lt;u64&gt;,
     encrypted_data: vector&lt;u8&gt;,
     encryption_id: vector&lt;u8&gt;,
-    <a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a>: Option&lt;u64&gt;,
-    <a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_price">subscription_price</a>: Option&lt;u64&gt;,
-    <a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_duration_days">subscription_duration_days</a>: u64,
+    access: <a href="../social_contracts/mydata.md#social_contracts_mydata_AccessConfiguration">AccessConfiguration</a>,
     <a href="../social_contracts/mydata.md#social_contracts_mydata_geographic_region">geographic_region</a>: Option&lt;String&gt;,
     <a href="../social_contracts/mydata.md#social_contracts_mydata_data_quality">data_quality</a>: Option&lt;String&gt;,
     <a href="../social_contracts/mydata.md#social_contracts_mydata_sample_size">sample_size</a>: Option&lt;u64&gt;,
@@ -3635,9 +4726,7 @@ Create and share MyData publicly
         <a href="../social_contracts/mydata.md#social_contracts_mydata_timestamp_end">timestamp_end</a>,
         encrypted_data,
         encryption_id,
-        <a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a>,
-        <a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_price">subscription_price</a>,
-        <a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_duration_days">subscription_duration_days</a>,
+        access,
         <a href="../social_contracts/mydata.md#social_contracts_mydata_geographic_region">geographic_region</a>,
         <a href="../social_contracts/mydata.md#social_contracts_mydata_data_quality">data_quality</a>,
         <a href="../social_contracts/mydata.md#social_contracts_mydata_sample_size">sample_size</a>,
@@ -3647,10 +4736,206 @@ Create and share MyData publicly
         clock,
         ctx,
     );
-    // Register in the registry
-    <b>let</b> ip_id = object::uid_to_address(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id);
-    table::add(&<b>mut</b> registry.ip_to_owner, ip_id, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>);
-    transfer::share_object(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_share_created_mydata">share_created_mydata</a>(registry, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_create_and_share_profile_subscription_mydata"></a>
+
+## Function `create_and_share_profile_subscription_mydata`
+
+Create and share profile-subscription-gated MyData (no marketplace pricing).
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_create_and_share_profile_subscription_mydata">create_and_share_profile_subscription_mydata</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">social_contracts::mydata::MyDataRegistry</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_media_type">media_type</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_tags">tags</a>: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_timestamp_start">timestamp_start</a>: u64, <a href="../social_contracts/mydata.md#social_contracts_mydata_timestamp_end">timestamp_end</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, encrypted_data: vector&lt;u8&gt;, encryption_id: vector&lt;u8&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_geographic_region">geographic_region</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_data_quality">data_quality</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_sample_size">sample_size</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_collection_method">collection_method</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_is_updating">is_updating</a>: bool, <a href="../social_contracts/mydata.md#social_contracts_mydata_update_frequency">update_frequency</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_create_and_share_profile_subscription_mydata">create_and_share_profile_subscription_mydata</a>(
+    config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">MyDataRegistry</a>,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_media_type">media_type</a>: String,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_tags">tags</a>: vector&lt;String&gt;,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>: Option&lt;<b>address</b>&gt;,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_timestamp_start">timestamp_start</a>: u64,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_timestamp_end">timestamp_end</a>: Option&lt;u64&gt;,
+    encrypted_data: vector&lt;u8&gt;,
+    encryption_id: vector&lt;u8&gt;,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_geographic_region">geographic_region</a>: Option&lt;String&gt;,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_data_quality">data_quality</a>: Option&lt;String&gt;,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_sample_size">sample_size</a>: Option&lt;u64&gt;,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_collection_method">collection_method</a>: Option&lt;String&gt;,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_is_updating">is_updating</a>: bool,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_update_frequency">update_frequency</a>: Option&lt;String&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_create_and_share_internal">create_and_share_internal</a>(
+        config,
+        registry,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_media_type">media_type</a>,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_tags">tags</a>,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_timestamp_start">timestamp_start</a>,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_timestamp_end">timestamp_end</a>,
+        encrypted_data,
+        encryption_id,
+        AccessConfiguration::ProfileSubscription,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_geographic_region">geographic_region</a>,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_data_quality">data_quality</a>,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_sample_size">sample_size</a>,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_collection_method">collection_method</a>,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_is_updating">is_updating</a>,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_update_frequency">update_frequency</a>,
+        clock,
+        ctx,
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_create_and_share_marketplace_one_time_mydata"></a>
+
+## Function `create_and_share_marketplace_one_time_mydata`
+
+Create and share marketplace one-time purchase MyData.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_create_and_share_marketplace_one_time_mydata">create_and_share_marketplace_one_time_mydata</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">social_contracts::mydata::MyDataRegistry</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_media_type">media_type</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_tags">tags</a>: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_timestamp_start">timestamp_start</a>: u64, <a href="../social_contracts/mydata.md#social_contracts_mydata_timestamp_end">timestamp_end</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, encrypted_data: vector&lt;u8&gt;, encryption_id: vector&lt;u8&gt;, price: u64, <a href="../social_contracts/mydata.md#social_contracts_mydata_geographic_region">geographic_region</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_data_quality">data_quality</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_sample_size">sample_size</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_collection_method">collection_method</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_is_updating">is_updating</a>: bool, <a href="../social_contracts/mydata.md#social_contracts_mydata_update_frequency">update_frequency</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_create_and_share_marketplace_one_time_mydata">create_and_share_marketplace_one_time_mydata</a>(
+    config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">MyDataRegistry</a>,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_media_type">media_type</a>: String,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_tags">tags</a>: vector&lt;String&gt;,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>: Option&lt;<b>address</b>&gt;,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_timestamp_start">timestamp_start</a>: u64,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_timestamp_end">timestamp_end</a>: Option&lt;u64&gt;,
+    encrypted_data: vector&lt;u8&gt;,
+    encryption_id: vector&lt;u8&gt;,
+    price: u64,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_geographic_region">geographic_region</a>: Option&lt;String&gt;,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_data_quality">data_quality</a>: Option&lt;String&gt;,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_sample_size">sample_size</a>: Option&lt;u64&gt;,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_collection_method">collection_method</a>: Option&lt;String&gt;,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_is_updating">is_updating</a>: bool,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_update_frequency">update_frequency</a>: Option&lt;String&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_validate_marketplace_price">validate_marketplace_price</a>(price);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_create_and_share_internal">create_and_share_internal</a>(
+        config,
+        registry,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_media_type">media_type</a>,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_tags">tags</a>,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_timestamp_start">timestamp_start</a>,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_timestamp_end">timestamp_end</a>,
+        encrypted_data,
+        encryption_id,
+        AccessConfiguration::MarketplaceOneTime {
+            price,
+            purchasers: table::new(ctx),
+        },
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_geographic_region">geographic_region</a>,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_data_quality">data_quality</a>,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_sample_size">sample_size</a>,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_collection_method">collection_method</a>,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_is_updating">is_updating</a>,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_update_frequency">update_frequency</a>,
+        clock,
+        ctx,
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_create_and_share_marketplace_recurring_mydata"></a>
+
+## Function `create_and_share_marketplace_recurring_mydata`
+
+Create and share marketplace recurring subscription MyData.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_create_and_share_marketplace_recurring_mydata">create_and_share_marketplace_recurring_mydata</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">social_contracts::mydata::MyDataRegistry</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_media_type">media_type</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_tags">tags</a>: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_timestamp_start">timestamp_start</a>: u64, <a href="../social_contracts/mydata.md#social_contracts_mydata_timestamp_end">timestamp_end</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, encrypted_data: vector&lt;u8&gt;, encryption_id: vector&lt;u8&gt;, price: u64, duration_days: u64, <a href="../social_contracts/mydata.md#social_contracts_mydata_geographic_region">geographic_region</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_data_quality">data_quality</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_sample_size">sample_size</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_collection_method">collection_method</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_is_updating">is_updating</a>: bool, <a href="../social_contracts/mydata.md#social_contracts_mydata_update_frequency">update_frequency</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_create_and_share_marketplace_recurring_mydata">create_and_share_marketplace_recurring_mydata</a>(
+    config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">MyDataRegistry</a>,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_media_type">media_type</a>: String,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_tags">tags</a>: vector&lt;String&gt;,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>: Option&lt;<b>address</b>&gt;,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_timestamp_start">timestamp_start</a>: u64,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_timestamp_end">timestamp_end</a>: Option&lt;u64&gt;,
+    encrypted_data: vector&lt;u8&gt;,
+    encryption_id: vector&lt;u8&gt;,
+    price: u64,
+    duration_days: u64,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_geographic_region">geographic_region</a>: Option&lt;String&gt;,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_data_quality">data_quality</a>: Option&lt;String&gt;,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_sample_size">sample_size</a>: Option&lt;u64&gt;,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_collection_method">collection_method</a>: Option&lt;String&gt;,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_is_updating">is_updating</a>: bool,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_update_frequency">update_frequency</a>: Option&lt;String&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_validate_marketplace_price">validate_marketplace_price</a>(price);
+    <b>let</b> sub_duration = <a href="../social_contracts/mydata.md#social_contracts_mydata_validate_recurring_duration">validate_recurring_duration</a>(config, duration_days);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_create_and_share_internal">create_and_share_internal</a>(
+        config,
+        registry,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_media_type">media_type</a>,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_tags">tags</a>,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_timestamp_start">timestamp_start</a>,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_timestamp_end">timestamp_end</a>,
+        encrypted_data,
+        encryption_id,
+        AccessConfiguration::MarketplaceRecurring {
+            price,
+            duration_days: sub_duration,
+            subscribers: table::new(ctx),
+        },
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_geographic_region">geographic_region</a>,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_data_quality">data_quality</a>,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_sample_size">sample_size</a>,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_collection_method">collection_method</a>,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_is_updating">is_updating</a>,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_update_frequency">update_frequency</a>,
+        clock,
+        ctx,
+    );
 }
 </code></pre>
 
@@ -3664,7 +4949,7 @@ Create and share MyData publicly
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time_no_platform">purchase_one_time_no_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time_no_platform">purchase_one_time_no_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3675,6 +4960,7 @@ Create and share MyData publicly
 
 <pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time_no_platform">purchase_one_time_no_platform</a>(
     config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">block_list::BlockListRegistry</a>,
     memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>,
     <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
     treasury: &EcosystemTreasury,
@@ -3686,8 +4972,12 @@ Create and share MyData publicly
     <b>assert</b>!(config.<a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EDisabled">EDisabled</a>);
     <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>let</b> buyer = tx_context::sender(ctx);
-    <b>assert</b>!(option::is_some(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a>), <a href="../social_contracts/mydata.md#social_contracts_mydata_ENotForSale">ENotForSale</a>);
-    <b>let</b> price = *option::borrow(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a>);
+    <a href="../social_contracts/block_list.md#social_contracts_block_list_assert_not_blocked">block_list::assert_not_blocked</a>(block_list_registry, buyer, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>);
+    <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata_requires_marketplace_purchase">requires_marketplace_purchase</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>), <a href="../social_contracts/mydata.md#social_contracts_mydata_ENotForSale">ENotForSale</a>);
+    <b>let</b> price = match (&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.access) {
+        AccessConfiguration::MarketplaceOneTime { price, .. } =&gt; *price,
+        _ =&gt; <b>abort</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_ENotForSale">ENotForSale</a>,
+    };
     <b>let</b> <b>mut</b> sub_agent_id = option::none();
     <b>let</b> <b>mut</b> organization_id = option::none();
     <b>if</b> (<a href="../social_contracts/memory.md#social_contracts_memory_is_registered_agent">social_contracts::memory::is_registered_agent</a>(account, buyer)) {
@@ -3704,7 +4994,13 @@ Create and share MyData publicly
         organization_id = <a href="../social_contracts/memory.md#social_contracts_memory_acting_organization_id">social_contracts::memory::acting_organization_id</a>(&acting);
     };
     <b>assert</b>!(coin::value(payment) &gt;= price, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPriceMismatch">EPriceMismatch</a>);
-    <b>assert</b>!(!table::contains(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.purchasers, buyer), <a href="../social_contracts/mydata.md#social_contracts_mydata_EAlreadyPurchased">EAlreadyPurchased</a>);
+    match (&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.access) {
+        AccessConfiguration::MarketplaceOneTime { purchasers, .. } =&gt; {
+            <b>assert</b>!(!table::contains(purchasers, buyer), <a href="../social_contracts/mydata.md#social_contracts_mydata_EAlreadyPurchased">EAlreadyPurchased</a>);
+            <b>assert</b>!(table::length(purchasers) &lt; config.max_paid_access_entries, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+        },
+        _ =&gt; <b>abort</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_ENotForSale">ENotForSale</a>,
+    };
     <b>assert</b>!(buyer != <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_ESelfPurchase">ESelfPurchase</a>);
     <b>let</b> price_coin = coin::split(payment, price, ctx);
     <b>let</b> (platform_fee, ecosystem_fee, creator_amount) = <a href="../social_contracts/mydata.md#social_contracts_mydata_distribute_p2p_fees_no_platform">distribute_p2p_fees_no_platform</a>(
@@ -3714,7 +5010,12 @@ Create and share MyData publicly
         price_coin,
         ctx,
     );
-    table::add(&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.purchasers, buyer, <b>true</b>);
+    match (&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.access) {
+        AccessConfiguration::MarketplaceOneTime { purchasers, .. } =&gt; {
+            table::add(purchasers, buyer, <b>true</b>);
+        },
+        _ =&gt; <b>abort</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_ENotForSale">ENotForSale</a>,
+    };
     event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_PurchaseEvent">PurchaseEvent</a> {
         ip_id: object::uid_to_address(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id),
         buyer,
@@ -3741,7 +5042,7 @@ Create and share MyData publicly
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time_with_platform_internal">purchase_one_time_with_platform_internal</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time_with_platform_internal">purchase_one_time_with_platform_internal</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3752,6 +5053,7 @@ Create and share MyData publicly
 
 <pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time_with_platform_internal">purchase_one_time_with_platform_internal</a>(
     config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">block_list::BlockListRegistry</a>,
     memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>,
     <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
     treasury: &EcosystemTreasury,
@@ -3765,8 +5067,12 @@ Create and share MyData publicly
     <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_platform_matches_listing">assert_platform_matches_listing</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>);
     <b>let</b> buyer = tx_context::sender(ctx);
-    <b>assert</b>!(option::is_some(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a>), <a href="../social_contracts/mydata.md#social_contracts_mydata_ENotForSale">ENotForSale</a>);
-    <b>let</b> price = *option::borrow(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a>);
+    <a href="../social_contracts/block_list.md#social_contracts_block_list_assert_not_blocked">block_list::assert_not_blocked</a>(block_list_registry, buyer, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>);
+    <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata_requires_marketplace_purchase">requires_marketplace_purchase</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>), <a href="../social_contracts/mydata.md#social_contracts_mydata_ENotForSale">ENotForSale</a>);
+    <b>let</b> price = match (&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.access) {
+        AccessConfiguration::MarketplaceOneTime { price, .. } =&gt; *price,
+        _ =&gt; <b>abort</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_ENotForSale">ENotForSale</a>,
+    };
     <b>let</b> <b>mut</b> sub_agent_id = option::none();
     <b>let</b> <b>mut</b> organization_id = option::none();
     <b>if</b> (<a href="../social_contracts/memory.md#social_contracts_memory_is_registered_agent">social_contracts::memory::is_registered_agent</a>(account, buyer)) {
@@ -3783,7 +5089,13 @@ Create and share MyData publicly
         organization_id = <a href="../social_contracts/memory.md#social_contracts_memory_acting_organization_id">social_contracts::memory::acting_organization_id</a>(&acting);
     };
     <b>assert</b>!(coin::value(payment) &gt;= price, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPriceMismatch">EPriceMismatch</a>);
-    <b>assert</b>!(!table::contains(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.purchasers, buyer), <a href="../social_contracts/mydata.md#social_contracts_mydata_EAlreadyPurchased">EAlreadyPurchased</a>);
+    match (&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.access) {
+        AccessConfiguration::MarketplaceOneTime { purchasers, .. } =&gt; {
+            <b>assert</b>!(!table::contains(purchasers, buyer), <a href="../social_contracts/mydata.md#social_contracts_mydata_EAlreadyPurchased">EAlreadyPurchased</a>);
+            <b>assert</b>!(table::length(purchasers) &lt; config.max_paid_access_entries, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+        },
+        _ =&gt; <b>abort</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_ENotForSale">ENotForSale</a>,
+    };
     <b>assert</b>!(buyer != <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_ESelfPurchase">ESelfPurchase</a>);
     <b>let</b> price_coin = coin::split(payment, price, ctx);
     <b>let</b> (platform_fee, ecosystem_fee, creator_amount) = <a href="../social_contracts/mydata.md#social_contracts_mydata_distribute_p2p_fees_with_platform">distribute_p2p_fees_with_platform</a>(
@@ -3795,7 +5107,12 @@ Create and share MyData publicly
         clock,
         ctx,
     );
-    table::add(&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.purchasers, buyer, <b>true</b>);
+    match (&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.access) {
+        AccessConfiguration::MarketplaceOneTime { purchasers, .. } =&gt; {
+            table::add(purchasers, buyer, <b>true</b>);
+        },
+        _ =&gt; <b>abort</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_ENotForSale">ENotForSale</a>,
+    };
     event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_PurchaseEvent">PurchaseEvent</a> {
         ip_id: object::uid_to_address(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id),
         buyer,
@@ -3823,7 +5140,7 @@ Create and share MyData publicly
 Purchase one-time access to MyData data.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time">purchase_one_time</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time">purchase_one_time</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3834,6 +5151,7 @@ Purchase one-time access to MyData data.
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time">purchase_one_time</a>(
     config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">block_list::BlockListRegistry</a>,
     memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>,
     <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
     treasury: &EcosystemTreasury,
@@ -3844,6 +5162,7 @@ Purchase one-time access to MyData data.
 ) {
     <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time_no_platform">purchase_one_time_no_platform</a>(
         config,
+        block_list_registry,
         memory_config,
         <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>,
         treasury,
@@ -3866,7 +5185,7 @@ Purchase one-time access to MyData data.
 Purchase one-time access with platform treasury routing.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time_with_platform">purchase_one_time_with_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time_with_platform">purchase_one_time_with_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3877,6 +5196,7 @@ Purchase one-time access with platform treasury routing.
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time_with_platform">purchase_one_time_with_platform</a>(
     config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">block_list::BlockListRegistry</a>,
     memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>,
     <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
     treasury: &EcosystemTreasury,
@@ -3888,6 +5208,7 @@ Purchase one-time access with platform treasury routing.
 ) {
     <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time_with_platform_internal">purchase_one_time_with_platform_internal</a>(
         config,
+        block_list_registry,
         memory_config,
         <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>,
         treasury,
@@ -3910,7 +5231,7 @@ Purchase one-time access with platform treasury routing.
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription_no_platform">purchase_subscription_no_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription_no_platform">purchase_subscription_no_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3921,6 +5242,7 @@ Purchase one-time access with platform treasury routing.
 
 <pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription_no_platform">purchase_subscription_no_platform</a>(
     config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">block_list::BlockListRegistry</a>,
     memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>,
     <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
     treasury: &EcosystemTreasury,
@@ -3932,8 +5254,12 @@ Purchase one-time access with platform treasury routing.
     <b>assert</b>!(config.<a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EDisabled">EDisabled</a>);
     <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>let</b> buyer = tx_context::sender(ctx);
-    <b>assert</b>!(option::is_some(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_price">subscription_price</a>), <a href="../social_contracts/mydata.md#social_contracts_mydata_ENotForSale">ENotForSale</a>);
-    <b>let</b> price = *option::borrow(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_price">subscription_price</a>);
+    <a href="../social_contracts/block_list.md#social_contracts_block_list_assert_not_blocked">block_list::assert_not_blocked</a>(block_list_registry, buyer, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>);
+    <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata_requires_marketplace_subscription">requires_marketplace_subscription</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>), <a href="../social_contracts/mydata.md#social_contracts_mydata_ENotForSale">ENotForSale</a>);
+    <b>let</b> (price, duration_days) = match (&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.access) {
+        AccessConfiguration::MarketplaceRecurring { price, duration_days, .. } =&gt; (*price, *duration_days),
+        _ =&gt; <b>abort</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_ENotForSale">ENotForSale</a>,
+    };
     <b>let</b> <b>mut</b> sub_agent_id = option::none();
     <b>let</b> <b>mut</b> organization_id = option::none();
     <b>if</b> (<a href="../social_contracts/memory.md#social_contracts_memory_is_registered_agent">social_contracts::memory::is_registered_agent</a>(account, buyer)) {
@@ -3951,10 +5277,10 @@ Purchase one-time access with platform treasury routing.
     };
     <b>assert</b>!(coin::value(payment) &gt;= price, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPriceMismatch">EPriceMismatch</a>);
     <b>assert</b>!(buyer != <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_ESelfPurchase">ESelfPurchase</a>);
-    <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_duration_days">subscription_duration_days</a> &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
-    <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_duration_days">subscription_duration_days</a> &lt;= config.max_subscription_days, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <b>assert</b>!(duration_days &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <b>assert</b>!(duration_days &lt;= config.max_subscription_days, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>let</b> current_time = clock::timestamp_ms(clock);
-    <b>let</b> duration_ms = (<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_duration_days">subscription_duration_days</a> <b>as</b> u128) * (<a href="../social_contracts/mydata.md#social_contracts_mydata_MILLISECONDS_PER_DAY">MILLISECONDS_PER_DAY</a> <b>as</b> u128);
+    <b>let</b> duration_ms = (duration_days <b>as</b> u128) * (<a href="../social_contracts/mydata.md#social_contracts_mydata_MILLISECONDS_PER_DAY">MILLISECONDS_PER_DAY</a> <b>as</b> u128);
     <b>let</b> expiry_time = (current_time <b>as</b> u128) + duration_ms;
     <b>assert</b>!(expiry_time &lt;= (<a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_U64">MAX_U64</a> <b>as</b> u128), <a href="../social_contracts/mydata.md#social_contracts_mydata_EOverflow">EOverflow</a>);
     <b>let</b> expiry_time_u64 = expiry_time <b>as</b> u64;
@@ -3966,18 +5292,24 @@ Purchase one-time access with platform treasury routing.
         price_coin,
         ctx,
     );
-    <b>if</b> (table::contains(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.subscribers, buyer)) {
-        <b>let</b> current_expiry = table::remove(&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.subscribers, buyer);
-        <b>let</b> new_expiry = <b>if</b> (current_expiry &gt; current_time) {
-            <b>let</b> extended_time = (current_expiry <b>as</b> u128) + duration_ms;
-            <b>assert</b>!(extended_time &lt;= (<a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_U64">MAX_U64</a> <b>as</b> u128), <a href="../social_contracts/mydata.md#social_contracts_mydata_EOverflow">EOverflow</a>);
-            extended_time <b>as</b> u64
-        } <b>else</b> {
-            expiry_time_u64
-        };
-        table::add(&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.subscribers, buyer, new_expiry);
-    } <b>else</b> {
-        table::add(&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.subscribers, buyer, expiry_time_u64);
+    match (&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.access) {
+        AccessConfiguration::MarketplaceRecurring { subscribers, .. } =&gt; {
+            <b>if</b> (table::contains(subscribers, buyer)) {
+                <b>let</b> current_expiry = table::remove(subscribers, buyer);
+                <b>let</b> new_expiry = <b>if</b> (current_expiry &gt; current_time) {
+                    <b>let</b> extended_time = (current_expiry <b>as</b> u128) + duration_ms;
+                    <b>assert</b>!(extended_time &lt;= (<a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_U64">MAX_U64</a> <b>as</b> u128), <a href="../social_contracts/mydata.md#social_contracts_mydata_EOverflow">EOverflow</a>);
+                    extended_time <b>as</b> u64
+                } <b>else</b> {
+                    expiry_time_u64
+                };
+                table::add(subscribers, buyer, new_expiry);
+            } <b>else</b> {
+                <b>assert</b>!(table::length(subscribers) &lt; config.max_paid_access_entries, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+                table::add(subscribers, buyer, expiry_time_u64);
+            };
+        },
+        _ =&gt; <b>abort</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_ENotForSale">ENotForSale</a>,
     };
     event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_PurchaseEvent">PurchaseEvent</a> {
         ip_id: object::uid_to_address(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id),
@@ -4005,7 +5337,7 @@ Purchase one-time access with platform treasury routing.
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription_with_platform_internal">purchase_subscription_with_platform_internal</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription_with_platform_internal">purchase_subscription_with_platform_internal</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4016,6 +5348,7 @@ Purchase one-time access with platform treasury routing.
 
 <pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription_with_platform_internal">purchase_subscription_with_platform_internal</a>(
     config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">block_list::BlockListRegistry</a>,
     memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>,
     <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
     treasury: &EcosystemTreasury,
@@ -4029,8 +5362,12 @@ Purchase one-time access with platform treasury routing.
     <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_platform_matches_listing">assert_platform_matches_listing</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>);
     <b>let</b> buyer = tx_context::sender(ctx);
-    <b>assert</b>!(option::is_some(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_price">subscription_price</a>), <a href="../social_contracts/mydata.md#social_contracts_mydata_ENotForSale">ENotForSale</a>);
-    <b>let</b> price = *option::borrow(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_price">subscription_price</a>);
+    <a href="../social_contracts/block_list.md#social_contracts_block_list_assert_not_blocked">block_list::assert_not_blocked</a>(block_list_registry, buyer, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>);
+    <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata_requires_marketplace_subscription">requires_marketplace_subscription</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>), <a href="../social_contracts/mydata.md#social_contracts_mydata_ENotForSale">ENotForSale</a>);
+    <b>let</b> (price, duration_days) = match (&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.access) {
+        AccessConfiguration::MarketplaceRecurring { price, duration_days, .. } =&gt; (*price, *duration_days),
+        _ =&gt; <b>abort</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_ENotForSale">ENotForSale</a>,
+    };
     <b>let</b> <b>mut</b> sub_agent_id = option::none();
     <b>let</b> <b>mut</b> organization_id = option::none();
     <b>if</b> (<a href="../social_contracts/memory.md#social_contracts_memory_is_registered_agent">social_contracts::memory::is_registered_agent</a>(account, buyer)) {
@@ -4048,10 +5385,10 @@ Purchase one-time access with platform treasury routing.
     };
     <b>assert</b>!(coin::value(payment) &gt;= price, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPriceMismatch">EPriceMismatch</a>);
     <b>assert</b>!(buyer != <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_ESelfPurchase">ESelfPurchase</a>);
-    <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_duration_days">subscription_duration_days</a> &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
-    <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_duration_days">subscription_duration_days</a> &lt;= config.max_subscription_days, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <b>assert</b>!(duration_days &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <b>assert</b>!(duration_days &lt;= config.max_subscription_days, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>let</b> current_time = clock::timestamp_ms(clock);
-    <b>let</b> duration_ms = (<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_duration_days">subscription_duration_days</a> <b>as</b> u128) * (<a href="../social_contracts/mydata.md#social_contracts_mydata_MILLISECONDS_PER_DAY">MILLISECONDS_PER_DAY</a> <b>as</b> u128);
+    <b>let</b> duration_ms = (duration_days <b>as</b> u128) * (<a href="../social_contracts/mydata.md#social_contracts_mydata_MILLISECONDS_PER_DAY">MILLISECONDS_PER_DAY</a> <b>as</b> u128);
     <b>let</b> expiry_time = (current_time <b>as</b> u128) + duration_ms;
     <b>assert</b>!(expiry_time &lt;= (<a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_U64">MAX_U64</a> <b>as</b> u128), <a href="../social_contracts/mydata.md#social_contracts_mydata_EOverflow">EOverflow</a>);
     <b>let</b> expiry_time_u64 = expiry_time <b>as</b> u64;
@@ -4065,18 +5402,24 @@ Purchase one-time access with platform treasury routing.
         clock,
         ctx,
     );
-    <b>if</b> (table::contains(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.subscribers, buyer)) {
-        <b>let</b> current_expiry = table::remove(&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.subscribers, buyer);
-        <b>let</b> new_expiry = <b>if</b> (current_expiry &gt; current_time) {
-            <b>let</b> extended_time = (current_expiry <b>as</b> u128) + duration_ms;
-            <b>assert</b>!(extended_time &lt;= (<a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_U64">MAX_U64</a> <b>as</b> u128), <a href="../social_contracts/mydata.md#social_contracts_mydata_EOverflow">EOverflow</a>);
-            extended_time <b>as</b> u64
-        } <b>else</b> {
-            expiry_time_u64
-        };
-        table::add(&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.subscribers, buyer, new_expiry);
-    } <b>else</b> {
-        table::add(&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.subscribers, buyer, expiry_time_u64);
+    match (&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.access) {
+        AccessConfiguration::MarketplaceRecurring { subscribers, .. } =&gt; {
+            <b>if</b> (table::contains(subscribers, buyer)) {
+                <b>let</b> current_expiry = table::remove(subscribers, buyer);
+                <b>let</b> new_expiry = <b>if</b> (current_expiry &gt; current_time) {
+                    <b>let</b> extended_time = (current_expiry <b>as</b> u128) + duration_ms;
+                    <b>assert</b>!(extended_time &lt;= (<a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_U64">MAX_U64</a> <b>as</b> u128), <a href="../social_contracts/mydata.md#social_contracts_mydata_EOverflow">EOverflow</a>);
+                    extended_time <b>as</b> u64
+                } <b>else</b> {
+                    expiry_time_u64
+                };
+                table::add(subscribers, buyer, new_expiry);
+            } <b>else</b> {
+                <b>assert</b>!(table::length(subscribers) &lt; config.max_paid_access_entries, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+                table::add(subscribers, buyer, expiry_time_u64);
+            };
+        },
+        _ =&gt; <b>abort</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_ENotForSale">ENotForSale</a>,
     };
     event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_PurchaseEvent">PurchaseEvent</a> {
         ip_id: object::uid_to_address(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id),
@@ -4105,7 +5448,7 @@ Purchase one-time access with platform treasury routing.
 Purchase subscription access to MyData data.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription">purchase_subscription</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription">purchase_subscription</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4116,6 +5459,7 @@ Purchase subscription access to MyData data.
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription">purchase_subscription</a>(
     config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">block_list::BlockListRegistry</a>,
     memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>,
     <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
     treasury: &EcosystemTreasury,
@@ -4126,6 +5470,7 @@ Purchase subscription access to MyData data.
 ) {
     <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription_no_platform">purchase_subscription_no_platform</a>(
         config,
+        block_list_registry,
         memory_config,
         <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>,
         treasury,
@@ -4148,7 +5493,7 @@ Purchase subscription access to MyData data.
 Purchase subscription access with platform treasury routing.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription_with_platform">purchase_subscription_with_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription_with_platform">purchase_subscription_with_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4159,6 +5504,7 @@ Purchase subscription access with platform treasury routing.
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription_with_platform">purchase_subscription_with_platform</a>(
     config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">block_list::BlockListRegistry</a>,
     memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>,
     <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
     treasury: &EcosystemTreasury,
@@ -4170,6 +5516,7 @@ Purchase subscription access with platform treasury routing.
 ) {
     <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription_with_platform_internal">purchase_subscription_with_platform_internal</a>(
         config,
+        block_list_registry,
         memory_config,
         <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>,
         treasury,
@@ -4190,10 +5537,10 @@ Purchase subscription access with platform treasury routing.
 
 ## Function `update_pricing`
 
-Update pricing (owner only)
+Update pricing (owner only; marketplace listings only).
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_update_pricing">update_pricing</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, new_one_time_price: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, new_subscription_price: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, new_subscription_duration_days: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_update_pricing">update_pricing</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, new_one_time_price: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, new_subscription_price: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, new_subscription_duration_days: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4203,6 +5550,7 @@ Update pricing (owner only)
 
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_update_pricing">update_pricing</a>(
+    config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
     <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
     new_one_time_price: Option&lt;u64&gt;,
     new_subscription_price: Option&lt;u64&gt;,
@@ -4210,31 +5558,42 @@ Update pricing (owner only)
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
-    // Check <a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> compatibility
     <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EUnauthorized">EUnauthorized</a>);
-    // Validate new prices
-    <b>if</b> (option::is_some(&new_one_time_price)) {
-        <b>let</b> price_val = *option::borrow(&new_one_time_price);
-        <b>assert</b>!(price_val &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    match (&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.access) {
+        AccessConfiguration::MarketplaceOneTime { price, .. } =&gt; {
+            <b>assert</b>!(option::is_some(&new_one_time_price), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+            <b>let</b> price_val = *option::borrow(&new_one_time_price);
+            <a href="../social_contracts/mydata.md#social_contracts_mydata_validate_marketplace_price">validate_marketplace_price</a>(price_val);
+            *price = price_val;
+        },
+        AccessConfiguration::MarketplaceRecurring { price, duration_days, .. } =&gt; {
+            <b>assert</b>!(option::is_some(&new_subscription_price) || option::is_some(&new_subscription_duration_days), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+            <b>if</b> (option::is_some(&new_subscription_price)) {
+                <b>let</b> price_val = *option::borrow(&new_subscription_price);
+                <a href="../social_contracts/mydata.md#social_contracts_mydata_validate_marketplace_price">validate_marketplace_price</a>(price_val);
+                *price = price_val;
+            };
+            <b>if</b> (option::is_some(&new_subscription_duration_days)) {
+                <b>let</b> duration = *option::borrow(&new_subscription_duration_days);
+                *duration_days = <a href="../social_contracts/mydata.md#social_contracts_mydata_validate_recurring_duration">validate_recurring_duration</a>(config, duration);
+            };
+        },
+        AccessConfiguration::ProfileSubscription =&gt; <b>abort</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_ENotForSale">ENotForSale</a>,
     };
-    <b>if</b> (option::is_some(&new_subscription_price)) {
-        <b>let</b> price_val = *option::borrow(&new_subscription_price);
-        <b>assert</b>!(price_val &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <b>let</b> (<a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_price">subscription_price</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_duration_days">subscription_duration_days</a>) = match (&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.access) {
+        AccessConfiguration::ProfileSubscription =&gt; (option::none(), option::none(), option::none()),
+        AccessConfiguration::MarketplaceOneTime { price, .. } =&gt; (option::some(*price), option::none(), option::none()),
+        AccessConfiguration::MarketplaceRecurring { price, duration_days, .. } =&gt; {
+            (option::none(), option::some(*price), option::some(*duration_days))
+        },
     };
-    <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a> = new_one_time_price;
-    <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_price">subscription_price</a> = new_subscription_price;
-    <b>if</b> (option::is_some(&new_subscription_duration_days)) {
-        <b>let</b> duration = *option::borrow(&new_subscription_duration_days);
-        <b>if</b> (duration &gt; 0) {
-            <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_duration_days">subscription_duration_days</a> = duration;
-        };
-    };
-    event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_AccessGrantedEvent">AccessGrantedEvent</a> {
+    event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPricingUpdatedEvent">MyDataPricingUpdatedEvent</a> {
         ip_id: object::uid_to_address(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id),
-        user: <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>,
-        access_type: string::utf8(b"pricing_update"),
-        granted_by: tx_context::sender(ctx),
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a>,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_price">subscription_price</a>,
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_duration_days">subscription_duration_days</a>,
+        updated_by: tx_context::sender(ctx),
         timestamp: clock::timestamp_ms(clock),
     });
 }
@@ -4251,7 +5610,7 @@ Update pricing (owner only)
 Update MyData content and metadata (owner only)
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_update_content">update_content</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, new_encrypted_data: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;u8&gt;&gt;, new_tags: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_update_content">update_content</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, new_encrypted_data: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;u8&gt;&gt;, new_encryption_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;u8&gt;&gt;, new_tags: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4261,8 +5620,10 @@ Update MyData content and metadata (owner only)
 
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_update_content">update_content</a>(
+    config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
     <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
     new_encrypted_data: Option&lt;vector&lt;u8&gt;&gt;,
+    new_encryption_id: Option&lt;vector&lt;u8&gt;&gt;,
     new_tags: Option&lt;vector&lt;String&gt;&gt;,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
@@ -4270,18 +5631,29 @@ Update MyData content and metadata (owner only)
     // Check <a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> compatibility
     <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EUnauthorized">EUnauthorized</a>);
-    <b>if</b> (option::is_some(&new_encrypted_data)) {
+    <b>let</b> encrypted_data_updated = option::is_some(&new_encrypted_data);
+    <b>let</b> encryption_id_updated = option::is_some(&new_encryption_id);
+    <b>let</b> tags_updated = option::is_some(&new_tags);
+    <b>assert</b>!(encrypted_data_updated == encryption_id_updated, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <b>assert</b>!(encrypted_data_updated || tags_updated, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <b>if</b> (encrypted_data_updated) {
+        <b>let</b> data = option::borrow(&new_encrypted_data);
+        <b>let</b> encryption_id = option::borrow(&new_encryption_id);
+        <b>assert</b>!(!vector::is_empty(data) && vector::length(data) &lt;= config.max_encrypted_data_bytes, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+        <b>assert</b>!(!vector::is_empty(encryption_id) && vector::length(encryption_id) &lt;= config.max_encryption_id_bytes, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
         <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.encrypted_data = *option::borrow(&new_encrypted_data);
+        <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.encryption_id = *option::borrow(&new_encryption_id);
     };
-    <b>if</b> (option::is_some(&new_tags)) {
+    <b>if</b> (tags_updated) {
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_validate_tags">validate_tags</a>(config, option::borrow(&new_tags));
         <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_tags">tags</a> = *option::borrow(&new_tags);
     };
     <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_last_updated">last_updated</a> = clock::timestamp_ms(clock);
-    event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_AccessGrantedEvent">AccessGrantedEvent</a> {
+    event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataContentUpdatedEvent">MyDataContentUpdatedEvent</a> {
         ip_id: object::uid_to_address(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id),
-        user: <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>,
-        access_type: string::utf8(b"content_update"),
-        granted_by: tx_context::sender(ctx),
+        encrypted_data_updated,
+        tags_updated,
+        updated_by: tx_context::sender(ctx),
         timestamp: clock::timestamp_ms(clock),
     });
 }
@@ -4298,7 +5670,7 @@ Update MyData content and metadata (owner only)
 Assign MyData to sub-pools (owner only).
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_assign_mydata_to_pools">assign_mydata_to_pools</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, pool_registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolRegistry">social_contracts::mydata::MyDataPoolRegistry</a>, sub_pool_ids: vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_assign_mydata_to_pools">assign_mydata_to_pools</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, pool_registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolRegistry">social_contracts::mydata::MyDataPoolRegistry</a>, sub_pool_ids: vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4308,6 +5680,7 @@ Assign MyData to sub-pools (owner only).
 
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_assign_mydata_to_pools">assign_mydata_to_pools</a>(
+    config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
     <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
     pool_registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolRegistry">MyDataPoolRegistry</a>,
     sub_pool_ids: vector&lt;ID&gt;,
@@ -4316,7 +5689,7 @@ Assign MyData to sub-pools (owner only).
 ) {
     <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EUnauthorized">EUnauthorized</a>);
     <b>let</b> ip_id = object::uid_to_address(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id);
-    <a href="../social_contracts/mydata.md#social_contracts_mydata_assign_mydata_to_sub_pools">assign_mydata_to_sub_pools</a>(pool_registry, ip_id, sub_pool_ids, clock);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_assign_mydata_to_sub_pools">assign_mydata_to_sub_pools</a>(config, pool_registry, ip_id, sub_pool_ids, clock);
 }
 </code></pre>
 
@@ -4373,17 +5746,19 @@ Check if user has access to MyData data
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_has_access">has_access</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>, user: <b>address</b>, clock: &Clock): bool {
-    // Owner always <b>has</b> access
     <b>if</b> (user == <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>) <b>return</b> <b>true</b>;
-    // Check one-time purchase
-    <b>if</b> (table::contains(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.purchasers, user)) <b>return</b> <b>true</b>;
-    // Check active <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>
-    <b>if</b> (table::contains(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.subscribers, user)) {
-        <b>let</b> expiry = *table::borrow(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.subscribers, user);
-        <b>let</b> current_time = clock::timestamp_ms(clock);
-        <b>return</b> current_time &lt;= expiry
-    };
-    <b>false</b>
+    match (&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.access) {
+        AccessConfiguration::ProfileSubscription =&gt; <b>false</b>,
+        AccessConfiguration::MarketplaceOneTime { purchasers, .. } =&gt; {
+            table::contains(purchasers, user)
+        },
+        AccessConfiguration::MarketplaceRecurring { subscribers, .. } =&gt; {
+            <b>if</b> (!table::contains(subscribers, user)) <b>return</b> <b>false</b>;
+            <b>let</b> expiry = *table::borrow(subscribers, user);
+            <b>let</b> current_time = clock::timestamp_ms(clock);
+            current_time &lt;= expiry
+        },
+    }
 }
 </code></pre>
 
@@ -4420,13 +5795,10 @@ True if <code>candidate</code> matches this listing’s <code>encryption_id</cod
 
 ## Function `mydata_approve`
 
-Key-server policy hook for <code>fetch_key</code>: <code>id</code> must match <code>encryption_id</code>, and the sender must have
-[<code><a href="../social_contracts/mydata.md#social_contracts_mydata_has_access">has_access</a></code>] (owner, purchaser, or active subscriber), or be a registered sub-agent of the
-owner with <code>CAP_MYDATA_READ</code>. Register this package on the key server when using permissioned
-mode; <code>EncryptedObject.package_id</code> at encrypt time must match this package.
+Key-server policy hook for <code>fetch_key</code>: marketplace listings only.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_mydata_approve">mydata_approve</a>(memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, id: vector&lt;u8&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_mydata_approve">mydata_approve</a>(id: vector&lt;u8&gt;, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4436,15 +5808,23 @@ mode; <code>EncryptedObject.package_id</code> at encrypt time must match this pa
 
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_mydata_approve">mydata_approve</a>(
-    memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>,
     id: vector&lt;u8&gt;,
+    block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">block_list::BlockListRegistry</a>,
+    memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>,
     <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
     account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>,
     clock: &Clock,
     ctx: &TxContext,
 ) {
     <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata_encryption_id_matches">encryption_id_matches</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, &id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPolicyIdMismatch">EPolicyIdMismatch</a>);
+    <b>assert</b>!(
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_requires_marketplace_purchase">requires_marketplace_purchase</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>) || <a href="../social_contracts/mydata.md#social_contracts_mydata_requires_marketplace_subscription">requires_marketplace_subscription</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>),
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_EPolicyNotEntitled">EPolicyNotEntitled</a>,
+    );
     <b>let</b> sender = tx_context::sender(ctx);
+    <b>if</b> (sender != <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>) {
+        <a href="../social_contracts/block_list.md#social_contracts_block_list_assert_not_blocked">block_list::assert_not_blocked</a>(block_list_registry, sender, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>);
+    };
     <b>if</b> (<a href="../social_contracts/mydata.md#social_contracts_mydata_has_access">has_access</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, sender, clock)) {
         <b>return</b>
     };
@@ -4479,12 +5859,12 @@ mode; <code>EncryptedObject.package_id</code> at encrypt time must match this pa
 
 ## Function `mydata_approve_profile_subscription`
 
-Key-server policy hook for profile-subscription-gated MyData: grant when [<code><a href="../social_contracts/mydata.md#social_contracts_mydata_has_access">has_access</a></code>] or
-[<code><a href="../social_contracts/subscription.md#social_contracts_subscription_is_subscription_valid">subscription::is_subscription_valid</a></code>] for the linked profile service.
+Key-server policy hook for profile-subscription-gated MyData linked to a post.
 <code>id</code> is first so key-server <code>ValidPtb</code> can extract the encryption identity from arg 0.
+<code>post_service_id</code> / <code>post_linked_mydata_id</code> come from the linked post's [<code>PostAccess</code>] fields.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_mydata_approve_profile_subscription">mydata_approve_profile_subscription</a>(id: vector&lt;u8&gt;, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_mydata_approve_profile_subscription">mydata_approve_profile_subscription</a>(id: vector&lt;u8&gt;, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, post_service_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, post_linked_mydata_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, post_min_tier_level: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4495,6 +5875,10 @@ Key-server policy hook for profile-subscription-gated MyData: grant when [<code>
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_mydata_approve_profile_subscription">mydata_approve_profile_subscription</a>(
     id: vector&lt;u8&gt;,
+    block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">block_list::BlockListRegistry</a>,
+    post_service_id: ID,
+    post_linked_mydata_id: ID,
+    post_min_tier_level: Option&lt;u64&gt;,
     memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>,
     <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
     account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>,
@@ -4504,11 +5888,23 @@ Key-server policy hook for profile-subscription-gated MyData: grant when [<code>
     ctx: &TxContext,
 ) {
     <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata_encryption_id_matches">encryption_id_matches</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, &id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPolicyIdMismatch">EPolicyIdMismatch</a>);
+    <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata_requires_profile_subscription_access">requires_profile_subscription_access</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPolicyNotEntitled">EPolicyNotEntitled</a>);
+    <b>assert</b>!(post_linked_mydata_id == object::id(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPolicyNotEntitled">EPolicyNotEntitled</a>);
+    <b>assert</b>!(post_service_id == object::id(service), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPolicyNotEntitled">EPolicyNotEntitled</a>);
     <b>let</b> sender = tx_context::sender(ctx);
-    <b>if</b> (<a href="../social_contracts/mydata.md#social_contracts_mydata_has_access">has_access</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, sender, clock)) {
+    <b>if</b> (sender == <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>) {
         <b>return</b>
     };
-    <b>if</b> (<a href="../social_contracts/subscription.md#social_contracts_subscription_is_subscription_valid_for">subscription::is_subscription_valid_for</a>(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>, service, sender, clock)) {
+    <a href="../social_contracts/block_list.md#social_contracts_block_list_assert_not_blocked">block_list::assert_not_blocked</a>(block_list_registry, sender, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>);
+    <b>let</b> content_platform_id = <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>;
+    <b>if</b> (<a href="../social_contracts/subscription.md#social_contracts_subscription_subscription_satisfies_access">subscription::subscription_satisfies_access</a>(
+        <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>,
+        service,
+        sender,
+        post_min_tier_level,
+        content_platform_id,
+        clock,
+    )) {
         <b>return</b>
     };
     <b>assert</b>!(
@@ -4602,34 +5998,47 @@ Grant free access (owner only) - useful for samples or promotions
     // Check <a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> compatibility
     <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EUnauthorized">EUnauthorized</a>);
-    <b>assert</b>!(user != <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_ESelfPurchase">ESelfPurchase</a>); // Owner doesn't need granted access
-    // Check max free access grants limit
-    <b>let</b> total_grants = table::length(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.purchasers) + table::length(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.subscribers);
+    <b>assert</b>!(user != <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_ESelfPurchase">ESelfPurchase</a>);
+    <b>let</b> total_grants = match (&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.access) {
+        AccessConfiguration::ProfileSubscription =&gt; <b>abort</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_ENotForSale">ENotForSale</a>,
+        AccessConfiguration::MarketplaceOneTime { purchasers, .. } =&gt; table::length(purchasers),
+        AccessConfiguration::MarketplaceRecurring { subscribers, .. } =&gt; table::length(subscribers),
+    };
     <b>assert</b>!(total_grants &lt; config.max_free_access_grants, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>if</b> (access_type == 0) {
-        // Grant one-time access
-        <b>if</b> (!table::contains(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.purchasers, user)) {
-            table::add(&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.purchasers, user, <b>true</b>);
+        match (&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.access) {
+            AccessConfiguration::MarketplaceOneTime { purchasers, .. } =&gt; {
+                <b>if</b> (!table::contains(purchasers, user)) {
+                    table::add(purchasers, user, <b>true</b>);
+                };
+            },
+            _ =&gt; <b>abort</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_ENotForSale">ENotForSale</a>,
         };
     } <b>else</b> {
-        // Grant <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a> access
         <b>let</b> duration_days = <b>if</b> (option::is_some(&subscription_days)) {
             <b>let</b> days = *option::borrow(&subscription_days);
             <b>assert</b>!(days &gt; 0 && days &lt;= config.max_subscription_days, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
             days
         } <b>else</b> {
-            <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_duration_days">subscription_duration_days</a>
+            match (&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.access) {
+                AccessConfiguration::MarketplaceRecurring { duration_days, .. } =&gt; *duration_days,
+                _ =&gt; <b>abort</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_ENotForSale">ENotForSale</a>,
+            }
         };
         <b>let</b> current_time = clock::timestamp_ms(clock);
         <b>let</b> duration_ms = (duration_days <b>as</b> u128) * (<a href="../social_contracts/mydata.md#social_contracts_mydata_MILLISECONDS_PER_DAY">MILLISECONDS_PER_DAY</a> <b>as</b> u128);
         <b>let</b> expiry_time = (current_time <b>as</b> u128) + duration_ms;
-        // Ensure we don't overflow u64
         <b>assert</b>!(expiry_time &lt;= (<a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_U64">MAX_U64</a> <b>as</b> u128), <a href="../social_contracts/mydata.md#social_contracts_mydata_EOverflow">EOverflow</a>);
         <b>let</b> expiry_time_u64 = expiry_time <b>as</b> u64;
-        <b>if</b> (table::contains(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.subscribers, user)) {
-            table::remove(&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.subscribers, user);
+        match (&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.access) {
+            AccessConfiguration::MarketplaceRecurring { subscribers, .. } =&gt; {
+                <b>if</b> (table::contains(subscribers, user)) {
+                    table::remove(subscribers, user);
+                };
+                table::add(subscribers, user, expiry_time_u64);
+            },
+            _ =&gt; <b>abort</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_ENotForSale">ENotForSale</a>,
         };
-        table::add(&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.subscribers, user, expiry_time_u64);
     };
     event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_AccessGrantedEvent">AccessGrantedEvent</a> {
         ip_id: object::uid_to_address(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id),
@@ -4649,7 +6058,7 @@ Grant free access (owner only) - useful for samples or promotions
 
 ## Function `revoke_access`
 
-Revoke a buyer's access (owner only). Removes the user from <code>purchasers</code> and/or <code>subscribers</code>.
+Revoke a buyer's access (owner only). Removes the user from marketplace access tables.
 <code>access_type</code>: 0 = one-time, 1 = subscription, 2 = both.
 
 
@@ -4676,15 +6085,25 @@ Revoke a buyer's access (owner only). Removes the user from <code>purchasers</co
     <b>let</b> <b>mut</b> revoked_one_time = <b>false</b>;
     <b>let</b> <b>mut</b> revoked_subscription = <b>false</b>;
     <b>if</b> (access_type == 0 || access_type == 2) {
-        <b>if</b> (table::contains(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.purchasers, user)) {
-            table::remove(&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.purchasers, user);
-            revoked_one_time = <b>true</b>;
+        match (&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.access) {
+            AccessConfiguration::MarketplaceOneTime { purchasers, .. } =&gt; {
+                <b>if</b> (table::contains(purchasers, user)) {
+                    table::remove(purchasers, user);
+                    revoked_one_time = <b>true</b>;
+                };
+            },
+            _ =&gt; {},
         };
     };
     <b>if</b> (access_type == 1 || access_type == 2) {
-        <b>if</b> (table::contains(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.subscribers, user)) {
-            table::remove(&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.subscribers, user);
-            revoked_subscription = <b>true</b>;
+        match (&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.access) {
+            AccessConfiguration::MarketplaceRecurring { subscribers, .. } =&gt; {
+                <b>if</b> (table::contains(subscribers, user)) {
+                    table::remove(subscribers, user);
+                    revoked_subscription = <b>true</b>;
+                };
+            },
+            _ =&gt; {},
         };
     };
     <b>assert</b>!(revoked_one_time || revoked_subscription, <a href="../social_contracts/mydata.md#social_contracts_mydata_ENoAccessToRevoke">ENoAccessToRevoke</a>);
@@ -4880,7 +6299,7 @@ Encryption identity bytes; must match <code>EncryptedObject.id</code> and the <c
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>): Option&lt;u64&gt; { <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a> }
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>): Option&lt;u64&gt; { <a href="../social_contracts/mydata.md#social_contracts_mydata_linked_one_time_price">linked_one_time_price</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>) }
 </code></pre>
 
 
@@ -4902,7 +6321,12 @@ Encryption identity bytes; must match <code>EncryptedObject.id</code> and the <c
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_price">subscription_price</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>): Option&lt;u64&gt; { <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_price">subscription_price</a> }
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_price">subscription_price</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>): Option&lt;u64&gt; {
+    match (<a href="../social_contracts/mydata.md#social_contracts_mydata_access_configuration">access_configuration</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>)) {
+        AccessConfiguration::MarketplaceRecurring { price, .. } =&gt; option::some(*price),
+        _ =&gt; option::none(),
+    }
+}
 </code></pre>
 
 
@@ -4924,7 +6348,12 @@ Encryption identity bytes; must match <code>EncryptedObject.id</code> and the <c
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_duration_days">subscription_duration_days</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>): u64 { <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_duration_days">subscription_duration_days</a> }
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_duration_days">subscription_duration_days</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>): u64 {
+    match (<a href="../social_contracts/mydata.md#social_contracts_mydata_access_configuration">access_configuration</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>)) {
+        AccessConfiguration::MarketplaceRecurring { duration_days, .. } =&gt; *duration_days,
+        _ =&gt; 0,
+    }
+}
 </code></pre>
 
 
@@ -5166,7 +6595,12 @@ Encryption identity bytes; must match <code>EncryptedObject.id</code> and the <c
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchaser_count">purchaser_count</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>): u64 { table::length(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.purchasers) }
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchaser_count">purchaser_count</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>): u64 {
+    match (<a href="../social_contracts/mydata.md#social_contracts_mydata_access_configuration">access_configuration</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>)) {
+        AccessConfiguration::MarketplaceOneTime { purchasers, .. } =&gt; table::length(purchasers),
+        _ =&gt; 0,
+    }
+}
 </code></pre>
 
 
@@ -5188,7 +6622,12 @@ Encryption identity bytes; must match <code>EncryptedObject.id</code> and the <c
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_subscriber_count">subscriber_count</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>): u64 { table::length(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.subscribers) }
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_subscriber_count">subscriber_count</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>): u64 {
+    match (<a href="../social_contracts/mydata.md#social_contracts_mydata_access_configuration">access_configuration</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>)) {
+        AccessConfiguration::MarketplaceRecurring { subscribers, .. } =&gt; table::length(subscribers),
+        _ =&gt; 0,
+    }
+}
 </code></pre>
 
 
@@ -5210,7 +6649,7 @@ Encryption identity bytes; must match <code>EncryptedObject.id</code> and the <c
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_is_one_time_for_sale">is_one_time_for_sale</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>): bool { option::is_some(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a>) }
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_is_one_time_for_sale">is_one_time_for_sale</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>): bool { <a href="../social_contracts/mydata.md#social_contracts_mydata_requires_marketplace_purchase">requires_marketplace_purchase</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>) }
 </code></pre>
 
 
@@ -5232,7 +6671,7 @@ Encryption identity bytes; must match <code>EncryptedObject.id</code> and the <c
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_is_subscription_available">is_subscription_available</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>): bool { option::is_some(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_price">subscription_price</a>) }
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_is_subscription_available">is_subscription_available</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>): bool { <a href="../social_contracts/mydata.md#social_contracts_mydata_requires_marketplace_subscription">requires_marketplace_subscription</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>) }
 </code></pre>
 
 
@@ -5256,10 +6695,15 @@ Check if a user has an active subscription
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_has_active_subscription">has_active_subscription</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>, user: <b>address</b>, clock: &Clock): bool {
-    <b>if</b> (!table::contains(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.subscribers, user)) <b>return</b> <b>false</b>;
-    <b>let</b> expiry = *table::borrow(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.subscribers, user);
-    <b>let</b> current_time = clock::timestamp_ms(clock);
-    current_time &lt;= expiry
+    match (&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.access) {
+        AccessConfiguration::MarketplaceRecurring { subscribers, .. } =&gt; {
+            <b>if</b> (!table::contains(subscribers, user)) <b>return</b> <b>false</b>;
+            <b>let</b> expiry = *table::borrow(subscribers, user);
+            <b>let</b> current_time = clock::timestamp_ms(clock);
+            current_time &lt;= expiry
+        },
+        _ =&gt; <b>false</b>,
+    }
 }
 </code></pre>
 
@@ -5284,10 +6728,15 @@ Get subscription expiry time for a user
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_get_subscription_expiry">get_subscription_expiry</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>, user: <b>address</b>): Option&lt;u64&gt; {
-    <b>if</b> (table::contains(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.subscribers, user)) {
-        option::some(*table::borrow(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.subscribers, user))
-    } <b>else</b> {
-        option::none()
+    match (&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.access) {
+        AccessConfiguration::MarketplaceRecurring { subscribers, .. } =&gt; {
+            <b>if</b> (table::contains(subscribers, user)) {
+                option::some(*table::borrow(subscribers, user))
+            } <b>else</b> {
+                option::none()
+            }
+        },
+        _ =&gt; option::none(),
     }
 }
 </code></pre>
@@ -5313,31 +6762,29 @@ Get total revenue potential (for analytics) with overflow protection
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_get_revenue_potential">get_revenue_potential</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>): u64 {
-    <b>let</b> one_time_revenue = <b>if</b> (option::is_some(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a>)) {
-        <b>let</b> price = *option::borrow(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a>);
-        <b>let</b> count = table::length(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.purchasers);
-        // Use u128 <b>for</b> calculation to detect overflow
-        <b>let</b> revenue = (price <b>as</b> u128) * (count <b>as</b> u128);
-        <b>if</b> (revenue &gt; (<a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_U64">MAX_U64</a> <b>as</b> u128)) {
-            <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_U64">MAX_U64</a>
-        } <b>else</b> {
-            revenue <b>as</b> u64
-        }
-    } <b>else</b> {
-        0
+    <b>let</b> one_time_revenue = match (<a href="../social_contracts/mydata.md#social_contracts_mydata_access_configuration">access_configuration</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>)) {
+        AccessConfiguration::MarketplaceOneTime { price, purchasers, .. } =&gt; {
+            <b>let</b> count = table::length(purchasers);
+            <b>let</b> revenue = (*price <b>as</b> u128) * (count <b>as</b> u128);
+            <b>if</b> (revenue &gt; (<a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_U64">MAX_U64</a> <b>as</b> u128)) {
+                <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_U64">MAX_U64</a>
+            } <b>else</b> {
+                revenue <b>as</b> u64
+            }
+        },
+        _ =&gt; 0,
     };
-    <b>let</b> subscription_revenue = <b>if</b> (option::is_some(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_price">subscription_price</a>)) {
-        <b>let</b> price = *option::borrow(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_price">subscription_price</a>);
-        <b>let</b> count = table::length(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.subscribers);
-        // Use u128 <b>for</b> calculation to detect overflow
-        <b>let</b> revenue = (price <b>as</b> u128) * (count <b>as</b> u128);
-        <b>if</b> (revenue &gt; (<a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_U64">MAX_U64</a> <b>as</b> u128)) {
-            <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_U64">MAX_U64</a>
-        } <b>else</b> {
-            revenue <b>as</b> u64
-        }
-    } <b>else</b> {
-        0
+    <b>let</b> subscription_revenue = match (<a href="../social_contracts/mydata.md#social_contracts_mydata_access_configuration">access_configuration</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>)) {
+        AccessConfiguration::MarketplaceRecurring { price, subscribers, .. } =&gt; {
+            <b>let</b> count = table::length(subscribers);
+            <b>let</b> revenue = (*price <b>as</b> u128) * (count <b>as</b> u128);
+            <b>if</b> (revenue &gt; (<a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_U64">MAX_U64</a> <b>as</b> u128)) {
+                <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_U64">MAX_U64</a>
+            } <b>else</b> {
+                revenue <b>as</b> u64
+            }
+        },
+        _ =&gt; 0,
     };
     // Safe addition with overflow protection
     <b>let</b> total_revenue = (one_time_revenue <b>as</b> u128) + (subscription_revenue <b>as</b> u128);
@@ -5370,7 +6817,7 @@ Check if MyData has any sales (one-time or subscription)
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_has_any_sales">has_any_sales</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>): bool {
-    table::length(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.purchasers) &gt; 0 || table::length(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.subscribers) &gt; 0
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_purchaser_count">purchaser_count</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>) &gt; 0 || <a href="../social_contracts/mydata.md#social_contracts_mydata_subscriber_count">subscriber_count</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>) &gt; 0
 }
 </code></pre>
 
@@ -5716,6 +7163,14 @@ Migration function for MyDataConfig
     <b>assert</b>!(config.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> &lt; current_version, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     // Remember old <a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> and update to new <a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a>
     <b>let</b> old_version = config.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a>;
+    config.max_encrypted_data_bytes = <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MAX_ENCRYPTED_DATA_BYTES">DEFAULT_MAX_ENCRYPTED_DATA_BYTES</a>;
+    config.max_tag_bytes = <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MAX_TAG_BYTES">DEFAULT_MAX_TAG_BYTES</a>;
+    config.max_metadata_bytes = <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MAX_METADATA_BYTES">DEFAULT_MAX_METADATA_BYTES</a>;
+    config.max_payment_reference_bytes = <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MAX_PAYMENT_REFERENCE_BYTES">DEFAULT_MAX_PAYMENT_REFERENCE_BYTES</a>;
+    config.max_pool_assignments = <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MAX_POOL_ASSIGNMENTS">DEFAULT_MAX_POOL_ASSIGNMENTS</a>;
+    config.max_merkle_proof_depth = <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MAX_MERKLE_PROOF_DEPTH">DEFAULT_MAX_MERKLE_PROOF_DEPTH</a>;
+    config.max_paid_access_entries = <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MAX_PAID_ACCESS_ENTRIES">DEFAULT_MAX_PAID_ACCESS_ENTRIES</a>;
+    config.default_claim_window_ms = <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_CLAIM_WINDOW_MS">DEFAULT_CLAIM_WINDOW_MS</a>;
     config.p2p_platform_fee_bps = <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_P2P_PLATFORM_FEE_BPS">DEFAULT_P2P_PLATFORM_FEE_BPS</a>;
     config.p2p_ecosystem_fee_bps = <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_P2P_ECOSYSTEM_FEE_BPS">DEFAULT_P2P_ECOSYSTEM_FEE_BPS</a>;
     config.mydata_marketplace_platform_fee_bps = <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MYDATA_MARKETPLACE_PLATFORM_FEE_BPS">DEFAULT_MYDATA_MARKETPLACE_PLATFORM_FEE_BPS</a>;

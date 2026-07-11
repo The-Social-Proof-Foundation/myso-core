@@ -463,21 +463,21 @@ gql_object_address() {
 }
 
 readonly SOCIAL_GQL_BATCH='query SocialE2ESessionObjects {
-  ecosystemTreasury: objects(filter: { type: "0x50c1::profile::EcosystemTreasury", ownerKind: SHARED }, first: 1) { nodes { address } }
-  usernameRegistry: objects(filter: { type: "0x50c1::profile::UsernameRegistry", ownerKind: SHARED }, first: 1) { nodes { address } }
-  usernameMarketplace: objects(filter: { type: "0x50c1::profile::UsernameMarketplace", ownerKind: SHARED }, first: 1) { nodes { address } }
-  profileConfig: objects(filter: { type: "0x50c1::profile::ProfileConfig", ownerKind: SHARED }, first: 1) { nodes { address } }
-  memoryRegistry: objects(filter: { type: "0x50c1::memory::MemoryRegistry", ownerKind: SHARED }, first: 1) { nodes { address } }
-  memoryConfig: objects(filter: { type: "0x50c1::memory::MemoryConfig", ownerKind: SHARED }, first: 1) { nodes { address } }
-  aiCreditConfig: objects(filter: { type: "0x50c1::ai_credit::AiCreditConfig", ownerKind: SHARED }, first: 1) { nodes { address } }
-  platformRegistry: objects(filter: { type: "0x50c1::platform::PlatformRegistry", ownerKind: SHARED }, first: 1) { nodes { address } }
-  platformConfig: objects(filter: { type: "0x50c1::platform::PlatformConfig", ownerKind: SHARED }, first: 1) { nodes { address } }
-  blocklistRegistry: objects(filter: { type: "0x50c1::block_list::BlockListRegistry", ownerKind: SHARED }, first: 1) { nodes { address } }
-  mydataRegistry: objects(filter: { type: "0x50c1::mydata::MyDataRegistry", ownerKind: SHARED }, first: 1) { nodes { address } }
-  mydataConfig: objects(filter: { type: "0x50c1::mydata::MyDataConfig", ownerKind: SHARED }, first: 1) { nodes { address } }
+  ecosystemTreasury: objects(filter: { type: "0x50c1::profile::EcosystemTreasury", ownerKind: SHARED }, last: 1) { nodes { address } }
+  usernameRegistry: objects(filter: { type: "0x50c1::profile::UsernameRegistry", ownerKind: SHARED }, last: 1) { nodes { address } }
+  usernameMarketplace: objects(filter: { type: "0x50c1::profile::UsernameMarketplace", ownerKind: SHARED }, last: 1) { nodes { address } }
+  profileConfig: objects(filter: { type: "0x50c1::profile::ProfileConfig", ownerKind: SHARED }, last: 1) { nodes { address } }
+  memoryRegistry: objects(filter: { type: "0x50c1::memory::MemoryRegistry", ownerKind: SHARED }, last: 1) { nodes { address } }
+  memoryConfig: objects(filter: { type: "0x50c1::memory::MemoryConfig", ownerKind: SHARED }, last: 1) { nodes { address } }
+  aiCreditConfig: objects(filter: { type: "0x50c1::ai_credit::AiCreditConfig", ownerKind: SHARED }, last: 1) { nodes { address } }
+  platformRegistry: objects(filter: { type: "0x50c1::platform::PlatformRegistry", ownerKind: SHARED }, last: 1) { nodes { address } }
+  platformConfig: objects(filter: { type: "0x50c1::platform::PlatformConfig", ownerKind: SHARED }, last: 1) { nodes { address } }
+  blocklistRegistry: objects(filter: { type: "0x50c1::block_list::BlockListRegistry", ownerKind: SHARED }, last: 1) { nodes { address } }
+  mydataRegistry: objects(filter: { type: "0x50c1::mydata::MyDataRegistry", ownerKind: SHARED }, last: 1) { nodes { address } }
+  mydataConfig: objects(filter: { type: "0x50c1::mydata::MyDataConfig", ownerKind: SHARED }, last: 1) { nodes { address } }
   mydataAdminCap: objects(filter: { type: "0x50c1::mydata::MyDataAdminCap" }, last: 1) { nodes { address } }
-  postConfig: objects(filter: { type: "0x50c1::post::PostConfig", ownerKind: SHARED }, first: 1) { nodes { address } }
-  subscriptionConfig: objects(filter: { type: "0x50c1::subscription::SubscriptionConfig", ownerKind: SHARED }, first: 1) { nodes { address } }
+  postConfig: objects(filter: { type: "0x50c1::post::PostConfig", ownerKind: SHARED }, last: 1) { nodes { address } }
+  subscriptionConfig: objects(filter: { type: "0x50c1::subscription::SubscriptionConfig", ownerKind: SHARED }, last: 1) { nodes { address } }
   subscriptionAdminCap: objects(filter: { type: "0x50c1::subscription::SubscriptionAdminCap" }, last: 1) { nodes { address } }
   platformAdminCap: objects(filter: { type: "0x50c1::platform::PlatformAdminCap" }, last: 1) { nodes { address } }
   platform: objects(filter: { type: "0x50c1::platform::Platform" }, last: 1) { nodes { address } }
@@ -520,6 +520,87 @@ collect_social_gql_mappings() {
     done
 }
 
+# Return object addresses for a Move type from GraphQL (newest-first when using last).
+gql_object_addresses_for_type() {
+    local move_type="$1" owner_kind="${2:-SHARED}" limit="${3:-8}"
+    local json query
+    if [[ "$owner_kind" == "SHARED" ]]; then
+        query="query { objects(filter: { type: \"${move_type}\", ownerKind: SHARED }, last: ${limit}) { nodes { address } } }"
+    else
+        query="query { objects(filter: { type: \"${move_type}\" }, last: ${limit}) { nodes { address } } }"
+    fi
+    json="$(graphql_post "$query")" || return 1
+    echo "$json" | jq -r '.data.objects.nodes[]?.address // empty'
+}
+
+gql_live_object_address_for_type() {
+    local move_type="$1" owner_kind="${2:-SHARED}"
+    local candidate
+    while IFS= read -r candidate; do
+        [[ -n "$candidate" ]] || continue
+        if object_exists_on_fullnode "$candidate"; then
+            normalize_hex_id "$candidate"
+            return 0
+        fi
+    done < <(gql_object_addresses_for_type "$move_type" "$owner_kind")
+    return 1
+}
+
+# Back-compat helper used by subscription SPT fetch.
+gql_object_address_for_type() {
+    gql_live_object_address_for_type "$@"
+}
+
+# After a chain reset, GraphQL may still index old object ids. Keep only ids that exist on fullnode.
+social_validate_session_id_on_fullnode() {
+    local env_key="$1" move_type="$2" owner_kind="${3:-SHARED}" required="${4:-1}"
+    local id resolved
+    id="${!env_key:-}"
+    if [[ -n "$id" ]] && object_exists_on_fullnode "$id"; then
+        printf -v "$env_key" '%s' "$(normalize_hex_id "$id")"
+        return 0
+    fi
+    if [[ -n "$id" ]]; then
+        echo "GraphQL ${env_key}=${id} not on fullnode; re-resolving ${move_type}" >&2
+    fi
+    resolved="$(gql_live_object_address_for_type "$move_type" "$owner_kind")" || resolved=''
+    if [[ -n "$resolved" ]]; then
+        printf -v "$env_key" '%s' "$resolved"
+        log_session_use "$env_key" "${!env_key}"
+        return 0
+    fi
+    printf -v "$env_key" '%s' ''
+    if [[ "$required" == 1 ]]; then
+        echo "Could not resolve live ${env_key} (${move_type}) on fullnode — run bootstrap and wait for indexer sync" >&2
+        return 1
+    fi
+    echo "Optional ${env_key} (${move_type}) not on fullnode; continuing without it" >&2
+    return 0
+}
+
+social_validate_shared_session_ids_on_fullnode() {
+    local failed=0
+    social_validate_session_id_on_fullnode ECOSYSTEM_TREASURY_ID '0x50c1::profile::EcosystemTreasury' SHARED 1 || failed=1
+    social_validate_session_id_on_fullnode USERNAME_REGISTRY_ID '0x50c1::profile::UsernameRegistry' SHARED 1 || failed=1
+    social_validate_session_id_on_fullnode USERNAME_MARKETPLACE_ID '0x50c1::profile::UsernameMarketplace' SHARED 1 || failed=1
+    social_validate_session_id_on_fullnode PROFILE_CONFIG_ID '0x50c1::profile::ProfileConfig' SHARED 1 || failed=1
+    social_validate_session_id_on_fullnode MEMORY_REGISTRY_ID '0x50c1::memory::MemoryRegistry' SHARED 1 || failed=1
+    social_validate_session_id_on_fullnode MEMORY_CONFIG_ID '0x50c1::memory::MemoryConfig' SHARED 1 || failed=1
+    social_validate_session_id_on_fullnode AI_CREDIT_CONFIG_ID '0x50c1::ai_credit::AiCreditConfig' SHARED 1 || failed=1
+    social_validate_session_id_on_fullnode PLATFORM_REGISTRY_ID '0x50c1::platform::PlatformRegistry' SHARED 1 || failed=1
+    social_validate_session_id_on_fullnode PLATFORM_CONFIG_ID '0x50c1::platform::PlatformConfig' SHARED 1 || failed=1
+    social_validate_session_id_on_fullnode BLOCK_LIST_REGISTRY_ID '0x50c1::block_list::BlockListRegistry' SHARED 1 || failed=1
+    social_validate_session_id_on_fullnode MYDATA_REGISTRY_ID '0x50c1::mydata::MyDataRegistry' SHARED 1 || failed=1
+    social_validate_session_id_on_fullnode MYDATA_CONFIG_ID '0x50c1::mydata::MyDataConfig' SHARED 1 || failed=1
+    social_validate_session_id_on_fullnode POST_CONFIG_ID '0x50c1::post::PostConfig' SHARED 1 || failed=1
+    social_validate_session_id_on_fullnode SUBSCRIPTION_CONFIG_ID '0x50c1::subscription::SubscriptionConfig' SHARED 1 || failed=1
+    social_validate_session_id_on_fullnode SUBSCRIPTION_ADMIN_CAP_ID '0x50c1::subscription::SubscriptionAdminCap' ANY 1 || failed=1
+    social_validate_session_id_on_fullnode MYDATA_ADMIN_CAP_ID '0x50c1::mydata::MyDataAdminCap' ANY 0 || true
+    social_validate_session_id_on_fullnode PLATFORM_ADMIN_CAP_ID '0x50c1::platform::PlatformAdminCap' ANY 0 || true
+    social_validate_session_id_on_fullnode PLATFORM_OBJECT_ID '0x50c1::platform::Platform' ANY 0 || true
+    return "$failed"
+}
+
 social_refresh_session_from_graphql() {
     command -v curl >/dev/null 2>&1 || { echo "curl required" >&2; return 1; }
     command -v jq >/dev/null 2>&1 || { echo "jq required" >&2; return 1; }
@@ -554,10 +635,10 @@ social_refresh_session_from_graphql() {
         # shellcheck disable=SC1090
         source "$GQL_REFRESH_FILE"
     fi
-    if [[ -n "${PLATFORM_OBJECT_ID:-}" ]] && ! object_exists_on_fullnode "$PLATFORM_OBJECT_ID"; then
-        echo "GraphQL PLATFORM_OBJECT_ID not on localnet fullnode; omitting from session." >&2
-        PLATFORM_OBJECT_ID=''
-    fi
+    social_validate_shared_session_ids_on_fullnode || {
+        rm -f "$old_session_file"
+        return 1
+    }
     rm -f "$GQL_REFRESH_FILE"
     GQL_REFRESH_FILE=''
 
@@ -581,15 +662,17 @@ social_refresh_session_from_graphql() {
         done
     } > "${SOCIAL_SESSION_SAVE_PATH}.tmp"
     if [[ -n "$old_session_file" && -f "$old_session_file" ]]; then
-        # shellcheck disable=SC1090
-        source "$old_session_file"
         {
+            # shellcheck disable=SC1090
+            source "$old_session_file"
             for key in "${preserved_keys[@]}"; do
                 session_value_set "$key" && printf '%s=%q\n' "$key" "${!key}"
             done
         } >> "${SOCIAL_SESSION_SAVE_PATH}.tmp"
         rm -f "$old_session_file"
     fi
+    # shellcheck disable=SC1090
+    source "${SOCIAL_SESSION_SAVE_PATH}.tmp"
     mv "${SOCIAL_SESSION_SAVE_PATH}.tmp" "$SOCIAL_SESSION_SAVE_PATH"
     chmod 600 "$SOCIAL_SESSION_SAVE_PATH" 2>/dev/null || true
 
@@ -789,18 +872,54 @@ tx_has_event_named() {
 }
 
 tx_event_field() {
-    local digest="$1" event_name="$2" field="$3" json
+    local digest="$1" event_name="$2" field="$3" json value
     [[ -n "$digest" && -n "$event_name" && -n "$field" ]] || return 1
-    json="$(myso client tx-block "$digest" --json 2>/dev/null)" || return 1
-    echo "$json" | jq -r --arg name "$event_name" --arg field "$field" '
-        [.. | objects | select(has("parsedJson") or has("parsed_json"))]
-        | map(.parsedJson // .parsed_json)
-        | map(select(. != null))
-        | .[]
-        | select(.[$field] != null)
-        | .[$field]
-        | tostring
-    ' | head -n1
+
+    # Some CLIs surface parsed event fields directly; use them when present.
+    json="$(myso client tx-block "$digest" --json 2>/dev/null)" || json=''
+    if [[ -n "$json" ]]; then
+        value="$(echo "$json" | jq -r --arg field "$field" '
+            [.. | objects | select(has("parsedJson") or has("parsed_json"))]
+            | map(.parsedJson // .parsed_json)
+            | map(select(. != null))
+            | .[]
+            | select(.[$field] != null)
+            | .[$field]
+            | tostring
+        ' 2>/dev/null | head -n1)"
+        if [[ -n "$value" ]]; then
+            printf '%s' "$value"
+            return 0
+        fi
+    fi
+
+    # The myso CLI tx-block only returns raw BCS event `contents`, so fall back to
+    # GraphQL for parsed event JSON. Retry briefly to absorb indexer lag.
+    local gql resp attempt
+    gql='query Tx($digest: String!) {
+        transaction(digest: $digest) {
+            effects { events { nodes { contents { type { repr } json } } } }
+        }
+    }'
+    for attempt in $(seq 1 "${TX_EVENT_FIELD_GQL_RETRIES:-15}"); do
+        resp="$(graphql_post "$gql" "$(jq -nc --arg digest "$digest" '{digest: $digest}')" 2>/dev/null)" || resp=''
+        if [[ -n "$resp" ]]; then
+            value="$(echo "$resp" | jq -r --arg name "$event_name" --arg field "$field" '
+                (.data.transaction.effects.events.nodes // [])
+                | map(select((.contents.type.repr // "") | endswith("::" + $name)))
+                | map(.contents.json)
+                | map(select(. != null and (.[$field] != null)))
+                | .[0][$field] // empty
+                | tostring
+            ' 2>/dev/null)"
+            if [[ -n "$value" && "$value" != "null" ]]; then
+                printf '%s' "$value"
+                return 0
+            fi
+        fi
+        sleep 1
+    done
+    return 1
 }
 
 assert_tx_aborts() {

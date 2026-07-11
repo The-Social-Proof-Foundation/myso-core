@@ -14,7 +14,7 @@ pub struct ProfileSubscriptionServiceInfo {
     #[diesel(sql_type = Text)]
     pub profile_id: String,
     #[diesel(sql_type = BigInt)]
-    pub monthly_fee: i64,
+    pub plan_count: i64,
     #[diesel(sql_type = Bool)]
     pub active: bool,
     #[diesel(sql_type = BigInt)]
@@ -32,11 +32,47 @@ pub struct ProfileSubscriptionServiceInfo {
 }
 
 #[derive(Debug, Serialize, QueryableByName)]
+pub struct ProfileSubscriptionPlanInfo {
+    #[diesel(sql_type = Text)]
+    pub plan_id: String,
+    #[diesel(sql_type = Text)]
+    pub service_id: String,
+    #[diesel(sql_type = Text)]
+    pub title: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub description: Option<String>,
+    #[diesel(sql_type = BigInt)]
+    pub price: i64,
+    #[diesel(sql_type = BigInt)]
+    pub duration_ms: i64,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub tier_level: Option<i64>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub platform_id: Option<String>,
+    #[diesel(sql_type = Bool)]
+    pub active: bool,
+    #[diesel(sql_type = BigInt)]
+    pub created_at: i64,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub updated_at: Option<i64>,
+}
+
+#[derive(Debug, Serialize, QueryableByName)]
 pub struct ProfileSubscriptionInfo {
     #[diesel(sql_type = Text)]
     pub subscription_id: String,
     #[diesel(sql_type = Text)]
     pub service_id: String,
+    #[diesel(sql_type = Text)]
+    pub plan_id: String,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub tier_level: Option<i64>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub platform_id: Option<String>,
+    #[diesel(sql_type = BigInt)]
+    pub price: i64,
+    #[diesel(sql_type = BigInt)]
+    pub duration_ms: i64,
     #[diesel(sql_type = Text)]
     pub subscriber: String,
     #[diesel(sql_type = BigInt)]
@@ -51,8 +87,6 @@ pub struct ProfileSubscriptionInfo {
     pub renewal_count: i64,
     #[diesel(sql_type = Nullable<BigInt>)]
     pub cancelled_at: Option<i64>,
-    #[diesel(sql_type = BigInt)]
-    pub monthly_fee: i64,
     #[diesel(sql_type = Text)]
     pub profile_owner: String,
     #[diesel(sql_type = Nullable<Text>)]
@@ -103,7 +137,7 @@ pub struct SubscriptionConfigInfo {
     #[diesel(sql_type = Text)]
     pub updated_by: String,
     #[diesel(sql_type = BigInt)]
-    pub billing_period_ms: i64,
+    pub default_billing_period_ms: i64,
     #[diesel(sql_type = BigInt)]
     pub max_renewal_months: i64,
     #[diesel(sql_type = BigInt)]

@@ -99,6 +99,8 @@ pub struct PostRow {
     pub subscription_service_id: Option<String>,
     #[diesel(sql_type = Nullable<BigInt>)]
     pub subscription_price: Option<i64>,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub subscription_min_tier_level: Option<i64>,
     #[diesel(sql_type = Nullable<Text>)]
     pub encrypted_content_hash: Option<String>,
     #[diesel(sql_type = Nullable<Bool>)]
@@ -121,6 +123,8 @@ pub struct PostRow {
     pub action_identity_class: Option<i16>,
     #[diesel(sql_type = Nullable<Text>)]
     pub organization_id: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub post_access_kind: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -198,21 +202,24 @@ pub(crate) async fn get_post_by_id(
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
     let result = diesel::sql_query(
-        "SELECT post_id, owner, profile_id, content, post_type, created_at, deleted_at,
-                reaction_count, comment_count, repost_count, tips_received, total_tip_volume,
-                media_urls, mentions, parent_post_id, updated_at,
-                poc_id, revenue_redirect_to, revenue_redirect_percentage,
-                poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type,
-                poc_oracle_address, poc_analyzed_at, poc_outcome, poc_redirection_kind,
-                poc_disputes_submitted,
-                enable_spt, enable_spot, spot_id, spot_claim_id, spt_id, mydata_id,
-                revenue_recipient, requires_subscription, subscription_service_id, subscription_price,
-                encrypted_content_hash, removed_from_platform, removed_by, metadata_json, promotion_id,
-                platform_id, permissions, actor_address, sub_agent_id, action_identity_class,
-                organization_id
-         FROM posts
-         WHERE post_id = $1 AND deleted_at IS NULL
-         ORDER BY created_at DESC
+        "SELECT p.post_id, p.owner, p.profile_id, p.content, p.post_type, p.created_at, p.deleted_at,
+                p.reaction_count, p.comment_count, p.repost_count, p.tips_received, p.total_tip_volume,
+                p.media_urls, p.mentions, p.parent_post_id, p.updated_at,
+                p.poc_id, p.revenue_redirect_to, p.revenue_redirect_percentage,
+                p.poc_reasoning, p.poc_evidence_urls, p.poc_similarity_score, p.poc_media_type,
+                p.poc_oracle_address, p.poc_analyzed_at, p.poc_outcome, p.poc_redirection_kind,
+                p.poc_disputes_submitted,
+                p.enable_spt, p.enable_spot, p.spot_id, p.spot_claim_id, p.spt_id, p.mydata_id,
+                p.revenue_recipient, p.requires_subscription, p.subscription_service_id, p.subscription_price,
+                p.subscription_min_tier_level,
+                p.encrypted_content_hash, p.removed_from_platform, p.removed_by, p.metadata_json, p.promotion_id,
+                p.platform_id, p.permissions, COALESCE(sa.derived_address, p.owner) AS actor_address,
+                p.sub_agent_id, p.action_identity_class,
+                p.organization_id, p.post_access_kind
+         FROM posts p
+         LEFT JOIN sub_agents sa ON sa.agent_object_id = p.sub_agent_id
+         WHERE p.post_id = $1 AND p.deleted_at IS NULL
+         ORDER BY p.created_at DESC
          LIMIT 1",
     )
     .bind::<Text, _>(post_id)
@@ -303,24 +310,27 @@ pub(crate) async fn list_posts(
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
     let query = "
-        SELECT post_id, owner, profile_id, content, post_type, created_at, deleted_at,
-               reaction_count, comment_count, repost_count, tips_received, total_tip_volume,
-               media_urls, mentions, parent_post_id, updated_at,
-               poc_id, revenue_redirect_to, revenue_redirect_percentage,
-               poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type,
-               poc_oracle_address, poc_analyzed_at, poc_outcome, poc_redirection_kind,
-               poc_disputes_submitted,
-               enable_spt, enable_spot, spot_id, spot_claim_id, spt_id, mydata_id,
-               revenue_recipient, requires_subscription, subscription_service_id, subscription_price,
-               encrypted_content_hash, removed_from_platform, removed_by, metadata_json, promotion_id,
-               platform_id, permissions, actor_address, sub_agent_id, action_identity_class,
-               organization_id
-        FROM posts
-        WHERE deleted_at IS NULL
-        AND ($1::TEXT IS NULL OR owner = $1)
-        AND ($2::TEXT IS NULL OR post_type = $2)
-        AND ($5::TEXT IS NULL OR sub_agent_id = $5)
-        ORDER BY created_at DESC
+        SELECT p.post_id, p.owner, p.profile_id, p.content, p.post_type, p.created_at, p.deleted_at,
+               p.reaction_count, p.comment_count, p.repost_count, p.tips_received, p.total_tip_volume,
+               p.media_urls, p.mentions, p.parent_post_id, p.updated_at,
+               p.poc_id, p.revenue_redirect_to, p.revenue_redirect_percentage,
+               p.poc_reasoning, p.poc_evidence_urls, p.poc_similarity_score, p.poc_media_type,
+               p.poc_oracle_address, p.poc_analyzed_at, p.poc_outcome, p.poc_redirection_kind,
+               p.poc_disputes_submitted,
+               p.enable_spt, p.enable_spot, p.spot_id, p.spot_claim_id, p.spt_id, p.mydata_id,
+               p.revenue_recipient, p.requires_subscription, p.subscription_service_id, p.subscription_price,
+               p.subscription_min_tier_level,
+               p.encrypted_content_hash, p.removed_from_platform, p.removed_by, p.metadata_json, p.promotion_id,
+               p.platform_id, p.permissions, COALESCE(sa.derived_address, p.owner) AS actor_address,
+               p.sub_agent_id, p.action_identity_class,
+               p.organization_id, p.post_access_kind
+        FROM posts p
+        LEFT JOIN sub_agents sa ON sa.agent_object_id = p.sub_agent_id
+        WHERE p.deleted_at IS NULL
+        AND ($1::TEXT IS NULL OR p.owner = $1)
+        AND ($2::TEXT IS NULL OR p.post_type = $2)
+        AND ($5::TEXT IS NULL OR p.sub_agent_id = $5)
+        ORDER BY p.created_at DESC
         LIMIT $3 OFFSET $4
     ";
     let results = diesel::sql_query(query)
@@ -367,18 +377,20 @@ pub(crate) async fn list_posts_for_profile(
     };
     let query = format!(
         "
-        SELECT post_id, owner, profile_id, content, post_type, created_at, deleted_at,
-               reaction_count, comment_count, repost_count, tips_received, total_tip_volume,
-               media_urls, mentions, parent_post_id, updated_at,
-               poc_id, revenue_redirect_to, revenue_redirect_percentage,
-               poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type,
-               poc_oracle_address, poc_analyzed_at, poc_outcome, poc_redirection_kind,
-               poc_disputes_submitted,
-               enable_spt, enable_spot, spot_id, spot_claim_id, spt_id, mydata_id,
-               revenue_recipient, requires_subscription, subscription_service_id, subscription_price,
-               encrypted_content_hash, removed_from_platform, removed_by, metadata_json, promotion_id,
-               platform_id, permissions, actor_address, sub_agent_id, action_identity_class,
-               organization_id
+        SELECT p.post_id, p.owner, p.profile_id, p.content, p.post_type, p.created_at, p.deleted_at,
+               p.reaction_count, p.comment_count, p.repost_count, p.tips_received, p.total_tip_volume,
+               p.media_urls, p.mentions, p.parent_post_id, p.updated_at,
+               p.poc_id, p.revenue_redirect_to, p.revenue_redirect_percentage,
+               p.poc_reasoning, p.poc_evidence_urls, p.poc_similarity_score, p.poc_media_type,
+               p.poc_oracle_address, p.poc_analyzed_at, p.poc_outcome, p.poc_redirection_kind,
+               p.poc_disputes_submitted,
+               p.enable_spt, p.enable_spot, p.spot_id, p.spot_claim_id, p.spt_id, p.mydata_id,
+               p.revenue_recipient, p.requires_subscription, p.subscription_service_id, p.subscription_price,
+               p.subscription_min_tier_level,
+               p.encrypted_content_hash, p.removed_from_platform, p.removed_by, p.metadata_json, p.promotion_id,
+               p.platform_id, p.permissions, COALESCE(sa.derived_address, p.owner) AS actor_address,
+               p.sub_agent_id, p.action_identity_class,
+               p.organization_id, p.post_access_kind
         FROM (
             SELECT DISTINCT ON (post_id) *
             FROM posts
@@ -387,8 +399,9 @@ pub(crate) async fn list_posts_for_profile(
             {deleted_sql}
             {outcomes_sql}
             ORDER BY post_id, time DESC
-        ) sub
-        ORDER BY created_at DESC
+        ) p
+        LEFT JOIN sub_agents sa ON sa.agent_object_id = p.sub_agent_id
+        ORDER BY p.created_at DESC
         LIMIT $4 OFFSET $5
         ",
         deleted_sql = deleted_sql,

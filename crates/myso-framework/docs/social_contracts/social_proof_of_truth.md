@@ -3119,7 +3119,7 @@ Oracle-only: open a market for an existing claim.
     <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_valid_hash">assert_valid_hash</a>(&<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_market_key_hash">market_key_hash</a>);
     <b>assert</b>!(!table::contains(&registry.markets_by_key_hash, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_market_key_hash">market_key_hash</a>), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EMarketExists">EMarketExists</a>);
     <b>let</b> now_ms = clock::timestamp_ms(clock);
-    <b>assert</b>!(resolution_at_ms &gt; now_ms, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ETooEarly">ETooEarly</a>);
+    <b>assert</b>!(resolution_at_ms &gt;= now_ms, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ETooEarly">ETooEarly</a>);
     <b>let</b> options_len = vector::length(&betting_options);
     <b>assert</b>!(options_len &gt;= config.min_betting_options, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
     <b>assert</b>!(options_len &lt;= config.max_betting_options, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);

@@ -9,6 +9,7 @@
 use serde::Deserialize;
 use std::collections::HashMap;
 
+use super::access::post_access_fields_from_json;
 use super::common;
 use super::post_mydata::{self, MyDataPaywallSnapshot};
 use super::SocialEventRow;
@@ -178,8 +179,6 @@ struct PostCreatedEvent {
     spt_id: Option<String>,
     #[serde(default, deserialize_with = "de_u8")]
     poc_redirection_kind: u8,
-    #[serde(default)]
-    actor_address: Option<String>,
     #[serde(default)]
     sub_agent_id: Option<String>,
     #[serde(default)]
@@ -452,44 +451,11 @@ pub fn handle_post_event(
         }
         "PromotionStatusToggledEvent" => process_promotion_status_toggled_event(data, event_id),
         "PromotionFundsWithdrawnEvent" => process_promotion_funds_withdrawn_event(data, event_id),
-        "PostSubscriptionGateEnabledEvent" => {
-            process_post_subscription_gate_enabled_event(data, event_id, checkpoint_timestamp_ms)
-        }
         "PostSubscriptionAccessEvent" => {
             process_post_subscription_access_event(data, event_id, checkpoint_timestamp_ms)
         }
         _ => None,
     }
-}
-
-fn process_post_subscription_gate_enabled_event(
-    data: &serde_json::Value,
-    event_id: &str,
-    checkpoint_timestamp_ms: u64,
-) -> Option<Vec<SocialEventRow>> {
-    #[derive(Deserialize)]
-    struct GateEvent {
-        post_id: String,
-        service_id: String,
-        enabled: bool,
-    }
-    let ev: GateEvent = common::deserialize_social_event_json(
-        "post",
-        "PostSubscriptionGateEnabledEvent",
-        event_id,
-        data,
-        "post PostSubscriptionGateEnabledEvent JSON did not match struct",
-    )?;
-    let _ = checkpoint_timestamp_ms;
-    Some(vec![SocialEventRow::PostSubscriptionGateUpdate {
-        post_id: ev.post_id,
-        service_id: if ev.enabled {
-            Some(ev.service_id)
-        } else {
-            None
-        },
-        enabled: ev.enabled,
-    }])
 }
 
 fn process_post_subscription_access_event(
@@ -549,8 +515,14 @@ fn process_post_created_event(
     };
     let event_ms = common::json_field_as_i64(data.get("created_at")).or(Some(ev.created_at as i64));
     let (created_at, now) = chain_post_times(event_ms, checkpoint_timestamp_ms);
-    let (actor_address, sub_agent_id, organization_id, action_identity_class) =
+    let (_actor_address, sub_agent_id, organization_id, action_identity_class) =
         attribution_fields(data, &ev.owner);
+
+    let access_fields = post_access_fields_from_json(data);
+    let mydata_id = access_fields
+        .mydata_id
+        .clone()
+        .or(ev.mydata_id);
 
     let mut post = NewPost {
         post_id: ev.post_id,
@@ -574,7 +546,7 @@ fn process_post_created_event(
         removed_by: None,
         transaction_id: event_id.to_string(),
         time: now,
-        mydata_id: ev.mydata_id,
+        mydata_id,
         revenue_recipient: None,
         poc_id: None,
         poc_reasoning: None,
@@ -591,9 +563,11 @@ fn process_post_created_event(
         poc_disputes_submitted: 0,
         revenue_redirect_to: ev.revenue_redirect_to,
         revenue_redirect_percentage: ev.revenue_redirect_percentage.map(|p| p as i64),
-        requires_subscription: None,
-        subscription_service_id: None,
+        requires_subscription: access_fields.requires_subscription,
+        subscription_service_id: access_fields.subscription_service_id,
         subscription_price: None,
+        subscription_min_tier_level: access_fields.subscription_min_tier_level,
+        post_access_kind: Some(access_fields.post_access_kind),
         encrypted_content_hash: None,
         promotion_id: ev.promotion_id,
         enable_spt: ev.enable_spt,
@@ -603,7 +577,6 @@ fn process_post_created_event(
         spt_id: ev.spt_id,
         platform_id: ev.platform_id,
         permissions: ev.permissions.map(|p| i16::from(p)),
-        actor_address: ev.actor_address.or(actor_address),
         sub_agent_id: ev.sub_agent_id.or(sub_agent_id),
         action_identity_class: ev
             .action_identity_class
@@ -1423,6 +1396,7 @@ mod tests {
             mydata_id.to_string(),
             MyDataPaywallSnapshot {
                 subscription_price: Some(5_000_000_000),
+                one_time_price: None,
                 encrypted_content_hash: Some("0xdeadbeef".to_string()),
             },
         );

@@ -424,6 +424,14 @@ diesel::table! {
         max_subscription_days -> Int8,
         max_free_access_grants -> Int8,
         max_encryption_id_bytes -> Int8,
+        max_encrypted_data_bytes -> Int8,
+        max_tag_bytes -> Int8,
+        max_metadata_bytes -> Int8,
+        max_payment_reference_bytes -> Int8,
+        max_pool_assignments -> Int8,
+        max_merkle_proof_depth -> Int8,
+        max_paid_access_entries -> Int8,
+        default_claim_window_ms -> Int8,
         p2p_platform_fee_bps -> Int8,
         p2p_ecosystem_fee_bps -> Int8,
         mydata_marketplace_platform_fee_bps -> Int8,
@@ -450,6 +458,7 @@ diesel::table! {
         last_updated -> Int8,
         one_time_price -> Nullable<Int8>,
         subscription_price -> Nullable<Int8>,
+        access_configuration_kind -> Nullable<Text>,
         subscription_duration_days -> Int8,
         geographic_region -> Nullable<Text>,
         data_quality -> Nullable<Text>,
@@ -535,6 +544,7 @@ diesel::table! {
     mydata_broad_pools (pool_id) {
         pool_id -> Text,
         name -> Text,
+        platform_address -> Nullable<Text>,
         created_at_ms -> Int8,
         event_id -> Text,
         transaction_id -> Text,
@@ -582,6 +592,10 @@ diesel::table! {
         snapshot_id -> Text,
         buyer_address -> Text,
         price_paid -> Int8,
+        source_pool_id -> Text,
+        source_sub_pool_id -> Text,
+        platform_address -> Nullable<Text>,
+        initial_escrow -> Int8,
         created_at_ms -> Int8,
         event_id -> Text,
         transaction_id -> Text,
@@ -597,8 +611,25 @@ diesel::table! {
         total_amount -> Int8,
         contributor_count -> Int8,
         merkle_root -> Text,
+        platform_address -> Nullable<Text>,
+        claim_deadline_ms -> Int8,
         published_at_ms -> Int8,
         event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    mydata_snapshot_escrow (snapshot_id) {
+        snapshot_id -> Text,
+        total_funded -> Int8,
+        total_claimed -> Int8,
+        remaining_amount -> Int8,
+        claim_deadline_ms -> Nullable<Int8>,
+        reclaimed_at_ms -> Nullable<Int8>,
+        status -> Text,
+        updated_at_ms -> Int8,
         transaction_id -> Text,
         time -> Timestamptz,
     }
@@ -1043,6 +1074,8 @@ diesel::table! {
         requires_subscription -> Nullable<Bool>,
         subscription_service_id -> Nullable<Text>,
         subscription_price -> Nullable<Int8>,
+        subscription_min_tier_level -> Nullable<Int8>,
+        post_access_kind -> Nullable<Text>,
         encrypted_content_hash -> Nullable<Text>,
         enable_spt -> Bool,
         enable_spot -> Bool,
@@ -1062,7 +1095,6 @@ diesel::table! {
         revenue_recipient -> Nullable<Text>,
         platform_id -> Nullable<Text>,
         permissions -> Nullable<Int2>,
-        actor_address -> Nullable<Text>,
         sub_agent_id -> Nullable<Text>,
         action_identity_class -> Nullable<Int2>,
         organization_id -> Nullable<Text>,
@@ -1211,9 +1243,27 @@ diesel::table! {
         service_id -> Text,
         profile_owner -> Text,
         profile_id -> Text,
-        monthly_fee -> Int8,
+        plan_count -> Int8,
         active -> Bool,
         subscriber_count -> Int8,
+        created_at -> Int8,
+        updated_at -> Nullable<Int8>,
+        time -> Timestamptz,
+        transaction_id -> Text,
+    }
+}
+
+diesel::table! {
+    profile_subscription_plans (plan_id) {
+        plan_id -> Text,
+        service_id -> Text,
+        title -> Text,
+        description -> Nullable<Text>,
+        price -> Int8,
+        duration_ms -> Int8,
+        tier_level -> Nullable<Int8>,
+        platform_id -> Nullable<Text>,
+        active -> Bool,
         created_at -> Int8,
         updated_at -> Nullable<Int8>,
         time -> Timestamptz,
@@ -1225,6 +1275,11 @@ diesel::table! {
     profile_subscriptions (subscription_id, time) {
         subscription_id -> Text,
         service_id -> Text,
+        plan_id -> Text,
+        tier_level -> Nullable<Int8>,
+        platform_id -> Nullable<Text>,
+        price -> Int8,
+        duration_ms -> Int8,
         subscriber -> Text,
         created_at -> Int8,
         expires_at -> Int8,
@@ -1495,6 +1550,22 @@ diesel::table! {
         username -> Text,
         profile_id -> Text,
         transaction_id -> Text,
+    }
+}
+
+diesel::table! {
+    username_reservations (id) {
+        id -> Int4,
+        username -> Text,
+        reason -> Int2,
+        reserved_by -> Text,
+        reserved_at -> Int8,
+        released_by -> Nullable<Text>,
+        released_at -> Nullable<Int8>,
+        status -> Text,
+        reserve_transaction_id -> Text,
+        release_transaction_id -> Nullable<Text>,
+        time -> Timestamptz,
     }
 }
 
@@ -2606,7 +2677,7 @@ diesel::table! {
     subscription_config (id, time) {
         id -> Int4,
         updated_by -> Text,
-        billing_period_ms -> Int8,
+        default_billing_period_ms -> Int8,
         max_renewal_months -> Int8,
         platform_fee_bps -> Int8,
         ecosystem_fee_bps -> Int8,
@@ -2619,6 +2690,7 @@ diesel::table! {
     }
 }
 
+diesel::joinable!(profile_subscription_plans -> profile_subscription_services (service_id));
 diesel::joinable!(profile_subscriptions -> profile_subscription_services (service_id));
 diesel::joinable!(ai_credit_agent_budgets -> ai_credit_balances (balance_id));
 diesel::joinable!(ai_credit_balances -> memory_accounts (memory_account_id));
@@ -2678,6 +2750,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     mydata_listing_sub_pools,
     mydata_merkle_roots,
     mydata_snapshot_anchors,
+    mydata_snapshot_escrow,
     mydata_sub_pools,
     mydata_registry,
     mydata_revenue,
@@ -2715,6 +2788,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     username_listings,
     username_offers,
     username_sale_fees,
+    profile_subscription_plans,
     profile_subscription_services,
     profile_subscriptions,
     profiles,
@@ -2762,6 +2836,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     unified_revenue,
     upgrade_events,
     username_registry,
+    username_reservations,
     vesting_events,
     vesting_wallets,
     vote_decryption_failures,

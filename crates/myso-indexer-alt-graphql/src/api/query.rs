@@ -57,7 +57,7 @@ use crate::api::types::move_type;
 use crate::api::types::move_type::MoveType;
 use crate::api::types::mydata::{
     MyDataBroadPool, MyDataClaim, MyDataDistributionRound, MyDataListingSubPool, MyDataMerkleRoot,
-    MyDataPurchase, MyDataRecord, MyDataSnapshotAnchor, MyDataSubPool,
+    MyDataPurchase, MyDataRecord, MyDataSnapshotAnchor, MyDataSnapshotEscrow, MyDataSubPool,
 };
 use crate::api::types::node::Node;
 use crate::api::types::object;
@@ -68,7 +68,7 @@ use crate::api::types::object_filter::ObjectFilter;
 use crate::api::types::object_filter::ObjectFilterValidator as OFValidator;
 use crate::api::types::organization::{
     AgenticOrganization, AgenticOrganizationLeaderboardResponse, OrganizationCategory,
-    OrganizationLeaderboardSortGql, OrganizationStatsWindowGql, OrganizationType,
+    OrganizationLeaderboardSort, OrganizationStatsWindow, OrganizationType,
 };
 use crate::api::types::platform::{Platform, PlatformUserAccess};
 use crate::api::types::messaging::{MessagingAgentGroup, PaidMessageEscrow};
@@ -77,7 +77,7 @@ use crate::api::types::poc_username_beneficiary::PocUsernameBeneficiary;
 use crate::api::types::post::{CommentSummary, Post, ReactionSummary, RepostSummary, TipSummary};
 use crate::api::types::profile::Profile;
 use crate::api::types::profile_subscription::{
-    ProfileSubscription, ProfileSubscriptionService, SubscriptionAccess,
+    ProfileSubscription, ProfileSubscriptionPlan, ProfileSubscriptionService, SubscriptionAccess,
 };
 use crate::api::types::promotion::{Promotion, PromotionTimeSeries};
 use crate::api::types::protocol_configs::ProtocolConfigs;
@@ -743,9 +743,9 @@ impl Query {
     async fn agentic_organizations_leaderboard(
         &self,
         ctx: &Context<'_>,
-        sort: OrganizationLeaderboardSortGql,
+        sort: OrganizationLeaderboardSort,
         category: OrganizationType,
-        window: Option<OrganizationStatsWindowGql>,
+        window: Option<OrganizationStatsWindow>,
         limit: Option<u64>,
         offset: Option<u64>,
     ) -> Option<Result<AgenticOrganizationLeaderboardResponse, RpcError>> {
@@ -1584,6 +1584,23 @@ impl Query {
                 .await
                 .map_err(Into::into)
                 .map(|opt| opt.map(MyDataMerkleRoot::from_row)),
+        )
+    }
+
+    async fn mydata_snapshot_escrow(
+        &self,
+        ctx: &Context<'_>,
+        snapshot_id: String,
+    ) -> Option<Result<Option<MyDataSnapshotEscrow>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_mydata_snapshot_escrow(&snapshot_id)
+                .await
+                .map_err(Into::into)
+                .map(|row| row.map(MyDataSnapshotEscrow::from_row)),
         )
     }
 
@@ -2468,6 +2485,52 @@ impl Query {
         )
     }
 
+    /// Subscription plans for a profile subscription service.
+    async fn profile_subscription_plans(
+        &self,
+        ctx: &Context<'_>,
+        service_id: ID,
+        active_only: Option<bool>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<ProfileSubscriptionPlan>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100);
+        let offset = offset.unwrap_or(0);
+        Some(
+            reader
+                .list_profile_subscription_plans_by_service(
+                    service_id.as_str(),
+                    active_only.unwrap_or(true),
+                    limit,
+                    offset,
+                )
+                .await
+                .map_err(Into::into)
+                .map(|rows| rows.into_iter().map(ProfileSubscriptionPlan::from_row).collect()),
+        )
+    }
+
+    /// Subscription plan by on-chain plan object ID.
+    async fn profile_subscription_plan(
+        &self,
+        ctx: &Context<'_>,
+        plan_id: ID,
+    ) -> Option<Result<Option<ProfileSubscriptionPlan>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_profile_subscription_plan_by_id(plan_id.as_str())
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(ProfileSubscriptionPlan::from_row)),
+        )
+    }
+
     /// Profile subscription by on-chain subscription object ID.
     async fn profile_subscription(
         &self,
@@ -2523,15 +2586,17 @@ impl Query {
         ctx: &Context<'_>,
         subscriber: MySoAddress,
         service_id: ID,
+        min_tier_level: Option<u64>,
     ) -> Option<Result<SubscriptionAccess, RpcError>> {
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
         let subscriber_str = subscriber.to_string();
         let service_str = service_id.to_string();
+        let min_tier = min_tier_level.map(|v| v as i64);
         let access_result: Result<SubscriptionAccess, RpcError> = async {
             let has_access = reader
-                .check_profile_subscription_access(&subscriber_str, &service_str)
+                .check_profile_subscription_access(&subscriber_str, &service_str, min_tier)
                 .await
                 .map_err(|e| RpcError::from(e))?;
             let expires_at = if has_access {

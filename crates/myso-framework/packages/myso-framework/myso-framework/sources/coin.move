@@ -11,7 +11,7 @@ use std::ascii;
 use std::string;
 use std::type_name;
 use myso::balance::{Self, Balance, Supply};
-use myso::bootstrap_key::BootstrapKey;
+use myso::bootstrap_key::{Self, BootstrapKey};
 use myso::deny_list::DenyList;
 use myso::url::{Self, Url};
 
@@ -54,9 +54,10 @@ public struct CoinCreationAdminCap has key, store {
 /// Requires BootstrapKey parameter for security - ensures only authorized callers can invoke
 /// Bootstrap module handles BootstrapKey check before calling this
 public fun create_coin_creation_admin_cap_for_bootstrap(
-    _bootstrap_key: &BootstrapKey,
+    key: &BootstrapKey,
     ctx: &mut TxContext
 ): CoinCreationAdminCap {
+    bootstrap_key::assert_not_used(key);
     CoinCreationAdminCap {
         id: object::new(ctx)
     }

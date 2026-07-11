@@ -228,6 +228,7 @@ subscription_require_mydata_stack() {
     # shellcheck source=lib/mydata-test-common.sh
     source "${lib_dir}/mydata-test-common.sh"
     local mydata_bin
+    mydata_ensure_fresh_cli || return 1
     mydata_bin="$(mydata_resolve_mydata)"
     [[ -n "$mydata_bin" ]] || {
         echo "mydata CLI required; build myso-mydata (cargo build -p mydata-cli)" >&2
@@ -280,6 +281,139 @@ wait_for_gql_post_subscription_fields() {
     return 1
 }
 
+ptb_pure_id() {
+    # object::ID pure args must use @-prefixed object id literals in PTB, not bare hex.
+    printf '@%s' "$(normalize_hex_id "$1")"
+}
+
+subscription_resolve_social_graph_id() {
+    local gql_url pkg move_type addr
+    gql_url="${SOCIAL_GQL_URL:-http://127.0.0.1:9125/graphql}"
+    pkg="$(normalize_hex_id "${PKG_SOCIAL:-0x50c1}")"
+    move_type="${pkg}::social_graph::SocialGraph"
+    addr="$(curl -sf -X POST "$gql_url" \
+        -H 'Content-Type: application/json' \
+        -d "{\"query\":\"query { objects(filter: { type: \\\"${move_type}\\\", ownerKind: SHARED }, last: 1) { nodes { address } } }\"}" \
+        | jq -r '.data.objects.nodes[0].address // empty')" || true
+    if [[ -z "$addr" ]]; then
+        echo "Failed to resolve SocialGraph from GraphQL" >&2
+        return 1
+    fi
+    printf '%s' "$(normalize_hex_id "$addr")"
+}
+
+subscription_block_wallet() {
+    local blocker="$1" blocked="$2" graph_id out
+    subscription_require_session_objects BLOCK_LIST_REGISTRY_ID || return 1
+    graph_id="${SOCIAL_GRAPH_ID:-}"
+    if [[ -z "$graph_id" ]]; then
+        graph_id="$(subscription_resolve_social_graph_id)" || return 1
+    fi
+    log_step "block_list::block_wallet blocker=$blocker blocked=$blocked"
+    out="$(run_myso_call_as_capture "$blocker" block_list block_wallet \
+        "@$(normalize_hex_id "$BLOCK_LIST_REGISTRY_ID")" \
+        "@$(normalize_hex_id "$graph_id")" \
+        "$blocked")" || return 1
+    assert_tx_success "$out"
+}
+
+subscription_unblock_wallet() {
+    local blocker="$1" blocked="$2" out
+    subscription_require_session_objects BLOCK_LIST_REGISTRY_ID || return 1
+    log_step "block_list::unblock_wallet blocker=$blocker blocked=$blocked"
+    out="$(run_myso_call_as_capture "$blocker" block_list unblock_wallet \
+        "@$(normalize_hex_id "$BLOCK_LIST_REGISTRY_ID")" \
+        "$blocked")" || return 1
+    assert_tx_success "$out"
+}
+
+subscription_call_create_subscription_plan() {
+    local sender="${1:-$CREATOR_ADDRESS}"
+    local title="${2:-Basic Monthly}"
+    local price="${3:-${MONTHLY_FEE:-1000000000}}"
+    local duration_ms="${4:-${DEFAULT_BILLING_PERIOD_MS:-2592000000}}"
+    subscription_require_session_objects SUBSCRIPTION_CONFIG_ID SERVICE_ID || return 1
+    run_myso_call_as_capture "$sender" subscription create_subscription_plan \
+        "@$(normalize_hex_id "$SUBSCRIPTION_CONFIG_ID")" \
+        "@$(normalize_hex_id "$SERVICE_ID")" \
+        "$(literal_move_string "$title")" \
+        '[]' \
+        "$price" \
+        "$duration_ms" \
+        '[]' \
+        '[]' \
+        "@$(normalize_hex_id "$CLOCK_ID")"
+}
+
+subscription_call_subscribe_to_profile() {
+    local sender="$1" coin="$2" auto_renew="${3:-false}" renewal_periods="${4:-${RENEWAL_PERIODS:-${RENEWAL_MONTHS:-0}}}"
+    subscription_require_session_objects SERVICE_ID PLAN_ID || return 1
+    run_myso_call_as_capture "$sender" subscription subscribe_to_profile \
+        "@$(normalize_hex_id "$BLOCK_LIST_REGISTRY_ID")" \
+        "@$(normalize_hex_id "$SUBSCRIPTION_CONFIG_ID")" \
+        "@$(normalize_hex_id "$SERVICE_ID")" \
+        "@$(normalize_hex_id "$PLAN_ID")" \
+        "@$(normalize_hex_id "$ECOSYSTEM_TREASURY_ID")" \
+        "$coin" "$auto_renew" "$renewal_periods" \
+        "@$(normalize_hex_id "$CLOCK_ID")"
+}
+
+subscription_call_subscribe_to_profile_with_platform() {
+    local sender="$1" coin="$2" auto_renew="${3:-false}" renewal_periods="${4:-${RENEWAL_PERIODS:-${RENEWAL_MONTHS:-0}}}"
+    subscription_require_session_objects SERVICE_ID PLAN_ID PLATFORM_OBJECT_ID || return 1
+    run_myso_call_as_capture "$sender" subscription subscribe_to_profile_with_platform \
+        "@$(normalize_hex_id "$BLOCK_LIST_REGISTRY_ID")" \
+        "@$(normalize_hex_id "$SUBSCRIPTION_CONFIG_ID")" \
+        "@$(normalize_hex_id "$SERVICE_ID")" \
+        "@$(normalize_hex_id "$PLAN_ID")" \
+        "@$(normalize_hex_id "$ECOSYSTEM_TREASURY_ID")" \
+        "@$(normalize_hex_id "$PLATFORM_OBJECT_ID")" \
+        "$coin" "$auto_renew" "$renewal_periods" \
+        "@$(normalize_hex_id "$CLOCK_ID")"
+}
+
+subscription_call_renew_subscription() {
+    local sender="$1" subscription_id="$2" coin="$3"
+    subscription_require_session_objects SERVICE_ID || return 1
+    run_myso_call_as_capture "$sender" subscription renew_subscription \
+        "@$(normalize_hex_id "$BLOCK_LIST_REGISTRY_ID")" \
+        "@$(normalize_hex_id "$SUBSCRIPTION_CONFIG_ID")" \
+        "@$(normalize_hex_id "$SERVICE_ID")" \
+        "@$(normalize_hex_id "$subscription_id")" \
+        "@$(normalize_hex_id "$ECOSYSTEM_TREASURY_ID")" \
+        "$coin" "@$(normalize_hex_id "$CLOCK_ID")"
+}
+
+subscription_call_fund_renewal_balance() {
+    local sender="$1" subscription_id="$2" coin="$3"
+    subscription_require_session_objects SERVICE_ID || return 1
+    run_myso_call_as_capture "$sender" subscription fund_renewal_balance \
+        "@$(normalize_hex_id "$BLOCK_LIST_REGISTRY_ID")" \
+        "@$(normalize_hex_id "$SERVICE_ID")" \
+        "@$(normalize_hex_id "$subscription_id")" "$coin" \
+        "@$(normalize_hex_id "$CLOCK_ID")"
+}
+
+subscription_call_assert_can_view_post() {
+    local sender="$1" post_id="$2" service_id="$3" subscription_id="$4"
+    subscription_require_session_objects || return 1
+    run_myso_call_as_capture "$sender" post assert_can_view_post \
+        "@$(normalize_hex_id "$BLOCK_LIST_REGISTRY_ID")" \
+        "@$(normalize_hex_id "$post_id")" \
+        "@$(normalize_hex_id "$service_id")" \
+        "@$(normalize_hex_id "$subscription_id")" \
+        "@$(normalize_hex_id "$CLOCK_ID")"
+}
+
+subscription_hint_key_server_policy_mismatch() {
+    local err="$1"
+    if [[ "$err" == *ArityMismatch* ]]; then
+        echo "Key-server policy PTB arity mismatch — stale mydata CLI or key-server package." >&2
+        echo "  Scripts use target/debug/mydata; rebuild: (cd ../myso-mydata && cargo build -p mydata-cli)" >&2
+        echo "  Or restart local stack with --with-mydata after a chain reset." >&2
+    fi
+}
+
 subscription_dry_run_mydata_policy() {
     local sender="$1"
     local id_arg ref_mcfg ref_mydata ref_mem ref_svc ref_sub ref_clk out
@@ -296,9 +430,15 @@ subscription_dry_run_mydata_policy() {
     ref_svc="$(ptb_shared_ref "$SERVICE_ID")" || return 1
     ref_sub="@$(normalize_hex_id "$SUBSCRIPTION_ID")"
     ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || return 1
+    ref_blr="$(ptb_shared_ref "$BLOCK_LIST_REGISTRY_ID")" || return 1
     out="$(DRY_RUN=1 SKIP_CONFIRM_RUN=1 invoke_ptb_as_capture "$sender" \
         --move-call "${PKG_SOCIAL}::mydata::mydata_approve_profile_subscription" \
-        "$id_arg" "$ref_mcfg" "$ref_mydata" "$ref_mem" "$ref_svc" "$ref_sub" "$ref_clk")" || return 1
+        "$id_arg" \
+        "$ref_blr" \
+        "$(ptb_pure_id "$SERVICE_ID")" \
+        "$(ptb_pure_id "$MYDATA_ID")" \
+        none \
+        "$ref_mcfg" "$ref_mydata" "$ref_mem" "$ref_svc" "$ref_sub" "$ref_clk")" || return 1
     assert_tx_success "$out"
 }
 
@@ -312,11 +452,13 @@ subscription_subscriber_decrypt_encrypted_post() {
         echo "ENCRYPT_CIPHERTEXT_HEX and ENCRYPTION_ID_HEX required" >&2
         return 1
     }
+    mydata_ensure_fresh_cli || return 1
     mydata_bin="$(mydata_resolve_mydata)"
     rpc_url="${MYSO_RPC_URL:-http://127.0.0.1:9000}"
     expect="${ENCRYPTED_PLAINTEXT_EXPECTED:-}"
     log_step "Decrypt via key server (fetch-key-profile-subscription) sender=$sender"
-    decrypted="$("$mydata_bin" fetch-key-profile-subscription \
+    local fetch_out fetch_rc=0
+    fetch_out="$("$mydata_bin" fetch-key-profile-subscription \
         --key-server-url "$KEY_SERVER_URL" \
         --key-server-object-id "$KEY_SERVER_OBJECT_ID" \
         --server-public-key-hex "$PUBLIC_KEY" \
@@ -330,7 +472,14 @@ subscription_subscriber_decrypt_encrypted_post() {
         --memory-account-id "$MEMORY_ACCOUNT_ID" \
         --service-id "$SERVICE_ID" \
         --subscription-id "$SUBSCRIPTION_ID" \
-        --clock-id "$CLOCK_ID")" || return 1
+        --block-list-registry-id "$BLOCK_LIST_REGISTRY_ID" \
+        --clock-id "$CLOCK_ID" 2>&1)" || fetch_rc=$?
+    if [[ "$fetch_rc" -ne 0 ]]; then
+        subscription_hint_key_server_policy_mismatch "$fetch_out"
+        echo "$fetch_out" >&2
+        return 1
+    fi
+    decrypted="$fetch_out"
     decrypted="${decrypted//$'\r'/}"
     [[ -n "$decrypted" ]] || {
         echo "fetch-key-profile-subscription returned empty plaintext" >&2
@@ -373,12 +522,26 @@ pick_split_coin_for_amount() {
 subscription_require_session_objects() {
     if (($# > 0)); then
         require_session_fields \
-            SUBSCRIPTION_CONFIG_ID ECOSYSTEM_TREASURY_ID CLOCK_ID \
+            BLOCK_LIST_REGISTRY_ID SUBSCRIPTION_CONFIG_ID ECOSYSTEM_TREASURY_ID CLOCK_ID \
             "$@"
     else
         require_session_fields \
-            SUBSCRIPTION_CONFIG_ID ECOSYSTEM_TREASURY_ID CLOCK_ID
+            BLOCK_LIST_REGISTRY_ID SUBSCRIPTION_CONFIG_ID ECOSYSTEM_TREASURY_ID CLOCK_ID
     fi
+}
+
+subscription_invalidate_stale_runtime_ids() {
+    local key id
+    for key in CREATOR_PROFILE_ID MEMORY_ACCOUNT_ID SERVICE_ID SUBSCRIPTION_ID POST_ID \
+        MYDATA_ID PLATFORM_OBJECT_ID SUBSCRIBER_ADDRESS NONSUB_ADDRESS; do
+        id="${!key:-}"
+        [[ -n "$id" ]] || continue
+        if ! object_exists_on_fullnode "$id"; then
+            echo "Clearing stale subscription session $key (not on fullnode after chain reset)" >&2
+            printf -v "$key" '%s' ''
+        fi
+    done
+    SUBSCRIPTION_ACTIVE=0
 }
 
 subscription_expires_at_ms() {
@@ -389,8 +552,20 @@ import json, subprocess, sys
 sub = sys.argv[1]
 out = json.loads(subprocess.check_output(["myso", "client", "object", sub, "--json"], text=True))
 b = bytes(out["data"]["Move"]["contents"])
-# ProfileSubscription: UID(32) service_id(32) subscriber(32) created_at(8) expires_at(8)
-print(int.from_bytes(b[104:112], "little"))
+# ProfileSubscription BCS layout:
+#   id: UID(32) service_id: ID(32) plan_id: ID(32)
+#   tier_level: Option<u64> platform_id: Option<address>
+#   subscriber: address(32) created_at: u64(8) expires_at: u64(8) ...
+off = 96  # skip id + service_id + plan_id
+tier_tag = b[off]; off += 1
+if tier_tag == 1:
+    off += 8
+plat_tag = b[off]; off += 1
+if plat_tag == 1:
+    off += 32
+off += 32  # subscriber
+off += 8   # created_at
+print(int.from_bytes(b[off:off + 8], "little"))
 PY
 }
 
@@ -412,8 +587,18 @@ import json, subprocess, sys
 sub, want_svc, want_sub = sys.argv[1:4]
 out = json.loads(subprocess.check_output(["myso", "client", "object", sub, "--json"], text=True))
 b = bytes(out["data"]["Move"]["contents"])
+# ProfileSubscription BCS layout:
+#   id: UID(32) service_id: ID(32) plan_id: ID(32)
+#   tier_level: Option<u64> platform_id: Option<address> subscriber: address(32) ...
 svc = "0x" + b[32:64].hex()
-owner = "0x" + b[64:96].hex()
+off = 96  # skip id + service_id + plan_id
+tier_tag = b[off]; off += 1
+if tier_tag == 1:
+    off += 8
+plat_tag = b[off]; off += 1
+if plat_tag == 1:
+    off += 32
+owner = "0x" + b[off:off + 32].hex()
 raise SystemExit(0 if svc.lower() == want_svc.lower() and owner.lower() == want_sub.lower() else 1)
 PY
 }

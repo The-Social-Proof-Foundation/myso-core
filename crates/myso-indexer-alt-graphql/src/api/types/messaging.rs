@@ -12,14 +12,14 @@ use crate::api::types::profile_summary::ProfileSummary;
 
 #[derive(Enum, Copy, Clone, Eq, PartialEq)]
 #[graphql(rename_items = "SCREAMING_SNAKE_CASE")]
-pub(crate) enum PaidMessageEscrowStatusGql {
+pub(crate) enum PaidMessageEscrowStatus {
     Escrowed,
     Claimed,
     Settled,
     Refunded,
 }
 
-impl PaidMessageEscrowStatusGql {
+impl PaidMessageEscrowStatus {
     fn from_status(status: &str) -> Self {
         match status {
             "claimed" => Self::Claimed,
@@ -79,8 +79,8 @@ impl PaidMessageEscrow {
         self.inner.amount
     }
 
-    async fn status(&self) -> PaidMessageEscrowStatusGql {
-        PaidMessageEscrowStatusGql::from_status(&self.inner.status)
+    async fn status(&self) -> PaidMessageEscrowStatus {
+        PaidMessageEscrowStatus::from_status(&self.inner.status)
     }
 
     async fn platform_fee(&self) -> Option<i64> {

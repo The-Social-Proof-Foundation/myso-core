@@ -141,6 +141,18 @@ module social_contracts::post {
         analyzed_at: Option<u64>,
     }
 
+    /// Event/indexer tags for [`PostAccess`] (1=public, 2=profile_sub, 3=marketplace_one_time).
+    const POST_ACCESS_PUBLIC: u8 = 1;
+    const POST_ACCESS_PROFILE_SUBSCRIPTION: u8 = 2;
+    const POST_ACCESS_MARKETPLACE_ONE_TIME: u8 = 3;
+
+    /// Post content access model (replaces legacy `mydata_id` + subscription gate dynamic field).
+    public enum PostAccess has store, copy, drop {
+        Public,
+        ProfileSubscription { service_id: ID, mydata_id: Option<ID>, min_tier_level: Option<u64> },
+        MarketplaceOneTime { mydata_id: ID },
+    }
+
     /// Post object that contains content information
     public struct Post has key {
         id: UID,
@@ -188,8 +200,8 @@ module social_contracts::post {
         poc_badge_snapshot: Option<PoCBadgeSnapshot>,
         /// Address of the shared `PoCBadgeObject` when issued (authoritative PoC record).
         poc_badge_object_id: Option<ID>,
-        /// Reference to the MyData for the post
-        mydata_id: Option<address>,
+        /// Content access model (public, profile subscription, or marketplace one-time).
+        access: PostAccess,
         /// Optional promotion data ID for promoted posts
         promotion_id: Option<address>,
         /// Opt-in for Social Proof Tokens (reservation pool created at post creation when true)
@@ -260,6 +272,79 @@ module social_contracts::post {
         if (allow_quotes) { p = p | PERMISSION_ALLOW_QUOTES };
         if (allow_tips) { p = p | PERMISSION_ALLOW_TIPS };
         p
+    }
+
+    /// Single match site for [`PostAccess`] field extraction.
+    fun post_access_fields(access: &PostAccess): (u8, Option<ID>, Option<ID>, Option<u64>) {
+        match (access) {
+            PostAccess::Public => (POST_ACCESS_PUBLIC, option::none(), option::none(), option::none()),
+            PostAccess::ProfileSubscription { service_id, mydata_id, min_tier_level } => {
+                (
+                    POST_ACCESS_PROFILE_SUBSCRIPTION,
+                    option::some(*service_id),
+                    *mydata_id,
+                    *min_tier_level,
+                )
+            },
+            PostAccess::MarketplaceOneTime { mydata_id } => {
+                (POST_ACCESS_MARKETPLACE_ONE_TIME, option::none(), option::some(*mydata_id), option::none())
+            },
+        }
+    }
+
+    public fun requires_profile_subscription(post: &Post): bool {
+        let (kind, _, _, _) = post_access_fields(&post.access);
+        kind == POST_ACCESS_PROFILE_SUBSCRIPTION
+    }
+
+    public fun requires_marketplace_purchase(post: &Post): bool {
+        let (kind, _, _, _) = post_access_fields(&post.access);
+        kind == POST_ACCESS_MARKETPLACE_ONE_TIME
+    }
+
+    public fun linked_mydata(post: &Post): Option<ID> {
+        let (_, _, mydata_id, _) = post_access_fields(&post.access);
+        mydata_id
+    }
+
+    public fun subscription_service(post: &Post): Option<ID> {
+        let (_, service_id, _, _) = post_access_fields(&post.access);
+        service_id
+    }
+
+    public fun subscription_min_tier_level(post: &Post): Option<u64> {
+        let (_, _, _, min_tier_level) = post_access_fields(&post.access);
+        min_tier_level
+    }
+
+    public fun post_access_kind(post: &Post): u8 {
+        let (kind, _, _, _) = post_access_fields(&post.access);
+        kind
+    }
+
+    fun post_access_from_parts(
+        access_kind: u8,
+        subscription_service_id: Option<ID>,
+        linked_mydata_id: Option<ID>,
+        subscription_min_tier_level: Option<u64>,
+    ): PostAccess {
+        if (access_kind == POST_ACCESS_PUBLIC) {
+            PostAccess::Public
+        } else if (access_kind == POST_ACCESS_PROFILE_SUBSCRIPTION) {
+            assert!(option::is_some(&subscription_service_id), ENoSubscriptionService);
+            PostAccess::ProfileSubscription {
+                service_id: *option::borrow(&subscription_service_id),
+                mydata_id: linked_mydata_id,
+                min_tier_level: subscription_min_tier_level,
+            }
+        } else if (access_kind == POST_ACCESS_MARKETPLACE_ONE_TIME) {
+            assert!(option::is_some(&linked_mydata_id), ENoEncryptedContent);
+            PostAccess::MarketplaceOneTime {
+                mydata_id: *option::borrow(&linked_mydata_id),
+            }
+        } else {
+            abort EUnauthorized
+        }
     }
 
     /// Query: check if comments are allowed
@@ -687,7 +772,7 @@ module social_contracts::post {
         mentions: Option<vector<address>>,
         media_urls: Option<vector<String>>,
         metadata_json: Option<String>,
-        mydata_id: Option<address>,
+        access: PostAccess,
         promotion_id: Option<address>,
         revenue_redirect_to: Option<address>,
         revenue_redirect_percentage: Option<u64>,
@@ -1016,7 +1101,7 @@ module social_contracts::post {
         allow_tips: bool,
         revenue_redirect_to: Option<address>,
         revenue_redirect_percentage: Option<u64>,
-        mydata_id: Option<address>,
+        access: PostAccess,
         promotion_id: Option<address>,
         enable_spt: bool,
         enable_spot: bool,
@@ -1060,7 +1145,7 @@ module social_contracts::post {
             revenue_redirect_percentage,
             poc_badge_snapshot: option::none(),
             poc_badge_object_id: option::none(),
-            mydata_id,
+            access,
             promotion_id,
             enable_spt,
             enable_spot,
@@ -1088,23 +1173,67 @@ module social_contracts::post {
         post_id
     }
 
-    /// When `mydata_id` is set, it must be registered in `mydata_registry` and owned by `owner`.
-    fun assert_mydata_id_allowed_for_owner(
+    /// Validates registry ownership when a MyData listing is linked on `access`.
+    fun assert_post_access_mydata_binding(
         owner: address,
-        mydata_id: Option<address>,
-        mydata_registry: &mydata::MyDataRegistry,
+        access: &PostAccess,
+        registry: &mydata::MyDataRegistry,
     ) {
-        if (option::is_none(&mydata_id)) {
+        let linked = linked_mydata_from_access(access);
+        if (option::is_none(&linked)) {
             return
         };
-        let id = *option::borrow(&mydata_id);
-        let reg_owner = mydata::registry_get_owner(mydata_registry, id);
+        let linked_id = *option::borrow(&linked);
+        let ip_id = object::id_to_address(&linked_id);
+        let reg_owner = mydata::registry_get_owner(registry, ip_id);
         assert!(option::is_some(&reg_owner), EMyDataNotRegistered);
         assert!(*option::borrow(&reg_owner) == owner, EMyDataOwnerMismatch);
     }
 
+    /// Cross-layer MyData access binding when the listing object is supplied in the PTB.
+    fun assert_post_access_mydata_object_binding(
+        access: &PostAccess,
+        mydata: &mydata::MyData,
+    ) {
+        let linked = linked_mydata_from_access(access);
+        assert!(option::is_some(&linked), ENoEncryptedContent);
+        let linked_id = *option::borrow(&linked);
+        assert!(object::id(mydata) == linked_id, EMyDataOwnerMismatch);
+        assert!(!mydata::requires_marketplace_subscription(mydata), ENoEncryptedContent);
+
+        match (access) {
+            PostAccess::Public => abort EUnauthorized,
+            PostAccess::ProfileSubscription { .. } => {
+                assert!(mydata::requires_profile_subscription_access(mydata), ENoEncryptedContent);
+            },
+            PostAccess::MarketplaceOneTime { .. } => {
+                assert!(mydata::requires_marketplace_purchase(mydata), EPriceMismatch);
+            },
+        }
+    }
+
+    fun linked_mydata_from_access(access: &PostAccess): Option<ID> {
+        let (_, _, mydata_id, _) = post_access_fields(access);
+        mydata_id
+    }
+
+    fun assert_profile_subscription_access_service(
+        owner: address,
+        access: &PostAccess,
+        service: &ProfileSubscriptionService,
+    ) {
+        match (access) {
+            PostAccess::ProfileSubscription { service_id, .. } => {
+                assert!(subscription::service_profile_owner(service) == owner, EUnauthorized);
+                assert!(subscription::service_is_active(service), ENoSubscriptionService);
+                assert!(*service_id == object::id(service), ENoSubscriptionService);
+            },
+            _ => abort EUnauthorized,
+        }
+    }
+
     /// Create a new post with interaction permissions.
-    public entry fun create_post(
+    fun create_post_entry_body(
         registry: &UsernameRegistry,
         platform_registry: &platform::PlatformRegistry,
         platform: &platform::Platform,
@@ -1122,7 +1251,7 @@ module social_contracts::post {
         allow_tips: Option<bool>,
         enable_spt: Option<bool>,
         enable_spot: Option<bool>,
-        mydata_id: Option<address>,
+        access: PostAccess,
         mydata_registry: &mydata::MyDataRegistry,
         memory_account: &MemoryAccount,
         clock: &Clock,
@@ -1145,8 +1274,8 @@ module social_contracts::post {
         let sub_agent_id = memory::acting_sub_agent_id(&acting);
         let organization_id = memory::acting_organization_id(&acting);
         let action_identity_class = memory::acting_identity_class(&acting);
-        
-        assert_mydata_id_allowed_for_owner(owner, mydata_id, mydata_registry);
+
+        assert_post_access_mydata_binding(owner, &access, mydata_registry);
         
         // Check if platform is approved
         let platform_id = object::uid_to_address(platform::id(platform));
@@ -1250,7 +1379,7 @@ module social_contracts::post {
             final_allow_tips,
             option::none(), // revenue_redirect_to
             option::none(), // revenue_redirect_percentage
-            mydata_id,
+            access,
             option::none(), // promotion_id
             final_enable_spt,
             final_enable_spot,
@@ -1285,7 +1414,7 @@ module social_contracts::post {
             mentions,
             media_urls: media_urls_for_event,
             metadata_json,
-            mydata_id,
+            access,
             promotion_id: option::none(),
             revenue_redirect_to: option::none(),
             revenue_redirect_percentage: option::none(),
@@ -1299,6 +1428,343 @@ module social_contracts::post {
             organization_id,
             action_identity_class,
         });
+    }
+
+    /// Create a new post; caller supplies access via kind + optional service/mydata ids.
+    public entry fun create_post(
+        registry: &UsernameRegistry,
+        platform_registry: &platform::PlatformRegistry,
+        platform: &platform::Platform,
+        block_list_registry: &block_list::BlockListRegistry,
+        config: &PostConfig,
+        memory_config: &MemoryConfig,
+        content: String,
+        media_urls: Option<vector<String>>,
+        mentions: Option<vector<address>>,
+        metadata_json: Option<String>,
+        allow_comments: Option<bool>,
+        allow_reactions: Option<bool>,
+        allow_reposts: Option<bool>,
+        allow_quotes: Option<bool>,
+        allow_tips: Option<bool>,
+        enable_spt: Option<bool>,
+        enable_spot: Option<bool>,
+        access_kind: u8,
+        subscription_service_id: Option<ID>,
+        linked_mydata_id: Option<ID>,
+        subscription_min_tier_level: Option<u64>,
+        mydata_registry: &mydata::MyDataRegistry,
+        memory_account: &MemoryAccount,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let access = post_access_from_parts(
+            access_kind,
+            subscription_service_id,
+            linked_mydata_id,
+            subscription_min_tier_level,
+        );
+        create_post_entry_body(
+            registry,
+            platform_registry,
+            platform,
+            block_list_registry,
+            config,
+            memory_config,
+            content,
+            media_urls,
+            mentions,
+            metadata_json,
+            allow_comments,
+            allow_reactions,
+            allow_reposts,
+            allow_quotes,
+            allow_tips,
+            enable_spt,
+            enable_spot,
+            access,
+            mydata_registry,
+            memory_account,
+            clock,
+            ctx,
+        );
+    }
+
+    /// Optional object binding for [`create_post`] when a linked MyData listing is in the PTB.
+    public entry fun validate_post_mydata_binding(
+        access_kind: u8,
+        subscription_service_id: Option<ID>,
+        linked_mydata_id: Option<ID>,
+        subscription_min_tier_level: Option<u64>,
+        mydata: &mydata::MyData,
+    ) {
+        let access = post_access_from_parts(
+            access_kind,
+            subscription_service_id,
+            linked_mydata_id,
+            subscription_min_tier_level,
+        );
+        assert_post_access_mydata_object_binding(&access, mydata);
+    }
+
+    /// Create a public post (no subscription or marketplace gate).
+    public entry fun create_public_post(
+        registry: &UsernameRegistry,
+        platform_registry: &platform::PlatformRegistry,
+        platform: &platform::Platform,
+        block_list_registry: &block_list::BlockListRegistry,
+        config: &PostConfig,
+        memory_config: &MemoryConfig,
+        content: String,
+        media_urls: Option<vector<String>>,
+        mentions: Option<vector<address>>,
+        metadata_json: Option<String>,
+        allow_comments: Option<bool>,
+        allow_reactions: Option<bool>,
+        allow_reposts: Option<bool>,
+        allow_quotes: Option<bool>,
+        allow_tips: Option<bool>,
+        enable_spt: Option<bool>,
+        enable_spot: Option<bool>,
+        mydata_registry: &mydata::MyDataRegistry,
+        memory_account: &MemoryAccount,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        create_post_entry_body(
+            registry,
+            platform_registry,
+            platform,
+            block_list_registry,
+            config,
+            memory_config,
+            content,
+            media_urls,
+            mentions,
+            metadata_json,
+            allow_comments,
+            allow_reactions,
+            allow_reposts,
+            allow_quotes,
+            allow_tips,
+            enable_spt,
+            enable_spot,
+            PostAccess::Public,
+            mydata_registry,
+            memory_account,
+            clock,
+            ctx,
+        );
+    }
+
+    /// Create a profile-subscription-gated post (optional linked MyData for encrypted body).
+    public entry fun create_profile_subscription_post(
+        registry: &UsernameRegistry,
+        platform_registry: &platform::PlatformRegistry,
+        platform: &platform::Platform,
+        block_list_registry: &block_list::BlockListRegistry,
+        config: &PostConfig,
+        memory_config: &MemoryConfig,
+        content: String,
+        media_urls: Option<vector<String>>,
+        mentions: Option<vector<address>>,
+        metadata_json: Option<String>,
+        allow_comments: Option<bool>,
+        allow_reactions: Option<bool>,
+        allow_reposts: Option<bool>,
+        allow_quotes: Option<bool>,
+        allow_tips: Option<bool>,
+        enable_spt: Option<bool>,
+        enable_spot: Option<bool>,
+        service: &ProfileSubscriptionService,
+        min_tier_level: Option<u64>,
+        mydata_id: Option<ID>,
+        mydata_registry: &mydata::MyDataRegistry,
+        memory_account: &MemoryAccount,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let acting = resolve_social_actor(
+            memory_config,
+            registry,
+            platform,
+            block_list_registry,
+            memory_account,
+            memory::cap_post_publish(),
+            0,
+            clock,
+            ctx,
+        );
+        let owner = memory::acting_principal_owner(&acting);
+        let access = PostAccess::ProfileSubscription {
+            service_id: object::id(service),
+            mydata_id,
+            min_tier_level,
+        };
+        assert_profile_subscription_access_service(owner, &access, service);
+        create_post_entry_body(
+            registry,
+            platform_registry,
+            platform,
+            block_list_registry,
+            config,
+            memory_config,
+            content,
+            media_urls,
+            mentions,
+            metadata_json,
+            allow_comments,
+            allow_reactions,
+            allow_reposts,
+            allow_quotes,
+            allow_tips,
+            enable_spt,
+            enable_spot,
+            access,
+            mydata_registry,
+            memory_account,
+            clock,
+            ctx,
+        );
+    }
+
+    /// Profile-subscription post with linked MyData object binding in the same PTB.
+    public entry fun create_profile_subscription_post_with_mydata(
+        registry: &UsernameRegistry,
+        platform_registry: &platform::PlatformRegistry,
+        platform: &platform::Platform,
+        block_list_registry: &block_list::BlockListRegistry,
+        config: &PostConfig,
+        memory_config: &MemoryConfig,
+        content: String,
+        media_urls: Option<vector<String>>,
+        mentions: Option<vector<address>>,
+        metadata_json: Option<String>,
+        allow_comments: Option<bool>,
+        allow_reactions: Option<bool>,
+        allow_reposts: Option<bool>,
+        allow_quotes: Option<bool>,
+        allow_tips: Option<bool>,
+        enable_spt: Option<bool>,
+        enable_spot: Option<bool>,
+        service: &ProfileSubscriptionService,
+        min_tier_level: Option<u64>,
+        mydata: &mydata::MyData,
+        mydata_registry: &mydata::MyDataRegistry,
+        memory_account: &MemoryAccount,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let acting = resolve_social_actor(
+            memory_config,
+            registry,
+            platform,
+            block_list_registry,
+            memory_account,
+            memory::cap_post_publish(),
+            0,
+            clock,
+            ctx,
+        );
+        let owner = memory::acting_principal_owner(&acting);
+        let access = PostAccess::ProfileSubscription {
+            service_id: object::id(service),
+            mydata_id: option::some(object::id(mydata)),
+            min_tier_level,
+        };
+        assert_profile_subscription_access_service(owner, &access, service);
+        assert_post_access_mydata_binding(owner, &access, mydata_registry);
+        assert_post_access_mydata_object_binding(&access, mydata);
+        create_post_entry_body(
+            registry,
+            platform_registry,
+            platform,
+            block_list_registry,
+            config,
+            memory_config,
+            content,
+            media_urls,
+            mentions,
+            metadata_json,
+            allow_comments,
+            allow_reactions,
+            allow_reposts,
+            allow_quotes,
+            allow_tips,
+            enable_spt,
+            enable_spot,
+            access,
+            mydata_registry,
+            memory_account,
+            clock,
+            ctx,
+        );
+    }
+
+    /// Create a marketplace one-time purchase gated post (requires linked MyData listing).
+    public entry fun create_marketplace_one_time_post(
+        registry: &UsernameRegistry,
+        platform_registry: &platform::PlatformRegistry,
+        platform: &platform::Platform,
+        block_list_registry: &block_list::BlockListRegistry,
+        config: &PostConfig,
+        memory_config: &MemoryConfig,
+        content: String,
+        media_urls: Option<vector<String>>,
+        mentions: Option<vector<address>>,
+        metadata_json: Option<String>,
+        allow_comments: Option<bool>,
+        allow_reactions: Option<bool>,
+        allow_reposts: Option<bool>,
+        allow_quotes: Option<bool>,
+        allow_tips: Option<bool>,
+        enable_spt: Option<bool>,
+        enable_spot: Option<bool>,
+        mydata: &mydata::MyData,
+        mydata_registry: &mydata::MyDataRegistry,
+        memory_account: &MemoryAccount,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let access = PostAccess::MarketplaceOneTime { mydata_id: object::id(mydata) };
+        let acting = resolve_social_actor(
+            memory_config,
+            registry,
+            platform,
+            block_list_registry,
+            memory_account,
+            memory::cap_post_publish(),
+            0,
+            clock,
+            ctx,
+        );
+        let owner = memory::acting_principal_owner(&acting);
+        assert_post_access_mydata_binding(owner, &access, mydata_registry);
+        assert_post_access_mydata_object_binding(&access, mydata);
+        create_post_entry_body(
+            registry,
+            platform_registry,
+            platform,
+            block_list_registry,
+            config,
+            memory_config,
+            content,
+            media_urls,
+            mentions,
+            metadata_json,
+            allow_comments,
+            allow_reactions,
+            allow_reposts,
+            allow_quotes,
+            allow_tips,
+            enable_spt,
+            enable_spot,
+            access,
+            mydata_registry,
+            memory_account,
+            clock,
+            ctx,
+        );
     }
 
     /// Create a comment on a post or a reply to another comment
@@ -1662,7 +2128,7 @@ module social_contracts::post {
             final_allow_tips,
             option::none(), // revenue_redirect_to
             option::none(), // revenue_redirect_percentage
-            option::none(), // No MyData for reposts
+            PostAccess::Public,
             option::none(), // promotion_id
             final_enable_spt,
             final_enable_spot,
@@ -1697,7 +2163,7 @@ module social_contracts::post {
             mentions,
             media_urls: media_urls_for_event,
             metadata_json,
-            mydata_id: option::none(),
+            access: PostAccess::Public,
             promotion_id: option::none(),
             revenue_redirect_to: option::none(),
             revenue_redirect_percentage: option::none(),
@@ -1757,7 +2223,7 @@ module social_contracts::post {
             revenue_redirect_percentage: _,
             poc_badge_snapshot: _,
             poc_badge_object_id: _,
-            mydata_id: _,
+            access: _,
             promotion_id: _,
             enable_spt: _,
             enable_spot: _,
@@ -2977,12 +3443,44 @@ module social_contracts::post {
     }
 
     #[test_only]
-    public fun test_assert_mydata_id_allowed_for_owner(
+    public fun test_assert_post_access_mydata_binding(
         owner: address,
-        mydata_id: Option<address>,
+        access: PostAccess,
         mydata_registry: &mydata::MyDataRegistry,
     ) {
-        assert_mydata_id_allowed_for_owner(owner, mydata_id, mydata_registry);
+        assert_post_access_mydata_binding(owner, &access, mydata_registry);
+    }
+
+    #[test_only]
+    public fun test_access_kind_public(): u8 {
+        POST_ACCESS_PUBLIC
+    }
+
+    #[test_only]
+    public fun test_post_access_public(): PostAccess {
+        PostAccess::Public
+    }
+
+    #[test_only]
+    public fun test_post_access_profile_subscription(
+        service_id: ID,
+        mydata_id: Option<ID>,
+        min_tier_level: Option<u64>,
+    ): PostAccess {
+        PostAccess::ProfileSubscription { service_id, mydata_id, min_tier_level }
+    }
+
+    #[test_only]
+    public fun test_post_access_marketplace_one_time(mydata_id: ID): PostAccess {
+        PostAccess::MarketplaceOneTime { mydata_id }
+    }
+
+    #[test_only]
+    public fun test_assert_post_access_mydata_object_binding(
+        access: PostAccess,
+        mydata: &mydata::MyData,
+    ) {
+        assert_post_access_mydata_object_binding(&access, mydata);
     }
 
     /// Test-only initialization function
@@ -3042,7 +3540,7 @@ module social_contracts::post {
             true, // allow_tips
             option::none(), // revenue_redirect_to
             option::none(), // revenue_redirect_percentage
-            option::none(), // No MyData ID
+            PostAccess::Public,
             option::none(), // promotion_id
             false, // enable_spt - default to opt-out
             false, // enable_spot - default to opt-out
@@ -3085,7 +3583,7 @@ module social_contracts::post {
             true,
             option::some(redirect_to),
             option::some(redirect_percentage),
-            option::none(),
+            PostAccess::Public,
             option::none(),
             false,
             false,
@@ -3127,7 +3625,7 @@ module social_contracts::post {
             true,
             option::some(redirect_to),
             option::some(redirect_percentage),
-            option::none(),
+            PostAccess::Public,
             option::none(),
             false,
             false,
@@ -3168,7 +3666,7 @@ module social_contracts::post {
             true, // allow_tips
             option::none(), // revenue_redirect_to
             option::none(), // revenue_redirect_percentage
-            option::none(), // No MyData ID
+            PostAccess::Public,
             option::none(), // promotion_id
             false, // enable_spt - default to opt-out
             true, // enable_spot - enable SPoT for tests
@@ -3228,7 +3726,7 @@ module social_contracts::post {
             true, // allow_tips
             option::none(), // revenue_redirect_to
             option::none(), // revenue_redirect_percentage
-            option::none(), // mydata_id
+            PostAccess::Public,
             option::some(promotion_id), // promotion_id
             false, // enable_spt - default to opt-out
             false, // enable_spot - default to opt-out
@@ -3255,7 +3753,7 @@ module social_contracts::post {
             mentions: option::none(),
             media_urls: media_urls_for_event,
             metadata_json: option::none(),
-            mydata_id: option::none(),
+            access: PostAccess::Public,
             promotion_id: option::some(promotion_id),
             revenue_redirect_to: option::none(),
             revenue_redirect_percentage: option::none(),
@@ -3577,7 +4075,7 @@ module social_contracts::post {
         mut media_urls: Option<vector<String>>,
         mentions: Option<vector<address>>,
         metadata_json: Option<String>,
-        mydata_id: Option<address>,
+        access: PostAccess,
         payment_per_view: u64,
         promotion_budget: Coin<MYSO>,
         enable_spt: Option<bool>,
@@ -3610,7 +4108,7 @@ module social_contracts::post {
         assert!(payment_per_view <= config.max_promotion_amount, EPromotionAmountTooHigh);
         assert!(coin::value(&promotion_budget) >= payment_per_view, EInsufficientPromotionFunds);
         
-        assert_mydata_id_allowed_for_owner(owner, mydata_id, mydata_registry);
+        assert_post_access_mydata_binding(owner, &access, mydata_registry);
         
         // Check if platform is approved 
         let platform_id = object::uid_to_address(platform::id(platform));
@@ -3698,7 +4196,7 @@ module social_contracts::post {
             true, // allow_tips
             option::none(), // revenue_redirect_to
             option::none(), // revenue_redirect_percentage
-            mydata_id,
+            access,
             option::some(promotion_id),
             final_enable_spt,
             final_enable_spot,
@@ -3726,7 +4224,7 @@ module social_contracts::post {
             mentions,
             media_urls: media_urls_for_event,
             metadata_json,
-            mydata_id,
+            access,
             promotion_id: option::some(promotion_id),
             revenue_redirect_to: option::none(),
             revenue_redirect_percentage: option::none(),
@@ -4001,20 +4499,6 @@ module social_contracts::post {
         !post.removed_from_platform
     }
 
-    /// Profile subscription gate stored as a dynamic field (Post is at the VM field-count limit).
-    public struct PostSubscriptionGate has store, copy, drop {
-        service_id: ID,
-        enabled: bool,
-    }
-
-    const POST_SUBSCRIPTION_GATE_DF_KEY: vector<u8> = b"post_subscription_gate";
-
-    public struct PostSubscriptionGateEnabledEvent has copy, drop {
-        post_id: ID,
-        service_id: ID,
-        enabled: bool,
-    }
-
     public struct PostSubscriptionAccessEvent has copy, drop {
         post_id: ID,
         service_id: ID,
@@ -4023,77 +4507,9 @@ module social_contracts::post {
         timestamp: u64,
     }
 
-    fun post_subscription_gate(post: &Post): Option<PostSubscriptionGate> {
-        if (!df::exists_with_type<vector<u8>, PostSubscriptionGate>(&post.id, POST_SUBSCRIPTION_GATE_DF_KEY)) {
-            return option::none()
-        };
-        option::some(*df::borrow<vector<u8>, PostSubscriptionGate>(&post.id, POST_SUBSCRIPTION_GATE_DF_KEY))
-    }
-
-    public fun post_subscription_service_id(post: &Post): Option<ID> {
-        let gate = post_subscription_gate(post);
-        if (option::is_none(&gate)) {
-            return option::none()
-        };
-        let gate = option::destroy_some(gate);
-        if (!gate.enabled) {
-            return option::none()
-        };
-        option::some(gate.service_id)
-    }
-
-    public fun post_requires_profile_subscription(post: &Post): bool {
-        option::is_some(&post_subscription_service_id(post))
-    }
-
-    /// Attach a profile subscription gate to a post (post owner only; service must belong to owner).
-    public entry fun enable_post_subscription_gate(
-        post: &mut Post,
-        service: &ProfileSubscriptionService,
-        ctx: &mut TxContext,
-    ) {
-        assert!(tx_context::sender(ctx) == post.owner, EUnauthorized);
-        assert!(subscription::service_profile_owner(service) == post.owner, EUnauthorized);
-        assert!(subscription::service_is_active(service), ENoSubscriptionService);
-        assert!(
-            !df::exists_with_type<vector<u8>, PostSubscriptionGate>(&post.id, POST_SUBSCRIPTION_GATE_DF_KEY),
-            EUnauthorized,
-        );
-
-        let service_id = object::id(service);
-        df::add(
-            &mut post.id,
-            POST_SUBSCRIPTION_GATE_DF_KEY,
-            PostSubscriptionGate {
-                service_id,
-                enabled: true,
-            },
-        );
-
-        event::emit(PostSubscriptionGateEnabledEvent {
-            post_id: object::id(post),
-            service_id,
-            enabled: true,
-        });
-    }
-
-    /// Remove the profile subscription gate from a post (post owner only).
-    public entry fun disable_post_subscription_gate(post: &mut Post, ctx: &mut TxContext) {
-        assert!(tx_context::sender(ctx) == post.owner, EUnauthorized);
-        assert!(
-            df::exists_with_type<vector<u8>, PostSubscriptionGate>(&post.id, POST_SUBSCRIPTION_GATE_DF_KEY),
-            ENoSubscriptionService,
-        );
-        let gate = df::remove<vector<u8>, PostSubscriptionGate>(&mut post.id, POST_SUBSCRIPTION_GATE_DF_KEY);
-        event::emit(PostSubscriptionGateEnabledEvent {
-            post_id: object::id(post),
-            service_id: gate.service_id,
-            enabled: false,
-        });
-    }
-
     /// Abort unless caller is post owner or holds a valid profile subscription for the gated service.
     public entry fun assert_can_view_post(
+        block_list_registry: &BlockListRegistry,
         post: &Post,
         service: &ProfileSubscriptionService,
         subscription: &ProfileSubscription,
@@ -4104,26 +4520,36 @@ module social_contracts::post {
         if (sender == post.owner) {
             return
         };
-        let gate = post_subscription_gate(post);
-        assert!(option::is_some(&gate), ENoSubscriptionService);
-        let gate = option::destroy_some(gate);
-        assert!(gate.enabled, ENoSubscriptionService);
-        assert!(gate.service_id == object::id(service), ENoSubscriptionService);
+        block_list::assert_not_blocked(block_list_registry, sender, post.owner);
+        assert!(requires_profile_subscription(post), ENoSubscriptionService);
+        let service_id = subscription_service(post);
+        assert!(option::is_some(&service_id), ENoSubscriptionService);
+        assert!(*option::borrow(&service_id) == object::id(service), ENoSubscriptionService);
+        let min_tier = subscription_min_tier_level(post);
+        let content_platform_id = option::some(post.platform_id);
         assert!(
-            subscription::is_subscription_valid_for(subscription, service, sender, clock),
+            subscription::subscription_satisfies_access(
+                subscription,
+                service,
+                sender,
+                min_tier,
+                content_platform_id,
+                clock,
+            ),
             EUnauthorized,
         );
     }
 
     /// Record a subscriber view after access check; emits `PostSubscriptionAccessEvent`.
     public entry fun record_post_subscription_view(
+        block_list_registry: &BlockListRegistry,
         post: &Post,
         service: &ProfileSubscriptionService,
         subscription: &ProfileSubscription,
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
-        assert_can_view_post(post, service, subscription, clock, ctx);
+        assert_can_view_post(block_list_registry, post, service, subscription, clock, ctx);
         event::emit(PostSubscriptionAccessEvent {
             post_id: object::id(post),
             service_id: object::id(service),
@@ -4136,6 +4562,91 @@ module social_contracts::post {
     #[test_only]
     public fun set_comment_count_for_testing(post: &mut Post, count: u64) {
         post.comment_count = count;
+    }
+
+    #[test_only]
+    public fun test_share_profile_subscription_post_with_tier(
+        owner: address,
+        service_id: ID,
+        min_tier_level: Option<u64>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ): address {
+        share_post(create_post_internal(
+            owner,
+            owner,
+            owner,
+            string::utf8(b"premium post"),
+            option::none(),
+            option::none(),
+            option::none(),
+            string::utf8(POST_TYPE_STANDARD),
+            option::none(),
+            true,
+            true,
+            true,
+            true,
+            true,
+            option::none(),
+            option::none(),
+            PostAccess::ProfileSubscription {
+                service_id,
+                mydata_id: option::none(),
+                min_tier_level,
+            },
+            option::none(),
+            false,
+            false,
+            POC_REDIRECT_NONE,
+            owner,
+            option::none(),
+            option::none(),
+            memory::class_human(),
+            clock,
+            ctx,
+        ))
+    }
+
+    #[test_only]
+    public fun test_share_profile_subscription_post(
+        owner: address,
+        service_id: ID,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ): address {
+        share_post(create_post_internal(
+            owner,
+            owner,
+            owner,
+            string::utf8(b"premium post"),
+            option::none(),
+            option::none(),
+            option::none(),
+            string::utf8(POST_TYPE_STANDARD),
+            option::none(),
+            true,
+            true,
+            true,
+            true,
+            true,
+            option::none(),
+            option::none(),
+            PostAccess::ProfileSubscription {
+                service_id,
+                mydata_id: option::none(),
+                min_tier_level: option::none(),
+            },
+            option::none(),
+            false,
+            false,
+            POC_REDIRECT_NONE,
+            owner,
+            option::none(),
+            option::none(),
+            memory::class_human(),
+            clock,
+            ctx,
+        ))
     }
     
     /// Create a PostAdminCap for bootstrap (package visibility only)

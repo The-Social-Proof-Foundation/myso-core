@@ -11,7 +11,8 @@ use crate::error::SocialError;
 use crate::reader::types::{
     AccessAnalytics, AccessLogInfo, DailyRevenue, MyDataBasic, MyDataBroadPoolInfo,
     MyDataClaimInfo, MyDataConfigInfo, MyDataDistributionRoundInfo, MyDataHasAccessResponse,
-    MyDataListingSubPoolInfo, MyDataMerkleRootInfo, MyDataSnapshotAnchorInfo, MyDataStatsResponse,
+    MyDataListingSubPoolInfo, MyDataMerkleRootInfo, MyDataSnapshotAnchorInfo,
+    MyDataSnapshotEscrowInfo, MyDataStatsResponse,
     MyDataSubPoolInfo, PurchaseInfo, RevenueInfo, SubscriptionInfo,
 };
 
@@ -320,7 +321,7 @@ pub(crate) async fn list_mydata_broad_pools(
 ) -> Result<Vec<MyDataBroadPoolInfo>, SocialError> {
     let mut conn = db.connect().await?;
     let query = "
-        SELECT pool_id, name, created_at_ms, event_id, transaction_id, time
+        SELECT pool_id, name, platform_address, created_at_ms, event_id, transaction_id, time
         FROM mydata_broad_pools
         ORDER BY created_at_ms DESC
         LIMIT $1 OFFSET $2
@@ -409,7 +410,8 @@ pub(crate) async fn get_mydata_snapshot_anchor(
 ) -> Result<Option<MyDataSnapshotAnchorInfo>, SocialError> {
     let mut conn = db.connect().await?;
     let query = "
-        SELECT id, snapshot_id, buyer_address, price_paid, created_at_ms, event_id, transaction_id, time,
+        SELECT id, snapshot_id, buyer_address, price_paid, source_pool_id, source_sub_pool_id,
+               platform_address, initial_escrow, created_at_ms, event_id, transaction_id, time,
                manifest_hash, payment_reference
         FROM mydata_snapshot_anchors
         WHERE snapshot_id = $1
@@ -430,7 +432,8 @@ pub(crate) async fn get_mydata_distribution_round(
 ) -> Result<Option<MyDataDistributionRoundInfo>, SocialError> {
     let mut conn = db.connect().await?;
     let query = "
-        SELECT snapshot_id, total_amount, contributor_count, merkle_root, published_at_ms,
+        SELECT snapshot_id, total_amount, contributor_count, merkle_root, platform_address,
+               claim_deadline_ms, published_at_ms,
                event_id, transaction_id, time
         FROM mydata_distribution_rounds
         WHERE snapshot_id = $1
@@ -450,7 +453,8 @@ pub(crate) async fn list_mydata_distribution_rounds(
 ) -> Result<Vec<MyDataDistributionRoundInfo>, SocialError> {
     let mut conn = db.connect().await?;
     let query = "
-        SELECT snapshot_id, total_amount, contributor_count, merkle_root, published_at_ms,
+        SELECT snapshot_id, total_amount, contributor_count, merkle_root, platform_address,
+               claim_deadline_ms, published_at_ms,
                event_id, transaction_id, time
         FROM mydata_distribution_rounds
         ORDER BY time DESC
@@ -477,6 +481,25 @@ pub(crate) async fn get_mydata_merkle_root(
     let result = diesel::sql_query(query)
         .bind::<Text, _>(snapshot_id)
         .get_result::<MyDataMerkleRootInfo>(&mut conn)
+        .await
+        .optional()?;
+    Ok(result)
+}
+
+pub(crate) async fn get_mydata_snapshot_escrow(
+    db: &Db,
+    snapshot_id: &str,
+) -> Result<Option<MyDataSnapshotEscrowInfo>, SocialError> {
+    let mut conn = db.connect().await?;
+    let query = "
+        SELECT snapshot_id, total_funded, total_claimed, remaining_amount, claim_deadline_ms,
+               reclaimed_at_ms, status, updated_at_ms, transaction_id, time
+        FROM mydata_snapshot_escrow
+        WHERE snapshot_id = $1
+    ";
+    let result = diesel::sql_query(query)
+        .bind::<Text, _>(snapshot_id)
+        .get_result::<MyDataSnapshotEscrowInfo>(&mut conn)
         .await
         .optional()?;
     Ok(result)

@@ -87,7 +87,8 @@ pub use mydata::{
     MyDataData, MyDataDistributionRound, MyDataDistributionRoundRow, MyDataListingSubPool,
     MyDataListingSubPoolRow, MyDataMerkleRoot, MyDataMerkleRootRow, MyDataPurchase,
     MyDataPurchaseRow, MyDataRecordRow, MyDataRegistry, MyDataRevenue, MyDataRevenueRow,
-    MyDataSnapshotAnchor, MyDataSnapshotAnchorRow, MyDataStatsRow, MyDataSubPool, MyDataSubPoolRow,
+    MyDataSnapshotAnchor, MyDataSnapshotAnchorRow, MyDataSnapshotEscrow, MyDataSnapshotEscrowRow,
+    MyDataStatsRow, MyDataSubPool, MyDataSubPoolRow,
     MyDataSubscription, MyDataSubscriptionRow, NewMyDataAccessLog, NewMyDataBroadPool,
     NewMyDataClaim, NewMyDataConfig, NewMyDataData, NewMyDataDistributionRound,
     NewMyDataListingSubPool, NewMyDataMerkleRoot, NewMyDataPurchase, NewMyDataRegistry,
@@ -230,15 +231,19 @@ pub use spt::{
 };
 pub use subscription::{
     MAX_RENEWAL_MONTHS, MAX_SUBSCRIPTION_DURATION_DAYS, MILLISECONDS_PER_DAY,
-    MIN_SUBSCRIPTION_DURATION_DAYS, NewProfileSubscription, NewProfileSubscriptionService,
-    NewSubscriptionAccessLog, NewSubscriptionConfig, NewSubscriptionEvent, NewSubscriptionRevenue,
-    ProfileSubscription, ProfileSubscriptionService, REVENUE_TYPE_AUTO_RENEWAL,
-    REVENUE_TYPE_REFUND, REVENUE_TYPE_RENEWAL, SubscriptionAccessLog, SubscriptionEvent,
-    SubscriptionRevenue, THIRTY_DAYS_MS, UpdateProfileSubscription,
+    MIN_SUBSCRIPTION_DURATION_DAYS, NewProfileSubscription, NewProfileSubscriptionPlan,
+    NewProfileSubscriptionService, NewSubscriptionAccessLog, NewSubscriptionConfig,
+    NewSubscriptionEvent, NewSubscriptionRevenue, ProfileSubscription, ProfileSubscriptionPlan,
+    ProfileSubscriptionService, REVENUE_TYPE_AUTO_RENEWAL, REVENUE_TYPE_REFUND,
+    REVENUE_TYPE_RENEWAL, SubscriptionAccessLog, SubscriptionEvent, SubscriptionRevenue,
+    THIRTY_DAYS_MS, UpdateProfileSubscription, UpdateProfileSubscriptionPlan,
     UpdateProfileSubscriptionService,
 };
 pub use upgrade::{NewObjectMigratedEvent, NewUpgradeEvent};
-pub use username::{NewUsernameRegistry, UsernameRegistryRow};
+pub use username::{
+    NewUsernameRegistry, NewUsernameReservation, UsernameRegistryRow, UsernameReservation,
+    USERNAME_RESERVATION_STATUS_ACTIVE, USERNAME_RESERVATION_STATUS_RELEASED,
+};
 pub use vesting::{
     BPS_DENOMINATOR, CURVE_FACTOR_LINEAR, CURVE_FACTOR_MAX, CURVE_FACTOR_MIN,
     MIN_CLAIM_THRESHOLD_DIVISOR, NewVestingEvent, NewVestingWallet, PIECE_KIND_CLIFF,

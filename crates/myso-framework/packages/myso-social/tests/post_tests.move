@@ -1158,7 +1158,7 @@ module social_contracts::post_tests {
             let config = test_scenario::take_shared<MyDataConfig>(scenario);
             let mut registry = test_scenario::take_shared<MyDataRegistry>(scenario);
             let clock = test_scenario::take_shared<Clock>(scenario);
-            mydata::create_and_share(
+            mydata::create_and_share_marketplace_one_time_mydata(
                 &config,
                 &mut registry,
                 string::utf8(b"data"),
@@ -1168,9 +1168,7 @@ module social_contracts::post_tests {
                 option::none<u64>(),
                 b"encrypted_data",
                 b"encryption_id",
-                option::some(100),
-                option::some(50),
-                30,
+                100,
                 option::none(),
                 option::none(),
                 option::none(),
@@ -1194,13 +1192,13 @@ module social_contracts::post_tests {
     }
 
     #[test]
-    fun test_mydata_id_assert_none_ok() {
+    fun test_post_access_public_ok() {
         let mut scenario = test_scenario::begin(USER1);
         init_mydata_clock_and_registry(&mut scenario);
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let reg = test_scenario::take_shared<MyDataRegistry>(&scenario);
-            post::test_assert_mydata_id_allowed_for_owner(USER1, option::none(), &reg);
+            post::test_assert_post_access_mydata_binding(USER1, post::test_post_access_public(), &reg);
             test_scenario::return_shared(reg);
         };
         test_scenario::end(scenario);
@@ -1208,27 +1206,29 @@ module social_contracts::post_tests {
 
     #[test]
     #[expected_failure(abort_code = 32, location = social_contracts::post)]
-    fun test_mydata_id_not_registered_aborts() {
+    fun test_post_access_mydata_not_registered_aborts() {
         let mut scenario = test_scenario::begin(USER1);
         init_mydata_clock_and_registry(&mut scenario);
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let reg = test_scenario::take_shared<MyDataRegistry>(&scenario);
-            post::test_assert_mydata_id_allowed_for_owner(USER1, option::some(@0x999), &reg);
+            let access = post::test_post_access_marketplace_one_time(object::id_from_address(@0x999));
+            post::test_assert_post_access_mydata_binding(USER1, access, &reg);
             test_scenario::return_shared(reg);
         };
         test_scenario::end(scenario);
     }
 
     #[test]
-    fun test_mydata_id_owner_matches_ok() {
+    fun test_post_access_mydata_owner_matches_ok() {
         let mut scenario = test_scenario::begin(USER1);
         init_mydata_clock_and_registry(&mut scenario);
         let ip_id = create_registered_mydata_for_user1(&mut scenario);
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let reg = test_scenario::take_shared<MyDataRegistry>(&scenario);
-            post::test_assert_mydata_id_allowed_for_owner(USER1, option::some(ip_id), &reg);
+            let access = post::test_post_access_marketplace_one_time(object::id_from_address(ip_id));
+            post::test_assert_post_access_mydata_binding(USER1, access, &reg);
             test_scenario::return_shared(reg);
         };
         test_scenario::end(scenario);
@@ -1236,14 +1236,15 @@ module social_contracts::post_tests {
 
     #[test]
     #[expected_failure(abort_code = 33, location = social_contracts::post)]
-    fun test_mydata_id_wrong_owner_aborts() {
+    fun test_post_access_mydata_wrong_owner_aborts() {
         let mut scenario = test_scenario::begin(USER1);
         init_mydata_clock_and_registry(&mut scenario);
         let ip_id = create_registered_mydata_for_user1(&mut scenario);
         test_scenario::next_tx(&mut scenario, USER2);
         {
             let reg = test_scenario::take_shared<MyDataRegistry>(&scenario);
-            post::test_assert_mydata_id_allowed_for_owner(USER2, option::some(ip_id), &reg);
+            let access = post::test_post_access_marketplace_one_time(object::id_from_address(ip_id));
+            post::test_assert_post_access_mydata_binding(USER2, access, &reg);
             test_scenario::return_shared(reg);
         };
         test_scenario::end(scenario);

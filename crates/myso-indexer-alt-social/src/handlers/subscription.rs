@@ -5,8 +5,8 @@ use super::common;
 use super::subscription_object::SubscriptionCreateContext;
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
-    NewProfileSubscription, NewProfileSubscriptionService, NewSubscriptionConfig,
-    NewSubscriptionEvent, THIRTY_DAYS_MS,
+    NewProfileSubscription, NewProfileSubscriptionPlan, NewProfileSubscriptionService,
+    NewSubscriptionConfig, NewSubscriptionEvent,
 };
 use serde::Deserialize;
 use serde_json::Value;
@@ -15,16 +15,55 @@ use serde_json::Value;
 struct ProfileSubscriptionServiceCreatedEvent {
     service_id: String,
     profile_owner: String,
-    monthly_fee: u64,
+    profile_id: String,
     created_at: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct SubscriptionPlanCreatedEvent {
+    service_id: String,
+    plan_id: String,
+    title: String,
+    description: Option<String>,
+    price: u64,
+    duration_ms: u64,
+    tier_level: Option<u64>,
+    platform_id: Option<String>,
+    created_at: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct SubscriptionPlanUpdatedEvent {
+    service_id: String,
+    plan_id: String,
+    title: String,
+    description: Option<String>,
+    price: u64,
+    duration_ms: u64,
+    tier_level: Option<u64>,
+    platform_id: Option<String>,
+    active: bool,
+    updated_by: String,
+    updated_at: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct SubscriptionPlanDeactivatedEvent {
+    service_id: String,
+    plan_id: String,
+    deactivated_at: u64,
 }
 
 #[derive(Debug, Deserialize)]
 struct ProfileSubscriptionCreatedEvent {
     service_id: String,
+    plan_id: String,
     subscriber: String,
     expires_at: u64,
-    monthly_fee: u64,
+    price: u64,
+    duration_ms: u64,
+    tier_level: Option<u64>,
+    platform_id: Option<String>,
     auto_renew: bool,
     #[serde(default)]
     platform_fee: u64,
@@ -32,23 +71,28 @@ struct ProfileSubscriptionCreatedEvent {
     ecosystem_fee: u64,
     #[serde(default)]
     creator_amount: u64,
-    platform_id: Option<String>,
+    payment_platform_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 struct ProfileSubscriptionRenewedEvent {
     subscription_id: String,
     subscriber: String,
+    plan_id: String,
     new_expires_at: u64,
     renewal_count: u64,
     auto_renewed: bool,
+    price: u64,
+    duration_ms: u64,
+    tier_level: Option<u64>,
+    platform_id: Option<String>,
     #[serde(default)]
     platform_fee: u64,
     #[serde(default)]
     ecosystem_fee: u64,
     #[serde(default)]
     creator_amount: u64,
-    platform_id: Option<String>,
+    payment_platform_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -56,14 +100,6 @@ struct ProfileSubscriptionCancelledEvent {
     subscription_id: String,
     subscriber: String,
     refunded_amount: u64,
-}
-
-#[derive(Debug, Deserialize)]
-struct ProfileSubscriptionUpdatedEvent {
-    service_id: String,
-    old_fee: u64,
-    new_fee: u64,
-    updated_by: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -93,6 +129,15 @@ pub fn handle_subscription_event(
         "ProfileSubscriptionServiceCreatedEvent" => {
             process_subscription_service_created_event(data, event_id, checkpoint_timestamp_ms)
         }
+        "SubscriptionPlanCreatedEvent" => {
+            process_subscription_plan_created_event(data, event_id, checkpoint_timestamp_ms)
+        }
+        "SubscriptionPlanUpdatedEvent" => {
+            process_subscription_plan_updated_event(data, event_id, checkpoint_timestamp_ms)
+        }
+        "SubscriptionPlanDeactivatedEvent" => {
+            process_subscription_plan_deactivated_event(data, event_id, checkpoint_timestamp_ms)
+        }
         "ProfileSubscriptionCreatedEvent" => process_subscription_created_event(
             data,
             event_id,
@@ -104,9 +149,6 @@ pub fn handle_subscription_event(
         }
         "ProfileSubscriptionCancelledEvent" => {
             process_subscription_cancelled_event(data, event_id, checkpoint_timestamp_ms)
-        }
-        "ProfileSubscriptionUpdatedEvent" => {
-            process_subscription_updated_event(data, event_id, checkpoint_timestamp_ms)
         }
         "RenewalBalanceFundedEvent" => {
             process_renewal_balance_funded_event(data, event_id, checkpoint_timestamp_ms)
@@ -138,8 +180,8 @@ fn process_subscription_service_created_event(
     let service = NewProfileSubscriptionService {
         service_id: event.service_id.clone(),
         profile_owner: event.profile_owner.clone(),
-        profile_id: event.profile_owner.clone(),
-        monthly_fee: event.monthly_fee as i64,
+        profile_id: event.profile_id.clone(),
+        plan_count: 0,
         active: true,
         subscriber_count: 0,
         created_at: event.created_at as i64,
@@ -165,6 +207,140 @@ fn process_subscription_service_created_event(
     ])
 }
 
+fn process_subscription_plan_created_event(
+    data: &Value,
+    event_id: &str,
+    checkpoint_timestamp_ms: u64,
+) -> Option<Vec<SocialEventRow>> {
+    let event: SubscriptionPlanCreatedEvent = common::deserialize_social_event_json(
+        "subscription",
+        "SubscriptionPlanCreatedEvent",
+        event_id,
+        data,
+        "subscription SubscriptionPlanCreatedEvent JSON did not match struct",
+    )?;
+    let ms = common::chain_timestamp_ms(Some(event.created_at as i64), checkpoint_timestamp_ms);
+    let now = common::chain_time_from_ms(ms);
+    let plan = NewProfileSubscriptionPlan {
+        plan_id: event.plan_id.clone(),
+        service_id: event.service_id.clone(),
+        title: event.title,
+        description: event.description,
+        price: event.price as i64,
+        duration_ms: event.duration_ms as i64,
+        tier_level: event.tier_level.map(|v| v as i64),
+        platform_id: event.platform_id,
+        active: true,
+        created_at: event.created_at as i64,
+        updated_at: None,
+        time: now,
+        transaction_id: event_id.to_string(),
+    };
+    let sub_event = NewSubscriptionEvent {
+        event_type: "SubscriptionPlanCreatedEvent".to_string(),
+        subscription_id: None,
+        service_id: Some(event.service_id.clone()),
+        subscriber: None,
+        event_data: data.clone(),
+        event_time: event.created_at as i64,
+        time: now,
+        transaction_id: event_id.to_string(),
+        processing_success: true,
+        processing_error: None,
+    };
+    Some(vec![
+        SocialEventRow::ProfileSubscriptionPlan(plan),
+        SocialEventRow::ProfileSubscriptionServicePlanCountIncrement {
+            service_id: event.service_id,
+        },
+        SocialEventRow::SubscriptionEvent(sub_event),
+    ])
+}
+
+fn process_subscription_plan_updated_event(
+    data: &Value,
+    event_id: &str,
+    checkpoint_timestamp_ms: u64,
+) -> Option<Vec<SocialEventRow>> {
+    let event: SubscriptionPlanUpdatedEvent = common::deserialize_social_event_json(
+        "subscription",
+        "SubscriptionPlanUpdatedEvent",
+        event_id,
+        data,
+        "subscription SubscriptionPlanUpdatedEvent JSON did not match struct",
+    )?;
+    let ms = common::chain_timestamp_ms(Some(event.updated_at as i64), checkpoint_timestamp_ms);
+    let now = common::chain_time_from_ms(ms);
+    let mut event_data = data.clone();
+    if let Some(obj) = event_data.as_object_mut() {
+        obj.insert(
+            "updated_by".to_string(),
+            serde_json::Value::String(event.updated_by),
+        );
+    }
+    let sub_event = NewSubscriptionEvent {
+        event_type: "SubscriptionPlanUpdatedEvent".to_string(),
+        subscription_id: None,
+        service_id: Some(event.service_id.clone()),
+        subscriber: None,
+        event_data,
+        event_time: event.updated_at as i64,
+        time: now,
+        transaction_id: event_id.to_string(),
+        processing_success: true,
+        processing_error: None,
+    };
+    Some(vec![
+        SocialEventRow::ProfileSubscriptionPlanUpdate {
+            plan_id: event.plan_id,
+            title: event.title,
+            description: event.description,
+            price: event.price as i64,
+            duration_ms: event.duration_ms as i64,
+            tier_level: event.tier_level.map(|v| v as i64),
+            platform_id: event.platform_id,
+            active: event.active,
+            updated_at: event.updated_at as i64,
+        },
+        SocialEventRow::SubscriptionEvent(sub_event),
+    ])
+}
+
+fn process_subscription_plan_deactivated_event(
+    data: &Value,
+    event_id: &str,
+    checkpoint_timestamp_ms: u64,
+) -> Option<Vec<SocialEventRow>> {
+    let event: SubscriptionPlanDeactivatedEvent = common::deserialize_social_event_json(
+        "subscription",
+        "SubscriptionPlanDeactivatedEvent",
+        event_id,
+        data,
+        "subscription SubscriptionPlanDeactivatedEvent JSON did not match struct",
+    )?;
+    let ms = common::chain_timestamp_ms(Some(event.deactivated_at as i64), checkpoint_timestamp_ms);
+    let now = common::chain_time_from_ms(ms);
+    let sub_event = NewSubscriptionEvent {
+        event_type: "SubscriptionPlanDeactivatedEvent".to_string(),
+        subscription_id: None,
+        service_id: Some(event.service_id.clone()),
+        subscriber: None,
+        event_data: data.clone(),
+        event_time: event.deactivated_at as i64,
+        time: now,
+        transaction_id: event_id.to_string(),
+        processing_success: true,
+        processing_error: None,
+    };
+    Some(vec![
+        SocialEventRow::ProfileSubscriptionPlanDeactivate {
+            plan_id: event.plan_id,
+            updated_at: event.deactivated_at as i64,
+        },
+        SocialEventRow::SubscriptionEvent(sub_event),
+    ])
+}
+
 fn process_subscription_created_event(
     data: &Value,
     event_id: &str,
@@ -180,18 +356,18 @@ fn process_subscription_created_event(
     )?;
     let ctx = create_context?;
     let subscription_id = ctx.subscription_id.clone();
-    let ms = common::chain_timestamp_ms(
-        Some(ctx.created_at_ms),
-        checkpoint_timestamp_ms,
-    );
+    let ms = common::chain_timestamp_ms(Some(ctx.created_at_ms), checkpoint_timestamp_ms);
     let now = common::chain_time_from_ms(ms);
-    let billing_period_ms = common::json_field_as_i64(data.get("billing_period_ms"))
-        .unwrap_or(THIRTY_DAYS_MS);
-    let payment_time = event.expires_at as i64 - billing_period_ms;
+    let payment_time = event.expires_at as i64 - event.duration_ms as i64;
 
     let subscription = NewProfileSubscription {
         subscription_id: subscription_id.clone(),
         service_id: event.service_id.clone(),
+        plan_id: event.plan_id.clone(),
+        tier_level: event.tier_level.map(|v| v as i64),
+        platform_id: event.platform_id.clone(),
+        price: event.price as i64,
+        duration_ms: event.duration_ms as i64,
         subscriber: event.subscriber.clone(),
         created_at: ms,
         expires_at: event.expires_at as i64,
@@ -218,6 +394,11 @@ fn process_subscription_created_event(
         processing_error: None,
     };
 
+    let platform_address = event
+        .payment_platform_id
+        .clone()
+        .or(event.platform_id.clone());
+
     let mut rows = vec![
         SocialEventRow::ProfileSubscription(subscription),
         SocialEventRow::ProfileSubscriptionServiceSubscriberIncrement {
@@ -230,17 +411,15 @@ fn process_subscription_created_event(
         service_id: event.service_id.clone(),
         subscription_id,
         from_address: event.subscriber,
-        amount: event.monthly_fee as i64,
+        amount: event.price as i64,
         platform_fee: event.platform_fee as i64,
         ecosystem_fee: event.ecosystem_fee as i64,
         creator_amount: if event.creator_amount > 0 {
             event.creator_amount as i64
         } else {
-            event.monthly_fee as i64
-                - event.platform_fee as i64
-                - event.ecosystem_fee as i64
+            event.price as i64 - event.platform_fee as i64 - event.ecosystem_fee as i64
         },
-        platform_address: event.platform_id.clone(),
+        platform_address,
         revenue_type: "subscription".to_string(),
         payment_time,
         transaction_id: event_id.to_string(),
@@ -277,11 +456,21 @@ fn process_subscription_renewed_event(
         processing_error: None,
     };
 
+    let platform_address = event
+        .payment_platform_id
+        .clone()
+        .or(event.platform_id.clone());
+
     let mut rows = vec![
         SocialEventRow::ProfileSubscriptionUpdate {
             subscription_id: event.subscription_id.clone(),
             expires_at: event.new_expires_at as i64,
             renewal_count: event.renewal_count as i64,
+            plan_id: Some(event.plan_id.clone()),
+            tier_level: event.tier_level.map(|v| v as i64),
+            platform_id: event.platform_id.clone(),
+            price: Some(event.price as i64),
+            duration_ms: Some(event.duration_ms as i64),
         },
         SocialEventRow::SubscriptionEvent(sub_event),
     ];
@@ -292,10 +481,12 @@ fn process_subscription_renewed_event(
         new_expires_at: event.new_expires_at as i64,
         renewal_count: event.renewal_count as i64,
         auto_renewed: event.auto_renewed,
+        price: event.price as i64,
+        duration_ms: event.duration_ms as i64,
         platform_fee: event.platform_fee as i64,
         ecosystem_fee: event.ecosystem_fee as i64,
         creator_amount: event.creator_amount as i64,
-        platform_address: event.platform_id.clone(),
+        platform_address,
         transaction_id: event_id.to_string(),
     });
 
@@ -353,53 +544,6 @@ fn process_subscription_cancelled_event(
     }
 
     Some(rows)
-}
-
-fn process_subscription_updated_event(
-    data: &Value,
-    event_id: &str,
-    checkpoint_timestamp_ms: u64,
-) -> Option<Vec<SocialEventRow>> {
-    let event: ProfileSubscriptionUpdatedEvent = common::deserialize_social_event_json(
-        "subscription",
-        "ProfileSubscriptionUpdatedEvent",
-        event_id,
-        data,
-        "subscription ProfileSubscriptionUpdatedEvent JSON did not match struct",
-    )?;
-    let ms = common::chain_timestamp_ms(
-        common::json_field_as_i64(data.get("updated_at")),
-        checkpoint_timestamp_ms,
-    );
-    let now = common::chain_time_from_ms(ms);
-
-    let sub_event = NewSubscriptionEvent {
-        event_type: "ProfileSubscriptionUpdatedEvent".to_string(),
-        subscription_id: None,
-        service_id: Some(event.service_id.clone()),
-        subscriber: None,
-        event_data: serde_json::json!({
-            "service_id": event.service_id,
-            "old_fee": event.old_fee,
-            "new_fee": event.new_fee,
-            "updated_by": event.updated_by,
-            "updated_at": ms,
-        }),
-        event_time: ms,
-        time: now,
-        transaction_id: event_id.to_string(),
-        processing_success: true,
-        processing_error: None,
-    };
-
-    Some(vec![
-        SocialEventRow::ProfileSubscriptionServiceUpdate {
-            service_id: event.service_id,
-            monthly_fee: event.new_fee as i64,
-            updated_at: ms,
-        },
-        SocialEventRow::SubscriptionEvent(sub_event),
-    ])
 }
 
 fn process_renewal_balance_funded_event(
@@ -489,7 +633,7 @@ fn process_subscription_service_deactivated_event(
 #[derive(Debug, Deserialize)]
 struct SubscriptionConfigUpdatedEvent {
     updated_by: String,
-    billing_period_ms: u64,
+    default_billing_period_ms: u64,
     max_renewal_months: u64,
     #[serde(default)]
     platform_fee_bps: u64,
@@ -517,7 +661,7 @@ fn process_subscription_config_updated_event(
     let ms = common::chain_timestamp_ms(Some(ev.timestamp as i64), checkpoint_timestamp_ms);
     let row = NewSubscriptionConfig::from_event(
         ev.updated_by,
-        ev.billing_period_ms,
+        ev.default_billing_period_ms,
         ev.max_renewal_months,
         ev.platform_fee_bps,
         ev.ecosystem_fee_bps,
@@ -547,9 +691,11 @@ mod tests {
     fn test_handle_subscription_created_event_produces_rows() {
         let data = serde_json::json!({
             "service_id": "0xabc",
+            "plan_id": "0xplan",
             "subscriber": "0xdef",
             "expires_at": 1735689600000i64,
-            "monthly_fee": 100,
+            "price": 100,
+            "duration_ms": 2592000000i64,
             "auto_renew": true,
             "platform_fee": 10,
             "ecosystem_fee": 5,
@@ -583,9 +729,11 @@ mod tests {
     fn test_handle_subscription_created_event_skips_without_context() {
         let data = serde_json::json!({
             "service_id": "0xabc",
+            "plan_id": "0xplan",
             "subscriber": "0xdef",
             "expires_at": 1735689600000i64,
-            "monthly_fee": 100,
+            "price": 100,
+            "duration_ms": 2592000000i64,
             "auto_renew": true
         });
         let rows = handle_subscription_event(
@@ -602,9 +750,11 @@ mod tests {
     fn test_handle_subscription_renewed_updates_same_subscription_id() {
         let create_data = serde_json::json!({
             "service_id": "0xabc",
+            "plan_id": "0xplan",
             "subscriber": "0xdef",
             "expires_at": 1735689600000i64,
-            "monthly_fee": 100,
+            "price": 100,
+            "duration_ms": 2592000000i64,
             "auto_renew": true
         });
         let create_rows = handle_subscription_event(
@@ -623,9 +773,12 @@ mod tests {
         let renew_data = serde_json::json!({
             "subscription_id": sub_id,
             "subscriber": "0xdef",
+            "plan_id": "0xplan",
             "new_expires_at": 1738281600000i64,
             "renewal_count": 1,
-            "auto_renewed": false
+            "auto_renewed": false,
+            "price": 100,
+            "duration_ms": 2592000000i64
         });
         let renew_rows = handle_subscription_event(
             "ProfileSubscriptionRenewedEvent",
@@ -657,7 +810,7 @@ mod tests {
         let data = serde_json::json!({
             "service_id": "0xsvc",
             "profile_owner": "0xowner",
-            "monthly_fee": 500,
+            "profile_id": "0xprofile",
             "created_at": 1234567890
         });
         let rows = handle_subscription_event(

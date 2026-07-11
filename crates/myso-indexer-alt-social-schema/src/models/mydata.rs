@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use crate::schema::{
     mydata_access_logs, mydata_broad_pools, mydata_claims, mydata_config, mydata_data,
     mydata_distribution_rounds, mydata_listing_sub_pools, mydata_merkle_roots, mydata_purchases,
-    mydata_registry, mydata_revenue, mydata_snapshot_anchors, mydata_sub_pools,
+    mydata_registry, mydata_revenue, mydata_snapshot_anchors, mydata_snapshot_escrow, mydata_sub_pools,
     mydata_subscriptions,
 };
 
@@ -63,6 +63,8 @@ pub struct MyDataRecordRow {
     pub one_time_price: Option<i64>,
     #[diesel(sql_type = Nullable<BigInt>)]
     pub subscription_price: Option<i64>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub access_configuration_kind: Option<String>,
     #[diesel(sql_type = BigInt)]
     pub subscription_duration_days: i64,
     #[diesel(sql_type = Nullable<Text>)]
@@ -256,6 +258,7 @@ pub struct MyDataData {
     pub last_updated: i64,
     pub one_time_price: Option<i64>,
     pub subscription_price: Option<i64>,
+    pub access_configuration_kind: Option<String>,
     pub subscription_duration_days: i64,
     pub geographic_region: Option<String>,
     pub data_quality: Option<String>,
@@ -283,6 +286,7 @@ pub struct NewMyDataData {
     pub last_updated: i64,
     pub one_time_price: Option<i64>,
     pub subscription_price: Option<i64>,
+    pub access_configuration_kind: Option<String>,
     pub subscription_duration_days: i64,
     pub geographic_region: Option<String>,
     pub data_quality: Option<String>,
@@ -439,6 +443,20 @@ pub struct MyDataConfig {
     pub max_subscription_days: i64,
     pub max_free_access_grants: i64,
     pub max_encryption_id_bytes: i64,
+    pub max_encrypted_data_bytes: i64,
+    pub max_tag_bytes: i64,
+    pub max_metadata_bytes: i64,
+    pub max_payment_reference_bytes: i64,
+    pub max_pool_assignments: i64,
+    pub max_merkle_proof_depth: i64,
+    pub max_paid_access_entries: i64,
+    pub default_claim_window_ms: i64,
+    pub p2p_platform_fee_bps: i64,
+    pub p2p_ecosystem_fee_bps: i64,
+    pub mydata_marketplace_platform_fee_bps: i64,
+    pub mydata_marketplace_ecosystem_fee_bps: i64,
+    pub non_platform_platform_to_creator_bps: i64,
+    pub non_platform_platform_to_treasury_bps: i64,
     pub version: i64,
     pub updated_at: i64,
     pub time: chrono::DateTime<chrono::Utc>,
@@ -454,6 +472,14 @@ pub struct NewMyDataConfig {
     pub max_subscription_days: i64,
     pub max_free_access_grants: i64,
     pub max_encryption_id_bytes: i64,
+    pub max_encrypted_data_bytes: i64,
+    pub max_tag_bytes: i64,
+    pub max_metadata_bytes: i64,
+    pub max_payment_reference_bytes: i64,
+    pub max_pool_assignments: i64,
+    pub max_merkle_proof_depth: i64,
+    pub max_paid_access_entries: i64,
+    pub default_claim_window_ms: i64,
     pub p2p_platform_fee_bps: i64,
     pub p2p_ecosystem_fee_bps: i64,
     pub mydata_marketplace_platform_fee_bps: i64,
@@ -472,6 +498,7 @@ pub struct NewMyDataConfig {
 pub struct MyDataBroadPool {
     pub pool_id: String,
     pub name: String,
+    pub platform_address: Option<String>,
     pub created_at_ms: i64,
     pub event_id: String,
     pub transaction_id: String,
@@ -483,6 +510,7 @@ pub struct MyDataBroadPool {
 pub struct NewMyDataBroadPool {
     pub pool_id: String,
     pub name: String,
+    pub platform_address: Option<String>,
     pub created_at_ms: i64,
     pub event_id: String,
     pub transaction_id: String,
@@ -560,6 +588,10 @@ pub struct MyDataSnapshotAnchor {
     pub snapshot_id: String,
     pub buyer_address: String,
     pub price_paid: i64,
+    pub source_pool_id: String,
+    pub source_sub_pool_id: String,
+    pub platform_address: Option<String>,
+    pub initial_escrow: i64,
     pub created_at_ms: i64,
     pub event_id: String,
     pub transaction_id: String,
@@ -574,6 +606,10 @@ pub struct NewMyDataSnapshotAnchor {
     pub snapshot_id: String,
     pub buyer_address: String,
     pub price_paid: i64,
+    pub source_pool_id: String,
+    pub source_sub_pool_id: String,
+    pub platform_address: Option<String>,
+    pub initial_escrow: i64,
     pub created_at_ms: i64,
     pub event_id: String,
     pub transaction_id: String,
@@ -588,6 +624,8 @@ pub struct MyDataDistributionRound {
     pub total_amount: i64,
     pub contributor_count: i64,
     pub merkle_root: String,
+    pub platform_address: Option<String>,
+    pub claim_deadline_ms: i64,
     pub published_at_ms: i64,
     pub event_id: String,
     pub transaction_id: String,
@@ -601,6 +639,8 @@ pub struct NewMyDataDistributionRound {
     pub total_amount: i64,
     pub contributor_count: i64,
     pub merkle_root: String,
+    pub platform_address: Option<String>,
+    pub claim_deadline_ms: i64,
     pub published_at_ms: i64,
     pub event_id: String,
     pub transaction_id: String,
@@ -641,6 +681,8 @@ pub struct MyDataBroadPoolRow {
     pub pool_id: String,
     #[diesel(sql_type = Text)]
     pub name: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub platform_address: Option<String>,
     #[diesel(sql_type = BigInt)]
     pub created_at_ms: i64,
     #[diesel(sql_type = Text)]
@@ -695,6 +737,14 @@ pub struct MyDataSnapshotAnchorRow {
     pub buyer_address: String,
     #[diesel(sql_type = BigInt)]
     pub price_paid: i64,
+    #[diesel(sql_type = Text)]
+    pub source_pool_id: String,
+    #[diesel(sql_type = Text)]
+    pub source_sub_pool_id: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub platform_address: Option<String>,
+    #[diesel(sql_type = BigInt)]
+    pub initial_escrow: i64,
     #[diesel(sql_type = BigInt)]
     pub created_at_ms: i64,
     #[diesel(sql_type = Text)]
@@ -719,6 +769,10 @@ pub struct MyDataDistributionRoundRow {
     pub contributor_count: i64,
     #[diesel(sql_type = Text)]
     pub merkle_root: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub platform_address: Option<String>,
+    #[diesel(sql_type = BigInt)]
+    pub claim_deadline_ms: i64,
     #[diesel(sql_type = BigInt)]
     pub published_at_ms: i64,
     #[diesel(sql_type = Text)]
@@ -769,6 +823,45 @@ pub struct MyDataClaimRow {
     pub claimed_at_ms: i64,
     #[diesel(sql_type = Text)]
     pub event_id: String,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone, Queryable, Selectable, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = mydata_snapshot_escrow)]
+pub struct MyDataSnapshotEscrow {
+    pub snapshot_id: String,
+    pub total_funded: i64,
+    pub total_claimed: i64,
+    pub remaining_amount: i64,
+    pub claim_deadline_ms: Option<i64>,
+    pub reclaimed_at_ms: Option<i64>,
+    pub status: String,
+    pub updated_at_ms: i64,
+    pub transaction_id: String,
+    pub time: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
+pub struct MyDataSnapshotEscrowRow {
+    #[diesel(sql_type = Text)]
+    pub snapshot_id: String,
+    #[diesel(sql_type = BigInt)]
+    pub total_funded: i64,
+    #[diesel(sql_type = BigInt)]
+    pub total_claimed: i64,
+    #[diesel(sql_type = BigInt)]
+    pub remaining_amount: i64,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub claim_deadline_ms: Option<i64>,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub reclaimed_at_ms: Option<i64>,
+    #[diesel(sql_type = Text)]
+    pub status: String,
+    #[diesel(sql_type = BigInt)]
+    pub updated_at_ms: i64,
     #[diesel(sql_type = Text)]
     pub transaction_id: String,
     #[diesel(sql_type = Timestamptz)]

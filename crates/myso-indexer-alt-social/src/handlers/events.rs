@@ -7,6 +7,8 @@
 use move_core_types::account_address::AccountAddress;
 use serde::{Deserialize, Serialize};
 
+use super::access::{self, post_access_json_from_bcs, BcsPostAccess};
+
 /// Error returned when event contents fail to parse, for diagnostic logging.
 #[derive(Debug)]
 pub struct EventParseError {
@@ -467,6 +469,20 @@ pub struct BcsUsernameRevokedEvent {
     reason_code: u8,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsUsernameReservedEvent {
+    pub(crate) username: String,
+    pub(crate) reason: u8,
+    pub(crate) reserved_by: AccountAddress,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsUsernameReleasedEvent {
+    pub(crate) username: String,
+    pub(crate) reason: u8,
+    pub(crate) released_by: AccountAddress,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct BcsUsernameReassignedEvent {
     username: String,
@@ -658,7 +674,7 @@ pub struct BcsPostCreatedEvent {
     mentions: Option<Vec<AccountAddress>>,
     media_urls: Option<Vec<String>>,
     metadata_json: Option<String>,
-    mydata_id: Option<AccountAddress>,
+    access: BcsPostAccess,
     promotion_id: Option<AccountAddress>,
     revenue_redirect_to: Option<AccountAddress>,
     revenue_redirect_percentage: Option<u64>,
@@ -685,7 +701,10 @@ struct ParsedPostCreated {
     mentions: Option<Vec<AccountAddress>>,
     media_urls: Option<Vec<String>>,
     metadata_json: Option<String>,
+    post_access_kind: String,
     mydata_id: Option<AccountAddress>,
+    subscription_service_id: Option<AccountAddress>,
+    requires_subscription: bool,
     promotion_id: Option<AccountAddress>,
     revenue_redirect_to: Option<AccountAddress>,
     revenue_redirect_percentage: Option<u64>,
@@ -702,6 +721,7 @@ struct ParsedPostCreated {
 
 impl From<BcsPostCreatedEvent> for ParsedPostCreated {
     fn from(ev: BcsPostCreatedEvent) -> Self {
+        let access_fields = access::post_access_fields_from_bcs(&ev.access);
         Self {
             post_id: ev.post_id,
             owner: ev.owner,
@@ -714,7 +734,16 @@ impl From<BcsPostCreatedEvent> for ParsedPostCreated {
             mentions: ev.mentions,
             media_urls: ev.media_urls,
             metadata_json: ev.metadata_json,
-            mydata_id: ev.mydata_id,
+            post_access_kind: access_fields.post_access_kind,
+            mydata_id: access_fields
+                .mydata_id
+                .as_ref()
+                .and_then(|s| AccountAddress::from_hex_literal(s).ok()),
+            subscription_service_id: access_fields
+                .subscription_service_id
+                .as_ref()
+                .and_then(|s| AccountAddress::from_hex_literal(s).ok()),
+            requires_subscription: access_fields.requires_subscription.unwrap_or(false),
             promotion_id: ev.promotion_id,
             revenue_redirect_to: ev.revenue_redirect_to,
             revenue_redirect_percentage: ev.revenue_redirect_percentage,
@@ -1629,13 +1658,6 @@ pub struct BcsPromotionFundsWithdrawnEvent {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct BcsPostSubscriptionGateEnabledEvent {
-    post_id: AccountAddress,
-    service_id: AccountAddress,
-    enabled: bool,
-}
-
-#[derive(Debug, Deserialize)]
 pub struct BcsPostSubscriptionAccessEvent {
     post_id: AccountAddress,
     service_id: AccountAddress,
@@ -1955,8 +1977,7 @@ pub struct BcsMyDataCreatedEvent {
     owner: AccountAddress,
     media_type: String,
     platform_id: Option<AccountAddress>,
-    one_time_price: Option<u64>,
-    subscription_price: Option<u64>,
+    access_configuration_kind: u8,
     created_at: u64,
 }
 
@@ -1969,6 +1990,21 @@ pub struct BcsPurchaseEvent {
     timestamp: u64,
     sub_agent_id: Option<AccountAddress>,
     organization_id: Option<AccountAddress>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsPurchaseEventV2 {
+    ip_id: AccountAddress,
+    buyer: AccountAddress,
+    price: u64,
+    purchase_type: String,
+    timestamp: u64,
+    sub_agent_id: Option<AccountAddress>,
+    organization_id: Option<AccountAddress>,
+    platform_fee: u64,
+    ecosystem_fee: u64,
+    creator_amount: u64,
+    platform_id: Option<AccountAddress>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -2021,9 +2057,42 @@ pub struct BcsMyDataConfigUpdatedEvent {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+pub struct BcsMyDataConfigUpdatedEventV2 {
+    updated_by: AccountAddress,
+    marketplace_enabled: bool,
+    max_tags: u64,
+    max_subscription_days: u64,
+    max_free_access_grants: u64,
+    max_encryption_id_bytes: u64,
+    max_encrypted_data_bytes: u64,
+    max_tag_bytes: u64,
+    max_metadata_bytes: u64,
+    max_payment_reference_bytes: u64,
+    max_pool_assignments: u64,
+    max_merkle_proof_depth: u64,
+    max_paid_access_entries: u64,
+    default_claim_window_ms: u64,
+    p2p_platform_fee_bps: u64,
+    p2p_ecosystem_fee_bps: u64,
+    mydata_marketplace_platform_fee_bps: u64,
+    mydata_marketplace_ecosystem_fee_bps: u64,
+    non_platform_platform_to_creator_bps: u64,
+    non_platform_platform_to_treasury_bps: u64,
+    timestamp: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsBroadPoolCreatedEvent {
     pool_id: AccountAddress,
     name: String,
+    created_at: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsBroadPoolCreatedEventV2 {
+    pool_id: AccountAddress,
+    name: String,
+    platform_id: Option<AccountAddress>,
     created_at: u64,
 }
 
@@ -2062,6 +2131,19 @@ pub struct BcsSnapshotAnchorRecordedEventV2 {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+pub struct BcsSnapshotAnchorRecordedEventV3 {
+    snapshot_id: AccountAddress,
+    buyer_address: AccountAddress,
+    price_paid: u64,
+    source_pool_id: AccountAddress,
+    source_sub_pool_id: AccountAddress,
+    platform_id: Option<AccountAddress>,
+    created_at: u64,
+    snapshot_manifest_hash: Vec<u8>,
+    payment_reference: Vec<u8>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsMerkleRootPublishedEvent {
     snapshot_id: AccountAddress,
     root_hash: Vec<u8>,
@@ -2077,12 +2159,71 @@ pub struct BcsClaimExecutedEvent {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+pub struct BcsClaimExecutedEventV2 {
+    snapshot_id: AccountAddress,
+    claimant: AccountAddress,
+    gross_amount: u64,
+    platform_fee: u64,
+    ecosystem_fee: u64,
+    net_amount: u64,
+    platform_id: Option<AccountAddress>,
+    claimed_at: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsDistributionRecordedEvent {
     snapshot_id: AccountAddress,
     total_amount: u64,
     contributor_count: u64,
     merkle_root: Vec<u8>,
     published_at: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsDistributionRecordedEventV2 {
+    snapshot_id: AccountAddress,
+    total_amount: u64,
+    contributor_count: u64,
+    merkle_root: Vec<u8>,
+    platform_id: Option<AccountAddress>,
+    claim_deadline_ms: u64,
+    published_at: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsSnapshotEscrowFundedEvent {
+    snapshot_id: AccountAddress,
+    funder: AccountAddress,
+    amount: u64,
+    total_funded: u64,
+    funded_at: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsSnapshotEscrowReclaimedEvent {
+    snapshot_id: AccountAddress,
+    buyer_address: AccountAddress,
+    amount: u64,
+    reclaimed_at: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsMyDataPricingUpdatedEvent {
+    ip_id: AccountAddress,
+    one_time_price: Option<u64>,
+    subscription_price: Option<u64>,
+    subscription_duration_days: Option<u64>,
+    updated_by: AccountAddress,
+    timestamp: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsMyDataContentUpdatedEvent {
+    ip_id: AccountAddress,
+    encrypted_data_updated: bool,
+    tags_updated: bool,
+    updated_by: AccountAddress,
+    timestamp: u64,
 }
 
 // Social Proof of Truth (SPoT) event structs - field order matches social_proof_of_truth.move
@@ -2266,34 +2407,79 @@ pub struct BcsObjectMigratedEvent {
 pub struct BcsProfileSubscriptionServiceCreatedEvent {
     service_id: AccountAddress,
     profile_owner: AccountAddress,
-    monthly_fee: u64,
+    profile_id: AccountAddress,
     created_at: u64,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct BcsProfileSubscriptionCreatedEvent {
+pub struct BcsSubscriptionPlanCreatedEvent {
     service_id: AccountAddress,
+    plan_id: AccountAddress,
+    title: String,
+    description: Option<String>,
+    price: u64,
+    duration_ms: u64,
+    tier_level: Option<u64>,
+    platform_id: Option<AccountAddress>,
+    created_at: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsSubscriptionPlanUpdatedEvent {
+    service_id: AccountAddress,
+    plan_id: AccountAddress,
+    title: String,
+    description: Option<String>,
+    price: u64,
+    duration_ms: u64,
+    tier_level: Option<u64>,
+    platform_id: Option<AccountAddress>,
+    active: bool,
+    updated_by: AccountAddress,
+    updated_at: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsSubscriptionPlanDeactivatedEvent {
+    service_id: AccountAddress,
+    plan_id: AccountAddress,
+    deactivated_at: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsProfileSubscriptionCreatedEvent {
+    subscription_id: AccountAddress,
+    service_id: AccountAddress,
+    plan_id: AccountAddress,
     subscriber: AccountAddress,
     expires_at: u64,
-    monthly_fee: u64,
+    price: u64,
+    duration_ms: u64,
+    tier_level: Option<u64>,
+    platform_id: Option<AccountAddress>,
     auto_renew: bool,
     platform_fee: u64,
     ecosystem_fee: u64,
     creator_amount: u64,
-    platform_id: Option<AccountAddress>,
+    payment_platform_id: Option<AccountAddress>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct BcsProfileSubscriptionRenewedEvent {
     subscription_id: AccountAddress,
     subscriber: AccountAddress,
+    plan_id: AccountAddress,
     new_expires_at: u64,
     renewal_count: u64,
     auto_renewed: bool,
+    price: u64,
+    duration_ms: u64,
+    tier_level: Option<u64>,
+    platform_id: Option<AccountAddress>,
     platform_fee: u64,
     ecosystem_fee: u64,
     creator_amount: u64,
-    platform_id: Option<AccountAddress>,
+    payment_platform_id: Option<AccountAddress>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -2301,14 +2487,6 @@ pub struct BcsProfileSubscriptionCancelledEvent {
     subscription_id: AccountAddress,
     subscriber: AccountAddress,
     refunded_amount: u64,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct BcsProfileSubscriptionUpdatedEvent {
-    service_id: AccountAddress,
-    old_fee: u64,
-    new_fee: u64,
-    updated_by: AccountAddress,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -2330,7 +2508,7 @@ pub struct BcsProfileSubscriptionServiceDeactivatedEvent {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct BcsSubscriptionConfigUpdatedEvent {
     updated_by: AccountAddress,
-    billing_period_ms: u64,
+    default_billing_period_ms: u64,
     max_renewal_months: u64,
     platform_fee_bps: u64,
     ecosystem_fee_bps: u64,
@@ -2858,6 +3036,24 @@ fn parse_profile_event(
                 "new_profile_id": addr_to_string(&ev.new_profile_id),
                 "admin": addr_to_string(&ev.admin),
                 "reason_code": ev.reason_code,
+            })))
+        }
+        "UsernameReservedEvent" => {
+            let ev = bcs::from_bytes::<BcsUsernameReservedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "username": ev.username,
+                "reason": ev.reason,
+                "reserved_by": addr_to_string(&ev.reserved_by),
+            })))
+        }
+        "UsernameReleasedEvent" => {
+            let ev = bcs::from_bytes::<BcsUsernameReleasedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "username": ev.username,
+                "reason": ev.reason,
+                "released_by": addr_to_string(&ev.released_by),
             })))
         }
         "ProfileXUsernameUpdatedEvent" => {
@@ -3531,6 +3727,11 @@ fn parse_post_event(
     match event_name {
         "PostCreatedEvent" => {
             let ev = bcs_post_created_from_bytes(contents)?;
+            let access_json = post_access_json_from_bcs(
+                &bcs::from_bytes::<BcsPostCreatedEvent>(contents)
+                    .map_err(|e| bcs_parse_err(e, contents))?
+                    .access,
+            );
             Ok(Some(serde_json::json!({
                 "post_id": addr_to_string(&ev.post_id),
                 "owner": addr_to_string(&ev.owner),
@@ -3543,7 +3744,11 @@ fn parse_post_event(
                 "mentions": mentions_to_json(&ev.mentions),
                 "media_urls": ev.media_urls,
                 "metadata_json": ev.metadata_json,
+                "post_access_kind": ev.post_access_kind,
                 "mydata_id": ev.mydata_id.as_ref().map(addr_to_string),
+                "subscription_service_id": ev.subscription_service_id.as_ref().map(addr_to_string),
+                "requires_subscription": ev.requires_subscription,
+                "access": access_json["access"],
                 "promotion_id": ev.promotion_id.as_ref().map(addr_to_string),
                 "revenue_redirect_to": ev.revenue_redirect_to.as_ref().map(addr_to_string),
                 "revenue_redirect_percentage": ev.revenue_redirect_percentage,
@@ -3735,15 +3940,7 @@ fn parse_post_event(
                 "timestamp": ev.timestamp,
             })))
         }
-        "PostSubscriptionGateEnabledEvent" => {
-            let ev = bcs::from_bytes::<BcsPostSubscriptionGateEnabledEvent>(contents)
-                .map_err(|e| bcs_parse_err(e, contents))?;
-            Ok(Some(serde_json::json!({
-                "post_id": addr_to_string(&ev.post_id),
-                "service_id": addr_to_string(&ev.service_id),
-                "enabled": ev.enabled,
-            })))
-        }
+        "PostSubscriptionGateEnabledEvent" => Ok(None),
         "PostSubscriptionAccessEvent" => {
             let ev = bcs::from_bytes::<BcsPostSubscriptionAccessEvent>(contents)
                 .map_err(|e| bcs_parse_err(e, contents))?;
@@ -4750,23 +4947,31 @@ fn parse_mydata_event(
                 "owner": addr_to_string(&ev.owner),
                 "media_type": ev.media_type,
                 "platform_id": ev.platform_id.as_ref().map(addr_to_string),
-                "one_time_price": ev.one_time_price,
-                "subscription_price": ev.subscription_price,
+                "access_configuration_kind": ev.access_configuration_kind,
                 "created_at": ev.created_at,
             })))
         }
         "PurchaseEvent" | "DataPurchasedEvent" => {
-            let ev = bcs::from_bytes::<BcsPurchaseEvent>(contents)
-                .map_err(|e| bcs_parse_err(e, contents))?;
-            Ok(Some(serde_json::json!({
-                "ip_id": addr_to_string(&ev.ip_id),
-                "buyer": addr_to_string(&ev.buyer),
-                "price": ev.price,
-                "purchase_type": ev.purchase_type,
-                "timestamp": ev.timestamp,
-                "sub_agent_id": optional_addr_json(&ev.sub_agent_id),
-                "organization_id": optional_addr_json(&ev.organization_id),
-            })))
+            if let Ok(ev) = bcs::from_bytes::<BcsPurchaseEventV2>(contents) {
+                Ok(Some(serde_json::json!({
+                    "ip_id": addr_to_string(&ev.ip_id), "buyer": addr_to_string(&ev.buyer),
+                    "price": ev.price, "purchase_type": ev.purchase_type, "timestamp": ev.timestamp,
+                    "sub_agent_id": optional_addr_json(&ev.sub_agent_id),
+                    "organization_id": optional_addr_json(&ev.organization_id),
+                    "platform_fee": ev.platform_fee, "ecosystem_fee": ev.ecosystem_fee,
+                    "creator_amount": ev.creator_amount,
+                    "platform_id": ev.platform_id.as_ref().map(addr_to_string),
+                })))
+            } else {
+                let ev = bcs::from_bytes::<BcsPurchaseEvent>(contents)
+                    .map_err(|e| bcs_parse_err(e, contents))?;
+                Ok(Some(serde_json::json!({
+                    "ip_id": addr_to_string(&ev.ip_id), "buyer": addr_to_string(&ev.buyer),
+                    "price": ev.price, "purchase_type": ev.purchase_type, "timestamp": ev.timestamp,
+                    "sub_agent_id": optional_addr_json(&ev.sub_agent_id),
+                    "organization_id": optional_addr_json(&ev.organization_id),
+                })))
+            }
         }
         "AccessGrantedEvent" | "DataAccessGrantedEvent" => {
             let ev = bcs::from_bytes::<BcsAccessGrantedEvent>(contents)
@@ -4809,9 +5014,31 @@ fn parse_mydata_event(
             })))
         }
         "MyDataConfigUpdatedEvent" | "ConfigUpdatedEvent" => {
-            let ev = bcs::from_bytes::<BcsMyDataConfigUpdatedEvent>(contents)
-                .map_err(|e| bcs_parse_err(e, contents))?;
-            Ok(Some(serde_json::json!({
+            if let Ok(ev) = bcs::from_bytes::<BcsMyDataConfigUpdatedEventV2>(contents) {
+                Ok(Some(serde_json::json!({
+                    "updated_by": addr_to_string(&ev.updated_by), "marketplace_enabled": ev.marketplace_enabled,
+                    "max_tags": ev.max_tags, "max_subscription_days": ev.max_subscription_days,
+                    "max_free_access_grants": ev.max_free_access_grants,
+                    "max_encryption_id_bytes": ev.max_encryption_id_bytes,
+                    "max_encrypted_data_bytes": ev.max_encrypted_data_bytes, "max_tag_bytes": ev.max_tag_bytes,
+                    "max_metadata_bytes": ev.max_metadata_bytes,
+                    "max_payment_reference_bytes": ev.max_payment_reference_bytes,
+                    "max_pool_assignments": ev.max_pool_assignments,
+                    "max_merkle_proof_depth": ev.max_merkle_proof_depth,
+                    "max_paid_access_entries": ev.max_paid_access_entries,
+                    "default_claim_window_ms": ev.default_claim_window_ms,
+                    "p2p_platform_fee_bps": ev.p2p_platform_fee_bps,
+                    "p2p_ecosystem_fee_bps": ev.p2p_ecosystem_fee_bps,
+                    "mydata_marketplace_platform_fee_bps": ev.mydata_marketplace_platform_fee_bps,
+                    "mydata_marketplace_ecosystem_fee_bps": ev.mydata_marketplace_ecosystem_fee_bps,
+                    "non_platform_platform_to_creator_bps": ev.non_platform_platform_to_creator_bps,
+                    "non_platform_platform_to_treasury_bps": ev.non_platform_platform_to_treasury_bps,
+                    "timestamp": ev.timestamp,
+                })))
+            } else {
+                let ev = bcs::from_bytes::<BcsMyDataConfigUpdatedEvent>(contents)
+                    .map_err(|e| bcs_parse_err(e, contents))?;
+                Ok(Some(serde_json::json!({
                 "updated_by": addr_to_string(&ev.updated_by),
                 "marketplace_enabled": ev.marketplace_enabled,
                 "max_tags": ev.max_tags,
@@ -4825,16 +5052,22 @@ fn parse_mydata_event(
                 "non_platform_platform_to_creator_bps": ev.non_platform_platform_to_creator_bps,
                 "non_platform_platform_to_treasury_bps": ev.non_platform_platform_to_treasury_bps,
                 "timestamp": ev.timestamp,
-            })))
+                })))
+            }
         }
         "BroadPoolCreatedEvent" => {
-            let ev = bcs::from_bytes::<BcsBroadPoolCreatedEvent>(contents)
-                .map_err(|e| bcs_parse_err(e, contents))?;
-            Ok(Some(serde_json::json!({
-                "pool_id": addr_to_string(&ev.pool_id),
-                "name": ev.name,
-                "created_at": ev.created_at,
-            })))
+            if let Ok(ev) = bcs::from_bytes::<BcsBroadPoolCreatedEventV2>(contents) {
+                Ok(Some(serde_json::json!({
+                    "pool_id": addr_to_string(&ev.pool_id), "name": ev.name,
+                    "platform_id": ev.platform_id.as_ref().map(addr_to_string), "created_at": ev.created_at,
+                })))
+            } else {
+                let ev = bcs::from_bytes::<BcsBroadPoolCreatedEvent>(contents)
+                    .map_err(|e| bcs_parse_err(e, contents))?;
+                Ok(Some(serde_json::json!({
+                    "pool_id": addr_to_string(&ev.pool_id), "name": ev.name, "created_at": ev.created_at,
+                })))
+            }
         }
         "SubPoolCreatedEvent" => {
             let ev = bcs::from_bytes::<BcsSubPoolCreatedEvent>(contents)
@@ -4857,7 +5090,17 @@ fn parse_mydata_event(
             })))
         }
         "SnapshotAnchorRecordedEvent" => {
-            if let Ok(ev) = bcs::from_bytes::<BcsSnapshotAnchorRecordedEventV2>(contents) {
+            if let Ok(ev) = bcs::from_bytes::<BcsSnapshotAnchorRecordedEventV3>(contents) {
+                Ok(Some(serde_json::json!({
+                    "snapshot_id": addr_to_string(&ev.snapshot_id),
+                    "buyer_address": addr_to_string(&ev.buyer_address), "price_paid": ev.price_paid,
+                    "source_pool_id": addr_to_string(&ev.source_pool_id),
+                    "source_sub_pool_id": addr_to_string(&ev.source_sub_pool_id),
+                    "platform_id": ev.platform_id.as_ref().map(addr_to_string), "created_at": ev.created_at,
+                    "manifest_hash": format!("0x{}", hex::encode(&ev.snapshot_manifest_hash)),
+                    "payment_reference": format!("0x{}", hex::encode(&ev.payment_reference)),
+                })))
+            } else if let Ok(ev) = bcs::from_bytes::<BcsSnapshotAnchorRecordedEventV2>(contents) {
                 Ok(Some(serde_json::json!({
                     "snapshot_id": addr_to_string(&ev.snapshot_id),
                     "buyer_address": addr_to_string(&ev.buyer_address),
@@ -4878,15 +5121,25 @@ fn parse_mydata_event(
             }
         }
         "DistributionRecordedEvent" => {
-            let ev = bcs::from_bytes::<BcsDistributionRecordedEvent>(contents)
-                .map_err(|e| bcs_parse_err(e, contents))?;
-            Ok(Some(serde_json::json!({
+            if let Ok(ev) = bcs::from_bytes::<BcsDistributionRecordedEventV2>(contents) {
+                Ok(Some(serde_json::json!({
+                    "snapshot_id": addr_to_string(&ev.snapshot_id), "total_amount": ev.total_amount,
+                    "contributor_count": ev.contributor_count,
+                    "merkle_root": format!("0x{}", hex::encode(&ev.merkle_root)),
+                    "platform_id": ev.platform_id.as_ref().map(addr_to_string),
+                    "claim_deadline_ms": ev.claim_deadline_ms, "published_at": ev.published_at,
+                })))
+            } else {
+                let ev = bcs::from_bytes::<BcsDistributionRecordedEvent>(contents)
+                    .map_err(|e| bcs_parse_err(e, contents))?;
+                Ok(Some(serde_json::json!({
                 "snapshot_id": addr_to_string(&ev.snapshot_id),
                 "total_amount": ev.total_amount,
                 "contributor_count": ev.contributor_count,
                 "merkle_root": format!("0x{}", hex::encode(&ev.merkle_root)),
                 "published_at": ev.published_at,
-            })))
+                })))
+            }
         }
         "MerkleRootPublishedEvent" => {
             let ev = bcs::from_bytes::<BcsMerkleRootPublishedEvent>(contents)
@@ -4898,13 +5151,58 @@ fn parse_mydata_event(
             })))
         }
         "ClaimExecutedEvent" => {
-            let ev = bcs::from_bytes::<BcsClaimExecutedEvent>(contents)
-                .map_err(|e| bcs_parse_err(e, contents))?;
-            Ok(Some(serde_json::json!({
+            if let Ok(ev) = bcs::from_bytes::<BcsClaimExecutedEventV2>(contents) {
+                Ok(Some(serde_json::json!({
+                    "snapshot_id": addr_to_string(&ev.snapshot_id), "claimant": addr_to_string(&ev.claimant),
+                    "gross_amount": ev.gross_amount, "platform_fee": ev.platform_fee,
+                    "ecosystem_fee": ev.ecosystem_fee, "net_amount": ev.net_amount,
+                    "platform_id": ev.platform_id.as_ref().map(addr_to_string), "claimed_at": ev.claimed_at,
+                })))
+            } else {
+                let ev = bcs::from_bytes::<BcsClaimExecutedEvent>(contents)
+                    .map_err(|e| bcs_parse_err(e, contents))?;
+                Ok(Some(serde_json::json!({
                 "snapshot_id": addr_to_string(&ev.snapshot_id),
                 "claimant": addr_to_string(&ev.claimant),
                 "amount": ev.amount,
                 "claimed_at": ev.claimed_at,
+                })))
+            }
+        }
+        "SnapshotEscrowFundedEvent" => {
+            let ev = bcs::from_bytes::<BcsSnapshotEscrowFundedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "snapshot_id": addr_to_string(&ev.snapshot_id), "funder": addr_to_string(&ev.funder),
+                "amount": ev.amount, "total_funded": ev.total_funded, "funded_at": ev.funded_at,
+            })))
+        }
+        "SnapshotEscrowReclaimedEvent" => {
+            let ev = bcs::from_bytes::<BcsSnapshotEscrowReclaimedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "snapshot_id": addr_to_string(&ev.snapshot_id),
+                "buyer_address": addr_to_string(&ev.buyer_address), "amount": ev.amount,
+                "reclaimed_at": ev.reclaimed_at,
+            })))
+        }
+        "MyDataPricingUpdatedEvent" => {
+            let ev = bcs::from_bytes::<BcsMyDataPricingUpdatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "ip_id": addr_to_string(&ev.ip_id), "one_time_price": ev.one_time_price,
+                "subscription_price": ev.subscription_price,
+                "subscription_duration_days": ev.subscription_duration_days,
+                "updated_by": addr_to_string(&ev.updated_by), "timestamp": ev.timestamp,
+            })))
+        }
+        "MyDataContentUpdatedEvent" => {
+            let ev = bcs::from_bytes::<BcsMyDataContentUpdatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "ip_id": addr_to_string(&ev.ip_id),
+                "encrypted_data_updated": ev.encrypted_data_updated, "tags_updated": ev.tags_updated,
+                "updated_by": addr_to_string(&ev.updated_by), "timestamp": ev.timestamp,
             })))
         }
         _ => Ok(None),
@@ -5567,23 +5865,69 @@ fn parse_subscription_event(
             Ok(Some(serde_json::json!({
                 "service_id": addr_to_string(&ev.service_id),
                 "profile_owner": addr_to_string(&ev.profile_owner),
-                "monthly_fee": ev.monthly_fee,
+                "profile_id": move_object_id_to_string(&BcsMoveObjectId { bytes: ev.profile_id }),
                 "created_at": ev.created_at,
+            })))
+        }
+        "SubscriptionPlanCreatedEvent" => {
+            let ev = bcs::from_bytes::<BcsSubscriptionPlanCreatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "service_id": addr_to_string(&ev.service_id),
+                "plan_id": move_object_id_to_string(&BcsMoveObjectId { bytes: ev.plan_id }),
+                "title": ev.title,
+                "description": ev.description,
+                "price": ev.price,
+                "duration_ms": ev.duration_ms,
+                "tier_level": ev.tier_level,
+                "platform_id": ev.platform_id.as_ref().map(addr_to_string),
+                "created_at": ev.created_at,
+            })))
+        }
+        "SubscriptionPlanUpdatedEvent" => {
+            let ev = bcs::from_bytes::<BcsSubscriptionPlanUpdatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "service_id": addr_to_string(&ev.service_id),
+                "plan_id": move_object_id_to_string(&BcsMoveObjectId { bytes: ev.plan_id }),
+                "title": ev.title,
+                "description": ev.description,
+                "price": ev.price,
+                "duration_ms": ev.duration_ms,
+                "tier_level": ev.tier_level,
+                "platform_id": ev.platform_id.as_ref().map(addr_to_string),
+                "active": ev.active,
+                "updated_by": addr_to_string(&ev.updated_by),
+                "updated_at": ev.updated_at,
+            })))
+        }
+        "SubscriptionPlanDeactivatedEvent" => {
+            let ev = bcs::from_bytes::<BcsSubscriptionPlanDeactivatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "service_id": addr_to_string(&ev.service_id),
+                "plan_id": move_object_id_to_string(&BcsMoveObjectId { bytes: ev.plan_id }),
+                "deactivated_at": ev.deactivated_at,
             })))
         }
         "ProfileSubscriptionCreatedEvent" => {
             let ev = bcs::from_bytes::<BcsProfileSubscriptionCreatedEvent>(contents)
                 .map_err(|e| bcs_parse_err(e, contents))?;
             Ok(Some(serde_json::json!({
+                "subscription_id": move_object_id_to_string(&BcsMoveObjectId { bytes: ev.subscription_id }),
                 "service_id": addr_to_string(&ev.service_id),
+                "plan_id": move_object_id_to_string(&BcsMoveObjectId { bytes: ev.plan_id }),
                 "subscriber": addr_to_string(&ev.subscriber),
                 "expires_at": ev.expires_at,
-                "monthly_fee": ev.monthly_fee,
+                "price": ev.price,
+                "duration_ms": ev.duration_ms,
+                "tier_level": ev.tier_level,
+                "platform_id": ev.platform_id.as_ref().map(addr_to_string),
                 "auto_renew": ev.auto_renew,
                 "platform_fee": ev.platform_fee,
                 "ecosystem_fee": ev.ecosystem_fee,
                 "creator_amount": ev.creator_amount,
-                "platform_id": ev.platform_id.as_ref().map(addr_to_string),
+                "payment_platform_id": ev.payment_platform_id.as_ref().map(addr_to_string),
             })))
         }
         "ProfileSubscriptionRenewedEvent" => {
@@ -5592,13 +5936,18 @@ fn parse_subscription_event(
             Ok(Some(serde_json::json!({
                 "subscription_id": addr_to_string(&ev.subscription_id),
                 "subscriber": addr_to_string(&ev.subscriber),
+                "plan_id": move_object_id_to_string(&BcsMoveObjectId { bytes: ev.plan_id }),
                 "new_expires_at": ev.new_expires_at,
                 "renewal_count": ev.renewal_count,
                 "auto_renewed": ev.auto_renewed,
+                "price": ev.price,
+                "duration_ms": ev.duration_ms,
+                "tier_level": ev.tier_level,
+                "platform_id": ev.platform_id.as_ref().map(addr_to_string),
                 "platform_fee": ev.platform_fee,
                 "ecosystem_fee": ev.ecosystem_fee,
                 "creator_amount": ev.creator_amount,
-                "platform_id": ev.platform_id.as_ref().map(addr_to_string),
+                "payment_platform_id": ev.payment_platform_id.as_ref().map(addr_to_string),
             })))
         }
         "ProfileSubscriptionCancelledEvent" => {
@@ -5608,16 +5957,6 @@ fn parse_subscription_event(
                 "subscription_id": addr_to_string(&ev.subscription_id),
                 "subscriber": addr_to_string(&ev.subscriber),
                 "refunded_amount": ev.refunded_amount,
-            })))
-        }
-        "ProfileSubscriptionUpdatedEvent" => {
-            let ev = bcs::from_bytes::<BcsProfileSubscriptionUpdatedEvent>(contents)
-                .map_err(|e| bcs_parse_err(e, contents))?;
-            Ok(Some(serde_json::json!({
-                "service_id": addr_to_string(&ev.service_id),
-                "old_fee": ev.old_fee,
-                "new_fee": ev.new_fee,
-                "updated_by": addr_to_string(&ev.updated_by),
             })))
         }
         "RenewalBalanceFundedEvent" => {
@@ -5645,7 +5984,7 @@ fn parse_subscription_event(
                 .map_err(|e| bcs_parse_err(e, contents))?;
             Ok(Some(serde_json::json!({
                 "updated_by": addr_to_string(&ev.updated_by),
-                "billing_period_ms": ev.billing_period_ms,
+                "default_billing_period_ms": ev.default_billing_period_ms,
                 "max_renewal_months": ev.max_renewal_months,
                 "platform_fee_bps": ev.platform_fee_bps,
                 "ecosystem_fee_bps": ev.ecosystem_fee_bps,
@@ -6171,7 +6510,7 @@ mod tests {
         let ev = BcsProfileSubscriptionServiceCreatedEvent {
             service_id: addr1,
             profile_owner: addr2,
-            monthly_fee: 1000,
+            profile_id: addr1,
             created_at: 12345,
         };
         let bytes = bcs::to_bytes(&ev).expect("serialize");
@@ -6183,19 +6522,24 @@ mod tests {
         assert!(result.is_ok(), "BCS parse should succeed");
         let json = result.unwrap();
         assert!(json["service_id"].as_str().unwrap().starts_with("0x"));
-        assert_eq!(json["monthly_fee"], 1000);
+        assert!(json["profile_id"].as_str().unwrap().starts_with("0x"));
         assert_eq!(json["created_at"], 12345);
 
         let ev2 = BcsProfileSubscriptionCreatedEvent {
+            subscription_id: addr1,
             service_id: addr1,
+            plan_id: addr2,
             subscriber: addr2,
             expires_at: 99999,
-            monthly_fee: 500,
+            price: 500,
+            duration_ms: 2_592_000_000,
+            tier_level: Some(1),
+            platform_id: None,
             auto_renew: true,
             platform_fee: 50,
             ecosystem_fee: 25,
             creator_amount: 425,
-            platform_id: None,
+            payment_platform_id: None,
         };
         let bytes2 = bcs::to_bytes(&ev2).expect("serialize");
         let result2 =
@@ -6203,13 +6547,13 @@ mod tests {
         assert!(result2.is_ok());
         let json2 = result2.unwrap();
         assert_eq!(json2["expires_at"], 99999);
-        assert_eq!(json2["monthly_fee"], 500);
+        assert_eq!(json2["price"], 500);
         assert_eq!(json2["auto_renew"], true);
     }
 
     #[test]
     fn test_parse_subscription_events_json_fallback() {
-        let json = r#"{"service_id":"0x123","subscriber":"0x456","expires_at":1000,"monthly_fee":100,"auto_renew":true}"#;
+        let json = r#"{"service_id":"0x123","plan_id":"0xplan","subscriber":"0x456","expires_at":1000,"price":100,"duration_ms":2592000000,"auto_renew":true}"#;
         let result = parse_event_contents(
             "subscription",
             "ProfileSubscriptionCreatedEvent",
@@ -6218,7 +6562,7 @@ mod tests {
         assert!(result.is_ok(), "JSON fallback should succeed");
         let parsed = result.unwrap();
         assert_eq!(parsed["service_id"], "0x123");
-        assert_eq!(parsed["monthly_fee"], 100);
+        assert_eq!(parsed["price"], 100);
         assert_eq!(parsed["auto_renew"], true);
     }
 
@@ -7003,7 +7347,7 @@ mod tests {
             mentions: None,
             media_urls: None,
             metadata_json: None,
-            mydata_id: None,
+            access: BcsPostAccess::Public,
             promotion_id: None,
             revenue_redirect_to: None,
             revenue_redirect_percentage: None,
@@ -7247,7 +7591,7 @@ mod tests {
         .unwrap();
         let ev = BcsSubscriptionConfigUpdatedEvent {
             updated_by,
-            billing_period_ms: 2_592_000_000,
+            default_billing_period_ms: 2_592_000_000,
             max_renewal_months: 120,
             platform_fee_bps: 250,
             ecosystem_fee_bps: 250,
@@ -7258,7 +7602,7 @@ mod tests {
         let bytes = bcs::to_bytes(&ev).expect("serialize SubscriptionConfigUpdatedEvent");
         let json = parse_event_contents("subscription", "SubscriptionConfigUpdatedEvent", &bytes)
             .expect("parse SubscriptionConfigUpdatedEvent");
-        assert_eq!(json["billing_period_ms"].as_u64(), Some(2_592_000_000));
+        assert_eq!(json["default_billing_period_ms"].as_u64(), Some(2_592_000_000));
         assert_eq!(json["platform_fee_bps"], 250);
         assert_eq!(json["ecosystem_fee_bps"], 250);
         assert_eq!(json["non_platform_platform_to_treasury_bps"], 10_000);

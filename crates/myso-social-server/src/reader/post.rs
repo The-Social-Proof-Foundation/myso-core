@@ -67,7 +67,6 @@ pub(crate) async fn list_posts(
             posts::poc_outcome,
             posts::poc_redirection_kind,
             posts::poc_disputes_submitted,
-            posts::actor_address,
             posts::sub_agent_id,
             posts::action_identity_class,
         ))
@@ -96,7 +95,6 @@ pub(crate) async fn list_posts(
             Option<i16>,
             Option<i16>,
             i16,
-            Option<String>,
             Option<String>,
             Option<i16>,
         )>(&mut conn)
@@ -129,12 +127,11 @@ pub(crate) async fn list_posts(
                 poc_outcome,
                 poc_redirection_kind,
                 poc_disputes_submitted,
-                actor_address,
                 sub_agent_id,
                 action_identity_class,
             )| PostBasicRow {
                 post_id,
-                owner,
+                owner: owner.clone(),
                 profile_id,
                 content,
                 post_type,
@@ -157,7 +154,7 @@ pub(crate) async fn list_posts(
                 poc_outcome,
                 poc_redirection_kind,
                 poc_disputes_submitted,
-                actor_address,
+                actor_address: Some(owner),
                 sub_agent_id,
                 action_identity_class,
             },

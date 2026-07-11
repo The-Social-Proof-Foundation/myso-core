@@ -9,7 +9,7 @@ module myso::package;
 
 use std::ascii::String;
 use std::type_name;
-use myso::bootstrap_key::BootstrapKey;
+use myso::bootstrap_key::{Self, BootstrapKey};
 use myso::types;
 
 /// Allows calling `.burn` to destroy a `Publisher`.
@@ -142,9 +142,10 @@ public struct PackagePublishingAdminCap has key, store {
 /// Requires BootstrapKey parameter for security - ensures only authorized callers can invoke
 /// Bootstrap module handles BootstrapKey check before calling this
 public fun create_package_publishing_admin_cap_for_bootstrap(
-    _bootstrap_key: &BootstrapKey,
+    key: &BootstrapKey,
     ctx: &mut TxContext
 ): PackagePublishingAdminCap {
+    bootstrap_key::assert_not_used(key);
     PackagePublishingAdminCap {
         id: object::new(ctx)
     }

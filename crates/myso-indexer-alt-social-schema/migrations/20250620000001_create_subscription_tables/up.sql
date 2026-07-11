@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS profile_subscription_services (
     service_id TEXT NOT NULL PRIMARY KEY,
     profile_owner TEXT NOT NULL,
     profile_id TEXT NOT NULL,
-    monthly_fee BIGINT NOT NULL,
+    plan_count BIGINT NOT NULL DEFAULT 0,
     active BOOLEAN NOT NULL DEFAULT true,
     subscriber_count BIGINT NOT NULL DEFAULT 0,
     created_at BIGINT NOT NULL,
@@ -21,11 +21,36 @@ CREATE INDEX IF NOT EXISTS idx_profile_services_owner ON profile_subscription_se
 CREATE INDEX IF NOT EXISTS idx_profile_services_profile ON profile_subscription_services (profile_id);
 CREATE INDEX IF NOT EXISTS idx_profile_services_active ON profile_subscription_services (active) WHERE active = true;
 
+-- Sellable subscription plans on a profile service
+CREATE TABLE IF NOT EXISTS profile_subscription_plans (
+    plan_id TEXT NOT NULL PRIMARY KEY,
+    service_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT,
+    price BIGINT NOT NULL,
+    duration_ms BIGINT NOT NULL,
+    tier_level BIGINT,
+    platform_id TEXT,
+    active BOOLEAN NOT NULL DEFAULT true,
+    created_at BIGINT NOT NULL,
+    updated_at BIGINT,
+    time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    transaction_id TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_profile_subscription_plans_service ON profile_subscription_plans (service_id);
+CREATE INDEX IF NOT EXISTS idx_profile_subscription_plans_active ON profile_subscription_plans (active) WHERE active = true;
+
 -- 2. Profile Subscriptions Table (TimescaleDB Hypertable)
 -- Individual subscription records with time partitioning for analytics
 CREATE TABLE IF NOT EXISTS profile_subscriptions (
     subscription_id TEXT NOT NULL,
     service_id TEXT NOT NULL,
+    plan_id TEXT NOT NULL,
+    tier_level BIGINT,
+    platform_id TEXT,
+    price BIGINT NOT NULL,
+    duration_ms BIGINT NOT NULL,
     subscriber TEXT NOT NULL,
     created_at BIGINT NOT NULL,
     expires_at BIGINT NOT NULL,
@@ -236,7 +261,9 @@ END $$;
 ALTER TABLE posts ADD COLUMN IF NOT EXISTS requires_subscription BOOLEAN DEFAULT false;
 ALTER TABLE posts ADD COLUMN IF NOT EXISTS subscription_service_id TEXT;
 ALTER TABLE posts ADD COLUMN IF NOT EXISTS subscription_price BIGINT;
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS subscription_min_tier_level BIGINT;
 ALTER TABLE posts ADD COLUMN IF NOT EXISTS encrypted_content_hash TEXT;
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS post_access_kind TEXT;
 
 -- Schema Updates: Add subscription service reference to profiles table  
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS subscription_service_id TEXT;
@@ -377,6 +404,16 @@ BEGIN
         ADD CONSTRAINT fk_profile_subscriptions_service_id 
         FOREIGN KEY (service_id) REFERENCES profile_subscription_services(service_id);
     END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'fk_profile_subscription_plans_service_id'
+        AND conrelid = 'profile_subscription_plans'::regclass
+    ) THEN
+        ALTER TABLE profile_subscription_plans
+        ADD CONSTRAINT fk_profile_subscription_plans_service_id
+        FOREIGN KEY (service_id) REFERENCES profile_subscription_services(service_id);
+    END IF;
 END $$;
 
 -- Additional indexes for performance
@@ -384,4 +421,15 @@ CREATE INDEX IF NOT EXISTS idx_profile_subscriptions_service_id ON profile_subsc
 CREATE INDEX IF NOT EXISTS idx_profile_subscriptions_subscriber ON profile_subscriptions(subscriber);
 CREATE INDEX IF NOT EXISTS idx_profile_subscriptions_expires_at ON profile_subscriptions(expires_at);
 CREATE INDEX IF NOT EXISTS idx_subscription_revenue_service_id ON subscription_revenue(service_id);
-CREATE INDEX IF NOT EXISTS idx_subscription_revenue_time ON subscription_revenue(time); 
+CREATE INDEX IF NOT EXISTS idx_subscription_revenue_time ON subscription_revenue(time);
+
+-- Backfill post_access_kind from legacy subscription columns (greenfield/localnet).
+-- Marketplace mydata backfill runs in 20260317120000_add_spt_reservations_fee_columns when posts.mydata_id exists.
+UPDATE posts
+SET post_access_kind = 'profile_subscription'
+WHERE post_access_kind IS NULL
+  AND (requires_subscription = true OR subscription_service_id IS NOT NULL);
+
+UPDATE posts
+SET post_access_kind = 'public'
+WHERE post_access_kind IS NULL; 

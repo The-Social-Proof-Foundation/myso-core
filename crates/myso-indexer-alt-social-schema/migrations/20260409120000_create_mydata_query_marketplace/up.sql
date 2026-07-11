@@ -3,6 +3,7 @@
 CREATE TABLE IF NOT EXISTS mydata_broad_pools (
     pool_id TEXT NOT NULL PRIMARY KEY,
     name TEXT NOT NULL,
+    platform_address TEXT,
     created_at_ms BIGINT NOT NULL,
     event_id TEXT NOT NULL,
     transaction_id TEXT NOT NULL,
@@ -110,6 +111,10 @@ CREATE TABLE IF NOT EXISTS mydata_snapshot_anchors (
     snapshot_id TEXT NOT NULL,
     buyer_address TEXT NOT NULL,
     price_paid BIGINT NOT NULL,
+    source_pool_id TEXT NOT NULL,
+    source_sub_pool_id TEXT NOT NULL,
+    platform_address TEXT,
+    initial_escrow BIGINT NOT NULL,
     created_at_ms BIGINT NOT NULL,
     event_id TEXT NOT NULL,
     transaction_id TEXT NOT NULL,
@@ -156,6 +161,8 @@ CREATE TABLE IF NOT EXISTS mydata_distribution_rounds (
     total_amount BIGINT NOT NULL,
     contributor_count BIGINT NOT NULL,
     merkle_root TEXT NOT NULL,
+    platform_address TEXT,
+    claim_deadline_ms BIGINT NOT NULL,
     published_at_ms BIGINT NOT NULL,
     event_id TEXT NOT NULL,
     transaction_id TEXT NOT NULL,
@@ -181,6 +188,36 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_mydata_distribution_rounds_event_id
 
 CREATE INDEX IF NOT EXISTS idx_mydata_distribution_rounds_time
     ON mydata_distribution_rounds (time DESC);
+
+CREATE TABLE IF NOT EXISTS mydata_snapshot_escrow (
+    snapshot_id TEXT NOT NULL PRIMARY KEY,
+    total_funded BIGINT NOT NULL,
+    total_claimed BIGINT NOT NULL DEFAULT 0,
+    remaining_amount BIGINT NOT NULL,
+    claim_deadline_ms BIGINT,
+    reclaimed_at_ms BIGINT,
+    status TEXT NOT NULL DEFAULT 'funding',
+    updated_at_ms BIGINT NOT NULL,
+    transaction_id TEXT NOT NULL,
+    time TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE OR REPLACE FUNCTION update_mydata_snapshot_escrow_time()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.time = to_timestamp(NEW.updated_at_ms / 1000.0);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS set_mydata_snapshot_escrow_time ON mydata_snapshot_escrow;
+CREATE TRIGGER set_mydata_snapshot_escrow_time
+BEFORE INSERT OR UPDATE ON mydata_snapshot_escrow
+FOR EACH ROW
+EXECUTE FUNCTION update_mydata_snapshot_escrow_time();
+
+CREATE INDEX IF NOT EXISTS idx_mydata_snapshot_escrow_status
+    ON mydata_snapshot_escrow (status, time DESC);
 
 CREATE TABLE IF NOT EXISTS mydata_claims (
     id SERIAL NOT NULL,
@@ -233,3 +270,4 @@ COMMENT ON TABLE mydata_snapshot_anchors IS 'Snapshot anchor records from Snapsh
 COMMENT ON TABLE mydata_merkle_roots IS 'Published Merkle roots from MerkleRootPublishedEvent';
 COMMENT ON TABLE mydata_distribution_rounds IS 'Contributor distribution rounds from DistributionRecordedEvent';
 COMMENT ON TABLE mydata_claims IS 'Claim payouts from ClaimExecutedEvent';
+COMMENT ON TABLE mydata_snapshot_escrow IS 'Current funded, claimed, remaining, and reclaimed state for each MyData snapshot';

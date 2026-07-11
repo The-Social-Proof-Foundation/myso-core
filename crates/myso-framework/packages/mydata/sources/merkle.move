@@ -67,6 +67,21 @@ module mydata::merkle {
         hash::blake2b256(&data)
     }
 
+    /// Construct a MyData marketplace leaf that also commits to the fee-routing platform.
+    /// `platform_id = none` identifies the non-platform settlement path.
+    public fun leaf_hash_with_platform(
+        addr: address,
+        amount: u64,
+        snapshot_id: vector<u8>,
+        platform_id: Option<address>,
+    ): vector<u8> {
+        let mut data = bcs::to_bytes(&addr);
+        vector::append(&mut data, bcs::to_bytes(&amount));
+        vector::append(&mut data, snapshot_id);
+        vector::append(&mut data, bcs::to_bytes(&platform_id));
+        hash::blake2b256(&data)
+    }
+
     #[test]
     fun test_merkle_verify_proof() {
         let leaf = hash::blake2b256(&b"leaf0");

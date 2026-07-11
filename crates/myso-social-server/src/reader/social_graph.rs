@@ -359,7 +359,7 @@ pub(crate) async fn get_profile_posts(
                poc_disputes_submitted,
                enable_spt, enable_spot, spot_id, spt_id, mydata_id,
                revenue_recipient, requires_subscription, subscription_service_id, subscription_price,
-               encrypted_content_hash, removed_from_platform, removed_by, metadata_json, promotion_id,
+               encrypted_content_hash, post_access_kind, removed_from_platform, removed_by, metadata_json, promotion_id,
                platform_id, permissions
         FROM (
             SELECT DISTINCT ON (post_id) *

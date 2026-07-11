@@ -762,12 +762,12 @@ module social_contracts::social_proof_of_truth_tests {
             let clock = test_scenario::take_shared<Clock>(&scen);
             spot::create_spot_record_for_post(
                 &oracle_admin_cap,
-                &cfg, 
+                &cfg,
                 &mut spot_registry,
-                &mut p, 
+                &mut p,
                 betting_options,
                 option::none(),
-                option::none(),
+                option::some(0),
                 &clock,
                 test_scenario::ctx(&mut scen)
             );

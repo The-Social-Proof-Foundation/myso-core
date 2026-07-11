@@ -23,7 +23,7 @@ use crate::api::types::memory::{MemoryAccount, SubAgent};
 use crate::api::types::mydata::MyDataRecord;
 use crate::api::types::organization::AgenticOrganization;
 use crate::api::types::platform::{PlatformMembershipPage, PlatformMembershipSummary};
-use crate::api::types::pnl::{ProfilePnLWindowGql, ProfilePnLWindowStats};
+use crate::api::types::pnl::{ProfilePnLWindow, ProfilePnLWindowStats};
 use crate::api::types::post::{Post, PostPage};
 use crate::api::types::profile_summary::ProfileSummary;
 use crate::api::types::spt::{SptHolding, SptReservationHolding};
@@ -810,16 +810,16 @@ impl Profile {
     async fn pnl(
         &self,
         ctx: &Context<'_>,
-        windows: Option<Vec<ProfilePnLWindowGql>>,
+        windows: Option<Vec<ProfilePnLWindow>>,
     ) -> Option<Vec<ProfilePnLWindowStats>> {
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
         let windows = windows.unwrap_or_else(|| {
             vec![
-                ProfilePnLWindowGql::Days7,
-                ProfilePnLWindowGql::Days30,
-                ProfilePnLWindowGql::All,
+                ProfilePnLWindow::Days7,
+                ProfilePnLWindow::Days30,
+                ProfilePnLWindow::All,
             ]
         });
         let windows_reader: Vec<myso_indexer_alt_social_reader::ProfilePnLWindow> =

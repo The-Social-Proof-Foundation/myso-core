@@ -100,6 +100,14 @@ DROP COLUMN IF EXISTS odds_base_bps;
 
 -- 2.7 mydata_config
 ALTER TABLE mydata_config
+DROP COLUMN IF EXISTS default_claim_window_ms,
+DROP COLUMN IF EXISTS max_paid_access_entries,
+DROP COLUMN IF EXISTS max_merkle_proof_depth,
+DROP COLUMN IF EXISTS max_pool_assignments,
+DROP COLUMN IF EXISTS max_payment_reference_bytes,
+DROP COLUMN IF EXISTS max_metadata_bytes,
+DROP COLUMN IF EXISTS max_tag_bytes,
+DROP COLUMN IF EXISTS max_encrypted_data_bytes,
 DROP COLUMN IF EXISTS non_platform_platform_to_treasury_bps,
 DROP COLUMN IF EXISTS non_platform_platform_to_creator_bps,
 DROP COLUMN IF EXISTS mydata_marketplace_ecosystem_fee_bps,

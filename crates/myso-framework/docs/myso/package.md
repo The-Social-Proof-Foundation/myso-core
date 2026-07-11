@@ -363,7 +363,7 @@ Requires BootstrapKey parameter for security - ensures only authorized callers c
 Bootstrap module handles BootstrapKey check before calling this
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../myso/package.md#myso_package_create_package_publishing_admin_cap_for_bootstrap">create_package_publishing_admin_cap_for_bootstrap</a>(_bootstrap_key: &<a href="../myso/bootstrap_key.md#myso_bootstrap_key_BootstrapKey">myso::bootstrap_key::BootstrapKey</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/package.md#myso_package_PackagePublishingAdminCap">myso::package::PackagePublishingAdminCap</a>
+<pre><code><b>public</b> <b>fun</b> <a href="../myso/package.md#myso_package_create_package_publishing_admin_cap_for_bootstrap">create_package_publishing_admin_cap_for_bootstrap</a>(key: &<a href="../myso/bootstrap_key.md#myso_bootstrap_key_BootstrapKey">myso::bootstrap_key::BootstrapKey</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/package.md#myso_package_PackagePublishingAdminCap">myso::package::PackagePublishingAdminCap</a>
 </code></pre>
 
 
@@ -373,9 +373,10 @@ Bootstrap module handles BootstrapKey check before calling this
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../myso/package.md#myso_package_create_package_publishing_admin_cap_for_bootstrap">create_package_publishing_admin_cap_for_bootstrap</a>(
-    _bootstrap_key: &BootstrapKey,
+    key: &BootstrapKey,
     ctx: &<b>mut</b> TxContext
 ): <a href="../myso/package.md#myso_package_PackagePublishingAdminCap">PackagePublishingAdminCap</a> {
+    <a href="../myso/bootstrap_key.md#myso_bootstrap_key_assert_not_used">bootstrap_key::assert_not_used</a>(key);
     <a href="../myso/package.md#myso_package_PackagePublishingAdminCap">PackagePublishingAdminCap</a> {
         id: <a href="../myso/object.md#myso_object_new">object::new</a>(ctx)
     }

@@ -2,6 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+pub(crate) mod access;
 pub(crate) mod address;
 pub(crate) mod ai_credit;
 pub(crate) mod available_range;

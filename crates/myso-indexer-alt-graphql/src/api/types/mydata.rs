@@ -7,16 +7,18 @@ use std::sync::Arc;
 use async_graphql::Context;
 use async_graphql::Object;
 use myso_indexer_alt_social_reader::SocialPgReader;
+use myso_indexer_alt_social_reader::resolve_mydata_access_configuration_kind;
 use myso_indexer_alt_social_schema::models::{
     MyDataAccessAnalyticsRow, MyDataAccessLogRow, MyDataBroadPoolRow, MyDataClaimRow,
     MyDataDailyRevenueRow, MyDataDistributionRoundRow, MyDataListingSubPoolRow,
     MyDataMerkleRootRow, MyDataPurchaseRow, MyDataRecordRow, MyDataRevenueRow,
-    MyDataSnapshotAnchorRow, MyDataStatsRow, MyDataSubPoolRow, MyDataSubscriptionRow,
+    MyDataSnapshotAnchorRow, MyDataSnapshotEscrowRow, MyDataStatsRow, MyDataSubPoolRow, MyDataSubscriptionRow,
 };
 
 use crate::api::resolve_profile::resolve_profile_summary;
 use crate::api::scalars::date_time::DateTime;
 use crate::api::scalars::myso_address::MySoAddress;
+use crate::api::types::access::MyDataAccessConfigurationKind;
 use crate::api::types::platform::{Platform, resolve_platform_by_id};
 use crate::api::types::profile_summary::ProfileSummary;
 
@@ -47,6 +49,16 @@ impl MyDataRecord {
     /// Unique MyData record identifier.
     async fn mydata_id(&self) -> &str {
         &self.inner.mydata_id
+    }
+
+    /// Mutually exclusive access configuration for this MyData listing.
+    async fn access_configuration(&self) -> MyDataAccessConfigurationKind {
+        resolve_mydata_access_configuration_kind(
+            self.inner.access_configuration_kind.as_deref(),
+            self.inner.one_time_price,
+            self.inner.subscription_price,
+        )
+        .into()
     }
 
     /// Owner address.
@@ -685,6 +697,10 @@ impl MyDataBroadPool {
         &self.inner.name
     }
 
+    async fn platform_id(&self) -> Option<MySoAddress> {
+        self.inner.platform_address.as_ref().and_then(|a| MySoAddress::from_str(a).ok())
+    }
+
     async fn created_at_ms(&self) -> i64 {
         self.inner.created_at_ms
     }
@@ -816,6 +832,13 @@ impl MyDataSnapshotAnchor {
         self.inner.price_paid
     }
 
+    async fn source_pool_id(&self) -> &str { &self.inner.source_pool_id }
+    async fn source_sub_pool_id(&self) -> &str { &self.inner.source_sub_pool_id }
+    async fn platform_id(&self) -> Option<MySoAddress> {
+        self.inner.platform_address.as_ref().and_then(|a| MySoAddress::from_str(a).ok())
+    }
+    async fn initial_escrow(&self) -> i64 { self.inner.initial_escrow }
+
     async fn created_at_ms(&self) -> i64 {
         self.inner.created_at_ms
     }
@@ -870,6 +893,12 @@ impl MyDataDistributionRound {
         &self.inner.merkle_root
     }
 
+    async fn platform_id(&self) -> Option<MySoAddress> {
+        self.inner.platform_address.as_ref().and_then(|a| MySoAddress::from_str(a).ok())
+    }
+
+    async fn claim_deadline_ms(&self) -> i64 { self.inner.claim_deadline_ms }
+
     async fn published_at_ms(&self) -> i64 {
         self.inner.published_at_ms
     }
@@ -923,6 +952,29 @@ impl MyDataMerkleRoot {
     async fn time(&self) -> DateTime {
         DateTime::from_chrono(self.inner.time)
     }
+}
+
+#[derive(Clone)]
+pub(crate) struct MyDataSnapshotEscrow {
+    inner: MyDataSnapshotEscrowRow,
+}
+
+impl MyDataSnapshotEscrow {
+    pub(crate) fn from_row(inner: MyDataSnapshotEscrowRow) -> Self { Self { inner } }
+}
+
+#[Object]
+impl MyDataSnapshotEscrow {
+    async fn snapshot_id(&self) -> &str { &self.inner.snapshot_id }
+    async fn total_funded(&self) -> i64 { self.inner.total_funded }
+    async fn total_claimed(&self) -> i64 { self.inner.total_claimed }
+    async fn remaining_amount(&self) -> i64 { self.inner.remaining_amount }
+    async fn claim_deadline_ms(&self) -> Option<i64> { self.inner.claim_deadline_ms }
+    async fn reclaimed_at_ms(&self) -> Option<i64> { self.inner.reclaimed_at_ms }
+    async fn status(&self) -> &str { &self.inner.status }
+    async fn updated_at_ms(&self) -> i64 { self.inner.updated_at_ms }
+    async fn transaction_id(&self) -> &str { &self.inner.transaction_id }
+    async fn time(&self) -> DateTime { DateTime::from_chrono(self.inner.time) }
 }
 
 #[derive(Clone)]

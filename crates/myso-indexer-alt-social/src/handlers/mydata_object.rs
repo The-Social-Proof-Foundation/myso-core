@@ -9,13 +9,13 @@ use myso_indexer_alt_framework::types::full_checkpoint_content::{
     Checkpoint, ExecutedTransaction, ObjectSet,
 };
 use myso_indexer_alt_social_schema::models::NewMyDataData;
-use myso_types::collection_types::Table;
 use myso_types::id::UID;
 use myso_types::storage::ObjectKey;
 use myso_types::storage::WriteKind;
 use myso_types::MYSO_SOCIAL_ADDRESS;
 use serde::{Deserialize, Serialize};
 
+use super::access::{self, BcsAccessConfiguration};
 use super::mydata::{new_mydata_registry_row, u64_to_db_i64};
 use super::post_mydata::compute_encrypted_content_hash;
 use crate::handlers::mydata_handler::MyDataRow;
@@ -35,11 +35,7 @@ pub(crate) struct BcsMyData {
     last_updated: u64,
     pub(crate) encrypted_data: Vec<u8>,
     _encryption_id: Vec<u8>,
-    pub(crate) one_time_price: Option<u64>,
-    pub(crate) subscription_price: Option<u64>,
-    subscription_duration_days: u64,
-    _purchasers: Table,
-    _subscribers: Table,
+    access: BcsAccessConfiguration,
     geographic_region: Option<String>,
     data_quality: Option<String>,
     sample_size: Option<u64>,
@@ -57,11 +53,23 @@ pub(crate) fn parse_mydata_object_contents(contents: &[u8]) -> Result<BcsMyData,
     bcs::from_bytes(contents)
 }
 
+pub(crate) fn mydata_subscription_price_from_bcs(mydata: &BcsMyData) -> Option<u64> {
+    let (_, subscription_price, _) = access::mydata_deprecated_prices_from_bcs(&mydata.access);
+    subscription_price
+}
+
+pub(crate) fn mydata_one_time_price_from_bcs(mydata: &BcsMyData) -> Option<u64> {
+    let (one_time_price, _, _) = access::mydata_deprecated_prices_from_bcs(&mydata.access);
+    one_time_price
+}
+
 pub(crate) fn bcs_mydata_to_new_row(
     mydata: &BcsMyData,
     mydata_id: String,
     transaction_id: String,
 ) -> NewMyDataData {
+    let (one_time_price, subscription_price, subscription_duration_days) =
+        access::mydata_deprecated_prices_from_bcs(&mydata.access);
     NewMyDataData {
         mydata_id,
         owner: addr_to_string(&mydata.owner),
@@ -72,9 +80,12 @@ pub(crate) fn bcs_mydata_to_new_row(
         timestamp_end: mydata.timestamp_end.map(u64_to_db_i64),
         created_at: u64_to_db_i64(mydata.created_at),
         last_updated: u64_to_db_i64(mydata.last_updated),
-        one_time_price: mydata.one_time_price.map(u64_to_db_i64),
-        subscription_price: mydata.subscription_price.map(u64_to_db_i64),
-        subscription_duration_days: u64_to_db_i64(mydata.subscription_duration_days),
+        one_time_price: one_time_price.map(u64_to_db_i64),
+        subscription_price: subscription_price.map(u64_to_db_i64),
+        access_configuration_kind: Some(
+            access::mydata_access_kind_from_bcs(&mydata.access).to_string(),
+        ),
+        subscription_duration_days: u64_to_db_i64(subscription_duration_days),
         geographic_region: mydata.geographic_region.clone(),
         data_quality: mydata.data_quality.clone(),
         sample_size: mydata.sample_size.map(u64_to_db_i64),
@@ -158,6 +169,8 @@ pub(crate) fn process_mydata_objects_from_checkpoint(checkpoint: &Checkpoint) ->
 mod tests {
     use super::*;
     use myso_types::base_types::ObjectID;
+    use myso_types::collection_types::Table;
+
     fn sample_bcs_mydata() -> BcsMyData {
         BcsMyData {
             _id: UID::new(ObjectID::random()),
@@ -171,11 +184,11 @@ mod tests {
             last_updated: 1_000,
             encrypted_data: vec![1, 2, 3],
             _encryption_id: vec![4, 5, 6],
-            one_time_price: Some(1_000_000_000),
-            subscription_price: Some(5_000_000_000),
-            subscription_duration_days: 30,
-            _purchasers: Table::default(),
-            _subscribers: Table::default(),
+            access: BcsAccessConfiguration::MarketplaceRecurring {
+                price: 5_000_000_000,
+                duration_days: 30,
+                subscribers: Table::default(),
+            },
             geographic_region: Some("US".to_string()),
             data_quality: Some("high".to_string()),
             sample_size: None,
@@ -196,7 +209,9 @@ mod tests {
         assert_eq!(decoded.geographic_region, Some("US".to_string()));
         assert_eq!(decoded.data_quality, Some("high".to_string()));
         assert_eq!(decoded.collection_method, Some("cli".to_string()));
-        assert_eq!(decoded.subscription_duration_days, 30);
+        let (_, _, subscription_duration_days) =
+            access::mydata_deprecated_prices_from_bcs(&decoded.access);
+        assert_eq!(subscription_duration_days, 30);
     }
 
     #[test]

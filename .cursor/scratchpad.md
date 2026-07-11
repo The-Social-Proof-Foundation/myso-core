@@ -1,4 +1,13 @@
-# Dynamic Ecosystem Configs E2E — Scratchpad
+
+## Subscription + MyData Access Hardening (2026-07-10)
+
+Completed per `.cursor/plans/subscription_access_hardening_720381aa.plan.md`:
+- Move: `PostAccess` on `Post`, `AccessConfiguration` on `MyData`, gate removed, approve paths hardened
+- Indexer/GraphQL: `post_access_kind`, `access_configuration_kind`, `Post.access` / `MyData.accessConfiguration`
+- E2E: menu 14 marketplace one-time flow; profile PTB passes `post_service_id` + `post_linked_mydata_id`
+- Docs: `UPDATE=1 build_system_packages` refreshed `published_api.txt` + `post.md`/`mydata.md`
+- Migrations: backfill SQL in existing `20250620000001` and `20250615000000` migration files
+
 
 ## Background and Motivation
 Vertical-slice, production-grade rollout of all dynamic config fields and five new config
@@ -454,4 +463,33 @@ source resolution → indexed result → optional insurance claim`.
 - Existing SPoT evidence types already provide the correct persistence boundary, so no
   generic HTTP/provenance crate is needed.
 - Quorum conflict must lower confidence (DAO_REQUIRED) rather than picking a silent winner.
+
+---
+
+## Subscription E2E decrypt ArityMismatch fix (2026-07-10)
+
+### Root cause
+`mydata_resolve_mydata()` preferred `target/release/mydata` over `target/debug/mydata`.
+`mydata_ensure_fresh_cli()` only rebuilds debug (`cargo build -p mydata-cli`), so an older
+release binary still emitted a 7-arg PTB while on-chain `mydata_approve_profile_subscription`
+expects 9 args → key-server `ArityMismatch in command 1`.
+
+### Fix (scripts only)
+- `scripts/lib/mydata-test-common.sh`: staleness check + export `MYDATA` on debug binary;
+  resolve order debug → release.
+- `scripts/lib/subscription-test-common.sh`: clearer ArityMismatch hint.
+
+### Verified
+Menu 12 (`flow_subscriber_decrypt_encrypted_post`) decrypts successfully; non-subscriber
+negative still fails as expected.
+
+### Menus 11–14 PTB fixes (2026-07-10)
+- **Menu 14 post create:** `create_marketplace_one_time_post` missing `enable_spt` / `enable_spot`
+  (`none none`) — 19 → 21 args.
+- **Menu 13 policy dry-run:** `ptb_pure_id` now emits `@0x…` so `object::ID` pure args parse correctly
+  in PTB (bare hex was rejected).
+- **Menu 14 purchase:** `purchase_one_time` now passes `MEMORY_CONFIG_ID` + `ECOSYSTEM_TREASURY_ID`
+  (7 args total).
+
+All menus 11–14 pass in one interactive session run.
 

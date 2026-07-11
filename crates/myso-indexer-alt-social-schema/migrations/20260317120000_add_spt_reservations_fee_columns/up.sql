@@ -43,6 +43,12 @@ FROM mydata_data d
 WHERE p.mydata_id = d.mydata_id
   AND p.mydata_id IS NOT NULL;
 
+UPDATE posts
+SET post_access_kind = 'marketplace_one_time'
+WHERE post_access_kind IS NULL
+  AND mydata_id IS NOT NULL
+  AND COALESCE(requires_subscription, false) = false;
+
 -- PostCreatedEvent: platform address and permission bitfield (indexed by PostsHandler).
 ALTER TABLE posts ADD COLUMN IF NOT EXISTS platform_id TEXT;
 ALTER TABLE posts ADD COLUMN IF NOT EXISTS permissions SMALLINT;

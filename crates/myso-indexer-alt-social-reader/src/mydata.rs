@@ -10,7 +10,7 @@ use myso_indexer_alt_social_schema::models::{
     MyDataAccessAnalyticsRow, MyDataAccessLogRow, MyDataBroadPoolRow, MyDataClaimRow,
     MyDataDailyRevenueRow, MyDataDistributionRoundRow, MyDataListingSubPoolRow,
     MyDataMerkleRootRow, MyDataPurchaseRow, MyDataRecordRow, MyDataRevenueRow,
-    MyDataSnapshotAnchorRow, MyDataStatsRow, MyDataSubPoolRow, MyDataSubscriptionRow,
+    MyDataSnapshotAnchorRow, MyDataSnapshotEscrowRow, MyDataStatsRow, MyDataSubPoolRow, MyDataSubscriptionRow,
 };
 use myso_pg_db::Connection;
 
@@ -30,6 +30,22 @@ pub struct MyDataConfigRow {
     pub max_free_access_grants: i64,
     #[diesel(sql_type = BigInt)]
     pub max_encryption_id_bytes: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_encrypted_data_bytes: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_tag_bytes: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_metadata_bytes: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_payment_reference_bytes: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_pool_assignments: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_merkle_proof_depth: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_paid_access_entries: i64,
+    #[diesel(sql_type = BigInt)]
+    pub default_claim_window_ms: i64,
     #[diesel(sql_type = BigInt)]
     pub p2p_platform_fee_bps: i64,
     #[diesel(sql_type = BigInt)]
@@ -63,7 +79,8 @@ pub(crate) async fn get_mydata_record(
     let query = "
         SELECT mydata_id, owner, media_type, tags, platform_id, timestamp_start, timestamp_end,
                created_at, last_updated, one_time_price, subscription_price, subscription_duration_days,
-               geographic_region, data_quality, sample_size, collection_method, is_updating, update_frequency
+               geographic_region, data_quality, sample_size, collection_method, is_updating, update_frequency,
+               access_configuration_kind
         FROM mydata_data
         WHERE mydata_id = $1
     ";
@@ -91,7 +108,8 @@ pub(crate) async fn list_mydata_records_by_owner(
     let query = "
         SELECT mydata_id, owner, media_type, tags, platform_id, timestamp_start, timestamp_end,
                created_at, last_updated, one_time_price, subscription_price, subscription_duration_days,
-               geographic_region, data_quality, sample_size, collection_method, is_updating, update_frequency
+               geographic_region, data_quality, sample_size, collection_method, is_updating, update_frequency,
+               access_configuration_kind
         FROM mydata_data
         WHERE owner = $1
         ORDER BY time DESC
@@ -149,7 +167,10 @@ pub(crate) async fn get_mydata_config(
 
     let query = "
         SELECT updated_by, marketplace_enabled, max_tags, max_subscription_days, max_free_access_grants,
-               max_encryption_id_bytes, p2p_platform_fee_bps, p2p_ecosystem_fee_bps,
+               max_encryption_id_bytes, max_encrypted_data_bytes, max_tag_bytes, max_metadata_bytes,
+               max_payment_reference_bytes, max_pool_assignments, max_merkle_proof_depth,
+               max_paid_access_entries, default_claim_window_ms,
+               p2p_platform_fee_bps, p2p_ecosystem_fee_bps,
                mydata_marketplace_platform_fee_bps, mydata_marketplace_ecosystem_fee_bps,
                non_platform_platform_to_creator_bps, non_platform_platform_to_treasury_bps,
                version, updated_at, time, transaction_id
@@ -190,7 +211,8 @@ pub(crate) async fn list_mydata(
         "
         SELECT mydata_id, owner, media_type, tags, platform_id, timestamp_start, timestamp_end,
                created_at, last_updated, one_time_price, subscription_price, subscription_duration_days,
-               geographic_region, data_quality, sample_size, collection_method, is_updating, update_frequency
+               geographic_region, data_quality, sample_size, collection_method, is_updating, update_frequency,
+               access_configuration_kind
         FROM mydata_data
         WHERE ($1::text IS NULL OR owner = $1)
           AND ($2::text IS NULL OR media_type = $2)
@@ -227,7 +249,8 @@ pub(crate) async fn get_popular_mydata(
         SELECT
             d.mydata_id, d.owner, d.media_type, d.tags, d.platform_id, d.timestamp_start, d.timestamp_end,
             d.created_at, d.last_updated, d.one_time_price, d.subscription_price, d.subscription_duration_days,
-            d.geographic_region, d.data_quality, d.sample_size, d.collection_method, d.is_updating, d.update_frequency
+            d.geographic_region, d.data_quality, d.sample_size, d.collection_method, d.is_updating, d.update_frequency,
+            access_configuration_kind
         FROM mydata_popular_30_days p
         INNER JOIN mydata_data d ON d.mydata_id = p.mydata_id
         ORDER BY p.unique_purchasers DESC, p.total_revenue DESC NULLS LAST, d.created_at DESC
@@ -462,7 +485,7 @@ pub(crate) async fn list_mydata_broad_pools(
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
     let query = "
-        SELECT pool_id, name, created_at_ms, event_id, transaction_id, time
+        SELECT pool_id, name, platform_address, created_at_ms, event_id, transaction_id, time
         FROM mydata_broad_pools
         ORDER BY created_at_ms DESC
         LIMIT $1 OFFSET $2
@@ -563,7 +586,8 @@ pub(crate) async fn get_mydata_snapshot_anchor(
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
     let query = "
-        SELECT id, snapshot_id, buyer_address, price_paid, created_at_ms, event_id, transaction_id, time,
+        SELECT id, snapshot_id, buyer_address, price_paid, source_pool_id, source_sub_pool_id,
+               platform_address, initial_escrow, created_at_ms, event_id, transaction_id, time,
                manifest_hash, payment_reference
         FROM mydata_snapshot_anchors
         WHERE snapshot_id = $1
@@ -588,7 +612,8 @@ pub(crate) async fn list_mydata_snapshot_anchors(
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
     let query = "
-        SELECT id, snapshot_id, buyer_address, price_paid, created_at_ms, event_id, transaction_id, time,
+        SELECT id, snapshot_id, buyer_address, price_paid, source_pool_id, source_sub_pool_id,
+               platform_address, initial_escrow, created_at_ms, event_id, transaction_id, time,
                manifest_hash, payment_reference
         FROM mydata_snapshot_anchors
         ORDER BY time DESC
@@ -611,7 +636,8 @@ pub(crate) async fn get_mydata_distribution_round(
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
     let query = "
-        SELECT snapshot_id, total_amount, contributor_count, merkle_root, published_at_ms,
+        SELECT snapshot_id, total_amount, contributor_count, merkle_root, platform_address,
+               claim_deadline_ms, published_at_ms,
                event_id, transaction_id, time
         FROM mydata_distribution_rounds
         WHERE snapshot_id = $1
@@ -634,7 +660,8 @@ pub(crate) async fn list_mydata_distribution_rounds(
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
     let query = "
-        SELECT snapshot_id, total_amount, contributor_count, merkle_root, published_at_ms,
+        SELECT snapshot_id, total_amount, contributor_count, merkle_root, platform_address,
+               claim_deadline_ms, published_at_ms,
                event_id, transaction_id, time
         FROM mydata_distribution_rounds
         ORDER BY time DESC
@@ -664,6 +691,28 @@ pub(crate) async fn get_mydata_merkle_root(
     let result = diesel::sql_query(query)
         .bind::<Text, _>(snapshot_id)
         .get_result::<MyDataMerkleRootRow>(conn)
+        .await
+        .optional()?;
+    metrics.requests_succeeded.inc();
+    Ok(result)
+}
+
+pub(crate) async fn get_mydata_snapshot_escrow(
+    conn: &mut Connection<'_>,
+    snapshot_id: &str,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Option<MyDataSnapshotEscrowRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    let query = "
+        SELECT snapshot_id, total_funded, total_claimed, remaining_amount, claim_deadline_ms,
+               reclaimed_at_ms, status, updated_at_ms, transaction_id, time
+        FROM mydata_snapshot_escrow
+        WHERE snapshot_id = $1
+    ";
+    let result = diesel::sql_query(query)
+        .bind::<Text, _>(snapshot_id)
+        .get_result::<MyDataSnapshotEscrowRow>(conn)
         .await
         .optional()?;
     metrics.requests_succeeded.inc();

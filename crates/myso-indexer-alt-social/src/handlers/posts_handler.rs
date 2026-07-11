@@ -31,7 +31,7 @@ use myso_indexer_alt_social_schema::models::{
 use myso_indexer_alt_social_schema::schema::{
     comments, poc_analysis_results, poc_badges, poc_configuration, poc_creator_identity_links,
     poc_dispute_votes, poc_disputes, poc_revenue_redirections, poc_username_beneficiary_events,
-    poc_vault_claims, poc_vault_deposits, post_config, posts, profile_subscription_services,
+    poc_vault_claims, poc_vault_deposits, post_config, posts,
     promoted_posts, promotion_budget_events, promotion_status_events, promotion_views,
     reaction_counts, reactions, reposts, subscription_access_logs, tips,
 };
@@ -178,11 +178,6 @@ pub enum PostRow {
         withdrawn_amount: i64,
         timestamp: i64,
         transaction_id: String,
-    },
-    PostSubscriptionGateUpdate {
-        post_id: String,
-        service_id: Option<String>,
-        enabled: bool,
     },
     SubscriptionAccessLog(NewSubscriptionAccessLog),
     UnifiedRevenue(NewUnifiedRevenue),
@@ -396,15 +391,6 @@ impl PostRow {
                 object_id,
                 new_owner,
                 is_post,
-            }),
-            SocialEventRow::PostSubscriptionGateUpdate {
-                post_id,
-                service_id,
-                enabled,
-            } => Some(PostRow::PostSubscriptionGateUpdate {
-                post_id,
-                service_id,
-                enabled,
             }),
             SocialEventRow::SubscriptionAccessLog(log) => Some(PostRow::SubscriptionAccessLog(log)),
             SocialEventRow::PostTransfer(t) => Some(PostRow::PostTransfer(t)),
@@ -988,6 +974,7 @@ impl Handler for PostsHandler {
                     )
                     .await?;
                     post_mydata::enrich_post_paywall_from_db(&mut post, conn).await?;
+                    post_mydata::enrich_post_subscription_price_from_db(&mut post, conn).await?;
                     total += diesel::insert_into(posts::table)
                         .values(&post)
                         .on_conflict((posts::post_id, posts::time))
@@ -1311,41 +1298,6 @@ impl Handler for PostsHandler {
                             .set((
                                 comments::removed_from_platform.eq(*removed),
                                 comments::removed_by.eq(Some(moderated_by.clone())),
-                            ))
-                            .execute(conn)
-                            .await;
-                    }
-                }
-                PostRow::PostSubscriptionGateUpdate {
-                    post_id,
-                    service_id,
-                    enabled,
-                } => {
-                    if *enabled {
-                        if let Some(sid) = service_id {
-                            let monthly_fee: Option<i64> = profile_subscription_services::table
-                                .filter(profile_subscription_services::service_id.eq(sid))
-                                .select(profile_subscription_services::monthly_fee)
-                                .first(conn)
-                                .await
-                                .ok();
-                            let _ = diesel::update(posts::table)
-                                .filter(posts::post_id.eq(post_id))
-                                .set((
-                                    posts::subscription_service_id.eq(Some(sid.clone())),
-                                    posts::requires_subscription.eq(Some(true)),
-                                    posts::subscription_price.eq(monthly_fee),
-                                ))
-                                .execute(conn)
-                                .await;
-                        }
-                    } else {
-                        let _ = diesel::update(posts::table)
-                            .filter(posts::post_id.eq(post_id))
-                            .set((
-                                posts::subscription_service_id.eq(None::<String>),
-                                posts::requires_subscription.eq(Some(false)),
-                                posts::subscription_price.eq(None::<i64>),
                             ))
                             .execute(conn)
                             .await;
@@ -2516,6 +2468,8 @@ mod poc_analysis_result_commit_tests {
             requires_subscription: None,
             subscription_service_id: None,
             subscription_price: None,
+            subscription_min_tier_level: None,
+            post_access_kind: Some("public".to_string()),
             encrypted_content_hash: None,
             promotion_id: None,
             enable_spt: false,
@@ -2525,7 +2479,6 @@ mod poc_analysis_result_commit_tests {
             spt_id: None,
             platform_id: None,
             permissions: None,
-            actor_address: None,
             sub_agent_id: None,
             action_identity_class: None,
             organization_id: None,

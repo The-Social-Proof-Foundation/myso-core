@@ -8,11 +8,14 @@
 //! **cash-flow**, not FIFO realized or mark-to-market P&L.
 
 use async_graphql::{Enum, SimpleObject};
+use myso_indexer_alt_social_reader::{
+    ProfilePnLWindow as DbProfilePnLWindow, ProfilePnLWindowResult,
+};
 
 /// Time window for P&L aggregation (cutoff from database `NOW()`).
 #[derive(Enum, Copy, Clone, Eq, PartialEq)]
 #[graphql(rename_items = "SCREAMING_SNAKE_CASE")]
-pub(crate) enum ProfilePnLWindowGql {
+pub(crate) enum ProfilePnLWindow {
     Days7,
     Days30,
     Days180,
@@ -20,14 +23,14 @@ pub(crate) enum ProfilePnLWindowGql {
     All,
 }
 
-impl From<ProfilePnLWindowGql> for myso_indexer_alt_social_reader::ProfilePnLWindow {
-    fn from(w: ProfilePnLWindowGql) -> Self {
+impl From<ProfilePnLWindow> for DbProfilePnLWindow {
+    fn from(w: ProfilePnLWindow) -> Self {
         match w {
-            ProfilePnLWindowGql::Days7 => Self::Days7,
-            ProfilePnLWindowGql::Days30 => Self::Days30,
-            ProfilePnLWindowGql::Days180 => Self::Days180,
-            ProfilePnLWindowGql::Days365 => Self::Days365,
-            ProfilePnLWindowGql::All => Self::All,
+            ProfilePnLWindow::Days7 => Self::Days7,
+            ProfilePnLWindow::Days30 => Self::Days30,
+            ProfilePnLWindow::Days180 => Self::Days180,
+            ProfilePnLWindow::Days365 => Self::Days365,
+            ProfilePnLWindow::All => Self::All,
         }
     }
 }
@@ -35,7 +38,7 @@ impl From<ProfilePnLWindowGql> for myso_indexer_alt_social_reader::ProfilePnLWin
 /// Per-window cash-flow breakdown for the profile owner wallet.
 #[derive(SimpleObject, Clone)]
 pub(crate) struct ProfilePnLWindowStats {
-    pub window: ProfilePnLWindowGql,
+    pub window: ProfilePnLWindow,
     pub swap_net_myso: i64,
     pub reservation_net_myso: i64,
     pub spt_creator_fees_myso: i64,
@@ -50,18 +53,14 @@ pub(crate) struct ProfilePnLWindowStats {
     pub net_cash_flow_myso: i64,
 }
 
-impl From<myso_indexer_alt_social_reader::ProfilePnLWindowResult> for ProfilePnLWindowStats {
-    fn from(r: myso_indexer_alt_social_reader::ProfilePnLWindowResult) -> Self {
+impl From<ProfilePnLWindowResult> for ProfilePnLWindowStats {
+    fn from(r: ProfilePnLWindowResult) -> Self {
         let window = match r.window {
-            myso_indexer_alt_social_reader::ProfilePnLWindow::Days7 => ProfilePnLWindowGql::Days7,
-            myso_indexer_alt_social_reader::ProfilePnLWindow::Days30 => ProfilePnLWindowGql::Days30,
-            myso_indexer_alt_social_reader::ProfilePnLWindow::Days180 => {
-                ProfilePnLWindowGql::Days180
-            }
-            myso_indexer_alt_social_reader::ProfilePnLWindow::Days365 => {
-                ProfilePnLWindowGql::Days365
-            }
-            myso_indexer_alt_social_reader::ProfilePnLWindow::All => ProfilePnLWindowGql::All,
+            DbProfilePnLWindow::Days7 => ProfilePnLWindow::Days7,
+            DbProfilePnLWindow::Days30 => ProfilePnLWindow::Days30,
+            DbProfilePnLWindow::Days180 => ProfilePnLWindow::Days180,
+            DbProfilePnLWindow::Days365 => ProfilePnLWindow::Days365,
+            DbProfilePnLWindow::All => ProfilePnLWindow::All,
         };
         Self {
             window,

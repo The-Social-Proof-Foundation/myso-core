@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS mydata_data (
     last_updated BIGINT NOT NULL,
     one_time_price BIGINT,
     subscription_price BIGINT,
+    access_configuration_kind TEXT,
     subscription_duration_days BIGINT NOT NULL DEFAULT 30,
     geographic_region TEXT,
     data_quality TEXT CHECK (data_quality IN ('high', 'medium', 'low')),
@@ -576,3 +577,18 @@ COMMENT ON TABLE mydata_revenue IS 'Revenue distribution and tracking (Timescale
 COMMENT ON TABLE mydata_access_logs IS 'Access pattern analytics and logs (TimescaleDB)';
 COMMENT ON VIEW mydata_popular_30_days IS 'MyData listings ranked by 30-day purchase activity';
 COMMENT ON VIEW mydata_creator_revenue_summary IS 'Per-creator MyData revenue summary across all listings';
+
+-- Backfill access_configuration_kind from legacy pricing columns (greenfield/localnet).
+UPDATE mydata_data
+SET access_configuration_kind = 'marketplace_one_time'
+WHERE access_configuration_kind IS NULL
+  AND one_time_price IS NOT NULL;
+
+UPDATE mydata_data
+SET access_configuration_kind = 'marketplace_recurring'
+WHERE access_configuration_kind IS NULL
+  AND subscription_price IS NOT NULL;
+
+UPDATE mydata_data
+SET access_configuration_kind = 'profile_subscription'
+WHERE access_configuration_kind IS NULL;

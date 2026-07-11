@@ -11,6 +11,7 @@ use async_trait::async_trait;
 use diesel::pg::upsert::excluded;
 use diesel::ExpressionMethods;
 use diesel::QueryDsl;
+use diesel::sql_types::{BigInt, Text};
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_framework::pipeline::Processor;
 use myso_indexer_alt_framework::postgres::handler::Handler;
@@ -82,6 +83,11 @@ pub enum MyDataRow {
     MyDataDistributionRound(NewMyDataDistributionRound),
     MyDataMerkleRoot(NewMyDataMerkleRoot),
     MyDataClaim(NewMyDataClaim),
+    MyDataEscrowCreated { snapshot_id: String, amount: i64, updated_at_ms: i64, transaction_id: String },
+    MyDataEscrowFunded { snapshot_id: String, amount: i64, total_funded: i64, updated_at_ms: i64, transaction_id: String },
+    MyDataEscrowPublished { snapshot_id: String, claim_deadline_ms: i64, updated_at_ms: i64, transaction_id: String },
+    MyDataEscrowClaimed { snapshot_id: String, amount: i64, updated_at_ms: i64, transaction_id: String },
+    MyDataEscrowReclaimed { snapshot_id: String, amount: i64, reclaimed_at_ms: i64, transaction_id: String },
 }
 
 impl MyDataRow {
@@ -154,13 +160,23 @@ impl MyDataRow {
                 Some(MyDataRow::MyDataMerkleRoot(m))
             }
             crate::handlers::SocialEventRow::MyDataClaim(c) => Some(MyDataRow::MyDataClaim(c)),
+            crate::handlers::SocialEventRow::MyDataEscrowCreated { snapshot_id, amount, updated_at_ms, transaction_id } =>
+                Some(MyDataRow::MyDataEscrowCreated { snapshot_id, amount, updated_at_ms, transaction_id }),
+            crate::handlers::SocialEventRow::MyDataEscrowFunded { snapshot_id, amount, total_funded, updated_at_ms, transaction_id } =>
+                Some(MyDataRow::MyDataEscrowFunded { snapshot_id, amount, total_funded, updated_at_ms, transaction_id }),
+            crate::handlers::SocialEventRow::MyDataEscrowPublished { snapshot_id, claim_deadline_ms, updated_at_ms, transaction_id } =>
+                Some(MyDataRow::MyDataEscrowPublished { snapshot_id, claim_deadline_ms, updated_at_ms, transaction_id }),
+            crate::handlers::SocialEventRow::MyDataEscrowClaimed { snapshot_id, amount, updated_at_ms, transaction_id } =>
+                Some(MyDataRow::MyDataEscrowClaimed { snapshot_id, amount, updated_at_ms, transaction_id }),
+            crate::handlers::SocialEventRow::MyDataEscrowReclaimed { snapshot_id, amount, reclaimed_at_ms, transaction_id } =>
+                Some(MyDataRow::MyDataEscrowReclaimed { snapshot_id, amount, reclaimed_at_ms, transaction_id }),
             _ => None,
         }
     }
 }
 
 impl FieldCount for MyDataRow {
-    const FIELD_COUNT: usize = 21;
+    const FIELD_COUNT: usize = 26;
 }
 
 pub struct MyDataHandler;
@@ -260,6 +276,7 @@ impl Handler for MyDataHandler {
         for row in values {
             match row {
                 MyDataRow::MyDataData(d) => {
+                    let access_configuration_kind = d.access_configuration_kind.clone();
                     let owner = d.owner.clone();
                     let media_type = d.media_type.clone();
                     let tags = d.tags.clone();
@@ -295,6 +312,7 @@ impl Handler for MyDataHandler {
                             mydata_data::created_at.eq(created_at),
                             mydata_data::one_time_price.eq(one_time_price),
                             mydata_data::subscription_price.eq(subscription_price),
+                            mydata_data::access_configuration_kind.eq(access_configuration_kind),
                             mydata_data::subscription_duration_days.eq(subscription_duration_days),
                             mydata_data::geographic_region.eq(geographic_region),
                             mydata_data::data_quality.eq(data_quality),
@@ -499,6 +517,7 @@ impl Handler for MyDataHandler {
                         .do_update()
                         .set((
                             mydata_broad_pools::name.eq(excluded(mydata_broad_pools::name)),
+                            mydata_broad_pools::platform_address.eq(excluded(mydata_broad_pools::platform_address)),
                             mydata_broad_pools::created_at_ms
                                 .eq(excluded(mydata_broad_pools::created_at_ms)),
                             mydata_broad_pools::event_id.eq(excluded(mydata_broad_pools::event_id)),
@@ -561,6 +580,10 @@ impl Handler for MyDataHandler {
                                 .eq(excluded(mydata_distribution_rounds::contributor_count)),
                             mydata_distribution_rounds::merkle_root
                                 .eq(excluded(mydata_distribution_rounds::merkle_root)),
+                            mydata_distribution_rounds::platform_address
+                                .eq(excluded(mydata_distribution_rounds::platform_address)),
+                            mydata_distribution_rounds::claim_deadline_ms
+                                .eq(excluded(mydata_distribution_rounds::claim_deadline_ms)),
                             mydata_distribution_rounds::published_at_ms
                                 .eq(excluded(mydata_distribution_rounds::published_at_ms)),
                             mydata_distribution_rounds::event_id
@@ -616,6 +639,72 @@ impl Handler for MyDataHandler {
                         &transaction_id,
                     )
                     .await?;
+                }
+                MyDataRow::MyDataEscrowCreated { snapshot_id, amount, updated_at_ms, transaction_id } => {
+                    total += diesel::sql_query(
+                        "INSERT INTO mydata_snapshot_escrow
+                         (snapshot_id, total_funded, total_claimed, remaining_amount, claim_deadline_ms,
+                          reclaimed_at_ms, status, updated_at_ms, transaction_id)
+                         VALUES ($1, $2, 0, $2, NULL, NULL, 'funding', $3, $4)
+                         ON CONFLICT (snapshot_id) DO UPDATE SET
+                           total_funded = EXCLUDED.total_funded, total_claimed = 0,
+                           remaining_amount = EXCLUDED.remaining_amount, claim_deadline_ms = NULL,
+                           reclaimed_at_ms = NULL, status = 'funding',
+                           updated_at_ms = EXCLUDED.updated_at_ms, transaction_id = EXCLUDED.transaction_id"
+                    )
+                    .bind::<Text, _>(snapshot_id)
+                    .bind::<BigInt, _>(*amount)
+                    .bind::<BigInt, _>(*updated_at_ms)
+                    .bind::<Text, _>(transaction_id)
+                    .execute(conn).await?;
+                }
+                MyDataRow::MyDataEscrowFunded { snapshot_id, amount: _, total_funded, updated_at_ms, transaction_id } => {
+                    total += diesel::sql_query(
+                        "UPDATE mydata_snapshot_escrow SET total_funded = $2,
+                         remaining_amount = $2 - total_claimed, updated_at_ms = $3,
+                         transaction_id = $4 WHERE snapshot_id = $1"
+                    )
+                    .bind::<Text, _>(snapshot_id)
+                    .bind::<BigInt, _>(*total_funded)
+                    .bind::<BigInt, _>(*updated_at_ms)
+                    .bind::<Text, _>(transaction_id)
+                    .execute(conn).await?;
+                }
+                MyDataRow::MyDataEscrowPublished { snapshot_id, claim_deadline_ms, updated_at_ms, transaction_id } => {
+                    total += diesel::sql_query(
+                        "UPDATE mydata_snapshot_escrow SET claim_deadline_ms = $2, status = 'claiming',
+                         updated_at_ms = $3, transaction_id = $4 WHERE snapshot_id = $1"
+                    )
+                    .bind::<Text, _>(snapshot_id)
+                    .bind::<BigInt, _>(*claim_deadline_ms)
+                    .bind::<BigInt, _>(*updated_at_ms)
+                    .bind::<Text, _>(transaction_id)
+                    .execute(conn).await?;
+                }
+                MyDataRow::MyDataEscrowClaimed { snapshot_id, amount: _, updated_at_ms, transaction_id } => {
+                    total += diesel::sql_query(
+                        "UPDATE mydata_snapshot_escrow SET
+                         total_claimed = COALESCE((SELECT SUM(amount) FROM mydata_claims WHERE snapshot_id = $1), 0),
+                         remaining_amount = total_funded - COALESCE((SELECT SUM(amount) FROM mydata_claims WHERE snapshot_id = $1), 0),
+                         status = CASE WHEN total_funded - COALESCE((SELECT SUM(amount) FROM mydata_claims WHERE snapshot_id = $1), 0) = 0
+                                       THEN 'claimed' ELSE 'claiming' END,
+                         updated_at_ms = $2, transaction_id = $3 WHERE snapshot_id = $1"
+                    )
+                    .bind::<Text, _>(snapshot_id)
+                    .bind::<BigInt, _>(*updated_at_ms)
+                    .bind::<Text, _>(transaction_id)
+                    .execute(conn).await?;
+                }
+                MyDataRow::MyDataEscrowReclaimed { snapshot_id, amount: _, reclaimed_at_ms, transaction_id } => {
+                    total += diesel::sql_query(
+                        "UPDATE mydata_snapshot_escrow SET remaining_amount = 0, status = 'reclaimed',
+                         reclaimed_at_ms = $2, updated_at_ms = $2, transaction_id = $3
+                         WHERE snapshot_id = $1"
+                    )
+                    .bind::<Text, _>(snapshot_id)
+                    .bind::<BigInt, _>(*reclaimed_at_ms)
+                    .bind::<Text, _>(transaction_id)
+                    .execute(conn).await?;
                 }
             }
         }

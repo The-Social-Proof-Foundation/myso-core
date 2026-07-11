@@ -34,6 +34,9 @@ struct BcsBalance {
 pub(crate) struct BcsProfileSubscription {
     _id: UID,
     service_id: AccountAddress,
+    plan_id: AccountAddress,
+    tier_level: Option<u64>,
+    platform_id: Option<AccountAddress>,
     subscriber: AccountAddress,
     created_at: u64,
     expires_at: u64,
@@ -143,6 +146,9 @@ mod tests {
         let sub = BcsProfileSubscription {
             _id: UID::new(ObjectID::random()),
             service_id: AccountAddress::from_hex_literal("0xabc").unwrap(),
+            plan_id: AccountAddress::from_hex_literal("0xplan").unwrap(),
+            tier_level: Some(1),
+            platform_id: None,
             subscriber: AccountAddress::from_hex_literal("0xdef").unwrap(),
             created_at: 1_700_000_000_000,
             expires_at: 1_700_002_592_000_000,

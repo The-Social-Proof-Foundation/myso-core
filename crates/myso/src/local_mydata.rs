@@ -87,10 +87,18 @@ pub fn resolve_mydata_repo(cli_override: Option<PathBuf>) -> PathBuf {
 }
 
 fn resolve_binary(repo_root: &Path, name: &str) -> anyhow::Result<PathBuf> {
+    // The `mydata-cli` crate produces an executable named `mydata`, so accept either.
+    let candidates: &[&str] = if name == "mydata-cli" {
+        &["mydata-cli", "mydata"]
+    } else {
+        std::slice::from_ref(&name)
+    };
     for profile in ["release", "debug"] {
-        let p = repo_root.join("target").join(profile).join(name);
-        if p.is_file() {
-            return Ok(p);
+        for candidate in candidates {
+            let p = repo_root.join("target").join(profile).join(candidate);
+            if p.is_file() {
+                return Ok(p);
+            }
         }
     }
     bail!(
