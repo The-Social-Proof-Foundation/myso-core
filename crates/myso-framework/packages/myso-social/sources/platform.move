@@ -29,7 +29,6 @@ module social_contracts::platform {
     use social_contracts::governance;
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
     use social_contracts::block_list;
-    use social_contracts::social_graph;
 
     /// Error codes
     const EUnauthorized: u64 = 0;
@@ -1119,33 +1118,18 @@ module social_contracts::platform {
     }
 
 
-    /// Block a wallet address from the platform
-    /// Allows platform developers/moderators to block wallets using the platform address as the blocker
-    /// This enables platforms (shared objects) to block user wallets
-    public fun block_wallet(
-        block_list_registry: &mut block_list::BlockListRegistry,
-        social_graph: &mut social_graph::SocialGraph,
-        platform: &mut Platform,
+    /// Verify platform moderator permission and return the platform address
+    /// used as the block-list principal. Graph mutation is coordinated by
+    /// `social_graph` to keep module dependencies acyclic.
+    public(package) fun assert_block_wallet_permission(
+        platform: &Platform,
         group: &PermissionedGroup<PlatformPackage>,
-        blocked_wallet_address: address,
-        ctx: &mut TxContext
-    ) {
-        // Check version compatibility
+        ctx: &TxContext,
+    ): address {
         assert!(platform.version == upgrade::current_version(), EWrongVersion);
-        
         let caller = tx_context::sender(ctx);
         assert_moderator_permission<PlatformBlockAdmin>(platform, group, caller);
-        
-        // Get the platform address (this will be the blocker address)
-        let platform_address = object::uid_to_address(&platform.id);
-        
-        // Call block_list's internal helper function with platform address as blocker
-        block_list::block_wallet_internal(
-            block_list_registry,
-            social_graph,
-            platform_address,
-            blocked_wallet_address
-        );
+        object::uid_to_address(&platform.id)
     }
 
     /// Unblock a wallet address from the platform

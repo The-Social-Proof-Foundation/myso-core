@@ -13,7 +13,9 @@ use super::super::{AppState, PageParams};
 
 fn check_spot_oracle_sync_secret(headers: &HeaderMap) -> Result<(), SocialError> {
     if let Ok(secret) = std::env::var("SPOT_ORACLE_SYNC_SECRET") {
-        let provided = headers.get("x-spot-oracle-sync-secret").and_then(|v| v.to_str().ok());
+        let provided = headers
+            .get("x-spot-oracle-sync-secret")
+            .and_then(|v| v.to_str().ok());
         if provided != Some(secret.as_str()) {
             return Err(SocialError::bad_request("invalid spot oracle sync secret"));
         }

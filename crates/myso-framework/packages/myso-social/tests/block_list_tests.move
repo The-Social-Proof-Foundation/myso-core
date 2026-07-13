@@ -60,7 +60,7 @@ module social_contracts::block_list_tests {
         {
             let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
             let mut social_graph = test_scenario::take_shared<social_graph::SocialGraph>(&mut scenario);
-            block_list::block_wallet(&mut registry, &mut social_graph, USER2, test_scenario::ctx(&mut scenario));
+            social_graph::block_wallet(&mut registry, &mut social_graph, USER2, test_scenario::ctx(&mut scenario));
             test_scenario::return_shared(registry);
             test_scenario::return_shared(social_graph);
         };
@@ -90,7 +90,7 @@ module social_contracts::block_list_tests {
         {
             let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
             let mut social_graph = test_scenario::take_shared<social_graph::SocialGraph>(&mut scenario);
-            block_list::block_wallet(&mut registry, &mut social_graph, USER2, test_scenario::ctx(&mut scenario));
+            social_graph::block_wallet(&mut registry, &mut social_graph, USER2, test_scenario::ctx(&mut scenario));
             test_scenario::return_shared(registry);
             test_scenario::return_shared(social_graph);
         };
@@ -125,7 +125,7 @@ module social_contracts::block_list_tests {
         {
             let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
             let mut social_graph = test_scenario::take_shared<social_graph::SocialGraph>(&mut scenario);
-            block_list::block_wallet(&mut registry, &mut social_graph, USER2, test_scenario::ctx(&mut scenario));
+            social_graph::block_wallet(&mut registry, &mut social_graph, USER2, test_scenario::ctx(&mut scenario));
             test_scenario::return_shared(registry);
             test_scenario::return_shared(social_graph);
         };
@@ -134,7 +134,7 @@ module social_contracts::block_list_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
-            block_list::unblock_wallet(&mut registry, USER2, test_scenario::ctx(&mut scenario));
+            social_graph::unblock_wallet(&mut registry, USER2, test_scenario::ctx(&mut scenario));
             test_scenario::return_shared(registry);
         };
         
@@ -167,7 +167,7 @@ module social_contracts::block_list_tests {
         {
             let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
             let mut social_graph = test_scenario::take_shared<social_graph::SocialGraph>(&mut scenario);
-            block_list::block_wallet(&mut registry, &mut social_graph, USER2, test_scenario::ctx(&mut scenario));
+            social_graph::block_wallet(&mut registry, &mut social_graph, USER2, test_scenario::ctx(&mut scenario));
             test_scenario::return_shared(registry);
             test_scenario::return_shared(social_graph);
         };
@@ -177,7 +177,7 @@ module social_contracts::block_list_tests {
         {
             let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
             let mut social_graph = test_scenario::take_shared<social_graph::SocialGraph>(&mut scenario);
-            block_list::block_wallet(&mut registry, &mut social_graph, USER3, test_scenario::ctx(&mut scenario));
+            social_graph::block_wallet(&mut registry, &mut social_graph, USER3, test_scenario::ctx(&mut scenario));
             test_scenario::return_shared(registry);
             test_scenario::return_shared(social_graph);
         };
@@ -213,7 +213,7 @@ module social_contracts::block_list_tests {
         {
             let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
             let mut social_graph = test_scenario::take_shared<social_graph::SocialGraph>(&mut scenario);
-            block_list::block_wallet(&mut registry, &mut social_graph, USER1, test_scenario::ctx(&mut scenario));
+            social_graph::block_wallet(&mut registry, &mut social_graph, USER1, test_scenario::ctx(&mut scenario));
             test_scenario::return_shared(registry);
             test_scenario::return_shared(social_graph);
         };
@@ -235,7 +235,7 @@ module social_contracts::block_list_tests {
         {
             let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
             let mut social_graph = test_scenario::take_shared<social_graph::SocialGraph>(&mut scenario);
-            block_list::block_wallet(&mut registry, &mut social_graph, USER2, test_scenario::ctx(&mut scenario));
+            social_graph::block_wallet(&mut registry, &mut social_graph, USER2, test_scenario::ctx(&mut scenario));
             test_scenario::return_shared(registry);
             test_scenario::return_shared(social_graph);
         };
@@ -245,7 +245,7 @@ module social_contracts::block_list_tests {
         {
             let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
             let mut social_graph = test_scenario::take_shared<social_graph::SocialGraph>(&mut scenario);
-            block_list::block_wallet(&mut registry, &mut social_graph, USER2, test_scenario::ctx(&mut scenario));
+            social_graph::block_wallet(&mut registry, &mut social_graph, USER2, test_scenario::ctx(&mut scenario));
             test_scenario::return_shared(registry);
             test_scenario::return_shared(social_graph);
         };
@@ -266,7 +266,7 @@ module social_contracts::block_list_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
-            block_list::unblock_wallet(&mut registry, USER2, test_scenario::ctx(&mut scenario));
+            social_graph::unblock_wallet(&mut registry, USER2, test_scenario::ctx(&mut scenario));
             test_scenario::return_shared(registry);
         };
         
@@ -286,7 +286,7 @@ module social_contracts::block_list_tests {
         {
             let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
             let mut social_graph = test_scenario::take_shared<social_graph::SocialGraph>(&mut scenario);
-            block_list::block_wallet(&mut registry, &mut social_graph, USER2, test_scenario::ctx(&mut scenario));
+            social_graph::block_wallet(&mut registry, &mut social_graph, USER2, test_scenario::ctx(&mut scenario));
             test_scenario::return_shared(registry);
             test_scenario::return_shared(social_graph);
         };
@@ -296,7 +296,7 @@ module social_contracts::block_list_tests {
         {
             let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
             let mut social_graph = test_scenario::take_shared<social_graph::SocialGraph>(&mut scenario);
-            block_list::block_wallet(&mut registry, &mut social_graph, USER3, test_scenario::ctx(&mut scenario));
+            social_graph::block_wallet(&mut registry, &mut social_graph, USER3, test_scenario::ctx(&mut scenario));
             test_scenario::return_shared(registry);
             test_scenario::return_shared(social_graph);
         };
@@ -332,7 +332,7 @@ module social_contracts::block_list_tests {
         {
             let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
             let mut social_graph = test_scenario::take_shared<social_graph::SocialGraph>(&mut scenario);
-            block_list::block_wallet(&mut registry, &mut social_graph, USER2, test_scenario::ctx(&mut scenario));
+            social_graph::block_wallet(&mut registry, &mut social_graph, USER2, test_scenario::ctx(&mut scenario));
             test_scenario::return_shared(registry);
             test_scenario::return_shared(social_graph);
         };
@@ -358,7 +358,7 @@ module social_contracts::block_list_tests {
         {
             let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
             let mut social_graph = test_scenario::take_shared<social_graph::SocialGraph>(&mut scenario);
-            block_list::block_wallet(&mut registry, &mut social_graph, USER2, test_scenario::ctx(&mut scenario));
+            social_graph::block_wallet(&mut registry, &mut social_graph, USER2, test_scenario::ctx(&mut scenario));
             test_scenario::return_shared(registry);
             test_scenario::return_shared(social_graph);
         };

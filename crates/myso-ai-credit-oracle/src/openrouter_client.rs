@@ -28,6 +28,15 @@ pub struct ChatCompletionResult {
     pub prompt_tokens: u64,
     pub completion_tokens: u64,
     pub total_tokens: u64,
+    /// Actual amount charged to the OpenRouter account, expressed in integer
+    /// USD micros and rounded up.  This is the billing authority; token counts
+    /// are retained for reservation estimates and audit only.
+    pub provider_cost_usd_micros: u64,
+    /// Upstream provider cost, when OpenRouter reports it.  This is useful for
+    /// margin/reconciliation reporting but is not the customer billing basis.
+    pub upstream_cost_usd_micros: Option<u64>,
+    /// OpenRouter generation identifier used for durable reconciliation.
+    pub generation_id: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -69,6 +78,8 @@ struct ChatCompletionRequest<'a> {
 #[derive(Debug, Deserialize)]
 struct ChatCompletionResponse {
     #[serde(default)]
+    id: Option<String>,
+    #[serde(default)]
     choices: Vec<ChatChoice>,
     #[serde(default)]
     usage: Option<ChatUsage>,
@@ -94,6 +105,16 @@ struct ChatUsage {
     completion_tokens: u64,
     #[serde(default)]
     total_tokens: u64,
+    #[serde(default)]
+    cost: Option<serde_json::Value>,
+    #[serde(default)]
+    cost_details: Option<ChatCostDetails>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ChatCostDetails {
+    #[serde(default)]
+    upstream_inference_cost: Option<serde_json::Value>,
 }
 
 impl OpenRouterClient {
@@ -167,17 +188,65 @@ fn parse_chat_completion(response: ChatCompletionResponse) -> Result<ChatComplet
         .and_then(|c| c.message.as_ref())
         .and_then(|m| m.content.clone())
         .unwrap_or_default();
-    let usage = response.usage.context("openrouter response missing usage")?;
+    let usage = response
+        .usage
+        .context("openrouter response missing usage")?;
     anyhow::ensure!(
         usage.prompt_tokens > 0 || usage.completion_tokens > 0 || usage.total_tokens > 0,
         "openrouter usage tokens are zero"
     );
+    let provider_cost_usd_micros = parse_usd_micros(
+        usage
+            .cost
+            .as_ref()
+            .context("openrouter response missing usage.cost")?,
+    )?;
+    let upstream_cost_usd_micros = usage
+        .cost_details
+        .as_ref()
+        .and_then(|d| d.upstream_inference_cost.as_ref())
+        .map(parse_usd_micros)
+        .transpose()?;
     Ok(ChatCompletionResult {
         content,
         prompt_tokens: usage.prompt_tokens,
         completion_tokens: usage.completion_tokens,
         total_tokens: usage.total_tokens,
+        provider_cost_usd_micros,
+        upstream_cost_usd_micros,
+        generation_id: response.id,
     })
+}
+
+/// Convert an OpenRouter USD value into integer micros without using floating
+/// point for settlement math. Values finer than one micro are rounded up so a
+/// non-zero provider charge can never become a zero customer charge.
+fn parse_usd_micros(value: &serde_json::Value) -> Result<u64> {
+    let raw = match value {
+        serde_json::Value::String(s) => s.clone(),
+        serde_json::Value::Number(n) => n.to_string(),
+        other => anyhow::bail!("unexpected cost type: {other}"),
+    };
+    anyhow::ensure!(!raw.starts_with('-'), "cost must be non-negative");
+
+    let (mantissa, exponent) = match raw.split_once(|c| c == 'e' || c == 'E') {
+        Some((m, e)) => (m, e.parse::<i32>().context("invalid cost exponent")?),
+        None => (raw.as_str(), 0),
+    };
+    let (whole, fraction) = mantissa.split_once('.').unwrap_or((mantissa, ""));
+    let digits = format!("{}{}", if whole.is_empty() { "0" } else { whole }, fraction);
+    let integer = digits.parse::<u128>().context("invalid cost number")?;
+    let decimal_places = fraction.len() as i32;
+    let scale = 6 + exponent - decimal_places;
+    let micros = if scale >= 0 {
+        integer
+            .checked_mul(10u128.pow(scale as u32))
+            .context("cost overflow")?
+    } else {
+        let divisor = 10u128.pow((-scale) as u32);
+        integer.checked_add(divisor - 1).context("cost overflow")? / divisor
+    };
+    u64::try_from(micros).context("cost exceeds u64 micros")
 }
 
 fn parse_model_rates(entries: Vec<ModelEntry>) -> HashMap<String, OpenRouterModelRate> {
@@ -246,13 +315,16 @@ mod tests {
     #[test]
     fn parse_chat_completion_fixture() {
         let json = r#"{
+            "id": "gen-test-1",
             "choices": [
                 { "message": { "content": "hello" } }
             ],
             "usage": {
                 "prompt_tokens": 12,
                 "completion_tokens": 3,
-                "total_tokens": 15
+                "total_tokens": 15,
+                "cost": 0.0000012,
+                "cost_details": { "upstream_inference_cost": "0.0000008" }
             }
         }"#;
         let body: ChatCompletionResponse = serde_json::from_str(json).unwrap();
@@ -261,5 +333,22 @@ mod tests {
         assert_eq!(result.prompt_tokens, 12);
         assert_eq!(result.completion_tokens, 3);
         assert_eq!(result.total_tokens, 15);
+        assert_eq!(result.provider_cost_usd_micros, 2);
+        assert_eq!(result.upstream_cost_usd_micros, Some(1));
+        assert_eq!(result.generation_id.as_deref(), Some("gen-test-1"));
+    }
+
+    #[test]
+    fn usd_micros_rounds_non_zero_cost_up() {
+        assert_eq!(parse_usd_micros(&serde_json::json!(0)).unwrap(), 0);
+        assert_eq!(
+            parse_usd_micros(&serde_json::json!("0.00000001")).unwrap(),
+            1
+        );
+        assert_eq!(
+            parse_usd_micros(&serde_json::json!("1.234567")).unwrap(),
+            1_234_567
+        );
+        assert_eq!(parse_usd_micros(&serde_json::json!("1e-7")).unwrap(), 1);
     }
 }

@@ -16,6 +16,8 @@ pub mod openrouter_client;
 pub mod price_refresh;
 pub mod pricing;
 pub mod receipt;
+pub mod reservation;
+pub mod reservation_ledger;
 pub mod server;
 pub mod settlement;
 pub mod settlement_coordinator;

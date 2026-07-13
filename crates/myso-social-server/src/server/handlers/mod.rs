@@ -26,13 +26,14 @@ mod upgrade;
 mod vesting;
 
 pub use ai_credit::{
-    get_ai_credit_config, get_profile_ai_credit_balance, ingest_usage_line_internal,
-    list_ai_credit_usage_history,
+    get_ai_credit_config, get_ai_spend_reservation, get_profile_ai_credit_balance,
+    ingest_usage_line_internal, list_ai_credit_usage_history, list_ai_spend_reservations,
 };
 pub use enterprise::{
-    get_org_summary_internal, ingest_approval_internal, ingest_audit_logs_internal,
-    ingest_memory_access_request_internal, ingest_memory_usage_stats_internal, list_org_audit_logs,
-    list_org_invitations, list_org_memory_permissions, list_org_role_assignments, list_org_roles,
+    get_org_control_internal, get_org_summary_internal, ingest_approval_internal,
+    ingest_audit_logs_internal, ingest_memory_access_request_internal,
+    ingest_memory_usage_stats_internal, list_org_audit_logs, list_org_invitations,
+    list_org_memory_permissions, list_org_role_assignments, list_org_roles,
     list_org_spend_approvals, list_org_spend_breakdown, list_profile_audit_logs,
     list_profile_spend_approvals,
 };
@@ -56,17 +57,18 @@ pub use memory::{
     list_profile_sub_agents, list_sub_agent_children,
 };
 pub use messaging::{
-    get_agent_groups, get_messaging_config, get_messaging_revenue_summary, get_paid_message_history,
+    get_agent_groups, get_message_history, get_messaging_config, get_messaging_revenue_summary,
+    get_paid_message_history,
 };
 pub use mydata::{
     get_creator_mydata, get_mydata_access_analytics, get_mydata_access_logs, get_mydata_by_id,
     get_mydata_configuration, get_mydata_distribution_round, get_mydata_has_access,
     get_mydata_merkle_root, get_mydata_purchases, get_mydata_revenue, get_mydata_revenue_timeline,
-    get_mydata_snapshot_escrow,
-    get_mydata_snapshot_anchor, get_mydata_stats, get_mydata_subscriptions, get_popular_mydata,
-    list_mydata, list_mydata_broad_pools, list_mydata_claims_for_snapshot,
-    list_mydata_distribution_rounds, list_mydata_listings_for_sub_pool,
-    list_mydata_sub_pools_for_broad_pool, list_mydata_sub_pools_for_mydata_listing,
+    get_mydata_snapshot_anchor, get_mydata_snapshot_escrow, get_mydata_stats,
+    get_mydata_subscriptions, get_popular_mydata, list_mydata, list_mydata_broad_pools,
+    list_mydata_claims_for_snapshot, list_mydata_distribution_rounds,
+    list_mydata_listings_for_sub_pool, list_mydata_sub_pools_for_broad_pool,
+    list_mydata_sub_pools_for_mydata_listing,
 };
 pub use organization::{
     get_agentic_organization, get_organization_leaderboard, get_organization_statistics,
@@ -95,10 +97,10 @@ pub use profiles::{
     get_profile_badges, get_profile_blocked, get_profile_blocked_platforms,
     get_profile_blocking_history, get_profile_by_address, get_profile_by_username,
     get_profile_config, get_profile_daily_stats_chart, get_profile_events, get_profile_followers,
-    get_profile_following, get_profile_platform_events,
-    get_profile_platform_memberships, get_profile_pnl, get_profile_posts,
-    get_profile_recommendations, get_profile_social_stats, get_profile_username_offers,
-    get_username_offers, get_username_sale_fees, get_wallet_messaging_policy, latest_profiles,
+    get_profile_following, get_profile_platform_events, get_profile_platform_memberships,
+    get_profile_pnl, get_profile_posts, get_profile_recommendations, get_profile_social_stats,
+    get_profile_username_offers, get_username_offers, get_username_sale_fees,
+    get_wallet_messaging_policy, latest_profiles,
 };
 pub use promotions::{
     get_promotion_hourly, get_promotion_stats, get_promotion_time_series, get_promotion_views,
@@ -131,8 +133,9 @@ pub use spt::{
 pub use subscription::{
     check_subscription_access, get_profile_subscription_service, get_subscriber_summary,
     get_subscription_by_id, get_subscription_config, get_subscription_revenue_by_service,
-    get_subscription_status, list_profile_subscription_plans, list_profile_subscription_services, list_subscription_revenue,
-    list_subscription_services, list_subscriptions, list_subscriptions_by_subscriber,
+    get_subscription_status, list_profile_subscription_plans, list_profile_subscription_services,
+    list_subscription_revenue, list_subscription_services, list_subscriptions,
+    list_subscriptions_by_subscriber,
 };
 pub use system::{check_username_availability, get_system_stats};
 pub use upgrade::{list_object_migrated_events, list_upgrade_events};

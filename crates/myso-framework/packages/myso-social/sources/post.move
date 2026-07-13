@@ -817,6 +817,18 @@ module social_contracts::post {
         action_identity_class: u8,
     }
 
+    /// Repost removal event with principal and delegated-agent attribution.
+    public struct RepostRemovedEvent has copy, drop {
+        repost_id: address,
+        original_id: address,
+        owner: address,
+        actor_address: address,
+        sub_agent_id: Option<ID>,
+        organization_id: Option<ID>,
+        action_identity_class: u8,
+        removed_at: u64,
+    }
+
     /// Reaction event
     public struct ReactionEvent has copy, drop {
         object_id: address,
@@ -3380,6 +3392,216 @@ module social_contracts::post {
             organization_id,
             action_identity_class,
         });
+    }
+
+    /// Edit a post through the delegated-agent authorization model.
+    public fun edit_post(
+        registry: &UsernameRegistry,
+        platform: &platform::Platform,
+        block_list_registry: &BlockListRegistry,
+        config: &PostConfig,
+        memory_config: &MemoryConfig,
+        memory_account: &MemoryAccount,
+        post: &mut Post,
+        content: String,
+        mut media_urls: Option<vector<String>>,
+        mentions: Option<vector<address>>,
+        metadata_json: Option<String>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        let acting = resolve_social_actor(
+            memory_config, registry, platform, block_list_registry, memory_account,
+            memory::cap_post_publish(), 0, clock, ctx,
+        );
+        assert!(memory::acting_principal_owner(&acting) == post.owner, EUnauthorized);
+        assert!(string::length(&content) <= config.max_content_length, EContentTooLarge);
+        if (option::is_some(&metadata_json)) {
+            let metadata_string = option::borrow(&metadata_json);
+            assert!(string::length(metadata_string) <= config.max_metadata_size, EContentTooLarge);
+            post.metadata_json = option::some(*metadata_string);
+        };
+        if (option::is_some(&media_urls)) {
+            let url_strings = option::extract(&mut media_urls);
+            assert!(vector::length(&url_strings) <= config.max_media_urls, ETooManyMediaUrls);
+            let mut urls = vector::empty<Url>();
+            let mut i = 0;
+            let len = vector::length(&url_strings);
+            while (i < len) {
+                let url_string = vector::borrow(&url_strings, i);
+                vector::push_back(
+                    &mut urls,
+                    url::new_unsafe_from_bytes(*string::as_bytes(url_string)),
+                );
+                i = i + 1;
+            };
+            post.media = option::some(urls);
+        };
+        if (option::is_some(&mentions)) {
+            assert!(vector::length(option::borrow(&mentions)) <= config.max_mentions, EContentTooLarge);
+            post.mentions = mentions;
+        };
+        post.content = content;
+        event::emit(PostUpdatedEvent {
+            post_id: object::uid_to_address(&post.id),
+            owner: post.owner,
+            profile_id: post.profile_id,
+            content: post.content,
+            metadata_json: post.metadata_json,
+            updated_at: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// Edit a comment through the delegated-agent authorization model.
+    public fun edit_comment(
+        registry: &UsernameRegistry,
+        platform: &platform::Platform,
+        block_list_registry: &BlockListRegistry,
+        config: &PostConfig,
+        memory_config: &MemoryConfig,
+        memory_account: &MemoryAccount,
+        comment: &mut Comment,
+        content: String,
+        mentions: Option<vector<address>>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        let acting = resolve_social_actor(
+            memory_config, registry, platform, block_list_registry, memory_account,
+            memory::cap_comment(), 0, clock, ctx,
+        );
+        assert!(memory::acting_principal_owner(&acting) == comment.owner, EUnauthorized);
+        assert!(string::length(&content) <= config.max_content_length, EContentTooLarge);
+        if (option::is_some(&mentions)) {
+            assert!(vector::length(option::borrow(&mentions)) <= config.max_mentions, EContentTooLarge);
+            comment.mentions = mentions;
+        };
+        comment.content = content;
+        event::emit(CommentUpdatedEvent {
+            comment_id: object::uid_to_address(&comment.id),
+            post_id: comment.post_id,
+            owner: comment.owner,
+            profile_id: comment.profile_id,
+            content: comment.content,
+            updated_at: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// Remove the caller principal's current post reaction without toggle semantics.
+    public fun remove_post_reaction(
+        registry: &UsernameRegistry,
+        post: &mut Post,
+        platform: &platform::Platform,
+        block_list_registry: &BlockListRegistry,
+        memory_config: &MemoryConfig,
+        memory_account: &MemoryAccount,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        let acting = resolve_social_actor(
+            memory_config, registry, platform, block_list_registry, memory_account,
+            memory::cap_react(), 0, clock, ctx,
+        );
+        let actor_address = memory::acting_actor_address(&acting);
+        let principal_owner = memory::acting_principal_owner(&acting);
+        assert!(table::contains(&post.user_reactions, actor_address), EUnauthorized);
+        let reaction = table::remove(&mut post.user_reactions, actor_address);
+        let count = *table::borrow(&post.reaction_counts, reaction);
+        if (count <= 1) {
+            table::remove(&mut post.reaction_counts, reaction);
+        } else {
+            *table::borrow_mut(&mut post.reaction_counts, reaction) = count - 1;
+        };
+        assert!(post.reaction_count > 0, EOverflow);
+        post.reaction_count = post.reaction_count - 1;
+        event::emit(RemoveReactionEvent {
+            object_id: object::uid_to_address(&post.id),
+            user: actor_address,
+            reaction,
+            is_post: true,
+            principal_owner,
+            actor_address,
+            sub_agent_id: memory::acting_sub_agent_id(&acting),
+            organization_id: memory::acting_organization_id(&acting),
+            action_identity_class: memory::acting_identity_class(&acting),
+        });
+    }
+
+    /// Remove the caller principal's current comment reaction without toggle semantics.
+    public fun remove_comment_reaction(
+        registry: &UsernameRegistry,
+        comment: &mut Comment,
+        platform: &platform::Platform,
+        block_list_registry: &BlockListRegistry,
+        memory_config: &MemoryConfig,
+        memory_account: &MemoryAccount,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        let acting = resolve_social_actor(
+            memory_config, registry, platform, block_list_registry, memory_account,
+            memory::cap_react(), 0, clock, ctx,
+        );
+        let actor_address = memory::acting_actor_address(&acting);
+        let principal_owner = memory::acting_principal_owner(&acting);
+        assert!(table::contains(&comment.user_reactions, actor_address), EUnauthorized);
+        let reaction = table::remove(&mut comment.user_reactions, actor_address);
+        let count = *table::borrow(&comment.reaction_counts, reaction);
+        if (count <= 1) {
+            table::remove(&mut comment.reaction_counts, reaction);
+        } else {
+            *table::borrow_mut(&mut comment.reaction_counts, reaction) = count - 1;
+        };
+        assert!(comment.reaction_count > 0, EOverflow);
+        comment.reaction_count = comment.reaction_count - 1;
+        event::emit(RemoveReactionEvent {
+            object_id: object::uid_to_address(&comment.id),
+            user: actor_address,
+            reaction,
+            is_post: false,
+            principal_owner,
+            actor_address,
+            sub_agent_id: memory::acting_sub_agent_id(&acting),
+            organization_id: memory::acting_organization_id(&acting),
+            action_identity_class: memory::acting_identity_class(&acting),
+        });
+    }
+
+    /// Remove a repost and decrement its original post's aggregate count.
+    public fun remove_repost(
+        registry: &UsernameRegistry,
+        platform: &platform::Platform,
+        block_list_registry: &BlockListRegistry,
+        memory_config: &MemoryConfig,
+        memory_account: &MemoryAccount,
+        original_post: &mut Post,
+        repost: Repost,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        let acting = resolve_social_actor(
+            memory_config, registry, platform, block_list_registry, memory_account,
+            memory::cap_post_publish(), 0, clock, ctx,
+        );
+        let principal_owner = memory::acting_principal_owner(&acting);
+        assert!(principal_owner == repost.owner, EUnauthorized);
+        assert!(repost.is_original_post, EInvalidParentReference);
+        assert!(repost.original_id == object::uid_to_address(&original_post.id), EInvalidParentReference);
+        assert!(original_post.repost_count > 0, EOverflow);
+        original_post.repost_count = original_post.repost_count - 1;
+        let repost_id = object::uid_to_address(&repost.id);
+        event::emit(RepostRemovedEvent {
+            repost_id,
+            original_id: repost.original_id,
+            owner: principal_owner,
+            actor_address: memory::acting_actor_address(&acting),
+            sub_agent_id: memory::acting_sub_agent_id(&acting),
+            organization_id: memory::acting_organization_id(&acting),
+            action_identity_class: memory::acting_identity_class(&acting),
+            removed_at: clock::timestamp_ms(clock),
+        });
+        let Repost { id, original_id: _, is_original_post: _, owner: _, profile_id: _, created_at: _, version: _ } = repost;
+        object::delete(id);
     }
 
     /// Get post content

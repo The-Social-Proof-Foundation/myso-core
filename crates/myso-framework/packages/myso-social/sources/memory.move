@@ -88,6 +88,8 @@ module social_contracts::memory {
     /// Parent agents holding this capability may manage AI-credit budgets and
     /// spend allowances for descendants in their subtree (see `ai_credit`).
     const CAP_BUDGET_MANAGE: u64 = 32768;
+    /// Follow, unfollow, block, and unblock on behalf of the principal profile.
+    const CAP_SOCIAL_GRAPH: u64 = 65536;
 
     // ============================================================
     // Org permission bitmap (org memory share group + roles)
@@ -699,6 +701,7 @@ module social_contracts::memory {
     public fun cap_agent_update(): u64 { CAP_AGENT_UPDATE }
     public fun cap_ai_spend(): u64 { CAP_AI_SPEND }
     public fun cap_budget_manage(): u64 { CAP_BUDGET_MANAGE }
+    public fun cap_social_graph(): u64 { CAP_SOCIAL_GRAPH }
 
     public fun org_perm_memory_read(): u64 { ORG_PERM_MEMORY_READ }
     public fun org_perm_memory_write(): u64 { ORG_PERM_MEMORY_WRITE }

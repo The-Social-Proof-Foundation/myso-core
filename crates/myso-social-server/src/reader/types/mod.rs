@@ -32,14 +32,15 @@ pub use insurance::{
 };
 pub use memory::MemoryConfigInfo;
 pub use messaging::{
-    MessagingAgentGroupInfo, MessagingConfigInfo, MessagingRevenueSummaryInfo, PaidMessageEscrowInfo,
+    MessageDigestInfo, MessagingAgentGroupInfo, MessagingConfigInfo, MessagingRevenueSummaryInfo,
+    PaidMessageEscrowInfo,
 };
 pub use mydata::{
     AccessAnalytics, AccessLogInfo, DailyRevenue, MyDataBasic, MyDataBroadPoolInfo,
     MyDataClaimInfo, MyDataConfigInfo, MyDataDistributionRoundInfo, MyDataHasAccessResponse,
     MyDataListingSubPoolInfo, MyDataMerkleRootInfo, MyDataSnapshotAnchorInfo,
-    MyDataSnapshotEscrowInfo, MyDataStatsResponse,
-    MyDataSubPoolInfo, PurchaseInfo, RevenueInfo, SubscriptionInfo,
+    MyDataSnapshotEscrowInfo, MyDataStatsResponse, MyDataSubPoolInfo, PurchaseInfo, RevenueInfo,
+    SubscriptionInfo,
 };
 pub use myso_indexer_alt_social_schema::models::{
     PostDeletionEventRow, PostModerationEventRow, PostReport, PostTransfer,

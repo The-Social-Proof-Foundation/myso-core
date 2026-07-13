@@ -24,12 +24,61 @@ pub async fn get_profile_ai_credit_balance(
         .reader
         .list_ai_credit_agent_budgets(&balance.balance_id)
         .await?;
-    let credits = balance.balance_mist / 1_000_000_000;
+    let active_reservations = state
+        .reader
+        .list_live_ai_spend_reservations(&balance.balance_id)
+        .await?;
+    let available_mist = balance.balance_mist.saturating_sub(balance.reserved_mist);
     Ok(Json(AiCreditBalanceResponse {
         balance,
-        credits,
+        billing_unit: "MIST",
+        available_mist,
         agent_budgets,
+        active_reservations,
     }))
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct ReservationHistoryQuery {
+    #[serde(flatten)]
+    pub page: PageParams,
+    pub status: Option<String>,
+}
+
+pub async fn list_ai_spend_reservations(
+    State(state): State<Arc<AppState>>,
+    Path(balance_id): Path<String>,
+    Query(query): Query<ReservationHistoryQuery>,
+) -> Result<Json<Vec<myso_indexer_alt_social_schema::models::AiSpendReservationRow>>, SocialError> {
+    const STATUSES: [&str; 4] = ["reserved", "captured", "cancelled", "expired"];
+    if let Some(status) = query.status.as_deref() {
+        if !STATUSES.contains(&status) {
+            return Err(SocialError::bad_request(format!(
+                "invalid reservation status '{status}'"
+            )));
+        }
+    }
+    let rows = state
+        .reader
+        .list_ai_spend_reservations(&balance_id, query.status.as_deref(), query.page.limit())
+        .await?;
+    Ok(Json(rows))
+}
+
+pub async fn get_ai_spend_reservation(
+    State(state): State<Arc<AppState>>,
+    Path((balance_id, reservation_nonce)): Path<(String, i64)>,
+) -> Result<Json<myso_indexer_alt_social_schema::models::AiSpendReservationRow>, SocialError> {
+    state
+        .reader
+        .get_ai_spend_reservation(&balance_id, reservation_nonce)
+        .await?
+        .ok_or_else(|| {
+            SocialError::not_found(format!(
+                "AI spend reservation '{balance_id}:{reservation_nonce}'"
+            ))
+        })
+        .map(Json)
 }
 
 pub async fn ingest_usage_line_internal(

@@ -7,9 +7,12 @@ use serde::Deserialize;
 #[derive(Debug, Clone, Deserialize)]
 pub struct AiCreditBalanceResponse {
     pub balance: AiCreditBalanceRow,
-    pub credits: i64,
+    pub billing_unit: String,
+    pub available_mist: i64,
     #[serde(default)]
     pub agent_budgets: Vec<AiCreditAgentBudgetRow>,
+    #[serde(default)]
+    pub active_reservations: Vec<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -21,6 +24,8 @@ pub struct AiCreditBalanceRow {
     #[serde(default)]
     pub reserved_mist: i64,
     pub settlement_nonce: i64,
+    #[serde(default)]
+    pub reservation_nonce: i64,
     pub active: bool,
     pub daily_cap_mist: Option<i64>,
     pub monthly_cap_mist: Option<i64>,
@@ -34,6 +39,8 @@ pub struct AiCreditAgentBudgetRow {
     pub agent_object_id: String,
     pub budget_mist: Option<i64>,
     pub spent_mist: i64,
+    #[serde(default)]
+    pub reserved_mist: i64,
     pub daily_cap_mist: Option<i64>,
     pub monthly_cap_mist: Option<i64>,
     #[serde(default)]
@@ -224,6 +231,8 @@ pub struct IngestUsageLineRequest {
     pub tool_id: Option<String>,
     pub metadata: Option<serde_json::Value>,
     pub organization_id: Option<String>,
+    pub settled: bool,
+    pub settlement_tx: Option<String>,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]

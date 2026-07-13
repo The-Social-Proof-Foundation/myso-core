@@ -7,6 +7,7 @@ use axum::extract::{Query, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::routing::{get, post};
 use axum::{Json, Router};
+use blake2::{Blake2b512, Digest};
 use tokio::sync::{Mutex, RwLock};
 
 use crate::agent_auth::{
@@ -28,6 +29,10 @@ use crate::pricing::{
     USAGE_INFERENCE, USAGE_TOOL,
 };
 use crate::receipt::{ReceiptStore, UsageLine};
+use crate::reservation::{self, CancelSpendRequest, CaptureSpendRequest, ReserveSpendRequest};
+use crate::reservation_ledger::{
+    BeginReservation, ClaimedOutboxAction, ReservationLedger, ReservationRecord, ReservationStatus,
+};
 use crate::settlement_coordinator::{
     spawn_settlement_worker, SettlementCoordinator, SettlementMode,
 };
@@ -57,6 +62,7 @@ pub struct AppState {
     pub approvals: ApprovalsCache,
     pub workflow: Option<WorkflowClient>,
     pub openrouter: Option<OpenRouterClient>,
+    pub reservation_ledger: ReservationLedger,
 }
 
 /// Structured spend-policy rejection so approval gating can carry context to the caller
@@ -131,7 +137,6 @@ pub struct EstimateRequest {
 #[derive(Debug, serde::Serialize)]
 pub struct EstimateResponse {
     pub estimated_mist: u64,
-    pub estimated_credits: f64,
     pub base_mist: u64,
     pub margin_mist: u64,
     pub ecosystem_margin_pct: f64,
@@ -174,6 +179,8 @@ pub struct InferenceRequest {
     pub memory_account_id: String,
     pub agent_object_id: String,
     pub model_id: String,
+    #[serde(default)]
+    pub system_prompt: Option<String>,
     pub prompt: String,
     #[serde(default)]
     pub max_tokens: Option<u32>,
@@ -182,15 +189,40 @@ pub struct InferenceRequest {
 
 #[derive(Debug, serde::Serialize)]
 pub struct InferenceResponse {
-    pub receipt_id: u128,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub receipt_id: Option<u128>,
     pub amount_mist: u64,
-    pub settlement_nonce: u64,
-    pub signature: String,
-    pub receipt: UsageReceipt,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub settlement_nonce: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub signature: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub receipt: Option<UsageReceipt>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reservation_nonce: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reserved_mist: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reserve_digest: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub capture_digest: Option<String>,
+    pub billing_state: String,
     pub tokens_in: u64,
     pub tokens_out: u64,
     pub model_id: String,
     pub content: String,
+    pub provider_cost_usd_micros: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub upstream_cost_usd_micros: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub provider_generation_id: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+struct ProviderCostEvidence {
+    provider_cost_usd_micros: u64,
+    upstream_cost_usd_micros: Option<u64>,
+    generation_id: Option<String>,
 }
 
 pub async fn serve(args: OracleArgs) -> anyhow::Result<()> {
@@ -210,10 +242,8 @@ pub async fn serve(args: OracleArgs) -> anyhow::Result<()> {
         catalog.read().await.clone(),
         initial_margin_pct,
     )));
-    let markup_client = MarkupConfigClient::new(
-        args.graphql_url.clone(),
-        args.social_server_url.clone(),
-    );
+    let markup_client =
+        MarkupConfigClient::new(args.graphql_url.clone(), args.social_server_url.clone());
     startup_markup_refresh(&args, &pricing, &markup_client).await;
     let myso_price_client = MysoPriceClient::new(args.myso_price_oracle_url.clone());
     startup_price_refresh(&args, &pricing, &myso_price_client).await;
@@ -221,6 +251,19 @@ pub async fn serve(args: OracleArgs) -> anyhow::Result<()> {
 
     let store = ReceiptStore::load(&args.receipt_store_path, args.receipt_store_recover)?;
     let store_arc = Arc::new(Mutex::new(store));
+    let reservation_ledger = ReservationLedger::connect(
+        &args.database_url,
+        args.database_max_connections,
+        args.outbox_lease_secs,
+    )
+    .await?;
+    let incomplete_reservations = reservation_ledger.incomplete_count().await?;
+    if incomplete_reservations > 0 {
+        tracing::warn!(
+            incomplete_reservations,
+            "reservation recovery required; duplicate provider calls will fail closed"
+        );
+    }
     let args_arc = Arc::new(args.clone());
     spawn_markup_refresh_worker(args_arc.clone(), pricing.clone(), markup_client);
 
@@ -288,7 +331,9 @@ pub async fn serve(args: OracleArgs) -> anyhow::Result<()> {
         store_arc.clone(),
         args.receipt_store_path.clone(),
     ));
-    spawn_settlement_worker(settlement_coordinator.clone());
+    if args.legacy_usage_enabled {
+        spawn_settlement_worker(settlement_coordinator.clone());
+    }
 
     let state = AppState {
         signer,
@@ -306,20 +351,27 @@ pub async fn serve(args: OracleArgs) -> anyhow::Result<()> {
         approvals,
         workflow,
         openrouter,
+        reservation_ledger,
     };
 
-    spawn_ingest_reconcile_worker(state.clone());
+    if args.legacy_usage_enabled {
+        spawn_ingest_reconcile_worker(state.clone());
+    }
+    spawn_reservation_reconcile_worker(state.clone());
 
-    let app = Router::new()
+    let mut app = Router::new()
         .route("/health", get(health))
         .route("/v1/ai-credit/preflight", post(preflight))
         .route("/v1/ai-credit/estimate", post(estimate))
-        .route("/v1/ai-credit/usage", post(record_usage))
         .route("/v1/ai-credit/inference", post(run_inference))
-        .route("/v1/ai-credit/usage-history", get(usage_history))
-        .route("/v1/ai-credit/catalog", get(get_catalog))
-        .route("/internal/ai-credit/settle", post(trigger_settle))
-        .with_state(state);
+        .route("/v1/ai-credit/catalog", get(get_catalog));
+    if args.legacy_usage_enabled {
+        app = app
+            .route("/v1/ai-credit/usage", post(record_usage))
+            .route("/v1/ai-credit/usage-history", get(usage_history))
+            .route("/internal/ai-credit/settle", post(trigger_settle));
+    }
+    let app = app.with_state(state);
 
     let listener = tokio::net::TcpListener::bind(&args.listen_addr).await?;
     tracing::info!(addr = %args.listen_addr, "myso-ai-credit-oracle listening");
@@ -330,20 +382,14 @@ pub async fn serve(args: OracleArgs) -> anyhow::Result<()> {
 async fn health(State(state): State<AppState>) -> Json<HealthResponse> {
     let pricing = state.pricing.read().await;
     let max_stale = state.oracle_args.myso_price_max_stale_secs;
-    let price_stale =
-        state.oracle_args.myso_price_enabled && pricing.is_price_stale(max_stale);
+    let price_stale = state.oracle_args.myso_price_enabled && pricing.is_price_stale(max_stale);
     drop(pricing);
 
     let store = state.store.lock().await;
-    let pending_receipts = store
-        .lines
-        .iter()
-        .filter(|l| !l.settled && !l.void)
-        .count() as u64;
+    let pending_receipts = store.lines.iter().filter(|l| !l.settled && !l.void).count() as u64;
     let ingest_backlog = store.ingest_backlog_count();
     if let Some(oldest) = store.oldest_ingest_backlog_ms() {
-        let age_secs =
-            (chrono::Utc::now().timestamp_millis() as u64 - oldest) / 1000;
+        let age_secs = (chrono::Utc::now().timestamp_millis() as u64 - oldest) / 1000;
         if age_secs >= state.oracle_args.ingest_backlog_warn_age_secs {
             tracing::warn!(
                 ingest_backlog,
@@ -361,6 +407,7 @@ async fn health(State(state): State<AppState>) -> Json<HealthResponse> {
         ingest_backlog,
         settlement_enabled: state.settlement_secret.is_some(),
         store_writable: ReceiptStore::probe_writable(&state.store_path),
+        reservation_database_ready: state.reservation_ledger.probe().await,
     })
 }
 
@@ -371,6 +418,7 @@ struct HealthResponse {
     ingest_backlog: u64,
     settlement_enabled: bool,
     store_writable: bool,
+    reservation_database_ready: bool,
 }
 
 fn validate_idempotency_key(key: &str) -> Result<(), StatusCode> {
@@ -382,7 +430,8 @@ fn validate_idempotency_key(key: &str) -> Result<(), StatusCode> {
 
 fn usage_response_from_line(line: &UsageLine) -> Result<UsageResponse, StatusCode> {
     let receipt = UsageReceipt {
-        balance_id: parse_object_id_hex(&line.balance_id).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+        balance_id: parse_object_id_hex(&line.balance_id)
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
         agent_object_id: parse_object_id_hex(&line.agent_object_id)
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
         receipt_id: line.receipt_id,
@@ -400,73 +449,256 @@ fn usage_response_from_line(line: &UsageLine) -> Result<UsageResponse, StatusCod
     })
 }
 
-fn inference_response_from_line(line: &UsageLine) -> Result<InferenceResponse, StatusCode> {
-    let usage = usage_response_from_line(line)?;
-    let metadata = line.metadata.as_ref();
-    let content = metadata
-        .and_then(|m| m.get("content"))
-        .and_then(|v| v.as_str())
-        .unwrap_or("")
-        .to_string();
-    let tokens_in = metadata
-        .and_then(|m| m.get("tokens_in"))
-        .and_then(|v| v.as_u64())
-        .unwrap_or(0);
-    let tokens_out = metadata
-        .and_then(|m| m.get("tokens_out"))
-        .and_then(|v| v.as_u64())
-        .unwrap_or(0);
-    let model_id = line
-        .model_id
-        .clone()
-        .unwrap_or_else(|| "unknown".to_string());
+fn hash32(parts: &[&[u8]]) -> Vec<u8> {
+    let mut hasher = Blake2b512::new();
+    for part in parts {
+        hasher.update((part.len() as u64).to_le_bytes());
+        hasher.update(part);
+    }
+    hasher.finalize()[..32].to_vec()
+}
+
+fn apply_reservation_buffer(amount: u64, buffer_bps: u64) -> Result<u64, StatusCode> {
+    let numerator = (amount as u128)
+        .checked_mul(10_000u128 + buffer_bps as u128)
+        .ok_or(StatusCode::BAD_REQUEST)?;
+    let buffered = numerator.div_ceil(10_000);
+    u64::try_from(buffered).map_err(|_| StatusCode::BAD_REQUEST)
+}
+
+fn inference_response_from_reservation(
+    record: &ReservationRecord,
+) -> Result<InferenceResponse, StatusCode> {
+    if !matches!(
+        record.status,
+        ReservationStatus::Captured | ReservationStatus::Cancelled
+    ) {
+        return Err(StatusCode::CONFLICT);
+    }
     Ok(InferenceResponse {
-        receipt_id: usage.receipt_id,
-        amount_mist: usage.amount_mist,
-        settlement_nonce: usage.settlement_nonce,
-        signature: usage.signature,
-        receipt: usage.receipt,
-        tokens_in,
-        tokens_out,
-        model_id,
-        content,
+        receipt_id: Some(derive_receipt_id(
+            &record.idempotency_key,
+            &record.balance_id,
+            &record.agent_object_id,
+        )),
+        amount_mist: record.amount_mist.unwrap_or(0),
+        settlement_nonce: None,
+        signature: None,
+        receipt: None,
+        reservation_nonce: Some(record.reservation_nonce),
+        reserved_mist: Some(record.max_amount_mist),
+        reserve_digest: record.reserve_digest.clone(),
+        capture_digest: record.capture_digest.clone(),
+        billing_state: match record.status {
+            ReservationStatus::Captured => "captured".to_string(),
+            ReservationStatus::Cancelled => "cancelled_zero_cost".to_string(),
+            _ => unreachable!(),
+        },
+        tokens_in: record.tokens_in.unwrap_or(0),
+        tokens_out: record.tokens_out.unwrap_or(0),
+        model_id: record.model_id.clone(),
+        content: record.content.clone().unwrap_or_default(),
+        provider_cost_usd_micros: record.provider_cost_usd_micros.unwrap_or(0),
+        upstream_cost_usd_micros: record.upstream_cost_usd_micros,
+        provider_generation_id: record.provider_generation_id.clone(),
     })
 }
 
-fn estimate_prompt_tokens(prompt: &str) -> u64 {
-    ((prompt.len() as u64).div_ceil(4)).max(1)
-}
-
-fn inference_response_from_usage(
-    usage: UsageResponse,
-    model_id: &str,
-    content: &str,
-    tokens_in: u64,
-    tokens_out: u64,
-) -> InferenceResponse {
-    InferenceResponse {
-        receipt_id: usage.receipt_id,
-        amount_mist: usage.amount_mist,
-        settlement_nonce: usage.settlement_nonce,
-        signature: usage.signature,
-        receipt: usage.receipt,
-        tokens_in,
-        tokens_out,
-        model_id: model_id.to_string(),
-        content: content.to_string(),
-    }
+async fn update_reservation_record(
+    state: &AppState,
+    balance_id: &str,
+    agent_object_id: &str,
+    idempotency_key: &str,
+    update: impl FnOnce(&mut ReservationRecord),
+) -> Result<ReservationRecord, StatusCode> {
+    state
+        .reservation_ledger
+        .update(balance_id, agent_object_id, idempotency_key, update)
+        .await
+        .map_err(|error| {
+            tracing::error!(%error, "failed to persist reservation ledger transition");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })
 }
 
 fn spawn_ingest_reconcile_worker(state: AppState) {
     let interval_secs = state.oracle_args.ingest_reconcile_interval_secs;
     tokio::spawn(async move {
-        let mut ticker =
-            tokio::time::interval(std::time::Duration::from_secs(interval_secs));
+        let mut ticker = tokio::time::interval(std::time::Duration::from_secs(interval_secs));
         loop {
             ticker.tick().await;
             run_ingest_reconcile_cycle(&state).await;
         }
     });
+}
+
+fn spawn_reservation_reconcile_worker(state: AppState) {
+    tokio::spawn(async move {
+        // Do not race normal request finalization immediately after process startup.
+        loop {
+            tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+            run_reservation_reconcile_cycle(&state).await;
+        }
+    });
+}
+
+async fn run_reservation_reconcile_cycle(state: &AppState) {
+    let recoverable = match state.reservation_ledger.claim_pending(32).await {
+        Ok(records) => records,
+        Err(error) => {
+            tracing::error!(%error, "failed to claim inference outbox work");
+            return;
+        }
+    };
+
+    for work in recoverable {
+        let ClaimedOutboxAction { action, record } = work;
+        let now_ms = chrono::Utc::now().timestamp_millis() as u64;
+        if now_ms >= record.hard_expiry_ms {
+            tracing::error!(
+                balance_id = %record.balance_id,
+                reservation_nonce = record.reservation_nonce,
+                "provider charge missed the capture window; manual reconciliation required"
+            );
+            let _ = state
+                .reservation_ledger
+                .retry(&record, &action, "reservation hard expiry passed")
+                .await;
+            continue;
+        }
+        let result = process_outbox_action(state, &record, &action, now_ms).await;
+
+        match result {
+            Ok((status, digest)) => {
+                let update = state
+                    .reservation_ledger
+                    .complete_action(
+                        &record.balance_id,
+                        &record.agent_object_id,
+                        &record.idempotency_key,
+                        &action,
+                        &digest,
+                        |current| {
+                            current.status = status;
+                            match action.as_str() {
+                                "reserve" => current.reserve_digest = Some(digest.clone()),
+                                "capture" => current.capture_digest = Some(digest.clone()),
+                                "cancel" => {
+                                    current.cancel_digest = Some(digest.clone());
+                                    current.amount_mist = Some(0);
+                                }
+                                _ => {}
+                            }
+                            current.last_error = None;
+                        },
+                    )
+                    .await;
+                if update.is_ok() {
+                    tracing::info!(
+                        reservation_nonce = record.reservation_nonce,
+                        %action,
+                        ?status,
+                        "recovered unfinished inference billing action"
+                    );
+                }
+            }
+            Err(error) => {
+                let error_text = error.to_string();
+                let _ = update_reservation_record(
+                    state,
+                    &record.balance_id,
+                    &record.agent_object_id,
+                    &record.idempotency_key,
+                    |current| current.last_error = Some(error_text.clone()),
+                )
+                .await;
+                let _ = state
+                    .reservation_ledger
+                    .retry(&record, &action, &error_text)
+                    .await;
+                tracing::warn!(
+                    %error,
+                    %action,
+                    reservation_nonce = record.reservation_nonce,
+                    "reservation outbox retry failed"
+                );
+            }
+        }
+    }
+}
+
+async fn process_outbox_action(
+    state: &AppState,
+    record: &ReservationRecord,
+    action: &str,
+    now_ms: u64,
+) -> anyhow::Result<(ReservationStatus, String)> {
+    match action {
+        "reserve" => reservation::reserve_spend(
+            &state.oracle_args,
+            &state.signer,
+            &ReserveSpendRequest {
+                balance_id: record.balance_id.clone(),
+                memory_account_id: record.memory_account_id.clone(),
+                agent_object_id: record.agent_object_id.clone(),
+                reservation_nonce: record.reservation_nonce,
+                max_amount_mist: record.max_amount_mist,
+                provider_envelope_hash: hex::decode(&record.provider_envelope_hash_hex)?,
+                request_hash: hex::decode(&record.request_hash_hex)?,
+                fx_quote_id: hex::decode(&record.fx_quote_id_hex)?,
+                myso_usd_e8: record.myso_usd_e8,
+                markup_bps: record.markup_bps,
+                timestamp_ms: record.created_at_ms,
+                capture_deadline_ms: record.capture_deadline_ms,
+                hard_expiry_ms: record.hard_expiry_ms,
+            },
+        )
+        .await
+        .map(|digest| (ReservationStatus::Reserved, digest)),
+        "cancel" => reservation::cancel_spend(
+            &state.oracle_args,
+            &state.signer,
+            &CancelSpendRequest {
+                balance_id: record.balance_id.clone(),
+                agent_object_id: record.agent_object_id.clone(),
+                reservation_nonce: record.reservation_nonce,
+                timestamp_ms: now_ms,
+            },
+        )
+        .await
+        .map(|digest| (ReservationStatus::Cancelled, digest)),
+        "capture" => {
+            let amount = record.amount_mist.unwrap_or(0);
+            let provider_cost = record.provider_cost_usd_micros.unwrap_or(0);
+            let generation_hash = hash32(&[
+                record
+                    .provider_generation_id
+                    .as_deref()
+                    .unwrap_or("")
+                    .as_bytes(),
+                record.content.as_deref().unwrap_or("").as_bytes(),
+                &record.tokens_in.unwrap_or(0).to_le_bytes(),
+                &record.tokens_out.unwrap_or(0).to_le_bytes(),
+                &provider_cost.to_le_bytes(),
+            ]);
+            reservation::capture_spend(
+                &state.oracle_args,
+                &state.signer,
+                &CaptureSpendRequest {
+                    balance_id: record.balance_id.clone(),
+                    agent_object_id: record.agent_object_id.clone(),
+                    reservation_nonce: record.reservation_nonce,
+                    amount_mist: amount,
+                    provider_cost_usd_micros: provider_cost,
+                    provider_generation_hash: generation_hash,
+                    timestamp_ms: now_ms,
+                },
+            )
+            .await
+            .map(|digest| (ReservationStatus::Captured, digest))
+        }
+        _ => anyhow::bail!("unsupported inference outbox action {action}"),
+    }
 }
 
 async fn run_ingest_reconcile_cycle(state: &AppState) {
@@ -486,6 +718,8 @@ async fn run_ingest_reconcile_cycle(state: &AppState) {
                 tool_id: l.tool_id.clone(),
                 metadata: l.metadata.clone(),
                 organization_id: l.organization_id.clone(),
+                settled: false,
+                settlement_tx: None,
             })
             .collect()
     };
@@ -648,7 +882,7 @@ async fn validate_spend_policy(
 
     let effective = BalanceLedger::effective_available_mist(&balance_resp, store);
     if amount_mist > effective {
-        return Err(denied("insufficient_ai_credits".into()));
+        return Err(denied("insufficient_ai_balance".into()));
     }
 
     let agent = state
@@ -922,7 +1156,6 @@ async fn estimate(
     let fx = pricing_fx_from_engine(&state, &pricing);
     Ok(Json(EstimateResponse {
         estimated_mist: breakdown.amount_mist,
-        estimated_credits: pricing.credits_from_mist(breakdown.amount_mist),
         base_mist: breakdown.base_mist,
         margin_mist: breakdown.margin_mist,
         ecosystem_margin_pct: pricing.ecosystem_margin_pct(),
@@ -960,7 +1193,7 @@ async fn record_usage(
         return Err(agent_auth_error_to_status(err));
     }
 
-    let usage = record_usage_core(&state, req, serde_json::Map::new()).await?;
+    let usage = record_usage_core(&state, req, serde_json::Map::new(), None).await?;
     Ok(Json(usage))
 }
 
@@ -981,158 +1214,438 @@ async fn run_inference(
         return Err(StatusCode::BAD_REQUEST);
     }
 
+    const MAX_INFERENCE_OUTPUT_TOKENS: u32 = 32_768;
+    const MAX_PROMPT_BYTES: usize = 1_048_576;
+
+    let system_prompt = req.system_prompt.as_deref().unwrap_or("");
+    let combined_prompt_bytes = req.prompt.len().saturating_add(system_prompt.len());
+    if combined_prompt_bytes > MAX_PROMPT_BYTES {
+        return Err(StatusCode::PAYLOAD_TOO_LARGE);
+    }
+    let max_tokens = req.max_tokens.unwrap_or(64);
+    if max_tokens == 0 || max_tokens > MAX_INFERENCE_OUTPUT_TOKENS {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    // Completed retries return the original result. Every nonterminal state fails closed:
+    // in particular, no retry can duplicate provider spend after a crash or timeout.
+    if let Some(existing) = state
+        .reservation_ledger
+        .find(&req.balance_id, &req.agent_object_id, &req.idempotency_key)
+        .await
+        .map_err(|error| {
+            tracing::error!(%error, "failed to read inference idempotency ledger");
+            StatusCode::SERVICE_UNAVAILABLE
+        })?
     {
-        let store = state.store.lock().await;
-        if let Some(existing) = store.find_by_idempotency(
-            &req.balance_id,
-            &req.agent_object_id,
-            &req.idempotency_key,
-        ) {
-            return Ok(Json(inference_response_from_line(existing)?));
+        return Ok(Json(inference_response_from_reservation(&existing)?));
+    }
+
+    let now_ms = chrono::Utc::now().timestamp_millis() as u64;
+    let (max_amount_mist, myso_usd_e8, markup_bps, catalog_version) = {
+        let pricing = state.pricing.read().await;
+        if price_unavailable_for_usage(&state, &pricing) {
+            tracing::warn!("inference rejected: MYSO/USD price unavailable or stale");
+            return Err(StatusCode::SERVICE_UNAVAILABLE);
         }
-    }
+        let envelope = pricing.inference_breakdown(
+            &req.model_id,
+            combined_prompt_bytes.max(1) as u64,
+            max_tokens as u64,
+        );
+        (
+            apply_reservation_buffer(
+                envelope.amount_mist,
+                state.oracle_args.reservation_price_buffer_bps,
+            )?,
+            pricing.myso_usd_e8(),
+            pricing.oracle_markup_bps(),
+            pricing.catalog_version().to_string(),
+        )
+    };
 
-    let max_tokens = req.max_tokens.unwrap_or(64).max(1);
-
-    let pricing = state.pricing.read().await;
-    if price_unavailable_for_usage(&state, &pricing) {
-        tracing::warn!("inference rejected: MYSO/USD price unavailable or stale");
-        return Err(StatusCode::SERVICE_UNAVAILABLE);
-    }
-    let est_tokens_in = estimate_prompt_tokens(&req.prompt);
-    let est_breakdown =
-        pricing.inference_breakdown(&req.model_id, est_tokens_in, max_tokens as u64);
-    let est_amount = est_breakdown.amount_mist;
-    drop(pricing);
-
-    {
+    // This indexed preflight produces the UX-friendly reason/approval workflow. The Move
+    // reserve call repeats capability, revocation, allowance, balance, and cap checks against
+    // finalized chain state and remains authoritative.
+    let authorized_agent = {
         let store = state.store.lock().await;
         match validate_spend_policy(
             &state,
             &req.owner,
             Some(&req.balance_id),
             &req.agent_object_id,
-            est_amount,
+            max_amount_mist,
             &store,
         )
         .await
         {
-            Ok(_) => {}
+            Ok((_available, agent)) => agent,
             Err(SpendPolicyError::ApprovalRequired { .. }) => {
-                return Err(StatusCode::PAYMENT_REQUIRED);
+                return Err(StatusCode::PAYMENT_REQUIRED)
             }
-            Err(err) => {
-                tracing::warn!(reason = %err.reason(), "inference preflight rejected");
+            Err(error) => {
+                tracing::warn!(reason = %error.reason(), "inference reservation rejected");
                 return Err(StatusCode::BAD_REQUEST);
             }
         }
-    }
-
-    let message = crate::openrouter_client::ChatMessage {
-        role: "user",
-        content: &req.prompt,
     };
-    let completion = openrouter
-        .chat_completions(&req.model_id, std::slice::from_ref(&message), max_tokens)
+
+    let provider_envelope_hash = hash32(&[
+        b"openrouter-chat-v1",
+        req.model_id.as_bytes(),
+        &(combined_prompt_bytes.max(1) as u64).to_le_bytes(),
+        &(max_tokens as u64).to_le_bytes(),
+        catalog_version.as_bytes(),
+        &state.oracle_args.reservation_price_buffer_bps.to_le_bytes(),
+    ]);
+    let request_hash = hash32(&[
+        req.owner.as_bytes(),
+        req.balance_id.as_bytes(),
+        req.memory_account_id.as_bytes(),
+        req.agent_object_id.as_bytes(),
+        req.model_id.as_bytes(),
+        system_prompt.as_bytes(),
+        req.prompt.as_bytes(),
+        &(max_tokens as u64).to_le_bytes(),
+        req.idempotency_key.as_bytes(),
+    ]);
+    let fx_quote_id = hash32(&[
+        state.myso_price_oracle_url.as_bytes(),
+        &myso_usd_e8.to_le_bytes(),
+        &markup_bps.to_le_bytes(),
+        catalog_version.as_bytes(),
+        &now_ms.to_le_bytes(),
+    ]);
+    let capture_deadline_ms = now_ms
+        .checked_add(state.oracle_args.reservation_capture_window_secs * 1000)
+        .ok_or(StatusCode::BAD_REQUEST)?;
+    let hard_expiry_ms = now_ms
+        .checked_add(state.oracle_args.reservation_hard_expiry_secs * 1000)
+        .ok_or(StatusCode::BAD_REQUEST)?;
+
+    let (latest_nonce, _) = chain_balance::fetch_on_chain_reservation_state(
+        &state.oracle_args.myso_rpc,
+        &req.balance_id,
+    )
+    .await
+    .map_err(|error| {
+        tracing::warn!(%error, "cannot read canonical reservation nonce");
+        StatusCode::SERVICE_UNAVAILABLE
+    })?;
+    let record = ReservationRecord {
+        idempotency_key: req.idempotency_key.clone(),
+        owner: req.owner.clone(),
+        balance_id: req.balance_id.clone(),
+        memory_account_id: req.memory_account_id.clone(),
+        agent_object_id: req.agent_object_id.clone(),
+        model_id: req.model_id.clone(),
+        reservation_nonce: 0,
+        max_amount_mist,
+        provider_envelope_hash_hex: hex::encode(&provider_envelope_hash),
+        request_hash_hex: hex::encode(&request_hash),
+        fx_quote_id_hex: hex::encode(&fx_quote_id),
+        myso_usd_e8,
+        markup_bps,
+        capture_deadline_ms,
+        hard_expiry_ms,
+        status: ReservationStatus::Preparing,
+        reserve_digest: None,
+        capture_digest: None,
+        cancel_digest: None,
+        amount_mist: None,
+        provider_cost_usd_micros: None,
+        upstream_cost_usd_micros: None,
+        provider_generation_id: None,
+        content: None,
+        tokens_in: None,
+        tokens_out: None,
+        created_at_ms: now_ms,
+        updated_at_ms: now_ms,
+        last_error: None,
+    };
+    let record = match state.reservation_ledger.begin(record, latest_nonce).await {
+        Ok(BeginReservation::Created(record)) => record,
+        Ok(BeginReservation::Existing(existing)) => {
+            if existing.request_hash_hex != hex::encode(&request_hash) {
+                return Err(StatusCode::CONFLICT);
+            }
+            return Ok(Json(inference_response_from_reservation(&existing)?));
+        }
+        Err(error) => {
+            tracing::error!(%error, "failed to create inference reservation ledger entry");
+            return Err(StatusCode::SERVICE_UNAVAILABLE);
+        }
+    };
+    let reservation_nonce = record.reservation_nonce;
+    if !state
+        .reservation_ledger
+        .claim_action(&record, "reserve")
         .await
-        .map_err(|err| {
-            tracing::warn!(error = %err, model = %req.model_id, "openrouter inference failed");
-            StatusCode::BAD_GATEWAY
-        })?;
-
-    let tokens_in = completion.prompt_tokens;
-    let tokens_out = completion.completion_tokens;
-
-    let pricing = state.pricing.read().await;
-    let actual_amount = pricing
-        .inference_breakdown(&req.model_id, tokens_in, tokens_out)
-        .amount_mist;
-    drop(pricing);
-
+        .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?
     {
-        let store = state.store.lock().await;
-        match validate_spend_policy(
-            &state,
-            &req.owner,
-            Some(&req.balance_id),
+        return Err(StatusCode::CONFLICT);
+    }
+    let reserve_result = process_outbox_action(&state, &record, "reserve", now_ms)
+        .await
+        .map(|(_, digest)| digest);
+    let reserve_digest = match reserve_result {
+        Ok(digest) => digest,
+        Err(error) => {
+            let error_text = error.to_string();
+            let _ = update_reservation_record(
+                &state,
+                &req.balance_id,
+                &req.agent_object_id,
+                &req.idempotency_key,
+                |record| record.last_error = Some(error_text.clone()),
+            )
+            .await;
+            let _ = state
+                .reservation_ledger
+                .retry(&record, "reserve", &error_text)
+                .await;
+            tracing::warn!(%error, reservation_nonce, "on-chain inference reservation failed");
+            return Err(StatusCode::PAYMENT_REQUIRED);
+        }
+    };
+
+    state
+        .reservation_ledger
+        .complete_action(
+            &req.balance_id,
             &req.agent_object_id,
-            actual_amount,
-            &store,
+            &req.idempotency_key,
+            "reserve",
+            &reserve_digest,
+            |record| {
+                record.status = ReservationStatus::Reserved;
+                record.reserve_digest = Some(reserve_digest.clone());
+            },
         )
         .await
-        {
-            Ok(_) => {}
-            Err(SpendPolicyError::ApprovalRequired { .. }) => {
-                tracing::warn!(
-                    model = %req.model_id,
-                    actual_amount,
-                    tokens_in,
-                    tokens_out,
-                    "inference completed but billing rejected (approval required)"
-                );
-                return Err(StatusCode::PAYMENT_REQUIRED);
-            }
-            Err(err) => {
-                tracing::warn!(
-                    reason = %err.reason(),
-                    actual_amount,
-                    est_amount,
-                    "inference completed but billing rejected"
-                );
-                return Err(StatusCode::PAYMENT_REQUIRED);
-            }
-        }
+        .map_err(|error| {
+            tracing::error!(%error, "failed to commit reserve outbox delivery");
+            StatusCode::SERVICE_UNAVAILABLE
+        })?;
+
+    let mut messages = Vec::with_capacity(if system_prompt.is_empty() { 1 } else { 2 });
+    if !system_prompt.is_empty() {
+        messages.push(crate::openrouter_client::ChatMessage {
+            role: "system",
+            content: system_prompt,
+        });
     }
-
-    let mut extra_metadata = serde_json::Map::new();
-    extra_metadata.insert(
-        "content".to_string(),
-        serde_json::Value::String(completion.content.clone()),
-    );
-    extra_metadata.insert(
-        "prompt".to_string(),
-        serde_json::Value::String(req.prompt.clone()),
-    );
-    extra_metadata.insert(
-        "inference".to_string(),
-        serde_json::Value::Bool(true),
-    );
-
-    let usage_req = UsageRequest {
-        owner: req.owner,
-        balance_id: req.balance_id,
-        memory_account_id: req.memory_account_id,
-        agent_object_id: req.agent_object_id,
-        usage_kind: USAGE_INFERENCE,
-        tokens_in: Some(tokens_in),
-        tokens_out: Some(tokens_out),
-        tool_id: None,
-        model_id: Some(req.model_id.clone()),
-        idempotency_key: req.idempotency_key,
+    messages.push(crate::openrouter_client::ChatMessage {
+        role: "user",
+        content: &req.prompt,
+    });
+    let completion = match openrouter
+        .chat_completions(&req.model_id, &messages, max_tokens)
+        .await
+    {
+        Ok(completion) => completion,
+        Err(error) => {
+            // A transport/parse failure is ambiguous: OpenRouter may have generated and
+            // charged. Never issue an unsafe cancellation. Hard expiry releases funds while
+            // the durable record prevents duplicate inference for this key.
+            let error_text = error.to_string();
+            let _ = update_reservation_record(
+                &state,
+                &req.balance_id,
+                &req.agent_object_id,
+                &req.idempotency_key,
+                |record| {
+                    record.status = ReservationStatus::AmbiguousProviderFailure;
+                    record.last_error = Some(error_text.clone());
+                },
+            )
+            .await;
+            tracing::warn!(%error, reservation_nonce, "OpenRouter failed after finalized reservation");
+            return Err(StatusCode::BAD_GATEWAY);
+        }
     };
 
-    let usage = record_usage_core(&state, usage_req, extra_metadata).await?;
-    Ok(Json(inference_response_from_usage(
-        usage,
-        &req.model_id,
-        &completion.content,
-        tokens_in,
-        tokens_out,
-    )))
+    let provider = ProviderCostEvidence {
+        provider_cost_usd_micros: completion.provider_cost_usd_micros,
+        upstream_cost_usd_micros: completion.upstream_cost_usd_micros,
+        generation_id: completion.generation_id.clone(),
+    };
+    let actual_amount = PricingEngine::provider_cost_breakdown_at_quote(
+        provider.provider_cost_usd_micros,
+        myso_usd_e8,
+        markup_bps,
+    )
+    .amount_mist;
+    if actual_amount > max_amount_mist {
+        update_reservation_record(
+            &state,
+            &req.balance_id,
+            &req.agent_object_id,
+            &req.idempotency_key,
+            |record| {
+                record.status = ReservationStatus::AmbiguousProviderFailure;
+                record.amount_mist = Some(actual_amount);
+                record.provider_cost_usd_micros = Some(provider.provider_cost_usd_micros);
+                record.upstream_cost_usd_micros = provider.upstream_cost_usd_micros;
+                record.provider_generation_id = provider.generation_id.clone();
+                record.tokens_in = Some(completion.prompt_tokens);
+                record.tokens_out = Some(completion.completion_tokens);
+                record.last_error = Some(format!(
+                    "actual charge {actual_amount} exceeded reserved maximum {max_amount_mist}"
+                ));
+            },
+        )
+        .await?;
+        tracing::error!(
+            actual_amount,
+            max_amount_mist,
+            reservation_nonce,
+            "provider price exceeded locked envelope"
+        );
+        return Err(StatusCode::BAD_GATEWAY);
+    }
+
+    let provider_record = update_reservation_record(
+        &state,
+        &req.balance_id,
+        &req.agent_object_id,
+        &req.idempotency_key,
+        |record| {
+            record.status = ReservationStatus::ProviderSucceeded;
+            record.amount_mist = Some(actual_amount);
+            record.provider_cost_usd_micros = Some(provider.provider_cost_usd_micros);
+            record.upstream_cost_usd_micros = provider.upstream_cost_usd_micros;
+            record.provider_generation_id = provider.generation_id.clone();
+            record.content = Some(completion.content.clone());
+            record.tokens_in = Some(completion.prompt_tokens);
+            record.tokens_out = Some(completion.completion_tokens);
+        },
+    )
+    .await?;
+
+    let finalization_action = if provider.provider_cost_usd_micros == 0 || actual_amount == 0 {
+        "cancel"
+    } else {
+        "capture"
+    };
+    if !state
+        .reservation_ledger
+        .claim_action(&provider_record, finalization_action)
+        .await
+        .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?
+    {
+        return Err(StatusCode::CONFLICT);
+    }
+    let (terminal_status, finalization_digest) = match process_outbox_action(
+        &state,
+        &provider_record,
+        finalization_action,
+        chrono::Utc::now().timestamp_millis() as u64,
+    )
+    .await
+    {
+        Ok(result) => result,
+        Err(error) => {
+            let error_text = error.to_string();
+            let _ = update_reservation_record(
+                &state,
+                &req.balance_id,
+                &req.agent_object_id,
+                &req.idempotency_key,
+                |record| record.last_error = Some(error_text.clone()),
+            )
+            .await;
+            let _ = state
+                .reservation_ledger
+                .retry(&provider_record, finalization_action, &error_text)
+                .await;
+            tracing::error!(%error, reservation_nonce, %finalization_action, "provider succeeded but finalization failed; outbox reconciliation required");
+            return Err(StatusCode::SERVICE_UNAVAILABLE);
+        }
+    };
+    let finalized = state
+        .reservation_ledger
+        .complete_action(
+            &req.balance_id,
+            &req.agent_object_id,
+            &req.idempotency_key,
+            finalization_action,
+            &finalization_digest,
+            |record| {
+                record.status = terminal_status;
+                if terminal_status == ReservationStatus::Captured {
+                    record.capture_digest = Some(finalization_digest.clone());
+                } else {
+                    record.cancel_digest = Some(finalization_digest.clone());
+                    record.amount_mist = Some(0);
+                }
+                record.last_error = None;
+            },
+        )
+        .await
+        .map_err(|error| {
+            tracing::error!(%error, "failed to commit finalization outbox delivery");
+            StatusCode::SERVICE_UNAVAILABLE
+        })?;
+
+    // Usage analytics are downstream of finalized billing. Failure here never reopens or
+    // repeats the provider call; chain reservation events remain canonical.
+    let receipt_id = derive_receipt_id(&req.idempotency_key, &req.balance_id, &req.agent_object_id);
+    let metadata = serde_json::json!({
+        "billing_authority": "openrouter_usage_cost",
+        "billing_state": if finalized.status == ReservationStatus::Captured { "captured" } else { "cancelled_zero_cost" },
+        "reservation_nonce": reservation_nonce,
+        "reserved_mist": max_amount_mist,
+        "reserve_digest": reserve_digest,
+        "capture_digest": finalized.capture_digest,
+        "provider_cost_usd_micros": provider.provider_cost_usd_micros,
+        "upstream_cost_usd_micros": provider.upstream_cost_usd_micros,
+        "provider_generation_id": provider.generation_id,
+        "myso_usd_e8": myso_usd_e8,
+        "markup_bps": markup_bps,
+        "tokens_in": completion.prompt_tokens,
+        "tokens_out": completion.completion_tokens,
+    });
+    if let Err(error) = state
+        .social
+        .ingest_usage_line_with_retries(
+            &IngestUsageLineRequest {
+                receipt_id: receipt_id.to_string(),
+                balance_id: req.balance_id.clone(),
+                agent_object_id: req.agent_object_id.clone(),
+                usage_kind: USAGE_INFERENCE as i16,
+                amount_mist: actual_amount as i64,
+                model_id: Some(req.model_id.clone()),
+                tool_id: None,
+                metadata: Some(metadata),
+                organization_id: authorized_agent.organization_id,
+                settled: true,
+                settlement_tx: finalized
+                    .capture_digest
+                    .clone()
+                    .or_else(|| finalized.cancel_digest.clone()),
+            },
+            3,
+        )
+        .await
+    {
+        tracing::warn!(%error, receipt_id, "captured inference analytics ingest failed");
+    }
+
+    Ok(Json(inference_response_from_reservation(&finalized)?))
 }
 
 async fn record_usage_core(
     state: &AppState,
     req: UsageRequest,
     mut extra_metadata: serde_json::Map<String, serde_json::Value>,
+    provider_cost: Option<ProviderCostEvidence>,
 ) -> Result<UsageResponse, StatusCode> {
     {
         let store = state.store.lock().await;
-        if let Some(existing) = store.find_by_idempotency(
-            &req.balance_id,
-            &req.agent_object_id,
-            &req.idempotency_key,
-        ) {
+        if let Some(existing) =
+            store.find_by_idempotency(&req.balance_id, &req.agent_object_id, &req.idempotency_key)
+        {
             return usage_response_from_line(existing);
         }
     }
@@ -1144,17 +1657,21 @@ async fn record_usage_core(
     }
 
     let catalog = state.catalog.read().await;
-    let breakdown = match compute_usage_breakdown(state, &pricing, &catalog, &req) {
-        Ok(b) => b,
-        Err(reason) => {
-            tracing::warn!(reason = %reason, "usage rejected");
-            return Err(StatusCode::BAD_REQUEST);
-        }
+    let breakdown = match provider_cost.as_ref() {
+        Some(evidence) => pricing.provider_cost_breakdown(evidence.provider_cost_usd_micros),
+        None => match compute_usage_breakdown(state, &pricing, &catalog, &req) {
+            Ok(b) => b,
+            Err(reason) => {
+                tracing::warn!(reason = %reason, "usage rejected");
+                return Err(StatusCode::BAD_REQUEST);
+            }
+        },
     };
     let amount_mist = breakdown.amount_mist;
     let catalog_version = pricing.catalog_version().to_string();
     let ecosystem_margin_pct = pricing.ecosystem_margin_pct();
     let myso_usd = pricing.myso_usd();
+    let myso_usd_e8 = pricing.myso_usd_e8();
     drop(pricing);
 
     let balance_resp = state
@@ -1229,11 +1746,8 @@ async fn record_usage_core(
         let settlement_nonce =
             BalanceLedger::next_settlement_nonce(&balance_resp, &store_guard, Some(on_chain_nonce));
 
-        let receipt_id = derive_receipt_id(
-            &req.idempotency_key,
-            &req.balance_id,
-            &req.agent_object_id,
-        );
+        let receipt_id =
+            derive_receipt_id(&req.idempotency_key, &req.balance_id, &req.agent_object_id);
         let timestamp_ms = chrono::Utc::now().timestamp_millis() as u64;
         let receipt = UsageReceipt {
             balance_id: parse_object_id_hex(&req.balance_id)
@@ -1276,9 +1790,15 @@ async fn record_usage_core(
             "ecosystem_margin_pct".to_string(),
             serde_json::json!(ecosystem_margin_pct),
         );
+        metadata.insert("myso_usd".to_string(), serde_json::json!(myso_usd));
+        metadata.insert("myso_usd_e8".to_string(), serde_json::json!(myso_usd_e8));
         metadata.insert(
-            "myso_usd".to_string(),
-            serde_json::json!(myso_usd),
+            "billing_authority".to_string(),
+            serde_json::Value::String(if provider_cost.is_some() {
+                "openrouter_usage_cost".to_string()
+            } else {
+                "reported_usage_catalog".to_string()
+            }),
         );
         metadata.append(&mut extra_metadata);
         let metadata = serde_json::Value::Object(metadata);
@@ -1321,6 +1841,8 @@ async fn record_usage_core(
             tool_id: req.tool_id.clone(),
             metadata: Some(metadata),
             organization_id: agent.organization_id.clone(),
+            settled: false,
+            settlement_tx: None,
         };
 
         (

@@ -90,6 +90,7 @@ Messaging-specific:
     -  [Aborts](#@Aborts_20)
 -  [Function `assert_message_log_matches_group`](#messaging_messaging_assert_message_log_matches_group)
 -  [Function `assert_group_not_archived`](#messaging_messaging_assert_group_not_archived)
+-  [Function `send_agent_message_digest`](#messaging_messaging_send_agent_message_digest)
 -  [Function `send_paid_message_digest`](#messaging_messaging_send_paid_message_digest)
 -  [Function `send_agent_paid_message_digest`](#messaging_messaging_send_agent_paid_message_digest)
 -  [Function `reply_to_paid_message_claim_coin`](#messaging_messaging_reply_to_paid_message_claim_coin)
@@ -1677,6 +1678,80 @@ The removed (key, value) tuple.
 
 <pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_assert_group_not_archived">assert_group_not_archived</a>(group: &PermissionedGroup&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>&gt;) {
     <b>assert</b>!(!group.is_paused(), <a href="../messaging/messaging.md#messaging_messaging_EGroupArchived">EGroupArchived</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="messaging_messaging_send_agent_message_digest"></a>
+
+## Function `send_agent_message_digest`
+
+Send a free encrypted message pointer as an authorized sub-agent. Message
+ciphertext stays in the off-chain messaging store; only its digest and URI
+are committed on-chain.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_send_agent_message_digest">send_agent_message_digest</a>(<a href="../messaging/version.md#messaging_version">version</a>: &<a href="../messaging/version.md#messaging_version_Version">messaging::version::Version</a>, config: &<a href="../messaging/messaging_config.md#messaging_messaging_config_MessagingConfig">messaging::messaging_config::MessagingConfig</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, log: &<b>mut</b> <a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, platform: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, recipient: <b>address</b>, content_digest: vector&lt;u8&gt;, content_uri: <a href="../std/string.md#std_string_String">std::string::String</a>, dedupe_key: vector&lt;u8&gt;, nonce: u128, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_send_agent_message_digest">send_agent_message_digest</a>(
+    <a href="../messaging/version.md#messaging_version">version</a>: &Version,
+    config: &MessagingConfig,
+    group: &PermissionedGroup&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>&gt;,
+    log: &<b>mut</b> MessageLog,
+    block_list: &BlockListRegistry,
+    platform: &Platform,
+    memory_config: &MemoryConfig,
+    memory_account: &MemoryAccount,
+    recipient: <b>address</b>,
+    content_digest: vector&lt;u8&gt;,
+    content_uri: String,
+    dedupe_key: vector&lt;u8&gt;,
+    nonce: u128,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <a href="../messaging/version.md#messaging_version">version</a>.validate_version();
+    <a href="../messaging/messaging.md#messaging_messaging_assert_group_not_archived">assert_group_not_archived</a>(group);
+    <a href="../messaging/messaging.md#messaging_messaging_assert_message_log_matches_group">assert_message_log_matches_group</a>(log, group);
+    <b>let</b> acting = <a href="../messaging/messaging.md#messaging_messaging_resolve_messaging_actor">resolve_messaging_actor</a>(
+        memory_config,
+        memory_account,
+        platform,
+        block_list,
+        memory::cap_message_send(),
+        0,
+        clock,
+        ctx,
+    );
+    <b>let</b> actor_address = memory::acting_actor_address(&acting);
+    <b>let</b> principal_owner = memory::acting_principal_owner(&acting);
+    <b>assert</b>!(actor_address == ctx.sender(), <a href="../messaging/messaging.md#messaging_messaging_EAgentSenderMismatch">EAgentSenderMismatch</a>);
+    <b>assert</b>!(group.has_permission&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>, <a href="../messaging/messaging.md#messaging_messaging_MessagingSender">MessagingSender</a>&gt;(actor_address), <a href="../messaging/messaging.md#messaging_messaging_ENotPermitted">ENotPermitted</a>);
+    <b>assert</b>!(group.has_permission&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>, <a href="../messaging/messaging.md#messaging_messaging_MessagingReader">MessagingReader</a>&gt;(recipient), <a href="../messaging/messaging.md#messaging_messaging_ENotPermitted">ENotPermitted</a>);
+    block_list::assert_not_blocked(block_list, actor_address, recipient);
+    block_list::assert_not_blocked(block_list, principal_owner, recipient);
+    <a href="../messaging/message_log.md#messaging_message_log_send_message_digest">message_log::send_message_digest</a>(
+        config,
+        log,
+        actor_address,
+        recipient,
+        content_digest,
+        content_uri,
+        dedupe_key,
+        nonce,
+        clock,
+        ctx,
+    );
 }
 </code></pre>
 

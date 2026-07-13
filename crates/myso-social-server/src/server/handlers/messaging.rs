@@ -46,6 +46,19 @@ pub async fn get_paid_message_history(
         .map(Json)
 }
 
+pub async fn get_message_history(
+    State(state): State<Arc<AppState>>,
+    Path(address): Path<String>,
+    Query(query): Query<PaginationQuery>,
+) -> Result<Json<Vec<crate::reader::MessageDigestInfo>>, SocialError> {
+    let (limit, offset) = pagination(&query);
+    state
+        .reader
+        .get_message_digests(&address, limit, offset)
+        .await
+        .map(Json)
+}
+
 pub async fn get_agent_groups(
     State(state): State<Arc<AppState>>,
     Path(organization_id): Path<String>,

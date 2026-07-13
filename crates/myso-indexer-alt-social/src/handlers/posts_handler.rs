@@ -72,6 +72,11 @@ pub enum PostRow {
         is_post: bool,
     },
     Repost(NewRepost),
+    RepostRemoved {
+        repost_id: String,
+        original_id: String,
+        is_original_post: bool,
+    },
     Tip(NewTip),
     ModerationEvent(NewModerationEvent),
     Report(NewReport),
@@ -305,6 +310,9 @@ impl PostRow {
                 is_post,
             }),
             SocialEventRow::Repost(r) => Some(PostRow::Repost(r)),
+            SocialEventRow::RepostRemoved { repost_id, original_id, is_original_post } => {
+                Some(PostRow::RepostRemoved { repost_id, original_id, is_original_post })
+            }
             SocialEventRow::Tip(t) => Some(PostRow::Tip(t)),
             SocialEventRow::ModerationEvent(m) => Some(PostRow::ModerationEvent(m)),
             SocialEventRow::Report(r) => Some(PostRow::Report(r)),
@@ -1146,6 +1154,25 @@ impl Handler for PostsHandler {
                         let _ = diesel::update(comments::table)
                             .filter(comments::comment_id.eq(&object_id))
                             .set(comments::reaction_count.eq(comments::reaction_count - 1))
+                            .execute(conn)
+                            .await;
+                    }
+                }
+                PostRow::RepostRemoved { repost_id, original_id, is_original_post } => {
+                    let _ = diesel::delete(reposts::table)
+                        .filter(reposts::repost_id.eq(repost_id))
+                        .execute(conn)
+                        .await;
+                    if *is_original_post {
+                        let _ = diesel::update(posts::table)
+                            .filter(posts::post_id.eq(original_id))
+                            .set(posts::repost_count.eq(posts::repost_count - 1))
+                            .execute(conn)
+                            .await;
+                    } else {
+                        let _ = diesel::update(comments::table)
+                            .filter(comments::comment_id.eq(original_id))
+                            .set(comments::repost_count.eq(comments::repost_count - 1))
                             .execute(conn)
                             .await;
                     }

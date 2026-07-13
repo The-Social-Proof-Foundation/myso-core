@@ -14,6 +14,8 @@ pub const CATALOG_USD_PEG: f64 = 1.0;
 pub const DEFAULT_MYSO_USD_FALLBACK: f64 = 0.0045;
 /// On-chain default oracle markup (15%) when GraphQL/REST config is unavailable.
 pub const DEFAULT_ORACLE_MARKUP_BPS: u64 = 1500;
+pub const USD_MICROS_PER_USD: u128 = 1_000_000;
+pub const USD_E8_PER_USD: u128 = 100_000_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PriceBreakdown {
@@ -121,6 +123,39 @@ impl PricingEngine {
             .amount_mist
     }
 
+    /// Convert OpenRouter's actual account charge into MIST using checked
+    /// integer arithmetic.  The current FX quote and on-chain markup are the
+    /// only inputs; model token rates are deliberately not involved.
+    pub fn provider_cost_breakdown(&self, provider_cost_usd_micros: u64) -> PriceBreakdown {
+        Self::provider_cost_breakdown_at_quote(
+            provider_cost_usd_micros,
+            self.myso_usd_e8(),
+            self.oracle_markup_bps,
+        )
+    }
+
+    /// Convert provider cost using the exact FX + markup quote that was locked
+    /// into an on-chain reservation. Capture must never read a refreshed price.
+    pub fn provider_cost_breakdown_at_quote(
+        provider_cost_usd_micros: u64,
+        myso_usd_e8: u64,
+        markup_bps: u64,
+    ) -> PriceBreakdown {
+        assert!(myso_usd_e8 > 0, "MYSO/USD quote must be positive");
+        let marked_usd_micros = ceil_mul_div_u128(
+            provider_cost_usd_micros as u128,
+            10_000u128 + markup_bps as u128,
+            10_000,
+        );
+        let base_mist = usd_micros_to_mist_at_quote(provider_cost_usd_micros as u128, myso_usd_e8);
+        let amount_mist = usd_micros_to_mist_at_quote(marked_usd_micros, myso_usd_e8);
+        PriceBreakdown {
+            base_mist,
+            margin_mist: amount_mist.saturating_sub(base_mist),
+            amount_mist,
+        }
+    }
+
     pub fn inference_breakdown(
         &self,
         model_id: &str,
@@ -180,9 +215,41 @@ impl PricingEngine {
         ((catalog_mist as f64 / rate).ceil()) as u64
     }
 
-    pub fn credits_from_mist(&self, mist: u64) -> f64 {
-        mist as f64 / MIST_PER_MYSO as f64
+    pub fn myso_usd_e8(&self) -> u64 {
+        let bounded = self.myso_usd.max(MIN_MYSO_USD);
+        (bounded * USD_E8_PER_USD as f64).round().max(1.0) as u64
     }
+}
+
+fn usd_micros_to_mist_at_quote(usd_micros: u128, myso_usd_e8: u64) -> u64 {
+    if usd_micros == 0 {
+        return 0;
+    }
+    // USD micros * (1e8 USD-price scale) * (1e9 MIST/MYSO)
+    // divided by (1e6 micros/USD) * price_e8.
+    let numerator = usd_micros
+        .checked_mul(USD_E8_PER_USD)
+        .and_then(|v| v.checked_mul(MIST_PER_MYSO as u128))
+        .expect("provider cost conversion overflow");
+    let denominator = USD_MICROS_PER_USD
+        .checked_mul(myso_usd_e8 as u128)
+        .expect("provider cost denominator overflow");
+    let amount = ceil_div_u128(numerator, denominator);
+    u64::try_from(amount).expect("provider cost exceeds u64 MIST")
+}
+
+fn ceil_div_u128(value: u128, divisor: u128) -> u128 {
+    debug_assert!(divisor > 0);
+    value.saturating_add(divisor - 1) / divisor
+}
+
+fn ceil_mul_div_u128(value: u128, multiplier: u128, divisor: u128) -> u128 {
+    ceil_div_u128(
+        value
+            .checked_mul(multiplier)
+            .expect("fixed-point multiplication overflow"),
+        divisor,
+    )
 }
 
 fn pct_to_markup_bps(pct: f64) -> u64 {
@@ -267,5 +334,33 @@ min_charge_mist = 1_000_000
         engine.apply_fallback_myso_usd();
         assert!(engine.price_ever_fetched());
         assert!((engine.myso_usd() - DEFAULT_MYSO_USD_FALLBACK).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn actual_provider_cost_uses_fixed_point_fx_and_markup() {
+        let mut engine = PricingEngine::new(test_catalog(), 0.0);
+        engine.set_oracle_markup_bps(1500);
+        engine.set_myso_usd(0.0045, Instant::now());
+        // $0.0012 provider cost + 15% = $0.00138. At $0.0045/MYSO this
+        // captures 0.306666667 MYSO, rounded up to integer MIST.
+        let breakdown = engine.provider_cost_breakdown(1_200);
+        assert_eq!(breakdown.base_mist, 266_666_667);
+        assert_eq!(breakdown.amount_mist, 306_666_667);
+        assert_eq!(breakdown.margin_mist, 40_000_000);
+        assert_eq!(engine.myso_usd_e8(), 450_000);
+    }
+
+    #[test]
+    fn capture_uses_locked_quote_not_refreshed_engine_price() {
+        let locked = PricingEngine::provider_cost_breakdown_at_quote(1_200, 450_000, 1500);
+        assert_eq!(locked.amount_mist, 306_666_667);
+
+        let mut engine = PricingEngine::new(test_catalog(), 0.0);
+        engine.set_oracle_markup_bps(1500);
+        engine.set_myso_usd(0.003, Instant::now());
+        assert_ne!(
+            engine.provider_cost_breakdown(1_200).amount_mist,
+            locked.amount_mist
+        );
     }
 }

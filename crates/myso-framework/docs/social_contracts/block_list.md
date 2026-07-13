@@ -12,9 +12,7 @@ Manages user blocking between wallet addresses
 -  [Constants](#@Constants_0)
 -  [Function `bootstrap_init`](#social_contracts_block_list_bootstrap_init)
 -  [Function `block_wallet_internal`](#social_contracts_block_list_block_wallet_internal)
--  [Function `block_wallet`](#social_contracts_block_list_block_wallet)
 -  [Function `unblock_wallet_internal`](#social_contracts_block_list_unblock_wallet_internal)
--  [Function `unblock_wallet`](#social_contracts_block_list_unblock_wallet)
 -  [Function `either_blocked`](#social_contracts_block_list_either_blocked)
 -  [Function `assert_not_blocked`](#social_contracts_block_list_assert_not_blocked)
 -  [Function `is_blocked`](#social_contracts_block_list_is_blocked)
@@ -44,7 +42,6 @@ Manages user blocking between wallet addresses
 <b>use</b> <a href="../myso/types.md#myso_types">myso::types</a>;
 <b>use</b> <a href="../myso/vec_map.md#myso_vec_map">myso::vec_map</a>;
 <b>use</b> <a href="../myso/vec_set.md#myso_vec_set">myso::vec_set</a>;
-<b>use</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_contracts::social_graph</a>;
 <b>use</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade">social_contracts::upgrade</a>;
 <b>use</b> <a href="../std/address.md#std_address">std::address</a>;
 <b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
@@ -257,7 +254,7 @@ This allows platforms (shared objects) to block wallets on behalf of their addre
 Uses unified table architecture with lazy initialization (like following)
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_block_wallet_internal">block_wallet_internal</a>(registry: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_contracts::social_graph::SocialGraph</a>, blocker_address: <b>address</b>, blocked_wallet_address: <b>address</b>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_block_wallet_internal">block_wallet_internal</a>(registry: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, blocker_address: <b>address</b>, blocked_wallet_address: <b>address</b>)
 </code></pre>
 
 
@@ -268,7 +265,6 @@ Uses unified table architecture with lazy initialization (like following)
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_block_wallet_internal">block_wallet_internal</a>(
     registry: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">BlockListRegistry</a>,
-    <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_graph::SocialGraph</a>,
     blocker_address: <b>address</b>,
     blocked_wallet_address: <b>address</b>
 ) {
@@ -293,45 +289,6 @@ Uses unified table architecture with lazy initialization (like following)
         blocker: blocker_address,
         blocked: blocked_wallet_address,
     });
-    // Perform bidirectional unfollow after blocking succeeds (wallet-level)
-    // Blocker unfollows blocked (<b>if</b> following)
-    <a href="../social_contracts/social_graph.md#social_contracts_social_graph_unfollow_internal">social_graph::unfollow_internal</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>, blocker_address, blocked_wallet_address);
-    // Blocked unfollows blocker (<b>if</b> following)
-    <a href="../social_contracts/social_graph.md#social_contracts_social_graph_unfollow_internal">social_graph::unfollow_internal</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>, blocked_wallet_address, blocker_address);
-    // Continue - blocking succeeds regardless of unfollow results
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_block_list_block_wallet"></a>
-
-## Function `block_wallet`
-
-Block a wallet address
-Uses the caller's wallet address as the blocker
-Automatically unfollows in both directions if users are following each other
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_block_wallet">block_wallet</a>(registry: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_contracts::social_graph::SocialGraph</a>, blocked_wallet_address: <b>address</b>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_block_wallet">block_wallet</a>(
-    registry: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">BlockListRegistry</a>,
-    <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_graph::SocialGraph</a>,
-    blocked_wallet_address: <b>address</b>,
-    ctx: &<b>mut</b> TxContext
-) {
-    <b>let</b> sender = tx_context::sender(ctx);
-    <a href="../social_contracts/block_list.md#social_contracts_block_list_block_wallet_internal">block_wallet_internal</a>(registry, <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>, sender, blocked_wallet_address);
 }
 </code></pre>
 
@@ -379,37 +336,6 @@ Internal helper function to unblock a wallet with a specific blocker address
         blocker: blocker_address,
         unblocked: blocked_wallet_address,
     });
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_block_list_unblock_wallet"></a>
-
-## Function `unblock_wallet`
-
-Unblock a wallet address
-Uses the caller's wallet address as the blocker
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_unblock_wallet">unblock_wallet</a>(registry: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, blocked_wallet_address: <b>address</b>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_unblock_wallet">unblock_wallet</a>(
-    registry: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">BlockListRegistry</a>,
-    blocked_wallet_address: <b>address</b>,
-    ctx: &<b>mut</b> TxContext
-) {
-    <b>let</b> sender = tx_context::sender(ctx);
-    <a href="../social_contracts/block_list.md#social_contracts_block_list_unblock_wallet_internal">unblock_wallet_internal</a>(registry, sender, blocked_wallet_address);
 }
 </code></pre>
 

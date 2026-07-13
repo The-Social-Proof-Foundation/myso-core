@@ -18,12 +18,16 @@ module social_contracts::social_graph {
         clock::{Self, Clock},
     };
     
+    use social_contracts::block_list::{Self, BlockListRegistry};
+    use social_contracts::memory::{Self, MemoryAccount, MemoryConfig};
+    use social_contracts::platform::{Self, Platform};
     use social_contracts::upgrade;
 
     /// Error codes
     const EAlreadyFollowing: u64 = 0;
     const ENotFollowing: u64 = 1;
     const ECannotFollowSelf: u64 = 2;
+    const EUnauthorized: u64 = 3;
     const EWrongVersion: u64 = 4;
 
     /// Global social graph object that tracks relationships between wallet addresses
@@ -116,6 +120,100 @@ module social_contracts::social_graph {
         });
     }
 
+    /// Package-scoped follow used by the agent-aware action coordinator after
+    /// resolving the transaction signer to its human principal.
+    public(package) fun follow_internal(
+        social_graph: &mut SocialGraph,
+        follower_address: address,
+        following_address: address,
+    ) {
+        assert!(social_graph.version == upgrade::current_version(), EWrongVersion);
+        assert!(follower_address != following_address, ECannotFollowSelf);
+
+        if (!table::contains(&social_graph.following, follower_address)) {
+            table::add(&mut social_graph.following, follower_address, vec_set::empty());
+        };
+        if (!table::contains(&social_graph.followers, following_address)) {
+            table::add(&mut social_graph.followers, following_address, vec_set::empty());
+        };
+
+        let follower_following = table::borrow_mut(&mut social_graph.following, follower_address);
+        let following_followers = table::borrow_mut(&mut social_graph.followers, following_address);
+        assert!(!vec_set::contains(follower_following, &following_address), EAlreadyFollowing);
+        vec_set::insert(follower_following, following_address);
+        vec_set::insert(following_followers, follower_address);
+        event::emit(FollowEvent { follower: follower_address, following: following_address });
+    }
+
+    /// Resolve either the human owner or a registered delegated agent to the
+    /// wallet principal whose social graph is being changed.
+    fun principal_for_social_graph_action(
+        memory_config: &MemoryConfig,
+        memory_account: &MemoryAccount,
+        platform: &Platform,
+        block_list: &BlockListRegistry,
+        clock: &Clock,
+        ctx: &TxContext,
+    ): address {
+        let platform_id = object::uid_to_address(platform::id(platform));
+        let acting = memory::resolve_actor_with_cap(
+            memory_config,
+            memory_account,
+            memory::cap_social_graph(),
+            option::some(platform_id),
+            0,
+            clock,
+            ctx,
+        );
+        memory::assert_direct_execution_allowed(
+            memory_account,
+            memory::cap_social_graph(),
+            ctx,
+        );
+        let principal = memory::acting_principal_owner(&acting);
+        assert!(memory::owner(memory_account) == principal, EUnauthorized);
+        assert!(platform::has_joined_platform(platform, principal), EUnauthorized);
+        assert!(!block_list::is_blocked(block_list, platform_id, principal), EUnauthorized);
+        principal
+    }
+
+    /// Follow through the same graph mutation used by wallet calls, after
+    /// resolving a delegated agent to its human principal.
+    public entry fun follow_profile(
+        memory_config: &MemoryConfig,
+        memory_account: &MemoryAccount,
+        platform: &Platform,
+        block_list: &BlockListRegistry,
+        graph: &mut SocialGraph,
+        target_owner: address,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        let principal = principal_for_social_graph_action(
+            memory_config, memory_account, platform, block_list, clock, ctx,
+        );
+        block_list::assert_not_blocked(block_list, principal, target_owner);
+        follow_internal(graph, principal, target_owner);
+    }
+
+    /// Unfollow through the same graph mutation used by wallet calls, after
+    /// resolving a delegated agent to its human principal.
+    public entry fun unfollow_profile(
+        memory_config: &MemoryConfig,
+        memory_account: &MemoryAccount,
+        platform: &Platform,
+        block_list: &BlockListRegistry,
+        graph: &mut SocialGraph,
+        target_owner: address,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        let principal = principal_for_social_graph_action(
+            memory_config, memory_account, platform, block_list, clock, ctx,
+        );
+        assert!(unfollow_internal(graph, principal, target_owner), ENotFollowing);
+    }
+
     /// Unfollow a wallet address
     /// Uses wallet-level architecture - no profile required
     public entry fun unfollow(
@@ -196,6 +294,91 @@ module social_contracts::social_graph {
         };
         
         false
+    }
+
+    /// Shared block implementation. Block-list storage stays in `block_list`;
+    /// graph cleanup stays here so the module dependency remains acyclic.
+    fun block_wallet_as(
+        block_list: &mut BlockListRegistry,
+        graph: &mut SocialGraph,
+        blocker: address,
+        target_owner: address,
+    ) {
+        block_list::block_wallet_internal(block_list, blocker, target_owner);
+        unfollow_internal(graph, blocker, target_owner);
+        unfollow_internal(graph, target_owner, blocker);
+    }
+
+    /// Block a wallet as a platform after reusing the platform module's
+    /// developer/moderator authorization check.
+    public fun block_platform_wallet(
+        block_list: &mut BlockListRegistry,
+        graph: &mut SocialGraph,
+        platform: &mut Platform,
+        group: &myso::permissioned_group::PermissionedGroup<platform::PlatformPackage>,
+        target_owner: address,
+        ctx: &mut TxContext,
+    ) {
+        let platform_address = platform::assert_block_wallet_permission(platform, group, ctx);
+        block_wallet_as(block_list, graph, platform_address, target_owner);
+    }
+
+    /// Block a profile directly as the transaction sender.
+    public entry fun block_wallet(
+        block_list: &mut BlockListRegistry,
+        graph: &mut SocialGraph,
+        target_owner: address,
+        ctx: &mut TxContext,
+    ) {
+        block_wallet_as(block_list, graph, tx_context::sender(ctx), target_owner);
+    }
+
+    /// Unblock a profile directly as the transaction sender.
+    public entry fun unblock_wallet(
+        block_list: &mut BlockListRegistry,
+        target_owner: address,
+        ctx: &mut TxContext,
+    ) {
+        block_list::unblock_wallet_internal(
+            block_list,
+            tx_context::sender(ctx),
+            target_owner,
+        );
+    }
+
+    /// Block through the shared block/graph implementation after resolving a
+    /// delegated agent to its human principal.
+    public entry fun block_profile(
+        memory_config: &MemoryConfig,
+        memory_account: &MemoryAccount,
+        platform: &Platform,
+        block_list: &mut BlockListRegistry,
+        graph: &mut SocialGraph,
+        target_owner: address,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        let principal = principal_for_social_graph_action(
+            memory_config, memory_account, platform, block_list, clock, ctx,
+        );
+        block_wallet_as(block_list, graph, principal, target_owner);
+    }
+
+    /// Unblock through the shared block-list implementation after resolving a
+    /// delegated agent to its human principal.
+    public entry fun unblock_profile(
+        memory_config: &MemoryConfig,
+        memory_account: &MemoryAccount,
+        platform: &Platform,
+        block_list: &mut BlockListRegistry,
+        target_owner: address,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        let principal = principal_for_social_graph_action(
+            memory_config, memory_account, platform, block_list, clock, ctx,
+        );
+        block_list::unblock_wallet_internal(block_list, principal, target_owner);
     }
 
     /// Migrate the social graph to a new version

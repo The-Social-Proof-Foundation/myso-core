@@ -16,11 +16,11 @@ use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
-    NewMessagingAgentGroup, NewMessagingConfig, NewPaidMessageEscrow, NewUnifiedRevenue,
+    NewMessageDigest, NewMessagingAgentGroup, NewMessagingConfig, NewPaidMessageEscrow, NewUnifiedRevenue,
     NewWalletMessagingPolicy,
 };
 use myso_indexer_alt_social_schema::schema::{
-    messaging_agent_groups, messaging_config, paid_message_escrows, unified_revenue,
+    message_digests, messaging_agent_groups, messaging_config, paid_message_escrows, unified_revenue,
     wallet_messaging_policies,
 };
 
@@ -43,6 +43,7 @@ pub enum MessagingRow {
     WalletMessagingPolicy(NewWalletMessagingPolicy),
     MessagingConfig(NewMessagingConfig),
     PaidMessageEscrow(NewPaidMessageEscrow),
+    MessageDigest(NewMessageDigest),
     MessagingAgentGroup(NewMessagingAgentGroup),
     UnifiedRevenue(NewUnifiedRevenue),
     OrgOutboundSpend {
@@ -201,6 +202,7 @@ impl Processor for MessagingHandler {
 fn convert_social_event_row(row: SocialEventRow) -> Vec<MessagingRow> {
     match row {
         SocialEventRow::PaidMessageEscrow(e) => vec![MessagingRow::PaidMessageEscrow(e)],
+        SocialEventRow::MessageDigest(e) => vec![MessagingRow::MessageDigest(e)],
         SocialEventRow::MessagingAgentGroup(g) => vec![MessagingRow::MessagingAgentGroup(g)],
         SocialEventRow::UnifiedRevenue(r) => vec![MessagingRow::UnifiedRevenue(r)],
         SocialEventRow::MessagingOrgOutboundSpend {
@@ -266,6 +268,12 @@ impl Handler for MessagingHandler {
                 }
                 MessagingRow::PaidMessageEscrow(e) => {
                     total += diesel::insert_into(paid_message_escrows::table)
+                        .values(e)
+                        .execute(conn)
+                        .await?;
+                }
+                MessagingRow::MessageDigest(e) => {
+                    total += diesel::insert_into(message_digests::table)
                         .values(e)
                         .execute(conn)
                         .await?;

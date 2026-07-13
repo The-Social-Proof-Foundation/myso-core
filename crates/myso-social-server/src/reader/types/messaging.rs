@@ -59,6 +59,27 @@ pub struct PaidMessageEscrowInfo {
 
 #[derive(Debug, Serialize, QueryableByName)]
 #[serde(rename_all = "camelCase")]
+pub struct MessageDigestInfo {
+    #[diesel(sql_type = Text)]
+    pub group_id: String,
+    #[diesel(sql_type = BigInt)]
+    pub seq: i64,
+    #[diesel(sql_type = Text)]
+    pub sender: String,
+    #[diesel(sql_type = Text)]
+    pub recipient: String,
+    #[diesel(sql_type = Text)]
+    pub content_digest: String,
+    #[diesel(sql_type = Text)]
+    pub content_uri: String,
+    #[diesel(sql_type = BigInt)]
+    pub created_at_ms: i64,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Serialize, QueryableByName)]
+#[serde(rename_all = "camelCase")]
 pub struct MessagingAgentGroupInfo {
     #[diesel(sql_type = Text)]
     pub group_id: String,

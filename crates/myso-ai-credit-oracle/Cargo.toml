@@ -11,7 +11,6 @@ anyhow.workspace = true
 axum = { version = "0.7", features = ["json"] }
 bcs.workspace = true
 blake2 = "0.10"
-fs2 = "0.4"
 myso-crypto.workspace = true
 myso-sdk-types.workspace = true
 chrono = { workspace = true, features = ["serde"] }
@@ -24,12 +23,14 @@ myso-sdk.workspace = true
 myso-json-rpc-types.workspace = true
 shared-crypto.workspace = true
 fastcrypto.workspace = true
+fs2 = "0.4"
 rand = "0.8"
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 tokio.workspace = true
 toml = "0.8"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "json", "migrate"] }
 tracing.workspace = true
 tracing-subscriber.workspace = true
 uuid = { version = "1", features = ["v4"] }

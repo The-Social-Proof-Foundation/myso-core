@@ -49,7 +49,7 @@ Manages social media platforms and their timelines
 -  [Function `revoke_moderator_permission`](#social_contracts_platform_revoke_moderator_permission)
 -  [Function `add_moderator`](#social_contracts_platform_add_moderator)
 -  [Function `remove_moderator`](#social_contracts_platform_remove_moderator)
--  [Function `block_wallet`](#social_contracts_platform_block_wallet)
+-  [Function `assert_block_wallet_permission`](#social_contracts_platform_assert_block_wallet_permission)
 -  [Function `unblock_wallet`](#social_contracts_platform_unblock_wallet)
 -  [Function `toggle_platform_approval`](#social_contracts_platform_toggle_platform_approval)
 -  [Function `delete_platform`](#social_contracts_platform_delete_platform)
@@ -158,7 +158,6 @@ Manages social media platforms and their timelines
 <b>use</b> <a href="../social_contracts/governance.md#social_contracts_governance">social_contracts::governance</a>;
 <b>use</b> <a href="../social_contracts/memory.md#social_contracts_memory">social_contracts::memory</a>;
 <b>use</b> <a href="../social_contracts/profile.md#social_contracts_profile">social_contracts::profile</a>;
-<b>use</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_contracts::social_graph</a>;
 <b>use</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade">social_contracts::upgrade</a>;
 <b>use</b> <a href="../std/address.md#std_address">std::address</a>;
 <b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
@@ -3118,16 +3117,16 @@ Remove a moderator entirely from the platform moderators group
 
 </details>
 
-<a name="social_contracts_platform_block_wallet"></a>
+<a name="social_contracts_platform_assert_block_wallet_permission"></a>
 
-## Function `block_wallet`
+## Function `assert_block_wallet_permission`
 
-Block a wallet address from the platform
-Allows platform developers/moderators to block wallets using the platform address as the blocker
-This enables platforms (shared objects) to block user wallets
+Verify platform moderator permission and return the platform address
+used as the block-list principal. Graph mutation is coordinated by
+<code><a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a></code> to keep module dependencies acyclic.
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_block_wallet">block_wallet</a>(block_list_registry: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_contracts::social_graph::SocialGraph</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, blocked_wallet_address: <b>address</b>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_assert_block_wallet_permission">assert_block_wallet_permission</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <b>address</b>
 </code></pre>
 
 
@@ -3136,27 +3135,15 @@ This enables platforms (shared objects) to block user wallets
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_block_wallet">block_wallet</a>(
-    block_list_registry: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">block_list::BlockListRegistry</a>,
-    <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_graph::SocialGraph</a>,
-    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_assert_block_wallet_permission">assert_block_wallet_permission</a>(
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
     group: &PermissionedGroup&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>&gt;,
-    blocked_wallet_address: <b>address</b>,
-    ctx: &<b>mut</b> TxContext
-) {
-    // Check version compatibility
+    ctx: &TxContext,
+): <b>address</b> {
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
     <b>let</b> caller = tx_context::sender(ctx);
     <a href="../social_contracts/platform.md#social_contracts_platform_assert_moderator_permission">assert_moderator_permission</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformBlockAdmin">PlatformBlockAdmin</a>&gt;(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, group, caller);
-    // Get the <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> <b>address</b> (this will be the blocker <b>address</b>)
-    <b>let</b> platform_address = object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>);
-    // Call <a href="../social_contracts/block_list.md#social_contracts_block_list">block_list</a>'s internal helper function with <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> <b>address</b> <b>as</b> blocker
-    <a href="../social_contracts/block_list.md#social_contracts_block_list_block_wallet_internal">block_list::block_wallet_internal</a>(
-        block_list_registry,
-        <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>,
-        platform_address,
-        blocked_wallet_address
-    );
+    object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>)
 }
 </code></pre>
 

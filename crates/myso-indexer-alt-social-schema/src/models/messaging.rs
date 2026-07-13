@@ -4,7 +4,7 @@
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::schema::{messaging_agent_groups, messaging_config, paid_message_escrows};
+use crate::schema::{message_digests, messaging_agent_groups, messaging_config, paid_message_escrows};
 
 pub const PAID_MESSAGE_STATUS_ESCROWED: &str = "escrowed";
 pub const PAID_MESSAGE_STATUS_CLAIMED: &str = "claimed";
@@ -73,6 +73,20 @@ pub struct NewPaidMessageEscrow {
     pub created_at_ms: i64,
     pub claimed_at_ms: Option<i64>,
     pub refunded_at_ms: Option<i64>,
+    pub time: chrono::DateTime<chrono::Utc>,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = message_digests)]
+pub struct NewMessageDigest {
+    pub group_id: String,
+    pub seq: i64,
+    pub sender: String,
+    pub recipient: String,
+    pub content_digest: String,
+    pub content_uri: String,
+    pub created_at_ms: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
 }

@@ -37,6 +37,22 @@ fn check_sync_secret(
     Ok(())
 }
 
+fn check_required_sync_secret(
+    headers: &HeaderMap,
+    header_name: &str,
+    env_var: &str,
+) -> Result<(), SocialError> {
+    let secret = std::env::var(env_var)
+        .map_err(|_| SocialError::bad_request("internal sync secret is not configured"))?;
+    let provided = headers
+        .get(header_name)
+        .and_then(|value| value.to_str().ok());
+    if provided != Some(secret.as_str()) {
+        return Err(SocialError::bad_request("invalid sync secret"));
+    }
+    Ok(())
+}
+
 #[derive(Debug, Deserialize)]
 pub struct MemberQuery {
     pub member: Option<String>,
@@ -357,7 +373,7 @@ pub async fn get_org_summary_internal(
     headers: HeaderMap,
     Path(organization_id): Path<String>,
 ) -> Result<Json<OrgSummaryResponse>, SocialError> {
-    check_sync_secret(&headers, "x-internal-sync-secret", "INTERNAL_SYNC_SECRET")?;
+    check_required_sync_secret(&headers, "x-internal-sync-secret", "INTERNAL_SYNC_SECRET")?;
 
     let org = state
         .reader
@@ -371,4 +387,50 @@ pub async fn get_org_summary_internal(
         account_id: org.account_id,
         org_memory_group_id: org.org_memory_group_id,
     }))
+}
+
+/// Internal organization control-plane snapshot for authenticated agent gateways.
+/// The gateway separately verifies that its principal owns or belongs to this org.
+pub async fn get_org_control_internal(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Path(organization_id): Path<String>,
+) -> Result<Json<serde_json::Value>, SocialError> {
+    check_required_sync_secret(&headers, "x-internal-sync-secret", "INTERNAL_SYNC_SECRET")?;
+
+    let organization = state
+        .reader
+        .get_agentic_organization(&organization_id)
+        .await?
+        .ok_or_else(|| SocialError::not_found("organization"))?;
+    let agents = state
+        .reader
+        .list_sub_agents(&organization.principal_owner, false, 500, 0)
+        .await?
+        .sub_agents
+        .into_iter()
+        .filter(|agent| agent.organization_id.as_deref() == Some(organization_id.as_str()))
+        .collect::<Vec<_>>();
+    let roles = state.reader.list_org_roles(&organization_id).await?;
+    let role_assignments = state
+        .reader
+        .list_org_role_assignments(&organization_id, None, false)
+        .await?;
+    let invitations = state
+        .reader
+        .list_org_invitations(&organization_id, None, None)
+        .await?;
+    let messaging_groups = state
+        .reader
+        .get_messaging_agent_groups(&organization_id, 200, 0)
+        .await?;
+
+    Ok(Json(serde_json::json!({
+        "organization": organization,
+        "agents": agents,
+        "roles": roles,
+        "roleAssignments": role_assignments,
+        "invitations": invitations,
+        "messagingGroups": messaging_groups,
+    })))
 }

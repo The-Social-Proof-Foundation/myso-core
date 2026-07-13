@@ -18,7 +18,6 @@ module social_contracts::block_list {
     use std::{string, option, vector};
     
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
-    use social_contracts::social_graph;
     
     /// Error codes
     const EAlreadyBlocked: u64 = 1;
@@ -77,7 +76,6 @@ module social_contracts::block_list {
     /// Uses unified table architecture with lazy initialization (like following)
     public(package) fun block_wallet_internal(
         registry: &mut BlockListRegistry,
-        social_graph: &mut social_graph::SocialGraph,
         blocker_address: address,
         blocked_wallet_address: address
     ) {
@@ -109,26 +107,6 @@ module social_contracts::block_list {
             blocked: blocked_wallet_address,
         });
         
-        // Perform bidirectional unfollow after blocking succeeds (wallet-level)
-        // Blocker unfollows blocked (if following)
-        social_graph::unfollow_internal(social_graph, blocker_address, blocked_wallet_address);
-        
-        // Blocked unfollows blocker (if following)
-        social_graph::unfollow_internal(social_graph, blocked_wallet_address, blocker_address);
-        // Continue - blocking succeeds regardless of unfollow results
-    }
-
-    /// Block a wallet address
-    /// Uses the caller's wallet address as the blocker
-    /// Automatically unfollows in both directions if users are following each other
-    public entry fun block_wallet(
-        registry: &mut BlockListRegistry,
-        social_graph: &mut social_graph::SocialGraph,
-        blocked_wallet_address: address,
-        ctx: &mut TxContext
-    ) {
-        let sender = tx_context::sender(ctx);
-        block_wallet_internal(registry, social_graph, sender, blocked_wallet_address);
     }
 
     /// Internal helper function to unblock a wallet with a specific blocker address
@@ -161,17 +139,6 @@ module social_contracts::block_list {
             blocker: blocker_address,
             unblocked: blocked_wallet_address,
         });
-    }
-
-    /// Unblock a wallet address
-    /// Uses the caller's wallet address as the blocker
-    public entry fun unblock_wallet(
-        registry: &mut BlockListRegistry,
-        blocked_wallet_address: address,
-        ctx: &mut TxContext
-    ) {
-        let sender = tx_context::sender(ctx);
-        unblock_wallet_internal(registry, sender, blocked_wallet_address);
     }
 
     // === PUBLIC API ===

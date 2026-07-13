@@ -12,8 +12,8 @@ use crate::reader::types::{
     AccessAnalytics, AccessLogInfo, DailyRevenue, MyDataBasic, MyDataBroadPoolInfo,
     MyDataClaimInfo, MyDataConfigInfo, MyDataDistributionRoundInfo, MyDataHasAccessResponse,
     MyDataListingSubPoolInfo, MyDataMerkleRootInfo, MyDataSnapshotAnchorInfo,
-    MyDataSnapshotEscrowInfo, MyDataStatsResponse,
-    MyDataSubPoolInfo, PurchaseInfo, RevenueInfo, SubscriptionInfo,
+    MyDataSnapshotEscrowInfo, MyDataStatsResponse, MyDataSubPoolInfo, PurchaseInfo, RevenueInfo,
+    SubscriptionInfo,
 };
 
 pub(crate) async fn get_mydata_by_id(

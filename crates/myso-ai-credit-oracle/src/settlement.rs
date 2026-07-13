@@ -423,7 +423,7 @@ pub(crate) fn build_settlement_ptb(
     Ok(ptb.finish())
 }
 
-async fn shared_object_arg(
+pub(crate) async fn shared_object_arg(
     client: &myso_sdk::MySoClient,
     object_id: ObjectID,
     mutability: SharedObjectMutability,

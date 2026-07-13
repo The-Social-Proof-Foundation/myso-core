@@ -6,7 +6,7 @@ module messaging::message_log;
 
 use messaging::messaging_config::{Self, MessagingConfig};
 use messaging::paid_escrow_settlement as escrow_fees;
-use std::string::String;
+use std::string::{Self, String};
 use myso::balance::{Self, Balance};
 use myso::clock::{Self, Clock};
 use myso::coin::{Self, Coin};
@@ -28,6 +28,9 @@ const EPaymentClaimed: u64 = 8;
 const EReplyTooShort: u64 = 9;
 const EDedupeKeyTooLong: u64 = 10;
 const EVaultEmpty: u64 = 11;
+const EInvalidContentDigest: u64 = 13;
+const EContentUriTooLong: u64 = 14;
+const MAX_CONTENT_URI_BYTES: u64 = 2048;
 
 // === Derivation ===
 
@@ -69,6 +72,18 @@ public struct PaidMessageSent has copy, drop {
     payer: address,
     recipient: address,
     amount: u64,
+    created_at_ms: u64,
+}
+
+/// A free encrypted message pointer. Ciphertext remains off-chain; the chain
+/// records its immutable digest, location, sender, recipient, and replay key.
+public struct MessageDigestSent has copy, drop {
+    group_id: ID,
+    seq: u64,
+    sender: address,
+    recipient: address,
+    content_digest: vector<u8>,
+    content_uri: String,
     created_at_ms: u64,
 }
 
@@ -183,6 +198,34 @@ fun consume_dedupe_and_nonce(
 }
 
 // === Paid send / reply / refund ===
+
+public(package) fun send_message_digest(
+    config: &MessagingConfig,
+    self: &mut MessageLog,
+    sender: address,
+    recipient: address,
+    content_digest: vector<u8>,
+    content_uri: String,
+    dedupe_key: vector<u8>,
+    nonce: u128,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    assert!(vector::length(&content_digest) == 32, EInvalidContentDigest);
+    assert!(string::length(&content_uri) <= MAX_CONTENT_URI_BYTES, EContentUriTooLong);
+    consume_dedupe_and_nonce(config, self, sender, dedupe_key, nonce, ctx);
+    let seq = self.next_seq;
+    self.next_seq = seq + 1;
+    event::emit(MessageDigestSent {
+        group_id: self.group_id,
+        seq,
+        sender,
+        recipient,
+        content_digest,
+        content_uri,
+        created_at_ms: clock::timestamp_ms(clock),
+    });
+}
 
 public(package) fun send_paid_message(
     config: &MessagingConfig,

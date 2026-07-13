@@ -259,6 +259,13 @@ struct RepostEvent {
 }
 
 #[derive(Debug, Deserialize)]
+struct RepostRemovedEvent {
+    repost_id: String,
+    original_id: String,
+    is_original_post: bool,
+}
+
+#[derive(Debug, Deserialize)]
 struct TipEvent {
     object_id: String,
     from: String,
@@ -426,6 +433,7 @@ pub fn handle_post_event(
         "RepostEvent" | "RepostCreatedEvent" => {
             process_repost_event(data, event_id, checkpoint_timestamp_ms)
         }
+        "RepostRemovedEvent" => process_repost_removed_event(data, event_id),
         "TipEvent" | "TipSentEvent" | "TipCreatedEvent" => {
             process_tip_event(data, event_id, checkpoint_timestamp_ms)
         }
@@ -763,6 +771,24 @@ fn process_repost_event(
             is_original_post: ev.is_original_post,
         },
     ])
+}
+
+fn process_repost_removed_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: RepostRemovedEvent = common::deserialize_social_event_json(
+        "post",
+        "RepostRemovedEvent",
+        event_id,
+        data,
+        "post repost-removed event JSON did not match RepostRemovedEvent",
+    )?;
+    Some(vec![SocialEventRow::RepostRemoved {
+        repost_id: ev.repost_id,
+        original_id: ev.original_id,
+        is_original_post: ev.is_original_post,
+    }])
 }
 
 fn process_tip_event(

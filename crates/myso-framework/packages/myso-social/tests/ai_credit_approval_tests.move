@@ -40,6 +40,8 @@ module social_contracts::ai_credit_approval_tests {
     const AGENT_PUBKEY: vector<u8> = x"0101010101010101010101010101010101010101010101010101010101010101";
     const CHILD_PUBKEY: vector<u8> = x"0202020202020202020202020202020202020202020202020202020202020202";
     const AGENT2_PUBKEY: vector<u8> = x"0303030303030303030303030303030303030303030303030303030303030303";
+    const ENVELOPE_HASH: vector<u8> = x"1111111111111111111111111111111111111111111111111111111111111111";
+    const REQUEST_HASH: vector<u8> = x"2222222222222222222222222222222222222222222222222222222222222222";
 
     const DEPOSIT_MIST: u64 = 5_000_000_000;
     const THRESHOLD_MIST: u64 = 100_000_000;
@@ -405,6 +407,96 @@ module social_contracts::ai_credit_approval_tests {
             assert!(ai_credit::balance_mist(&balance) == DEPOSIT_MIST - SPEND_MIST, 0);
             test_scenario::return_shared(balance);
         };
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_approved_reservation_consumes_allowance() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        init_env(&mut scenario);
+        let (_balance_id, _org_id) = setup_org_agent_with_threshold(&mut scenario);
+        owner_approve(&mut scenario, AGENT_ADDR, SPEND_MIST, EXPIRY_MS);
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let config = test_scenario::take_shared<AiCreditConfig>(&scenario);
+            let mut balance = test_scenario::take_shared<AiCreditBalance>(&scenario);
+            let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
+            let agent = take_agent(&scenario, &memory_account, AGENT_ADDR);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let now = clock::timestamp_ms(&clock);
+            ai_credit::reserve_spend_for_testing(
+                &config,
+                &mut balance,
+                &memory_account,
+                &agent,
+                1,
+                SPEND_MIST,
+                ENVELOPE_HASH,
+                REQUEST_HASH,
+                b"test-fx-quote",
+                450_000,
+                now,
+                now + 60_000,
+                now + 120_000,
+                &clock,
+            );
+            assert!(
+                option::is_none(&ai_credit::spend_approval_for(
+                    &balance,
+                    memory::agent_object_id(&agent),
+                )),
+                0,
+            );
+            assert!(ai_credit::reserved_mist(&balance) == SPEND_MIST, 1);
+            test_scenario::return_shared(agent);
+            test_scenario::return_shared(memory_account);
+            test_scenario::return_shared(balance);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 18, location = social_contracts::ai_credit)]
+    fun test_over_threshold_reservation_without_approval_aborts() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        init_env(&mut scenario);
+        let (_balance_id, _org_id) = setup_org_agent_with_threshold(&mut scenario);
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let config = test_scenario::take_shared<AiCreditConfig>(&scenario);
+            let mut balance = test_scenario::take_shared<AiCreditBalance>(&scenario);
+            let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
+            let agent = take_agent(&scenario, &memory_account, AGENT_ADDR);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let now = clock::timestamp_ms(&clock);
+            ai_credit::reserve_spend_for_testing(
+                &config,
+                &mut balance,
+                &memory_account,
+                &agent,
+                1,
+                SPEND_MIST,
+                ENVELOPE_HASH,
+                REQUEST_HASH,
+                b"test-fx-quote",
+                450_000,
+                now,
+                now + 60_000,
+                now + 120_000,
+                &clock,
+            );
+            test_scenario::return_shared(agent);
+            test_scenario::return_shared(memory_account);
+            test_scenario::return_shared(balance);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(clock);
+        };
+
         test_scenario::end(scenario);
     }
 

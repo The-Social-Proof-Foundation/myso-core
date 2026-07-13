@@ -7546,6 +7546,9 @@ cap_ai_spend
 cap_budget_manage
 	public fun
 	0x50c1::memory
+cap_social_graph
+	public fun
+	0x50c1::memory
 org_perm_memory_read
 	public fun
 	0x50c1::memory
@@ -8044,6 +8047,18 @@ IntentMessage
 UsageReceipt
 	public struct
 	0x50c1::ai_credit
+SpendReservationIntent
+	public struct
+	0x50c1::ai_credit
+SpendReservation
+	public struct
+	0x50c1::ai_credit
+CaptureSpendIntent
+	public struct
+	0x50c1::ai_credit
+CancelSpendIntent
+	public struct
+	0x50c1::ai_credit
 AiCreditBalanceCreated
 	public struct
 	0x50c1::ai_credit
@@ -8075,6 +8090,18 @@ AiCreditSpendApprovalConsumed
 	public struct
 	0x50c1::ai_credit
 AiCreditUsageSettled
+	public struct
+	0x50c1::ai_credit
+AiSpendReserved
+	public struct
+	0x50c1::ai_credit
+AiSpendCaptured
+	public struct
+	0x50c1::ai_credit
+AiSpendCancelled
+	public struct
+	0x50c1::ai_credit
+AiSpendExpired
 	public struct
 	0x50c1::ai_credit
 AiCreditBalanceDepleted
@@ -8155,6 +8182,21 @@ pause_balance
 reactivate_balance
 	public entry fun
 	0x50c1::ai_credit
+reserve_signed_spend
+	public fun
+	0x50c1::ai_credit
+make_spend_reservation_intent_from_objects
+	public fun
+	0x50c1::ai_credit
+capture_reserved_spend
+	public fun
+	0x50c1::ai_credit
+cancel_reserved_spend
+	public fun
+	0x50c1::ai_credit
+expire_reservation
+	public fun
+	0x50c1::ai_credit
 settle_usage
 	public fun
 	0x50c1::ai_credit
@@ -8171,6 +8213,15 @@ settle_usage_with_signature
 	fun
 	0x50c1::ai_credit
 execute_settlement
+	fun
+	0x50c1::ai_credit
+execute_reservation
+	fun
+	0x50c1::ai_credit
+execute_capture
+	fun
+	0x50c1::ai_credit
+execute_cancellation
 	fun
 	0x50c1::ai_credit
 update_oracle_pubkey
@@ -8194,10 +8245,22 @@ balance_mist
 available_mist
 	public fun
 	0x50c1::ai_credit
-credits_from_mist
+reserved_mist
 	public fun
 	0x50c1::ai_credit
-mist_from_credits
+latest_reservation_nonce
+	public fun
+	0x50c1::ai_credit
+reservation_for
+	public fun
+	0x50c1::ai_credit
+reservation_max_amount_mist
+	public fun
+	0x50c1::ai_credit
+reservation_agent_object_id
+	public fun
+	0x50c1::ai_credit
+reservation_hard_expiry_ms
 	public fun
 	0x50c1::ai_credit
 oracle_markup_bps
@@ -8296,7 +8359,19 @@ assert_oracle_admin
 verify_receipt_signature
 	fun
 	0x50c1::ai_credit
+verify_reservation_signature
+	fun
+	0x50c1::ai_credit
+verify_capture_signature
+	fun
+	0x50c1::ai_credit
+verify_cancel_signature
+	fun
+	0x50c1::ai_credit
 assert_receipt_fresh
+	fun
+	0x50c1::ai_credit
+assert_signed_timestamp_fresh
 	fun
 	0x50c1::ai_credit
 roll_account_windows
@@ -8311,51 +8386,12 @@ assert_account_caps
 assert_agent_caps
 	fun
 	0x50c1::ai_credit
-SocialGraph
-	public struct
-	0x50c1::social_graph
-FollowEvent
-	public struct
-	0x50c1::social_graph
-UnfollowEvent
-	public struct
-	0x50c1::social_graph
-bootstrap_init
-	public(package) fun
-	0x50c1::social_graph
-follow
-	public entry fun
-	0x50c1::social_graph
-unfollow
-	public entry fun
-	0x50c1::social_graph
-unfollow_internal
-	public(package) fun
-	0x50c1::social_graph
-migrate_social_graph
-	public entry fun
-	0x50c1::social_graph
-borrow_version_mut
-	public(package) fun
-	0x50c1::social_graph
-version
-	public fun
-	0x50c1::social_graph
-is_following
-	public fun
-	0x50c1::social_graph
-following_count
-	public fun
-	0x50c1::social_graph
-follower_count
-	public fun
-	0x50c1::social_graph
-get_following
-	public fun
-	0x50c1::social_graph
-get_followers
-	public fun
-	0x50c1::social_graph
+release_reservation_counters
+	fun
+	0x50c1::ai_credit
+capture_reservation_counters
+	fun
+	0x50c1::ai_credit
 BlockListRegistry
 	public struct
 	0x50c1::block_list
@@ -8371,14 +8407,8 @@ bootstrap_init
 block_wallet_internal
 	public(package) fun
 	0x50c1::block_list
-block_wallet
-	public entry fun
-	0x50c1::block_list
 unblock_wallet_internal
 	public(package) fun
-	0x50c1::block_list
-unblock_wallet
-	public entry fun
 	0x50c1::block_list
 either_blocked
 	public fun
@@ -9376,8 +9406,8 @@ add_moderator
 remove_moderator
 	public fun
 	0x50c1::platform
-block_wallet
-	public fun
+assert_block_wallet_permission
+	public(package) fun
 	0x50c1::platform
 unblock_wallet
 	public fun
@@ -10309,6 +10339,9 @@ CommentCreatedEvent
 RepostEvent
 	public struct
 	0x50c1::post
+RepostRemovedEvent
+	public struct
+	0x50c1::post
 ReactionEvent
 	public struct
 	0x50c1::post
@@ -10634,6 +10667,21 @@ report_comment
 	public fun
 	0x50c1::post
 react_to_comment
+	public fun
+	0x50c1::post
+edit_post
+	public fun
+	0x50c1::post
+edit_comment
+	public fun
+	0x50c1::post
+remove_post_reaction
+	public fun
+	0x50c1::post
+remove_comment_reaction
+	public fun
+	0x50c1::post
+remove_repost
 	public fun
 	0x50c1::post
 get_post_content
@@ -11380,6 +11428,81 @@ migrate_market
 migrate_record
 	public entry fun
 	0x50c1::social_proof_of_truth
+SocialGraph
+	public struct
+	0x50c1::social_graph
+FollowEvent
+	public struct
+	0x50c1::social_graph
+UnfollowEvent
+	public struct
+	0x50c1::social_graph
+bootstrap_init
+	public(package) fun
+	0x50c1::social_graph
+follow
+	public entry fun
+	0x50c1::social_graph
+follow_internal
+	public(package) fun
+	0x50c1::social_graph
+principal_for_social_graph_action
+	fun
+	0x50c1::social_graph
+follow_profile
+	public entry fun
+	0x50c1::social_graph
+unfollow_profile
+	public entry fun
+	0x50c1::social_graph
+unfollow
+	public entry fun
+	0x50c1::social_graph
+unfollow_internal
+	public(package) fun
+	0x50c1::social_graph
+block_wallet_as
+	fun
+	0x50c1::social_graph
+block_platform_wallet
+	public fun
+	0x50c1::social_graph
+block_wallet
+	public entry fun
+	0x50c1::social_graph
+unblock_wallet
+	public entry fun
+	0x50c1::social_graph
+block_profile
+	public entry fun
+	0x50c1::social_graph
+unblock_profile
+	public entry fun
+	0x50c1::social_graph
+migrate_social_graph
+	public entry fun
+	0x50c1::social_graph
+borrow_version_mut
+	public(package) fun
+	0x50c1::social_graph
+version
+	public fun
+	0x50c1::social_graph
+is_following
+	public fun
+	0x50c1::social_graph
+following_count
+	public fun
+	0x50c1::social_graph
+follower_count
+	public fun
+	0x50c1::social_graph
+get_following
+	public fun
+	0x50c1::social_graph
+get_followers
+	public fun
+	0x50c1::social_graph
 PoCBeneficiaryAdminCap
 	public struct
 	0x50c1::poc_username_beneficiary
@@ -12175,6 +12298,9 @@ MessageLogCreated
 PaidMessageSent
 	public struct
 	0xe110::message_log
+MessageDigestSent
+	public struct
+	0xe110::message_log
 PaidMessageReplied
 	public struct
 	0xe110::message_log
@@ -12204,6 +12330,9 @@ paid_message_parties
 	0xe110::message_log
 consume_dedupe_and_nonce
 	fun
+	0xe110::message_log
+send_message_digest
+	public(package) fun
 	0xe110::message_log
 send_paid_message
 	public(package) fun
@@ -12345,6 +12474,9 @@ assert_message_log_matches_group
 	0xe110::messaging
 assert_group_not_archived
 	fun
+	0xe110::messaging
+send_agent_message_digest
+	public fun
 	0xe110::messaging
 send_paid_message_digest
 	public fun

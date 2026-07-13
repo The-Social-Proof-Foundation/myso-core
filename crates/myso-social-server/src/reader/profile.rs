@@ -12,8 +12,7 @@ use diesel::SelectableHelper;
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::Profile;
 use myso_indexer_alt_social_schema::schema::{
-    profiles, username_offers, username_registry, username_sale_fees,
-    wallet_social_graph,
+    profiles, username_offers, username_registry, username_sale_fees, wallet_social_graph,
 };
 
 use crate::error::SocialError;

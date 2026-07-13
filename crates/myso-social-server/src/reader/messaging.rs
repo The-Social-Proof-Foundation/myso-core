@@ -1,19 +1,19 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use diesel::sql_types::{BigInt, Text};
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
-use diesel::QueryableByName;
 use diesel::QueryDsl;
+use diesel::QueryableByName;
 use diesel::SelectableHelper;
-use diesel::sql_types::{BigInt, Text};
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::WalletMessagingPolicy;
 use myso_indexer_alt_social_schema::schema::wallet_messaging_policies;
 
 use crate::error::SocialError;
 use crate::reader::types::{
-    MessagingAgentGroupInfo, MessagingConfigInfo, MessagingRevenueSummaryInfo,
+    MessageDigestInfo, MessagingAgentGroupInfo, MessagingConfigInfo, MessagingRevenueSummaryInfo,
     PaidMessageEscrowInfo, WalletMessagingPolicyResponse,
 };
 use myso_pg_db::Db;
@@ -73,6 +73,29 @@ pub(crate) async fn get_paid_message_escrows(
         .bind::<BigInt, _>(offset)
         .load::<PaidMessageEscrowInfo>(&mut conn)
         .await?;
+    Ok(rows)
+}
+
+pub(crate) async fn get_message_digests(
+    db: &Db,
+    address: &str,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<MessageDigestInfo>, SocialError> {
+    let mut conn = db.connect().await?;
+    let rows = diesel::sql_query(
+        "SELECT group_id, seq, sender, recipient, content_digest, content_uri,
+                created_at_ms, transaction_id
+         FROM message_digests
+         WHERE sender = $1 OR recipient = $1
+         ORDER BY time DESC
+         LIMIT $2 OFFSET $3",
+    )
+    .bind::<Text, _>(address)
+    .bind::<BigInt, _>(limit)
+    .bind::<BigInt, _>(offset)
+    .load::<MessageDigestInfo>(&mut conn)
+    .await?;
     Ok(rows)
 }
 

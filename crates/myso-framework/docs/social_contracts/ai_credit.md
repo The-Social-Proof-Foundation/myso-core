@@ -2,10 +2,10 @@
 title: Module `social_contracts::ai_credit`
 ---
 
-AI credit escrow — users deposit MYSO; platform oracle settles signed usage receipts
-for sub-agent inference, tools, storage, and workflow costs.
-
-Credits display: <code>credits = <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_balance_mist">balance_mist</a> / <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_MIST_PER_MYSO">MIST_PER_MYSO</a></code> (1 MYSO = 1 credit).
+MIST-denominated AI spend escrow. Users deposit MYSO and the platform oracle reserves
+the worst-case MIST charge before provider work begins, then captures the actual charge
+or releases the reservation. Legacy signed usage receipts remain available during the
+reserve-and-capture migration.
 
 
 -  [Struct `AiCreditOracleAdminCap`](#social_contracts_ai_credit_AiCreditOracleAdminCap)
@@ -17,6 +17,10 @@ Credits display: <code>credits = <a href="../social_contracts/ai_credit.md#socia
 -  [Struct `AiCreditBalance`](#social_contracts_ai_credit_AiCreditBalance)
 -  [Struct `IntentMessage`](#social_contracts_ai_credit_IntentMessage)
 -  [Struct `UsageReceipt`](#social_contracts_ai_credit_UsageReceipt)
+-  [Struct `SpendReservationIntent`](#social_contracts_ai_credit_SpendReservationIntent)
+-  [Struct `SpendReservation`](#social_contracts_ai_credit_SpendReservation)
+-  [Struct `CaptureSpendIntent`](#social_contracts_ai_credit_CaptureSpendIntent)
+-  [Struct `CancelSpendIntent`](#social_contracts_ai_credit_CancelSpendIntent)
 -  [Struct `AiCreditBalanceCreated`](#social_contracts_ai_credit_AiCreditBalanceCreated)
 -  [Struct `AiCreditDeposited`](#social_contracts_ai_credit_AiCreditDeposited)
 -  [Struct `AiCreditWithdrawn`](#social_contracts_ai_credit_AiCreditWithdrawn)
@@ -28,6 +32,10 @@ Credits display: <code>credits = <a href="../social_contracts/ai_credit.md#socia
 -  [Struct `AiCreditSpendApprovalRevoked`](#social_contracts_ai_credit_AiCreditSpendApprovalRevoked)
 -  [Struct `AiCreditSpendApprovalConsumed`](#social_contracts_ai_credit_AiCreditSpendApprovalConsumed)
 -  [Struct `AiCreditUsageSettled`](#social_contracts_ai_credit_AiCreditUsageSettled)
+-  [Struct `AiSpendReserved`](#social_contracts_ai_credit_AiSpendReserved)
+-  [Struct `AiSpendCaptured`](#social_contracts_ai_credit_AiSpendCaptured)
+-  [Struct `AiSpendCancelled`](#social_contracts_ai_credit_AiSpendCancelled)
+-  [Struct `AiSpendExpired`](#social_contracts_ai_credit_AiSpendExpired)
 -  [Struct `AiCreditBalanceDepleted`](#social_contracts_ai_credit_AiCreditBalanceDepleted)
 -  [Struct `AiCreditBalancePaused`](#social_contracts_ai_credit_AiCreditBalancePaused)
 -  [Struct `AiCreditBalanceReactivated`](#social_contracts_ai_credit_AiCreditBalanceReactivated)
@@ -55,12 +63,20 @@ Credits display: <code>credits = <a href="../social_contracts/ai_credit.md#socia
 -  [Function `approve_child_agent_spend`](#social_contracts_ai_credit_approve_child_agent_spend)
 -  [Function `pause_balance`](#social_contracts_ai_credit_pause_balance)
 -  [Function `reactivate_balance`](#social_contracts_ai_credit_reactivate_balance)
+-  [Function `reserve_signed_spend`](#social_contracts_ai_credit_reserve_signed_spend)
+-  [Function `make_spend_reservation_intent_from_objects`](#social_contracts_ai_credit_make_spend_reservation_intent_from_objects)
+-  [Function `capture_reserved_spend`](#social_contracts_ai_credit_capture_reserved_spend)
+-  [Function `cancel_reserved_spend`](#social_contracts_ai_credit_cancel_reserved_spend)
+-  [Function `expire_reservation`](#social_contracts_ai_credit_expire_reservation)
 -  [Function `settle_usage`](#social_contracts_ai_credit_settle_usage)
 -  [Function `settle_usage_batch`](#social_contracts_ai_credit_settle_usage_batch)
 -  [Function `settle_signed_usage`](#social_contracts_ai_credit_settle_signed_usage)
 -  [Function `make_usage_receipt_from_objects`](#social_contracts_ai_credit_make_usage_receipt_from_objects)
 -  [Function `settle_usage_with_signature`](#social_contracts_ai_credit_settle_usage_with_signature)
 -  [Function `execute_settlement`](#social_contracts_ai_credit_execute_settlement)
+-  [Function `execute_reservation`](#social_contracts_ai_credit_execute_reservation)
+-  [Function `execute_capture`](#social_contracts_ai_credit_execute_capture)
+-  [Function `execute_cancellation`](#social_contracts_ai_credit_execute_cancellation)
 -  [Function `update_oracle_pubkey`](#social_contracts_ai_credit_update_oracle_pubkey)
 -  [Function `update_oracle_markup`](#social_contracts_ai_credit_update_oracle_markup)
 -  [Function `update_min_deposit`](#social_contracts_ai_credit_update_min_deposit)
@@ -68,8 +84,12 @@ Credits display: <code>credits = <a href="../social_contracts/ai_credit.md#socia
 -  [Function `update_treasury`](#social_contracts_ai_credit_update_treasury)
 -  [Function `balance_mist`](#social_contracts_ai_credit_balance_mist)
 -  [Function `available_mist`](#social_contracts_ai_credit_available_mist)
--  [Function `credits_from_mist`](#social_contracts_ai_credit_credits_from_mist)
--  [Function `mist_from_credits`](#social_contracts_ai_credit_mist_from_credits)
+-  [Function `reserved_mist`](#social_contracts_ai_credit_reserved_mist)
+-  [Function `latest_reservation_nonce`](#social_contracts_ai_credit_latest_reservation_nonce)
+-  [Function `reservation_for`](#social_contracts_ai_credit_reservation_for)
+-  [Function `reservation_max_amount_mist`](#social_contracts_ai_credit_reservation_max_amount_mist)
+-  [Function `reservation_agent_object_id`](#social_contracts_ai_credit_reservation_agent_object_id)
+-  [Function `reservation_hard_expiry_ms`](#social_contracts_ai_credit_reservation_hard_expiry_ms)
 -  [Function `oracle_markup_bps`](#social_contracts_ai_credit_oracle_markup_bps)
 -  [Function `min_deposit_mist`](#social_contracts_ai_credit_min_deposit_mist)
 -  [Function `spend_approval_for`](#social_contracts_ai_credit_spend_approval_for)
@@ -102,11 +122,17 @@ Credits display: <code>credits = <a href="../social_contracts/ai_credit.md#socia
 -  [Function `maybe_consume_spend_approval`](#social_contracts_ai_credit_maybe_consume_spend_approval)
 -  [Function `assert_oracle_admin`](#social_contracts_ai_credit_assert_oracle_admin)
 -  [Function `verify_receipt_signature`](#social_contracts_ai_credit_verify_receipt_signature)
+-  [Function `verify_reservation_signature`](#social_contracts_ai_credit_verify_reservation_signature)
+-  [Function `verify_capture_signature`](#social_contracts_ai_credit_verify_capture_signature)
+-  [Function `verify_cancel_signature`](#social_contracts_ai_credit_verify_cancel_signature)
 -  [Function `assert_receipt_fresh`](#social_contracts_ai_credit_assert_receipt_fresh)
+-  [Function `assert_signed_timestamp_fresh`](#social_contracts_ai_credit_assert_signed_timestamp_fresh)
 -  [Function `roll_account_windows`](#social_contracts_ai_credit_roll_account_windows)
 -  [Function `roll_agent_windows`](#social_contracts_ai_credit_roll_agent_windows)
 -  [Function `assert_account_caps`](#social_contracts_ai_credit_assert_account_caps)
 -  [Function `assert_agent_caps`](#social_contracts_ai_credit_assert_agent_caps)
+-  [Function `release_reservation_counters`](#social_contracts_ai_credit_release_reservation_counters)
+-  [Function `capture_reservation_counters`](#social_contracts_ai_credit_capture_reservation_counters)
 
 
 <pre><code><b>use</b> <a href="../myso/accumulator.md#myso_accumulator">myso::accumulator</a>;
@@ -292,6 +318,11 @@ Credits display: <code>credits = <a href="../social_contracts/ai_credit.md#socia
 <dd>
 </dd>
 <dt>
+<code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_reserved_mist">reserved_mist</a>: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
 <code>daily_cap_mist: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
 </dt>
 <dd>
@@ -307,7 +338,17 @@ Credits display: <code>credits = <a href="../social_contracts/ai_credit.md#socia
 <dd>
 </dd>
 <dt>
+<code>reserved_day_mist: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
 <code>spent_month_mist: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>reserved_month_mist: u64</code>
 </dt>
 <dd>
 </dd>
@@ -471,12 +512,27 @@ Dynamic-field key on <code><a href="../social_contracts/ai_credit.md#social_cont
 <dd>
 </dd>
 <dt>
+<code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_reserved_mist">reserved_mist</a>: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
 <code>spent_day_mist: u64</code>
 </dt>
 <dd>
 </dd>
 <dt>
+<code>reserved_day_mist: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
 <code>spent_month_mist: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>reserved_month_mist: u64</code>
 </dt>
 <dd>
 </dd>
@@ -502,6 +558,16 @@ Dynamic-field key on <code><a href="../social_contracts/ai_credit.md#social_cont
 </dd>
 <dt>
 <code>settlement_nonce: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>reservation_nonce: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>reservations: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;u64, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendReservation">social_contracts::ai_credit::SpendReservation</a>&gt;</code>
 </dt>
 <dd>
 </dd>
@@ -617,6 +683,289 @@ Dynamic-field key on <code><a href="../social_contracts/ai_credit.md#social_cont
 
 </details>
 
+<a name="social_contracts_ai_credit_SpendReservationIntent"></a>
+
+## Struct `SpendReservationIntent`
+
+Oracle-signed authorization to lock a deterministic worst-case MIST charge.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendReservationIntent">SpendReservationIntent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>balance_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>agent_object_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>reservation_nonce: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_amount_mist: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>provider_envelope_hash: vector&lt;u8&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>request_hash: vector&lt;u8&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>fx_quote_id: vector&lt;u8&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>myso_usd_e8: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>markup_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>capture_deadline_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>hard_expiry_ms: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_ai_credit_SpendReservation"></a>
+
+## Struct `SpendReservation`
+
+Canonical live reservation stored directly in the greenfield account object.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendReservation">SpendReservation</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>reservation_nonce: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>agent_object_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_amount_mist: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>provider_envelope_hash: vector&lt;u8&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>request_hash: vector&lt;u8&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>fx_quote_id: vector&lt;u8&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>myso_usd_e8: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>markup_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>created_at_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>capture_deadline_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>hard_expiry_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>account_day_anchor_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>account_month_anchor_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>agent_budget_reserved: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>agent_day_anchor_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>agent_month_anchor_ms: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_ai_credit_CaptureSpendIntent"></a>
+
+## Struct `CaptureSpendIntent`
+
+Oracle-signed final provider charge for an existing reservation.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_CaptureSpendIntent">CaptureSpendIntent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>balance_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>agent_object_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>reservation_nonce: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>amount_mist: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>provider_cost_usd_micros: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>provider_generation_hash: vector&lt;u8&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp_ms: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_ai_credit_CancelSpendIntent"></a>
+
+## Struct `CancelSpendIntent`
+
+Oracle-signed release when the provider confirms that no billable generation exists.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_CancelSpendIntent">CancelSpendIntent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>balance_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>agent_object_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>reservation_nonce: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp_ms: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="social_contracts_ai_credit_AiCreditBalanceCreated"></a>
 
 ## Struct `AiCreditBalanceCreated`
@@ -686,11 +1035,6 @@ Dynamic-field key on <code><a href="../social_contracts/ai_credit.md#social_cont
 </dd>
 <dt>
 <code>new_balance_mist: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>credits: u64</code>
 </dt>
 <dd>
 </dd>
@@ -1179,8 +1523,277 @@ Emitted alongside the legacy <code><a href="../social_contracts/ai_credit.md#soc
 </dt>
 <dd>
 </dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_ai_credit_AiSpendReserved"></a>
+
+## Struct `AiSpendReserved`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiSpendReserved">AiSpendReserved</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
 <dt>
-<code>credits_remaining: u64</code>
+<code>balance_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>agent_object_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>reservation_nonce: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_amount_mist: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>provider_envelope_hash: vector&lt;u8&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>request_hash: vector&lt;u8&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>fx_quote_id: vector&lt;u8&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>myso_usd_e8: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>markup_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>capture_deadline_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>hard_expiry_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_available_mist">available_mist</a>: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_ai_credit_AiSpendCaptured"></a>
+
+## Struct `AiSpendCaptured`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiSpendCaptured">AiSpendCaptured</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>balance_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>agent_object_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>reservation_nonce: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_reserved_mist">reserved_mist</a>: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>captured_mist: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>released_mist: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>provider_cost_usd_micros: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>provider_generation_hash: vector&lt;u8&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>fx_quote_id: vector&lt;u8&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>myso_usd_e8: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>markup_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>captured_at_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>remaining_mist: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_available_mist">available_mist</a>: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_ai_credit_AiSpendCancelled"></a>
+
+## Struct `AiSpendCancelled`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiSpendCancelled">AiSpendCancelled</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>balance_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>agent_object_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>reservation_nonce: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>released_mist: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>cancelled_at_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_available_mist">available_mist</a>: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_ai_credit_AiSpendExpired"></a>
+
+## Struct `AiSpendExpired`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiSpendExpired">AiSpendExpired</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>balance_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>agent_object_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>reservation_nonce: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>released_mist: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>expired_at_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_available_mist">available_mist</a>: u64</code>
 </dt>
 <dd>
 </dd>
@@ -1483,6 +2096,33 @@ Emitted alongside the legacy <code><a href="../social_contracts/ai_credit.md#soc
 
 
 
+<a name="social_contracts_ai_credit_INTENT_AI_CREDIT_RESERVE"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_INTENT_AI_CREDIT_RESERVE">INTENT_AI_CREDIT_RESERVE</a>: u8 = 2;
+</code></pre>
+
+
+
+<a name="social_contracts_ai_credit_INTENT_AI_CREDIT_CAPTURE"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_INTENT_AI_CREDIT_CAPTURE">INTENT_AI_CREDIT_CAPTURE</a>: u8 = 3;
+</code></pre>
+
+
+
+<a name="social_contracts_ai_credit_INTENT_AI_CREDIT_CANCEL"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_INTENT_AI_CREDIT_CANCEL">INTENT_AI_CREDIT_CANCEL</a>: u8 = 4;
+</code></pre>
+
+
+
 <a name="social_contracts_ai_credit_ED25519_PK_LEN"></a>
 
 
@@ -1492,11 +2132,38 @@ Emitted alongside the legacy <code><a href="../social_contracts/ai_credit.md#soc
 
 
 
+<a name="social_contracts_ai_credit_HASH_LEN"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_HASH_LEN">HASH_LEN</a>: u64 = 32;
+</code></pre>
+
+
+
 <a name="social_contracts_ai_credit_DEFAULT_ORACLE_MARKUP_BPS"></a>
 
 
 
 <pre><code><b>const</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_DEFAULT_ORACLE_MARKUP_BPS">DEFAULT_ORACLE_MARKUP_BPS</a>: u64 = 1500;
+</code></pre>
+
+
+
+<a name="social_contracts_ai_credit_MAX_CAPTURE_WINDOW_MS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_MAX_CAPTURE_WINDOW_MS">MAX_CAPTURE_WINDOW_MS</a>: u64 = 900000;
+</code></pre>
+
+
+
+<a name="social_contracts_ai_credit_MAX_RESERVATION_LIFETIME_MS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_MAX_RESERVATION_LIFETIME_MS">MAX_RESERVATION_LIFETIME_MS</a>: u64 = 1800000;
 </code></pre>
 
 
@@ -1771,6 +2438,78 @@ Emitted alongside the legacy <code><a href="../social_contracts/ai_credit.md#soc
 
 
 
+<a name="social_contracts_ai_credit_EReservationNotFound"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EReservationNotFound">EReservationNotFound</a>: u64 = 28;
+</code></pre>
+
+
+
+<a name="social_contracts_ai_credit_EReservationExpired"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EReservationExpired">EReservationExpired</a>: u64 = 29;
+</code></pre>
+
+
+
+<a name="social_contracts_ai_credit_EReservationNotExpired"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EReservationNotExpired">EReservationNotExpired</a>: u64 = 30;
+</code></pre>
+
+
+
+<a name="social_contracts_ai_credit_ECaptureWindowClosed"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_ECaptureWindowClosed">ECaptureWindowClosed</a>: u64 = 31;
+</code></pre>
+
+
+
+<a name="social_contracts_ai_credit_EReservationMismatch"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EReservationMismatch">EReservationMismatch</a>: u64 = 32;
+</code></pre>
+
+
+
+<a name="social_contracts_ai_credit_EInvalidReservationWindow"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EInvalidReservationWindow">EInvalidReservationWindow</a>: u64 = 33;
+</code></pre>
+
+
+
+<a name="social_contracts_ai_credit_EInvalidHash"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EInvalidHash">EInvalidHash</a>: u64 = 34;
+</code></pre>
+
+
+
+<a name="social_contracts_ai_credit_EMarkupMismatch"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EMarkupMismatch">EMarkupMismatch</a>: u64 = 35;
+</code></pre>
+
+
+
 <a name="social_contracts_ai_credit_bootstrap_init"></a>
 
 ## Function `bootstrap_init`
@@ -1918,13 +2657,18 @@ Called only from [<code><a href="../social_contracts/profile.md#social_contracts
         profile_id,
         balance: balance::zero(),
         spent_total_mist: 0,
+        <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_reserved_mist">reserved_mist</a>: 0,
         spent_day_mist: 0,
+        reserved_day_mist: 0,
         spent_month_mist: 0,
+        reserved_month_mist: 0,
         day_anchor_ms: now,
         month_anchor_ms: now,
         daily_cap_mist: option::none(),
         monthly_cap_mist: option::none(),
         settlement_nonce: 0,
+        reservation_nonce: 0,
+        reservations: table::new(ctx),
         agent_budgets: table::new(ctx),
         active: <b>true</b>,
         version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
@@ -1968,7 +2712,6 @@ Called only from [<code><a href="../social_contracts/profile.md#social_contracts
         balance_id: object::id(balance),
         amount_mist: amount,
         new_balance_mist,
-        credits: <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_credits_from_mist">credits_from_mist</a>(new_balance_mist),
     });
 }
 </code></pre>
@@ -2569,6 +3312,251 @@ tree — ultimately to the human owner via <code><a href="../social_contracts/ai
 
 </details>
 
+<a name="social_contracts_ai_credit_reserve_signed_spend"></a>
+
+## Function `reserve_signed_spend`
+
+Reserve an oracle-authorized, deterministic maximum charge before any provider work.
+The signed intent binds the balance, agent, pricing quote, request/envelope hashes,
+amount, nonce, and both deadlines.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_reserve_signed_spend">reserve_signed_spend</a>(config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">social_contracts::ai_credit::AiCreditConfig</a>, balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, reservation_nonce: u64, max_amount_mist: u64, provider_envelope_hash: vector&lt;u8&gt;, request_hash: vector&lt;u8&gt;, fx_quote_id: vector&lt;u8&gt;, myso_usd_e8: u64, markup_bps: u64, timestamp_ms: u64, capture_deadline_ms: u64, hard_expiry_ms: u64, signature: vector&lt;u8&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_reserve_signed_spend">reserve_signed_spend</a>(
+    config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">AiCreditConfig</a>,
+    balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>,
+    account: &MemoryAccount,
+    agent: &SubAgent,
+    reservation_nonce: u64,
+    max_amount_mist: u64,
+    provider_envelope_hash: vector&lt;u8&gt;,
+    request_hash: vector&lt;u8&gt;,
+    fx_quote_id: vector&lt;u8&gt;,
+    myso_usd_e8: u64,
+    markup_bps: u64,
+    timestamp_ms: u64,
+    capture_deadline_ms: u64,
+    hard_expiry_ms: u64,
+    signature: vector&lt;u8&gt;,
+    clock: &Clock,
+) {
+    <b>let</b> intent = <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_make_spend_reservation_intent_from_objects">make_spend_reservation_intent_from_objects</a>(
+        balance,
+        agent,
+        reservation_nonce,
+        max_amount_mist,
+        provider_envelope_hash,
+        request_hash,
+        fx_quote_id,
+        myso_usd_e8,
+        markup_bps,
+        timestamp_ms,
+        capture_deadline_ms,
+        hard_expiry_ms,
+    );
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_verify_reservation_signature">verify_reservation_signature</a>(config, &intent, &signature);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_execute_reservation">execute_reservation</a>(config, balance, account, agent, intent, clock);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_make_spend_reservation_intent_from_objects"></a>
+
+## Function `make_spend_reservation_intent_from_objects`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_make_spend_reservation_intent_from_objects">make_spend_reservation_intent_from_objects</a>(balance: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, reservation_nonce: u64, max_amount_mist: u64, provider_envelope_hash: vector&lt;u8&gt;, request_hash: vector&lt;u8&gt;, fx_quote_id: vector&lt;u8&gt;, myso_usd_e8: u64, markup_bps: u64, timestamp_ms: u64, capture_deadline_ms: u64, hard_expiry_ms: u64): <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendReservationIntent">social_contracts::ai_credit::SpendReservationIntent</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_make_spend_reservation_intent_from_objects">make_spend_reservation_intent_from_objects</a>(
+    balance: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>,
+    agent: &SubAgent,
+    reservation_nonce: u64,
+    max_amount_mist: u64,
+    provider_envelope_hash: vector&lt;u8&gt;,
+    request_hash: vector&lt;u8&gt;,
+    fx_quote_id: vector&lt;u8&gt;,
+    myso_usd_e8: u64,
+    markup_bps: u64,
+    timestamp_ms: u64,
+    capture_deadline_ms: u64,
+    hard_expiry_ms: u64,
+): <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendReservationIntent">SpendReservationIntent</a> {
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendReservationIntent">SpendReservationIntent</a> {
+        balance_id: object::id(balance),
+        agent_object_id: <a href="../social_contracts/memory.md#social_contracts_memory_agent_object_id">memory::agent_object_id</a>(agent),
+        reservation_nonce,
+        max_amount_mist,
+        provider_envelope_hash,
+        request_hash,
+        fx_quote_id,
+        myso_usd_e8,
+        markup_bps,
+        timestamp_ms,
+        capture_deadline_ms,
+        hard_expiry_ms,
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_capture_reserved_spend"></a>
+
+## Function `capture_reserved_spend`
+
+Capture the actual MIST charge. The oracle signature binds provider cost and the
+provider generation hash to the reservation. Any unused maximum is released.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_capture_reserved_spend">capture_reserved_spend</a>(config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">social_contracts::ai_credit::AiCreditConfig</a>, balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, reservation_nonce: u64, amount_mist: u64, provider_cost_usd_micros: u64, provider_generation_hash: vector&lt;u8&gt;, timestamp_ms: u64, signature: vector&lt;u8&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_capture_reserved_spend">capture_reserved_spend</a>(
+    config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">AiCreditConfig</a>,
+    balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>,
+    reservation_nonce: u64,
+    amount_mist: u64,
+    provider_cost_usd_micros: u64,
+    provider_generation_hash: vector&lt;u8&gt;,
+    timestamp_ms: u64,
+    signature: vector&lt;u8&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(table::contains(&balance.reservations, reservation_nonce), <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EReservationNotFound">EReservationNotFound</a>);
+    <b>let</b> reservation = *table::borrow(&balance.reservations, reservation_nonce);
+    <b>let</b> intent = <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_CaptureSpendIntent">CaptureSpendIntent</a> {
+        balance_id: object::id(balance),
+        agent_object_id: reservation.agent_object_id,
+        reservation_nonce,
+        amount_mist,
+        provider_cost_usd_micros,
+        provider_generation_hash,
+        timestamp_ms,
+    };
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_verify_capture_signature">verify_capture_signature</a>(config, &intent, &signature);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_execute_capture">execute_capture</a>(config, balance, intent, clock, ctx);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_cancel_reserved_spend"></a>
+
+## Function `cancel_reserved_spend`
+
+Release a reservation only when the oracle confirms that no billable generation
+exists. Signed cancellation closes at <code>capture_deadline_ms</code>; after hard expiry anyone
+may call <code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_expire_reservation">expire_reservation</a></code> instead.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_cancel_reserved_spend">cancel_reserved_spend</a>(config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">social_contracts::ai_credit::AiCreditConfig</a>, balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, reservation_nonce: u64, timestamp_ms: u64, signature: vector&lt;u8&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_cancel_reserved_spend">cancel_reserved_spend</a>(
+    config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">AiCreditConfig</a>,
+    balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>,
+    reservation_nonce: u64,
+    timestamp_ms: u64,
+    signature: vector&lt;u8&gt;,
+    clock: &Clock,
+) {
+    <b>assert</b>!(table::contains(&balance.reservations, reservation_nonce), <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EReservationNotFound">EReservationNotFound</a>);
+    <b>let</b> reservation = *table::borrow(&balance.reservations, reservation_nonce);
+    <b>let</b> intent = <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_CancelSpendIntent">CancelSpendIntent</a> {
+        balance_id: object::id(balance),
+        agent_object_id: reservation.agent_object_id,
+        reservation_nonce,
+        timestamp_ms,
+    };
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_verify_cancel_signature">verify_cancel_signature</a>(config, &intent, &signature);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_execute_cancellation">execute_cancellation</a>(config, balance, intent, clock);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_expire_reservation"></a>
+
+## Function `expire_reservation`
+
+Permissionless safety valve so gateway failure cannot lock funds indefinitely.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_expire_reservation">expire_reservation</a>(config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">social_contracts::ai_credit::AiCreditConfig</a>, balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, reservation_nonce: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_expire_reservation">expire_reservation</a>(
+    config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">AiCreditConfig</a>,
+    balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>,
+    reservation_nonce: u64,
+    clock: &Clock,
+) {
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_version">assert_version</a>(config, balance);
+    <b>assert</b>!(table::contains(&balance.reservations, reservation_nonce), <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EReservationNotFound">EReservationNotFound</a>);
+    <b>let</b> reservation = *table::borrow(&balance.reservations, reservation_nonce);
+    <b>let</b> now = clock::timestamp_ms(clock);
+    <b>assert</b>!(now &gt;= reservation.hard_expiry_ms, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EReservationNotExpired">EReservationNotExpired</a>);
+    <b>let</b> reservation = table::remove(&<b>mut</b> balance.reservations, reservation_nonce);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_release_reservation_counters">release_reservation_counters</a>(balance, &reservation, now);
+    event::emit(<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiSpendExpired">AiSpendExpired</a> {
+        balance_id: object::id(balance),
+        agent_object_id: reservation.agent_object_id,
+        reservation_nonce,
+        released_mist: reservation.max_amount_mist,
+        expired_at_ms: now,
+        <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_available_mist">available_mist</a>: <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_available_mist">available_mist</a>(balance),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_ai_credit_settle_usage"></a>
 
 ## Function `settle_usage`
@@ -2836,13 +3824,245 @@ not <code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_A
         usage_kind: receipt.usage_kind,
         settlement_nonce: receipt.settlement_nonce,
         remaining_mist: remaining,
-        credits_remaining: <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_credits_from_mist">credits_from_mist</a>(remaining),
     });
     <b>if</b> (remaining == 0) {
         event::emit(<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalanceDepleted">AiCreditBalanceDepleted</a> {
             balance_id: object::id(balance),
         });
     };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_execute_reservation"></a>
+
+## Function `execute_reservation`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_execute_reservation">execute_reservation</a>(config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">social_contracts::ai_credit::AiCreditConfig</a>, balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, intent: <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendReservationIntent">social_contracts::ai_credit::SpendReservationIntent</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_execute_reservation">execute_reservation</a>(
+    config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">AiCreditConfig</a>,
+    balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>,
+    account: &MemoryAccount,
+    agent: &SubAgent,
+    intent: <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendReservationIntent">SpendReservationIntent</a>,
+    clock: &Clock,
+) {
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_version">assert_version</a>(config, balance);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_active">assert_active</a>(balance);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_agent_linked">assert_agent_linked</a>(balance, agent);
+    <b>assert</b>!(object::id(account) == balance.memory_account_id, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EAccountMismatch">EAccountMismatch</a>);
+    <b>assert</b>!(object::id(balance) == intent.balance_id, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EReservationMismatch">EReservationMismatch</a>);
+    <b>let</b> agent_id = <a href="../social_contracts/memory.md#social_contracts_memory_agent_object_id">memory::agent_object_id</a>(agent);
+    <b>assert</b>!(agent_id == intent.agent_object_id, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EReservationMismatch">EReservationMismatch</a>);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_sub_agent_active">memory::assert_sub_agent_active</a>(agent, clock);
+    <b>assert</b>!(
+        <a href="../social_contracts/memory.md#social_contracts_memory_has_cap">memory::has_cap</a>(<a href="../social_contracts/memory.md#social_contracts_memory_sub_agent_capabilities">memory::sub_agent_capabilities</a>(agent), <a href="../social_contracts/memory.md#social_contracts_memory_cap_ai_spend">memory::cap_ai_spend</a>()),
+        <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EAgentMissingCap">EAgentMissingCap</a>,
+    );
+    <b>assert</b>!(intent.max_amount_mist &gt; 0, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EInvalidAmount">EInvalidAmount</a>);
+    <b>assert</b>!(intent.max_amount_mist &lt;= config.max_single_settlement_mist, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_ECapExceeded">ECapExceeded</a>);
+    <b>assert</b>!(intent.reservation_nonce == balance.reservation_nonce + 1, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EInvalidNonce">EInvalidNonce</a>);
+    <b>assert</b>!(!table::contains(&balance.reservations, intent.reservation_nonce), <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EInvalidNonce">EInvalidNonce</a>);
+    <b>assert</b>!(vector::length(&intent.provider_envelope_hash) == <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_HASH_LEN">HASH_LEN</a>, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EInvalidHash">EInvalidHash</a>);
+    <b>assert</b>!(vector::length(&intent.request_hash) == <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_HASH_LEN">HASH_LEN</a>, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EInvalidHash">EInvalidHash</a>);
+    <b>assert</b>!(vector::length(&intent.fx_quote_id) &gt; 0, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EInvalidHash">EInvalidHash</a>);
+    <b>assert</b>!(intent.myso_usd_e8 &gt; 0, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EInvalidAmount">EInvalidAmount</a>);
+    <b>assert</b>!(intent.markup_bps == config.<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_oracle_markup_bps">oracle_markup_bps</a>, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EMarkupMismatch">EMarkupMismatch</a>);
+    <b>let</b> now = clock::timestamp_ms(clock);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_signed_timestamp_fresh">assert_signed_timestamp_fresh</a>(config, intent.timestamp_ms, now);
+    <b>assert</b>!(intent.capture_deadline_ms &gt; now, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EInvalidReservationWindow">EInvalidReservationWindow</a>);
+    <b>assert</b>!(intent.hard_expiry_ms &gt; intent.capture_deadline_ms, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EInvalidReservationWindow">EInvalidReservationWindow</a>);
+    <b>assert</b>!(
+        intent.capture_deadline_ms - now &lt;= <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_MAX_CAPTURE_WINDOW_MS">MAX_CAPTURE_WINDOW_MS</a>,
+        <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EInvalidReservationWindow">EInvalidReservationWindow</a>,
+    );
+    <b>assert</b>!(
+        intent.hard_expiry_ms - now &lt;= <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_MAX_RESERVATION_LIFETIME_MS">MAX_RESERVATION_LIFETIME_MS</a>,
+        <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EInvalidReservationWindow">EInvalidReservationWindow</a>,
+    );
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_roll_account_windows">roll_account_windows</a>(balance, now);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_account_caps">assert_account_caps</a>(balance, intent.max_amount_mist);
+    <b>assert</b>!(intent.max_amount_mist &lt;= <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_available_mist">available_mist</a>(balance), <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EInsufficientBalance">EInsufficientBalance</a>);
+    <b>let</b> agent_budget_reserved = table::contains(&balance.agent_budgets, agent_id);
+    <b>let</b> (agent_day_anchor_ms, agent_month_anchor_ms) = <b>if</b> (agent_budget_reserved) {
+        <b>let</b> <b>entry</b> = table::borrow_mut(&<b>mut</b> balance.agent_budgets, agent_id);
+        <b>assert</b>!(<b>entry</b>.enabled, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EAgentDisabled">EAgentDisabled</a>);
+        <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_roll_agent_windows">roll_agent_windows</a>(<b>entry</b>, now);
+        <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_agent_caps">assert_agent_caps</a>(<b>entry</b>, intent.max_amount_mist);
+        <b>let</b> day_anchor = <b>entry</b>.day_anchor_ms;
+        <b>let</b> month_anchor = <b>entry</b>.month_anchor_ms;
+        <b>entry</b>.<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_reserved_mist">reserved_mist</a> = <b>entry</b>.<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_reserved_mist">reserved_mist</a> + intent.max_amount_mist;
+        <b>entry</b>.reserved_day_mist = <b>entry</b>.reserved_day_mist + intent.max_amount_mist;
+        <b>entry</b>.reserved_month_mist = <b>entry</b>.reserved_month_mist + intent.max_amount_mist;
+        (day_anchor, month_anchor)
+    } <b>else</b> {
+        (0, 0)
+    };
+    // Approval is consumed when funds become unavailable, not after provider spend.
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_maybe_consume_spend_approval">maybe_consume_spend_approval</a>(balance, agent_id, intent.max_amount_mist, clock);
+    balance.reservation_nonce = intent.reservation_nonce;
+    balance.<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_reserved_mist">reserved_mist</a> = balance.<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_reserved_mist">reserved_mist</a> + intent.max_amount_mist;
+    balance.reserved_day_mist = balance.reserved_day_mist + intent.max_amount_mist;
+    balance.reserved_month_mist = balance.reserved_month_mist + intent.max_amount_mist;
+    <b>let</b> reservation = <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendReservation">SpendReservation</a> {
+        reservation_nonce: intent.reservation_nonce,
+        agent_object_id: agent_id,
+        max_amount_mist: intent.max_amount_mist,
+        provider_envelope_hash: intent.provider_envelope_hash,
+        request_hash: intent.request_hash,
+        fx_quote_id: intent.fx_quote_id,
+        myso_usd_e8: intent.myso_usd_e8,
+        markup_bps: intent.markup_bps,
+        created_at_ms: now,
+        capture_deadline_ms: intent.capture_deadline_ms,
+        hard_expiry_ms: intent.hard_expiry_ms,
+        account_day_anchor_ms: balance.day_anchor_ms,
+        account_month_anchor_ms: balance.month_anchor_ms,
+        agent_budget_reserved,
+        agent_day_anchor_ms,
+        agent_month_anchor_ms,
+    };
+    table::add(&<b>mut</b> balance.reservations, intent.reservation_nonce, reservation);
+    event::emit(<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiSpendReserved">AiSpendReserved</a> {
+        balance_id: object::id(balance),
+        agent_object_id: agent_id,
+        reservation_nonce: intent.reservation_nonce,
+        max_amount_mist: intent.max_amount_mist,
+        provider_envelope_hash: intent.provider_envelope_hash,
+        request_hash: intent.request_hash,
+        fx_quote_id: intent.fx_quote_id,
+        myso_usd_e8: intent.myso_usd_e8,
+        markup_bps: intent.markup_bps,
+        capture_deadline_ms: intent.capture_deadline_ms,
+        hard_expiry_ms: intent.hard_expiry_ms,
+        <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_available_mist">available_mist</a>: <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_available_mist">available_mist</a>(balance),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_execute_capture"></a>
+
+## Function `execute_capture`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_execute_capture">execute_capture</a>(config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">social_contracts::ai_credit::AiCreditConfig</a>, balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, intent: <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_CaptureSpendIntent">social_contracts::ai_credit::CaptureSpendIntent</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_execute_capture">execute_capture</a>(
+    config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">AiCreditConfig</a>,
+    balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>,
+    intent: <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_CaptureSpendIntent">CaptureSpendIntent</a>,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_version">assert_version</a>(config, balance);
+    <b>assert</b>!(table::contains(&balance.reservations, intent.reservation_nonce), <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EReservationNotFound">EReservationNotFound</a>);
+    <b>assert</b>!(intent.balance_id == object::id(balance), <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EReservationMismatch">EReservationMismatch</a>);
+    <b>assert</b>!(intent.amount_mist &gt; 0, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EInvalidAmount">EInvalidAmount</a>);
+    <b>assert</b>!(intent.provider_cost_usd_micros &gt; 0, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EInvalidAmount">EInvalidAmount</a>);
+    <b>assert</b>!(vector::length(&intent.provider_generation_hash) == <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_HASH_LEN">HASH_LEN</a>, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EInvalidHash">EInvalidHash</a>);
+    <b>let</b> now = clock::timestamp_ms(clock);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_signed_timestamp_fresh">assert_signed_timestamp_fresh</a>(config, intent.timestamp_ms, now);
+    <b>let</b> reservation = *table::borrow(&balance.reservations, intent.reservation_nonce);
+    <b>assert</b>!(intent.agent_object_id == reservation.agent_object_id, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EReservationMismatch">EReservationMismatch</a>);
+    <b>assert</b>!(intent.amount_mist &lt;= reservation.max_amount_mist, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_ECapExceeded">ECapExceeded</a>);
+    <b>assert</b>!(now &lt; reservation.hard_expiry_ms, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EReservationExpired">EReservationExpired</a>);
+    <b>let</b> reservation = table::remove(&<b>mut</b> balance.reservations, intent.reservation_nonce);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_capture_reservation_counters">capture_reservation_counters</a>(balance, &reservation, intent.amount_mist, now);
+    <b>let</b> payout = balance::split(&<b>mut</b> balance.balance, intent.amount_mist);
+    transfer::public_transfer(coin::from_balance(payout, ctx), config.treasury);
+    <b>let</b> remaining = <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_balance_mist">balance_mist</a>(balance);
+    event::emit(<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiSpendCaptured">AiSpendCaptured</a> {
+        balance_id: object::id(balance),
+        agent_object_id: reservation.agent_object_id,
+        reservation_nonce: reservation.reservation_nonce,
+        <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_reserved_mist">reserved_mist</a>: reservation.max_amount_mist,
+        captured_mist: intent.amount_mist,
+        released_mist: reservation.max_amount_mist - intent.amount_mist,
+        provider_cost_usd_micros: intent.provider_cost_usd_micros,
+        provider_generation_hash: intent.provider_generation_hash,
+        fx_quote_id: reservation.fx_quote_id,
+        myso_usd_e8: reservation.myso_usd_e8,
+        markup_bps: reservation.markup_bps,
+        captured_at_ms: now,
+        remaining_mist: remaining,
+        <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_available_mist">available_mist</a>: <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_available_mist">available_mist</a>(balance),
+    });
+    <b>if</b> (remaining == 0) {
+        event::emit(<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalanceDepleted">AiCreditBalanceDepleted</a> {
+            balance_id: object::id(balance),
+        });
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_execute_cancellation"></a>
+
+## Function `execute_cancellation`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_execute_cancellation">execute_cancellation</a>(config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">social_contracts::ai_credit::AiCreditConfig</a>, balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, intent: <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_CancelSpendIntent">social_contracts::ai_credit::CancelSpendIntent</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_execute_cancellation">execute_cancellation</a>(
+    config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">AiCreditConfig</a>,
+    balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>,
+    intent: <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_CancelSpendIntent">CancelSpendIntent</a>,
+    clock: &Clock,
+) {
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_version">assert_version</a>(config, balance);
+    <b>assert</b>!(table::contains(&balance.reservations, intent.reservation_nonce), <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EReservationNotFound">EReservationNotFound</a>);
+    <b>assert</b>!(intent.balance_id == object::id(balance), <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EReservationMismatch">EReservationMismatch</a>);
+    <b>let</b> now = clock::timestamp_ms(clock);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_signed_timestamp_fresh">assert_signed_timestamp_fresh</a>(config, intent.timestamp_ms, now);
+    <b>let</b> reservation = *table::borrow(&balance.reservations, intent.reservation_nonce);
+    <b>assert</b>!(intent.agent_object_id == reservation.agent_object_id, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EReservationMismatch">EReservationMismatch</a>);
+    <b>assert</b>!(now &lt;= reservation.capture_deadline_ms, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_ECaptureWindowClosed">ECaptureWindowClosed</a>);
+    <b>let</b> reservation = table::remove(&<b>mut</b> balance.reservations, intent.reservation_nonce);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_release_reservation_counters">release_reservation_counters</a>(balance, &reservation, now);
+    event::emit(<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiSpendCancelled">AiSpendCancelled</a> {
+        balance_id: object::id(balance),
+        agent_object_id: reservation.agent_object_id,
+        reservation_nonce: reservation.reservation_nonce,
+        released_mist: reservation.max_amount_mist,
+        cancelled_at_ms: now,
+        <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_available_mist">available_mist</a>: <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_available_mist">available_mist</a>(balance),
+    });
 }
 </code></pre>
 
@@ -3063,7 +4283,7 @@ not <code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_A
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_available_mist">available_mist</a>(balance: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>): u64 {
-    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_balance_mist">balance_mist</a>(balance)
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_balance_mist">balance_mist</a>(balance) - balance.<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_reserved_mist">reserved_mist</a>
 }
 </code></pre>
 
@@ -3071,13 +4291,13 @@ not <code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_A
 
 </details>
 
-<a name="social_contracts_ai_credit_credits_from_mist"></a>
+<a name="social_contracts_ai_credit_reserved_mist"></a>
 
-## Function `credits_from_mist`
+## Function `reserved_mist`
 
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_credits_from_mist">credits_from_mist</a>(mist: u64): u64
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_reserved_mist">reserved_mist</a>(balance: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>): u64
 </code></pre>
 
 
@@ -3086,8 +4306,8 @@ not <code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_A
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_credits_from_mist">credits_from_mist</a>(mist: u64): u64 {
-    mist / <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_MIST_PER_MYSO">MIST_PER_MYSO</a>
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_reserved_mist">reserved_mist</a>(balance: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>): u64 {
+    balance.<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_reserved_mist">reserved_mist</a>
 }
 </code></pre>
 
@@ -3095,13 +4315,13 @@ not <code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_A
 
 </details>
 
-<a name="social_contracts_ai_credit_mist_from_credits"></a>
+<a name="social_contracts_ai_credit_latest_reservation_nonce"></a>
 
-## Function `mist_from_credits`
+## Function `latest_reservation_nonce`
 
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_mist_from_credits">mist_from_credits</a>(credits: u64): u64
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_latest_reservation_nonce">latest_reservation_nonce</a>(balance: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>): u64
 </code></pre>
 
 
@@ -3110,8 +4330,111 @@ not <code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_A
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_mist_from_credits">mist_from_credits</a>(credits: u64): u64 {
-    credits * <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_MIST_PER_MYSO">MIST_PER_MYSO</a>
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_latest_reservation_nonce">latest_reservation_nonce</a>(balance: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>): u64 {
+    balance.reservation_nonce
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_reservation_for"></a>
+
+## Function `reservation_for`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_reservation_for">reservation_for</a>(balance: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, reservation_nonce: u64): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendReservation">social_contracts::ai_credit::SpendReservation</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_reservation_for">reservation_for</a>(
+    balance: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>,
+    reservation_nonce: u64,
+): Option&lt;<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendReservation">SpendReservation</a>&gt; {
+    <b>if</b> (table::contains(&balance.reservations, reservation_nonce)) {
+        option::some(*table::borrow(&balance.reservations, reservation_nonce))
+    } <b>else</b> {
+        option::none()
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_reservation_max_amount_mist"></a>
+
+## Function `reservation_max_amount_mist`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_reservation_max_amount_mist">reservation_max_amount_mist</a>(reservation: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendReservation">social_contracts::ai_credit::SpendReservation</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_reservation_max_amount_mist">reservation_max_amount_mist</a>(reservation: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendReservation">SpendReservation</a>): u64 {
+    reservation.max_amount_mist
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_reservation_agent_object_id"></a>
+
+## Function `reservation_agent_object_id`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_reservation_agent_object_id">reservation_agent_object_id</a>(reservation: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendReservation">social_contracts::ai_credit::SpendReservation</a>): <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_reservation_agent_object_id">reservation_agent_object_id</a>(reservation: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendReservation">SpendReservation</a>): ID {
+    reservation.agent_object_id
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_reservation_hard_expiry_ms"></a>
+
+## Function `reservation_hard_expiry_ms`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_reservation_hard_expiry_ms">reservation_hard_expiry_ms</a>(reservation: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendReservation">social_contracts::ai_credit::SpendReservation</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_reservation_hard_expiry_ms">reservation_hard_expiry_ms</a>(reservation: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendReservation">SpendReservation</a>): u64 {
+    reservation.hard_expiry_ms
 }
 </code></pre>
 
@@ -3352,10 +4675,11 @@ Approval threshold on the agent's budget entry, if configured.
         <b>return</b> option::none()
     };
     <b>let</b> max = *option::borrow(&<b>entry</b>.budget_mist);
-    <b>if</b> (<b>entry</b>.spent_mist &gt;= max) {
+    <b>let</b> committed = <b>entry</b>.spent_mist + <b>entry</b>.<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_reserved_mist">reserved_mist</a>;
+    <b>if</b> (committed &gt;= max) {
         option::some(0)
     } <b>else</b> {
-        option::some(max - <b>entry</b>.spent_mist)
+        option::some(max - committed)
     }
 }
 </code></pre>
@@ -3842,15 +5166,24 @@ approval threshold (if set) and remaining budget/day/month caps (if set).
     };
     <b>if</b> (option::is_some(&<b>entry</b>.budget_mist)) {
         <b>let</b> max = *option::borrow(&<b>entry</b>.budget_mist);
-        <b>assert</b>!(<b>entry</b>.spent_mist + amount_mist &lt;= max, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EParentEnvelopeExceeded">EParentEnvelopeExceeded</a>);
+        <b>assert</b>!(
+            <b>entry</b>.spent_mist + <b>entry</b>.<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_reserved_mist">reserved_mist</a> + amount_mist &lt;= max,
+            <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EParentEnvelopeExceeded">EParentEnvelopeExceeded</a>,
+        );
     };
     <b>if</b> (option::is_some(&<b>entry</b>.daily_cap_mist)) {
         <b>let</b> cap = *option::borrow(&<b>entry</b>.daily_cap_mist);
-        <b>assert</b>!(<b>entry</b>.spent_day_mist + amount_mist &lt;= cap, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EParentEnvelopeExceeded">EParentEnvelopeExceeded</a>);
+        <b>assert</b>!(
+            <b>entry</b>.spent_day_mist + <b>entry</b>.reserved_day_mist + amount_mist &lt;= cap,
+            <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EParentEnvelopeExceeded">EParentEnvelopeExceeded</a>,
+        );
     };
     <b>if</b> (option::is_some(&<b>entry</b>.monthly_cap_mist)) {
         <b>let</b> cap = *option::borrow(&<b>entry</b>.monthly_cap_mist);
-        <b>assert</b>!(<b>entry</b>.spent_month_mist + amount_mist &lt;= cap, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EParentEnvelopeExceeded">EParentEnvelopeExceeded</a>);
+        <b>assert</b>!(
+            <b>entry</b>.spent_month_mist + <b>entry</b>.reserved_month_mist + amount_mist &lt;= cap,
+            <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EParentEnvelopeExceeded">EParentEnvelopeExceeded</a>,
+        );
     };
 }
 </code></pre>
@@ -3919,10 +5252,13 @@ Shared budget upsert used by owner, org-manager, and parent paths. Emits the leg
             enabled: <b>true</b>,
             budget_mist,
             spent_mist: 0,
+            <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_reserved_mist">reserved_mist</a>: 0,
             daily_cap_mist,
             monthly_cap_mist,
             spent_day_mist: 0,
+            reserved_day_mist: 0,
             spent_month_mist: 0,
+            reserved_month_mist: 0,
             day_anchor_ms: now,
             month_anchor_ms: now,
             require_approval_above_mist,
@@ -4226,6 +5562,120 @@ enforcement of <code>require_approval_above_mist</code>.
 
 </details>
 
+<a name="social_contracts_ai_credit_verify_reservation_signature"></a>
+
+## Function `verify_reservation_signature`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_verify_reservation_signature">verify_reservation_signature</a>(config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">social_contracts::ai_credit::AiCreditConfig</a>, intent: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendReservationIntent">social_contracts::ai_credit::SpendReservationIntent</a>, signature: &vector&lt;u8&gt;)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_verify_reservation_signature">verify_reservation_signature</a>(
+    config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">AiCreditConfig</a>,
+    intent: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendReservationIntent">SpendReservationIntent</a>,
+    signature: &vector&lt;u8&gt;,
+) {
+    <b>assert</b>!(vector::length(signature) == 64, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EInvalidSignature">EInvalidSignature</a>);
+    <b>let</b> intent_message = <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_IntentMessage">IntentMessage</a> {
+        intent: <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_INTENT_AI_CREDIT_RESERVE">INTENT_AI_CREDIT_RESERVE</a>,
+        timestamp_ms: intent.timestamp_ms,
+        payload: *intent,
+    };
+    <b>let</b> msg = bcs::to_bytes(&intent_message);
+    <b>assert</b>!(
+        ed25519::ed25519_verify(signature, &config.oracle_pubkey, &msg),
+        <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EInvalidSignature">EInvalidSignature</a>,
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_verify_capture_signature"></a>
+
+## Function `verify_capture_signature`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_verify_capture_signature">verify_capture_signature</a>(config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">social_contracts::ai_credit::AiCreditConfig</a>, intent: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_CaptureSpendIntent">social_contracts::ai_credit::CaptureSpendIntent</a>, signature: &vector&lt;u8&gt;)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_verify_capture_signature">verify_capture_signature</a>(
+    config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">AiCreditConfig</a>,
+    intent: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_CaptureSpendIntent">CaptureSpendIntent</a>,
+    signature: &vector&lt;u8&gt;,
+) {
+    <b>assert</b>!(vector::length(signature) == 64, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EInvalidSignature">EInvalidSignature</a>);
+    <b>let</b> intent_message = <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_IntentMessage">IntentMessage</a> {
+        intent: <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_INTENT_AI_CREDIT_CAPTURE">INTENT_AI_CREDIT_CAPTURE</a>,
+        timestamp_ms: intent.timestamp_ms,
+        payload: *intent,
+    };
+    <b>let</b> msg = bcs::to_bytes(&intent_message);
+    <b>assert</b>!(
+        ed25519::ed25519_verify(signature, &config.oracle_pubkey, &msg),
+        <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EInvalidSignature">EInvalidSignature</a>,
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_verify_cancel_signature"></a>
+
+## Function `verify_cancel_signature`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_verify_cancel_signature">verify_cancel_signature</a>(config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">social_contracts::ai_credit::AiCreditConfig</a>, intent: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_CancelSpendIntent">social_contracts::ai_credit::CancelSpendIntent</a>, signature: &vector&lt;u8&gt;)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_verify_cancel_signature">verify_cancel_signature</a>(
+    config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">AiCreditConfig</a>,
+    intent: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_CancelSpendIntent">CancelSpendIntent</a>,
+    signature: &vector&lt;u8&gt;,
+) {
+    <b>assert</b>!(vector::length(signature) == 64, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EInvalidSignature">EInvalidSignature</a>);
+    <b>let</b> intent_message = <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_IntentMessage">IntentMessage</a> {
+        intent: <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_INTENT_AI_CREDIT_CANCEL">INTENT_AI_CREDIT_CANCEL</a>,
+        timestamp_ms: intent.timestamp_ms,
+        payload: *intent,
+    };
+    <b>let</b> msg = bcs::to_bytes(&intent_message);
+    <b>assert</b>!(
+        ed25519::ed25519_verify(signature, &config.oracle_pubkey, &msg),
+        <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EInvalidSignature">EInvalidSignature</a>,
+    );
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_ai_credit_assert_receipt_fresh"></a>
 
 ## Function `assert_receipt_fresh`
@@ -4243,8 +5693,32 @@ enforcement of <code>require_approval_above_mist</code>.
 
 <pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_receipt_fresh">assert_receipt_fresh</a>(config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">AiCreditConfig</a>, receipt: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_UsageReceipt">UsageReceipt</a>, clock: &Clock) {
     <b>let</b> now = clock::timestamp_ms(clock);
-    <b>assert</b>!(receipt.timestamp_ms &lt;= now, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EStaleReceipt">EStaleReceipt</a>);
-    <b>assert</b>!(now - receipt.timestamp_ms &lt;= config.receipt_ttl_ms, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EStaleReceipt">EStaleReceipt</a>);
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_signed_timestamp_fresh">assert_signed_timestamp_fresh</a>(config, receipt.timestamp_ms, now);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_assert_signed_timestamp_fresh"></a>
+
+## Function `assert_signed_timestamp_fresh`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_signed_timestamp_fresh">assert_signed_timestamp_fresh</a>(config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">social_contracts::ai_credit::AiCreditConfig</a>, timestamp_ms: u64, now: u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_signed_timestamp_fresh">assert_signed_timestamp_fresh</a>(config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">AiCreditConfig</a>, timestamp_ms: u64, now: u64) {
+    <b>assert</b>!(timestamp_ms &lt;= now, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EStaleReceipt">EStaleReceipt</a>);
+    <b>assert</b>!(now - timestamp_ms &lt;= config.receipt_ttl_ms, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EStaleReceipt">EStaleReceipt</a>);
 }
 </code></pre>
 
@@ -4270,10 +5744,12 @@ enforcement of <code>require_approval_above_mist</code>.
 <pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_roll_account_windows">roll_account_windows</a>(balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>, now: u64) {
     <b>if</b> (now &gt;= balance.day_anchor_ms + <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_DAY_MS">DAY_MS</a>) {
         balance.spent_day_mist = 0;
+        balance.reserved_day_mist = 0;
         balance.day_anchor_ms = now;
     };
     <b>if</b> (now &gt;= balance.month_anchor_ms + <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_MONTH_MS">MONTH_MS</a>) {
         balance.spent_month_mist = 0;
+        balance.reserved_month_mist = 0;
         balance.month_anchor_ms = now;
     };
 }
@@ -4301,10 +5777,12 @@ enforcement of <code>require_approval_above_mist</code>.
 <pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_roll_agent_windows">roll_agent_windows</a>(<b>entry</b>: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AgentBudgetEntry">AgentBudgetEntry</a>, now: u64) {
     <b>if</b> (now &gt;= <b>entry</b>.day_anchor_ms + <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_DAY_MS">DAY_MS</a>) {
         <b>entry</b>.spent_day_mist = 0;
+        <b>entry</b>.reserved_day_mist = 0;
         <b>entry</b>.day_anchor_ms = now;
     };
     <b>if</b> (now &gt;= <b>entry</b>.month_anchor_ms + <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_MONTH_MS">MONTH_MS</a>) {
         <b>entry</b>.spent_month_mist = 0;
+        <b>entry</b>.reserved_month_mist = 0;
         <b>entry</b>.month_anchor_ms = now;
     };
 }
@@ -4332,11 +5810,17 @@ enforcement of <code>require_approval_above_mist</code>.
 <pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_account_caps">assert_account_caps</a>(balance: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>, amount_mist: u64) {
     <b>if</b> (option::is_some(&balance.daily_cap_mist)) {
         <b>let</b> cap = *option::borrow(&balance.daily_cap_mist);
-        <b>assert</b>!(balance.spent_day_mist + amount_mist &lt;= cap, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_ECapExceeded">ECapExceeded</a>);
+        <b>assert</b>!(
+            balance.spent_day_mist + balance.reserved_day_mist + amount_mist &lt;= cap,
+            <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_ECapExceeded">ECapExceeded</a>,
+        );
     };
     <b>if</b> (option::is_some(&balance.monthly_cap_mist)) {
         <b>let</b> cap = *option::borrow(&balance.monthly_cap_mist);
-        <b>assert</b>!(balance.spent_month_mist + amount_mist &lt;= cap, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_ECapExceeded">ECapExceeded</a>);
+        <b>assert</b>!(
+            balance.spent_month_mist + balance.reserved_month_mist + amount_mist &lt;= cap,
+            <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_ECapExceeded">ECapExceeded</a>,
+        );
     };
 }
 </code></pre>
@@ -4363,15 +5847,142 @@ enforcement of <code>require_approval_above_mist</code>.
 <pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_agent_caps">assert_agent_caps</a>(<b>entry</b>: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AgentBudgetEntry">AgentBudgetEntry</a>, amount_mist: u64) {
     <b>if</b> (option::is_some(&<b>entry</b>.budget_mist)) {
         <b>let</b> cap = *option::borrow(&<b>entry</b>.budget_mist);
-        <b>assert</b>!(<b>entry</b>.spent_mist + amount_mist &lt;= cap, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_ECapExceeded">ECapExceeded</a>);
+        <b>assert</b>!(<b>entry</b>.spent_mist + <b>entry</b>.<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_reserved_mist">reserved_mist</a> + amount_mist &lt;= cap, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_ECapExceeded">ECapExceeded</a>);
     };
     <b>if</b> (option::is_some(&<b>entry</b>.daily_cap_mist)) {
         <b>let</b> cap = *option::borrow(&<b>entry</b>.daily_cap_mist);
-        <b>assert</b>!(<b>entry</b>.spent_day_mist + amount_mist &lt;= cap, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_ECapExceeded">ECapExceeded</a>);
+        <b>assert</b>!(
+            <b>entry</b>.spent_day_mist + <b>entry</b>.reserved_day_mist + amount_mist &lt;= cap,
+            <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_ECapExceeded">ECapExceeded</a>,
+        );
     };
     <b>if</b> (option::is_some(&<b>entry</b>.monthly_cap_mist)) {
         <b>let</b> cap = *option::borrow(&<b>entry</b>.monthly_cap_mist);
-        <b>assert</b>!(<b>entry</b>.spent_month_mist + amount_mist &lt;= cap, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_ECapExceeded">ECapExceeded</a>);
+        <b>assert</b>!(
+            <b>entry</b>.spent_month_mist + <b>entry</b>.reserved_month_mist + amount_mist &lt;= cap,
+            <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_ECapExceeded">ECapExceeded</a>,
+        );
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_release_reservation_counters"></a>
+
+## Function `release_reservation_counters`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_release_reservation_counters">release_reservation_counters</a>(balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, reservation: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendReservation">social_contracts::ai_credit::SpendReservation</a>, now: u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_release_reservation_counters">release_reservation_counters</a>(
+    balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>,
+    reservation: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendReservation">SpendReservation</a>,
+    now: u64,
+) {
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_roll_account_windows">roll_account_windows</a>(balance, now);
+    balance.<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_reserved_mist">reserved_mist</a> = balance.<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_reserved_mist">reserved_mist</a> - reservation.max_amount_mist;
+    <b>if</b> (balance.day_anchor_ms == reservation.account_day_anchor_ms) {
+        balance.reserved_day_mist =
+            balance.reserved_day_mist - reservation.max_amount_mist;
+    };
+    <b>if</b> (balance.month_anchor_ms == reservation.account_month_anchor_ms) {
+        balance.reserved_month_mist =
+            balance.reserved_month_mist - reservation.max_amount_mist;
+    };
+    <b>if</b> (reservation.agent_budget_reserved) {
+        <b>assert</b>!(
+            table::contains(&balance.agent_budgets, reservation.agent_object_id),
+            <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EReservationMismatch">EReservationMismatch</a>,
+        );
+        <b>let</b> <b>entry</b> = table::borrow_mut(
+            &<b>mut</b> balance.agent_budgets,
+            reservation.agent_object_id,
+        );
+        <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_roll_agent_windows">roll_agent_windows</a>(<b>entry</b>, now);
+        <b>entry</b>.<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_reserved_mist">reserved_mist</a> = <b>entry</b>.<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_reserved_mist">reserved_mist</a> - reservation.max_amount_mist;
+        <b>if</b> (<b>entry</b>.day_anchor_ms == reservation.agent_day_anchor_ms) {
+            <b>entry</b>.reserved_day_mist =
+                <b>entry</b>.reserved_day_mist - reservation.max_amount_mist;
+        };
+        <b>if</b> (<b>entry</b>.month_anchor_ms == reservation.agent_month_anchor_ms) {
+            <b>entry</b>.reserved_month_mist =
+                <b>entry</b>.reserved_month_mist - reservation.max_amount_mist;
+        };
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_capture_reservation_counters"></a>
+
+## Function `capture_reservation_counters`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_capture_reservation_counters">capture_reservation_counters</a>(balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, reservation: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendReservation">social_contracts::ai_credit::SpendReservation</a>, amount_mist: u64, now: u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_capture_reservation_counters">capture_reservation_counters</a>(
+    balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>,
+    reservation: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_SpendReservation">SpendReservation</a>,
+    amount_mist: u64,
+    now: u64,
+) {
+    <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_roll_account_windows">roll_account_windows</a>(balance, now);
+    balance.<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_reserved_mist">reserved_mist</a> = balance.<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_reserved_mist">reserved_mist</a> - reservation.max_amount_mist;
+    balance.spent_total_mist = balance.spent_total_mist + amount_mist;
+    <b>if</b> (balance.day_anchor_ms == reservation.account_day_anchor_ms) {
+        balance.reserved_day_mist =
+            balance.reserved_day_mist - reservation.max_amount_mist;
+        balance.spent_day_mist = balance.spent_day_mist + amount_mist;
+    };
+    <b>if</b> (balance.month_anchor_ms == reservation.account_month_anchor_ms) {
+        balance.reserved_month_mist =
+            balance.reserved_month_mist - reservation.max_amount_mist;
+        balance.spent_month_mist = balance.spent_month_mist + amount_mist;
+    };
+    <b>if</b> (reservation.agent_budget_reserved) {
+        <b>assert</b>!(
+            table::contains(&balance.agent_budgets, reservation.agent_object_id),
+            <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EReservationMismatch">EReservationMismatch</a>,
+        );
+        <b>let</b> <b>entry</b> = table::borrow_mut(
+            &<b>mut</b> balance.agent_budgets,
+            reservation.agent_object_id,
+        );
+        <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_roll_agent_windows">roll_agent_windows</a>(<b>entry</b>, now);
+        <b>entry</b>.<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_reserved_mist">reserved_mist</a> = <b>entry</b>.<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_reserved_mist">reserved_mist</a> - reservation.max_amount_mist;
+        <b>entry</b>.spent_mist = <b>entry</b>.spent_mist + amount_mist;
+        <b>if</b> (<b>entry</b>.day_anchor_ms == reservation.agent_day_anchor_ms) {
+            <b>entry</b>.reserved_day_mist =
+                <b>entry</b>.reserved_day_mist - reservation.max_amount_mist;
+            <b>entry</b>.spent_day_mist = <b>entry</b>.spent_day_mist + amount_mist;
+        };
+        <b>if</b> (<b>entry</b>.month_anchor_ms == reservation.agent_month_anchor_ms) {
+            <b>entry</b>.reserved_month_mist =
+                <b>entry</b>.reserved_month_mist - reservation.max_amount_mist;
+            <b>entry</b>.spent_month_mist = <b>entry</b>.spent_month_mist + amount_mist;
+        };
     };
 }
 </code></pre>

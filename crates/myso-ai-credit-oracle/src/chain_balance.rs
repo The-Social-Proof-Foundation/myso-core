@@ -7,9 +7,9 @@ use anyhow::{Context, Result};
 use myso_sdk::MySoClientBuilder;
 use myso_types::base_types::ObjectID;
 
-use crate::ai_credit_object::parse_settlement_nonce;
+use crate::ai_credit_object::{parse_reservation_state, parse_settlement_nonce};
 
-pub async fn fetch_on_chain_settlement_nonce(rpc_url: &str, balance_id: &str) -> Result<u64> {
+async fn fetch_balance_bcs(rpc_url: &str, balance_id: &str) -> Result<Vec<u8>> {
     let object_id = ObjectID::from_hex_literal(balance_id)?;
     let client = MySoClientBuilder::default().build(rpc_url).await?;
     let mut last_err = None;
@@ -22,13 +22,27 @@ pub async fn fetch_on_chain_settlement_nonce(rpc_url: &str, balance_id: &str) ->
             .get_move_object_bcs(object_id)
             .await
             .context("fetch AiCreditBalance BCS")
-            .and_then(|data| parse_settlement_nonce(&data).context("parse AiCreditBalance settlement_nonce"))
         {
-            Ok(nonce) => return Ok(nonce),
+            Ok(data) => return Ok(data),
             Err(err) => last_err = Some(err),
         }
     }
-    Err(last_err.unwrap_or_else(|| anyhow::anyhow!("fetch on-chain settlement_nonce failed")))
+    Err(last_err.unwrap_or_else(|| anyhow::anyhow!("fetch on-chain AiCreditBalance failed")))
+}
+
+pub async fn fetch_on_chain_settlement_nonce(rpc_url: &str, balance_id: &str) -> Result<u64> {
+    let data = fetch_balance_bcs(rpc_url, balance_id).await?;
+    parse_settlement_nonce(&data).context("parse AiCreditBalance settlement_nonce")
+}
+
+/// Return the canonical reservation nonce and currently locked MIST directly
+/// from chain state. The next reservation must use `reservation_nonce + 1`.
+pub async fn fetch_on_chain_reservation_state(
+    rpc_url: &str,
+    balance_id: &str,
+) -> Result<(u64, u64)> {
+    let data = fetch_balance_bcs(rpc_url, balance_id).await?;
+    parse_reservation_state(&data).context("parse AiCreditBalance reservation state")
 }
 
 /// Resolve settlement nonce: on-chain BCS first, then indexed social-server value.

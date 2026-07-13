@@ -168,6 +168,17 @@ struct BcsPaidMessageSent {
     created_at_ms: u64,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+struct BcsMessageDigestSent {
+    group_id: BcsMoveObjectId,
+    seq: u64,
+    sender: AccountAddress,
+    recipient: AccountAddress,
+    content_digest: Vec<u8>,
+    content_uri: String,
+    created_at_ms: u64,
+}
+
 #[derive(Debug, Deserialize)]
 struct BcsPaidMessageReplied {
     group_id: BcsMoveObjectId,
@@ -1057,6 +1068,18 @@ pub struct BcsRepostEventWithAttribution {
     action_identity_class: u8,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsRepostRemovedEvent {
+    repost_id: AccountAddress,
+    original_id: AccountAddress,
+    owner: AccountAddress,
+    actor_address: AccountAddress,
+    sub_agent_id: Option<BcsMoveObjectId>,
+    organization_id: Option<BcsMoveObjectId>,
+    action_identity_class: u8,
+    removed_at: u64,
+}
+
 struct ParsedRepostEvent {
     repost_id: AccountAddress,
     original_id: AccountAddress,
@@ -1396,7 +1419,6 @@ struct BcsAiCreditDepositedEvent {
     balance_id: AccountAddress,
     amount_mist: u64,
     new_balance_mist: u64,
-    credits: u64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -1491,7 +1513,60 @@ struct BcsAiCreditUsageSettledEvent {
     usage_kind: u8,
     settlement_nonce: u64,
     remaining_mist: u64,
-    credits_remaining: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct BcsAiSpendReservedEvent {
+    balance_id: AccountAddress,
+    agent_object_id: AccountAddress,
+    reservation_nonce: u64,
+    max_amount_mist: u64,
+    provider_envelope_hash: Vec<u8>,
+    request_hash: Vec<u8>,
+    fx_quote_id: Vec<u8>,
+    myso_usd_e8: u64,
+    markup_bps: u64,
+    capture_deadline_ms: u64,
+    hard_expiry_ms: u64,
+    available_mist: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct BcsAiSpendCapturedEvent {
+    balance_id: AccountAddress,
+    agent_object_id: AccountAddress,
+    reservation_nonce: u64,
+    reserved_mist: u64,
+    captured_mist: u64,
+    released_mist: u64,
+    provider_cost_usd_micros: u64,
+    provider_generation_hash: Vec<u8>,
+    fx_quote_id: Vec<u8>,
+    myso_usd_e8: u64,
+    markup_bps: u64,
+    captured_at_ms: u64,
+    remaining_mist: u64,
+    available_mist: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct BcsAiSpendCancelledEvent {
+    balance_id: AccountAddress,
+    agent_object_id: AccountAddress,
+    reservation_nonce: u64,
+    released_mist: u64,
+    cancelled_at_ms: u64,
+    available_mist: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct BcsAiSpendExpiredEvent {
+    balance_id: AccountAddress,
+    agent_object_id: AccountAddress,
+    reservation_nonce: u64,
+    released_mist: u64,
+    expired_at_ms: u64,
+    available_mist: u64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -3343,6 +3418,19 @@ fn parse_message_log_event(
     contents: &[u8],
 ) -> Result<Option<serde_json::Value>, EventParseError> {
     match event_name {
+        "MessageDigestSent" => {
+            let ev = bcs::from_bytes::<BcsMessageDigestSent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "group_id": move_object_id_to_string(&ev.group_id),
+                "seq": ev.seq,
+                "sender": addr_to_string(&ev.sender),
+                "recipient": addr_to_string(&ev.recipient),
+                "content_digest": hex::encode(ev.content_digest),
+                "content_uri": ev.content_uri,
+                "created_at_ms": ev.created_at_ms,
+            })))
+        }
         "PaidMessageSent" => {
             let ev = bcs::from_bytes::<BcsPaidMessageSent>(contents)
                 .map_err(|e| bcs_parse_err(e, contents))?;
@@ -3820,6 +3908,21 @@ fn parse_post_event(
                 "sub_agent_id": ev.sub_agent_id,
                 "organization_id": ev.organization_id,
                 "action_identity_class": ev.action_identity_class,
+            })))
+        }
+        "RepostRemovedEvent" => {
+            let ev = bcs::from_bytes::<BcsRepostRemovedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "repost_id": addr_to_string(&ev.repost_id),
+                "original_id": addr_to_string(&ev.original_id),
+                "is_original_post": true,
+                "owner": addr_to_string(&ev.owner),
+                "actor_address": addr_to_string(&ev.actor_address),
+                "sub_agent_id": optional_move_object_id_json(&ev.sub_agent_id),
+                "organization_id": optional_move_object_id_json(&ev.organization_id),
+                "action_identity_class": ev.action_identity_class,
+                "removed_at": ev.removed_at,
             })))
         }
         "TipEvent" | "TipCreatedEvent" => {
@@ -4324,7 +4427,6 @@ fn parse_ai_credit_event(
                 "balance_id": addr_to_string(&ev.balance_id),
                 "amount_mist": ev.amount_mist,
                 "new_balance_mist": ev.new_balance_mist,
-                "credits": ev.credits,
             })))
         }
         "AiCreditWithdrawn" => {
@@ -4437,7 +4539,68 @@ fn parse_ai_credit_event(
                 "usage_kind": ev.usage_kind,
                 "settlement_nonce": ev.settlement_nonce,
                 "remaining_mist": ev.remaining_mist,
-                "credits_remaining": ev.credits_remaining,
+            })))
+        }
+        "AiSpendReserved" => {
+            let ev = bcs::from_bytes::<BcsAiSpendReservedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "balance_id": addr_to_string(&ev.balance_id),
+                "agent_object_id": addr_to_string(&ev.agent_object_id),
+                "reservation_nonce": ev.reservation_nonce,
+                "max_amount_mist": ev.max_amount_mist,
+                "provider_envelope_hash_hex": hex::encode(ev.provider_envelope_hash),
+                "request_hash_hex": hex::encode(ev.request_hash),
+                "fx_quote_id_hex": hex::encode(ev.fx_quote_id),
+                "myso_usd_e8": ev.myso_usd_e8,
+                "markup_bps": ev.markup_bps,
+                "capture_deadline_ms": ev.capture_deadline_ms,
+                "hard_expiry_ms": ev.hard_expiry_ms,
+                "available_mist": ev.available_mist,
+            })))
+        }
+        "AiSpendCaptured" => {
+            let ev = bcs::from_bytes::<BcsAiSpendCapturedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "balance_id": addr_to_string(&ev.balance_id),
+                "agent_object_id": addr_to_string(&ev.agent_object_id),
+                "reservation_nonce": ev.reservation_nonce,
+                "reserved_mist": ev.reserved_mist,
+                "captured_mist": ev.captured_mist,
+                "released_mist": ev.released_mist,
+                "provider_cost_usd_micros": ev.provider_cost_usd_micros,
+                "provider_generation_hash_hex": hex::encode(ev.provider_generation_hash),
+                "fx_quote_id_hex": hex::encode(ev.fx_quote_id),
+                "myso_usd_e8": ev.myso_usd_e8,
+                "markup_bps": ev.markup_bps,
+                "captured_at_ms": ev.captured_at_ms,
+                "remaining_mist": ev.remaining_mist,
+                "available_mist": ev.available_mist,
+            })))
+        }
+        "AiSpendCancelled" => {
+            let ev = bcs::from_bytes::<BcsAiSpendCancelledEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "balance_id": addr_to_string(&ev.balance_id),
+                "agent_object_id": addr_to_string(&ev.agent_object_id),
+                "reservation_nonce": ev.reservation_nonce,
+                "released_mist": ev.released_mist,
+                "cancelled_at_ms": ev.cancelled_at_ms,
+                "available_mist": ev.available_mist,
+            })))
+        }
+        "AiSpendExpired" => {
+            let ev = bcs::from_bytes::<BcsAiSpendExpiredEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "balance_id": addr_to_string(&ev.balance_id),
+                "agent_object_id": addr_to_string(&ev.agent_object_id),
+                "reservation_nonce": ev.reservation_nonce,
+                "released_mist": ev.released_mist,
+                "expired_at_ms": ev.expired_at_ms,
+                "available_mist": ev.available_mist,
             })))
         }
         "AiCreditBalanceDepleted" | "AiCreditBalancePaused" | "AiCreditBalanceReactivated" => {
@@ -6099,7 +6262,6 @@ mod tests {
             usage_kind: 1,
             settlement_nonce: 1,
             remaining_mist: 4_677_777_777,
-            credits_remaining: 4,
         };
         let contents = bcs::to_bytes(&ev).expect("serialize AiCreditUsageSettled");
         let json = parse_event_contents("ai_credit", "AiCreditUsageSettled", &contents)
@@ -6110,6 +6272,93 @@ mod tests {
         );
         assert_eq!(json["settlement_nonce"], 1);
         assert_eq!(json["remaining_mist"], 4_677_777_777_i64);
+    }
+
+    #[test]
+    fn ai_spend_reservation_events_bcs_roundtrip() {
+        let balance_id = AccountAddress::from_hex_literal("0x1").unwrap();
+        let agent_object_id = AccountAddress::from_hex_literal("0x2").unwrap();
+        let reserved = BcsAiSpendReservedEvent {
+            balance_id,
+            agent_object_id,
+            reservation_nonce: 7,
+            max_amount_mist: 900,
+            provider_envelope_hash: vec![0x11; 32],
+            request_hash: vec![0x22; 32],
+            fx_quote_id: b"quote-7".to_vec(),
+            myso_usd_e8: 450_000,
+            markup_bps: 1_500,
+            capture_deadline_ms: 10_000,
+            hard_expiry_ms: 20_000,
+            available_mist: 9_100,
+        };
+        let json = parse_event_contents(
+            "ai_credit",
+            "AiSpendReserved",
+            &bcs::to_bytes(&reserved).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(json["reservation_nonce"], 7);
+        assert_eq!(json["provider_envelope_hash_hex"], "11".repeat(32));
+        assert_eq!(json["fx_quote_id_hex"], hex::encode("quote-7"));
+
+        let captured = BcsAiSpendCapturedEvent {
+            balance_id,
+            agent_object_id,
+            reservation_nonce: 7,
+            reserved_mist: 900,
+            captured_mist: 750,
+            released_mist: 150,
+            provider_cost_usd_micros: 3_000,
+            provider_generation_hash: vec![0x33; 32],
+            fx_quote_id: b"quote-7".to_vec(),
+            myso_usd_e8: 450_000,
+            markup_bps: 1_500,
+            captured_at_ms: 14_000,
+            remaining_mist: 9_250,
+            available_mist: 9_250,
+        };
+        let json = parse_event_contents(
+            "ai_credit",
+            "AiSpendCaptured",
+            &bcs::to_bytes(&captured).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(json["captured_mist"], 750);
+        assert_eq!(json["provider_cost_usd_micros"], 3_000);
+        assert_eq!(json["provider_generation_hash_hex"], "33".repeat(32));
+
+        let cancelled = BcsAiSpendCancelledEvent {
+            balance_id,
+            agent_object_id,
+            reservation_nonce: 8,
+            released_mist: 400,
+            cancelled_at_ms: 15_000,
+            available_mist: 9_650,
+        };
+        let json = parse_event_contents(
+            "ai_credit",
+            "AiSpendCancelled",
+            &bcs::to_bytes(&cancelled).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(json["cancelled_at_ms"], 15_000);
+
+        let expired = BcsAiSpendExpiredEvent {
+            balance_id,
+            agent_object_id,
+            reservation_nonce: 9,
+            released_mist: 500,
+            expired_at_ms: 25_000,
+            available_mist: 10_150,
+        };
+        let json = parse_event_contents(
+            "ai_credit",
+            "AiSpendExpired",
+            &bcs::to_bytes(&expired).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(json["expired_at_ms"], 25_000);
     }
 
     #[test]
@@ -7429,6 +7678,42 @@ mod tests {
     }
 
     #[test]
+    fn repost_removed_event_bcs_round_trip() {
+        let ev = BcsRepostRemovedEvent {
+            repost_id: AccountAddress::from_hex_literal("0x10").unwrap(),
+            original_id: AccountAddress::from_hex_literal("0x20").unwrap(),
+            owner: AccountAddress::from_hex_literal("0x30").unwrap(),
+            actor_address: AccountAddress::from_hex_literal("0x40").unwrap(),
+            sub_agent_id: None,
+            organization_id: Some(org_object_id()),
+            action_identity_class: 1,
+            removed_at: 123,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let json = parse_event_contents("post", "RepostRemovedEvent", &bytes).expect("parse");
+        assert_eq!(json["is_original_post"], true);
+        assert_eq!(json["removed_at"], 123);
+    }
+
+    #[test]
+    fn message_digest_sent_bcs_round_trip() {
+        let ev = BcsMessageDigestSent {
+            group_id: org_object_id(),
+            seq: 7,
+            sender: AccountAddress::from_hex_literal("0x30").unwrap(),
+            recipient: AccountAddress::from_hex_literal("0x40").unwrap(),
+            content_digest: vec![0xab; 32],
+            content_uri: "wal://encrypted-message".into(),
+            created_at_ms: 456,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let json = parse_event_contents("message_log", "MessageDigestSent", &bytes).expect("parse");
+        assert_eq!(json["seq"], 7);
+        assert_eq!(json["content_digest"], "ab".repeat(32));
+        assert_eq!(json["content_uri"], "wal://encrypted-message");
+    }
+
+    #[test]
     fn reaction_event_bcs_round_trip_with_organization_id() {
         let ev = BcsReactionEventWithOrganization {
             object_id: AccountAddress::from_hex_literal("0x50").unwrap(),
@@ -7602,7 +7887,10 @@ mod tests {
         let bytes = bcs::to_bytes(&ev).expect("serialize SubscriptionConfigUpdatedEvent");
         let json = parse_event_contents("subscription", "SubscriptionConfigUpdatedEvent", &bytes)
             .expect("parse SubscriptionConfigUpdatedEvent");
-        assert_eq!(json["default_billing_period_ms"].as_u64(), Some(2_592_000_000));
+        assert_eq!(
+            json["default_billing_period_ms"].as_u64(),
+            Some(2_592_000_000)
+        );
         assert_eq!(json["platform_fee_bps"], 250);
         assert_eq!(json["ecosystem_fee_bps"], 250);
         assert_eq!(json["non_platform_platform_to_treasury_bps"], 10_000);

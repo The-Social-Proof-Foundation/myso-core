@@ -982,9 +982,7 @@ impl Reader {
         let total_renewals: i64 = {
             let mut q = subscription_events::table.into_boxed();
             q = q.filter(subscription_events::time.between(start_dt, end_dt));
-            q = q.filter(
-                subscription_events::event_type.eq("ProfileSubscriptionRenewedEvent"),
-            );
+            q = q.filter(subscription_events::event_type.eq("ProfileSubscriptionRenewedEvent"));
             if let Some(sid) = service_id {
                 q = q.filter(subscription_events::service_id.eq(sid));
             }
@@ -1036,9 +1034,7 @@ impl Reader {
         let total_cancels: i64 = {
             let mut q = subscription_events::table.into_boxed();
             q = q.filter(subscription_events::time.between(start_dt, end_dt));
-            q = q.filter(
-                subscription_events::event_type.eq("ProfileSubscriptionCancelledEvent"),
-            );
+            q = q.filter(subscription_events::event_type.eq("ProfileSubscriptionCancelledEvent"));
             if let Some(sid) = service_id {
                 q = q.filter(subscription_events::service_id.eq(sid));
             }
@@ -1732,6 +1728,39 @@ impl Reader {
         ai_credit::list_usage_lines(&self.db, balance_id, limit).await
     }
 
+    pub async fn list_ai_spend_reservations(
+        &self,
+        balance_id: &str,
+        status: Option<&str>,
+        limit: i64,
+    ) -> Result<
+        Vec<myso_indexer_alt_social_schema::models::AiSpendReservationRow>,
+        crate::error::SocialError,
+    > {
+        ai_credit::list_reservations(&self.db, balance_id, status, limit).await
+    }
+
+    pub async fn list_live_ai_spend_reservations(
+        &self,
+        balance_id: &str,
+    ) -> Result<
+        Vec<myso_indexer_alt_social_schema::models::AiSpendReservationRow>,
+        crate::error::SocialError,
+    > {
+        ai_credit::list_live_reservations(&self.db, balance_id).await
+    }
+
+    pub async fn get_ai_spend_reservation(
+        &self,
+        balance_id: &str,
+        reservation_nonce: i64,
+    ) -> Result<
+        Option<myso_indexer_alt_social_schema::models::AiSpendReservationRow>,
+        crate::error::SocialError,
+    > {
+        ai_credit::get_reservation(&self.db, balance_id, reservation_nonce).await
+    }
+
     pub async fn get_ai_credit_config(
         &self,
     ) -> Result<
@@ -2173,6 +2202,15 @@ impl Reader {
         offset: i64,
     ) -> Result<Vec<PaidMessageEscrowInfo>, crate::error::SocialError> {
         messaging::get_paid_message_escrows(&self.db, address, limit, offset).await
+    }
+
+    pub async fn get_message_digests(
+        &self,
+        address: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<MessageDigestInfo>, crate::error::SocialError> {
+        messaging::get_message_digests(&self.db, address, limit, offset).await
     }
 
     pub async fn get_messaging_agent_groups(

@@ -8,10 +8,11 @@ use diesel::SelectableHelper;
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::{
     AiCreditAgentBudgetRow, AiCreditBalanceRow, AiCreditConfigRow, AiCreditUsageLineRow,
-    NewAiCreditUsageLine,
+    AiSpendReservationRow, NewAiCreditUsageLine, RESERVATION_STATUS_RESERVED,
 };
 use myso_indexer_alt_social_schema::schema::{
     ai_credit_agent_budgets, ai_credit_balances, ai_credit_config, ai_credit_usage_lines,
+    ai_spend_reservations,
 };
 use myso_pg_db::Db;
 use serde::{Deserialize, Serialize};
@@ -61,6 +62,51 @@ pub(crate) async fn list_usage_lines(
         .map_err(Into::into)
 }
 
+pub(crate) async fn list_reservations(
+    db: &Db,
+    balance_id: &str,
+    status: Option<&str>,
+    limit: i64,
+) -> Result<Vec<AiSpendReservationRow>, SocialError> {
+    let mut conn = db.connect().await?;
+    let mut query = ai_spend_reservations::table
+        .filter(ai_spend_reservations::balance_id.eq(balance_id))
+        .into_boxed();
+    if let Some(status) = status {
+        query = query.filter(ai_spend_reservations::status.eq(status));
+    }
+    query
+        .order(ai_spend_reservations::reservation_nonce.desc())
+        .limit(limit)
+        .select(AiSpendReservationRow::as_select())
+        .load(&mut conn)
+        .await
+        .map_err(Into::into)
+}
+
+pub(crate) async fn get_reservation(
+    db: &Db,
+    balance_id: &str,
+    reservation_nonce: i64,
+) -> Result<Option<AiSpendReservationRow>, SocialError> {
+    let mut conn = db.connect().await?;
+    ai_spend_reservations::table
+        .filter(ai_spend_reservations::balance_id.eq(balance_id))
+        .filter(ai_spend_reservations::reservation_nonce.eq(reservation_nonce))
+        .select(AiSpendReservationRow::as_select())
+        .first(&mut conn)
+        .await
+        .optional()
+        .map_err(Into::into)
+}
+
+pub(crate) async fn list_live_reservations(
+    db: &Db,
+    balance_id: &str,
+) -> Result<Vec<AiSpendReservationRow>, SocialError> {
+    list_reservations(db, balance_id, Some(RESERVATION_STATUS_RESERVED), 100).await
+}
+
 pub(crate) async fn get_ai_credit_config(
     db: &Db,
 ) -> Result<Option<AiCreditConfigRow>, SocialError> {
@@ -86,6 +132,10 @@ pub struct IngestUsageLineRequest {
     pub metadata: Option<serde_json::Value>,
     #[serde(default)]
     pub organization_id: Option<String>,
+    #[serde(default)]
+    pub settled: bool,
+    #[serde(default)]
+    pub settlement_tx: Option<String>,
 }
 
 pub(crate) async fn ingest_usage_line(
@@ -103,8 +153,8 @@ pub(crate) async fn ingest_usage_line(
             model_id: req.model_id,
             tool_id: req.tool_id,
             metadata: req.metadata,
-            settled: false,
-            settlement_tx: None,
+            settled: req.settled,
+            settlement_tx: req.settlement_tx,
             created_at: chrono::Utc::now(),
             organization_id: req.organization_id,
         })
@@ -169,6 +219,8 @@ mod ingest_tests {
             tool_id: None,
             metadata: None,
             organization_id: None,
+            settled: false,
+            settlement_tx: None,
         };
 
         let read_err = ingest_usage_line(&read_db, req.clone()).await.unwrap_err();
@@ -192,6 +244,10 @@ mod ingest_tests {
 #[derive(Debug, Clone, Serialize)]
 pub struct AiCreditBalanceResponse {
     pub balance: AiCreditBalanceRow,
-    pub credits: i64,
+    /// Billing is denominated exclusively in exact on-chain MIST.
+    pub billing_unit: &'static str,
+    /// Exact spendable on-chain amount after live reservations.
+    pub available_mist: i64,
     pub agent_budgets: Vec<AiCreditAgentBudgetRow>,
+    pub active_reservations: Vec<AiSpendReservationRow>,
 }

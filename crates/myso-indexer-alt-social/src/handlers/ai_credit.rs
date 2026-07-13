@@ -7,8 +7,9 @@ use super::memory::chain_audit_row;
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
     AuditAction, NewAiCreditAgentBudget, NewAiCreditBalance, NewAiCreditConfig, NewAiCreditEvent,
-    NewAiCreditSpendApproval, APPROVAL_STATUS_APPROVED, APPROVAL_STATUS_CONSUMED,
-    APPROVAL_STATUS_REVOKED,
+    NewAiCreditSpendApproval, NewAiSpendReservation, APPROVAL_STATUS_APPROVED,
+    APPROVAL_STATUS_CONSUMED, APPROVAL_STATUS_REVOKED, RESERVATION_STATUS_CANCELLED,
+    RESERVATION_STATUS_EXPIRED, RESERVATION_STATUS_RESERVED,
 };
 
 pub(crate) fn json_to_i64(v: &serde_json::Value) -> i64 {
@@ -79,12 +80,10 @@ fn config_audit_event(
         agent_object_id: None,
         amount_mist: None,
         new_balance_mist: None,
-        credits: None,
         receipt_id: None,
         usage_kind: None,
         settlement_nonce: None,
         remaining_mist: None,
-        credits_remaining: None,
         daily_cap_mist: None,
         monthly_cap_mist: None,
         budget_mist: None,
@@ -116,11 +115,13 @@ pub fn handle_ai_credit_event(
                     profile_id: profile_id.clone(),
                     balance_mist: 0,
                     spent_total_mist: 0,
+                    reserved_mist: 0,
                     daily_cap_mist: None,
                     monthly_cap_mist: None,
                     spent_day_mist: 0,
                     spent_month_mist: 0,
                     settlement_nonce: 0,
+                    reservation_nonce: 0,
                     active: true,
                     updated_at_ms: now.timestamp_millis(),
                     event_id: event_id.to_string(),
@@ -140,12 +141,10 @@ pub fn handle_ai_credit_event(
                     agent_object_id: None,
                     amount_mist: None,
                     new_balance_mist: Some(0),
-                    credits: Some(0),
                     receipt_id: None,
                     usage_kind: None,
                     settlement_nonce: None,
                     remaining_mist: None,
-                    credits_remaining: Some(0),
                     daily_cap_mist: None,
                     monthly_cap_mist: None,
                     budget_mist: None,
@@ -164,7 +163,6 @@ pub fn handle_ai_credit_event(
                 data.get("new_balance_mist")
                     .unwrap_or(&serde_json::Value::Null),
             );
-            let credits = json_to_i64(data.get("credits").unwrap_or(&serde_json::Value::Null));
             Some(vec![
                 SocialEventRow::AiCreditBalanceBalanceUpdate {
                     balance_id: balance_id.clone(),
@@ -182,12 +180,10 @@ pub fn handle_ai_credit_event(
                     agent_object_id: None,
                     amount_mist: Some(amount_mist),
                     new_balance_mist: Some(new_balance_mist),
-                    credits: Some(credits),
                     receipt_id: None,
                     usage_kind: None,
                     settlement_nonce: None,
                     remaining_mist: Some(new_balance_mist),
-                    credits_remaining: Some(credits),
                     daily_cap_mist: None,
                     monthly_cap_mist: None,
                     budget_mist: None,
@@ -223,12 +219,10 @@ pub fn handle_ai_credit_event(
                     agent_object_id: None,
                     amount_mist: Some(amount_mist),
                     new_balance_mist: Some(new_balance_mist),
-                    credits: None,
                     receipt_id: None,
                     usage_kind: None,
                     settlement_nonce: None,
                     remaining_mist: Some(new_balance_mist),
-                    credits_remaining: None,
                     daily_cap_mist: None,
                     monthly_cap_mist: None,
                     budget_mist: None,
@@ -267,12 +261,10 @@ pub fn handle_ai_credit_event(
                     agent_object_id: None,
                     amount_mist: None,
                     new_balance_mist: None,
-                    credits: None,
                     receipt_id: None,
                     usage_kind: None,
                     settlement_nonce: None,
                     remaining_mist: None,
-                    credits_remaining: None,
                     daily_cap_mist,
                     monthly_cap_mist,
                     budget_mist: None,
@@ -306,6 +298,7 @@ pub fn handle_ai_credit_event(
                     agent_object_id: agent_object_id.clone(),
                     budget_mist,
                     spent_mist: 0,
+                    reserved_mist: 0,
                     daily_cap_mist,
                     monthly_cap_mist,
                     require_approval_above_mist,
@@ -324,12 +317,10 @@ pub fn handle_ai_credit_event(
                     agent_object_id: Some(agent_object_id),
                     amount_mist: None,
                     new_balance_mist: None,
-                    credits: None,
                     receipt_id: None,
                     usage_kind: None,
                     settlement_nonce: None,
                     remaining_mist: None,
-                    credits_remaining: None,
                     daily_cap_mist,
                     monthly_cap_mist,
                     budget_mist,
@@ -360,12 +351,10 @@ pub fn handle_ai_credit_event(
                     agent_object_id: Some(agent_object_id),
                     amount_mist: None,
                     new_balance_mist: None,
-                    credits: None,
                     receipt_id: None,
                     usage_kind: None,
                     settlement_nonce: None,
                     remaining_mist: None,
-                    credits_remaining: None,
                     daily_cap_mist: None,
                     monthly_cap_mist: None,
                     budget_mist: None,
@@ -383,10 +372,6 @@ pub fn handle_ai_credit_event(
                 json_to_i64(data.get("amount_mist").unwrap_or(&serde_json::Value::Null));
             let remaining_mist = json_to_i64(
                 data.get("remaining_mist")
-                    .unwrap_or(&serde_json::Value::Null),
-            );
-            let credits_remaining = json_to_i64(
-                data.get("credits_remaining")
                     .unwrap_or(&serde_json::Value::Null),
             );
             let settlement_nonce = json_to_i64(
@@ -448,12 +433,10 @@ pub fn handle_ai_credit_event(
                 agent_object_id: Some(agent_object_id),
                 amount_mist: Some(amount_mist),
                 new_balance_mist: None,
-                credits: None,
                 receipt_id,
                 usage_kind,
                 settlement_nonce: Some(settlement_nonce),
                 remaining_mist: Some(remaining_mist),
-                credits_remaining: Some(credits_remaining),
                 daily_cap_mist: None,
                 monthly_cap_mist: None,
                 budget_mist: None,
@@ -463,6 +446,86 @@ pub fn handle_ai_credit_event(
                 time: now,
             }));
             Some(rows)
+        }
+        "AiSpendReserved" => {
+            let balance_id = json_str(data, "balance_id")?;
+            let agent_object_id = json_str(data, "agent_object_id")?;
+            let reservation_nonce = json_opt_i64(data.get("reservation_nonce")?)?;
+            let max_amount_mist = json_opt_i64(data.get("max_amount_mist")?)?;
+            let provider_envelope_hash_hex = json_str(data, "provider_envelope_hash_hex")?;
+            let request_hash_hex = json_str(data, "request_hash_hex")?;
+            let fx_quote_id_hex = json_str(data, "fx_quote_id_hex")?;
+            let myso_usd_e8 = json_opt_i64(data.get("myso_usd_e8")?)?;
+            let markup_bps = json_opt_i64(data.get("markup_bps")?)?;
+            let capture_deadline_ms = json_opt_i64(data.get("capture_deadline_ms")?)?;
+            let hard_expiry_ms = json_opt_i64(data.get("hard_expiry_ms")?)?;
+            let available_mist = json_opt_i64(data.get("available_mist")?)?;
+            Some(vec![SocialEventRow::AiSpendReservationReserved(
+                NewAiSpendReservation {
+                    balance_id,
+                    reservation_nonce,
+                    agent_object_id,
+                    status: RESERVATION_STATUS_RESERVED.to_string(),
+                    max_amount_mist,
+                    captured_mist: None,
+                    released_mist: None,
+                    provider_envelope_hash_hex,
+                    request_hash_hex,
+                    fx_quote_id_hex,
+                    myso_usd_e8,
+                    markup_bps,
+                    provider_cost_usd_micros: None,
+                    provider_generation_hash_hex: None,
+                    capture_deadline_ms,
+                    hard_expiry_ms,
+                    available_mist,
+                    reserve_event_id: event_id.to_string(),
+                    reserve_transaction_id: transaction_id,
+                    terminal_event_id: None,
+                    terminal_transaction_id: None,
+                    terminal_at_ms: None,
+                    created_at: now,
+                    updated_at: now,
+                },
+            )])
+        }
+        "AiSpendCaptured" => Some(vec![SocialEventRow::AiSpendReservationCaptured {
+            balance_id: json_str(data, "balance_id")?,
+            agent_object_id: json_str(data, "agent_object_id")?,
+            reservation_nonce: json_opt_i64(data.get("reservation_nonce")?)?,
+            reserved_mist: json_opt_i64(data.get("reserved_mist")?)?,
+            captured_mist: json_opt_i64(data.get("captured_mist")?)?,
+            released_mist: json_opt_i64(data.get("released_mist")?)?,
+            provider_cost_usd_micros: json_opt_i64(data.get("provider_cost_usd_micros")?)?,
+            provider_generation_hash_hex: json_str(data, "provider_generation_hash_hex")?,
+            captured_at_ms: json_opt_i64(data.get("captured_at_ms")?)?,
+            remaining_mist: json_opt_i64(data.get("remaining_mist")?)?,
+            available_mist: json_opt_i64(data.get("available_mist")?)?,
+            event_id: event_id.to_string(),
+            transaction_id,
+        }]),
+        "AiSpendCancelled" | "AiSpendExpired" => {
+            let timestamp_key = if event_name == "AiSpendCancelled" {
+                "cancelled_at_ms"
+            } else {
+                "expired_at_ms"
+            };
+            let status = if event_name == "AiSpendCancelled" {
+                RESERVATION_STATUS_CANCELLED
+            } else {
+                RESERVATION_STATUS_EXPIRED
+            };
+            Some(vec![SocialEventRow::AiSpendReservationReleased {
+                balance_id: json_str(data, "balance_id")?,
+                agent_object_id: json_str(data, "agent_object_id")?,
+                reservation_nonce: json_opt_i64(data.get("reservation_nonce")?)?,
+                released_mist: json_opt_i64(data.get("released_mist")?)?,
+                status: status.to_string(),
+                terminal_at_ms: json_opt_i64(data.get(timestamp_key)?)?,
+                available_mist: json_opt_i64(data.get("available_mist")?)?,
+                event_id: event_id.to_string(),
+                transaction_id,
+            }])
         }
         "AiCreditBalancePaused" | "AiCreditBalanceReactivated" => {
             let balance_id = json_str(data, "balance_id")?;
@@ -484,12 +547,10 @@ pub fn handle_ai_credit_event(
                     agent_object_id: None,
                     amount_mist: None,
                     new_balance_mist: None,
-                    credits: None,
                     receipt_id: None,
                     usage_kind: None,
                     settlement_nonce: None,
                     remaining_mist: None,
-                    credits_remaining: None,
                     daily_cap_mist: None,
                     monthly_cap_mist: None,
                     budget_mist: None,
@@ -511,12 +572,10 @@ pub fn handle_ai_credit_event(
                 agent_object_id: None,
                 amount_mist: None,
                 new_balance_mist: Some(0),
-                credits: Some(0),
                 receipt_id: None,
                 usage_kind: None,
                 settlement_nonce: None,
                 remaining_mist: Some(0),
-                credits_remaining: Some(0),
                 daily_cap_mist: None,
                 monthly_cap_mist: None,
                 budget_mist: None,
@@ -724,10 +783,7 @@ pub fn handle_ai_credit_event(
                 data.get("oracle_markup_bps")
                     .unwrap_or(&serde_json::Value::Null),
             );
-            let version = data
-                .get("version")
-                .and_then(json_opt_i64)
-                .unwrap_or(0);
+            let version = data.get("version").and_then(json_opt_i64).unwrap_or(0);
             let updated_at = config_updated_at(data, now);
             Some(vec![
                 SocialEventRow::AiCreditConfigUpsert(NewAiCreditConfig {
@@ -753,12 +809,10 @@ pub fn handle_ai_credit_event(
                     agent_object_id: None,
                     amount_mist: None,
                     new_balance_mist: None,
-                    credits: None,
                     receipt_id: None,
                     usage_kind: None,
                     settlement_nonce: None,
                     remaining_mist: None,
-                    credits_remaining: None,
                     daily_cap_mist: None,
                     monthly_cap_mist: None,
                     budget_mist: None,
@@ -798,12 +852,10 @@ pub fn handle_ai_credit_event(
                     agent_object_id: None,
                     amount_mist: None,
                     new_balance_mist: None,
-                    credits: None,
                     receipt_id: None,
                     usage_kind: None,
                     settlement_nonce: None,
                     remaining_mist: None,
-                    credits_remaining: None,
                     daily_cap_mist: None,
                     monthly_cap_mist: None,
                     budget_mist: None,
@@ -898,8 +950,7 @@ mod tests {
             "amount_mist": 222222223,
             "usage_kind": 1,
             "settlement_nonce": 1,
-            "remaining_mist": 4677777777_i64,
-            "credits_remaining": 4
+            "remaining_mist": 4677777777_i64
         });
         let rows = handle_ai_credit_event("AiCreditUsageSettled", &data, "tx:0")
             .expect("handler should produce rows");
@@ -986,5 +1037,84 @@ mod tests {
                 }
             )
         }));
+    }
+
+    #[test]
+    fn spend_reserved_emits_durable_reservation_row() {
+        let data = serde_json::json!({
+            "balance_id": "0xbalance",
+            "agent_object_id": "0xagent",
+            "reservation_nonce": 9,
+            "max_amount_mist": 1_000,
+            "provider_envelope_hash_hex": "11".repeat(32),
+            "request_hash_hex": "22".repeat(32),
+            "fx_quote_id_hex": hex::encode("quote-9"),
+            "myso_usd_e8": 450_000,
+            "markup_bps": 1_500,
+            "capture_deadline_ms": 10_000,
+            "hard_expiry_ms": 20_000,
+            "available_mist": 4_000,
+        });
+        let rows = handle_ai_credit_event("AiSpendReserved", &data, "reserve-tx:3")
+            .expect("reservation event should produce a row");
+        assert_eq!(rows.len(), 1);
+        assert!(matches!(
+            &rows[0],
+            SocialEventRow::AiSpendReservationReserved(reservation)
+                if reservation.reservation_nonce == 9
+                    && reservation.max_amount_mist == 1_000
+                    && reservation.status == RESERVATION_STATUS_RESERVED
+                    && reservation.reserve_transaction_id == "reserve-tx"
+        ));
+    }
+
+    #[test]
+    fn spend_capture_and_release_emit_terminal_transitions() {
+        let captured = serde_json::json!({
+            "balance_id": "0xbalance",
+            "agent_object_id": "0xagent",
+            "reservation_nonce": 9,
+            "reserved_mist": 1_000,
+            "captured_mist": 750,
+            "released_mist": 250,
+            "provider_cost_usd_micros": 3_000,
+            "provider_generation_hash_hex": "33".repeat(32),
+            "remaining_mist": 4_250,
+            "available_mist": 4_250,
+            "captured_at_ms": 14_000,
+        });
+        let rows = handle_ai_credit_event("AiSpendCaptured", &captured, "capture-tx:0")
+            .expect("capture event should produce a row");
+        assert!(matches!(
+            &rows[0],
+            SocialEventRow::AiSpendReservationCaptured {
+                reservation_nonce: 9,
+                captured_mist: 750,
+                released_mist: 250,
+                provider_cost_usd_micros: 3_000,
+                ..
+            }
+        ));
+
+        let expired = serde_json::json!({
+            "balance_id": "0xbalance",
+            "agent_object_id": "0xagent",
+            "reservation_nonce": 10,
+            "released_mist": 500,
+            "expired_at_ms": 25_000,
+            "available_mist": 4_750,
+        });
+        let rows = handle_ai_credit_event("AiSpendExpired", &expired, "expire-tx:0")
+            .expect("expiry event should produce a row");
+        assert!(matches!(
+            &rows[0],
+            SocialEventRow::AiSpendReservationReleased {
+                reservation_nonce: 10,
+                released_mist: 500,
+                status,
+                terminal_at_ms: 25_000,
+                ..
+            } if status == RESERVATION_STATUS_EXPIRED
+        ));
     }
 }

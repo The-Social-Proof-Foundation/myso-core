@@ -27,8 +27,13 @@ module social_contracts::ai_credit_tests {
     const AGENT_ADDR: address = @0xA11CE;
     const AGENT_PUBKEY: vector<u8> = x"0101010101010101010101010101010101010101010101010101010101010101";
     const ORACLE_PK: vector<u8> = x"cc62332e34bb2d5cd69f60efbb2a36cb916c7eb458301ea36636c4dbb012bd88";
+    const ENVELOPE_HASH: vector<u8> = x"1111111111111111111111111111111111111111111111111111111111111111";
+    const REQUEST_HASH: vector<u8> = x"2222222222222222222222222222222222222222222222222222222222222222";
+    const GENERATION_HASH: vector<u8> = x"3333333333333333333333333333333333333333333333333333333333333333";
+    const FX_QUOTE_ID: vector<u8> = b"test-fx-quote";
     const DEPOSIT_MIST: u64 = 5_000_000_000;
     const SPEND_MIST: u64 = 500_000_000;
+    const CAPTURE_MIST: u64 = 200_000_000;
 
     fun init_env(scenario: &mut test_scenario::Scenario) {
         test_scenario::next_tx(scenario, ADMIN);
@@ -172,6 +177,55 @@ module social_contracts::ai_credit_tests {
         }
     }
 
+    fun reserve_default(
+        scenario: &mut test_scenario::Scenario,
+        reservation_nonce: u64,
+        max_amount_mist: u64,
+    ) {
+        test_scenario::next_tx(scenario, USER1);
+        {
+            let config = test_scenario::take_shared<AiCreditConfig>(scenario);
+            let mut balance = test_scenario::take_shared<AiCreditBalance>(scenario);
+            let memory_account = test_scenario::take_shared<MemoryAccount>(scenario);
+            let agent = take_agent(scenario, &memory_account, AGENT_ADDR);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+            let now = clock::timestamp_ms(&clock);
+
+            ai_credit::reserve_spend_for_testing(
+                &config,
+                &mut balance,
+                &memory_account,
+                &agent,
+                reservation_nonce,
+                max_amount_mist,
+                ENVELOPE_HASH,
+                REQUEST_HASH,
+                FX_QUOTE_ID,
+                450_000,
+                now,
+                now + 60_000,
+                now + 120_000,
+                &clock,
+            );
+
+            test_scenario::return_shared(agent);
+            test_scenario::return_shared(memory_account);
+            test_scenario::return_shared(balance);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(clock);
+        };
+    }
+
+    fun invalid_signature(): vector<u8> {
+        let mut signature = vector::empty<u8>();
+        let mut i = 0u64;
+        while (i < 64) {
+            vector::push_back(&mut signature, 0);
+            i = i + 1;
+        };
+        signature
+    }
+
     #[test]
     fun test_deposit_and_settle_usage() {
         let mut scenario = test_scenario::begin(ADMIN);
@@ -207,7 +261,7 @@ module social_contracts::ai_credit_tests {
             );
 
             assert!(ai_credit::balance_mist(&balance) == DEPOSIT_MIST - SPEND_MIST, 1);
-            assert!(ai_credit::credits_from_mist(ai_credit::balance_mist(&balance)) == 4, 2);
+            assert!(ai_credit::available_mist(&balance) == DEPOSIT_MIST - SPEND_MIST, 2);
 
             test_scenario::return_shared(agent);
             test_scenario::return_shared(memory_account);
@@ -341,6 +395,306 @@ module social_contracts::ai_credit_tests {
     }
 
     #[test]
+    fun test_reservation_locks_balance_and_agent_budget() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        init_env(&mut scenario);
+        setup_balance_and_agent(&mut scenario);
+        reserve_default(&mut scenario, 1, SPEND_MIST);
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let balance = test_scenario::take_shared<AiCreditBalance>(&scenario);
+            let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
+            let agent_id = agent_object_id_from_derived(&memory_account, AGENT_ADDR);
+            assert!(ai_credit::balance_mist(&balance) == DEPOSIT_MIST, 0);
+            assert!(ai_credit::reserved_mist(&balance) == SPEND_MIST, 1);
+            assert!(ai_credit::available_mist(&balance) == DEPOSIT_MIST - SPEND_MIST, 2);
+            assert!(ai_credit::latest_reservation_nonce(&balance) == 1, 3);
+            let mut reservation = ai_credit::reservation_for(&balance, 1);
+            assert!(option::is_some(&reservation), 4);
+            let reservation = option::extract(&mut reservation);
+            assert!(ai_credit::reservation_max_amount_mist(&reservation) == SPEND_MIST, 5);
+            assert!(ai_credit::reservation_agent_object_id(&reservation) == agent_id, 6);
+            let mut remaining = ai_credit::agent_remaining_mist(&balance, agent_id);
+            assert!(option::extract(&mut remaining) == DEPOSIT_MIST - SPEND_MIST, 7);
+            test_scenario::return_shared(memory_account);
+            test_scenario::return_shared(balance);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_capture_charges_actual_and_releases_remainder() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        init_env(&mut scenario);
+        setup_balance_and_agent(&mut scenario);
+        reserve_default(&mut scenario, 1, SPEND_MIST);
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let config = test_scenario::take_shared<AiCreditConfig>(&scenario);
+            let mut balance = test_scenario::take_shared<AiCreditBalance>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            ai_credit::capture_spend_for_testing(
+                &config,
+                &mut balance,
+                1,
+                CAPTURE_MIST,
+                900,
+                GENERATION_HASH,
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            assert!(ai_credit::balance_mist(&balance) == DEPOSIT_MIST - CAPTURE_MIST, 0);
+            assert!(ai_credit::reserved_mist(&balance) == 0, 1);
+            assert!(ai_credit::available_mist(&balance) == DEPOSIT_MIST - CAPTURE_MIST, 2);
+            assert!(option::is_none(&ai_credit::reservation_for(&balance, 1)), 3);
+            test_scenario::return_shared(balance);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_oracle_cancel_releases_full_reservation() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        init_env(&mut scenario);
+        setup_balance_and_agent(&mut scenario);
+        reserve_default(&mut scenario, 1, SPEND_MIST);
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let config = test_scenario::take_shared<AiCreditConfig>(&scenario);
+            let mut balance = test_scenario::take_shared<AiCreditBalance>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            ai_credit::cancel_spend_for_testing(&config, &mut balance, 1, &clock);
+            assert!(ai_credit::balance_mist(&balance) == DEPOSIT_MIST, 0);
+            assert!(ai_credit::reserved_mist(&balance) == 0, 1);
+            assert!(ai_credit::available_mist(&balance) == DEPOSIT_MIST, 2);
+            test_scenario::return_shared(balance);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_permissionless_expiry_releases_reservation() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        init_env(&mut scenario);
+        setup_balance_and_agent(&mut scenario);
+        reserve_default(&mut scenario, 1, SPEND_MIST);
+
+        test_scenario::next_tx(&mut scenario, @0x999);
+        {
+            let config = test_scenario::take_shared<AiCreditConfig>(&scenario);
+            let mut balance = test_scenario::take_shared<AiCreditBalance>(&scenario);
+            let mut clock = test_scenario::take_shared<Clock>(&scenario);
+            clock::increment_for_testing(&mut clock, 120_000);
+            ai_credit::expire_reservation(&config, &mut balance, 1, &clock);
+            assert!(ai_credit::reserved_mist(&balance) == 0, 0);
+            assert!(ai_credit::available_mist(&balance) == DEPOSIT_MIST, 1);
+            test_scenario::return_shared(balance);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 4, location = social_contracts::ai_credit)]
+    fun test_withdraw_cannot_consume_reserved_funds() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        init_env(&mut scenario);
+        setup_balance_and_agent(&mut scenario);
+        reserve_default(&mut scenario, 1, 4_500_000_000);
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let config = test_scenario::take_shared<AiCreditConfig>(&scenario);
+            let mut balance = test_scenario::take_shared<AiCreditBalance>(&scenario);
+            ai_credit::withdraw(
+                &config,
+                &mut balance,
+                1_000_000_000,
+                test_scenario::ctx(&mut scenario),
+            );
+            test_scenario::return_shared(balance);
+            test_scenario::return_shared(config);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 30, location = social_contracts::ai_credit)]
+    fun test_reservation_cannot_expire_early() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        init_env(&mut scenario);
+        setup_balance_and_agent(&mut scenario);
+        reserve_default(&mut scenario, 1, SPEND_MIST);
+
+        test_scenario::next_tx(&mut scenario, @0x999);
+        {
+            let config = test_scenario::take_shared<AiCreditConfig>(&scenario);
+            let mut balance = test_scenario::take_shared<AiCreditBalance>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            ai_credit::expire_reservation(&config, &mut balance, 1, &clock);
+            test_scenario::return_shared(balance);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 8, location = social_contracts::ai_credit)]
+    fun test_reservation_nonce_cannot_replay_after_cancel() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        init_env(&mut scenario);
+        setup_balance_and_agent(&mut scenario);
+        reserve_default(&mut scenario, 1, SPEND_MIST);
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let config = test_scenario::take_shared<AiCreditConfig>(&scenario);
+            let mut balance = test_scenario::take_shared<AiCreditBalance>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            ai_credit::cancel_spend_for_testing(&config, &mut balance, 1, &clock);
+            test_scenario::return_shared(balance);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(clock);
+        };
+
+        reserve_default(&mut scenario, 1, SPEND_MIST);
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 9, location = social_contracts::ai_credit)]
+    fun test_account_cap_counts_outstanding_reservation() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        init_env(&mut scenario);
+        setup_balance_and_agent(&mut scenario);
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let config = test_scenario::take_shared<AiCreditConfig>(&scenario);
+            let mut balance = test_scenario::take_shared<AiCreditBalance>(&scenario);
+            ai_credit::set_account_caps(
+                &config,
+                &mut balance,
+                option::some(SPEND_MIST),
+                option::some(SPEND_MIST),
+                test_scenario::ctx(&mut scenario),
+            );
+            test_scenario::return_shared(balance);
+            test_scenario::return_shared(config);
+        };
+
+        reserve_default(&mut scenario, 1, SPEND_MIST);
+        reserve_default(&mut scenario, 2, 1);
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 9, location = social_contracts::ai_credit)]
+    fun test_agent_budget_counts_outstanding_reservation() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        init_env(&mut scenario);
+        setup_balance_and_agent(&mut scenario);
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let config = test_scenario::take_shared<AiCreditConfig>(&scenario);
+            let mut balance = test_scenario::take_shared<AiCreditBalance>(&scenario);
+            let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
+            let agent = take_agent(&scenario, &memory_account, AGENT_ADDR);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            ai_credit::set_agent_budget(
+                &config,
+                &mut balance,
+                &agent,
+                option::some(SPEND_MIST),
+                option::some(SPEND_MIST),
+                option::some(SPEND_MIST),
+                option::none(),
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            test_scenario::return_shared(agent);
+            test_scenario::return_shared(memory_account);
+            test_scenario::return_shared(balance);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(clock);
+        };
+
+        reserve_default(&mut scenario, 1, SPEND_MIST);
+        reserve_default(&mut scenario, 2, 1);
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 9, location = social_contracts::ai_credit)]
+    fun test_capture_cannot_exceed_reservation() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        init_env(&mut scenario);
+        setup_balance_and_agent(&mut scenario);
+        reserve_default(&mut scenario, 1, SPEND_MIST);
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let config = test_scenario::take_shared<AiCreditConfig>(&scenario);
+            let mut balance = test_scenario::take_shared<AiCreditBalance>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            ai_credit::capture_spend_for_testing(
+                &config,
+                &mut balance,
+                1,
+                SPEND_MIST + 1,
+                900,
+                GENERATION_HASH,
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            test_scenario::return_shared(balance);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 31, location = social_contracts::ai_credit)]
+    fun test_signed_cancel_closes_at_capture_deadline() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        init_env(&mut scenario);
+        setup_balance_and_agent(&mut scenario);
+        reserve_default(&mut scenario, 1, SPEND_MIST);
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let config = test_scenario::take_shared<AiCreditConfig>(&scenario);
+            let mut balance = test_scenario::take_shared<AiCreditBalance>(&scenario);
+            let mut clock = test_scenario::take_shared<Clock>(&scenario);
+            clock::increment_for_testing(&mut clock, 60_001);
+            ai_credit::cancel_spend_for_testing(&config, &mut balance, 1, &clock);
+            test_scenario::return_shared(balance);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
     fun test_make_usage_receipt_from_objects_ids() {
         let mut scenario = test_scenario::begin(ADMIN);
         init_env(&mut scenario);
@@ -378,6 +732,155 @@ module social_contracts::ai_credit_tests {
             test_scenario::return_shared(agent);
             test_scenario::return_shared(memory_account);
             test_scenario::return_shared(balance);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 6, location = social_contracts::ai_credit)]
+    fun test_reserve_signed_spend_rejects_bad_signature() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        init_env(&mut scenario);
+        setup_balance_and_agent(&mut scenario);
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let config = test_scenario::take_shared<AiCreditConfig>(&scenario);
+            let mut balance = test_scenario::take_shared<AiCreditBalance>(&scenario);
+            let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
+            let agent = take_agent(&scenario, &memory_account, AGENT_ADDR);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let now = clock::timestamp_ms(&clock);
+            ai_credit::reserve_signed_spend(
+                &config,
+                &mut balance,
+                &memory_account,
+                &agent,
+                1,
+                SPEND_MIST,
+                ENVELOPE_HASH,
+                REQUEST_HASH,
+                FX_QUOTE_ID,
+                450_000,
+                ai_credit::oracle_markup_bps(&config),
+                now,
+                now + 60_000,
+                now + 120_000,
+                invalid_signature(),
+                &clock,
+            );
+            test_scenario::return_shared(agent);
+            test_scenario::return_shared(memory_account);
+            test_scenario::return_shared(balance);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 6, location = social_contracts::ai_credit)]
+    fun test_capture_reserved_spend_rejects_bad_signature() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        init_env(&mut scenario);
+        setup_balance_and_agent(&mut scenario);
+        reserve_default(&mut scenario, 1, SPEND_MIST);
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let config = test_scenario::take_shared<AiCreditConfig>(&scenario);
+            let mut balance = test_scenario::take_shared<AiCreditBalance>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            ai_credit::capture_reserved_spend(
+                &config,
+                &mut balance,
+                1,
+                CAPTURE_MIST,
+                900,
+                GENERATION_HASH,
+                clock::timestamp_ms(&clock),
+                invalid_signature(),
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            test_scenario::return_shared(balance);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 29, location = social_contracts::ai_credit)]
+    fun test_capture_rejected_after_hard_expiry() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        init_env(&mut scenario);
+        setup_balance_and_agent(&mut scenario);
+        reserve_default(&mut scenario, 1, SPEND_MIST);
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let config = test_scenario::take_shared<AiCreditConfig>(&scenario);
+            let mut balance = test_scenario::take_shared<AiCreditBalance>(&scenario);
+            let mut clock = test_scenario::take_shared<Clock>(&scenario);
+            clock::increment_for_testing(&mut clock, 120_000);
+            ai_credit::capture_spend_for_testing(
+                &config,
+                &mut balance,
+                1,
+                CAPTURE_MIST,
+                900,
+                GENERATION_HASH,
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            test_scenario::return_shared(balance);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 28, location = social_contracts::ai_credit)]
+    fun test_capture_cannot_replay() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        init_env(&mut scenario);
+        setup_balance_and_agent(&mut scenario);
+        reserve_default(&mut scenario, 1, SPEND_MIST);
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let config = test_scenario::take_shared<AiCreditConfig>(&scenario);
+            let mut balance = test_scenario::take_shared<AiCreditBalance>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            ai_credit::capture_spend_for_testing(
+                &config,
+                &mut balance,
+                1,
+                CAPTURE_MIST,
+                900,
+                GENERATION_HASH,
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            ai_credit::capture_spend_for_testing(
+                &config,
+                &mut balance,
+                1,
+                CAPTURE_MIST,
+                900,
+                GENERATION_HASH,
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            test_scenario::return_shared(balance);
+            test_scenario::return_shared(config);
             test_scenario::return_shared(clock);
         };
 

@@ -510,6 +510,14 @@ fn make_router(state: Arc<AppState>) -> Router {
             get(list_ai_credit_usage_history),
         )
         .route(
+            "/ai-credit/:balance_id/reservations",
+            get(list_ai_spend_reservations),
+        )
+        .route(
+            "/ai-credit/:balance_id/reservations/:reservation_nonce",
+            get(get_ai_spend_reservation),
+        )
+        .route(
             "/internal/ai-credit/usage-lines",
             post(ingest_usage_line_internal),
         )
@@ -528,6 +536,10 @@ fn make_router(state: Arc<AppState>) -> Router {
         .route(
             "/internal/organizations/:id/summary",
             get(get_org_summary_internal),
+        )
+        .route(
+            "/internal/organizations/:id/control",
+            get(get_org_control_internal),
         )
         .route("/internal/audit/logs", post(ingest_audit_logs_internal))
         .route("/sub-agents/:derivedAddress", get(get_sub_agent))
@@ -861,7 +873,10 @@ fn make_router(state: Arc<AppState>) -> Router {
             get(list_insurance_market_policies),
         )
         .route("/spot/route/:post_id", get(get_spot_route))
-        .route("/spot/creators/:address/pending", get(list_spot_pending_creator_payouts))
+        .route(
+            "/spot/creators/:address/pending",
+            get(list_spot_pending_creator_payouts),
+        )
         .route("/spot/creators/:address/stats", get(get_spot_creator_stats))
         .route(
             "/spot/markets/:market_id/expired-creator-payouts",
@@ -923,6 +938,7 @@ fn make_router(state: Arc<AppState>) -> Router {
             "/wallets/:address/paid-messages",
             get(get_paid_message_history),
         )
+        .route("/wallets/:address/messages", get(get_message_history))
         .route(
             "/wallets/:address/messaging-revenue",
             get(get_messaging_revenue_summary),

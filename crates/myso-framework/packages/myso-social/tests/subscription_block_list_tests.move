@@ -104,7 +104,7 @@ module social_contracts::subscription_block_list_tests {
         {
             let mut block_list_registry = test_scenario::take_shared<BlockListRegistry>(scenario);
             let mut social_graph = test_scenario::take_shared<social_graph::SocialGraph>(scenario);
-            block_list::block_wallet(
+            social_graph::block_wallet(
                 &mut block_list_registry,
                 &mut social_graph,
                 SUBSCRIBER,
@@ -120,7 +120,7 @@ module social_contracts::subscription_block_list_tests {
         {
             let mut block_list_registry = test_scenario::take_shared<BlockListRegistry>(scenario);
             let mut social_graph = test_scenario::take_shared<social_graph::SocialGraph>(scenario);
-            block_list::block_wallet(
+            social_graph::block_wallet(
                 &mut block_list_registry,
                 &mut social_graph,
                 CREATOR,
@@ -135,7 +135,7 @@ module social_contracts::subscription_block_list_tests {
         test_scenario::next_tx(scenario, CREATOR);
         {
             let mut block_list_registry = test_scenario::take_shared<BlockListRegistry>(scenario);
-            block_list::unblock_wallet(
+            social_graph::unblock_wallet(
                 &mut block_list_registry,
                 SUBSCRIBER,
                 test_scenario::ctx(scenario),

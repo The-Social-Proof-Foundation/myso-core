@@ -793,6 +793,60 @@ fun assert_group_not_archived(group: &PermissionedGroup<Messaging>) {
     assert!(!group.is_paused(), EGroupArchived);
 }
 
+/// Send a free encrypted message pointer as an authorized sub-agent. Message
+/// ciphertext stays in the off-chain messaging store; only its digest and URI
+/// are committed on-chain.
+public fun send_agent_message_digest(
+    version: &Version,
+    config: &MessagingConfig,
+    group: &PermissionedGroup<Messaging>,
+    log: &mut MessageLog,
+    block_list: &BlockListRegistry,
+    platform: &Platform,
+    memory_config: &MemoryConfig,
+    memory_account: &MemoryAccount,
+    recipient: address,
+    content_digest: vector<u8>,
+    content_uri: String,
+    dedupe_key: vector<u8>,
+    nonce: u128,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    version.validate_version();
+    assert_group_not_archived(group);
+    assert_message_log_matches_group(log, group);
+    let acting = resolve_messaging_actor(
+        memory_config,
+        memory_account,
+        platform,
+        block_list,
+        memory::cap_message_send(),
+        0,
+        clock,
+        ctx,
+    );
+    let actor_address = memory::acting_actor_address(&acting);
+    let principal_owner = memory::acting_principal_owner(&acting);
+    assert!(actor_address == ctx.sender(), EAgentSenderMismatch);
+    assert!(group.has_permission<Messaging, MessagingSender>(actor_address), ENotPermitted);
+    assert!(group.has_permission<Messaging, MessagingReader>(recipient), ENotPermitted);
+    block_list::assert_not_blocked(block_list, actor_address, recipient);
+    block_list::assert_not_blocked(block_list, principal_owner, recipient);
+    message_log::send_message_digest(
+        config,
+        log,
+        actor_address,
+        recipient,
+        content_digest,
+        content_uri,
+        dedupe_key,
+        nonce,
+        clock,
+        ctx,
+    );
+}
+
 /// Escrow `escrow_amount` from `payment` for a paid message. Requires `MessagingSender`.
 /// Excess coin returns to the sender.
 public fun send_paid_message_digest(

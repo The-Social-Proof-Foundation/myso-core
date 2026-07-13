@@ -884,7 +884,7 @@ let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
             let mut platform = test_scenario::take_shared<Platform>(&scenario);
             let group = test_scenario::take_shared<PermissionedGroup<PlatformPackage>>(&scenario);
 
-            platform::block_wallet(
+            social_graph::block_platform_wallet(
                 &mut block_registry,
                 &mut social_graph,
                 &mut platform,
@@ -1025,7 +1025,7 @@ let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
             let mut platform = test_scenario::take_shared<Platform>(&scenario);
             let group = test_scenario::take_shared<PermissionedGroup<PlatformPackage>>(&scenario);
 
-            platform::block_wallet(
+            social_graph::block_platform_wallet(
                 &mut block_registry,
                 &mut social_graph,
                 &mut platform,
@@ -1070,7 +1070,7 @@ let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
             let mut platform = test_scenario::take_shared<Platform>(&scenario);
             let group = test_scenario::take_shared<PermissionedGroup<PlatformPackage>>(&scenario);
 
-            platform::block_wallet(
+            social_graph::block_platform_wallet(
                 &mut block_registry,
                 &mut social_graph,
                 &mut platform,
@@ -1158,7 +1158,7 @@ let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
             let mut platform = test_scenario::take_shared<Platform>(&scenario);
             let group = test_scenario::take_shared<PermissionedGroup<PlatformPackage>>(&scenario);
 
-            platform::block_wallet(
+            social_graph::block_platform_wallet(
                 &mut block_registry,
                 &mut social_graph,
                 &mut platform,

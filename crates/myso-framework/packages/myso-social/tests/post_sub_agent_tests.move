@@ -524,6 +524,95 @@ module social_contracts::post_sub_agent_tests {
     }
 
     #[test]
+    fun test_agent_edit_and_explicit_remove_reaction() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        setup(&mut scenario);
+
+        test_scenario::next_tx(&mut scenario, AUTHOR);
+        {
+            memory_test_helpers::create_default_org_in_tx(&mut scenario);
+        };
+        test_scenario::next_tx(&mut scenario, AUTHOR);
+        {
+            register_agent(
+                &mut scenario,
+                AGENT_ADDR,
+                memory::cap_post_publish() | memory::cap_react(),
+                0,
+                option::none(),
+                option::none(),
+            );
+        };
+        publish_post(&mut scenario, AGENT_ADDR);
+
+        test_scenario::next_tx(&mut scenario, AGENT_ADDR);
+        {
+            let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let platform_registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
+            let platform = test_scenario::take_shared<Platform>(&scenario);
+            let block_list_registry = test_scenario::take_shared<BlockListRegistry>(&scenario);
+            let config = test_scenario::take_shared<PostConfig>(&scenario);
+            let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
+            let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
+            let mut created_post = test_scenario::take_shared<Post>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+
+            post::edit_post(
+                &registry,
+                &platform,
+                &block_list_registry,
+                &config,
+                &memory_config,
+                &memory_account,
+                &mut created_post,
+                string::utf8(b"edited by agent"),
+                option::none(),
+                option::none(),
+                option::none(),
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            post::react_to_post(
+                &registry,
+                &mut created_post,
+                &platform_registry,
+                &platform,
+                &block_list_registry,
+                &config,
+                &memory_config,
+                &memory_account,
+                string::utf8(b"like"),
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            post::remove_post_reaction(
+                &registry,
+                &mut created_post,
+                &platform,
+                &block_list_registry,
+                &memory_config,
+                &memory_account,
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            assert!(post::get_post_content(&created_post) == string::utf8(b"edited by agent"), 0);
+            assert!(post::get_reaction_count(&created_post) == 0, 1);
+
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(created_post);
+            test_scenario::return_shared(memory_account);
+            test_scenario::return_shared(memory_config);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(block_list_registry);
+            test_scenario::return_shared(platform);
+            test_scenario::return_shared(platform_registry);
+            test_scenario::return_shared(registry);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
     #[expected_failure(abort_code = 18, location = social_contracts::memory)]
     fun test_agent_missing_comment_cap_aborts() {
         let mut scenario = test_scenario::begin(ADMIN);

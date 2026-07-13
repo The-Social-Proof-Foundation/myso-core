@@ -13,6 +13,7 @@ Authorization is enforced in <code><a href="../messaging/messaging.md#messaging_
 -  [Struct `MessageLog`](#messaging_message_log_MessageLog)
 -  [Struct `MessageLogCreated`](#messaging_message_log_MessageLogCreated)
 -  [Struct `PaidMessageSent`](#messaging_message_log_PaidMessageSent)
+-  [Struct `MessageDigestSent`](#messaging_message_log_MessageDigestSent)
 -  [Struct `PaidMessageReplied`](#messaging_message_log_PaidMessageReplied)
 -  [Struct `PaymentClaimed`](#messaging_message_log_PaymentClaimed)
 -  [Struct `PaymentClaimedSettled`](#messaging_message_log_PaymentClaimedSettled)
@@ -24,6 +25,7 @@ Authorization is enforced in <code><a href="../messaging/messaging.md#messaging_
 -  [Function `next_seq`](#messaging_message_log_next_seq)
 -  [Function `paid_message_parties`](#messaging_message_log_paid_message_parties)
 -  [Function `consume_dedupe_and_nonce`](#messaging_message_log_consume_dedupe_and_nonce)
+-  [Function `send_message_digest`](#messaging_message_log_send_message_digest)
 -  [Function `send_paid_message`](#messaging_message_log_send_paid_message)
 -  [Function `reply_to_paid_message_claim_coin`](#messaging_message_log_reply_to_paid_message_claim_coin)
 -  [Function `reply_to_paid_message_claim_settled`](#messaging_message_log_reply_to_paid_message_claim_settled)
@@ -319,6 +321,64 @@ Authorization is enforced in <code><a href="../messaging/messaging.md#messaging_
 </dd>
 <dt>
 <code>amount: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>created_at_ms: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="messaging_message_log_MessageDigestSent"></a>
+
+## Struct `MessageDigestSent`
+
+A free encrypted message pointer. Ciphertext remains off-chain; the chain
+records its immutable digest, location, sender, recipient, and replay key.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../messaging/message_log.md#messaging_message_log_MessageDigestSent">MessageDigestSent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code><a href="../messaging/message_log.md#messaging_message_log_group_id">group_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>seq: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>sender: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>recipient: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>content_digest: vector&lt;u8&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>content_uri: <a href="../std/string.md#std_string_String">std::string::String</a></code>
 </dt>
 <dd>
 </dd>
@@ -640,6 +700,33 @@ Authorization is enforced in <code><a href="../messaging/messaging.md#messaging_
 
 
 
+<a name="messaging_message_log_EInvalidContentDigest"></a>
+
+
+
+<pre><code><b>const</b> <a href="../messaging/message_log.md#messaging_message_log_EInvalidContentDigest">EInvalidContentDigest</a>: u64 = 13;
+</code></pre>
+
+
+
+<a name="messaging_message_log_EContentUriTooLong"></a>
+
+
+
+<pre><code><b>const</b> <a href="../messaging/message_log.md#messaging_message_log_EContentUriTooLong">EContentUriTooLong</a>: u64 = 14;
+</code></pre>
+
+
+
+<a name="messaging_message_log_MAX_CONTENT_URI_BYTES"></a>
+
+
+
+<pre><code><b>const</b> <a href="../messaging/message_log.md#messaging_message_log_MAX_CONTENT_URI_BYTES">MAX_CONTENT_URI_BYTES</a>: u64 = 2048;
+</code></pre>
+
+
+
 <a name="messaging_message_log_new"></a>
 
 ## Function `new`
@@ -820,6 +907,54 @@ Returns <code>(payer, recipient)</code> for a paid message escrow entry.
     <b>let</b> member_nonces = table::borrow_mut(&<b>mut</b> self.nonces, sender);
     <b>assert</b>!(!table::contains(member_nonces, nonce), <a href="../messaging/message_log.md#messaging_message_log_ENonceUsed">ENonceUsed</a>);
     table::add(member_nonces, nonce, <b>true</b>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="messaging_message_log_send_message_digest"></a>
+
+## Function `send_message_digest`
+
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../messaging/message_log.md#messaging_message_log_send_message_digest">send_message_digest</a>(config: &<a href="../messaging/messaging_config.md#messaging_messaging_config_MessagingConfig">messaging::messaging_config::MessagingConfig</a>, self: &<b>mut</b> <a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>, sender: <b>address</b>, recipient: <b>address</b>, content_digest: vector&lt;u8&gt;, content_uri: <a href="../std/string.md#std_string_String">std::string::String</a>, dedupe_key: vector&lt;u8&gt;, nonce: u128, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../messaging/message_log.md#messaging_message_log_send_message_digest">send_message_digest</a>(
+    config: &MessagingConfig,
+    self: &<b>mut</b> <a href="../messaging/message_log.md#messaging_message_log_MessageLog">MessageLog</a>,
+    sender: <b>address</b>,
+    recipient: <b>address</b>,
+    content_digest: vector&lt;u8&gt;,
+    content_uri: String,
+    dedupe_key: vector&lt;u8&gt;,
+    nonce: u128,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(vector::length(&content_digest) == 32, <a href="../messaging/message_log.md#messaging_message_log_EInvalidContentDigest">EInvalidContentDigest</a>);
+    <b>assert</b>!(string::length(&content_uri) &lt;= <a href="../messaging/message_log.md#messaging_message_log_MAX_CONTENT_URI_BYTES">MAX_CONTENT_URI_BYTES</a>, <a href="../messaging/message_log.md#messaging_message_log_EContentUriTooLong">EContentUriTooLong</a>);
+    <a href="../messaging/message_log.md#messaging_message_log_consume_dedupe_and_nonce">consume_dedupe_and_nonce</a>(config, self, sender, dedupe_key, nonce, ctx);
+    <b>let</b> seq = self.<a href="../messaging/message_log.md#messaging_message_log_next_seq">next_seq</a>;
+    self.<a href="../messaging/message_log.md#messaging_message_log_next_seq">next_seq</a> = seq + 1;
+    event::emit(<a href="../messaging/message_log.md#messaging_message_log_MessageDigestSent">MessageDigestSent</a> {
+        <a href="../messaging/message_log.md#messaging_message_log_group_id">group_id</a>: self.<a href="../messaging/message_log.md#messaging_message_log_group_id">group_id</a>,
+        seq,
+        sender,
+        recipient,
+        content_digest,
+        content_uri,
+        created_at_ms: clock::timestamp_ms(clock),
+    });
 }
 </code></pre>
 

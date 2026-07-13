@@ -1302,11 +1302,13 @@ diesel::table! {
         profile_id -> Text,
         balance_mist -> Int8,
         spent_total_mist -> Int8,
+        reserved_mist -> Int8,
         daily_cap_mist -> Nullable<Int8>,
         monthly_cap_mist -> Nullable<Int8>,
         spent_day_mist -> Int8,
         spent_month_mist -> Int8,
         settlement_nonce -> Int8,
+        reservation_nonce -> Int8,
         active -> Bool,
         updated_at_ms -> Int8,
         event_id -> Text,
@@ -1321,6 +1323,7 @@ diesel::table! {
         agent_object_id -> Text,
         budget_mist -> Nullable<Int8>,
         spent_mist -> Int8,
+        reserved_mist -> Int8,
         daily_cap_mist -> Nullable<Int8>,
         monthly_cap_mist -> Nullable<Int8>,
         require_approval_above_mist -> Nullable<Int8>,
@@ -1329,6 +1332,35 @@ diesel::table! {
         event_id -> Text,
         transaction_id -> Text,
         time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    ai_spend_reservations (balance_id, reservation_nonce) {
+        balance_id -> Text,
+        reservation_nonce -> Int8,
+        agent_object_id -> Text,
+        status -> Text,
+        max_amount_mist -> Int8,
+        captured_mist -> Nullable<Int8>,
+        released_mist -> Nullable<Int8>,
+        provider_envelope_hash_hex -> Text,
+        request_hash_hex -> Text,
+        fx_quote_id_hex -> Text,
+        myso_usd_e8 -> Int8,
+        markup_bps -> Int8,
+        provider_cost_usd_micros -> Nullable<Int8>,
+        provider_generation_hash_hex -> Nullable<Text>,
+        capture_deadline_ms -> Int8,
+        hard_expiry_ms -> Int8,
+        available_mist -> Int8,
+        reserve_event_id -> Text,
+        reserve_transaction_id -> Text,
+        terminal_event_id -> Nullable<Text>,
+        terminal_transaction_id -> Nullable<Text>,
+        terminal_at_ms -> Nullable<Int8>,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
     }
 }
 
@@ -1361,12 +1393,10 @@ diesel::table! {
         agent_object_id -> Nullable<Text>,
         amount_mist -> Nullable<Int8>,
         new_balance_mist -> Nullable<Int8>,
-        credits -> Nullable<Int8>,
         receipt_id -> Nullable<Text>,
         usage_kind -> Nullable<Int2>,
         settlement_nonce -> Nullable<Int8>,
         remaining_mist -> Nullable<Int8>,
-        credits_remaining -> Nullable<Int8>,
         daily_cap_mist -> Nullable<Int8>,
         monthly_cap_mist -> Nullable<Int8>,
         budget_mist -> Nullable<Int8>,
@@ -2602,6 +2632,21 @@ diesel::table! {
 }
 
 diesel::table! {
+    message_digests (id, time) {
+        id -> Int4,
+        group_id -> Text,
+        seq -> Int8,
+        sender -> Text,
+        recipient -> Text,
+        content_digest -> Text,
+        content_uri -> Text,
+        created_at_ms -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Text,
+    }
+}
+
+diesel::table! {
     messaging_agent_groups (id, time) {
         id -> Int4,
         group_id -> Text,
@@ -2694,6 +2739,7 @@ diesel::joinable!(profile_subscription_plans -> profile_subscription_services (s
 diesel::joinable!(profile_subscriptions -> profile_subscription_services (service_id));
 diesel::joinable!(ai_credit_agent_budgets -> ai_credit_balances (balance_id));
 diesel::joinable!(ai_credit_balances -> memory_accounts (memory_account_id));
+diesel::joinable!(ai_spend_reservations -> ai_credit_balances (balance_id));
 diesel::joinable!(profiles -> ai_credit_balances (ai_credit_balance_id));
 diesel::joinable!(sub_agents -> memory_accounts (account_id));
 
@@ -2704,6 +2750,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     ai_credit_events,
     ai_credit_spend_approvals,
     ai_credit_usage_lines,
+    ai_spend_reservations,
     anonymous_votes,
     audit_log,
     memory_usage_stats,
@@ -2846,6 +2893,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     insurance_router_config,
     messaging_config,
     paid_message_escrows,
+    message_digests,
     messaging_agent_groups,
     memory_config,
     platform_config,

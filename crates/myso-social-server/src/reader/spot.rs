@@ -8,7 +8,10 @@ use diesel_async::RunQueryDsl;
 use myso_pg_db::Db;
 
 use crate::error::SocialError;
-use crate::reader::types::{PendingSpotPostRow, SpotBetRow, SpotConfigInfo, SpotCreatorStatsResponse, SpotPendingCreatorPayoutRow, SpotRecordResponse, SpotRouteResponse, SpotTransferRow};
+use crate::reader::types::{
+    PendingSpotPostRow, SpotBetRow, SpotConfigInfo, SpotCreatorStatsResponse,
+    SpotPendingCreatorPayoutRow, SpotRecordResponse, SpotRouteResponse, SpotTransferRow,
+};
 
 pub(crate) async fn get_spot_record(
     db: &Db,

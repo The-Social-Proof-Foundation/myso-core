@@ -119,9 +119,8 @@ pub fn verify_signature(
     serialized_sig.extend_from_slice(signature_bytes);
     serialized_sig.extend_from_slice(public_key_bytes);
 
-    let user_signature = UserSignature::from_bytes(&serialized_sig).map_err(|e| {
-        AgentAuthError::InvalidFormat(format!("Failed to parse signature: {}", e))
-    })?;
+    let user_signature = UserSignature::from_bytes(&serialized_sig)
+        .map_err(|e| AgentAuthError::InvalidFormat(format!("Failed to parse signature: {}", e)))?;
 
     let personal_message = PersonalMessage(Cow::Borrowed(message));
     UserSignatureVerifier::default()
@@ -176,8 +175,9 @@ fn parse_public_key_header(value: &str) -> Result<(SignatureScheme, Vec<u8>), Ag
             "Empty public key header".to_string(),
         ));
     }
-    let scheme = SignatureScheme::from_flag(bytes[0])
-        .ok_or_else(|| AgentAuthError::InvalidFormat("Unknown signature scheme flag".to_string()))?;
+    let scheme = SignatureScheme::from_flag(bytes[0]).ok_or_else(|| {
+        AgentAuthError::InvalidFormat("Unknown signature scheme flag".to_string())
+    })?;
     let key_bytes = bytes[1..].to_vec();
     Ok((scheme, key_bytes))
 }
@@ -236,7 +236,12 @@ pub async fn verify_agent_usage_auth(
         tool_id,
         idempotency_key,
     );
-    verify_signature(message.as_bytes(), &signature_bytes, &public_key_bytes, scheme)?;
+    verify_signature(
+        message.as_bytes(),
+        &signature_bytes,
+        &public_key_bytes,
+        scheme,
+    )?;
 
     let on_chain = fetch_on_chain_sub_agent(&args.myso_rpc, agent_object_id)
         .await
@@ -262,11 +267,7 @@ pub fn agent_auth_error_to_status(err: AgentAuthError) -> StatusCode {
     err.status()
 }
 
-pub fn derive_receipt_id(
-    idempotency_key: &str,
-    balance_id: &str,
-    agent_object_id: &str,
-) -> u128 {
+pub fn derive_receipt_id(idempotency_key: &str, balance_id: &str, agent_object_id: &str) -> u128 {
     type Blake2b256 = Blake2b<U32>;
     let mut hasher = Blake2b256::new();
     hasher.update(idempotency_key.as_bytes());

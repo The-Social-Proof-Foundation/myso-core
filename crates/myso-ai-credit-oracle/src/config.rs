@@ -13,6 +13,25 @@ pub struct OracleArgs {
     #[arg(long, env = "AI_CREDIT_ORACLE_LISTEN", default_value = "0.0.0.0:8095")]
     pub listen_addr: String,
 
+    /// PostgreSQL is the authoritative inference ledger and transactional outbox.
+    /// Every replica must use the same database.
+    #[arg(long, env = "AI_CREDIT_DATABASE_URL")]
+    pub database_url: String,
+
+    #[arg(long, env = "AI_CREDIT_DATABASE_MAX_CONNECTIONS", default_value = "10")]
+    pub database_max_connections: u32,
+
+    #[arg(long, env = "AI_CREDIT_OUTBOX_LEASE_SECS", default_value = "60")]
+    pub outbox_lease_secs: u64,
+
+    /// Declared deployment replica count. Multi-replica mode requires the legacy
+    /// file-backed usage/settlement API to be disabled.
+    #[arg(long, env = "AI_CREDIT_REPLICA_COUNT", default_value = "1")]
+    pub replica_count: u32,
+
+    #[arg(long, env = "AI_CREDIT_LEGACY_USAGE_ENABLED", default_value = "true")]
+    pub legacy_usage_enabled: bool,
+
     #[arg(long, env = "AI_CREDIT_ORACLE_PRIVATE_KEY_HEX")]
     pub private_key_hex: String,
 
@@ -38,6 +57,30 @@ pub struct OracleArgs {
 
     #[arg(long, env = "AI_CREDIT_SETTLEMENT_KEY_HEX")]
     pub settlement_key_hex: Option<String>,
+
+    /// Extra headroom applied to the deterministic, bounded provider envelope.
+    /// This protects against catalog/route price movement between reserve and capture;
+    /// it is not a substitute for enforcing request token limits.
+    #[arg(
+        long,
+        env = "AI_CREDIT_RESERVATION_PRICE_BUFFER_BPS",
+        default_value = "2500"
+    )]
+    pub reservation_price_buffer_bps: u64,
+
+    #[arg(
+        long,
+        env = "AI_CREDIT_RESERVATION_CAPTURE_WINDOW_SECS",
+        default_value = "600"
+    )]
+    pub reservation_capture_window_secs: u64,
+
+    #[arg(
+        long,
+        env = "AI_CREDIT_RESERVATION_HARD_EXPIRY_SECS",
+        default_value = "1800"
+    )]
+    pub reservation_hard_expiry_secs: u64,
 
     #[arg(long, env = "AI_CREDIT_SETTLEMENT_INTERVAL_SECS", default_value = "60")]
     pub settlement_interval_secs: u64,
@@ -208,11 +251,7 @@ pub struct OracleArgs {
     #[arg(long, env = "AI_CREDIT_AGENT_AUTH_ENABLED", default_value = "true")]
     pub agent_auth_enabled: bool,
 
-    #[arg(
-        long,
-        env = "AI_CREDIT_AGENT_AUTH_TTL_SECS",
-        default_value = "300"
-    )]
+    #[arg(long, env = "AI_CREDIT_AGENT_AUTH_TTL_SECS", default_value = "300")]
     pub agent_auth_ttl_secs: i64,
 
     /// Require `AI_CREDIT_SETTLEMENT_SECRET` at startup and on `/internal/ai-credit/settle`.
@@ -252,6 +291,23 @@ impl OracleArgs {
     }
 
     pub fn validate_startup(&self) -> anyhow::Result<()> {
+        if self.database_url.trim().is_empty() {
+            anyhow::bail!("AI_CREDIT_DATABASE_URL is required");
+        }
+        if self.database_max_connections == 0 {
+            anyhow::bail!("AI_CREDIT_DATABASE_MAX_CONNECTIONS must be greater than zero");
+        }
+        if !(15..=300).contains(&self.outbox_lease_secs) {
+            anyhow::bail!("AI_CREDIT_OUTBOX_LEASE_SECS must be between 15 and 300");
+        }
+        if self.replica_count == 0 {
+            anyhow::bail!("AI_CREDIT_REPLICA_COUNT must be greater than zero");
+        }
+        if self.replica_count > 1 && self.legacy_usage_enabled {
+            anyhow::bail!(
+                "AI_CREDIT_LEGACY_USAGE_ENABLED must be false when AI_CREDIT_REPLICA_COUNT > 1"
+            );
+        }
         if self.require_secrets && self.oracle_api_secret.is_none() {
             anyhow::bail!(
                 "AI_CREDIT_ORACLE_API_SECRET is required when AI_CREDIT_REQUIRE_SECRETS=true"
@@ -261,6 +317,47 @@ impl OracleArgs {
             anyhow::bail!(
                 "AI_CREDIT_SETTLEMENT_SECRET is required when AI_CREDIT_REQUIRE_SETTLEMENT_SECRET=true"
             );
+        }
+        if self.inference_enabled {
+            if self
+                .openrouter_api_key
+                .as_deref()
+                .is_none_or(|value| value.trim().is_empty())
+            {
+                anyhow::bail!(
+                    "AI_CREDIT_OPENROUTER_API_KEY is required when AI_CREDIT_INFERENCE_ENABLED=true"
+                );
+            }
+            if self
+                .config_object_id
+                .as_deref()
+                .is_none_or(|value| value.trim().is_empty())
+                || self
+                    .settlement_key_hex
+                    .as_deref()
+                    .is_none_or(|value| value.trim().is_empty())
+            {
+                anyhow::bail!(
+                    "AI_CREDIT_CONFIG_OBJECT_ID and AI_CREDIT_SETTLEMENT_KEY_HEX are required when AI_CREDIT_INFERENCE_ENABLED=true"
+                );
+            }
+            if self.reservation_capture_window_secs == 0
+                || self.reservation_capture_window_secs > 15 * 60
+            {
+                anyhow::bail!(
+                    "AI_CREDIT_RESERVATION_CAPTURE_WINDOW_SECS must be between 1 and 900"
+                );
+            }
+            if self.reservation_hard_expiry_secs <= self.reservation_capture_window_secs
+                || self.reservation_hard_expiry_secs > 30 * 60
+            {
+                anyhow::bail!(
+                    "AI_CREDIT_RESERVATION_HARD_EXPIRY_SECS must be greater than capture window and at most 1800"
+                );
+            }
+            if self.reservation_price_buffer_bps > 10_000 {
+                anyhow::bail!("AI_CREDIT_RESERVATION_PRICE_BUFFER_BPS must be at most 10000");
+            }
         }
         Ok(())
     }

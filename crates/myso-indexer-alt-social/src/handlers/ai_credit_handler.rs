@@ -5,12 +5,12 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use async_trait::async_trait;
+use diesel::sql_types::{BigInt, Nullable, Text, Timestamptz};
 use diesel::BoolExpressionMethods;
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
 use diesel::QueryDsl;
 use diesel::QueryableByName;
-use diesel::sql_types::{BigInt, Nullable, Text, Timestamptz};
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_framework::pipeline::Processor;
 use myso_indexer_alt_framework::postgres::handler::Handler;
@@ -19,11 +19,12 @@ use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
     NewAiCreditAgentBudget, NewAiCreditBalance, NewAiCreditConfig, NewAiCreditEvent,
-    NewAiCreditSpendApproval, NewAuditLog,
+    NewAiCreditSpendApproval, NewAiSpendReservation, NewAuditLog, RESERVATION_STATUS_CAPTURED,
+    RESERVATION_STATUS_RESERVED,
 };
 use myso_indexer_alt_social_schema::schema::{
     ai_credit_agent_budgets, ai_credit_balances, ai_credit_config, ai_credit_events,
-    ai_credit_spend_approvals, ai_credit_usage_lines, profiles, sub_agents,
+    ai_credit_spend_approvals, ai_credit_usage_lines, ai_spend_reservations, profiles, sub_agents,
 };
 
 use super::ai_credit;
@@ -87,6 +88,33 @@ pub enum AiCreditRow {
         receipt_id: String,
         settlement_tx: String,
         updated_at_ms: i64,
+        event_id: String,
+        transaction_id: String,
+    },
+    ReservationReserved(NewAiSpendReservation),
+    ReservationCaptured {
+        balance_id: String,
+        agent_object_id: String,
+        reservation_nonce: i64,
+        reserved_mist: i64,
+        captured_mist: i64,
+        released_mist: i64,
+        provider_cost_usd_micros: i64,
+        provider_generation_hash_hex: String,
+        captured_at_ms: i64,
+        remaining_mist: i64,
+        available_mist: i64,
+        event_id: String,
+        transaction_id: String,
+    },
+    ReservationReleased {
+        balance_id: String,
+        agent_object_id: String,
+        reservation_nonce: i64,
+        released_mist: i64,
+        status: String,
+        terminal_at_ms: i64,
+        available_mist: i64,
         event_id: String,
         transaction_id: String,
     },
@@ -245,6 +273,59 @@ impl AiCreditRow {
                 receipt_id,
                 settlement_tx,
                 updated_at_ms,
+                event_id,
+                transaction_id,
+            }),
+            crate::handlers::SocialEventRow::AiSpendReservationReserved(reservation) => {
+                Some(AiCreditRow::ReservationReserved(reservation))
+            }
+            crate::handlers::SocialEventRow::AiSpendReservationCaptured {
+                balance_id,
+                agent_object_id,
+                reservation_nonce,
+                reserved_mist,
+                captured_mist,
+                released_mist,
+                provider_cost_usd_micros,
+                provider_generation_hash_hex,
+                captured_at_ms,
+                remaining_mist,
+                available_mist,
+                event_id,
+                transaction_id,
+            } => Some(AiCreditRow::ReservationCaptured {
+                balance_id,
+                agent_object_id,
+                reservation_nonce,
+                reserved_mist,
+                captured_mist,
+                released_mist,
+                provider_cost_usd_micros,
+                provider_generation_hash_hex,
+                captured_at_ms,
+                remaining_mist,
+                available_mist,
+                event_id,
+                transaction_id,
+            }),
+            crate::handlers::SocialEventRow::AiSpendReservationReleased {
+                balance_id,
+                agent_object_id,
+                reservation_nonce,
+                released_mist,
+                status,
+                terminal_at_ms,
+                available_mist,
+                event_id,
+                transaction_id,
+            } => Some(AiCreditRow::ReservationReleased {
+                balance_id,
+                agent_object_id,
+                reservation_nonce,
+                released_mist,
+                status,
+                terminal_at_ms,
+                available_mist,
                 event_id,
                 transaction_id,
             }),
@@ -417,7 +498,10 @@ fn next_ai_credit_version(prev: &NewAiCreditConfig, incoming_version: Option<i64
     incoming_version.unwrap_or(prev.version + 1)
 }
 
-fn finalize_ai_credit_config(prev: &NewAiCreditConfig, row: &AiCreditRow) -> Option<NewAiCreditConfig> {
+fn finalize_ai_credit_config(
+    prev: &NewAiCreditConfig,
+    row: &AiCreditRow,
+) -> Option<NewAiCreditConfig> {
     match row {
         AiCreditRow::ConfigUpsert(config) => Some(config.clone()),
         AiCreditRow::ConfigLimitsUpdate {
@@ -574,11 +658,13 @@ impl Handler for AiCreditHandler {
                             ai_credit_balances::profile_id.eq(b.profile_id.clone()),
                             ai_credit_balances::balance_mist.eq(b.balance_mist),
                             ai_credit_balances::spent_total_mist.eq(b.spent_total_mist),
+                            ai_credit_balances::reserved_mist.eq(b.reserved_mist),
                             ai_credit_balances::daily_cap_mist.eq(b.daily_cap_mist),
                             ai_credit_balances::monthly_cap_mist.eq(b.monthly_cap_mist),
                             ai_credit_balances::spent_day_mist.eq(b.spent_day_mist),
                             ai_credit_balances::spent_month_mist.eq(b.spent_month_mist),
                             ai_credit_balances::settlement_nonce.eq(b.settlement_nonce),
+                            ai_credit_balances::reservation_nonce.eq(b.reservation_nonce),
                             ai_credit_balances::active.eq(b.active),
                             ai_credit_balances::updated_at_ms.eq(b.updated_at_ms),
                             ai_credit_balances::event_id.eq(b.event_id.clone()),
@@ -803,6 +889,226 @@ impl Handler for AiCreditHandler {
                         );
                     }
                     total += affected;
+                }
+                AiCreditRow::ReservationReserved(reservation) => {
+                    let inserted = diesel::insert_into(ai_spend_reservations::table)
+                        .values(reservation)
+                        .on_conflict((
+                            ai_spend_reservations::balance_id,
+                            ai_spend_reservations::reservation_nonce,
+                        ))
+                        .do_nothing()
+                        .execute(conn)
+                        .await?;
+                    if inserted == 1 {
+                        total += diesel::update(
+                            ai_credit_balances::table
+                                .filter(ai_credit_balances::balance_id.eq(&reservation.balance_id))
+                                .filter(
+                                    ai_credit_balances::reservation_nonce
+                                        .lt(reservation.reservation_nonce),
+                                ),
+                        )
+                        .set((
+                            ai_credit_balances::reservation_nonce.eq(reservation.reservation_nonce),
+                            diesel::ExpressionMethods::eq(
+                                ai_credit_balances::reserved_mist,
+                                ai_credit_balances::balance_mist - reservation.available_mist,
+                            ),
+                            ai_credit_balances::updated_at_ms
+                                .eq(reservation.created_at.timestamp_millis()),
+                            ai_credit_balances::event_id.eq(&reservation.reserve_event_id),
+                            ai_credit_balances::transaction_id
+                                .eq(&reservation.reserve_transaction_id),
+                        ))
+                        .execute(conn)
+                        .await?;
+                        total += diesel::update(
+                            ai_credit_agent_budgets::table
+                                .filter(
+                                    ai_credit_agent_budgets::balance_id.eq(&reservation.balance_id),
+                                )
+                                .filter(
+                                    ai_credit_agent_budgets::agent_object_id
+                                        .eq(&reservation.agent_object_id),
+                                ),
+                        )
+                        .set((
+                            diesel::ExpressionMethods::eq(
+                                ai_credit_agent_budgets::reserved_mist,
+                                ai_credit_agent_budgets::reserved_mist
+                                    + reservation.max_amount_mist,
+                            ),
+                            ai_credit_agent_budgets::updated_at_ms
+                                .eq(reservation.created_at.timestamp_millis()),
+                            ai_credit_agent_budgets::event_id.eq(&reservation.reserve_event_id),
+                            ai_credit_agent_budgets::transaction_id
+                                .eq(&reservation.reserve_transaction_id),
+                        ))
+                        .execute(conn)
+                        .await?;
+                    }
+                    total += inserted;
+                }
+                AiCreditRow::ReservationCaptured {
+                    balance_id,
+                    agent_object_id,
+                    reservation_nonce,
+                    reserved_mist,
+                    captured_mist,
+                    released_mist,
+                    provider_cost_usd_micros,
+                    provider_generation_hash_hex,
+                    captured_at_ms,
+                    remaining_mist,
+                    available_mist,
+                    event_id,
+                    transaction_id,
+                } => {
+                    let now = chrono::Utc::now();
+                    let transitioned = diesel::update(
+                        ai_spend_reservations::table
+                            .filter(ai_spend_reservations::balance_id.eq(balance_id))
+                            .filter(ai_spend_reservations::reservation_nonce.eq(*reservation_nonce))
+                            .filter(ai_spend_reservations::status.eq(RESERVATION_STATUS_RESERVED))
+                            .filter(ai_spend_reservations::max_amount_mist.eq(*reserved_mist)),
+                    )
+                    .set((
+                        ai_spend_reservations::status.eq(RESERVATION_STATUS_CAPTURED),
+                        ai_spend_reservations::captured_mist.eq(Some(*captured_mist)),
+                        ai_spend_reservations::released_mist.eq(Some(*released_mist)),
+                        ai_spend_reservations::provider_cost_usd_micros
+                            .eq(Some(*provider_cost_usd_micros)),
+                        ai_spend_reservations::provider_generation_hash_hex
+                            .eq(Some(provider_generation_hash_hex.clone())),
+                        ai_spend_reservations::available_mist.eq(*available_mist),
+                        ai_spend_reservations::terminal_event_id.eq(Some(event_id.clone())),
+                        ai_spend_reservations::terminal_transaction_id
+                            .eq(Some(transaction_id.clone())),
+                        ai_spend_reservations::terminal_at_ms.eq(Some(*captured_at_ms)),
+                        ai_spend_reservations::updated_at.eq(now),
+                    ))
+                    .execute(conn)
+                    .await?;
+                    if transitioned == 1 {
+                        total += diesel::update(
+                            ai_credit_balances::table
+                                .filter(ai_credit_balances::balance_id.eq(balance_id)),
+                        )
+                        .set((
+                            ai_credit_balances::balance_mist.eq(*remaining_mist),
+                            ai_credit_balances::reserved_mist.eq(*remaining_mist - *available_mist),
+                            ai_credit_balances::spent_total_mist
+                                .eq(ai_credit_balances::spent_total_mist + *captured_mist),
+                            ai_credit_balances::spent_day_mist
+                                .eq(ai_credit_balances::spent_day_mist + *captured_mist),
+                            ai_credit_balances::spent_month_mist
+                                .eq(ai_credit_balances::spent_month_mist + *captured_mist),
+                            ai_credit_balances::updated_at_ms.eq(now.timestamp_millis()),
+                            ai_credit_balances::event_id.eq(event_id),
+                            ai_credit_balances::transaction_id.eq(transaction_id),
+                        ))
+                        .execute(conn)
+                        .await?;
+                        total += diesel::update(
+                            ai_credit_agent_budgets::table
+                                .filter(ai_credit_agent_budgets::balance_id.eq(balance_id))
+                                .filter(
+                                    ai_credit_agent_budgets::agent_object_id.eq(agent_object_id),
+                                ),
+                        )
+                        .set((
+                            ai_credit_agent_budgets::reserved_mist
+                                .eq(ai_credit_agent_budgets::reserved_mist - *reserved_mist),
+                            ai_credit_agent_budgets::spent_mist
+                                .eq(ai_credit_agent_budgets::spent_mist + *captured_mist),
+                            ai_credit_agent_budgets::updated_at_ms.eq(now.timestamp_millis()),
+                            ai_credit_agent_budgets::event_id.eq(event_id),
+                            ai_credit_agent_budgets::transaction_id.eq(transaction_id),
+                        ))
+                        .execute(conn)
+                        .await?;
+
+                        let organization_id = sub_agents::table
+                            .filter(sub_agents::agent_object_id.eq(agent_object_id))
+                            .select(sub_agents::organization_id)
+                            .first::<Option<String>>(conn)
+                            .await
+                            .ok()
+                            .flatten();
+                        apply_org_ai_credit_spend(
+                            conn,
+                            organization_id.as_deref(),
+                            *captured_mist,
+                            now.timestamp_millis(),
+                        )
+                        .await?;
+                    }
+                    total += transitioned;
+                }
+                AiCreditRow::ReservationReleased {
+                    balance_id,
+                    agent_object_id,
+                    reservation_nonce,
+                    released_mist,
+                    status,
+                    terminal_at_ms,
+                    available_mist,
+                    event_id,
+                    transaction_id,
+                } => {
+                    let now = chrono::Utc::now();
+                    let transitioned = diesel::update(
+                        ai_spend_reservations::table
+                            .filter(ai_spend_reservations::balance_id.eq(balance_id))
+                            .filter(ai_spend_reservations::reservation_nonce.eq(*reservation_nonce))
+                            .filter(ai_spend_reservations::status.eq(RESERVATION_STATUS_RESERVED))
+                            .filter(ai_spend_reservations::max_amount_mist.eq(*released_mist)),
+                    )
+                    .set((
+                        ai_spend_reservations::status.eq(status),
+                        ai_spend_reservations::released_mist.eq(Some(*released_mist)),
+                        ai_spend_reservations::available_mist.eq(*available_mist),
+                        ai_spend_reservations::terminal_event_id.eq(Some(event_id.clone())),
+                        ai_spend_reservations::terminal_transaction_id
+                            .eq(Some(transaction_id.clone())),
+                        ai_spend_reservations::terminal_at_ms.eq(Some(*terminal_at_ms)),
+                        ai_spend_reservations::updated_at.eq(now),
+                    ))
+                    .execute(conn)
+                    .await?;
+                    if transitioned == 1 {
+                        total += diesel::update(
+                            ai_credit_balances::table
+                                .filter(ai_credit_balances::balance_id.eq(balance_id)),
+                        )
+                        .set((
+                            ai_credit_balances::reserved_mist
+                                .eq(ai_credit_balances::balance_mist - *available_mist),
+                            ai_credit_balances::updated_at_ms.eq(*terminal_at_ms),
+                            ai_credit_balances::event_id.eq(event_id),
+                            ai_credit_balances::transaction_id.eq(transaction_id),
+                        ))
+                        .execute(conn)
+                        .await?;
+                        total += diesel::update(
+                            ai_credit_agent_budgets::table
+                                .filter(ai_credit_agent_budgets::balance_id.eq(balance_id))
+                                .filter(
+                                    ai_credit_agent_budgets::agent_object_id.eq(agent_object_id),
+                                ),
+                        )
+                        .set((
+                            ai_credit_agent_budgets::reserved_mist
+                                .eq(ai_credit_agent_budgets::reserved_mist - *released_mist),
+                            ai_credit_agent_budgets::updated_at_ms.eq(*terminal_at_ms),
+                            ai_credit_agent_budgets::event_id.eq(event_id),
+                            ai_credit_agent_budgets::transaction_id.eq(transaction_id),
+                        ))
+                        .execute(conn)
+                        .await?;
+                    }
+                    total += transitioned;
                 }
                 AiCreditRow::ProfileAiCreditBalanceLink {
                     profile_id,

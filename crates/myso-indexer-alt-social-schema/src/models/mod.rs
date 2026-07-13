@@ -32,9 +32,11 @@ mod wallet_social_graph;
 pub use ai_credit::{
     APPROVAL_STATUS_APPROVED, APPROVAL_STATUS_CONSUMED, APPROVAL_STATUS_EXPIRED,
     APPROVAL_STATUS_REQUESTED, APPROVAL_STATUS_REVOKED, AiCreditAgentBudgetRow, AiCreditBalanceRow,
-    AiCreditConfigRow, AiCreditSpendApprovalRow, AiCreditUsageLineRow, NewAiCreditAgentBudget,
-    NewAiCreditBalance, NewAiCreditConfig, NewAiCreditEvent, NewAiCreditSpendApproval,
-    NewAiCreditUsageLine,
+    AiCreditConfigRow, AiCreditSpendApprovalRow, AiCreditUsageLineRow, AiSpendReservationRow,
+    NewAiCreditAgentBudget, NewAiCreditBalance, NewAiCreditConfig, NewAiCreditEvent,
+    NewAiCreditSpendApproval, NewAiCreditUsageLine, NewAiSpendReservation,
+    RESERVATION_STATUS_CANCELLED, RESERVATION_STATUS_CAPTURED, RESERVATION_STATUS_EXPIRED,
+    RESERVATION_STATUS_RESERVED,
 };
 pub use audit::{
     AUDIT_ACTOR_AGENT, AUDIT_ACTOR_HUMAN, AUDIT_ACTOR_SERVICE, AUDIT_SOURCE_CHAIN,
@@ -75,7 +77,7 @@ pub use memory::{
     NewMemoryAccount, NewMemoryConfig, NewSubAgent, NewSubAgentEvent, SubAgentRow,
 };
 pub use messaging::{
-    NewMessagingAgentGroup, NewMessagingConfig, NewPaidMessageEscrow, PAID_MESSAGE_STATUS_CLAIMED,
+    NewMessageDigest, NewMessagingAgentGroup, NewMessagingConfig, NewPaidMessageEscrow, PAID_MESSAGE_STATUS_CLAIMED,
     PAID_MESSAGE_STATUS_ESCROWED, PAID_MESSAGE_STATUS_REFUNDED, PAID_MESSAGE_STATUS_SETTLED,
 };
 pub use mydata::{

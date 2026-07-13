@@ -376,7 +376,7 @@ fun blocked_peer_cannot_create_dm() {
     ts::next_tx(&mut scenario, ALICE);
     let mut block_list = ts::take_shared<BlockListRegistry>(&mut scenario);
     let mut social_graph = ts::take_shared<SocialGraph>(&mut scenario);
-    block_list::block_wallet(&mut block_list, &mut social_graph, BOB, ts::ctx(&mut scenario));
+    social_graph::block_wallet(&mut block_list, &mut social_graph, BOB, ts::ctx(&mut scenario));
     ts::return_shared(block_list);
     ts::return_shared(social_graph);
 
@@ -412,7 +412,7 @@ fun blocked_peer_cannot_send_paid_dm() {
     ts::next_tx(&mut scenario, ALICE);
     let mut block_list = ts::take_shared<BlockListRegistry>(&mut scenario);
     let mut social_graph = ts::take_shared<SocialGraph>(&mut scenario);
-    block_list::block_wallet(&mut block_list, &mut social_graph, BOB, ts::ctx(&mut scenario));
+    social_graph::block_wallet(&mut block_list, &mut social_graph, BOB, ts::ctx(&mut scenario));
     ts::return_shared(block_list);
     ts::return_shared(social_graph);
 
@@ -458,7 +458,7 @@ fun blocker_cannot_send_paid_dm_to_blocked() {
     ts::next_tx(&mut scenario, ALICE);
     let mut block_list = ts::take_shared<BlockListRegistry>(&mut scenario);
     let mut social_graph = ts::take_shared<SocialGraph>(&mut scenario);
-    block_list::block_wallet(&mut block_list, &mut social_graph, BOB, ts::ctx(&mut scenario));
+    social_graph::block_wallet(&mut block_list, &mut social_graph, BOB, ts::ctx(&mut scenario));
     ts::return_shared(block_list);
     ts::return_shared(social_graph);
 
@@ -504,8 +504,8 @@ fun paid_send_succeeds_after_unblock() {
     ts::next_tx(&mut scenario, ALICE);
     let mut block_list = ts::take_shared<BlockListRegistry>(&mut scenario);
     let mut social_graph = ts::take_shared<SocialGraph>(&mut scenario);
-    block_list::block_wallet(&mut block_list, &mut social_graph, BOB, ts::ctx(&mut scenario));
-    block_list::unblock_wallet(&mut block_list, BOB, ts::ctx(&mut scenario));
+    social_graph::block_wallet(&mut block_list, &mut social_graph, BOB, ts::ctx(&mut scenario));
+    social_graph::unblock_wallet(&mut block_list, BOB, ts::ctx(&mut scenario));
     ts::return_shared(block_list);
     ts::return_shared(social_graph);
 

@@ -309,8 +309,8 @@ subscription_block_wallet() {
     if [[ -z "$graph_id" ]]; then
         graph_id="$(subscription_resolve_social_graph_id)" || return 1
     fi
-    log_step "block_list::block_wallet blocker=$blocker blocked=$blocked"
-    out="$(run_myso_call_as_capture "$blocker" block_list block_wallet \
+    log_step "social_graph::block_wallet blocker=$blocker blocked=$blocked"
+    out="$(run_myso_call_as_capture "$blocker" social_graph block_wallet \
         "@$(normalize_hex_id "$BLOCK_LIST_REGISTRY_ID")" \
         "@$(normalize_hex_id "$graph_id")" \
         "$blocked")" || return 1
@@ -320,8 +320,8 @@ subscription_block_wallet() {
 subscription_unblock_wallet() {
     local blocker="$1" blocked="$2" out
     subscription_require_session_objects BLOCK_LIST_REGISTRY_ID || return 1
-    log_step "block_list::unblock_wallet blocker=$blocker blocked=$blocked"
-    out="$(run_myso_call_as_capture "$blocker" block_list unblock_wallet \
+    log_step "social_graph::unblock_wallet blocker=$blocker blocked=$blocked"
+    out="$(run_myso_call_as_capture "$blocker" social_graph unblock_wallet \
         "@$(normalize_hex_id "$BLOCK_LIST_REGISTRY_ID")" \
         "$blocked")" || return 1
     assert_tx_success "$out"

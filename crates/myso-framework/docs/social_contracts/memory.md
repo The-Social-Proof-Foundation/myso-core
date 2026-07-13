@@ -122,6 +122,7 @@ computed off-chain (indexer/server).
 -  [Function `cap_agent_update`](#social_contracts_memory_cap_agent_update)
 -  [Function `cap_ai_spend`](#social_contracts_memory_cap_ai_spend)
 -  [Function `cap_budget_manage`](#social_contracts_memory_cap_budget_manage)
+-  [Function `cap_social_graph`](#social_contracts_memory_cap_social_graph)
 -  [Function `org_perm_memory_read`](#social_contracts_memory_org_perm_memory_read)
 -  [Function `org_perm_memory_write`](#social_contracts_memory_org_perm_memory_write)
 -  [Function `org_perm_agent_manager`](#social_contracts_memory_org_perm_agent_manager)
@@ -2893,6 +2894,16 @@ spend allowances for descendants in their subtree (see <code><a href="../social_
 
 
 
+<a name="social_contracts_memory_CAP_SOCIAL_GRAPH"></a>
+
+Follow, unfollow, block, and unblock on behalf of the principal profile.
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_CAP_SOCIAL_GRAPH">CAP_SOCIAL_GRAPH</a>: u64 = 65536;
+</code></pre>
+
+
+
 <a name="social_contracts_memory_ORG_PERM_MEMORY_READ"></a>
 
 
@@ -4574,6 +4585,28 @@ Default bootstrap values for MemoryConfig
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_cap_budget_manage">cap_budget_manage</a>(): u64 { <a href="../social_contracts/memory.md#social_contracts_memory_CAP_BUDGET_MANAGE">CAP_BUDGET_MANAGE</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_cap_social_graph"></a>
+
+## Function `cap_social_graph`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_cap_social_graph">cap_social_graph</a>(): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_cap_social_graph">cap_social_graph</a>(): u64 { <a href="../social_contracts/memory.md#social_contracts_memory_CAP_SOCIAL_GRAPH">CAP_SOCIAL_GRAPH</a> }
 </code></pre>
 
 
