@@ -4,7 +4,7 @@
 #
 # Shared HTTP helpers for proof-of-creativity oracle E2E scripts (myso-core).
 
-: "${POC_ORACLE_URL:=http://127.0.0.1:8001}"
+: "${POC_ORACLE_URL:=http://127.0.0.1:8000}"
 : "${POC_ORACLE_NETWORK:=localnet}"
 : "${POC_USE_DIRECT_MOVE:=0}"
 : "${POC_E2E_SUBMIT_OVERRIDE:=1}"
