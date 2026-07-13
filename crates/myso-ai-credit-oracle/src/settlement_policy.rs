@@ -137,6 +137,12 @@ mod tests {
             receipt_store_recover: false,
             ingest_reconcile_interval_secs: 30,
             ingest_backlog_warn_age_secs: 300,
+            provider_token: None,
+            provider_owner: None,
+            provider_balance_id: None,
+            provider_memory_account_id: None,
+            provider_agent_object_id: None,
+            provider_models: None,
         }
     }
 

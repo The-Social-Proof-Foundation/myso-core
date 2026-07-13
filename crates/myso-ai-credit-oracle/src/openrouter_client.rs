@@ -312,6 +312,58 @@ mod tests {
         assert!(!rates.contains_key("no-pricing-model"));
     }
 
+    #[tokio::test]
+    async fn chat_completions_hits_mocked_openrouter() {
+        use axum::routing::post;
+        use axum::{Json, Router};
+        use serde_json::json;
+
+        async fn mock_chat(Json(body): Json<serde_json::Value>) -> Json<serde_json::Value> {
+            assert_eq!(body["model"], "openai/gpt-4o-mini");
+            assert_eq!(body["max_tokens"], 32);
+            Json(json!({
+                "id": "gen-mock-1",
+                "choices": [{ "message": { "content": "AI_CREDIT_OK" } }],
+                "usage": {
+                    "prompt_tokens": 5,
+                    "completion_tokens": 3,
+                    "total_tokens": 8,
+                    "cost": 0.000002,
+                    "cost_details": { "upstream_inference_cost": 0.000001 }
+                }
+            }))
+        }
+
+        let app = Router::new().route("/chat/completions", post(mock_chat));
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("bind mock openrouter");
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            axum::serve(listener, app).await.ok();
+        });
+        tokio::task::yield_now().await;
+
+        let client = OpenRouterClient::new(
+            format!("http://{addr}/models"),
+            format!("http://{addr}/chat/completions"),
+            "test-key",
+        );
+        let messages = [ChatMessage {
+            role: "user",
+            content: "ping",
+        }];
+        let result = client
+            .chat_completions("openai/gpt-4o-mini", &messages, 32)
+            .await
+            .expect("mocked chat");
+        assert_eq!(result.content, "AI_CREDIT_OK");
+        assert_eq!(result.prompt_tokens, 5);
+        assert_eq!(result.completion_tokens, 3);
+        assert_eq!(result.provider_cost_usd_micros, 2);
+        assert_eq!(result.generation_id.as_deref(), Some("gen-mock-1"));
+    }
+
     #[test]
     fn parse_chat_completion_fixture() {
         let json = r#"{

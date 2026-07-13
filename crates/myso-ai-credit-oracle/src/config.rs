@@ -279,6 +279,32 @@ pub struct OracleArgs {
         default_value = "300"
     )]
     pub ingest_backlog_warn_age_secs: u64,
+
+    /// Bearer token for OpenAI-compatible `/v1/{models,chat/completions,responses}`
+    /// (OpenClaw / Hermes). When unset, those routes are not mounted.
+    #[arg(long, env = "AI_CREDIT_PROVIDER_TOKEN")]
+    pub provider_token: Option<String>,
+
+    /// Owner address mapped from the OpenAI provider bearer token.
+    #[arg(long, env = "AI_CREDIT_PROVIDER_OWNER")]
+    pub provider_owner: Option<String>,
+
+    /// On-chain AI credit balance object mapped from the provider bearer token.
+    #[arg(long, env = "AI_CREDIT_PROVIDER_BALANCE_ID")]
+    pub provider_balance_id: Option<String>,
+
+    /// MemoryAccount object mapped from the provider bearer token.
+    #[arg(long, env = "AI_CREDIT_PROVIDER_MEMORY_ACCOUNT_ID")]
+    pub provider_memory_account_id: Option<String>,
+
+    /// Sub-agent object used for CAP_AI_SPEND / reservation metering.
+    #[arg(long, env = "AI_CREDIT_PROVIDER_AGENT_OBJECT_ID")]
+    pub provider_agent_object_id: Option<String>,
+
+    /// Comma-separated model ids advertised by `GET /v1/models`.
+    /// When empty, the pricing catalog aliases are used.
+    #[arg(long, env = "AI_CREDIT_PROVIDER_MODELS")]
+    pub provider_models: Option<String>,
 }
 
 impl OracleArgs {
@@ -288,6 +314,34 @@ impl OracleArgs {
 
     pub fn inference_active(&self) -> bool {
         self.inference_enabled && self.openrouter_api_key.is_some()
+    }
+
+    pub fn openai_provider_configured(&self) -> bool {
+        self.nonempty_opt(&self.provider_token)
+            && self.nonempty_opt(&self.provider_owner)
+            && self.nonempty_opt(&self.provider_balance_id)
+            && self.nonempty_opt(&self.provider_memory_account_id)
+            && self.nonempty_opt(&self.provider_agent_object_id)
+    }
+
+    pub fn provider_model_ids(&self) -> Vec<String> {
+        self.provider_models
+            .as_deref()
+            .map(|s| {
+                s.split(',')
+                    .map(str::trim)
+                    .filter(|s| !s.is_empty())
+                    .map(String::from)
+                    .collect::<Vec<_>>()
+            })
+            .filter(|v| !v.is_empty())
+            .unwrap_or_default()
+    }
+
+    fn nonempty_opt(&self, value: &Option<String>) -> bool {
+        value
+            .as_deref()
+            .is_some_and(|value| !value.trim().is_empty())
     }
 
     pub fn validate_startup(&self) -> anyhow::Result<()> {
@@ -359,6 +413,124 @@ impl OracleArgs {
                 anyhow::bail!("AI_CREDIT_RESERVATION_PRICE_BUFFER_BPS must be at most 10000");
             }
         }
+        let provider_fields = [
+            self.provider_token.as_deref(),
+            self.provider_owner.as_deref(),
+            self.provider_balance_id.as_deref(),
+            self.provider_memory_account_id.as_deref(),
+            self.provider_agent_object_id.as_deref(),
+        ];
+        let any_provider = provider_fields.iter().any(|value| {
+            value.is_some_and(|value| !value.trim().is_empty())
+        });
+        if any_provider && !self.openai_provider_configured() {
+            anyhow::bail!(
+                "OpenAI provider requires AI_CREDIT_PROVIDER_TOKEN, _OWNER, _BALANCE_ID, _MEMORY_ACCOUNT_ID, and _AGENT_OBJECT_ID"
+            );
+        }
+        if self.openai_provider_configured() && !self.inference_active() {
+            anyhow::bail!(
+                "OpenAI provider requires AI_CREDIT_INFERENCE_ENABLED=true and AI_CREDIT_OPENROUTER_API_KEY"
+            );
+        }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn blank_args() -> OracleArgs {
+        OracleArgs {
+            listen_addr: "0.0.0.0:8095".into(),
+            database_url: "postgres://localhost/test".into(),
+            database_max_connections: 10,
+            outbox_lease_secs: 60,
+            replica_count: 1,
+            legacy_usage_enabled: true,
+            private_key_hex: "00".repeat(32),
+            settlement_secret: None,
+            myso_rpc: "http://127.0.0.1:9000".into(),
+            receipt_store_path: std::path::PathBuf::from("test.json"),
+            config_object_id: None,
+            settlement_key_hex: None,
+            reservation_price_buffer_bps: 2500,
+            reservation_capture_window_secs: 600,
+            reservation_hard_expiry_secs: 1800,
+            settlement_interval_secs: 60,
+            settle_threshold_mist: 10_000_000_000,
+            settle_max_age_secs: 180,
+            settle_min_count: 8,
+            settle_warn_age_secs: 240,
+            social_server_url: "http://127.0.0.1:9126".into(),
+            pricing_catalog_path: std::path::PathBuf::from("config/pricing_catalog.toml"),
+            ecosystem_margin_pct: 0.125,
+            graphql_url: "http://127.0.0.1:9125/graphql".into(),
+            markup_refresh_interval_secs: 300,
+            markup_graphql_enabled: false,
+            usage_sync_secret: None,
+            strict_catalog: false,
+            myso_price_oracle_url: "https://example.invalid".into(),
+            price_refresh_interval_secs: 60,
+            myso_price_max_stale_secs: 300,
+            myso_price_enabled: false,
+            openrouter_api_key: None,
+            catalog_sync_enabled: false,
+            catalog_sync_interval_secs: 86400,
+            catalog_sync_on_startup: true,
+            openrouter_api_url: "https://openrouter.ai/api/v1/models".into(),
+            openrouter_chat_url: "https://openrouter.ai/api/v1/chat/completions".into(),
+            inference_enabled: false,
+            catalog_max_drift_pct: 50.0,
+            approvals_enabled: false,
+            approval_lookup_ttl_secs: 5,
+            approval_min_remaining_secs: 180,
+            workflow_relayer_url: None,
+            workflow_sync_secret: None,
+            audit_sync_secret: None,
+            oracle_api_secret: None,
+            require_secrets: false,
+            agent_auth_enabled: false,
+            agent_auth_ttl_secs: 300,
+            require_settlement_secret: false,
+            receipt_store_recover: false,
+            ingest_reconcile_interval_secs: 30,
+            ingest_backlog_warn_age_secs: 300,
+            provider_token: None,
+            provider_owner: None,
+            provider_balance_id: None,
+            provider_memory_account_id: None,
+            provider_agent_object_id: None,
+            provider_models: None,
+        }
+    }
+
+    #[test]
+    fn openai_provider_requires_complete_mapping() {
+        let mut args = blank_args();
+        args.provider_token = Some("t".into());
+        assert!(!args.openai_provider_configured());
+        assert!(args.validate_startup().is_err());
+
+        args.provider_owner = Some("0xo".into());
+        args.provider_balance_id = Some("0xb".into());
+        args.provider_memory_account_id = Some("0xm".into());
+        args.provider_agent_object_id = Some("0xa".into());
+        assert!(args.openai_provider_configured());
+        // Still fails because inference is not active.
+        assert!(args.validate_startup().is_err());
+
+        args.inference_enabled = true;
+        args.openrouter_api_key = Some("sk".into());
+        args.config_object_id = Some("0xc".into());
+        args.settlement_key_hex = Some("11".repeat(32));
+        assert!(args.validate_startup().is_ok());
+        assert_eq!(args.provider_model_ids(), Vec::<String>::new());
+        args.provider_models = Some("openai/gpt-4o-mini, openai/gpt-4o".into());
+        assert_eq!(
+            args.provider_model_ids(),
+            vec!["openai/gpt-4o-mini".to_string(), "openai/gpt-4o".to_string()]
+        );
     }
 }

@@ -365,6 +365,18 @@ pub async fn serve(args: OracleArgs) -> anyhow::Result<()> {
         .route("/v1/ai-credit/estimate", post(estimate))
         .route("/v1/ai-credit/inference", post(run_inference))
         .route("/v1/ai-credit/catalog", get(get_catalog));
+    if args.openai_provider_configured() {
+        tracing::info!(
+            "OpenAI-compatible provider enabled at /v1/{{models,chat/completions,responses}}"
+        );
+        app = app
+            .route("/v1/models", get(crate::openai_provider::list_models))
+            .route(
+                "/v1/chat/completions",
+                post(crate::openai_provider::chat_completions),
+            )
+            .route("/v1/responses", post(crate::openai_provider::responses));
+    }
     if args.legacy_usage_enabled {
         app = app
             .route("/v1/ai-credit/usage", post(record_usage))
@@ -1204,7 +1216,16 @@ async fn run_inference(
 ) -> Result<Json<InferenceResponse>, StatusCode> {
     check_oracle_api_secret(&headers, &state.oracle_api_secret)?;
     validate_idempotency_key(&req.idempotency_key)?;
+    Ok(Json(run_inference_core(&state, req).await?))
+}
 
+/// Shared inference path used by the secret-authenticated native API and the
+/// OpenAI-compatible `/v1` provider routes.
+pub async fn run_inference_core(
+    state: &AppState,
+    req: InferenceRequest,
+) -> Result<InferenceResponse, StatusCode> {
+    validate_idempotency_key(&req.idempotency_key)?;
     let openrouter = state.openrouter.as_ref().ok_or_else(|| {
         tracing::warn!("inference rejected: OpenRouter proxy not configured");
         StatusCode::SERVICE_UNAVAILABLE
@@ -1238,7 +1259,7 @@ async fn run_inference(
             StatusCode::SERVICE_UNAVAILABLE
         })?
     {
-        return Ok(Json(inference_response_from_reservation(&existing)?));
+        return inference_response_from_reservation(&existing);
     }
 
     let now_ms = chrono::Utc::now().timestamp_millis() as u64;
@@ -1369,7 +1390,7 @@ async fn run_inference(
             if existing.request_hash_hex != hex::encode(&request_hash) {
                 return Err(StatusCode::CONFLICT);
             }
-            return Ok(Json(inference_response_from_reservation(&existing)?));
+            return inference_response_from_reservation(&existing);
         }
         Err(error) => {
             tracing::error!(%error, "failed to create inference reservation ledger entry");
@@ -1632,7 +1653,7 @@ async fn run_inference(
         tracing::warn!(%error, receipt_id, "captured inference analytics ingest failed");
     }
 
-    Ok(Json(inference_response_from_reservation(&finalized)?))
+    inference_response_from_reservation(&finalized)
 }
 
 async fn record_usage_core(

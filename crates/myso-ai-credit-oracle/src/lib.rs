@@ -12,6 +12,7 @@ pub mod graphql_client;
 pub mod ledger;
 pub mod markup_refresh;
 pub mod myso_price_client;
+pub mod openai_provider;
 pub mod openrouter_client;
 pub mod price_refresh;
 pub mod pricing;
