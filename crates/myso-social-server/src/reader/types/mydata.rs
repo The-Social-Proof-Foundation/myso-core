@@ -50,6 +50,7 @@ pub struct MyDataConfigInfo {
     #[diesel(sql_type = Text)]
     pub updated_by: String,
     #[diesel(sql_type = Bool)]
+    /// Whether buyers may start new broad-pool/snapshot marketplace rounds.
     pub marketplace_enabled: bool,
     #[diesel(sql_type = BigInt)]
     pub max_tags: i64,

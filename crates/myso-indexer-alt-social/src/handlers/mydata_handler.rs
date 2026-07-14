@@ -39,7 +39,7 @@ use super::mydata_object;
 use super::organization_stats::{
     apply_org_outbound_spend, resolve_organization_id_for_derived_address,
 };
-use super::post_mydata::{self, paywall_from_mydata};
+use super::post_mydata;
 use crate::metrics::SocialMetrics;
 
 const MYDATA_MODULES: &[&str] = &["mydata", "my_ip"];
@@ -327,8 +327,12 @@ impl Handler for MyDataHandler {
                         ))
                         .execute(conn)
                         .await?;
-                    let paywall = paywall_from_mydata(subscription_price, encrypted_content_hash);
-                    total += post_mydata::sync_posts_for_mydata(conn, &mydata_id, &paywall).await?;
+                    total += post_mydata::sync_posts_for_mydata(
+                        conn,
+                        &mydata_id,
+                        encrypted_content_hash,
+                    )
+                    .await?;
                 }
                 MyDataRow::MyDataPurchase(p) => {
                     let mut purchase = p.clone();

@@ -8506,9 +8506,6 @@ ProfileUpdatedEvent
 UsernameClaimedEvent
 	public struct
 	0x50c1::profile
-UsernameRevokedEvent
-	public struct
-	0x50c1::profile
 UsernameReassignedEvent
 	public struct
 	0x50c1::profile
@@ -8786,9 +8783,6 @@ admin_set_profile_x_username
 	public entry fun
 	0x50c1::profile
 revoke_ecosystem_badge
-	public entry fun
-	0x50c1::profile
-admin_revoke_username
 	public entry fun
 	0x50c1::profile
 admin_reassign_username
@@ -9430,6 +9424,12 @@ validate_cover_photo
 validate_media_previews
 	fun
 	0x50c1::platform
+validate_media_preview_url
+	fun
+	0x50c1::platform
+validate_badge_urls
+	fun
+	0x50c1::platform
 is_valid_category
 	fun
 	0x50c1::platform
@@ -9955,13 +9955,16 @@ AccessConfiguration
 validate_fee_config
 	fun
 	0x50c1::mydata
-calculate_p2p_fees
+calculate_p2p_fees_no_platform
 	fun
 	0x50c1::mydata
-calculate_mydata_marketplace_fees
+calculate_p2p_fees_with_platform
 	fun
 	0x50c1::mydata
-route_non_platform_platform_fee
+calculate_mydata_marketplace_fees_no_platform
+	fun
+	0x50c1::mydata
+calculate_mydata_marketplace_fees_with_platform
 	fun
 	0x50c1::mydata
 distribute_p2p_fees_no_platform

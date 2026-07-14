@@ -309,68 +309,8 @@ module social_contracts::profile_tests {
     }
 
     #[test]
-    fun test_admin_revoke_username() {
-        let mut scenario = test_scenario::begin(ADMIN);
-        {
-            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
-            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
-
-            let cap = profile::create_username_admin_cap(test_scenario::ctx(&mut scenario));
-            transfer::public_transfer(cap, ADMIN);
-            clock::share_for_testing(clock);
-            let coins = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
-            transfer::public_transfer(coins, USER1);
-        };
-
-        test_scenario::next_tx(&mut scenario, USER1);
-        {
-            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
-            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
-            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
-            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
-            let clock = test_scenario::take_shared<Clock>(&scenario);
-            profile::create_profile(
-                &mut registry,
-                &profile_config,
-                &mut memory_registry,
-                &mut ai_credit_config,
-                string::utf8(b"User One"),
-                string::utf8(b"revokeme"),
-                string::utf8(b"bio"),
-                b"",
-                b"",
-                &clock,
-                test_scenario::ctx(&mut scenario),
-            );
-            test_scenario::return_shared(registry);
-            test_scenario::return_shared(memory_registry);
-            test_scenario::return_shared(ai_credit_config);
-            test_scenario::return_shared(clock);
-        test_scenario::return_shared(profile_config);
-        };
-
-        test_scenario::next_tx(&mut scenario, ADMIN);
-        {
-            let cap = test_scenario::take_from_sender<UsernameAdminCap>(&scenario);
-            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
-            profile::admin_revoke_username(
-                &cap,
-                &mut registry,
-                string::utf8(b"revokeme"),
-                1,
-                test_scenario::ctx(&mut scenario),
-            );
-            assert!(profile::is_username_available(&registry, string::utf8(b"revokeme")), 0);
-            test_scenario::return_shared(registry);
-            test_scenario::return_to_sender(&scenario, cap);
-        };
-
-        test_scenario::end(scenario);
-    }
-
-    #[test]
     #[expected_failure(abort_code = profile::EUsernameLocked, location = social_contracts::profile)]
-    fun test_admin_revoke_marketplace_locked_username_aborts() {
+    fun test_admin_reassign_marketplace_locked_username_aborts() {
         let mut scenario = test_scenario::begin(ADMIN);
         {
             let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
@@ -379,8 +319,8 @@ module social_contracts::profile_tests {
             let cap = profile::create_username_admin_cap(test_scenario::ctx(&mut scenario));
             transfer::public_transfer(cap, ADMIN);
             clock::share_for_testing(clock);
-            let coins = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
-            transfer::public_transfer(coins, USER1);
+            let c1 = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
+            transfer::public_transfer(c1, USER1);
         };
 
         test_scenario::next_tx(&mut scenario, USER1);
@@ -407,7 +347,7 @@ module social_contracts::profile_tests {
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(clock);
-        test_scenario::return_shared(profile_config);
+            test_scenario::return_shared(profile_config);
         };
 
         test_scenario::next_tx(&mut scenario, USER1);
@@ -435,13 +375,18 @@ module social_contracts::profile_tests {
         {
             let cap = test_scenario::take_from_sender<UsernameAdminCap>(&scenario);
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
-            profile::admin_revoke_username(
+            let profile1 = test_scenario::take_from_address<Profile>(&scenario, USER1);
+            let profile1_id = object::uid_to_address(profile::id(&profile1));
+            // Renaming a profile whose prior username is marketplace-locked must abort.
+            profile::admin_reassign_username(
                 &cap,
                 &mut registry,
-                string::utf8(b"lockme"),
+                profile1_id,
+                string::utf8(b"brandnew"),
                 1,
                 test_scenario::ctx(&mut scenario),
             );
+            test_scenario::return_to_address(USER1, profile1);
             test_scenario::return_shared(registry);
             test_scenario::return_to_sender(&scenario, cap);
         };
@@ -478,7 +423,7 @@ module social_contracts::profile_tests {
                 &mut memory_registry,
                 &mut ai_credit_config,
                 string::utf8(b"User One"),
-                string::utf8(b"handoff"),
+                string::utf8(b"user1"),
                 string::utf8(b"bio1"),
                 b"",
                 b"",
@@ -523,19 +468,28 @@ module social_contracts::profile_tests {
         {
             let cap = test_scenario::take_from_sender<UsernameAdminCap>(&scenario);
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let profile1 = test_scenario::take_from_address<Profile>(&scenario, USER1);
+            let profile1_id = object::uid_to_address(profile::id(&profile1));
             let profile2 = test_scenario::take_from_address<Profile>(&scenario, USER2);
             let profile2_id = object::uid_to_address(profile::id(&profile2));
             profile::admin_reassign_username(
                 &cap,
                 &mut registry,
-                string::utf8(b"handoff"),
                 profile2_id,
+                string::utf8(b"brandnew"),
                 2,
                 test_scenario::ctx(&mut scenario),
             );
-            let opt = profile::lookup_profile_by_username(&registry, string::utf8(b"handoff"));
+            let opt = profile::lookup_profile_by_username(&registry, string::utf8(b"brandnew"));
             assert!(option::is_some(&opt), 0);
             assert!(*option::borrow(&opt) == profile2_id, 1);
+            // Prior username is freed for reuse.
+            assert!(profile::is_username_available(&registry, string::utf8(b"user2")), 2);
+            // Other profiles are untouched.
+            let other = profile::lookup_profile_by_username(&registry, string::utf8(b"user1"));
+            assert!(option::is_some(&other), 3);
+            assert!(*option::borrow(&other) == profile1_id, 4);
+            test_scenario::return_to_address(USER1, profile1);
             test_scenario::return_to_address(USER2, profile2);
             test_scenario::return_shared(registry);
             test_scenario::return_to_sender(&scenario, cap);
@@ -545,8 +499,8 @@ module social_contracts::profile_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = profile::EUsernameProfileMismatch, location = social_contracts::profile)]
-    fun test_admin_reassign_same_profile_aborts() {
+    #[expected_failure(abort_code = profile::EUsernameNotAvailable, location = social_contracts::profile)]
+    fun test_admin_reassign_taken_new_username_aborts() {
         let mut scenario = test_scenario::begin(ADMIN);
         {
             let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
@@ -555,8 +509,10 @@ module social_contracts::profile_tests {
             let cap = profile::create_username_admin_cap(test_scenario::ctx(&mut scenario));
             transfer::public_transfer(cap, ADMIN);
             clock::share_for_testing(clock);
-            let coins = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
-            transfer::public_transfer(coins, USER1);
+            let c1 = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
+            let c2 = coin::mint_for_testing<MYSO>(20_000_000_000, test_scenario::ctx(&mut scenario));
+            transfer::public_transfer(c1, USER1);
+            transfer::public_transfer(c2, USER2);
         };
 
         test_scenario::next_tx(&mut scenario, USER1);
@@ -572,7 +528,7 @@ module social_contracts::profile_tests {
                 &mut memory_registry,
                 &mut ai_credit_config,
                 string::utf8(b"User One"),
-                string::utf8(b"samename"),
+                string::utf8(b"alice"),
                 string::utf8(b"bio"),
                 b"",
                 b"",
@@ -583,24 +539,52 @@ module social_contracts::profile_tests {
             test_scenario::return_shared(memory_registry);
             test_scenario::return_shared(ai_credit_config);
             test_scenario::return_shared(clock);
-        test_scenario::return_shared(profile_config);
+            test_scenario::return_shared(profile_config);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER2);
+        {
+            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            profile::create_profile(
+                &mut registry,
+                &profile_config,
+                &mut memory_registry,
+                &mut ai_credit_config,
+                string::utf8(b"User Two"),
+                string::utf8(b"bob"),
+                string::utf8(b"bio2"),
+                b"",
+                b"",
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(ai_credit_config);
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(profile_config);
         };
 
         test_scenario::next_tx(&mut scenario, ADMIN);
         {
             let cap = test_scenario::take_from_sender<UsernameAdminCap>(&scenario);
             let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
-            let profile1 = test_scenario::take_from_address<Profile>(&scenario, USER1);
-            let profile1_id = object::uid_to_address(profile::id(&profile1));
+            let profile2 = test_scenario::take_from_address<Profile>(&scenario, USER2);
+            let profile2_id = object::uid_to_address(profile::id(&profile2));
+            // "alice" is already claimed by USER1.
             profile::admin_reassign_username(
                 &cap,
                 &mut registry,
-                string::utf8(b"samename"),
-                profile1_id,
-                0,
+                profile2_id,
+                string::utf8(b"alice"),
+                1,
                 test_scenario::ctx(&mut scenario),
             );
-            test_scenario::return_to_address(USER1, profile1);
+            test_scenario::return_to_address(USER2, profile2);
             test_scenario::return_shared(registry);
             test_scenario::return_to_sender(&scenario, cap);
         };
@@ -1421,9 +1405,9 @@ module social_contracts::profile_tests {
                 &clock,
                 test_scenario::ctx(&mut scenario),
             );
-            // Revoke buyer prior, marketplace unlock release, sale settled, offer accepted,
-            // sale fee — no replacement UsernameClaimedEvent (would be 6 with claim_username).
-            assert!(event::num_events() - events_before == 5, 11);
+            // Marketplace unlock release, sale settled (carries prior buyer username),
+            // offer accepted, sale fee — no UsernameRevokedEvent / replacement ClaimedEvent.
+            assert!(event::num_events() - events_before == 4, 11);
 
             let listed_owner = *option::borrow(&profile::lookup_profile_by_username(
                 &registry,

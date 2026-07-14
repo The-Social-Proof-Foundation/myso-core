@@ -1413,16 +1413,14 @@ mod tests {
     }
 
     #[test]
-    fn post_created_with_mydata_snapshot_sets_paywall_fields() {
-        use super::post_mydata::{self, MyDataPaywallSnapshot};
+    fn post_created_with_mydata_snapshot_sets_hash_without_subscription_inference() {
+        use super::post_mydata::MyDataPaywallSnapshot;
 
         let mydata_id = "0xmydata123";
         let mut snapshots = HashMap::new();
         snapshots.insert(
             mydata_id.to_string(),
             MyDataPaywallSnapshot {
-                subscription_price: Some(5_000_000_000),
-                one_time_price: None,
                 encrypted_content_hash: Some("0xdeadbeef".to_string()),
             },
         );
@@ -1463,12 +1461,10 @@ mod tests {
             })
             .expect("post row");
         assert_eq!(post.mydata_id.as_deref(), Some(mydata_id));
-        assert_eq!(post.requires_subscription, Some(true));
-        assert_eq!(post.subscription_price, Some(5_000_000_000));
+        assert_eq!(post.post_access_kind.as_deref(), Some("marketplace_one_time"));
+        assert_eq!(post.requires_subscription, Some(false));
+        assert_eq!(post.subscription_price, None);
         assert_eq!(post.encrypted_content_hash.as_deref(), Some("0xdeadbeef"));
-
-        let fields = post_mydata::paywall_from_mydata(None, Some("0xabc".to_string()));
-        assert_eq!(fields.requires_subscription, Some(false));
     }
 
     #[test]

@@ -82,10 +82,6 @@ pub enum ProfileRow {
         username: String,
         owner_address: Option<String>,
     },
-    ProfileUsernameClear {
-        profile_id: String,
-        owner_address: Option<String>,
-    },
     ProfileEvent(NewProfileEvent),
     UsernameListing(NewUsernameListing),
     UsernameListingStatusUpdate {
@@ -171,13 +167,6 @@ impl ProfileRow {
             } => Some(ProfileRow::ProfileUsernameSet {
                 profile_id,
                 username,
-                owner_address,
-            }),
-            crate::handlers::SocialEventRow::ProfileUsernameClear {
-                profile_id,
-                owner_address,
-            } => Some(ProfileRow::ProfileUsernameClear {
-                profile_id,
                 owner_address,
             }),
             crate::handlers::SocialEventRow::ProfileEvent(e) => Some(ProfileRow::ProfileEvent(e)),
@@ -347,9 +336,8 @@ impl Processor for ProfilesHandler {
 const COMMIT_PASS_MARKETPLACE: u8 = 2;
 const COMMIT_PASS_REGISTRY_REASSIGN: u8 = 3;
 const COMMIT_PASS_REGISTRY_UPSERT: u8 = 4;
-const COMMIT_PASS_USERNAME_CLEAR: u8 = 5;
-const COMMIT_PASS_USERNAME_SET: u8 = 6;
-const COMMIT_PASS_OTHER: u8 = 7;
+const COMMIT_PASS_USERNAME_SET: u8 = 5;
+const COMMIT_PASS_OTHER: u8 = 6;
 
 fn profile_row_commit_pass(row: &ProfileRow) -> u8 {
     match row {
@@ -363,7 +351,6 @@ fn profile_row_commit_pass(row: &ProfileRow) -> u8 {
             COMMIT_PASS_REGISTRY_REASSIGN
         }
         ProfileRow::UsernameRegistryUpsert(_) => COMMIT_PASS_REGISTRY_UPSERT,
-        ProfileRow::ProfileUsernameClear { .. } => COMMIT_PASS_USERNAME_CLEAR,
         ProfileRow::ProfileUsernameSet { .. } => COMMIT_PASS_USERNAME_SET,
         ProfileRow::Profile(_)
         | ProfileRow::MemoryAccountBootstrap(_)
@@ -398,7 +385,6 @@ impl Handler for ProfilesHandler {
             COMMIT_PASS_MARKETPLACE,
             COMMIT_PASS_REGISTRY_REASSIGN,
             COMMIT_PASS_REGISTRY_UPSERT,
-            COMMIT_PASS_USERNAME_CLEAR,
             COMMIT_PASS_USERNAME_SET,
             COMMIT_PASS_OTHER,
         ] {
@@ -676,6 +662,21 @@ async fn commit_profile_row<'a>(row: &ProfileRow, conn: &mut Connection<'a>) -> 
         } => {
             let now = chrono::Utc::now().naive_utc();
             let profile_id_norm = common::normalize_hex_address(profile_id);
+            // Username is NOT NULL + UNIQUE. Admin reassign emits destination Set before the
+            // source Claimed rename; free any other holder first so idx_profiles_username allows
+            // the transfer (park on a unique placeholder until their replacement Set lands).
+            total += diesel::sql_query(
+                "UPDATE profiles \
+                 SET username = '__releasing__' || COALESCE(profile_id, owner_address, id::text), \
+                     updated_at = $1 \
+                 WHERE username = $2 \
+                   AND COALESCE(profile_id, '') IS DISTINCT FROM $3",
+            )
+            .bind::<Timestamp, _>(now)
+            .bind::<Text, _>(username)
+            .bind::<Text, _>(&profile_id_norm)
+            .execute(conn)
+            .await?;
             let updated = if let Some(owner) = owner_address.as_ref() {
                 let owner_norm = common::normalize_hex_address(owner);
                 diesel::update(profiles::table)
@@ -706,39 +707,6 @@ async fn commit_profile_row<'a>(row: &ProfileRow, conn: &mut Connection<'a>) -> 
                     username = %username,
                     owner_address = ?owner_address,
                     "ProfileUsernameSet updated 0 rows — profiles.username out of sync with registry"
-                );
-            }
-            total += updated;
-        }
-        ProfileRow::ProfileUsernameClear {
-            profile_id,
-            owner_address,
-        } => {
-            let now = chrono::Utc::now().naive_utc();
-            let profile_id_norm = common::normalize_hex_address(profile_id);
-            let updated = if let Some(owner) = owner_address.as_ref() {
-                let owner_norm = common::normalize_hex_address(owner);
-                diesel::update(profiles::table)
-                    .filter(
-                        profiles::profile_id
-                            .eq(&profile_id_norm)
-                            .or(profiles::owner_address.eq(&owner_norm)),
-                    )
-                    .set((profiles::username.eq(""), profiles::updated_at.eq(now)))
-                    .execute(conn)
-                    .await?
-            } else {
-                diesel::update(profiles::table)
-                    .filter(profiles::profile_id.eq(&profile_id_norm))
-                    .set((profiles::username.eq(""), profiles::updated_at.eq(now)))
-                    .execute(conn)
-                    .await?
-            };
-            if updated == 0 {
-                tracing::error!(
-                    profile_id = %profile_id_norm,
-                    owner_address = ?owner_address,
-                    "ProfileUsernameClear updated 0 rows — profiles.username out of sync with registry"
                 );
             }
             total += updated;
@@ -1034,9 +1002,9 @@ mod tests {
     use super::COMMIT_PASS_MARKETPLACE;
     use super::COMMIT_PASS_REGISTRY_REASSIGN;
     use super::COMMIT_PASS_REGISTRY_UPSERT;
-    use super::COMMIT_PASS_USERNAME_CLEAR;
     use super::COMMIT_PASS_USERNAME_SET;
     use super::COMMIT_PASS_OTHER;
+    use super::common;
 
     fn addr(id: u8) -> AccountAddress {
         let mut bytes = [0u8; 32];
@@ -1152,9 +1120,8 @@ mod tests {
     }
 
     #[test]
-    fn username_sale_commit_passes_clears_before_sets() {
-        assert!(COMMIT_PASS_USERNAME_CLEAR < COMMIT_PASS_USERNAME_SET);
-        assert!(COMMIT_PASS_REGISTRY_UPSERT < COMMIT_PASS_USERNAME_CLEAR);
+    fn username_sale_commit_passes_sets_after_registry() {
+        assert!(COMMIT_PASS_REGISTRY_UPSERT < COMMIT_PASS_USERNAME_SET);
         assert!(COMMIT_PASS_USERNAME_SET < COMMIT_PASS_OTHER);
     }
 
@@ -1203,12 +1170,6 @@ mod tests {
             .await
             .expect("insert buyer username");
 
-        let revoke_json = serde_json::json!({
-            "username": "buyer1",
-            "profile_id": buyer_profile_id,
-            "revoked_by": seller_owner,
-            "reason_code": 2,
-        });
         let settle_json = serde_json::json!({
             "listed_username": "premium1",
             "replacement_username": "seller1",
@@ -1218,16 +1179,10 @@ mod tests {
             "buyer_profile_id": buyer_profile_id,
             "amount": "5000000000",
             "settled_at": "1783238216000",
+            "prior_buyer_username": "buyer1",
         });
 
         let mut rows = Vec::new();
-        for row in profile::handle_profile_event("UsernameRevokedEvent", &revoke_json, "tx:0", 0)
-            .expect("revoke handler")
-        {
-            if let Some(r) = ProfileRow::from_social(row) {
-                rows.push(r);
-            }
-        }
         for row in profile::handle_profile_event(
             "UsernameSaleSettledEvent",
             &settle_json,
@@ -1272,15 +1227,7 @@ mod tests {
             .await
             .optional()
             .expect("buyer prior lookup");
-        assert!(buyer_prior.is_none(), "buyer prior username should be revoked");
-
-        let revoke_events: i64 = profile_events::table
-            .filter(profile_events::event_type.eq("UsernameRevoked"))
-            .count()
-            .get_result(&mut conn)
-            .await
-            .expect("revoke profile events");
-        assert_eq!(revoke_events, 1);
+        assert!(buyer_prior.is_none(), "buyer prior username should be deleted from registry");
 
         let settled_events: i64 = profile_events::table
             .filter(profile_events::event_type.eq("UsernameSaleSettled"))
@@ -1305,6 +1252,161 @@ mod tests {
             .await
             .expect("buyer profile username");
         assert_eq!(buyer_username, "premium1");
+    }
+
+    /// Single-profile admin rename: delete prior, upsert new name, set profiles.username.
+    #[tokio::test]
+    async fn username_reassign_commit_updates_single_profile() {
+        let Some(store) = setup_temp_db().await else {
+            return;
+        };
+
+        let profile_id = addr_hex(31);
+        let other_profile_id = addr_hex(32);
+        let owner = addr_hex(41);
+        let other_owner = addr_hex(42);
+
+        let mut conn = store.connect().await.expect("connection");
+        diesel::insert_into(profiles::table)
+            .values(sample_profile(&owner, &profile_id, "user2"))
+            .execute(&mut conn)
+            .await
+            .expect("insert target profile");
+        diesel::insert_into(profiles::table)
+            .values(sample_profile(&other_owner, &other_profile_id, "user1"))
+            .execute(&mut conn)
+            .await
+            .expect("insert other profile");
+        diesel::insert_into(username_registry::table)
+            .values(NewUsernameRegistry {
+                username: "user2".to_string(),
+                profile_id: profile_id.clone(),
+                transaction_id: "tx:seed:0".to_string(),
+            })
+            .execute(&mut conn)
+            .await
+            .expect("insert prior username");
+        diesel::insert_into(username_registry::table)
+            .values(NewUsernameRegistry {
+                username: "user1".to_string(),
+                profile_id: other_profile_id.clone(),
+                transaction_id: "tx:seed:1".to_string(),
+            })
+            .execute(&mut conn)
+            .await
+            .expect("insert other username");
+
+        let reassign_json = serde_json::json!({
+            "username": "brandnew",
+            "profile_id": profile_id,
+            "admin": "0x1",
+            "reason_code": 2,
+            "prior_username": "user2",
+        });
+        let checkpoint_timestamp_ms = 1_783_238_216_000;
+
+        let mut rows = Vec::new();
+        for row in profile::handle_profile_event(
+            "UsernameReassignedEvent",
+            &reassign_json,
+            "tx:reassign:0",
+            checkpoint_timestamp_ms,
+        )
+        .expect("handler")
+        {
+            if let Some(r) = ProfileRow::from_social(row) {
+                rows.push(r);
+            }
+        }
+
+        ProfilesHandler::commit(&rows, &mut conn)
+            .await
+            .expect("commit single-profile admin rename");
+
+        use diesel::ExpressionMethods;
+        use diesel::QueryDsl;
+        use diesel_async::RunQueryDsl;
+
+        let new_owner: String = username_registry::table
+            .filter(username_registry::username.eq("brandnew"))
+            .select(username_registry::profile_id)
+            .first(&mut conn)
+            .await
+            .expect("new registry row");
+        assert_eq!(new_owner, profile_id);
+
+        let prior: Option<String> = username_registry::table
+            .filter(username_registry::username.eq("user2"))
+            .select(username_registry::profile_id)
+            .first(&mut conn)
+            .await
+            .optional()
+            .expect("prior lookup");
+        assert!(prior.is_none(), "prior username should be deleted from registry");
+
+        let other_still: String = username_registry::table
+            .filter(username_registry::username.eq("user1"))
+            .select(username_registry::profile_id)
+            .first(&mut conn)
+            .await
+            .expect("other registry row");
+        assert_eq!(other_still, other_profile_id);
+
+        let renamed: String = profiles::table
+            .filter(profiles::profile_id.eq(&profile_id))
+            .select(profiles::username)
+            .first(&mut conn)
+            .await
+            .expect("renamed profile username");
+        assert_eq!(renamed, "brandnew");
+
+        let other_username: String = profiles::table
+            .filter(profiles::profile_id.eq(&other_profile_id))
+            .select(profiles::username)
+            .first(&mut conn)
+            .await
+            .expect("other profile username");
+        assert_eq!(other_username, "user1");
+
+        let audit_events: Vec<(
+            String,
+            String,
+            serde_json::Value,
+            Option<String>,
+            chrono::NaiveDateTime,
+            chrono::NaiveDateTime,
+        )> = profile_events::table
+            .filter(profile_events::event_type.eq("UsernameReassigned"))
+            .select((
+                profile_events::event_type,
+                profile_events::profile_id,
+                profile_events::event_data,
+                profile_events::event_id,
+                profile_events::created_at,
+                profile_events::updated_at,
+            ))
+            .load(&mut conn)
+            .await
+            .expect("reassign profile events");
+        assert_eq!(audit_events.len(), 1);
+        let (event_type, event_profile_id, event_data, event_id, created_at, updated_at) =
+            &audit_events[0];
+        let expected_time = common::chain_time_from_ms(checkpoint_timestamp_ms as i64).naive_utc();
+        assert_eq!(event_type, "UsernameReassigned");
+        assert_eq!(event_profile_id, &profile_id);
+        assert_eq!(
+            event_data,
+            &serde_json::json!({
+                "username": "brandnew",
+                "profile_id": profile_id,
+                "admin": "0x1",
+                "reason_code": 2,
+                "prior_username": "user2",
+            })
+        );
+        assert_eq!(event_id.as_deref(), Some("tx:reassign:0"));
+        assert_eq!(created_at, &expected_time);
+        assert_eq!(updated_at, &expected_time);
     }
 
     #[tokio::test]
@@ -1352,12 +1454,6 @@ mod tests {
             .await
             .expect("insert buyer username");
 
-        let revoke_json = serde_json::json!({
-            "username": "buyer1",
-            "profile_id": buyer_profile_id,
-            "revoked_by": seller_owner,
-            "reason_code": 2,
-        });
         let settle_json = serde_json::json!({
             "listed_username": "premium1",
             "replacement_username": "seller1",
@@ -1367,6 +1463,7 @@ mod tests {
             "buyer_profile_id": buyer_profile_id,
             "amount": "5000000000",
             "settled_at": "1783238216000",
+            "prior_buyer_username": "buyer1",
         });
         let accept_json = serde_json::json!({
             "username": "premium1",
@@ -1381,7 +1478,6 @@ mod tests {
 
         let mut rows = Vec::new();
         for event in [
-            ("UsernameRevokedEvent", &revoke_json),
             ("UsernameSaleSettledEvent", &settle_json),
             ("UsernameOfferAcceptedEvent", &accept_json),
         ] {
@@ -1417,6 +1513,18 @@ mod tests {
             .await
             .expect("buyer profile username");
         assert_eq!(buyer_username, "premium1");
+
+        let buyer_prior: Option<String> = username_registry::table
+            .filter(username_registry::username.eq("buyer1"))
+            .select(username_registry::profile_id)
+            .first(&mut conn)
+            .await
+            .optional()
+            .expect("buyer prior lookup");
+        assert!(
+            buyer_prior.is_none(),
+            "buyer prior username should be absent from username_registry after settle"
+        );
     }
 
     #[tokio::test]

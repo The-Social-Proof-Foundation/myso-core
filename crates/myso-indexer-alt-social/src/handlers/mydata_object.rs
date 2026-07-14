@@ -53,16 +53,6 @@ pub(crate) fn parse_mydata_object_contents(contents: &[u8]) -> Result<BcsMyData,
     bcs::from_bytes(contents)
 }
 
-pub(crate) fn mydata_subscription_price_from_bcs(mydata: &BcsMyData) -> Option<u64> {
-    let (_, subscription_price, _) = access::mydata_deprecated_prices_from_bcs(&mydata.access);
-    subscription_price
-}
-
-pub(crate) fn mydata_one_time_price_from_bcs(mydata: &BcsMyData) -> Option<u64> {
-    let (one_time_price, _, _) = access::mydata_deprecated_prices_from_bcs(&mydata.access);
-    one_time_price
-}
-
 pub(crate) fn bcs_mydata_to_new_row(
     mydata: &BcsMyData,
     mydata_id: String,

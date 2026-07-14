@@ -546,7 +546,8 @@ impl MyDataConfig {
         &self.inner.updated_by
     }
 
-    /// Whether MyData marketplace is enabled.
+    /// Whether buyers may start new broad-pool/snapshot MyData marketplace rounds.
+    /// Direct profile-gated, one-time, and recurring MyData access is always available.
     async fn marketplace_enabled(&self) -> bool {
         self.inner.marketplace_enabled
     }
@@ -1148,11 +1149,6 @@ impl PlatformConfig {
         self.inner.max_media_previews
     }
 
-    /// Maximum byte length accepted for a single media preview URL.
-    async fn max_media_preview_url_length(&self) -> i64 {
-        self.inner.max_media_preview_url_length
-    }
-
     /// Maximum byte length accepted for a platform badge name.
     async fn max_badge_name_length(&self) -> i64 {
         self.inner.max_badge_name_length
@@ -1161,16 +1157,6 @@ impl PlatformConfig {
     /// Maximum byte length accepted for a platform badge description.
     async fn max_badge_description_length(&self) -> i64 {
         self.inner.max_badge_description_length
-    }
-
-    /// Maximum byte length accepted for a platform badge media URL.
-    async fn max_badge_media_url_length(&self) -> i64 {
-        self.inner.max_badge_media_url_length
-    }
-
-    /// Maximum byte length accepted for a platform badge icon URL.
-    async fn max_badge_icon_url_length(&self) -> i64 {
-        self.inner.max_badge_icon_url_length
     }
 
     /// Configuration version.

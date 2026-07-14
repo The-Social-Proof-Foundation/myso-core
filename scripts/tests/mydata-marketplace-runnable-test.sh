@@ -17,10 +17,14 @@ DIST_REGISTRY_ID=distribution-registry
 PLATFORM_OBJECT_ID=platform
 CLOCK_ID=clock
 MEMORY_ACCOUNT_ID=memory-account
+MYDATA_CFG_MARKETPLACE_ENABLED=true
 LISTING_ID=listing
 SUB_POOL_ID=sub-pool
 
 require_session_fields() { :; }
+ensure_mydata_purchase_shared_ids() { :; }
+assert_buyer_is_not_listing_owner() { :; }
+resolve_purchase_memory_account_id() { printf '%s' memory-account; }
 save_session_state() { :; }
 print_mydata_operation_summary() { :; }
 validate_purchase_coin_ownership() { :; }
@@ -30,7 +34,6 @@ resolve_purchase_pay_coin() { printf '%s' payment-coin; }
 resolve_session_or_prompt() {
     case "$1" in
         LISTING_ID) printf '%s' listing ;;
-        MEMORY_ACCOUNT_ID) printf '%s' memory-account ;;
         *) return 1 ;;
     esac
 }
@@ -109,5 +112,25 @@ assert_call "claim_with_platform --args cfg distribution-registry claim-vault tr
 
 menu_reclaim_expired
 assert_call "reclaim_expired_snapshot_escrow --args anchor-registry distribution-registry claim-vault snapshot clock"
+
+# Preserve keys must not re-apply GraphQL-owned shared objects / MemoryAccount after refresh.
+for key in MEMORY_ACCOUNT_ID MEMORY_CONFIG_ID ECOSYSTEM_TREASURY_ID BLOCK_LIST_REGISTRY_ID PLATFORM_OBJECT_ID; do
+    for preserved in "${MYDATA_SESSION_PRESERVED_KEYS[@]}"; do
+        [[ "$preserved" != "$key" ]] || {
+            echo "MYDATA_SESSION_PRESERVED_KEYS must not include $key" >&2
+            exit 1
+        }
+    done
+done
+for key in CLIENT_CONFIG LISTING_ID PAY_COIN_ID MYDATA_ENCRYPTION_ID REVOKE_BUYER_ID; do
+    found=0
+    for preserved in "${MYDATA_SESSION_PRESERVED_KEYS[@]}"; do
+        [[ "$preserved" == "$key" ]] && found=1 && break
+    done
+    [[ "$found" == 1 ]] || {
+        echo "MYDATA_SESSION_PRESERVED_KEYS missing expected key $key" >&2
+        exit 1
+    }
+done
 
 echo "mydata marketplace call-order tests: PASS"

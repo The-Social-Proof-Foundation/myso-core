@@ -130,10 +130,6 @@ pub enum SocialEventRow {
         username: String,
         owner_address: Option<String>,
     },
-    ProfileUsernameClear {
-        profile_id: String,
-        owner_address: Option<String>,
-    },
     EcosystemTreasury(NewEcosystemTreasury),
     ProfileConfig(NewProfileConfig),
     SocialGraphRelationship(NewSocialGraphRelationship),

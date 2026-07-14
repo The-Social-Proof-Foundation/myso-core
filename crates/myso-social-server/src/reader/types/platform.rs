@@ -206,15 +206,9 @@ pub struct PlatformConfigInfo {
     #[diesel(sql_type = BigInt)]
     pub max_media_previews: i64,
     #[diesel(sql_type = BigInt)]
-    pub max_media_preview_url_length: i64,
-    #[diesel(sql_type = BigInt)]
     pub max_badge_name_length: i64,
     #[diesel(sql_type = BigInt)]
     pub max_badge_description_length: i64,
-    #[diesel(sql_type = BigInt)]
-    pub max_badge_media_url_length: i64,
-    #[diesel(sql_type = BigInt)]
-    pub max_badge_icon_url_length: i64,
     #[diesel(sql_type = BigInt)]
     pub version: i64,
     #[diesel(sql_type = BigInt)]

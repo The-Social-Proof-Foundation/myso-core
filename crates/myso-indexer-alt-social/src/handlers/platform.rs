@@ -343,16 +343,10 @@ fn process_platform_config_updated_event(
     let max_cover_photo_url_length =
         common::json_field_as_i64(data.get("max_cover_photo_url_length")).unwrap_or(0);
     let max_media_previews = common::json_field_as_i64(data.get("max_media_previews")).unwrap_or(0);
-    let max_media_preview_url_length =
-        common::json_field_as_i64(data.get("max_media_preview_url_length")).unwrap_or(0);
     let max_badge_name_length =
         common::json_field_as_i64(data.get("max_badge_name_length")).unwrap_or(0);
     let max_badge_description_length =
         common::json_field_as_i64(data.get("max_badge_description_length")).unwrap_or(0);
-    let max_badge_media_url_length =
-        common::json_field_as_i64(data.get("max_badge_media_url_length")).unwrap_or(0);
-    let max_badge_icon_url_length =
-        common::json_field_as_i64(data.get("max_badge_icon_url_length")).unwrap_or(0);
     let event_ms = common::json_field_as_i64(data.get("timestamp"));
     let timestamp_ms = common::chain_timestamp_ms(event_ms, checkpoint_timestamp_ms);
     let now = common::chain_time_from_ms(timestamp_ms);
@@ -361,11 +355,8 @@ fn process_platform_config_updated_event(
         max_reasoning_length,
         max_cover_photo_url_length,
         max_media_previews,
-        max_media_preview_url_length,
         max_badge_name_length,
         max_badge_description_length,
-        max_badge_media_url_length,
-        max_badge_icon_url_length,
         version: 0,
         updated_at: timestamp_ms,
         time: now,

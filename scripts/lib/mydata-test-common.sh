@@ -401,40 +401,6 @@ mydata_run_update_config_call() {
         "@$(normalize_hex_id "$CLOCK_ID")"
 }
 
-# Args: creator_address (unused; admin cap owner signs config updates)
-mydata_ensure_marketplace_enabled() {
-    local _creator="$1"
-    local admin_sender
-    [[ -n "${MYDATA_CONFIG_ID:-}" ]] || return 0
-    [[ -n "${MYDATA_ADMIN_CAP_ID:-}" ]] || {
-        echo "Note: MYDATA_ADMIN_CAP_ID unset; create_and_share may abort if marketplace_enabled=false" >&2
-        return 0
-    }
-    mydata_ensure_live_config_ids || return 1
-    mydata_load_mydata_config_params_from_graphql || true
-    if [[ "${MYDATA_CFG_MARKETPLACE_ENABLED:-false}" == "true" ]]; then
-        return 0
-    fi
-    admin_sender="$(mydata_resolve_admin_sender)" || {
-        echo "Note: could not resolve MyData admin cap owner; create_and_share may abort if marketplace_enabled=false" >&2
-        return 0
-    }
-    ensure_wallet_funded "$admin_sender" "${SOCIAL_DEFAULT_GAS_BUDGET:-1000000000}" || return 1
-    log_step "Enabling MyDataConfig.marketplace_enabled for create_and_share (admin=$admin_sender)"
-    SKIP_CONFIRM_RUN=1 mydata_run_update_config_call "$admin_sender" true \
-        "${MYDATA_CFG_MAX_TAGS:-$MYDATA_DEFAULT_MAX_TAGS}" \
-        "${MYDATA_CFG_MAX_SUBSCRIPTION_DAYS:-$MYDATA_DEFAULT_MAX_SUBSCRIPTION_DAYS}" \
-        "${MYDATA_CFG_MAX_FREE_ACCESS_GRANTS:-$MYDATA_DEFAULT_MAX_FREE_ACCESS_GRANTS}" \
-        "${MYDATA_CFG_MAX_ENCRYPTION_ID_BYTES:-$MYDATA_DEFAULT_MAX_ENCRYPTION_ID_BYTES}" \
-        "${MYDATA_CFG_P2P_PLATFORM_FEE_BPS:-$MYDATA_DEFAULT_P2P_PLATFORM_FEE_BPS}" \
-        "${MYDATA_CFG_P2P_ECOSYSTEM_FEE_BPS:-$MYDATA_DEFAULT_P2P_ECOSYSTEM_FEE_BPS}" \
-        "${MYDATA_CFG_MYDATA_MARKETPLACE_PLATFORM_FEE_BPS:-$MYDATA_DEFAULT_MYDATA_MARKETPLACE_PLATFORM_FEE_BPS}" \
-        "${MYDATA_CFG_MYDATA_MARKETPLACE_ECOSYSTEM_FEE_BPS:-$MYDATA_DEFAULT_MYDATA_MARKETPLACE_ECOSYSTEM_FEE_BPS}" \
-        "${MYDATA_CFG_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS:-$MYDATA_DEFAULT_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS}" \
-        "${MYDATA_CFG_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS:-$MYDATA_DEFAULT_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS}" \
-        || return 1
-}
-
 # Args: creator_address plaintext
 # Sets MYDATA_ID, ENCRYPTION_ID_HEX, ENCRYPT_CIPHERTEXT_HEX, ENCRYPTED_PLAINTEXT_EXPECTED
 mydata_create_and_share_encrypted() {
@@ -451,8 +417,6 @@ mydata_create_and_share_encrypted() {
         return 1
     }
     mydata_probe_key_server "$KEY_SERVER_URL" || return 1
-    mydata_ensure_marketplace_enabled "$creator" || return 1
-
     ENCRYPTED_PLAINTEXT_EXPECTED="$plaintext"
     msg_hex="$(printf '%s' "$plaintext" | xxd -p -c 65536 | tr -d '\n')"
     enc_id="$(openssl rand -hex 32)"
@@ -499,8 +463,6 @@ mydata_create_and_share_marketplace_one_time_encrypted() {
         return 1
     }
     mydata_probe_key_server "$KEY_SERVER_URL" || return 1
-    mydata_ensure_marketplace_enabled "$creator" || return 1
-
     ENCRYPTED_PLAINTEXT_EXPECTED="$plaintext"
     msg_hex="$(printf '%s' "$plaintext" | xxd -p -c 65536 | tr -d '\n')"
     enc_id="$(openssl rand -hex 32)"

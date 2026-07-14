@@ -455,15 +455,9 @@ pub struct PlatformConfigRow {
     #[diesel(sql_type = BigInt)]
     pub max_media_previews: i64,
     #[diesel(sql_type = BigInt)]
-    pub max_media_preview_url_length: i64,
-    #[diesel(sql_type = BigInt)]
     pub max_badge_name_length: i64,
     #[diesel(sql_type = BigInt)]
     pub max_badge_description_length: i64,
-    #[diesel(sql_type = BigInt)]
-    pub max_badge_media_url_length: i64,
-    #[diesel(sql_type = BigInt)]
-    pub max_badge_icon_url_length: i64,
     #[diesel(sql_type = BigInt)]
     pub version: i64,
     #[diesel(sql_type = BigInt)]
@@ -484,8 +478,7 @@ pub(crate) async fn get_platform_config(
 
     let query = "
         SELECT updated_by, max_reasoning_length, max_cover_photo_url_length, max_media_previews,
-               max_media_preview_url_length, max_badge_name_length, max_badge_description_length,
-               max_badge_media_url_length, max_badge_icon_url_length, version, updated_at, time,
+               max_badge_name_length, max_badge_description_length, version, updated_at, time,
                transaction_id
         FROM platform_config
         ORDER BY time DESC

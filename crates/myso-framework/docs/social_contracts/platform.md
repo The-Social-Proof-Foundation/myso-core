@@ -57,6 +57,8 @@ Manages social media platforms and their timelines
 -  [Function `status_value`](#social_contracts_platform_status_value)
 -  [Function `validate_cover_photo`](#social_contracts_platform_validate_cover_photo)
 -  [Function `validate_media_previews`](#social_contracts_platform_validate_media_previews)
+-  [Function `validate_media_preview_url`](#social_contracts_platform_validate_media_preview_url)
+-  [Function `validate_badge_urls`](#social_contracts_platform_validate_badge_urls)
 -  [Function `is_valid_category`](#social_contracts_platform_is_valid_category)
 -  [Function `join_platform`](#social_contracts_platform_join_platform)
 -  [Function `leave_platform`](#social_contracts_platform_leave_platform)
@@ -211,27 +213,12 @@ Global platform feature configuration
 <dd>
 </dd>
 <dt>
-<code>max_media_preview_url_length: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
 <code>max_badge_name_length: u64</code>
 </dt>
 <dd>
 </dd>
 <dt>
 <code>max_badge_description_length: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>max_badge_media_url_length: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>max_badge_icon_url_length: u64</code>
 </dt>
 <dd>
 </dd>
@@ -282,27 +269,12 @@ Global platform feature configuration
 <dd>
 </dd>
 <dt>
-<code>max_media_preview_url_length: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
 <code>max_badge_name_length: u64</code>
 </dt>
 <dd>
 </dd>
 <dt>
 <code>max_badge_description_length: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>max_badge_media_url_length: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>max_badge_icon_url_length: u64</code>
 </dt>
 <dd>
 </dd>
@@ -2074,11 +2046,8 @@ Bootstrap initialization function - creates the platform registry and config
         max_reasoning_length: <a href="../social_contracts/platform.md#social_contracts_platform_MAX_REASONING_LENGTH">MAX_REASONING_LENGTH</a>,
         max_cover_photo_url_length: <a href="../social_contracts/platform.md#social_contracts_platform_MAX_COVER_PHOTO_URL_LENGTH">MAX_COVER_PHOTO_URL_LENGTH</a>,
         max_media_previews: <a href="../social_contracts/platform.md#social_contracts_platform_MAX_MEDIA_PREVIEWS">MAX_MEDIA_PREVIEWS</a>,
-        max_media_preview_url_length: <a href="../social_contracts/platform.md#social_contracts_platform_MAX_MEDIA_PREVIEW_URL_LENGTH">MAX_MEDIA_PREVIEW_URL_LENGTH</a>,
         max_badge_name_length: <a href="../social_contracts/platform.md#social_contracts_platform_MAX_BADGE_NAME_LENGTH">MAX_BADGE_NAME_LENGTH</a>,
         max_badge_description_length: <a href="../social_contracts/platform.md#social_contracts_platform_MAX_BADGE_DESCRIPTION_LENGTH">MAX_BADGE_DESCRIPTION_LENGTH</a>,
-        max_badge_media_url_length: <a href="../social_contracts/platform.md#social_contracts_platform_MAX_BADGE_MEDIA_URL_LENGTH">MAX_BADGE_MEDIA_URL_LENGTH</a>,
-        max_badge_icon_url_length: <a href="../social_contracts/platform.md#social_contracts_platform_MAX_BADGE_ICON_URL_LENGTH">MAX_BADGE_ICON_URL_LENGTH</a>,
         version: ver,
     };
     event::emit(<a href="../social_contracts/platform.md#social_contracts_platform_PlatformConfigUpdatedEvent">PlatformConfigUpdatedEvent</a> {
@@ -2086,11 +2055,8 @@ Bootstrap initialization function - creates the platform registry and config
         max_reasoning_length: <a href="../social_contracts/platform.md#social_contracts_platform_MAX_REASONING_LENGTH">MAX_REASONING_LENGTH</a>,
         max_cover_photo_url_length: <a href="../social_contracts/platform.md#social_contracts_platform_MAX_COVER_PHOTO_URL_LENGTH">MAX_COVER_PHOTO_URL_LENGTH</a>,
         max_media_previews: <a href="../social_contracts/platform.md#social_contracts_platform_MAX_MEDIA_PREVIEWS">MAX_MEDIA_PREVIEWS</a>,
-        max_media_preview_url_length: <a href="../social_contracts/platform.md#social_contracts_platform_MAX_MEDIA_PREVIEW_URL_LENGTH">MAX_MEDIA_PREVIEW_URL_LENGTH</a>,
         max_badge_name_length: <a href="../social_contracts/platform.md#social_contracts_platform_MAX_BADGE_NAME_LENGTH">MAX_BADGE_NAME_LENGTH</a>,
         max_badge_description_length: <a href="../social_contracts/platform.md#social_contracts_platform_MAX_BADGE_DESCRIPTION_LENGTH">MAX_BADGE_DESCRIPTION_LENGTH</a>,
-        max_badge_media_url_length: <a href="../social_contracts/platform.md#social_contracts_platform_MAX_BADGE_MEDIA_URL_LENGTH">MAX_BADGE_MEDIA_URL_LENGTH</a>,
-        max_badge_icon_url_length: <a href="../social_contracts/platform.md#social_contracts_platform_MAX_BADGE_ICON_URL_LENGTH">MAX_BADGE_ICON_URL_LENGTH</a>,
         timestamp: clock::timestamp_ms(clock),
     });
     transfer::share_object(config);
@@ -3441,13 +3407,68 @@ Get the status value
         <b>let</b> len = vector::length(previews);
         <b>while</b> (i &lt; len) {
             <b>let</b> url = vector::borrow(previews, i);
-            <b>assert</b>!(
-                string::length(url) &gt; 0 && string::length(url) &lt;= config.max_media_preview_url_length,
-                <a href="../social_contracts/platform.md#social_contracts_platform_EInvalidMediaPreviewUrl">EInvalidMediaPreviewUrl</a>
-            );
+            <a href="../social_contracts/platform.md#social_contracts_platform_validate_media_preview_url">validate_media_preview_url</a>(url);
             i = i + 1;
         };
     };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_validate_media_preview_url"></a>
+
+## Function `validate_media_preview_url`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_validate_media_preview_url">validate_media_preview_url</a>(url: &<a href="../std/string.md#std_string_String">std::string::String</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_validate_media_preview_url">validate_media_preview_url</a>(url: &String) {
+    <b>assert</b>!(
+        string::length(url) &gt; 0 && string::length(url) &lt;= <a href="../social_contracts/platform.md#social_contracts_platform_MAX_MEDIA_PREVIEW_URL_LENGTH">MAX_MEDIA_PREVIEW_URL_LENGTH</a>,
+        <a href="../social_contracts/platform.md#social_contracts_platform_EInvalidMediaPreviewUrl">EInvalidMediaPreviewUrl</a>
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_validate_badge_urls"></a>
+
+## Function `validate_badge_urls`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_validate_badge_urls">validate_badge_urls</a>(badge_media_url: &<a href="../std/string.md#std_string_String">std::string::String</a>, badge_icon_url: &<a href="../std/string.md#std_string_String">std::string::String</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_validate_badge_urls">validate_badge_urls</a>(badge_media_url: &String, badge_icon_url: &String) {
+    <b>assert</b>!(
+        string::length(badge_media_url) &gt; 0 && string::length(badge_media_url) &lt;= <a href="../social_contracts/platform.md#social_contracts_platform_MAX_BADGE_MEDIA_URL_LENGTH">MAX_BADGE_MEDIA_URL_LENGTH</a>,
+        <a href="../social_contracts/platform.md#social_contracts_platform_EBadgeMediaUrlTooLong">EBadgeMediaUrlTooLong</a>
+    );
+    <b>assert</b>!(
+        string::length(badge_icon_url) &gt; 0 && string::length(badge_icon_url) &lt;= <a href="../social_contracts/platform.md#social_contracts_platform_MAX_BADGE_ICON_URL_LENGTH">MAX_BADGE_ICON_URL_LENGTH</a>,
+        <a href="../social_contracts/platform.md#social_contracts_platform_EBadgeIconUrlTooLong">EBadgeIconUrlTooLong</a>
+    );
 }
 </code></pre>
 
@@ -4854,8 +4875,7 @@ This is the primary entry point for badge assignment
     // Validate badge field lengths
     <b>assert</b>!(string::length(&badge_name) &gt; 0 && string::length(&badge_name) &lt;= config.max_badge_name_length, <a href="../social_contracts/platform.md#social_contracts_platform_EBadgeNameTooLong">EBadgeNameTooLong</a>);
     <b>assert</b>!(string::length(&badge_description) &lt;= config.max_badge_description_length, <a href="../social_contracts/platform.md#social_contracts_platform_EBadgeDescriptionTooLong">EBadgeDescriptionTooLong</a>);
-    <b>assert</b>!(string::length(&badge_media_url) &gt; 0 && string::length(&badge_media_url) &lt;= config.max_badge_media_url_length, <a href="../social_contracts/platform.md#social_contracts_platform_EBadgeMediaUrlTooLong">EBadgeMediaUrlTooLong</a>);
-    <b>assert</b>!(string::length(&badge_icon_url) &gt; 0 && string::length(&badge_icon_url) &lt;= config.max_badge_icon_url_length, <a href="../social_contracts/platform.md#social_contracts_platform_EBadgeIconUrlTooLong">EBadgeIconUrlTooLong</a>);
+    <a href="../social_contracts/platform.md#social_contracts_platform_validate_badge_urls">validate_badge_urls</a>(&badge_media_url, &badge_icon_url);
     // Get current time
     <b>let</b> now = clock::timestamp_ms(clock);
     // Create a unique badge ID by including <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> ID to prevent collisions
@@ -5003,7 +5023,7 @@ When removing a moderator from a platform
 Update platform configuration (admin only)
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_update_platform_config">update_platform_config</a>(_: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformAdminCap">social_contracts::platform::PlatformAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformConfig">social_contracts::platform::PlatformConfig</a>, max_reasoning_length: u64, max_cover_photo_url_length: u64, max_media_previews: u64, max_media_preview_url_length: u64, max_badge_name_length: u64, max_badge_description_length: u64, max_badge_media_url_length: u64, max_badge_icon_url_length: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_update_platform_config">update_platform_config</a>(_: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformAdminCap">social_contracts::platform::PlatformAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformConfig">social_contracts::platform::PlatformConfig</a>, max_reasoning_length: u64, max_cover_photo_url_length: u64, max_media_previews: u64, max_badge_name_length: u64, max_badge_description_length: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -5018,39 +5038,27 @@ Update platform configuration (admin only)
     max_reasoning_length: u64,
     max_cover_photo_url_length: u64,
     max_media_previews: u64,
-    max_media_preview_url_length: u64,
     max_badge_name_length: u64,
     max_badge_description_length: u64,
-    max_badge_media_url_length: u64,
-    max_badge_icon_url_length: u64,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
     <b>assert</b>!(max_reasoning_length &gt; 0, <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
     <b>assert</b>!(max_cover_photo_url_length &gt; 0, <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
     <b>assert</b>!(max_media_previews &gt; 0, <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
-    <b>assert</b>!(max_media_preview_url_length &gt; 0, <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
     <b>assert</b>!(max_badge_name_length &gt; 0, <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
-    <b>assert</b>!(max_badge_media_url_length &gt; 0, <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
-    <b>assert</b>!(max_badge_icon_url_length &gt; 0, <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
     config.max_reasoning_length = max_reasoning_length;
     config.max_cover_photo_url_length = max_cover_photo_url_length;
     config.max_media_previews = max_media_previews;
-    config.max_media_preview_url_length = max_media_preview_url_length;
     config.max_badge_name_length = max_badge_name_length;
     config.max_badge_description_length = max_badge_description_length;
-    config.max_badge_media_url_length = max_badge_media_url_length;
-    config.max_badge_icon_url_length = max_badge_icon_url_length;
     event::emit(<a href="../social_contracts/platform.md#social_contracts_platform_PlatformConfigUpdatedEvent">PlatformConfigUpdatedEvent</a> {
         updated_by: tx_context::sender(ctx),
         max_reasoning_length,
         max_cover_photo_url_length,
         max_media_previews,
-        max_media_preview_url_length,
         max_badge_name_length,
         max_badge_description_length,
-        max_badge_media_url_length,
-        max_badge_icon_url_length,
         timestamp: clock::timestamp_ms(clock),
     });
 }

@@ -30,6 +30,7 @@ use myso_indexer_alt_social_schema::schema::{
 
 use super::common;
 use super::events;
+use super::post_mydata;
 use super::subscription;
 use super::subscription_object;
 use crate::metrics::SocialMetrics;
@@ -410,6 +411,11 @@ impl Handler for SubscriptionHandler {
                         .do_nothing()
                         .execute(conn)
                         .await?;
+                    total += post_mydata::refresh_post_subscription_prices_for_service(
+                        conn,
+                        &p.service_id,
+                    )
+                    .await?;
                 }
                 SubscriptionRow::ProfileSubscription(s) => {
                     total += diesel::insert_into(profile_subscriptions::table)
@@ -473,6 +479,19 @@ impl Handler for SubscriptionHandler {
                         ))
                         .execute(conn)
                         .await?;
+                    let service_id: Option<String> = profile_subscription_plans::table
+                        .filter(profile_subscription_plans::plan_id.eq(plan_id))
+                        .select(profile_subscription_plans::service_id)
+                        .first(conn)
+                        .await
+                        .ok();
+                    if let Some(service_id) = service_id {
+                        total += post_mydata::refresh_post_subscription_prices_for_service(
+                            conn,
+                            &service_id,
+                        )
+                        .await?;
+                    }
                 }
                 SubscriptionRow::ProfileSubscriptionPlanDeactivate {
                     plan_id,
@@ -486,6 +505,19 @@ impl Handler for SubscriptionHandler {
                         ))
                         .execute(conn)
                         .await?;
+                    let service_id: Option<String> = profile_subscription_plans::table
+                        .filter(profile_subscription_plans::plan_id.eq(plan_id))
+                        .select(profile_subscription_plans::service_id)
+                        .first(conn)
+                        .await
+                        .ok();
+                    if let Some(service_id) = service_id {
+                        total += post_mydata::refresh_post_subscription_prices_for_service(
+                            conn,
+                            &service_id,
+                        )
+                        .await?;
+                    }
                 }
                 SubscriptionRow::ProfileSubscriptionServiceSubscriberDecrementBySubscription {
                     subscription_id,

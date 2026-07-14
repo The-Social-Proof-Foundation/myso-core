@@ -194,6 +194,8 @@ fn process_mydata_purchase_event(
     data: &serde_json::Value,
     transaction_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
+    // Mirror PurchaseEvent fee fields faithfully. Do not invent platform_address from
+    // platform_fee: no-platform buys emit platform_fee=0 with platform_id=None.
     let ip_id = data.get("ip_id")?.as_str()?.to_string();
     let buyer = data.get("buyer")?.as_str()?.to_string();
     let price = json_to_i64(data.get("price")?);
@@ -731,4 +733,69 @@ mod tests {
         assert_eq!(d.subscription_duration_days, 45);
         assert!(matches!(&rows[1], SocialEventRow::MyDataRegistry(_)));
     }
+
+    #[test]
+    fn purchase_event_no_platform_mirrors_zero_platform_fee_and_null_address() {
+        // Corrected no-platform PurchaseEvent: platform_fee is 0 and platform_id is absent.
+        // Indexer must mirror fields faithfully and must not invent a platform_address.
+        let data = serde_json::json!({
+            "ip_id": "0xe760de5738c9de05a9b844634d977b509063f34a5b7b99aee2305cf4661f5651",
+            "buyer": "0x751ec787eb8c7b183bef4fb16e84378ce4bdebb8c60aabeee783c68812a0cce2",
+            "price": 2_000_000_000u64,
+            "platform_fee": 0u64,
+            "ecosystem_fee": 50_000_000u64,
+            "creator_amount": 1_950_000_000u64,
+            "purchase_type": "one_time",
+            "timestamp": 1_721_000_000_000u64,
+        });
+        let rows = process_mydata_purchase_event(&data, "purchase_tx").expect("rows");
+        let purchase = rows.iter().find_map(|r| match r {
+            SocialEventRow::MyDataPurchase(p) => Some(p),
+            _ => None,
+        });
+        let purchase = purchase.expect("MyDataPurchase row");
+        assert_eq!(purchase.platform_fee, 0);
+        assert_eq!(purchase.ecosystem_fee, 50_000_000);
+        assert_eq!(purchase.creator_amount, 1_950_000_000);
+        assert_eq!(purchase.platform_address, None);
+
+        let revenue = rows.iter().find_map(|r| match r {
+            SocialEventRow::MyDataRevenue(r) => Some(r),
+            _ => None,
+        });
+        let revenue = revenue.expect("MyDataRevenue row");
+        assert_eq!(revenue.platform_fee, 0);
+        assert_eq!(revenue.ecosystem_fee, 50_000_000);
+        assert_eq!(revenue.creator_amount, 1_950_000_000);
+        assert_eq!(revenue.platform_address, None);
+    }
+
+    #[test]
+    fn purchase_event_with_platform_mirrors_platform_fee_and_address() {
+        let data = serde_json::json!({
+            "ip_id": "0xe760de5738c9de05a9b844634d977b509063f34a5b7b99aee2305cf4661f5651",
+            "buyer": "0x751ec787eb8c7b183bef4fb16e84378ce4bdebb8c60aabeee783c68812a0cce2",
+            "price": 2_000_000_000u64,
+            "platform_fee": 50_000_000u64,
+            "ecosystem_fee": 50_000_000u64,
+            "creator_amount": 1_900_000_000u64,
+            "platform_id": "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+            "purchase_type": "one_time",
+            "timestamp": 1_721_000_000_000u64,
+        });
+        let rows = process_mydata_purchase_event(&data, "purchase_tx_platform").expect("rows");
+        let purchase = rows.iter().find_map(|r| match r {
+            SocialEventRow::MyDataPurchase(p) => Some(p),
+            _ => None,
+        });
+        let purchase = purchase.expect("MyDataPurchase row");
+        assert_eq!(purchase.platform_fee, 50_000_000);
+        assert_eq!(purchase.ecosystem_fee, 50_000_000);
+        assert_eq!(purchase.creator_amount, 1_900_000_000);
+        assert_eq!(
+            purchase.platform_address.as_deref(),
+            Some("0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789")
+        );
+    }
 }
+

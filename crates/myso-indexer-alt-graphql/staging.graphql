@@ -3893,7 +3893,8 @@ type MyDataClaim {
 type MyDataConfig {
 	defaultClaimWindowMs: Int!
 	"""
-	Whether MyData marketplace is enabled.
+	Whether buyers may start new broad-pool/snapshot MyData marketplace rounds.
+	Direct profile-gated, one-time, and recurring MyData access is always available.
 	"""
 	marketplaceEnabled: Boolean!
 	maxEncryptedDataBytes: Int!
@@ -5108,14 +5109,6 @@ type PlatformConfig {
 	"""
 	maxBadgeDescriptionLength: Int!
 	"""
-	Maximum byte length accepted for a platform badge icon URL.
-	"""
-	maxBadgeIconUrlLength: Int!
-	"""
-	Maximum byte length accepted for a platform badge media URL.
-	"""
-	maxBadgeMediaUrlLength: Int!
-	"""
 	Maximum byte length accepted for a platform badge name.
 	"""
 	maxBadgeNameLength: Int!
@@ -5123,10 +5116,6 @@ type PlatformConfig {
 	Maximum byte length accepted for a platform cover photo URL.
 	"""
 	maxCoverPhotoUrlLength: Int!
-	"""
-	Maximum byte length accepted for a single media preview URL.
-	"""
-	maxMediaPreviewUrlLength: Int!
 	"""
 	Maximum number of media previews allowed on a platform.
 	"""
@@ -5991,6 +5980,10 @@ type Post implements Node {
 	Linked SPT pool id when set.
 	"""
 	sptId: String
+	"""
+	Minimum active profile-subscription plan price for a profile-gated post.
+	One-time post pricing is exposed by the linked MyData record.
+	"""
 	subscriptionPrice: Int
 	subscriptionServiceId: String @deprecated(reason: "Use `access.subscriptionServiceId` instead.")
 	"""

@@ -416,8 +416,7 @@ pub(crate) async fn get_platform_configuration(
     let mut conn = db.connect().await?;
     let query = "
         SELECT updated_by, max_reasoning_length, max_cover_photo_url_length, max_media_previews,
-               max_media_preview_url_length, max_badge_name_length, max_badge_description_length,
-               max_badge_media_url_length, max_badge_icon_url_length, version, updated_at
+               max_badge_name_length, max_badge_description_length, version, updated_at
         FROM platform_config
         ORDER BY time DESC
         LIMIT 1

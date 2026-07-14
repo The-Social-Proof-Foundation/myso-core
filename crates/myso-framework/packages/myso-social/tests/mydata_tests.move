@@ -12,6 +12,7 @@ module social_contracts::mydata_tests {
     use myso::clock::{Self, Clock};
     use myso::test_utils;
     use myso::object;
+    use mydata::merkle;
     
     use social_contracts::mydata::{
         Self,
@@ -23,6 +24,7 @@ module social_contracts::mydata_tests {
         MyDataPoolAdminCap,
         SnapshotAnchorRegistry,
         MyDataClaimVault,
+        DistributionRegistry,
     };
     use social_contracts::profile::{Self, Profile, UsernameRegistry,
         ProfileConfig, EcosystemTreasury};
@@ -864,6 +866,213 @@ module social_contracts::mydata_tests {
             test_scenario::return_to_sender(&scenario, admin);
             test_scenario::return_shared(config);
             test_scenario::return_shared(pool_registry);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 11, location = social_contracts::mydata)]
+    fun test_disabled_query_marketplace_rejects_new_snapshot() {
+        let mut scenario = test_scenario::begin(CREATOR);
+        init_test_environment(&mut scenario);
+
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let config = test_scenario::take_shared<MyDataConfig>(&scenario);
+            let mut anchor_registry = test_scenario::take_shared<SnapshotAnchorRegistry>(&scenario);
+            let mut vault = test_scenario::take_shared<MyDataClaimVault>(&scenario);
+            let pool_registry = test_scenario::take_shared<MyDataPoolRegistry>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let payment = coin::mint_for_testing<myso::myso::MYSO>(100, test_scenario::ctx(&mut scenario));
+
+            mydata::record_snapshot_anchor(
+                &config,
+                &mut anchor_registry,
+                &mut vault,
+                &pool_registry,
+                object::id_from_address(@0x100),
+                object::id_from_address(@0x101),
+                vector[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                b"disabled-marketplace",
+                payment,
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(anchor_registry);
+            test_scenario::return_shared(vault);
+            test_scenario::return_shared(pool_registry);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_existing_snapshot_can_settle_after_marketplace_disabled() {
+        let mut scenario = test_scenario::begin(CREATOR);
+        init_test_environment(&mut scenario);
+
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        let snapshot_id = {
+            let mut config = test_scenario::take_shared<MyDataConfig>(&scenario);
+            let admin = test_scenario::take_from_sender<MyDataPoolAdminCap>(&scenario);
+            let mut pool_registry = test_scenario::take_shared<MyDataPoolRegistry>(&scenario);
+            let mut anchor_registry = test_scenario::take_shared<SnapshotAnchorRegistry>(&scenario);
+            let mut vault = test_scenario::take_shared<MyDataClaimVault>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+
+            mydata::create_broad_pool(
+                &config,
+                &admin,
+                &mut pool_registry,
+                string::utf8(b"settlement_pool"),
+                string::utf8(b"Settlement continuity"),
+                &clock,
+            );
+            let broad_pool_id = mydata::last_created_pool_id(&pool_registry);
+            mydata::create_sub_pool(
+                &config,
+                &admin,
+                &mut pool_registry,
+                broad_pool_id,
+                string::utf8(b"settlement_sub_pool"),
+                string::utf8(b"Settlement continuity"),
+                option::none<vector<u8>>(),
+                &clock,
+            );
+            let sub_pool_id = mydata::last_created_sub_pool_id(&pool_registry);
+
+            mydata::set_marketplace_enabled_for_testing(&mut config, true);
+            let payment = coin::mint_for_testing<myso::myso::MYSO>(100, test_scenario::ctx(&mut scenario));
+            mydata::record_snapshot_anchor(
+                &config,
+                &mut anchor_registry,
+                &mut vault,
+                &pool_registry,
+                broad_pool_id,
+                sub_pool_id,
+                vector[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                b"settlement-continuity",
+                payment,
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            let snapshot_id = mydata::last_snapshot_id_for_testing(&anchor_registry);
+            mydata::set_marketplace_enabled_for_testing(&mut config, false);
+
+            let additional_payment = coin::mint_for_testing<myso::myso::MYSO>(
+                50,
+                test_scenario::ctx(&mut scenario),
+            );
+            mydata::deposit_snapshot_escrow(
+                &admin,
+                &anchor_registry,
+                &mut vault,
+                snapshot_id,
+                additional_payment,
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+
+            test_scenario::return_to_sender(&scenario, admin);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(pool_registry);
+            test_scenario::return_shared(anchor_registry);
+            test_scenario::return_shared(vault);
+            test_scenario::return_shared(clock);
+            snapshot_id
+        };
+
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let config = test_scenario::take_shared<MyDataConfig>(&scenario);
+            let admin = test_scenario::take_from_sender<MyDataPoolAdminCap>(&scenario);
+            let anchor_registry = test_scenario::take_shared<SnapshotAnchorRegistry>(&scenario);
+            let mut dist_registry = test_scenario::take_shared<DistributionRegistry>(&scenario);
+            let mut vault = test_scenario::take_shared<MyDataClaimVault>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+
+            let root = merkle::leaf_hash_with_platform(
+                CREATOR,
+                40,
+                object::id_to_bytes(&snapshot_id),
+                option::none(),
+            );
+            mydata::publish_distribution(
+                &config,
+                &admin,
+                &anchor_registry,
+                &mut dist_registry,
+                &mut vault,
+                snapshot_id,
+                root,
+                150,
+                1,
+                &clock,
+            );
+
+            test_scenario::return_to_sender(&scenario, admin);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(anchor_registry);
+            test_scenario::return_shared(dist_registry);
+            test_scenario::return_shared(vault);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let config = test_scenario::take_shared<MyDataConfig>(&scenario);
+            let dist_registry = test_scenario::take_shared<DistributionRegistry>(&scenario);
+            let mut vault = test_scenario::take_shared<MyDataClaimVault>(&scenario);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+
+            mydata::claim(
+                &config,
+                &dist_registry,
+                &mut vault,
+                &treasury,
+                snapshot_id,
+                40,
+                0,
+                vector[],
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(dist_registry);
+            test_scenario::return_shared(vault);
+            test_scenario::return_shared(treasury);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let anchor_registry = test_scenario::take_shared<SnapshotAnchorRegistry>(&scenario);
+            let dist_registry = test_scenario::take_shared<DistributionRegistry>(&scenario);
+            let mut vault = test_scenario::take_shared<MyDataClaimVault>(&scenario);
+            let mut clock = test_scenario::take_shared<Clock>(&scenario);
+
+            clock::increment_for_testing(&mut clock, 2_592_000_001);
+            mydata::reclaim_expired_snapshot_escrow(
+                &anchor_registry,
+                &dist_registry,
+                &mut vault,
+                snapshot_id,
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+
+            test_scenario::return_shared(anchor_registry);
+            test_scenario::return_shared(dist_registry);
+            test_scenario::return_shared(vault);
             test_scenario::return_shared(clock);
         };
 

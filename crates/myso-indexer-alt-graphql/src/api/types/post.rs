@@ -283,6 +283,8 @@ impl Post {
             .clone()
     }
 
+    /// Minimum active profile-subscription plan price for a profile-gated post.
+    /// One-time post pricing is exposed by the linked MyData record.
     async fn subscription_price(&self) -> Option<i64> {
         self.inner.subscription_price
     }

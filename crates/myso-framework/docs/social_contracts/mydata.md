@@ -58,9 +58,10 @@ not row-level dataset membership.
 -  [Enum `AccessConfiguration`](#social_contracts_mydata_AccessConfiguration)
 -  [Constants](#@Constants_0)
 -  [Function `validate_fee_config`](#social_contracts_mydata_validate_fee_config)
--  [Function `calculate_p2p_fees`](#social_contracts_mydata_calculate_p2p_fees)
--  [Function `calculate_mydata_marketplace_fees`](#social_contracts_mydata_calculate_mydata_marketplace_fees)
--  [Function `route_non_platform_platform_fee`](#social_contracts_mydata_route_non_platform_platform_fee)
+-  [Function `calculate_p2p_fees_no_platform`](#social_contracts_mydata_calculate_p2p_fees_no_platform)
+-  [Function `calculate_p2p_fees_with_platform`](#social_contracts_mydata_calculate_p2p_fees_with_platform)
+-  [Function `calculate_mydata_marketplace_fees_no_platform`](#social_contracts_mydata_calculate_mydata_marketplace_fees_no_platform)
+-  [Function `calculate_mydata_marketplace_fees_with_platform`](#social_contracts_mydata_calculate_mydata_marketplace_fees_with_platform)
 -  [Function `distribute_p2p_fees_no_platform`](#social_contracts_mydata_distribute_p2p_fees_no_platform)
 -  [Function `distribute_p2p_fees_with_platform`](#social_contracts_mydata_distribute_p2p_fees_with_platform)
 -  [Function `assert_platform_matches_listing`](#social_contracts_mydata_assert_platform_matches_listing)
@@ -394,7 +395,7 @@ Admin capability for MyData system management
 
 ## Struct `MyDataConfig`
 
-Global configuration for MyData system
+Global configuration for MyData system.
 
 
 <pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a> <b>has</b> key
@@ -416,6 +417,7 @@ Global configuration for MyData system
 <code><a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>: bool</code>
 </dt>
 <dd>
+ Whether buyers may start new query/pool marketplace snapshots.
 </dd>
 <dt>
 <code>max_tags: u64</code>
@@ -1846,6 +1848,7 @@ Registry for tracking MyData ownership
 <code><a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>: bool</code>
 </dt>
 <dd>
+ Query/pool marketplace availability; does not gate direct MyData listings or purchases.
 </dd>
 <dt>
 <code>max_tags: u64</code>
@@ -2039,6 +2042,8 @@ Variant <code>MarketplaceRecurring</code>
 
 <a name="social_contracts_mydata_DEFAULT_MARKETPLACE_ENABLED"></a>
 
+Controls only the broad-pool/snapshot/distribution MyData marketplace.
+Direct profile-gated, one-time, and recurring MyData access remain available independently.
 
 
 <pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_DEFAULT_MARKETPLACE_ENABLED">DEFAULT_MARKETPLACE_ENABLED</a>: bool = <b>false</b>;
@@ -2584,13 +2589,14 @@ Event/indexer tags for [<code><a href="../social_contracts/mydata.md#social_cont
 
 </details>
 
-<a name="social_contracts_mydata_calculate_p2p_fees"></a>
+<a name="social_contracts_mydata_calculate_p2p_fees_no_platform"></a>
 
-## Function `calculate_p2p_fees`
+## Function `calculate_p2p_fees_no_platform`
+
+No-platform purchases do not assess a platform fee: only the ecosystem slice is deducted.
 
 
-
-<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_calculate_p2p_fees">calculate_p2p_fees</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, gross: u64): (u64, u64, u64)
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_calculate_p2p_fees_no_platform">calculate_p2p_fees_no_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, gross: u64): (u64, u64, u64)
 </code></pre>
 
 
@@ -2599,7 +2605,35 @@ Event/indexer tags for [<code><a href="../social_contracts/mydata.md#social_cont
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_calculate_p2p_fees">calculate_p2p_fees</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>, gross: u64): (u64, u64, u64) {
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_calculate_p2p_fees_no_platform">calculate_p2p_fees_no_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>, gross: u64): (u64, u64, u64) {
+    <b>let</b> platform_fee = 0;
+    <b>let</b> ecosystem_fee = (gross * config.p2p_ecosystem_fee_bps) / <a href="../social_contracts/mydata.md#social_contracts_mydata_BPS_DENOM">BPS_DENOM</a>;
+    <b>let</b> creator_amount = gross - ecosystem_fee;
+    (platform_fee, ecosystem_fee, creator_amount)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_calculate_p2p_fees_with_platform"></a>
+
+## Function `calculate_p2p_fees_with_platform`
+
+With-platform purchases deduct both the configured platform and ecosystem fee slices.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_calculate_p2p_fees_with_platform">calculate_p2p_fees_with_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, gross: u64): (u64, u64, u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_calculate_p2p_fees_with_platform">calculate_p2p_fees_with_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>, gross: u64): (u64, u64, u64) {
     <b>let</b> platform_fee = (gross * config.p2p_platform_fee_bps) / <a href="../social_contracts/mydata.md#social_contracts_mydata_BPS_DENOM">BPS_DENOM</a>;
     <b>let</b> ecosystem_fee = (gross * config.p2p_ecosystem_fee_bps) / <a href="../social_contracts/mydata.md#social_contracts_mydata_BPS_DENOM">BPS_DENOM</a>;
     <b>let</b> creator_amount = gross - platform_fee - ecosystem_fee;
@@ -2611,13 +2645,14 @@ Event/indexer tags for [<code><a href="../social_contracts/mydata.md#social_cont
 
 </details>
 
-<a name="social_contracts_mydata_calculate_mydata_marketplace_fees"></a>
+<a name="social_contracts_mydata_calculate_mydata_marketplace_fees_no_platform"></a>
 
-## Function `calculate_mydata_marketplace_fees`
+## Function `calculate_mydata_marketplace_fees_no_platform`
+
+No-platform marketplace claims do not assess a platform fee.
 
 
-
-<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_calculate_mydata_marketplace_fees">calculate_mydata_marketplace_fees</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, gross: u64): (u64, u64, u64)
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_calculate_mydata_marketplace_fees_no_platform">calculate_mydata_marketplace_fees_no_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, gross: u64): (u64, u64, u64)
 </code></pre>
 
 
@@ -2626,10 +2661,10 @@ Event/indexer tags for [<code><a href="../social_contracts/mydata.md#social_cont
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_calculate_mydata_marketplace_fees">calculate_mydata_marketplace_fees</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>, gross: u64): (u64, u64, u64) {
-    <b>let</b> platform_fee = (gross * config.mydata_marketplace_platform_fee_bps) / <a href="../social_contracts/mydata.md#social_contracts_mydata_BPS_DENOM">BPS_DENOM</a>;
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_calculate_mydata_marketplace_fees_no_platform">calculate_mydata_marketplace_fees_no_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>, gross: u64): (u64, u64, u64) {
+    <b>let</b> platform_fee = 0;
     <b>let</b> ecosystem_fee = (gross * config.mydata_marketplace_ecosystem_fee_bps) / <a href="../social_contracts/mydata.md#social_contracts_mydata_BPS_DENOM">BPS_DENOM</a>;
-    <b>let</b> net_amount = gross - platform_fee - ecosystem_fee;
+    <b>let</b> net_amount = gross - ecosystem_fee;
     (platform_fee, ecosystem_fee, net_amount)
 }
 </code></pre>
@@ -2638,13 +2673,14 @@ Event/indexer tags for [<code><a href="../social_contracts/mydata.md#social_cont
 
 </details>
 
-<a name="social_contracts_mydata_route_non_platform_platform_fee"></a>
+<a name="social_contracts_mydata_calculate_mydata_marketplace_fees_with_platform"></a>
 
-## Function `route_non_platform_platform_fee`
+## Function `calculate_mydata_marketplace_fees_with_platform`
+
+With-platform marketplace claims deduct both the configured platform and ecosystem fee slices.
 
 
-
-<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_route_non_platform_platform_fee">route_non_platform_platform_fee</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, platform_fee: u64, recipient_amount: u64, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): u64
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_calculate_mydata_marketplace_fees_with_platform">calculate_mydata_marketplace_fees_with_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, gross: u64): (u64, u64, u64)
 </code></pre>
 
 
@@ -2653,23 +2689,11 @@ Event/indexer tags for [<code><a href="../social_contracts/mydata.md#social_cont
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_route_non_platform_platform_fee">route_non_platform_platform_fee</a>(
-    config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
-    treasury: &EcosystemTreasury,
-    platform_fee: u64,
-    recipient_amount: u64,
-    payment: &<b>mut</b> Coin&lt;MYSO&gt;,
-    ctx: &<b>mut</b> TxContext,
-): u64 {
-    <b>let</b> platform_fee_to_recipient =
-        (platform_fee * config.non_platform_platform_to_creator_bps) / <a href="../social_contracts/mydata.md#social_contracts_mydata_BPS_DENOM">BPS_DENOM</a>;
-    <b>let</b> platform_fee_to_treasury = platform_fee - platform_fee_to_recipient;
-    <b>let</b> recipient_amount = recipient_amount + platform_fee_to_recipient;
-    <b>if</b> (platform_fee_to_treasury &gt; 0) {
-        <b>let</b> treasury_coin = coin::split(payment, platform_fee_to_treasury, ctx);
-        transfer::public_transfer(treasury_coin, <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">profile::get_treasury_address</a>(treasury));
-    };
-    recipient_amount
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_calculate_mydata_marketplace_fees_with_platform">calculate_mydata_marketplace_fees_with_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>, gross: u64): (u64, u64, u64) {
+    <b>let</b> platform_fee = (gross * config.mydata_marketplace_platform_fee_bps) / <a href="../social_contracts/mydata.md#social_contracts_mydata_BPS_DENOM">BPS_DENOM</a>;
+    <b>let</b> ecosystem_fee = (gross * config.mydata_marketplace_ecosystem_fee_bps) / <a href="../social_contracts/mydata.md#social_contracts_mydata_BPS_DENOM">BPS_DENOM</a>;
+    <b>let</b> net_amount = gross - platform_fee - ecosystem_fee;
+    (platform_fee, ecosystem_fee, net_amount)
 }
 </code></pre>
 
@@ -2700,23 +2724,11 @@ Event/indexer tags for [<code><a href="../social_contracts/mydata.md#social_cont
     ctx: &<b>mut</b> TxContext,
 ): (u64, u64, u64) {
     <b>let</b> gross = coin::value(&payment);
-    <b>let</b> (platform_fee, ecosystem_fee, creator_amount) = <a href="../social_contracts/mydata.md#social_contracts_mydata_calculate_p2p_fees">calculate_p2p_fees</a>(config, gross);
+    <b>let</b> (platform_fee, ecosystem_fee, creator_amount) = <a href="../social_contracts/mydata.md#social_contracts_mydata_calculate_p2p_fees_no_platform">calculate_p2p_fees_no_platform</a>(config, gross);
     <b>let</b> <b>mut</b> payment = payment;
     <b>if</b> (ecosystem_fee &gt; 0) {
         <b>let</b> eco_coin = coin::split(&<b>mut</b> payment, ecosystem_fee, ctx);
         transfer::public_transfer(eco_coin, <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">profile::get_treasury_address</a>(treasury));
-    };
-    <b>let</b> creator_amount = <b>if</b> (platform_fee &gt; 0) {
-        <a href="../social_contracts/mydata.md#social_contracts_mydata_route_non_platform_platform_fee">route_non_platform_platform_fee</a>(
-            config,
-            treasury,
-            platform_fee,
-            creator_amount,
-            &<b>mut</b> payment,
-            ctx,
-        )
-    } <b>else</b> {
-        creator_amount
     };
     transfer::public_transfer(payment, <a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>);
     (platform_fee, ecosystem_fee, creator_amount)
@@ -2752,7 +2764,7 @@ Event/indexer tags for [<code><a href="../social_contracts/mydata.md#social_cont
     ctx: &<b>mut</b> TxContext,
 ): (u64, u64, u64) {
     <b>let</b> gross = coin::value(&payment);
-    <b>let</b> (platform_fee, ecosystem_fee, creator_amount) = <a href="../social_contracts/mydata.md#social_contracts_mydata_calculate_p2p_fees">calculate_p2p_fees</a>(config, gross);
+    <b>let</b> (platform_fee, ecosystem_fee, creator_amount) = <a href="../social_contracts/mydata.md#social_contracts_mydata_calculate_p2p_fees_with_platform">calculate_p2p_fees_with_platform</a>(config, gross);
     <b>let</b> <b>mut</b> payment = payment;
     <b>if</b> (ecosystem_fee &gt; 0) {
         <b>let</b> eco_coin = coin::split(&<b>mut</b> payment, ecosystem_fee, ctx);
@@ -2877,7 +2889,8 @@ Create a MyDataAdminCap for bootstrap (package visibility only)
 
 ## Function `update_mydata_config`
 
-Update MyData configuration (admin only)
+Update MyData configuration (admin only).
+<code><a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a></code> controls only new query/pool marketplace snapshots.
 
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_update_mydata_config">update_mydata_config</a>(_: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataAdminCap">social_contracts::mydata::MyDataAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>: bool, max_tags: u64, max_subscription_days: u64, max_free_access_grants: u64, max_encryption_id_bytes: u64, max_encrypted_data_bytes: u64, max_tag_bytes: u64, max_metadata_bytes: u64, max_payment_reference_bytes: u64, max_pool_assignments: u64, max_merkle_proof_depth: u64, max_paid_access_entries: u64, default_claim_window_ms: u64, p2p_platform_fee_bps: u64, p2p_ecosystem_fee_bps: u64, mydata_marketplace_platform_fee_bps: u64, mydata_marketplace_ecosystem_fee_bps: u64, non_platform_platform_to_creator_bps: u64, non_platform_platform_to_treasury_bps: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
@@ -2969,6 +2982,7 @@ Update MyData configuration (admin only)
 
 ## Function `marketplace_enabled`
 
+Whether buyers may start new query/pool marketplace snapshots.
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>): bool
@@ -3633,7 +3647,6 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
     contributor_count: u64,
     clock: &Clock,
 ) {
-    <b>assert</b>!(config.<a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EDisabled">EDisabled</a>);
     <b>assert</b>!(table::contains(&anchor_registry.anchors, snapshot_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqAnchorNotFound">EPqAnchorNotFound</a>);
     <b>assert</b>!(table::contains(&vault.snapshot_escrow, snapshot_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqSnapshotEscrowMissing">EPqSnapshotEscrowMissing</a>);
     <b>assert</b>!(vector::length(&root_hash) == 32, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqInvalidInput">EPqInvalidInput</a>);
@@ -3699,23 +3712,12 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
     vault_balance: &<b>mut</b> Balance&lt;MYSO&gt;,
     ctx: &<b>mut</b> TxContext,
 ): (u64, u64, u64) {
-    <b>let</b> (platform_fee, ecosystem_fee, <b>mut</b> net_amount) = <a href="../social_contracts/mydata.md#social_contracts_mydata_calculate_mydata_marketplace_fees">calculate_mydata_marketplace_fees</a>(config, gross_amount);
+    <b>let</b> (platform_fee, ecosystem_fee, net_amount) =
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_calculate_mydata_marketplace_fees_no_platform">calculate_mydata_marketplace_fees_no_platform</a>(config, gross_amount);
     <b>let</b> <b>mut</b> payout_coin = coin::from_balance(balance::split(vault_balance, gross_amount), ctx);
     <b>if</b> (ecosystem_fee &gt; 0) {
         <b>let</b> eco_coin = coin::split(&<b>mut</b> payout_coin, ecosystem_fee, ctx);
         transfer::public_transfer(eco_coin, <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">profile::get_treasury_address</a>(treasury));
-    };
-    net_amount = <b>if</b> (platform_fee &gt; 0) {
-        <a href="../social_contracts/mydata.md#social_contracts_mydata_route_non_platform_platform_fee">route_non_platform_platform_fee</a>(
-            config,
-            treasury,
-            platform_fee,
-            net_amount,
-            &<b>mut</b> payout_coin,
-            ctx,
-        )
-    } <b>else</b> {
-        net_amount
     };
     transfer::public_transfer(payout_coin, claimant);
     (platform_fee, ecosystem_fee, net_amount)
@@ -3751,7 +3753,8 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ): (u64, u64, u64) {
-    <b>let</b> (platform_fee, ecosystem_fee, net_amount) = <a href="../social_contracts/mydata.md#social_contracts_mydata_calculate_mydata_marketplace_fees">calculate_mydata_marketplace_fees</a>(config, gross_amount);
+    <b>let</b> (platform_fee, ecosystem_fee, net_amount) =
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_calculate_mydata_marketplace_fees_with_platform">calculate_mydata_marketplace_fees_with_platform</a>(config, gross_amount);
     <b>let</b> <b>mut</b> payout_coin = coin::from_balance(balance::split(vault_balance, gross_amount), ctx);
     <b>if</b> (ecosystem_fee &gt; 0) {
         <b>let</b> eco_coin = coin::split(&<b>mut</b> payout_coin, ecosystem_fee, ctx);
@@ -4715,7 +4718,6 @@ Create new MyData data with proper MyData encryption
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
-    <b>assert</b>!(config.<a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EDisabled">EDisabled</a>);
     <b>let</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a> = <a href="../social_contracts/mydata.md#social_contracts_mydata_create">create</a>(
         config,
         <a href="../social_contracts/mydata.md#social_contracts_mydata_media_type">media_type</a>,
@@ -4968,7 +4970,6 @@ Create and share marketplace recurring subscription MyData.
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
-    <b>assert</b>!(config.<a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EDisabled">EDisabled</a>);
     <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>let</b> buyer = tx_context::sender(ctx);
     <a href="../social_contracts/block_list.md#social_contracts_block_list_assert_not_blocked">block_list::assert_not_blocked</a>(block_list_registry, buyer, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>);
@@ -5062,7 +5063,6 @@ Create and share marketplace recurring subscription MyData.
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
-    <b>assert</b>!(config.<a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EDisabled">EDisabled</a>);
     <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_platform_matches_listing">assert_platform_matches_listing</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>);
     <b>let</b> buyer = tx_context::sender(ctx);
@@ -5250,7 +5250,6 @@ Purchase one-time access with platform treasury routing.
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
-    <b>assert</b>!(config.<a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EDisabled">EDisabled</a>);
     <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>let</b> buyer = tx_context::sender(ctx);
     <a href="../social_contracts/block_list.md#social_contracts_block_list_assert_not_blocked">block_list::assert_not_blocked</a>(block_list_registry, buyer, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>);
@@ -5357,7 +5356,6 @@ Purchase one-time access with platform treasury routing.
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
-    <b>assert</b>!(config.<a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EDisabled">EDisabled</a>);
     <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_platform_matches_listing">assert_platform_matches_listing</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>);
     <b>let</b> buyer = tx_context::sender(ctx);
@@ -5993,7 +5991,6 @@ Grant free access (owner only) - useful for samples or promotions
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
-    <b>assert</b>!(config.<a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EDisabled">EDisabled</a>);
     // Check <a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> compatibility
     <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EUnauthorized">EUnauthorized</a>);

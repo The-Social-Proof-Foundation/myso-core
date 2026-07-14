@@ -415,11 +415,8 @@ CREATE TABLE IF NOT EXISTS platform_config (
     max_reasoning_length BIGINT NOT NULL DEFAULT 2000,
     max_cover_photo_url_length BIGINT NOT NULL DEFAULT 2048,
     max_media_previews BIGINT NOT NULL DEFAULT 10,
-    max_media_preview_url_length BIGINT NOT NULL DEFAULT 2048,
     max_badge_name_length BIGINT NOT NULL DEFAULT 100,
     max_badge_description_length BIGINT NOT NULL DEFAULT 500,
-    max_badge_media_url_length BIGINT NOT NULL DEFAULT 2048,
-    max_badge_icon_url_length BIGINT NOT NULL DEFAULT 2048,
     version BIGINT NOT NULL DEFAULT 0,
     updated_at BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -456,11 +453,8 @@ COMMENT ON TABLE platform_config IS 'Tracks PlatformConfig changes over time (pl
 COMMENT ON COLUMN platform_config.max_reasoning_length IS 'Maximum reasoning text length for platform approval (default: 2000)';
 COMMENT ON COLUMN platform_config.max_cover_photo_url_length IS 'Maximum cover photo URL length (default: 2048)';
 COMMENT ON COLUMN platform_config.max_media_previews IS 'Maximum number of media previews per platform (default: 10)';
-COMMENT ON COLUMN platform_config.max_media_preview_url_length IS 'Maximum media preview URL length (default: 2048)';
 COMMENT ON COLUMN platform_config.max_badge_name_length IS 'Maximum platform badge name length (default: 100)';
 COMMENT ON COLUMN platform_config.max_badge_description_length IS 'Maximum platform badge description length (default: 500)';
-COMMENT ON COLUMN platform_config.max_badge_media_url_length IS 'Maximum platform badge media URL length (default: 2048)';
-COMMENT ON COLUMN platform_config.max_badge_icon_url_length IS 'Maximum platform badge icon URL length (default: 2048)';
 
 -- 2.6 messaging_config
 CREATE TABLE IF NOT EXISTS messaging_config (

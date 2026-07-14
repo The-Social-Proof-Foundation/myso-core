@@ -70,11 +70,8 @@ module social_contracts::platform {
         max_reasoning_length: u64,
         max_cover_photo_url_length: u64,
         max_media_previews: u64,
-        max_media_preview_url_length: u64,
         max_badge_name_length: u64,
         max_badge_description_length: u64,
-        max_badge_media_url_length: u64,
-        max_badge_icon_url_length: u64,
         version: u64,
     }
 
@@ -83,11 +80,8 @@ module social_contracts::platform {
         max_reasoning_length: u64,
         max_cover_photo_url_length: u64,
         max_media_previews: u64,
-        max_media_preview_url_length: u64,
         max_badge_name_length: u64,
         max_badge_description_length: u64,
-        max_badge_media_url_length: u64,
-        max_badge_icon_url_length: u64,
         timestamp: u64,
     }
 
@@ -376,11 +370,8 @@ module social_contracts::platform {
             max_reasoning_length: MAX_REASONING_LENGTH,
             max_cover_photo_url_length: MAX_COVER_PHOTO_URL_LENGTH,
             max_media_previews: MAX_MEDIA_PREVIEWS,
-            max_media_preview_url_length: MAX_MEDIA_PREVIEW_URL_LENGTH,
             max_badge_name_length: MAX_BADGE_NAME_LENGTH,
             max_badge_description_length: MAX_BADGE_DESCRIPTION_LENGTH,
-            max_badge_media_url_length: MAX_BADGE_MEDIA_URL_LENGTH,
-            max_badge_icon_url_length: MAX_BADGE_ICON_URL_LENGTH,
             version: ver,
         };
         event::emit(PlatformConfigUpdatedEvent {
@@ -388,11 +379,8 @@ module social_contracts::platform {
             max_reasoning_length: MAX_REASONING_LENGTH,
             max_cover_photo_url_length: MAX_COVER_PHOTO_URL_LENGTH,
             max_media_previews: MAX_MEDIA_PREVIEWS,
-            max_media_preview_url_length: MAX_MEDIA_PREVIEW_URL_LENGTH,
             max_badge_name_length: MAX_BADGE_NAME_LENGTH,
             max_badge_description_length: MAX_BADGE_DESCRIPTION_LENGTH,
-            max_badge_media_url_length: MAX_BADGE_MEDIA_URL_LENGTH,
-            max_badge_icon_url_length: MAX_BADGE_ICON_URL_LENGTH,
             timestamp: clock::timestamp_ms(clock),
         });
         transfer::share_object(config);
@@ -1304,13 +1292,28 @@ module social_contracts::platform {
             let len = vector::length(previews);
             while (i < len) {
                 let url = vector::borrow(previews, i);
-                assert!(
-                    string::length(url) > 0 && string::length(url) <= config.max_media_preview_url_length,
-                    EInvalidMediaPreviewUrl
-                );
+                validate_media_preview_url(url);
                 i = i + 1;
             };
         };
+    }
+
+    fun validate_media_preview_url(url: &String) {
+        assert!(
+            string::length(url) > 0 && string::length(url) <= MAX_MEDIA_PREVIEW_URL_LENGTH,
+            EInvalidMediaPreviewUrl
+        );
+    }
+
+    fun validate_badge_urls(badge_media_url: &String, badge_icon_url: &String) {
+        assert!(
+            string::length(badge_media_url) > 0 && string::length(badge_media_url) <= MAX_BADGE_MEDIA_URL_LENGTH,
+            EBadgeMediaUrlTooLong
+        );
+        assert!(
+            string::length(badge_icon_url) > 0 && string::length(badge_icon_url) <= MAX_BADGE_ICON_URL_LENGTH,
+            EBadgeIconUrlTooLong
+        );
     }
 
     /// Validate that a category string matches one of the allowed categories
@@ -1854,8 +1857,7 @@ module social_contracts::platform {
         // Validate badge field lengths
         assert!(string::length(&badge_name) > 0 && string::length(&badge_name) <= config.max_badge_name_length, EBadgeNameTooLong);
         assert!(string::length(&badge_description) <= config.max_badge_description_length, EBadgeDescriptionTooLong);
-        assert!(string::length(&badge_media_url) > 0 && string::length(&badge_media_url) <= config.max_badge_media_url_length, EBadgeMediaUrlTooLong);
-        assert!(string::length(&badge_icon_url) > 0 && string::length(&badge_icon_url) <= config.max_badge_icon_url_length, EBadgeIconUrlTooLong);
+        validate_badge_urls(&badge_media_url, &badge_icon_url);
         
         // Get current time
         let now = clock::timestamp_ms(clock);
@@ -1963,6 +1965,16 @@ module social_contracts::platform {
         };
     }
 
+    #[test_only]
+    public fun test_validate_media_preview_url(url: &String) {
+        validate_media_preview_url(url);
+    }
+
+    #[test_only]
+    public fun test_validate_badge_urls(badge_media_url: &String, badge_icon_url: &String) {
+        validate_badge_urls(badge_media_url, badge_icon_url);
+    }
+
     /// Update platform configuration (admin only)
     public entry fun update_platform_config(
         _: &PlatformAdminCap,
@@ -1970,41 +1982,29 @@ module social_contracts::platform {
         max_reasoning_length: u64,
         max_cover_photo_url_length: u64,
         max_media_previews: u64,
-        max_media_preview_url_length: u64,
         max_badge_name_length: u64,
         max_badge_description_length: u64,
-        max_badge_media_url_length: u64,
-        max_badge_icon_url_length: u64,
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
         assert!(max_reasoning_length > 0, EUnauthorized);
         assert!(max_cover_photo_url_length > 0, EUnauthorized);
         assert!(max_media_previews > 0, EUnauthorized);
-        assert!(max_media_preview_url_length > 0, EUnauthorized);
         assert!(max_badge_name_length > 0, EUnauthorized);
-        assert!(max_badge_media_url_length > 0, EUnauthorized);
-        assert!(max_badge_icon_url_length > 0, EUnauthorized);
 
         config.max_reasoning_length = max_reasoning_length;
         config.max_cover_photo_url_length = max_cover_photo_url_length;
         config.max_media_previews = max_media_previews;
-        config.max_media_preview_url_length = max_media_preview_url_length;
         config.max_badge_name_length = max_badge_name_length;
         config.max_badge_description_length = max_badge_description_length;
-        config.max_badge_media_url_length = max_badge_media_url_length;
-        config.max_badge_icon_url_length = max_badge_icon_url_length;
 
         event::emit(PlatformConfigUpdatedEvent {
             updated_by: tx_context::sender(ctx),
             max_reasoning_length,
             max_cover_photo_url_length,
             max_media_previews,
-            max_media_preview_url_length,
             max_badge_name_length,
             max_badge_description_length,
-            max_badge_media_url_length,
-            max_badge_icon_url_length,
             timestamp: clock::timestamp_ms(clock),
         });
     }

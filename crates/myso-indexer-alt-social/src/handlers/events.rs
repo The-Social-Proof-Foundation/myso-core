@@ -472,14 +472,6 @@ pub struct BcsUsernameClaimedEvent {
     profile_id: AccountAddress,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct BcsUsernameRevokedEvent {
-    username: String,
-    profile_id: AccountAddress,
-    revoked_by: AccountAddress,
-    reason_code: u8,
-}
-
 #[derive(Debug, Deserialize, Serialize)]
 pub struct BcsUsernameReservedEvent {
     pub(crate) username: String,
@@ -497,10 +489,10 @@ pub struct BcsUsernameReleasedEvent {
 #[derive(Debug, Deserialize)]
 pub struct BcsUsernameReassignedEvent {
     username: String,
-    old_profile_id: AccountAddress,
-    new_profile_id: AccountAddress,
+    profile_id: AccountAddress,
     admin: AccountAddress,
     reason_code: u8,
+    prior_username: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -564,6 +556,7 @@ pub struct BcsUsernameSaleSettledEvent {
     pub(crate) buyer_profile_id: AccountAddress,
     pub(crate) amount: u64,
     pub(crate) settled_at: u64,
+    pub(crate) prior_buyer_username: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -2829,17 +2822,14 @@ pub struct BcsPlatformStatus {
     status: u8,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsPlatformConfigUpdatedEvent {
     updated_by: AccountAddress,
     max_reasoning_length: u64,
     max_cover_photo_url_length: u64,
     max_media_previews: u64,
-    max_media_preview_url_length: u64,
     max_badge_name_length: u64,
     max_badge_description_length: u64,
-    max_badge_media_url_length: u64,
-    max_badge_icon_url_length: u64,
     timestamp: u64,
 }
 
@@ -3092,25 +3082,15 @@ fn parse_profile_event(
                 "profile_id": addr_to_string(&ev.profile_id),
             })))
         }
-        "UsernameRevokedEvent" => {
-            let ev = bcs::from_bytes::<BcsUsernameRevokedEvent>(contents)
-                .map_err(|e| bcs_parse_err(e, contents))?;
-            Ok(Some(serde_json::json!({
-                "username": ev.username,
-                "profile_id": addr_to_string(&ev.profile_id),
-                "revoked_by": addr_to_string(&ev.revoked_by),
-                "reason_code": ev.reason_code,
-            })))
-        }
         "UsernameReassignedEvent" => {
             let ev = bcs::from_bytes::<BcsUsernameReassignedEvent>(contents)
                 .map_err(|e| bcs_parse_err(e, contents))?;
             Ok(Some(serde_json::json!({
                 "username": ev.username,
-                "old_profile_id": addr_to_string(&ev.old_profile_id),
-                "new_profile_id": addr_to_string(&ev.new_profile_id),
+                "profile_id": addr_to_string(&ev.profile_id),
                 "admin": addr_to_string(&ev.admin),
                 "reason_code": ev.reason_code,
+                "prior_username": ev.prior_username,
             })))
         }
         "UsernameReservedEvent" => {
@@ -3336,6 +3316,7 @@ fn parse_profile_event(
                 "buyer_profile_id": addr_to_string(&ev.buyer_profile_id),
                 "amount": ev.amount,
                 "settled_at": ev.settled_at,
+                "prior_buyer_username": ev.prior_buyer_username,
             })))
         }
         "UsernameSaleFeeEvent" => {
@@ -4821,11 +4802,8 @@ fn parse_platform_event(
                 "max_reasoning_length": ev.max_reasoning_length,
                 "max_cover_photo_url_length": ev.max_cover_photo_url_length,
                 "max_media_previews": ev.max_media_previews,
-                "max_media_preview_url_length": ev.max_media_preview_url_length,
                 "max_badge_name_length": ev.max_badge_name_length,
                 "max_badge_description_length": ev.max_badge_description_length,
-                "max_badge_media_url_length": ev.max_badge_media_url_length,
-                "max_badge_icon_url_length": ev.max_badge_icon_url_length,
                 "timestamp": ev.timestamp,
             })))
         }
@@ -7894,6 +7872,34 @@ mod tests {
         assert_eq!(json["platform_fee_bps"], 250);
         assert_eq!(json["ecosystem_fee_bps"], 250);
         assert_eq!(json["non_platform_platform_to_treasury_bps"], 10_000);
+    }
+
+    #[test]
+    fn platform_config_updated_bcs_roundtrip_uses_five_config_values() {
+        let updated_by = AccountAddress::from_hex_literal(
+            "0x9cc886f94db2b2a41b1f8d7c20c7fc0960e1f9eb34ce2c0c7f309",
+        )
+        .unwrap();
+        let ev = BcsPlatformConfigUpdatedEvent {
+            updated_by,
+            max_reasoning_length: 2000,
+            max_cover_photo_url_length: 2048,
+            max_media_previews: 10,
+            max_badge_name_length: 100,
+            max_badge_description_length: 500,
+            timestamp: 1_700_000_000_000,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("serialize PlatformConfigUpdatedEvent");
+        let json = parse_event_contents("platform", "PlatformConfigUpdatedEvent", &bytes)
+            .expect("parse PlatformConfigUpdatedEvent");
+        assert_eq!(json["max_reasoning_length"], 2000);
+        assert_eq!(json["max_cover_photo_url_length"], 2048);
+        assert_eq!(json["max_media_previews"], 10);
+        assert_eq!(json["max_badge_name_length"], 100);
+        assert_eq!(json["max_badge_description_length"], 500);
+        assert!(json.get("max_media_preview_url_length").is_none());
+        assert!(json.get("max_badge_media_url_length").is_none());
+        assert!(json.get("max_badge_icon_url_length").is_none());
     }
 
     #[test]

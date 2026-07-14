@@ -52,6 +52,8 @@ module social_contracts::mydata {
     use social_contracts::block_list;
 
     // === Default constants for config initialization ===
+    /// Controls only the broad-pool/snapshot/distribution MyData marketplace.
+    /// Direct profile-gated, one-time, and recurring MyData access remain available independently.
     const DEFAULT_MARKETPLACE_ENABLED: bool = false;
     const BPS_DENOM: u64 = 10_000;
     const DEFAULT_P2P_PLATFORM_FEE_BPS: u64 = 250;
@@ -174,9 +176,10 @@ module social_contracts::mydata {
         id: UID,
     }
 
-    /// Global configuration for MyData system
+    /// Global configuration for MyData system.
     public struct MyDataConfig has key {
         id: UID,
+        /// Whether buyers may start new query/pool marketplace snapshots.
         marketplace_enabled: bool,
         max_tags: u64,
         max_subscription_days: u64,
@@ -433,6 +436,7 @@ module social_contracts::mydata {
 
     public struct MyDataConfigUpdatedEvent has copy, drop {
         updated_by: address,
+        /// Query/pool marketplace availability; does not gate direct MyData listings or purchases.
         marketplace_enabled: bool,
         max_tags: u64,
         max_subscription_days: u64,
@@ -477,37 +481,36 @@ module social_contracts::mydata {
         );
     }
 
-    fun calculate_p2p_fees(config: &MyDataConfig, gross: u64): (u64, u64, u64) {
+    /// No-platform purchases do not assess a platform fee: only the ecosystem slice is deducted.
+    fun calculate_p2p_fees_no_platform(config: &MyDataConfig, gross: u64): (u64, u64, u64) {
+        let platform_fee = 0;
+        let ecosystem_fee = (gross * config.p2p_ecosystem_fee_bps) / BPS_DENOM;
+        let creator_amount = gross - ecosystem_fee;
+        (platform_fee, ecosystem_fee, creator_amount)
+    }
+
+    /// With-platform purchases deduct both the configured platform and ecosystem fee slices.
+    fun calculate_p2p_fees_with_platform(config: &MyDataConfig, gross: u64): (u64, u64, u64) {
         let platform_fee = (gross * config.p2p_platform_fee_bps) / BPS_DENOM;
         let ecosystem_fee = (gross * config.p2p_ecosystem_fee_bps) / BPS_DENOM;
         let creator_amount = gross - platform_fee - ecosystem_fee;
         (platform_fee, ecosystem_fee, creator_amount)
     }
 
-    fun calculate_mydata_marketplace_fees(config: &MyDataConfig, gross: u64): (u64, u64, u64) {
+    /// No-platform marketplace claims do not assess a platform fee.
+    fun calculate_mydata_marketplace_fees_no_platform(config: &MyDataConfig, gross: u64): (u64, u64, u64) {
+        let platform_fee = 0;
+        let ecosystem_fee = (gross * config.mydata_marketplace_ecosystem_fee_bps) / BPS_DENOM;
+        let net_amount = gross - ecosystem_fee;
+        (platform_fee, ecosystem_fee, net_amount)
+    }
+
+    /// With-platform marketplace claims deduct both the configured platform and ecosystem fee slices.
+    fun calculate_mydata_marketplace_fees_with_platform(config: &MyDataConfig, gross: u64): (u64, u64, u64) {
         let platform_fee = (gross * config.mydata_marketplace_platform_fee_bps) / BPS_DENOM;
         let ecosystem_fee = (gross * config.mydata_marketplace_ecosystem_fee_bps) / BPS_DENOM;
         let net_amount = gross - platform_fee - ecosystem_fee;
         (platform_fee, ecosystem_fee, net_amount)
-    }
-
-    fun route_non_platform_platform_fee(
-        config: &MyDataConfig,
-        treasury: &EcosystemTreasury,
-        platform_fee: u64,
-        recipient_amount: u64,
-        payment: &mut Coin<MYSO>,
-        ctx: &mut TxContext,
-    ): u64 {
-        let platform_fee_to_recipient =
-            (platform_fee * config.non_platform_platform_to_creator_bps) / BPS_DENOM;
-        let platform_fee_to_treasury = platform_fee - platform_fee_to_recipient;
-        let recipient_amount = recipient_amount + platform_fee_to_recipient;
-        if (platform_fee_to_treasury > 0) {
-            let treasury_coin = coin::split(payment, platform_fee_to_treasury, ctx);
-            transfer::public_transfer(treasury_coin, profile::get_treasury_address(treasury));
-        };
-        recipient_amount
     }
 
     fun distribute_p2p_fees_no_platform(
@@ -518,25 +521,12 @@ module social_contracts::mydata {
         ctx: &mut TxContext,
     ): (u64, u64, u64) {
         let gross = coin::value(&payment);
-        let (platform_fee, ecosystem_fee, creator_amount) = calculate_p2p_fees(config, gross);
+        let (platform_fee, ecosystem_fee, creator_amount) = calculate_p2p_fees_no_platform(config, gross);
         let mut payment = payment;
 
         if (ecosystem_fee > 0) {
             let eco_coin = coin::split(&mut payment, ecosystem_fee, ctx);
             transfer::public_transfer(eco_coin, profile::get_treasury_address(treasury));
-        };
-
-        let creator_amount = if (platform_fee > 0) {
-            route_non_platform_platform_fee(
-                config,
-                treasury,
-                platform_fee,
-                creator_amount,
-                &mut payment,
-                ctx,
-            )
-        } else {
-            creator_amount
         };
 
         transfer::public_transfer(payment, owner);
@@ -553,7 +543,7 @@ module social_contracts::mydata {
         ctx: &mut TxContext,
     ): (u64, u64, u64) {
         let gross = coin::value(&payment);
-        let (platform_fee, ecosystem_fee, creator_amount) = calculate_p2p_fees(config, gross);
+        let (platform_fee, ecosystem_fee, creator_amount) = calculate_p2p_fees_with_platform(config, gross);
         let mut payment = payment;
 
         if (ecosystem_fee > 0) {
@@ -614,7 +604,8 @@ module social_contracts::mydata {
         }
     }
 
-    /// Update MyData configuration (admin only)
+    /// Update MyData configuration (admin only).
+    /// `marketplace_enabled` controls only new query/pool marketplace snapshots.
     public entry fun update_mydata_config(
         _: &MyDataAdminCap,
         config: &mut MyDataConfig,
@@ -688,6 +679,7 @@ module social_contracts::mydata {
         );
     }
 
+    /// Whether buyers may start new query/pool marketplace snapshots.
     public fun marketplace_enabled(config: &MyDataConfig): bool {
         config.marketplace_enabled
     }
@@ -1066,7 +1058,6 @@ module social_contracts::mydata {
         contributor_count: u64,
         clock: &Clock,
     ) {
-        assert!(config.marketplace_enabled, EDisabled);
         assert!(table::contains(&anchor_registry.anchors, snapshot_id), EPqAnchorNotFound);
         assert!(table::contains(&vault.snapshot_escrow, snapshot_id), EPqSnapshotEscrowMissing);
         assert!(vector::length(&root_hash) == 32, EPqInvalidInput);
@@ -1114,25 +1105,13 @@ module social_contracts::mydata {
         vault_balance: &mut Balance<MYSO>,
         ctx: &mut TxContext,
     ): (u64, u64, u64) {
-        let (platform_fee, ecosystem_fee, mut net_amount) = calculate_mydata_marketplace_fees(config, gross_amount);
+        let (platform_fee, ecosystem_fee, net_amount) =
+            calculate_mydata_marketplace_fees_no_platform(config, gross_amount);
         let mut payout_coin = coin::from_balance(balance::split(vault_balance, gross_amount), ctx);
 
         if (ecosystem_fee > 0) {
             let eco_coin = coin::split(&mut payout_coin, ecosystem_fee, ctx);
             transfer::public_transfer(eco_coin, profile::get_treasury_address(treasury));
-        };
-
-        net_amount = if (platform_fee > 0) {
-            route_non_platform_platform_fee(
-                config,
-                treasury,
-                platform_fee,
-                net_amount,
-                &mut payout_coin,
-                ctx,
-            )
-        } else {
-            net_amount
         };
 
         transfer::public_transfer(payout_coin, claimant);
@@ -1149,7 +1128,8 @@ module social_contracts::mydata {
         clock: &Clock,
         ctx: &mut TxContext,
     ): (u64, u64, u64) {
-        let (platform_fee, ecosystem_fee, net_amount) = calculate_mydata_marketplace_fees(config, gross_amount);
+        let (platform_fee, ecosystem_fee, net_amount) =
+            calculate_mydata_marketplace_fees_with_platform(config, gross_amount);
         let mut payout_coin = coin::from_balance(balance::split(vault_balance, gross_amount), ctx);
 
         if (ecosystem_fee > 0) {
@@ -1612,8 +1592,6 @@ module social_contracts::mydata {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
-        assert!(config.marketplace_enabled, EDisabled);
-
         let mydata = create(
             config,
             media_type,
@@ -1790,7 +1768,6 @@ module social_contracts::mydata {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
-        assert!(config.marketplace_enabled, EDisabled);
         assert!(mydata.version == upgrade::current_version(), EInvalidInput);
 
         let buyer = tx_context::sender(ctx);
@@ -1870,7 +1847,6 @@ module social_contracts::mydata {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
-        assert!(config.marketplace_enabled, EDisabled);
         assert!(mydata.version == upgrade::current_version(), EInvalidInput);
         assert_platform_matches_listing(mydata, platform);
 
@@ -2004,7 +1980,6 @@ module social_contracts::mydata {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
-        assert!(config.marketplace_enabled, EDisabled);
         assert!(mydata.version == upgrade::current_version(), EInvalidInput);
 
         let buyer = tx_context::sender(ctx);
@@ -2098,7 +2073,6 @@ module social_contracts::mydata {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
-        assert!(config.marketplace_enabled, EDisabled);
         assert!(mydata.version == upgrade::current_version(), EInvalidInput);
         assert_platform_matches_listing(mydata, platform);
 
@@ -2519,8 +2493,6 @@ module social_contracts::mydata {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
-        assert!(config.marketplace_enabled, EDisabled);
-        
         // Check version compatibility
         assert!(mydata.version == upgrade::current_version(), EInvalidInput);
         
@@ -2938,13 +2910,29 @@ module social_contracts::mydata {
     }
 
     #[test_only]
-    public fun p2p_fee_breakdown_for_testing(config: &MyDataConfig, gross: u64): (u64, u64, u64) {
-        calculate_p2p_fees(config, gross)
+    public fun p2p_fee_breakdown_no_platform_for_testing(config: &MyDataConfig, gross: u64): (u64, u64, u64) {
+        calculate_p2p_fees_no_platform(config, gross)
     }
 
     #[test_only]
-    public fun mydata_marketplace_fee_breakdown_for_testing(config: &MyDataConfig, gross: u64): (u64, u64, u64) {
-        calculate_mydata_marketplace_fees(config, gross)
+    public fun p2p_fee_breakdown_with_platform_for_testing(config: &MyDataConfig, gross: u64): (u64, u64, u64) {
+        calculate_p2p_fees_with_platform(config, gross)
+    }
+
+    #[test_only]
+    public fun mydata_marketplace_fee_breakdown_no_platform_for_testing(
+        config: &MyDataConfig,
+        gross: u64,
+    ): (u64, u64, u64) {
+        calculate_mydata_marketplace_fees_no_platform(config, gross)
+    }
+
+    #[test_only]
+    public fun mydata_marketplace_fee_breakdown_with_platform_for_testing(
+        config: &MyDataConfig,
+        gross: u64,
+    ): (u64, u64, u64) {
+        calculate_mydata_marketplace_fees_with_platform(config, gross)
     }
 
     #[test_only]
@@ -2952,7 +2940,20 @@ module social_contracts::mydata {
         let sender = tx_context::sender(ctx);
         transfer::public_transfer(MyDataAdminCap { id: object::new(ctx) }, sender);
         transfer::public_transfer(create_mydata_pool_admin_cap(ctx), sender);
-        share_mydata_system_objects(clock, ctx, true);
+        // Keep the query/pool marketplace disabled so direct-listing tests prove that
+        // profile-gated, one-time, and recurring MyData do not depend on this flag.
+        share_mydata_system_objects(clock, ctx, false);
+    }
+
+    #[test_only]
+    public fun set_marketplace_enabled_for_testing(config: &mut MyDataConfig, enabled: bool) {
+        config.marketplace_enabled = enabled;
+    }
+
+    #[test_only]
+    public fun last_snapshot_id_for_testing(registry: &SnapshotAnchorRegistry): ID {
+        assert!(registry.next_snapshot_nonce > 0, EPqAnchorNotFound);
+        gen_snapshot_id(&registry.id, registry.next_snapshot_nonce - 1)
     }
 
     #[test_only]

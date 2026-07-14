@@ -11,14 +11,15 @@
 #   - Human buyer/principal: sign as your principal address; MemoryAccount is still a required Move arg.
 #   - Agent buyer/approver: sign as the agent derived_address; on-chain registry on the passed
 #     MemoryAccount resolves auth (spend limits for purchase, CAP_MYDATA_READ for approve).
-#   - MEMORY_ACCOUNT_ID (menu 0 / session): listing owner's MemoryAccount for approve; for purchase,
-#     owner's MemoryAccount when the buyer is a registered agent there, or buyer's own account otherwise.
+#   - MEMORY_ACCOUNT_ID: menus 3/4/7 always prompt (Enter keeps session default). Pass the buyer's
+#     MemoryAccount for purchase, or the listing owner's for approve / agent CAP_MYDATA_READ.
 #
 # Prerequisites:
 #   - MySocial shared objects exist (bootstrap runs automatically at genesis).
 #   - Shared MyData objects exist (mydata::bootstrap_init). Resolve IDs from GraphQL / explorer
 #     (e.g. types ...::mydata::MyDataConfig, MyDataRegistry, MyDataPoolRegistry, ...).
-#   - For listings: MyDataConfig.marketplace_enabled must be true (menu 1).
+#   - MyDataConfig.marketplace_enabled controls only new query/pool snapshot anchors (menu 14).
+#     Profile-gated, one-time, and recurring MyData listings/purchases remain available when false.
 #   - Hybrid MemoryAccount (VERSION 2) with on-chain agent index for agent purchase/approve flows.
 #
 # Production-like encryption (menu 2):
@@ -59,9 +60,9 @@
 #   Menu [0]: refresh MyDataConfig/Registry/Pool/Anchor/Vault/AdminCap ids from GraphQL.
 #   Menu [s]: manual session setup (secrets file, listing ids, client.yaml). Blank CLIENT_CONFIG
 #     defaults to <cwd>/network.config/client.yaml
-#   MEMORY_ACCOUNT_ID is required for menus 3, 4, and 7 (saved after those menus). Resolve from GraphQL
-#     profile.memoryAccountId or REST /profiles/:address/memory-account.
-#   Menus 3/4 always prompt for LISTING_ID and PAY_COIN_ID (Enter keeps session/default).
+#   Menus 3/4 always prompt for LISTING_ID, PAY_COIN_ID, and MEMORY_ACCOUNT_ID (Enter keeps session).
+#   Menu 7 always prompts for MEMORY_ACCOUNT_ID. Shared-object ids (BlockListRegistry, MemoryConfig,
+#     etc.) are refreshed from GraphQL and not preserved across menu 0 (stale session ids discarded).
 #   Menus 3/4/15 must NOT pass --type-args: Move entry functions use hardcoded Coin<MYSO> (not generic).
 #     Passing COIN_TYPE as --type-args causes Move Bytecode Verification Error.
 #   Gas payment is never passed as --gas; the CLI auto-selects a Coin<MYSO> (excluding tx inputs).
@@ -88,6 +89,11 @@ source "${SCRIPT_DIR}/lib/runnable-summary-common.sh"
 print_mydata_operation_summary() {
     local operation="$1"
     shift
+    if [[ "${MYDATA_LAST_CALL_EXECUTED:-1}" != 1 ]]; then
+        print_run_summary_header "MyData Marketplace — ${operation} NOT executed (confirmation declined)"
+        print_run_summary_footer
+        return 0
+    fi
     print_run_summary_header "MyData Marketplace — ${operation} completed"
     while [[ $# -ge 2 ]]; do
         print_run_summary_line "$1" "$2"
@@ -162,10 +168,11 @@ readonly MYDATA_MARKETPLACE_GQL_EXTRAS='query MyDataMarketplaceSessionObjects {
   mydataPoolAdminCap: objects(filter: { type: "0x50c1::mydata::MyDataPoolAdminCap" }, last: 1) { nodes { address } }
 }'
 
+# Listing/pay/secrets only — never preserve GraphQL-owned shared objects or MemoryAccount
+# (stale BlockListRegistry / MemoryConfig from a prior localnet reboot break purchase).
 MYDATA_SESSION_PRESERVED_KEYS=(
     CLIENT_CONFIG KEY_SERVER_URL LISTING_ID SUB_POOL_ID PAY_COIN_ID
-    MEMORY_ACCOUNT_ID REVOKE_BUYER_ID MYDATA_SECRETS_FILE PUBLIC_KEY KEY_SERVER_OBJECT_ID
-    MEMORY_CONFIG_ID ECOSYSTEM_TREASURY_ID BLOCK_LIST_REGISTRY_ID PLATFORM_OBJECT_ID
+    MYDATA_ENCRYPTION_ID REVOKE_BUYER_ID MYDATA_SECRETS_FILE PUBLIC_KEY KEY_SERVER_OBJECT_ID
 )
 
 DO_REFRESH=0
@@ -188,6 +195,7 @@ GAS_BUDGET=''
 LISTING_ID=''
 SUB_POOL_ID=''
 PAY_COIN_ID=''
+MYDATA_ENCRYPTION_ID=''
 MEMORY_ACCOUNT_ID=''
 REVOKE_BUYER_ID=''
 MYDATA_SECRETS_FILE=''
@@ -237,14 +245,19 @@ resolve_owned_admin_cap() {
     active="$(resolve_myso_active_address)" || return 1
     json="$(myso client --client.config "$CLIENT_CONFIG" objects "$active" --json 2>/dev/null)" || return 1
     echo "$json" | jq -r --arg suffix "$type_suffix" '
+        def move_type:
+            .type? // .objectType? // .object_type? // .data.type? // .data.objectType? //
+            (
+                if (.data.Move.type_? | type) == "string" then
+                    .data.Move.type_
+                elif (.data.Move.type_.Other? | type) == "object" then
+                    ((.data.Move.type_.Other.module? // "") + "::" + (.data.Move.type_.Other.name? // ""))
+                else
+                    ""
+                end
+            );
         .[]?
-        | select(
-            ((.type? // .objectType? // .data.type? // "" | tostring) | endswith($suffix))
-            or (
-                (.data.Move.type_.Other.module? // "") == "mydata"
-                and (.data.Move.type_.Other.name? // "") == ($suffix | split("::") | last)
-            )
-          )
+        | select((move_type | tostring) | endswith($suffix))
         | .data.objectId // .objectId // .object_id // .address // empty
     ' | head -n1
 }
@@ -265,6 +278,102 @@ bind_admin_caps_to_active_address() {
         POOL_ADMIN_CAP_ID=''
         echo "No MyDataPoolAdminCap owned by the active administrator; refusing an arbitrary GraphQL cap." >&2
     fi
+}
+
+gql_mydata_owner() {
+    local listing_id="$1" vars resp owner
+    listing_id="$(normalize_hex_id "$listing_id")" || return 1
+    vars="$(jq -nc --arg id "$listing_id" '{id: $id}')" || return 1
+    resp="$(graphql_post \
+        'query MyDataOwner($id: ID!) { mydataRecord(id: $id) { owner } }' \
+        "$vars" 2>/dev/null)" || return 1
+    owner="$(echo "$resp" | jq -r '.data.mydataRecord.owner // empty' 2>/dev/null)"
+    [[ -n "$owner" ]] || return 1
+    normalize_hex_id "$owner"
+}
+
+# Abort early with a clear message instead of Move ESelfPurchase (abort 4).
+assert_buyer_is_not_listing_owner() {
+    local listing_id="$1" buyer owner
+    listing_id="$(normalize_hex_id "$listing_id")" || return 1
+    buyer="$(resolve_myso_active_address)" || {
+        echo "Could not resolve active-address for self-purchase check" >&2
+        return 1
+    }
+    buyer="$(normalize_hex_id "$buyer")" || return 1
+    owner="$(gql_mydata_owner "$listing_id" 2>/dev/null)" || {
+        echo "Warning: could not resolve listing owner via GraphQL; skipping self-purchase check." >&2
+        return 0
+    }
+    if [[ "$buyer" == "$owner" ]]; then
+        echo "Error: active-address $buyer owns listing $listing_id (Move ESelfPurchase)." >&2
+        echo "  Switch to a different buyer wallet (myso client switch --address <buyer>), then retry." >&2
+        return 1
+    fi
+    log_session_use "Listing owner (not buyer)" "$owner"
+    return 0
+}
+
+# Always prompt — same pattern as listing / payment coin (Enter keeps session default).
+resolve_purchase_memory_account_id() {
+    local account current="${MEMORY_ACCOUNT_ID:-}" label="${1:-MemoryAccount object id}"
+    if [[ -n "$current" ]]; then
+        log_session_use "$label" "$current"
+    else
+        echo "  [session] $label=<unset>" >&2
+    fi
+    echo "  Enter the MemoryAccount object id to pass to Move (buyer account for purchase;" >&2
+    echo "  listing-owner account for approve / agent flows). Find it on the profile or menu [s]." >&2
+    account="$(prompt_or_default "$label (empty = use saved)" "$current")"
+    [[ -n "$account" ]] || account="$current"
+    [[ -n "$account" ]] || {
+        echo "MemoryAccount object id is required (set in menu [s] or enter here)." >&2
+        return 1
+    }
+    account="$(normalize_hex_id "$account")" || return 1
+    MEMORY_ACCOUNT_ID="$account"
+    printf '%s' "$account"
+}
+
+# Drop stale GraphQL-owned shared ids and refresh so purchase/approve cannot pass dead objects.
+ensure_mydata_purchase_shared_ids() {
+    local need_refresh=0 name
+    for name in "$@"; do
+        if ! session_value_set "$name"; then
+            need_refresh=1
+            continue
+        fi
+        if ! object_exists_on_fullnode "${!name}"; then
+            echo "Session $name=${!name} missing on fullnode; will refresh from GraphQL." >&2
+            printf -v "$name" '%s' ''
+            need_refresh=1
+        fi
+    done
+    if [[ "$need_refresh" != 1 ]]; then
+        return 0
+    fi
+    refresh_mydata_marketplace_session_from_graphql || return 1
+    require_session_fields "$@" || return 1
+    for name in "$@"; do
+        if ! object_exists_on_fullnode "${!name}"; then
+            echo "After GraphQL refresh, $name=${!name} still missing on fullnode." >&2
+            return 1
+        fi
+    done
+}
+
+refresh_active_profile_memory_account() {
+    # Optional session hint only — purchase/approve always prompt; do not overwrite a set value.
+    [[ -z "${MEMORY_ACCOUNT_ID:-}" ]] || return 0
+    command -v jq >/dev/null 2>&1 || return 0
+    local active vars resp account
+    active="$(resolve_myso_active_address)" || return 0
+    vars="$(jq -nc --arg addr "$(normalize_hex_id "$active")" '{addr: $addr}')" || return 0
+    resp="$(graphql_post 'query ActiveProfileMemory($addr: MySoAddress!) { profile(address: $addr) { memoryAccountId } }' "$vars" 2>/dev/null)" || return 0
+    account="$(echo "$resp" | jq -r '.data.profile.memoryAccountId // empty' 2>/dev/null)"
+    [[ -n "$account" ]] || return 0
+    MEMORY_ACCOUNT_ID="$(normalize_hex_id "$account")"
+    log_session_use "MEMORY_ACCOUNT_ID (session default hint)" "$MEMORY_ACCOUNT_ID"
 }
 
 refresh_mydata_marketplace_session_from_graphql() {
@@ -308,6 +417,7 @@ refresh_mydata_marketplace_session_from_graphql() {
         rm -f "$preserve_file"
     fi
 
+    refresh_active_profile_memory_account || true
     hydrate_encrypt_from_secrets || true
     save_session_state
     show_context
@@ -333,9 +443,9 @@ apply_session_defaults() {
 
 session_field_count() {
     local key count=0
-    for key in CLIENT_CONFIG MYDATA_CONFIG_ID MYDATA_REGISTRY_ID POOL_REGISTRY_ID ANCHOR_REGISTRY_ID \
+        for key in CLIENT_CONFIG MYDATA_CONFIG_ID MYDATA_REGISTRY_ID POOL_REGISTRY_ID ANCHOR_REGISTRY_ID \
         CLAIM_VAULT_ID DIST_REGISTRY_ID MYDATA_ADMIN_CAP_ID POOL_ADMIN_CAP_ID GAS_BUDGET \
-        LISTING_ID SUB_POOL_ID PAY_COIN_ID MEMORY_ACCOUNT_ID MYDATA_SECRETS_FILE PUBLIC_KEY KEY_SERVER_OBJECT_ID \
+        LISTING_ID SUB_POOL_ID PAY_COIN_ID MYDATA_ENCRYPTION_ID MEMORY_ACCOUNT_ID MYDATA_SECRETS_FILE PUBLIC_KEY KEY_SERVER_OBJECT_ID \
         MEMORY_CONFIG_ID ECOSYSTEM_TREASURY_ID BLOCK_LIST_REGISTRY_ID PLATFORM_OBJECT_ID; do
         session_value_set "$key" && count=$((count + 1))
     done
@@ -376,7 +486,7 @@ save_session_state() {
     {
         echo "# Local session for scripts/mydata-marketplace-runnable.sh — paths/ids only; do not commit if sensitive."
         local key
-        for key in CLIENT_CONFIG PKG_SOCIAL CLOCK_ID COIN_TYPE KEY_SERVER_URL MYDATA_CONFIG_ID MYDATA_REGISTRY_ID POOL_REGISTRY_ID ANCHOR_REGISTRY_ID CLAIM_VAULT_ID DIST_REGISTRY_ID MYDATA_ADMIN_CAP_ID POOL_ADMIN_CAP_ID GAS_BUDGET LISTING_ID SUB_POOL_ID PAY_COIN_ID MEMORY_ACCOUNT_ID REVOKE_BUYER_ID MYDATA_SECRETS_FILE PUBLIC_KEY KEY_SERVER_OBJECT_ID MEMORY_CONFIG_ID ECOSYSTEM_TREASURY_ID BLOCK_LIST_REGISTRY_ID PLATFORM_OBJECT_ID; do
+        for key in CLIENT_CONFIG PKG_SOCIAL CLOCK_ID COIN_TYPE KEY_SERVER_URL MYDATA_CONFIG_ID MYDATA_REGISTRY_ID POOL_REGISTRY_ID ANCHOR_REGISTRY_ID CLAIM_VAULT_ID DIST_REGISTRY_ID MYDATA_ADMIN_CAP_ID POOL_ADMIN_CAP_ID GAS_BUDGET LISTING_ID SUB_POOL_ID PAY_COIN_ID MYDATA_ENCRYPTION_ID MEMORY_ACCOUNT_ID REVOKE_BUYER_ID MYDATA_SECRETS_FILE PUBLIC_KEY KEY_SERVER_OBJECT_ID MEMORY_CONFIG_ID ECOSYSTEM_TREASURY_ID BLOCK_LIST_REGISTRY_ID PLATFORM_OBJECT_ID; do
             printf '%s=%q\n' "$key" "${!key-}"
         done
     } > "${f}.tmp"
@@ -859,6 +969,7 @@ show_context() {
     echo "  LISTING_ID:          ${LISTING_ID:-<unset>}"
     echo "  SUB_POOL_ID:         ${SUB_POOL_ID:-<unset>}"
     echo "  PAY_COIN_ID:         ${PAY_COIN_ID:-<unset>}"
+    echo "  MYDATA_ENCRYPTION_ID: ${MYDATA_ENCRYPTION_ID:-<unset>}"
     echo "  MEMORY_ACCOUNT_ID:   ${MEMORY_ACCOUNT_ID:-<unset>}"
     echo "  REVOKE_BUYER_ID:     ${REVOKE_BUYER_ID:-<unset>}"
     echo "  MYDATA_SECRETS_FILE: ${MYDATA_SECRETS_FILE:-<unset>}"
@@ -969,8 +1080,9 @@ set_context_interactive() {
     LISTING_ID="$(prompt_with_default "Default listing (MyData) object id" "${LISTING_ID:-}")"
     SUB_POOL_ID="$(prompt_with_default "Default sub-pool id (menus 13–15; from menu 12 tx effects)" "${SUB_POOL_ID:-}")"
     PAY_COIN_ID="$(prompt_with_default "Default payment Coin<MYSO> id" "${PAY_COIN_ID:-}")"
-    echo "  MemoryAccount id (GraphQL profile.memoryAccountId or REST /profiles/:address/memory-account):"
-    MEMORY_ACCOUNT_ID="$(prompt_with_default "Default MemoryAccount object id (purchase/approve)" "${MEMORY_ACCOUNT_ID:-}")"
+    MYDATA_ENCRYPTION_ID="$(prompt_with_default "Default encryption_id (0x hex; from menu 2)" "${MYDATA_ENCRYPTION_ID:-}")"
+    echo "  MemoryAccount id (used as default when menus 3/4/7 prompt):"
+    MEMORY_ACCOUNT_ID="$(prompt_with_default "MemoryAccount object id (purchase/approve)" "${MEMORY_ACCOUNT_ID:-}")"
     MYDATA_SECRETS_FILE="$(prompt_with_default "local-mydata-secrets.env path (NOT key-server-config.yaml)" "${MYDATA_SECRETS_FILE:-}")"
     if [[ -n "${MYDATA_SECRETS_FILE:-}" ]]; then
         MYDATA_SECRETS_FILE="$(resolve_secrets_env_path "$MYDATA_SECRETS_FILE")"
@@ -1006,9 +1118,15 @@ run_myso_call() {
     echo
     echo "---"
     if [[ "${SKIP_CONFIRM_RUN:-}" == 1 ]]; then
+        MYDATA_LAST_CALL_EXECUTED=1
         "${cmd[@]}"
     else
-        confirm_run || return 0
+        if ! confirm_run; then
+            MYDATA_LAST_CALL_EXECUTED=0
+            echo "[skipped] command not executed (confirmation declined)." >&2
+            return 0
+        fi
+        MYDATA_LAST_CALL_EXECUTED=1
         "${cmd[@]}"
     fi
 }
@@ -1019,7 +1137,7 @@ menu_update_config() {
     local max_payment_ref max_pool_assignments max_proof_depth max_paid_entries claim_window
     local p2p_plat p2p_eco md_plat md_eco np_creator np_treasury
     load_mydata_config_params_from_graphql || true
-    en="$(prompt_or_default "marketplace_enabled (true/false)" "${MYDATA_CFG_MARKETPLACE_ENABLED:-true}")"
+    en="$(prompt_or_default "marketplace_enabled (new query/pool snapshots; true/false)" "${MYDATA_CFG_MARKETPLACE_ENABLED:-false}")"
     max_tags="$(prompt_or_default "max_tags" "${MYDATA_CFG_MAX_TAGS:-$DEFAULT_MAX_TAGS}")"
     max_sub="$(prompt_or_default "max_subscription_days" "${MYDATA_CFG_MAX_SUBSCRIPTION_DAYS:-$DEFAULT_MAX_SUBSCRIPTION_DAYS}")"
     max_grants="$(prompt_or_default "max_free_access_grants" "${MYDATA_CFG_MAX_FREE_ACCESS_GRANTS:-$DEFAULT_MAX_FREE_ACCESS_GRANTS}")"
@@ -1087,66 +1205,8 @@ run_update_mydata_config_call() {
         "$CLOCK_ID"
 }
 
-# Ensures create_and_share won't hit EDisabled (abort 11). Optional non-interactive: ASSUME_YES=1 skips prompt and always enables.
-ensure_mydata_enabled_for_listing() {
-    [[ -n "${MYDATA_CONFIG_ID:-}" ]] || return 0
-    [[ -n "${MYDATA_ADMIN_CAP_ID:-}" ]] || {
-        echo "" >&2
-        echo "Note: MYDATA_ADMIN_CAP is not set. If create_and_share fails with abort 11 (EDisabled)," >&2
-        echo "      run menu [1] update_mydata_config with marketplace_enabled true (need admin cap in menu 0)." >&2
-        return 0
-    }
-
-    load_mydata_config_params_from_graphql || true
-    if [[ "${MYDATA_CFG_MARKETPLACE_ENABLED:-false}" == "true" ]]; then
-        log_step "MyDataConfig.marketplace_enabled already true"
-        return 0
-    fi
-
-    echo "" >&2
-    echo ">>> Listings require MyDataConfig.marketplace_enabled=true (otherwise Move abort 11 / EDisabled)." >&2
-    local run_en='y'
-    if [[ "${ASSUME_YES:-}" != 1 ]]; then
-        read -r -p "Run update_mydata_config with marketplace_enabled=true now (limits 10 / 365d / 100k grants)? [Y/n] " run_en
-    fi
-    if [[ -z "${run_en:-}" || "${run_en}" == [yY]* ]]; then
-        echo "(Submitting update_mydata_config — marketplace_enabled true...)" >&2
-        set +e
-        SKIP_CONFIRM_RUN=1 run_update_mydata_config_call true \
-            "${MYDATA_CFG_MAX_TAGS:-$DEFAULT_MAX_TAGS}" \
-            "${MYDATA_CFG_MAX_SUBSCRIPTION_DAYS:-$DEFAULT_MAX_SUBSCRIPTION_DAYS}" \
-            "${MYDATA_CFG_MAX_FREE_ACCESS_GRANTS:-$DEFAULT_MAX_FREE_ACCESS_GRANTS}" \
-            "${MYDATA_CFG_MAX_ENCRYPTION_ID_BYTES:-$DEFAULT_MAX_ENCRYPTION_ID_BYTES}" \
-            "${MYDATA_CFG_MAX_ENCRYPTED_DATA_BYTES:-$DEFAULT_MAX_ENCRYPTED_DATA_BYTES}" \
-            "${MYDATA_CFG_MAX_TAG_BYTES:-$DEFAULT_MAX_TAG_BYTES}" \
-            "${MYDATA_CFG_MAX_METADATA_BYTES:-$DEFAULT_MAX_METADATA_BYTES}" \
-            "${MYDATA_CFG_MAX_PAYMENT_REFERENCE_BYTES:-$DEFAULT_MAX_PAYMENT_REFERENCE_BYTES}" \
-            "${MYDATA_CFG_MAX_POOL_ASSIGNMENTS:-$DEFAULT_MAX_POOL_ASSIGNMENTS}" \
-            "${MYDATA_CFG_MAX_MERKLE_PROOF_DEPTH:-$DEFAULT_MAX_MERKLE_PROOF_DEPTH}" \
-            "${MYDATA_CFG_MAX_PAID_ACCESS_ENTRIES:-$DEFAULT_MAX_PAID_ACCESS_ENTRIES}" \
-            "${MYDATA_CFG_DEFAULT_CLAIM_WINDOW_MS:-$DEFAULT_CLAIM_WINDOW_MS}" \
-            "${MYDATA_CFG_P2P_PLATFORM_FEE_BPS:-$DEFAULT_P2P_PLATFORM_FEE_BPS}" \
-            "${MYDATA_CFG_P2P_ECOSYSTEM_FEE_BPS:-$DEFAULT_P2P_ECOSYSTEM_FEE_BPS}" \
-            "${MYDATA_CFG_MYDATA_MARKETPLACE_PLATFORM_FEE_BPS:-$DEFAULT_MYDATA_MARKETPLACE_PLATFORM_FEE_BPS}" \
-            "${MYDATA_CFG_MYDATA_MARKETPLACE_ECOSYSTEM_FEE_BPS:-$DEFAULT_MYDATA_MARKETPLACE_ECOSYSTEM_FEE_BPS}" \
-            "${MYDATA_CFG_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS:-$DEFAULT_NON_PLATFORM_PLATFORM_TO_CREATOR_BPS}" \
-            "${MYDATA_CFG_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS:-$DEFAULT_NON_PLATFORM_PLATFORM_TO_TREASURY_BPS}"
-        local ec=$?
-        set -e
-        if [[ $ec -ne 0 ]]; then
-            echo "update_mydata_config failed (exit $ec). Fix and run menu [1], or retry." >&2
-            read -r -p "Continue to encrypt/listing anyway? [y/N] " cont
-            [[ "${cont:-}" == [yY]* ]] || return 1
-        fi
-    else
-        echo "Skipping on-chain enable — ensure you already ran menu [1] or enabled elsewhere." >&2
-    fi
-}
-
 menu_create_and_share() {
     require_session_fields MYDATA_CONFIG_ID MYDATA_REGISTRY_ID || return 1
-
-    ensure_mydata_enabled_for_listing
 
     local mydata_bin sec_file pk ks plaintext aad_opt
     mydata_bin="$(resolve_mydata)"
@@ -1211,26 +1271,39 @@ menu_create_and_share() {
     upd="$(prompt_or_default "is_updating (true/false)" "false")"
     freq="$(prompt_or_default "update_frequency Option" '[]')"
 
+    local out digest created_listing
     case "$model" in
         profile)
             function_name=create_and_share_profile_subscription_mydata
-            run_myso_call "$function_name" \
+            out="$(run_myso_call "$function_name" \
                 --args "$MYDATA_CONFIG_ID" "$MYDATA_REGISTRY_ID" "\"$media\"" "$tags_json" "$platform_opt" "$tstart" "$tend" \
-                "$enc_arg" "$id_arg" "$geo" "$dq" "$sample" "$coll" "$upd" "$freq" "$CLOCK_ID"
+                "$enc_arg" "$id_arg" "$geo" "$dq" "$sample" "$coll" "$upd" "$freq" "$CLOCK_ID")" || return 1
             ;;
         one-time)
             function_name=create_and_share_marketplace_one_time_mydata
-            run_myso_call "$function_name" \
+            out="$(run_myso_call "$function_name" \
                 --args "$MYDATA_CONFIG_ID" "$MYDATA_REGISTRY_ID" "\"$media\"" "$tags_json" "$platform_opt" "$tstart" "$tend" \
-                "$enc_arg" "$id_arg" "$price" "$geo" "$dq" "$sample" "$coll" "$upd" "$freq" "$CLOCK_ID"
+                "$enc_arg" "$id_arg" "$price" "$geo" "$dq" "$sample" "$coll" "$upd" "$freq" "$CLOCK_ID")" || return 1
             ;;
         recurring)
             function_name=create_and_share_marketplace_recurring_mydata
-            run_myso_call "$function_name" \
+            out="$(run_myso_call "$function_name" \
                 --args "$MYDATA_CONFIG_ID" "$MYDATA_REGISTRY_ID" "\"$media\"" "$tags_json" "$platform_opt" "$tstart" "$tend" \
-                "$enc_arg" "$id_arg" "$price" "$subdur_raw" "$geo" "$dq" "$sample" "$coll" "$upd" "$freq" "$CLOCK_ID"
+                "$enc_arg" "$id_arg" "$price" "$subdur_raw" "$geo" "$dq" "$sample" "$coll" "$upd" "$freq" "$CLOCK_ID")" || return 1
             ;;
     esac
+
+    digest="$(extract_tx_digest "$out" 2>/dev/null || true)"
+    if [[ -n "$digest" ]]; then
+        created_listing="$(extract_created_object_by_type "$digest" "mydata::MyData" 2>/dev/null || true)"
+        [[ -n "$created_listing" ]] || created_listing="$(extract_created_object_by_type "$digest" "MyData" 2>/dev/null || true)"
+        if [[ -n "$created_listing" ]]; then
+            LISTING_ID="$(normalize_hex_id "$created_listing")"
+            log_session_use "LISTING_ID" "$LISTING_ID"
+        fi
+    fi
+    MYDATA_ENCRYPTION_ID="0x${ENCRYPT_ID_HEX:-}"
+    log_session_use "MYDATA_ENCRYPTION_ID" "$MYDATA_ENCRYPTION_ID"
 
     apply_session_defaults
     save_session_state
@@ -1239,16 +1312,30 @@ menu_create_and_share() {
         "Media type" "$media" \
         "Price" "${price:-n/a}" \
         "Subscription days" "${subdur_raw:-n/a}" \
+        "Listing" "${LISTING_ID:-<unknown>}" \
         "Encrypted object id" "0x${ENCRYPT_ID_HEX:-}" \
         "Key server object" "$ks"
 }
 
+require_query_marketplace_enabled() {
+    if ! load_mydata_config_params_from_graphql; then
+        echo "Warning: could not read MyData configuration; the on-chain call will enforce marketplace_enabled." >&2
+        return 0
+    fi
+    if [[ "${MYDATA_CFG_MARKETPLACE_ENABLED:-false}" != "true" ]]; then
+        echo "New query/pool marketplace snapshots are disabled by MyDataConfig.marketplace_enabled." >&2
+        echo "Use menu [1] to enable the query marketplace before recording a snapshot anchor." >&2
+        return 1
+    fi
+}
+
 menu_purchase_one_time() {
-    require_session_fields MYDATA_CONFIG_ID BLOCK_LIST_REGISTRY_ID MEMORY_CONFIG_ID ECOSYSTEM_TREASURY_ID || return 1
+    ensure_mydata_purchase_shared_ids MYDATA_CONFIG_ID BLOCK_LIST_REGISTRY_ID MEMORY_CONFIG_ID ECOSYSTEM_TREASURY_ID || return 1
     local listing pay account
     listing="$(resolve_purchase_listing_id)" || return 1
+    assert_buyer_is_not_listing_owner "$listing" || return 1
     pay="$(resolve_purchase_pay_coin)" || return 1
-    account="$(resolve_session_or_prompt MEMORY_ACCOUNT_ID "Listing owner's MemoryAccount (or buyer's if agent lives there)")"
+    account="$(resolve_purchase_memory_account_id "MemoryAccount object id")" || return 1
     validate_purchase_coin_ownership "$pay" || return 1
     LISTING_ID="$listing"
     PAY_COIN_ID="$pay"
@@ -1264,11 +1351,12 @@ menu_purchase_one_time() {
 }
 
 menu_purchase_sub() {
-    require_session_fields MYDATA_CONFIG_ID BLOCK_LIST_REGISTRY_ID MEMORY_CONFIG_ID ECOSYSTEM_TREASURY_ID || return 1
+    ensure_mydata_purchase_shared_ids MYDATA_CONFIG_ID BLOCK_LIST_REGISTRY_ID MEMORY_CONFIG_ID ECOSYSTEM_TREASURY_ID || return 1
     local listing pay account
     listing="$(resolve_purchase_listing_id)" || return 1
+    assert_buyer_is_not_listing_owner "$listing" || return 1
     pay="$(resolve_purchase_pay_coin)" || return 1
-    account="$(resolve_session_or_prompt MEMORY_ACCOUNT_ID "Listing owner's MemoryAccount (or buyer's if agent lives there)")"
+    account="$(resolve_purchase_memory_account_id "MemoryAccount object id")" || return 1
     validate_purchase_coin_ownership "$pay" || return 1
     LISTING_ID="$listing"
     PAY_COIN_ID="$pay"
@@ -1311,14 +1399,15 @@ menu_update_content() {
 }
 
 menu_mydata_approve() {
-    require_session_fields BLOCK_LIST_REGISTRY_ID MEMORY_CONFIG_ID || return 1
+    ensure_mydata_purchase_shared_ids BLOCK_LIST_REGISTRY_ID MEMORY_CONFIG_ID || return 1
     local listing idv account
     listing="$(resolve_session_or_prompt LISTING_ID "MyData listing id")"
     LISTING_ID="$listing"
-    idv="$(prompt_with_default "encryption_id (0x hex, matches listing)" "")"
+    idv="$(prompt_with_default "encryption_id (0x hex, matches listing)" "${MYDATA_ENCRYPTION_ID:-}")"
     [[ -n "$idv" ]] || { echo "encryption id required." >&2; return 1; }
     idv="0x$(strip_0x "$idv")"
-    account="$(resolve_session_or_prompt MEMORY_ACCOUNT_ID "Listing owner's MemoryAccount (purchaser with access or owner's agent with CAP_MYDATA_READ)")"
+    MYDATA_ENCRYPTION_ID="$idv"
+    account="$(resolve_purchase_memory_account_id "Listing owner's MemoryAccount object id")" || return 1
     MEMORY_ACCOUNT_ID="$account"
     save_session_state
     run_myso_call mydata_approve --args "\"$idv\"" "$BLOCK_LIST_REGISTRY_ID" "$MEMORY_CONFIG_ID" "$listing" "$account" "$CLOCK_ID"
@@ -1430,6 +1519,7 @@ menu_remove_from_pool() {
 
 menu_record_anchor() {
     require_session_fields MYDATA_CONFIG_ID ANCHOR_REGISTRY_ID CLAIM_VAULT_ID POOL_REGISTRY_ID || return 1
+    require_query_marketplace_enabled || return 1
     local b_sub pay mf mf_hex pr pr_hex pc
     b_sub="$(prompt_with_default "source_pool_id (broad pool)" "")"
     pay="$(resolve_sub_pool_id "source_sub_pool_id")"

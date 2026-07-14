@@ -74,10 +74,6 @@ module social_contracts::profile {
     const USERNAME_LOCK_BENEFICIARY: u8 = 1;
     const USERNAME_LOCK_MARKETPLACE: u8 = 2;
 
-    /// `UsernameRevokedEvent` reason code used when a buyer's prior username is freed
-    /// as part of a marketplace sale (distinct from admin-supplied reason codes).
-    const USERNAME_REVOKE_REASON_SALE: u8 = 2;
-
     /// Default bootstrap values for ProfileConfig
     const CURVE_PRECISION: u64 = 1000;
     const CURVE_FACTOR_MIN: u64 = 100;
@@ -420,21 +416,14 @@ module social_contracts::profile {
         profile_id: address,
     }
 
-    /// Emitted when an admin revokes a username from a profile
-    public struct UsernameRevokedEvent has copy, drop {
-        username: String,
-        profile_id: address,
-        revoked_by: address,
-        reason_code: u8,
-    }
-
-    /// Emitted when an admin reassigns a username to a different profile
+    /// Emitted when an admin assigns an unclaimed username to a single profile.
+    /// `prior_username` is set when that profile already owned a username that was freed.
     public struct UsernameReassignedEvent has copy, drop {
         username: String,
-        old_profile_id: address,
-        new_profile_id: address,
+        profile_id: address,
         admin: address,
         reason_code: u8,
+        prior_username: Option<String>,
     }
 
     /// Emitted when a username string is reserved via [`UsernameRegistry::username_locks`]
@@ -512,7 +501,8 @@ module social_contracts::profile {
         is_revoked: bool,
     }
 
-    /// Emitted when registry username mappings are swapped during marketplace settlement
+    /// Emitted when registry username mappings are swapped during marketplace settlement.
+    /// `prior_buyer_username` is set when the buyer's previous username was freed.
     public struct UsernameSaleSettledEvent has copy, drop {
         listed_username: String,
         replacement_username: String,
@@ -522,6 +512,7 @@ module social_contracts::profile {
         buyer_profile_id: address,
         amount: u64,
         settled_at: u64,
+        prior_buyer_username: Option<String>,
     }
 
     /// Emitted when a fee is collected from a username marketplace sale
@@ -1427,15 +1418,13 @@ module social_contracts::profile {
         // 1. Free buyer's prior username so the buyer ends with exactly one username
         //    (one-per-wallet invariant). The buyer's prior username is never the listed
         //    (marketplace-locked) string, so `revoke_username` does not trip the lock assert.
-        if (table::contains(&registry.profile_username, buyer_profile_id)) {
+        //    Freed username is carried on UsernameSaleSettledEvent for indexer registry delete.
+        let prior_buyer_username = if (table::contains(&registry.profile_username, buyer_profile_id)) {
             let old_buyer_username = *table::borrow(&registry.profile_username, buyer_profile_id);
             revoke_username(registry, old_buyer_username);
-            event::emit(UsernameRevokedEvent {
-                username: old_buyer_username,
-                profile_id: buyer_profile_id,
-                revoked_by: seller,
-                reason_code: USERNAME_REVOKE_REASON_SALE,
-            });
+            option::some(old_buyer_username)
+        } else {
+            option::none()
         };
 
         // 2. Move the listed username to the buyer.
@@ -1457,6 +1446,7 @@ module social_contracts::profile {
             buyer_profile_id,
             amount,
             settled_at: now,
+            prior_buyer_username,
         });
     }
 
@@ -2062,59 +2052,41 @@ module social_contracts::profile {
 
     // === Username Admin (registry-only; no Profile object required) ===
 
-    /// Revoke a username — removes claim; username becomes available immediately.
-    public entry fun admin_revoke_username(
-        _: &UsernameAdminCap,
-        registry: &mut UsernameRegistry,
-        username: String,
-        reason_code: u8,
-        ctx: &mut TxContext,
-    ) {
-        assert!(registry.version == upgrade::current_version(), 1);
-        let canonical = normalize_username(&username);
-        let profile_id = revoke_username(registry, canonical);
-        let admin = tx_context::sender(ctx);
-        event::emit(UsernameRevokedEvent {
-            username: canonical,
-            profile_id,
-            revoked_by: admin,
-            reason_code,
-        });
-    }
-
-    /// Reassign an existing username to a different profile.
+    /// Assign an unclaimed username to one profile. If that profile already owns a username,
+    /// it is freed for reuse and reported via `UsernameReassignedEvent.prior_username`.
+    /// No other profile is modified.
     public entry fun admin_reassign_username(
         _: &UsernameAdminCap,
         registry: &mut UsernameRegistry,
-        username: String,
-        to_profile_id: address,
+        profile_id: address,
+        new_username: String,
         reason_code: u8,
         ctx: &mut TxContext,
     ) {
         assert!(registry.version == upgrade::current_version(), 1);
-        let canonical = normalize_username(&username);
-        assert!(table::contains(&registry.usernames, canonical), EUsernameNotFound);
-        let from_profile_id = *table::borrow(&registry.usernames, canonical);
-        assert!(from_profile_id != to_profile_id, EUsernameProfileMismatch);
+        let canonical = normalize_username(&new_username);
+        assert!(!table::contains(&registry.usernames, canonical), EUsernameNotAvailable);
         assert!(
             !table::contains(&registry.username_locks, canonical),
             EUsernameLocked,
         );
-        // Preserve the one-username-per-profile invariant: if the target profile already owns a
-        // username, revoke it first (mirrors the marketplace sale flow). Aborts with EUsernameLocked
-        // if the target's current username is marketplace-listed.
-        if (table::contains(&registry.profile_username, to_profile_id)) {
-            let old_target_username = *table::borrow(&registry.profile_username, to_profile_id);
-            revoke_username(registry, old_target_username);
-        };
+
         let admin = tx_context::sender(ctx);
-        let old_profile_id = move_username(registry, canonical, to_profile_id);
+        // Free the target's prior name first (abort if marketplace-locked).
+        let prior_username = if (table::contains(&registry.profile_username, profile_id)) {
+            let old_username = *table::borrow(&registry.profile_username, profile_id);
+            revoke_username(registry, old_username);
+            option::some(old_username)
+        } else {
+            option::none()
+        };
+        assign_username(registry, canonical, profile_id);
         event::emit(UsernameReassignedEvent {
             username: canonical,
-            old_profile_id,
-            new_profile_id: to_profile_id,
+            profile_id,
             admin,
             reason_code,
+            prior_username,
         });
     }
 

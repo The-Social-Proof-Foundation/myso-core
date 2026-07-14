@@ -239,8 +239,9 @@ pub fn handle_profile_event(
             process_profile_x_username_updated_event(data, event_id, checkpoint_timestamp_ms)
         }
         "UsernameClaimedEvent" => process_username_claimed_event(data, event_id),
-        "UsernameRevokedEvent" => process_username_revoked_event(data, event_id),
-        "UsernameReassignedEvent" => process_username_reassigned_event(data, event_id),
+        "UsernameReassignedEvent" => {
+            process_username_reassigned_event(data, event_id, checkpoint_timestamp_ms)
+        }
         "BadgeAssignedEvent" => {
             process_badge_assigned_event(data, event_id, checkpoint_timestamp_ms)
         }
@@ -563,70 +564,25 @@ fn process_username_claimed_event(
     ])
 }
 
-/// Emitted when an admin revokes a username.
-#[derive(Debug, Clone, Deserialize)]
-struct UsernameRevokedEvent {
-    username: String,
-    #[serde(rename = "profile_id", default)]
-    profile_id: String,
-    #[serde(rename = "revoked_by", default)]
-    _revoked_by: String,
-    reason_code: u8,
-}
-
-fn process_username_revoked_event(
-    data: &serde_json::Value,
-    event_id: &str,
-) -> Option<Vec<SocialEventRow>> {
-    let ev: UsernameRevokedEvent = common::deserialize_social_event_json(
-        "profile",
-        "UsernameRevokedEvent",
-        event_id,
-        data,
-        "profile UsernameRevokedEvent JSON did not match UsernameRevokedEvent",
-    )?;
-    let now = chrono::Utc::now().naive_utc();
-    let audit_event = NewProfileEvent {
-        event_type: "UsernameRevoked".to_string(),
-        profile_id: ev.profile_id.clone(),
-        event_data: serde_json::json!({
-            "username": ev.username,
-            "profile_id": ev.profile_id,
-            "reason_code": ev.reason_code,
-        }),
-        event_id: Some(event_id.to_string()),
-        created_at: now,
-        updated_at: now,
-    };
-    Some(vec![
-        SocialEventRow::UsernameRegistryDelete {
-            username: ev.username,
-        },
-        SocialEventRow::ProfileUsernameClear {
-            profile_id: ev.profile_id,
-            owner_address: None,
-        },
-        SocialEventRow::ProfileEvent(audit_event),
-    ])
-}
-
-/// Emitted when an admin reassigns a username to a different profile.
+/// Emitted when an admin assigns an unclaimed username to a single profile.
 #[derive(Debug, Clone, Deserialize)]
 struct UsernameReassignedEvent {
     username: String,
-    #[serde(rename = "old_profile_id", default)]
-    old_profile_id: String,
-    #[serde(rename = "new_profile_id", default)]
-    new_profile_id: String,
+    #[serde(rename = "profile_id", default)]
+    profile_id: String,
     #[serde(default)]
-    _admin: String,
+    admin: String,
     #[serde(default)]
-    _reason_code: u8,
+    reason_code: u8,
+    /// Freed when the target profile already owned a username.
+    #[serde(default)]
+    prior_username: Option<String>,
 }
 
 fn process_username_reassigned_event(
     data: &serde_json::Value,
     event_id: &str,
+    checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
     let ev: UsernameReassignedEvent = common::deserialize_social_event_json(
         "profile",
@@ -636,22 +592,39 @@ fn process_username_reassigned_event(
         "profile UsernameReassignedEvent JSON did not match UsernameReassignedEvent",
     )?;
     let tx_id = event_id.to_string();
-    Some(vec![
-        SocialEventRow::UsernameRegistryReassign {
-            username: ev.username.clone(),
-            new_profile_id: ev.new_profile_id.clone(),
-            transaction_id: tx_id,
-        },
-        SocialEventRow::ProfileUsernameClear {
-            profile_id: ev.old_profile_id,
-            owner_address: None,
-        },
-        SocialEventRow::ProfileUsernameSet {
-            profile_id: ev.new_profile_id,
-            username: ev.username,
-            owner_address: None,
-        },
-    ])
+    let now = common::chain_time_from_ms(checkpoint_timestamp_ms as i64).naive_utc();
+    let audit_event = NewProfileEvent {
+        event_type: "UsernameReassigned".to_string(),
+        profile_id: ev.profile_id.clone(),
+        event_data: serde_json::json!({
+            "username": ev.username,
+            "profile_id": ev.profile_id,
+            "admin": ev.admin,
+            "reason_code": ev.reason_code,
+            "prior_username": ev.prior_username,
+        }),
+        event_id: Some(event_id.to_string()),
+        created_at: now,
+        updated_at: now,
+    };
+    let mut rows = Vec::new();
+    if let Some(prior) = ev.prior_username.clone() {
+        if !prior.is_empty() {
+            rows.push(SocialEventRow::UsernameRegistryDelete { username: prior });
+        }
+    }
+    rows.push(SocialEventRow::UsernameRegistryUpsert(NewUsernameRegistry {
+        username: ev.username.clone(),
+        profile_id: ev.profile_id.clone(),
+        transaction_id: tx_id,
+    }));
+    rows.push(SocialEventRow::ProfileUsernameSet {
+        profile_id: ev.profile_id,
+        username: ev.username,
+        owner_address: None,
+    });
+    rows.push(SocialEventRow::ProfileEvent(audit_event));
+    Some(rows)
 }
 
 fn default_zero_u8() -> u8 {
@@ -1411,6 +1384,9 @@ struct UsernameSaleSettledEvent {
     amount: u64,
     #[serde(default, deserialize_with = "deserialize_number_from_string")]
     settled_at: u64,
+    /// Freed when the buyer already owned a username before settlement.
+    #[serde(default)]
+    prior_buyer_username: Option<String>,
 }
 
 fn process_username_sale_settled_event(
@@ -1436,12 +1412,19 @@ fn process_username_sale_settled_event(
             "buyer_profile_id": ev.buyer_profile_id,
             "amount": ev.amount,
             "settled_at": ev.settled_at,
+            "prior_buyer_username": ev.prior_buyer_username,
         }),
         event_id: Some(event_id.to_string()),
         created_at: now,
         updated_at: now,
     };
-    Some(vec![
+    let mut rows = Vec::new();
+    if let Some(prior) = ev.prior_buyer_username {
+        if !prior.is_empty() {
+            rows.push(SocialEventRow::UsernameRegistryDelete { username: prior });
+        }
+    }
+    rows.extend([
         SocialEventRow::UsernameRegistryReassign {
             username: ev.listed_username.clone(),
             new_profile_id: ev.buyer_profile_id.clone(),
@@ -1463,7 +1446,8 @@ fn process_username_sale_settled_event(
             owner_address: Some(ev.buyer),
         },
         SocialEventRow::ProfileEvent(audit_event),
-    ])
+    ]);
+    Some(rows)
 }
 
 fn process_username_sale_fee_event(
@@ -1972,12 +1956,17 @@ mod tests {
             buyer_profile_id,
             amount: 5_000_000_000,
             settled_at: 1_783_237_181_000,
+            prior_buyer_username: Some("buyer1".to_string()),
         };
         let bytes = bcs::to_bytes(&ev).expect("bcs serialize");
         let json = parse_event_contents("profile", "UsernameSaleSettledEvent", &bytes)
             .expect("parse_event_contents");
         let rows = handle_profile_event("UsernameSaleSettledEvent", &json, "tx:settle:0", CK_MS)
             .expect("handler");
+        assert!(rows.iter().any(|r| matches!(
+            r,
+            SocialEventRow::UsernameRegistryDelete { username } if username == "buyer1"
+        )));
         assert!(rows.iter().any(|r| matches!(
             r,
             SocialEventRow::UsernameRegistryReassign { username, new_profile_id, .. }
@@ -2006,26 +1995,66 @@ mod tests {
                 if e.event_type == "UsernameSaleSettled"
                     && e.event_data.get("listed_username").and_then(|v| v.as_str()) == Some("premium1")
                     && e.event_data.get("replacement_username").and_then(|v| v.as_str()) == Some("seller1")
+                    && e.event_data.get("prior_buyer_username").and_then(|v| v.as_str()) == Some("buyer1")
         )));
     }
 
+    /// Single-profile rename: delete prior registry row, upsert new name, set profiles.username.
     #[test]
-    fn test_username_revoked_emits_profile_event() {
-        let buyer_profile_id = move_core_types::account_address::AccountAddress::random();
+    fn test_username_reassigned_sets_target_and_deletes_prior() {
+        let profile_id = move_core_types::account_address::AccountAddress::random();
+        let profile_id_string = profile_id.to_canonical_string(true);
         let json = serde_json::json!({
-            "username": "buyer1",
-            "profile_id": buyer_profile_id.to_canonical_string(true),
-            "revoked_by": "0x1",
+            "username": "brandnew",
+            "profile_id": profile_id_string,
+            "admin": "0x1",
             "reason_code": 2,
+            "prior_username": "oldtarget",
         });
-        let rows = handle_profile_event("UsernameRevokedEvent", &json, "tx:revoke:0", CK_MS)
+        let rows = handle_profile_event("UsernameReassignedEvent", &json, "tx:reassign:0", CK_MS)
             .expect("handler");
         assert!(rows.iter().any(|r| matches!(
             r,
-            SocialEventRow::ProfileEvent(e)
-                if e.event_type == "UsernameRevoked"
-                    && e.event_data.get("reason_code").and_then(|v| v.as_u64()) == Some(2)
+            SocialEventRow::UsernameRegistryDelete { username } if username == "oldtarget"
         )));
+        assert!(rows.iter().any(|r| matches!(
+            r,
+            SocialEventRow::UsernameRegistryUpsert(reg)
+                if reg.username == "brandnew"
+                    && reg.profile_id == profile_id_string
+        )));
+        assert!(rows.iter().any(|r| matches!(
+            r,
+            SocialEventRow::ProfileUsernameSet { profile_id: pid, username, .. }
+                if *pid == profile_id_string && username == "brandnew"
+        )));
+        assert!(!rows.iter().any(|r| matches!(
+            r,
+            SocialEventRow::UsernameRegistryReassign { .. }
+        )));
+        let audit_event = rows
+            .iter()
+            .find_map(|row| match row {
+                SocialEventRow::ProfileEvent(event) => Some(event),
+                _ => None,
+            })
+            .expect("UsernameReassigned profile event");
+        let expected_time = common::chain_time_from_ms(CK_MS as i64).naive_utc();
+        assert_eq!(audit_event.event_type, "UsernameReassigned");
+        assert_eq!(audit_event.profile_id, profile_id_string);
+        assert_eq!(
+            audit_event.event_data,
+            serde_json::json!({
+                "username": "brandnew",
+                "profile_id": profile_id_string,
+                "admin": "0x1",
+                "reason_code": 2,
+                "prior_username": "oldtarget",
+            })
+        );
+        assert_eq!(audit_event.event_id.as_deref(), Some("tx:reassign:0"));
+        assert_eq!(audit_event.created_at, expected_time);
+        assert_eq!(audit_event.updated_at, expected_time);
     }
 
     #[test]

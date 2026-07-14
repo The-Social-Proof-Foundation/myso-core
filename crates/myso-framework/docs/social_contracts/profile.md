@@ -30,7 +30,6 @@ Handles user identity, profile creation, management, and username registration
 -  [Struct `ProfileCreatedEvent`](#social_contracts_profile_ProfileCreatedEvent)
 -  [Struct `ProfileUpdatedEvent`](#social_contracts_profile_ProfileUpdatedEvent)
 -  [Struct `UsernameClaimedEvent`](#social_contracts_profile_UsernameClaimedEvent)
--  [Struct `UsernameRevokedEvent`](#social_contracts_profile_UsernameRevokedEvent)
 -  [Struct `UsernameReassignedEvent`](#social_contracts_profile_UsernameReassignedEvent)
 -  [Struct `UsernameReservedEvent`](#social_contracts_profile_UsernameReservedEvent)
 -  [Struct `UsernameReleasedEvent`](#social_contracts_profile_UsernameReleasedEvent)
@@ -125,7 +124,6 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `assign_ecosystem_badge`](#social_contracts_profile_assign_ecosystem_badge)
 -  [Function `admin_set_profile_x_username`](#social_contracts_profile_admin_set_profile_x_username)
 -  [Function `revoke_ecosystem_badge`](#social_contracts_profile_revoke_ecosystem_badge)
--  [Function `admin_revoke_username`](#social_contracts_profile_admin_revoke_username)
 -  [Function `admin_reassign_username`](#social_contracts_profile_admin_reassign_username)
 -  [Function `version`](#social_contracts_profile_version)
 -  [Function `borrow_version_mut`](#social_contracts_profile_borrow_version_mut)
@@ -1546,14 +1544,15 @@ Emitted when a username is claimed at profile creation
 
 </details>
 
-<a name="social_contracts_profile_UsernameRevokedEvent"></a>
+<a name="social_contracts_profile_UsernameReassignedEvent"></a>
 
-## Struct `UsernameRevokedEvent`
+## Struct `UsernameReassignedEvent`
 
-Emitted when an admin revokes a username from a profile
+Emitted when an admin assigns an unclaimed username to a single profile.
+<code>prior_username</code> is set when that profile already owned a username that was freed.
 
 
-<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRevokedEvent">UsernameRevokedEvent</a> <b>has</b> <b>copy</b>, drop
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameReassignedEvent">UsernameReassignedEvent</a> <b>has</b> <b>copy</b>, drop
 </code></pre>
 
 
@@ -1574,59 +1573,17 @@ Emitted when an admin revokes a username from a profile
 <dd>
 </dd>
 <dt>
-<code>revoked_by: <b>address</b></code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>reason_code: u8</code>
-</dt>
-<dd>
-</dd>
-</dl>
-
-
-</details>
-
-<a name="social_contracts_profile_UsernameReassignedEvent"></a>
-
-## Struct `UsernameReassignedEvent`
-
-Emitted when an admin reassigns a username to a different profile
-
-
-<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameReassignedEvent">UsernameReassignedEvent</a> <b>has</b> <b>copy</b>, drop
-</code></pre>
-
-
-
-<details>
-<summary>Fields</summary>
-
-
-<dl>
-<dt>
-<code>username: <a href="../std/string.md#std_string_String">std::string::String</a></code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>old_profile_id: <b>address</b></code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>new_profile_id: <b>address</b></code>
-</dt>
-<dd>
-</dd>
-<dt>
 <code>admin: <b>address</b></code>
 </dt>
 <dd>
 </dd>
 <dt>
 <code>reason_code: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>prior_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
 </dt>
 <dd>
 </dd>
@@ -2026,7 +1983,8 @@ Emitted when a username offer is rejected or revoked
 
 ## Struct `UsernameSaleSettledEvent`
 
-Emitted when registry username mappings are swapped during marketplace settlement
+Emitted when registry username mappings are swapped during marketplace settlement.
+<code>prior_buyer_username</code> is set when the buyer's previous username was freed.
 
 
 <pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameSaleSettledEvent">UsernameSaleSettledEvent</a> <b>has</b> <b>copy</b>, drop
@@ -2076,6 +2034,11 @@ Emitted when registry username mappings are swapped during marketplace settlemen
 </dd>
 <dt>
 <code>settled_at: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>prior_buyer_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
 </dt>
 <dd>
 </dd>
@@ -2748,17 +2711,6 @@ Username lock reasons (stored in [<code>UsernameRegistry::username_locks</code>]
 
 
 <pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_USERNAME_LOCK_MARKETPLACE">USERNAME_LOCK_MARKETPLACE</a>: u8 = 2;
-</code></pre>
-
-
-
-<a name="social_contracts_profile_USERNAME_REVOKE_REASON_SALE"></a>
-
-<code><a href="../social_contracts/profile.md#social_contracts_profile_UsernameRevokedEvent">UsernameRevokedEvent</a></code> reason code used when a buyer's prior username is freed
-as part of a marketplace sale (distinct from admin-supplied reason codes).
-
-
-<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_USERNAME_REVOKE_REASON_SALE">USERNAME_REVOKE_REASON_SALE</a>: u8 = 2;
 </code></pre>
 
 
@@ -4744,15 +4696,13 @@ Get the owner of a profile
     // 1. Free buyer's prior username so the buyer ends with exactly one username
     //    (one-per-wallet <b>invariant</b>). The buyer's prior username is never the listed
     //    (marketplace-locked) string, so `<a href="../social_contracts/profile.md#social_contracts_profile_revoke_username">revoke_username</a>` does not trip the lock <b>assert</b>.
-    <b>if</b> (table::contains(&registry.profile_username, buyer_profile_id)) {
+    //    Freed username is carried on <a href="../social_contracts/profile.md#social_contracts_profile_UsernameSaleSettledEvent">UsernameSaleSettledEvent</a> <b>for</b> indexer registry delete.
+    <b>let</b> prior_buyer_username = <b>if</b> (table::contains(&registry.profile_username, buyer_profile_id)) {
         <b>let</b> old_buyer_username = *table::borrow(&registry.profile_username, buyer_profile_id);
         <a href="../social_contracts/profile.md#social_contracts_profile_revoke_username">revoke_username</a>(registry, old_buyer_username);
-        event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRevokedEvent">UsernameRevokedEvent</a> {
-            username: old_buyer_username,
-            profile_id: buyer_profile_id,
-            revoked_by: seller,
-            reason_code: <a href="../social_contracts/profile.md#social_contracts_profile_USERNAME_REVOKE_REASON_SALE">USERNAME_REVOKE_REASON_SALE</a>,
-        });
+        option::some(old_buyer_username)
+    } <b>else</b> {
+        option::none()
     };
     // 2. Move the listed username to the buyer.
     <a href="../social_contracts/profile.md#social_contracts_profile_move_username">move_username</a>(registry, listed_username, buyer_profile_id);
@@ -4770,6 +4720,7 @@ Get the owner of a profile
         buyer_profile_id,
         amount,
         settled_at: now,
+        prior_buyer_username,
     });
 }
 </code></pre>
@@ -5838,54 +5789,16 @@ Revoke an ecosystem badge from a profile - called by EcosystemBadgeAdminCap hold
 
 </details>
 
-<a name="social_contracts_profile_admin_revoke_username"></a>
-
-## Function `admin_revoke_username`
-
-Revoke a username — removes claim; username becomes available immediately.
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_admin_revoke_username">admin_revoke_username</a>(_: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameAdminCap">social_contracts::profile::UsernameAdminCap</a>, registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, username: <a href="../std/string.md#std_string_String">std::string::String</a>, reason_code: u8, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_admin_revoke_username">admin_revoke_username</a>(
-    _: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameAdminCap">UsernameAdminCap</a>,
-    registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>,
-    username: String,
-    reason_code: u8,
-    ctx: &<b>mut</b> TxContext,
-) {
-    <b>assert</b>!(registry.<a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), 1);
-    <b>let</b> canonical = <a href="../social_contracts/profile.md#social_contracts_profile_normalize_username">normalize_username</a>(&username);
-    <b>let</b> profile_id = <a href="../social_contracts/profile.md#social_contracts_profile_revoke_username">revoke_username</a>(registry, canonical);
-    <b>let</b> admin = tx_context::sender(ctx);
-    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRevokedEvent">UsernameRevokedEvent</a> {
-        username: canonical,
-        profile_id,
-        revoked_by: admin,
-        reason_code,
-    });
-}
-</code></pre>
-
-
-
-</details>
-
 <a name="social_contracts_profile_admin_reassign_username"></a>
 
 ## Function `admin_reassign_username`
 
-Reassign an existing username to a different profile.
+Assign an unclaimed username to one profile. If that profile already owns a username,
+it is freed for reuse and reported via <code><a href="../social_contracts/profile.md#social_contracts_profile_UsernameReassignedEvent">UsernameReassignedEvent</a>.prior_username</code>.
+No other profile is modified.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_admin_reassign_username">admin_reassign_username</a>(_: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameAdminCap">social_contracts::profile::UsernameAdminCap</a>, registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, username: <a href="../std/string.md#std_string_String">std::string::String</a>, to_profile_id: <b>address</b>, reason_code: u8, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_admin_reassign_username">admin_reassign_username</a>(_: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameAdminCap">social_contracts::profile::UsernameAdminCap</a>, registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, profile_id: <b>address</b>, new_username: <a href="../std/string.md#std_string_String">std::string::String</a>, reason_code: u8, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -5897,35 +5810,34 @@ Reassign an existing username to a different profile.
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_admin_reassign_username">admin_reassign_username</a>(
     _: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameAdminCap">UsernameAdminCap</a>,
     registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>,
-    username: String,
-    to_profile_id: <b>address</b>,
+    profile_id: <b>address</b>,
+    new_username: String,
     reason_code: u8,
     ctx: &<b>mut</b> TxContext,
 ) {
     <b>assert</b>!(registry.<a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), 1);
-    <b>let</b> canonical = <a href="../social_contracts/profile.md#social_contracts_profile_normalize_username">normalize_username</a>(&username);
-    <b>assert</b>!(table::contains(&registry.usernames, canonical), <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameNotFound">EUsernameNotFound</a>);
-    <b>let</b> from_profile_id = *table::borrow(&registry.usernames, canonical);
-    <b>assert</b>!(from_profile_id != to_profile_id, <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameProfileMismatch">EUsernameProfileMismatch</a>);
+    <b>let</b> canonical = <a href="../social_contracts/profile.md#social_contracts_profile_normalize_username">normalize_username</a>(&new_username);
+    <b>assert</b>!(!table::contains(&registry.usernames, canonical), <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameNotAvailable">EUsernameNotAvailable</a>);
     <b>assert</b>!(
         !table::contains(&registry.username_locks, canonical),
         <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameLocked">EUsernameLocked</a>,
     );
-    // Preserve the one-username-per-<a href="../social_contracts/profile.md#social_contracts_profile">profile</a> <b>invariant</b>: <b>if</b> the target <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> already owns a
-    // username, revoke it first (mirrors the marketplace sale flow). Aborts with <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameLocked">EUsernameLocked</a>
-    // <b>if</b> the target's current username is marketplace-listed.
-    <b>if</b> (table::contains(&registry.profile_username, to_profile_id)) {
-        <b>let</b> old_target_username = *table::borrow(&registry.profile_username, to_profile_id);
-        <a href="../social_contracts/profile.md#social_contracts_profile_revoke_username">revoke_username</a>(registry, old_target_username);
-    };
     <b>let</b> admin = tx_context::sender(ctx);
-    <b>let</b> old_profile_id = <a href="../social_contracts/profile.md#social_contracts_profile_move_username">move_username</a>(registry, canonical, to_profile_id);
+    // Free the target's prior name first (<b>abort</b> <b>if</b> marketplace-locked).
+    <b>let</b> prior_username = <b>if</b> (table::contains(&registry.profile_username, profile_id)) {
+        <b>let</b> old_username = *table::borrow(&registry.profile_username, profile_id);
+        <a href="../social_contracts/profile.md#social_contracts_profile_revoke_username">revoke_username</a>(registry, old_username);
+        option::some(old_username)
+    } <b>else</b> {
+        option::none()
+    };
+    <a href="../social_contracts/profile.md#social_contracts_profile_assign_username">assign_username</a>(registry, canonical, profile_id);
     event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_UsernameReassignedEvent">UsernameReassignedEvent</a> {
         username: canonical,
-        old_profile_id,
-        new_profile_id: to_profile_id,
+        profile_id,
         admin,
         reason_code,
+        prior_username,
     });
 }
 </code></pre>

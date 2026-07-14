@@ -9,7 +9,6 @@ use anyhow::Result;
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
 use diesel::QueryDsl;
-use diesel::Queryable;
 use diesel::QueryableByName;
 use diesel_async::RunQueryDsl;
 use fastcrypto::hash::{Blake2b256, HashFunction};
@@ -22,29 +21,13 @@ use myso_indexer_alt_social_schema::schema::{mydata_data, posts};
 use myso_types::storage::ObjectKey;
 use myso_types::MYSO_SOCIAL_ADDRESS;
 
-use super::access::{
-    POST_ACCESS_KIND_MARKETPLACE_ONE_TIME, POST_ACCESS_KIND_PROFILE_SUB,
-};
-use super::mydata::u64_to_db_i64;
-use super::mydata_object::{
-    mydata_one_time_price_from_bcs, mydata_subscription_price_from_bcs, parse_mydata_object_contents,
-    BcsMyData,
-};
+use super::access::POST_ACCESS_KIND_PROFILE_SUB;
+use super::mydata_object::{parse_mydata_object_contents, BcsMyData};
 use crate::metrics::SocialMetrics;
 
 /// Paywall-relevant fields extracted from a MyData object at index time.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct MyDataPaywallSnapshot {
-    pub subscription_price: Option<i64>,
-    pub one_time_price: Option<i64>,
-    pub encrypted_content_hash: Option<String>,
-}
-
-/// Post paywall columns derived from MyData.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct PostPaywallFields {
-    pub requires_subscription: Option<bool>,
-    pub subscription_price: Option<i64>,
     pub encrypted_content_hash: Option<String>,
 }
 
@@ -59,47 +42,15 @@ pub(crate) fn compute_encrypted_content_hash(data: &[u8]) -> Option<String> {
 
 pub(crate) fn paywall_snapshot_from_bcs(mydata: &BcsMyData) -> MyDataPaywallSnapshot {
     MyDataPaywallSnapshot {
-        subscription_price: mydata_subscription_price_from_bcs(mydata).map(u64_to_db_i64),
-        one_time_price: mydata_one_time_price_from_bcs(mydata).map(u64_to_db_i64),
         encrypted_content_hash: compute_encrypted_content_hash(&mydata.encrypted_data),
     }
 }
 
-pub(crate) fn paywall_from_mydata(
-    subscription_price: Option<i64>,
-    encrypted_content_hash: Option<String>,
-) -> PostPaywallFields {
-    PostPaywallFields {
-        requires_subscription: Some(subscription_price.is_some()),
-        subscription_price,
-        encrypted_content_hash,
-    }
-}
-
-pub(crate) fn apply_paywall_fields(post: &mut NewPost, fields: &PostPaywallFields) {
-    post.requires_subscription = fields.requires_subscription;
-    post.subscription_price = fields.subscription_price;
-    post.encrypted_content_hash = fields.encrypted_content_hash.clone();
-}
-
-pub(crate) fn enrich_post_from_snapshot(post: &mut NewPost, snapshot: &MyDataPaywallSnapshot) {
-    let fields = paywall_from_mydata(
-        snapshot.subscription_price,
-        snapshot.encrypted_content_hash.clone(),
-    );
-    apply_paywall_fields(post, &fields);
-}
-
-fn enrich_post_from_snapshot_for_access_kind(post: &mut NewPost, snapshot: &MyDataPaywallSnapshot) {
+/// A linked MyData object supplies encrypted bytes only. Post entitlement and pricing are
+/// determined by `PostAccess`: profile subscriptions come from `subscription.move`, while
+/// one-time prices remain on the linked MyData record.
+fn enrich_post_from_snapshot(post: &mut NewPost, snapshot: &MyDataPaywallSnapshot) {
     post.encrypted_content_hash = snapshot.encrypted_content_hash.clone();
-    match post.post_access_kind.as_deref() {
-        Some(POST_ACCESS_KIND_PROFILE_SUB) => {}
-        Some(POST_ACCESS_KIND_MARKETPLACE_ONE_TIME) => {
-            post.requires_subscription = Some(false);
-            post.subscription_price = snapshot.one_time_price;
-        }
-        _ => enrich_post_from_snapshot(post, snapshot),
-    }
 }
 
 pub(crate) fn enrich_post_from_mydata_id(
@@ -108,7 +59,7 @@ pub(crate) fn enrich_post_from_mydata_id(
     snapshots: &HashMap<String, MyDataPaywallSnapshot>,
 ) {
     if let Some(snapshot) = snapshots.get(mydata_id) {
-        enrich_post_from_snapshot_for_access_kind(post, snapshot);
+        enrich_post_from_snapshot(post, snapshot);
     }
 }
 
@@ -163,18 +114,8 @@ struct MinPlanPriceRow {
     min_price: Option<i64>,
 }
 
-#[derive(Debug, Queryable)]
-struct MyDataPaywallDbRow {
-    subscription_price: Option<i64>,
-    one_time_price: Option<i64>,
-    encrypted_content_hash: Option<String>,
-}
-
 pub(crate) fn post_paywall_needs_db_fallback(post: &NewPost) -> bool {
-    post.mydata_id.is_some()
-        && (post.requires_subscription.is_none()
-            || (post.post_access_kind.as_deref() == Some(POST_ACCESS_KIND_MARKETPLACE_ONE_TIME)
-                && post.subscription_price.is_none()))
+    post.mydata_id.is_some() && post.encrypted_content_hash.is_none()
 }
 
 pub(crate) async fn enrich_post_paywall_from_db<'a>(
@@ -184,43 +125,19 @@ pub(crate) async fn enrich_post_paywall_from_db<'a>(
     let Some(mydata_id) = post.mydata_id.as_deref() else {
         return Ok(());
     };
-    if !post_paywall_needs_db_fallback(post) && post.subscription_price.is_some() {
+    if !post_paywall_needs_db_fallback(post) {
         return Ok(());
     }
 
-    let row: Option<MyDataPaywallDbRow> = mydata_data::table
+    let encrypted_content_hash: Option<Option<String>> = mydata_data::table
         .filter(mydata_data::mydata_id.eq(mydata_id))
-        .select((
-            mydata_data::subscription_price,
-            mydata_data::one_time_price,
-            mydata_data::encrypted_content_hash,
-        ))
+        .select(mydata_data::encrypted_content_hash)
         .first(conn)
         .await
         .optional()?;
 
-    let Some(row) = row else {
-        return Ok(());
-    };
-
-    match post.post_access_kind.as_deref() {
-        Some(POST_ACCESS_KIND_PROFILE_SUB) => {
-            if post.encrypted_content_hash.is_none() {
-                post.encrypted_content_hash = row.encrypted_content_hash;
-            }
-        }
-        Some(POST_ACCESS_KIND_MARKETPLACE_ONE_TIME) => {
-            let fields = PostPaywallFields {
-                requires_subscription: Some(false),
-                subscription_price: row.one_time_price,
-                encrypted_content_hash: row.encrypted_content_hash,
-            };
-            apply_paywall_fields(post, &fields);
-        }
-        _ => {
-            let fields = paywall_from_mydata(row.subscription_price, row.encrypted_content_hash);
-            apply_paywall_fields(post, &fields);
-        }
+    if let Some(hash) = encrypted_content_hash {
+        post.encrypted_content_hash = hash;
     }
     Ok(())
 }
@@ -240,9 +157,16 @@ pub(crate) async fn enrich_post_subscription_price_from_db<'a>(
     };
     let min_price: Option<i64> = diesel::sql_query(
         "SELECT MIN(price) AS min_price FROM profile_subscription_plans \
-         WHERE service_id = $1 AND active = true",
+         WHERE service_id = $1 \
+           AND active = true \
+           AND COALESCE(tier_level, 0) >= COALESCE($2, 0) \
+           AND (platform_id IS NULL OR platform_id = $3)",
     )
     .bind::<diesel::sql_types::Text, _>(service_id)
+    .bind::<diesel::sql_types::Nullable<diesel::sql_types::BigInt>, _>(
+        post.subscription_min_tier_level,
+    )
+    .bind::<diesel::sql_types::Nullable<diesel::sql_types::Text>, _>(post.platform_id.as_deref())
     .get_result::<MinPlanPriceRow>(conn)
     .await
     .optional()?
@@ -251,18 +175,40 @@ pub(crate) async fn enrich_post_subscription_price_from_db<'a>(
     Ok(())
 }
 
+/// Recompute the cached price for every profile-subscription post using a service.
+/// This runs after plan create/update/deactivate events so the compatibility field
+/// cannot retain an old plan price.
+pub(crate) async fn refresh_post_subscription_prices_for_service<'a>(
+    conn: &mut Connection<'a>,
+    service_id: &str,
+) -> Result<usize> {
+    let updated = diesel::sql_query(
+        "UPDATE posts AS p \
+         SET subscription_price = ( \
+             SELECT MIN(plan.price) \
+             FROM profile_subscription_plans AS plan \
+             WHERE plan.service_id = p.subscription_service_id \
+               AND plan.active = true \
+               AND COALESCE(plan.tier_level, 0) >= COALESCE(p.subscription_min_tier_level, 0) \
+               AND (plan.platform_id IS NULL OR plan.platform_id = p.platform_id) \
+         ) \
+         WHERE p.subscription_service_id = $1 \
+           AND p.post_access_kind IN ('2', 'profile_sub', 'profile_subscription')",
+    )
+    .bind::<diesel::sql_types::Text, _>(service_id)
+    .execute(conn)
+    .await?;
+    Ok(updated)
+}
+
 pub(crate) async fn sync_posts_for_mydata<'a>(
     conn: &mut Connection<'a>,
     mydata_id: &str,
-    fields: &PostPaywallFields,
+    encrypted_content_hash: Option<String>,
 ) -> Result<usize> {
     let updated = diesel::update(posts::table)
         .filter(posts::mydata_id.eq(mydata_id))
-        .set((
-            posts::requires_subscription.eq(fields.requires_subscription),
-            posts::subscription_price.eq(fields.subscription_price),
-            posts::encrypted_content_hash.eq(fields.encrypted_content_hash.clone()),
-        ))
+        .set(posts::encrypted_content_hash.eq(encrypted_content_hash))
         .execute(conn)
         .await?;
     Ok(updated)
@@ -285,26 +231,10 @@ mod tests {
     }
 
     #[test]
-    fn paywall_from_mydata_subscription_only() {
-        let fields = paywall_from_mydata(Some(500), Some("0xabc".to_string()));
-        assert_eq!(fields.requires_subscription, Some(true));
-        assert_eq!(fields.subscription_price, Some(500));
-        assert_eq!(fields.encrypted_content_hash.as_deref(), Some("0xabc"));
-    }
-
-    #[test]
-    fn paywall_from_mydata_one_time_only() {
-        let fields = paywall_from_mydata(None, Some("0xdef".to_string()));
-        assert_eq!(fields.requires_subscription, Some(false));
-        assert_eq!(fields.subscription_price, None);
-        assert_eq!(fields.encrypted_content_hash.as_deref(), Some("0xdef"));
-    }
-
-    #[test]
-    fn paywall_from_mydata_free_encrypted() {
-        let fields = paywall_from_mydata(None, None);
-        assert_eq!(fields.requires_subscription, Some(false));
-        assert_eq!(fields.subscription_price, None);
-        assert_eq!(fields.encrypted_content_hash, None);
+    fn mydata_snapshot_contains_only_encrypted_content_hash() {
+        let snapshot = MyDataPaywallSnapshot {
+            encrypted_content_hash: Some("0xabc".to_string()),
+        };
+        assert_eq!(snapshot.encrypted_content_hash.as_deref(), Some("0xabc"));
     }
 }

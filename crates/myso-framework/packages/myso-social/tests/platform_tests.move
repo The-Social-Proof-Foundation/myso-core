@@ -31,7 +31,73 @@ module social_contracts::platform_tests {
     const PLATFORM_ADMIN: address = @0xF1;
     const PLATFORM_MOD: address = @0xF2;
     const PLATFORM_USER: address = @0xF3;
-    
+
+    fun ascii_string(length: u64): string::String {
+        let mut bytes = vector::empty<u8>();
+        let mut i = 0;
+        while (i < length) {
+            vector::push_back(&mut bytes, 97);
+            i = i + 1;
+        };
+        string::utf8(bytes)
+    }
+
+    #[test]
+    fun test_fixed_platform_url_limits_accept_2048_bytes() {
+        let url = ascii_string(2048);
+        platform::test_validate_media_preview_url(&url);
+        platform::test_validate_badge_urls(&url, &url);
+    }
+
+    #[test, expected_failure(abort_code = platform::EInvalidMediaPreviewUrl)]
+    fun test_fixed_media_preview_url_limit_rejects_2049_bytes() {
+        platform::test_validate_media_preview_url(&ascii_string(2049));
+    }
+
+    #[test, expected_failure(abort_code = platform::EBadgeMediaUrlTooLong)]
+    fun test_fixed_badge_media_url_limit_rejects_2049_bytes() {
+        platform::test_validate_badge_urls(&ascii_string(2049), &ascii_string(1));
+    }
+
+    #[test, expected_failure(abort_code = platform::EBadgeIconUrlTooLong)]
+    fun test_fixed_badge_icon_url_limit_rejects_2049_bytes() {
+        platform::test_validate_badge_urls(&ascii_string(1), &ascii_string(2049));
+    }
+
+    #[test]
+    fun test_update_platform_config_with_five_values() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            platform::test_init(&clock, test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
+        };
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let mut config = test_scenario::take_shared<PlatformConfig>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let admin_cap = platform::create_platform_admin_cap(test_scenario::ctx(&mut scenario));
+            platform::update_platform_config(
+                &admin_cap,
+                &mut config,
+                2001,
+                2049,
+                11,
+                101,
+                501,
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            transfer::public_transfer(admin_cap, ADMIN);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::end(scenario);
+    }
+
     fun create_test_platform_no_moderator(scenario: &mut test_scenario::Scenario) {
         test_scenario::next_tx(scenario, ADMIN);
         {
@@ -1175,4 +1241,4 @@ let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
 
         test_scenario::end(scenario);
     }
-} 
+}

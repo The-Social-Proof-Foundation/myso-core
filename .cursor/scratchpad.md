@@ -1,4 +1,151 @@
 
+## Fix Admin Reassign Profile Username Indexing (2026-07-14)
+
+### Background and Motivation
+`username-admin-runnable.sh` timed out waiting for GraphQL `profiles.username` after
+admin reassign even though on-chain + `username_registry` were correct.
+
+### Key Challenges and Analysis
+- `UsernameReassignedEvent` sets destination username before source Claimed rename.
+- `idx_profiles_username` UNIQUE + NOT NULL blocked destination Set; registry already
+  committed (non-transactional passes) → stale `profiles.username`.
+- Plan said NULL clear; column is NOT NULL → park conflicting holders on
+  `__releasing__{profile_id|owner|id}` before SET.
+
+### Project Status Board
+- [x] ProfilesHandler: free contested username before ProfileUsernameSet
+- [x] Commit unit test: destination-first reassign batch
+- [x] Script: prompt SOURCE_REPLACEMENT_USERNAME (ASSUME_YES keeps default)
+- [x] Shell + focused nextest
+- [ ] Rebuild myso + restart localnet + E2E smoke
+
+### Executor's Feedback
+- Shell test PASS (27). Focused nextest PASS (3).
+- E2E needs rebuilt `myso` (social indexer is in-process) + localnet restart.
+
+### Lessons
+- Marketplace settle avoids unique conflicts by source-first Sets; admin reassign
+  split across events needs conflict-free commit.
+
+## Reassign-Only Username Admin Cleanup (2026-07-13)
+
+### Background and Motivation
+Remove `admin_revoke_username` + `UsernameRevokedEvent` + indexer `ProfileUsernameClear`.
+Keep only `admin_reassign_username`; marketplace sale carries freed buyer username on
+`UsernameSaleSettledEvent`; reassign carries freed target prior on `UsernameReassignedEvent`.
+
+### Project Status Board
+- [x] Move: remove revoke/RevokedEvent; add `prior_buyer_username` / `prior_target_username`
+- [x] Move tests: revoke deleted; reassign locked/taken replacement + sale event count
+- [x] Indexer: remove Clear + Revoked; settle/reassign emit `UsernameRegistryDelete`
+- [x] E2E: `username-admin-runnable.sh` reassign-only; shell test updated
+- [x] Verification: Move `admin_` + accept offer; indexer username tests; shell call-order
+
+### Executor's Feedback
+- Live smoke (`ASSUME_YES=1 ./scripts/username-admin-runnable.sh --run-all`) needs localnet
+  framework bytecode refresh for the new entry signatures / event BCS layouts.
+
+### Lessons
+- Registry deletes must travel on SaleSettled / Reassigned prior_* fields once Revoked is gone.
+- Profiles stay named via Set/Claimed only; Clear path is fully removed from the indexer.
+
+## Dynamic MemoryAccount for MyData Marketplace (2026-07-13)
+
+### Background and Motivation
+Fix stale shared-object session preserve; MemoryAccount for purchase/approve is
+**manual prompt** (auto GraphQL fetch reverted — not reliable for this flow).
+
+### Key Challenges and Analysis
+- Abort 4 on purchase was `ESelfPurchase` (owner wallet buying own listing), not MA fetch.
+- Shared-object preserve-key fix stays; purchase menus prompt for MemoryAccount.
+
+### Project Status Board
+- [x] Preserve-key + shared-id preflight kept
+- [x] Menus 3/4/7 prompt for MemoryAccount (no auto-fetch)
+- [x] Self-purchase guard kept
+- [x] Unit test PASS
+
+### Lessons
+- Never put GraphQL shared-object ids in session preserve lists; refresh must win.
+- Purchase as listing owner → Move `ESelfPurchase` (4); switch buyer wallet first.
+
+## Username Admin + SPOT Insurance Runnables (2026-07-13)
+
+### Background and Motivation
+Add two local E2E runnable scripts: `username-admin-runnable.sh` for `UsernameAdminCap`
+revoke/reassign, and `spot-insurance-runnable.sh` for SPOT market → insurance buy/claim.
+
+### Key Challenges and Analysis
+- Common social GraphQL refresh loads `UsernameRegistry` but not `UsernameAdminCap`; the
+  username-admin script needs a script-local extras query + cap-owner resolution.
+- `wait_for_gql_profile_field` cannot assert an empty username (`-n` guard); need a dedicated
+  empty-username waiter after revoke.
+- Insurance helpers already live in `spot-oracle-common.sh`, but oracle infra (postgres,
+  waiters, worker boot) lives in `spot-oracle-runnable.sh` and must be mirrored in the
+  dedicated insurance script without relying on `ENABLE_INSURANCE_E2E=1`.
+
+### High-Level Task Breakdown
+1. Implement `scripts/username-admin-runnable.sh` (menu 0 refresh / 1 revoke+reassign).
+2. Implement `scripts/spot-insurance-runnable.sh` using SPOT walkthrough + insurance helpers.
+3. Add lightweight shell syntax/call-order tests and `bash -n` validation.
+4. Log progress/verification here.
+
+### Project Status Board
+- [x] Username-admin runnable created
+- [x] Spot-insurance runnable created
+- [x] Shell syntax / call-order tests
+- [x] Verification (`bash -n` + tests)
+
+### Executor's Feedback or Assistance Requests
+- Scripts are ready for live localnet smoke:
+  - `ASSUME_YES=1 ./scripts/username-admin-runnable.sh --run-all`
+  - `ASSUME_YES=1 ./scripts/spot-insurance-runnable.sh --run-all`
+- Live runs were not executed here (require bootstrap + GraphQL + oracle stack).
+
+### Lessons
+- `spot-oracle-post-runnable.sh` always writes its own `spot-oracle-session.env`; a sibling
+  runnable must extract `POST_ID` from that file rather than expecting shared session path.
+- GraphQL profile waiters that require non-empty values cannot assert username cleared after
+  revoke; use a dedicated empty-username waiter.
+
+## MyData P2P/Profile Runnable Fix (2026-07-13)
+
+### Background and Motivation
+Fix `scripts/mydata-marketplace-runnable.sh` so local E2E testing can focus on profile-gated MyData plus p2p one-time listing/purchase flows, while avoiding the oracle/pool marketplace actions.
+
+### Key Challenges and Analysis
+- `create_and_share_internal` gates all profile, one-time, and recurring MyData creation behind `MyDataConfig.marketplace_enabled`; this is separate from the oracle/pool query marketplace flow.
+- The admin cap owner is a different local wallet (`0x751ec787...`), so the config toggle had to be submitted from that wallet and the active address restored after.
+- The script did not persist newly created `MyData` object IDs or encryption IDs, making subsequent purchase/approve steps depend on manual effects parsing.
+- The admin-cap lookup `jq` filter assumed `.data.Move.type_.Other` was always an object, but the CLI can emit string type shapes.
+
+### High-Level Task Breakdown
+1. Toggle `mydataConfiguration.marketplaceEnabled` on localnet using the admin-cap owner wallet.
+2. Patch only `scripts/mydata-marketplace-runnable.sh` to improve session handoff and robust ID lookup.
+3. Run profile, p2p one-time, purchase, approve, owner update, access grant/revoke, and registry maintenance paths.
+4. Skip oracle/pool marketplace menus (`create_broad_pool` through claim/refund flow).
+
+### Project Status Board
+- [x] Switched to admin-cap owner and enabled MyData config; switched back to original active wallet.
+- [x] Fixed admin-cap object type detection for mixed CLI JSON shapes.
+- [x] Persisted `MYDATA_ENCRYPTION_ID` in the session.
+- [x] Captured new `LISTING_ID` from create transaction effects.
+- [x] Refreshed active profile `MEMORY_ACCOUNT_ID` during GraphQL refresh.
+- [x] Created one-time p2p listing and purchased it from a separate wallet.
+- [x] Ran `mydata_approve` for the purchased one-time listing.
+- [x] Created profile-subscription-gated MyData.
+- [x] Ran pricing update, tags update, grant access, revoke access, unregister, and re-register.
+- [x] `bash -n scripts/mydata-marketplace-runnable.sh` passes.
+- [x] `bash scripts/tests/mydata-marketplace-runnable-test.sh` passes.
+
+### Executor's Feedback or Assistance Requests
+- Oracle/pool query marketplace actions were intentionally not exercised.
+- A no-op `update_content` attempt aborted with `EInvalidInput` as expected; reran with a tags update and it succeeded.
+
+### Lessons
+- `MYDATA_FORCE_PROMPT=1` is needed when overriding session-backed listing IDs in piped menu runs.
+- GraphQL may lag the on-chain config toggle for a moment; rechecking after the successful tx showed `marketplaceEnabled=true`.
+
 ## Subscription + MyData Access Hardening (2026-07-10)
 
 Completed per `.cursor/plans/subscription_access_hardening_720381aa.plan.md`:
@@ -492,4 +639,42 @@ negative still fails as expected.
   (7 args total).
 
 All menus 11–14 pass in one interactive session run.
+
+---
+
+## MyData paid one-time buy E2E + confirm-decline summary fix (2026-07-13)
+
+### Context
+User noted the profile listing was effectively "free" and asked to make a paid MyData
+object and actually buy access to it.
+
+### Findings
+- The `profile` listing type is `AccessConfiguration::ProfileSubscription`: it has **no
+  price** and `update_pricing` aborts with `ENotForSale`. Access derives from holding a
+  profile subscription, not a p2p purchase — so it cannot be "made paid".
+- The real paid/buyable p2p type is **one-time** (or recurring) via `purchase_one_time`.
+
+### Verified E2E (localnet)
+- Created paid one-time listing `0xe760…` at price `2_000_000_000` (2 MYSO).
+- Bought as buyer `0x751ec787…`: tx `Success`; buyer balance `10_242_980_079 →
+  8_342_936_412`; creator received `1_900_000_000` (2 MYSO − 5% p2p fees:
+  250bps platform + 250bps ecosystem).
+- Access proof via `has_access` dry-run view: buyer → `true`, unrelated address → `false`.
+
+### Script bug fixed (no codebase change)
+`run_myso_call` used `confirm_run || return 0`, and `print_mydata_operation_summary`
+always printed "… completed". A declined confirmation therefore printed a misleading
+"completed" summary while executing nothing (this masked the first two purchase attempts,
+which silently no-op'd because a pre-filled session `MEMORY_ACCOUNT_ID` shifted stdin so
+the blank line landed on the `[y/N]` confirm).
+- `run_myso_call` now sets `MYDATA_LAST_CALL_EXECUTED` (0 on decline, 1 on run) and prints
+  a `[skipped]` notice on decline.
+- `print_mydata_operation_summary` prints "… NOT executed (confirmation declined)" when the
+  call did not run.
+
+### Lessons
+- Interactive prompts that conditionally skip reads (session pre-fill) can misalign piped
+  stdin; the confirm prompt then eats a data line. Prefer feeding exactly the lines that
+  will be read, or use `SKIP_CONFIRM_RUN=1`/`ASSUME_YES=1` for non-interactive runs.
+- Never print a "completed" summary independent of the executed/aborted status of the call.
 
