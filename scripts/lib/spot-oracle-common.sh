@@ -12,7 +12,21 @@
 source "${REPO_ROOT}/scripts/lib/social-runtime-common.sh"
 
 readonly SPOT_DEFAULT_ORACLE_ADDRESS='0x2458950181e415250823d6ce1d55f2b3427826a111939e0d6d38e9a1397411d8'
-readonly SPOT_DEFAULT_ORACLE_PRIVATE_KEY_HEX='736c869f584b6fdf1d961541e515304cdbeaf8e3d7789ae79fd05e2d9da34578'
+# 32-byte seed (no scheme flag). spot_oracle_normalize_private_key_hex prepends Ed25519 `00`.
+readonly SPOT_DEFAULT_ORACLE_PRIVATE_KEY_SEED_HEX='736c869f584b6fdf1d961541e515304cdbeaf8e3d7789ae79fd05e2d9da34578'
+readonly SPOT_DEFAULT_ORACLE_PRIVATE_KEY_HEX="00${SPOT_DEFAULT_ORACLE_PRIVATE_KEY_SEED_HEX}"
+
+# Accept 32-byte seed hex or flag||seed (66 hex chars). MySoKeyPair::from_bytes needs the flag.
+spot_oracle_normalize_private_key_hex() {
+    local key="${1:-}"
+    key="${key#0x}"
+    key="${key#0X}"
+    if [[ ${#key} -eq 64 ]]; then
+        printf '00%s' "$key"
+    else
+        printf '%s' "$key"
+    fi
+}
 
 readonly SPOT_ORACLE_GQL_EXTRAS='query SpotOracleSessionExtras {
   spotConfig: objects(filter: { type: "0x50c1::social_proof_of_truth::SpotConfig", ownerKind: SHARED }, first: 1) { nodes { address } }
@@ -67,6 +81,7 @@ spot_oracle_apply_runtime_defaults() {
     ORACLE_ADDRESS="${ORACLE_ADDRESS:-$SPOT_DEFAULT_ORACLE_ADDRESS}"
     if [[ -n "${SPOT_ORACLE_PRIVATE_KEY_HEX:-}" ]]; then
         SPOT_ORACLE_PRIVATE_KEY_EXPLICIT=1
+        SPOT_ORACLE_PRIVATE_KEY_HEX="$(spot_oracle_normalize_private_key_hex "$SPOT_ORACLE_PRIVATE_KEY_HEX")"
     else
         SPOT_ORACLE_PRIVATE_KEY_HEX="$SPOT_DEFAULT_ORACLE_PRIVATE_KEY_HEX"
         SPOT_ORACLE_PRIVATE_KEY_EXPLICIT=0
@@ -165,14 +180,15 @@ validate_onchain_oracle_key() {
         echo "FAIL: SPOT_ORACLE_PRIVATE_KEY_HEX required for on-chain mode" >&2
         return 1
     fi
+    SPOT_ORACLE_PRIVATE_KEY_HEX="$(spot_oracle_normalize_private_key_hex "$SPOT_ORACLE_PRIVATE_KEY_HEX")"
     if [[ "${SPOT_ORACLE_PRIVATE_KEY_EXPLICIT:-0}" != "1" \
         && "${SPOT_ORACLE_PRIVATE_KEY_HEX}" == "$SPOT_DEFAULT_ORACLE_PRIVATE_KEY_HEX" ]]; then
         echo "FAIL: SPOT_ORACLE_PRIVATE_KEY_HEX not set for on-chain mode" >&2
         echo "Set it in ${SOCIAL_SESSION_SAVE_PATH}, then re-run" >&2
         return 1
     fi
-    if [[ ${#SPOT_ORACLE_PRIVATE_KEY_HEX} -lt 64 ]]; then
-        echo "FAIL: SPOT_ORACLE_PRIVATE_KEY_HEX looks too short" >&2
+    if [[ ${#SPOT_ORACLE_PRIVATE_KEY_HEX} -lt 66 ]]; then
+        echo "FAIL: SPOT_ORACLE_PRIVATE_KEY_HEX looks too short (need flag||32-byte seed hex)" >&2
         return 1
     fi
     if [[ -z "${SPOT_ORACLE_ECOSYSTEM_TREASURY_OBJECT_ID:-}" ]]; then
@@ -261,8 +277,12 @@ maybe_auto_refresh_spot_session() {
     fi
 }
 
-SPOT_DEFAULT_CLAIM_TEXT='Will BTC trade above $1 in 3 minutes?'
+# Local E2E boots with SPOT_ORACLE_MIN_DEADLINE_LEAD_SECS=5 so short claims work.
+# ~40s leaves room for bet+vault+buy after review; each wait phase still stalls at 30s.
+SPOT_DEFAULT_CLAIM_TEXT='Will BTC trade above $1 in 40 seconds?'
 SPOT_DEFAULT_BET_AMOUNT_MIST='100000000'
+# Pipeline waits: if oracle has not advanced in this budget, treat as stalled (not "slow").
+SPOT_ORACLE_STALL_WAIT_SECS="${SPOT_ORACLE_STALL_WAIT_SECS:-30}"
 
 spot_prompt_with_default() {
     local label="$1" default="$2" entered=''
@@ -280,7 +300,7 @@ spot_prompt_claim_text() {
         log_step "Using SPOT_CLAIM_TEXT=${SPOT_CLAIM_TEXT}"
         return 0
     fi
-    echo "Tip: include when the claim should be evaluated (e.g. 'by the end of tomorrow' or 'in 3 minutes')." >&2
+    echo "Tip: include when the claim should be evaluated (e.g. 'in 40 seconds' for local E2E, or 'by the end of tomorrow')." >&2
     SPOT_CLAIM_TEXT="$(spot_prompt_with_default "Enter your prediction claim" "$default")"
     export SPOT_CLAIM_TEXT
     log_step "Claim: ${SPOT_CLAIM_TEXT}"
@@ -295,7 +315,7 @@ spot_prompt_walkthrough_claim() {
     echo ""
     echo "=== Your future prediction ==="
     echo "This claim drives the full walkthrough: post → oracle review → on-chain market → bet → resolve."
-    echo "Tip: include a deadline (e.g. 'in 3 minutes' for a quick run, or 'by the end of tomorrow')." >&2
+    echo "Tip: include a deadline (e.g. 'in 40 seconds' for local E2E, or 'by the end of tomorrow')." >&2
 
     if [[ -t 0 ]]; then
         local entered=''
@@ -308,8 +328,9 @@ spot_prompt_walkthrough_claim() {
         }
         SPOT_CLAIM_TEXT="$entered"
     elif [[ "${ASSUME_YES:-0}" == "1" ]]; then
-        # Non-interactive: unique threshold per run so on-chain semantic hash does not collide.
-        SPOT_CLAIM_TEXT="Will BTC trade above \$${SOCIAL_RUN_ID} in 3 minutes?"
+        # Non-interactive: unique threshold; short deadline for 30s stall-budget E2E.
+        # Requires runnable to boot oracle with SPOT_ORACLE_MIN_DEADLINE_LEAD_SECS=5.
+        SPOT_CLAIM_TEXT="Will BTC trade above \$${SOCIAL_RUN_ID} in 40 seconds?"
         log_step "Auto-generated prediction (non-interactive): ${SPOT_CLAIM_TEXT}"
     else
         echo "FAIL: walkthrough requires an interactive TTY, or ASSUME_YES=1 for auto-generated claim" >&2
@@ -516,7 +537,8 @@ spot_insurance_enable() {
 
 spot_insurance_create_vault_and_fund() {
     local underwriter="${1:-${ORACLE_ADDRESS:-}}"
-    local deposit_mist="${2:-${INSURANCE_VAULT_DEPOSIT_MIST:-5000000000}}"
+    # Keep vault funding modest so the underwriter retains a gas coin after deposit.
+    local deposit_mist="${2:-${INSURANCE_VAULT_DEPOSIT_MIST:-1000000000}}"
     local out digest pay_coin gas_coin
     local ref_cfg ref_vault
 

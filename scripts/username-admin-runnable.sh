@@ -17,7 +17,7 @@
 # Usage:
 #   ./scripts/username-admin-runnable.sh --refresh-session
 #   ASSUME_YES=1 ./scripts/username-admin-runnable.sh --run-all
-#   ./scripts/username-admin-runnable.sh   # interactive menu
+#   ./scripts/username-admin-runnable.sh   # interactive menu; optionally paste target wallet
 
 set -euo pipefail
 
@@ -122,23 +122,41 @@ ensure_primary_wallet() {
 
 step_ensure_primary_profile() {
     local lines profile_id username snap existing_user profile_id_existing
+    local active_wallet target_wallet
     ensure_primary_wallet || return 1
+    active_wallet="$PRIMARY_ADDRESS"
     username="ua${SOCIAL_RUN_ID}"
-    switch_wallet "$PRIMARY_ADDRESS" || return 1
-    profile_id_existing="$(resolve_owned_profile_for_address "$PRIMARY_ADDRESS")" || profile_id_existing=''
+
+    target_wallet="$(prompt_with_default \
+        "Target wallet address whose username should be replaced (leave blank to use current wallet $active_wallet)" \
+        "")"
+    target_wallet="$(echo "$target_wallet" | tr -d '[:space:]')"
+    if [[ -n "$target_wallet" ]]; then
+        PRIMARY_ADDRESS="$(normalize_hex_id "$target_wallet")" || {
+            echo "Invalid target wallet address: $target_wallet" >&2
+            return 1
+        }
+    else
+        PRIMARY_ADDRESS="$active_wallet"
+    fi
+
+    profile_id_existing="$(resolve_owned_profile_for_address "$PRIMARY_ADDRESS" 2>/dev/null)" || profile_id_existing=''
     if [[ -n "$profile_id_existing" ]]; then
         PRIMARY_PROFILE_ID="$(normalize_hex_id "$profile_id_existing")"
         snap="$(gql_profile_snapshot "$PRIMARY_ADDRESS" 2>/dev/null)" || snap='{}'
         existing_user="$(echo "$snap" | jq -r '.data.profile.username // empty')"
         if [[ -n "$existing_user" ]]; then
             PRIMARY_USERNAME="$existing_user"
-            log_step "Reusing primary profile $PRIMARY_PROFILE_ID username=$PRIMARY_USERNAME"
+            log_step "Using target wallet $PRIMARY_ADDRESS profile=$PRIMARY_PROFILE_ID username=$PRIMARY_USERNAME"
         else
-            echo "Primary profile $PRIMARY_PROFILE_ID has no username; create a username first or use a fresh wallet." >&2
-            restore_wallet
+            echo "Target profile $PRIMARY_PROFILE_ID has no indexed username; wait for the indexer or choose another wallet." >&2
             return 1
         fi
+    elif [[ "$PRIMARY_ADDRESS" != "$active_wallet" ]]; then
+        echo "Target wallet $PRIMARY_ADDRESS has no indexed Profile with a username." >&2
+        return 1
     else
+        switch_wallet "$PRIMARY_ADDRESS" || return 1
         lines="$(create_profile_for_address "$PRIMARY_ADDRESS" "Username Admin Primary ${SOCIAL_RUN_ID}" "$username")" || {
             restore_wallet
             return 1
@@ -147,9 +165,10 @@ step_ensure_primary_profile() {
         PRIMARY_PROFILE_ID="$(normalize_hex_id "$profile_id")"
         PRIMARY_USERNAME="$username"
         log_step "Created primary profile $PRIMARY_PROFILE_ID username=$PRIMARY_USERNAME"
+        restore_wallet
     fi
-    restore_wallet
     PRIMARY_PRIOR_USERNAME="$PRIMARY_USERNAME"
+    log_session_use "PRIMARY_ADDRESS" "$PRIMARY_ADDRESS"
     log_session_use "PRIMARY_PROFILE_ID" "$PRIMARY_PROFILE_ID"
     log_session_use "PRIMARY_USERNAME" "$PRIMARY_USERNAME"
     log_session_use "PRIMARY_PRIOR_USERNAME" "$PRIMARY_PRIOR_USERNAME"
@@ -222,7 +241,7 @@ step_admin_reassign_username() {
 }
 
 assert_reassign_indexed() {
-    log_step "Assert rename indexed: primary owns $NEW_USERNAME; prior $PRIMARY_PRIOR_USERNAME freed"
+    log_step "Assert rename indexed: target profile owns $NEW_USERNAME; prior $PRIMARY_PRIOR_USERNAME freed"
     assert_on_chain_registry_username "$NEW_USERNAME" "$PRIMARY_PROFILE_ID" || return 1
     assert_on_chain_registry_username_absent "$PRIMARY_PRIOR_USERNAME" || return 1
     wait_for_gql_profile_field "$PRIMARY_ADDRESS" '.data.profile.username' "$NEW_USERNAME" || return 1
@@ -242,13 +261,14 @@ print_username_admin_summary() {
     print_run_summary_line "Run ID" "$SOCIAL_RUN_ID"
     print_run_summary_line "Admin sender" "$(normalize_hex_id "$ADMIN_SENDER")"
     print_run_summary_line "UsernameAdminCap" "$(normalize_hex_id "$USERNAME_ADMIN_CAP_ID")"
-    print_run_summary_line "Primary wallet" "$(normalize_hex_id "$PRIMARY_ADDRESS") (profile $(normalize_hex_id "$PRIMARY_PROFILE_ID"))"
-    print_run_summary_line "Primary prior username (freed)" "$PRIMARY_PRIOR_USERNAME"
+    print_run_summary_line "Target profile owner" "$(normalize_hex_id "$PRIMARY_ADDRESS")"
+    print_run_summary_line "Target profile" "$(normalize_hex_id "$PRIMARY_PROFILE_ID")"
+    print_run_summary_line "Target prior username (freed)" "$PRIMARY_PRIOR_USERNAME"
     print_run_summary_line "New username" "$NEW_USERNAME"
     print_run_summary_line "Reassign tx" "${ADMIN_REASSIGN_TX:-<none>}"
-    print_run_summary_line "Primary username (after)" "$PRIMARY_USERNAME"
+    print_run_summary_line "Target username (after)" "$PRIMARY_USERNAME"
     print_run_summary_line "Session file" "$SOCIAL_SESSION_SAVE_PATH"
-    print_run_summary_line "Outcome" "Admin renamed primary profile to an unclaimed username; prior username freed for reclaim"
+    print_run_summary_line "Outcome" "Admin renamed target profile to an unclaimed username; prior username freed for reclaim"
     print_run_summary_footer
 }
 

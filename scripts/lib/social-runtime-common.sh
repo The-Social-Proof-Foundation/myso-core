@@ -384,29 +384,39 @@ ensure_two_gas_coins_for_address() {
 
 pick_payment_and_gas_coins_for_address() {
     local addr="$1" amount="$2"
-    local json pay_coin gas_coin
+    local min_gas="${3:-${GAS_BUDGET:-$SOCIAL_DEFAULT_GAS_BUDGET}}"
+    local json pay_coin gas_coin pair attempt
     addr="$(normalize_hex_id "$addr")" || return 1
+    ensure_wallet_funded "$addr" "$((amount + min_gas))" || return 1
     ensure_two_gas_coins_for_address "$addr" || return 1
-    json="$(resolve_gas_coins_json_for_address "$addr")" || return 1
-    pay_coin="$(echo "$json" | jq -r --argjson amt "$amount" '
-        [.[] | select((.mistBalance | tonumber) >= $amt)] |
-        if length == 0 then empty
-        elif length >= 2 then .[1].gasCoinId
-        else .[0].gasCoinId end
-    ')"
-    [[ -n "$pay_coin" ]] || {
-        echo "No coin with balance >= $amount for $addr" >&2
-        return 1
-    }
-    gas_coin="$(echo "$json" | jq -r --arg pay "$pay_coin" '
-        [.[] | select(.gasCoinId != $pay)] | .[0].gasCoinId // empty
-    ')"
-    [[ -n "$gas_coin" ]] || gas_coin="$(echo "$json" | jq -r '.[0].gasCoinId // empty')"
-    [[ -n "$gas_coin" && "$gas_coin" != "$pay_coin" ]] || {
-        echo "Could not pick distinct payment and gas coins for $addr" >&2
-        return 1
-    }
-    printf '%s %s' "$pay_coin" "$gas_coin"
+
+    for attempt in $(seq 1 6); do
+        json="$(resolve_gas_coins_json_for_address "$addr")" || return 1
+        # Require distinct coins: payment >= amount and gas >= gas budget (not just any leftover).
+        pair="$(echo "$json" | jq -r --argjson amt "$amount" --argjson gasmin "$min_gas" '
+            def oid: (.gasCoinId // .coinObjectId);
+            . as $all
+            | first(
+                $all[] as $p
+                | select((($p.mistBalance | tonumber) >= $amt))
+                | $all[] as $g
+                | select((($g | oid) != ($p | oid)) and (($g.mistBalance | tonumber) >= $gasmin))
+                | "\($p | oid) \($g | oid)"
+              ) // empty
+        ')"
+        if [[ -n "$pair" ]]; then
+            read -r pay_coin gas_coin <<<"$pair"
+            printf '%s %s' "$pay_coin" "$gas_coin"
+            return 0
+        fi
+        log_step "Requesting faucet for distinct payment (>=${amount}) + gas (>=${min_gas}) coins ($addr)"
+        myso client faucet --address "$addr" >/dev/null 2>&1 \
+            || myso client faucet --address "$addr" >&2 \
+            || true
+        sleep 2
+    done
+    echo "Could not pick payment (>=${amount}) and gas (>=${min_gas}) coins for $addr" >&2
+    return 1
 }
 
 graphql_is_reachable() {

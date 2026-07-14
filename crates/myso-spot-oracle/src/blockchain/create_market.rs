@@ -434,8 +434,9 @@ async fn build_and_submit_create_market(
         shared_object_arg(&client, spot_config, SharedObjectMutability::Immutable).await?;
     let registry_arg =
         shared_object_arg(&client, registry_id, SharedObjectMutability::Mutable).await?;
+    // Move entry takes `&mut SpotClaim` (may call link_post_to_claim_internal).
     let claim_arg =
-        shared_object_arg(&client, claim_obj, SharedObjectMutability::Immutable).await?;
+        shared_object_arg(&client, claim_obj, SharedObjectMutability::Mutable).await?;
     let post_arg = shared_object_arg(&client, post_obj, SharedObjectMutability::Mutable).await?;
     let clock_arg = shared_object_arg(&client, clock, SharedObjectMutability::Immutable).await?;
 
@@ -483,10 +484,19 @@ async fn build_and_submit_create_market(
         .quorum_driver_api()
         .execute_transaction_block(
             signed,
-            MySoTransactionBlockResponseOptions::new().with_object_changes(),
+            MySoTransactionBlockResponseOptions::new()
+                .with_effects()
+                .with_object_changes(),
             Some(ExecuteTransactionRequestType::WaitForLocalExecution),
         )
         .await?;
+    if response.status_ok() == Some(false) {
+        let status = response
+            .effects
+            .as_ref()
+            .map(|e| format!("{:?}", e.status()));
+        anyhow::bail!("create_spot_market_for_claim transaction failed: {status:?}");
+    }
     let digest = response.digest.to_string();
     let market_object_id = match find_created_type(&response.object_changes, "SpotMarket") {
         Some(id) => id,

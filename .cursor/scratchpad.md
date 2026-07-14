@@ -1,4 +1,26 @@
 
+## Fix SPoT Insurance E2E create_post Arity (2026-07-14)
+
+### Background and Motivation
+`spot-insurance-runnable.sh --run-all` failed at post create: PTB expected 24
+args for `post::create_post` but `spot-oracle-post-runnable.sh` passed 21
+(pre-access-control signature).
+
+### Key Challenges and Analysis
+- `create_post` gained `access_kind` + three Option IDs/u64 for gated posts.
+- SPoT posts are public → use `create_public_post` (20 args, enable_spot intact).
+- Oracle pipeline decisions are 30s-or-stalled; do not extend multi-minute waits.
+- Local E2E: MIN_DEADLINE_LEAD=5s, claim "in 15 seconds", stall budget 30s.
+
+### Project Status Board
+- [x] Fix spot-oracle-post PTB arity via create_public_post
+- [x] Key flag normalize + create_market claim mutability + gas coin pick
+- [x] Cap waits at 30s; seconds deadline + lead=5 for local boot
+- [ ] ASSUME_YES insurance --run-all PASS under 30s stall budget
+
+### Executor's Feedback
+- Retesting with 30s stall budget; fail fast if oracle stalls.
+
 ## Fix Admin Reassign Profile Username Indexing (2026-07-14)
 
 ### Background and Motivation

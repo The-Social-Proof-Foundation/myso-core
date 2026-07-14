@@ -149,14 +149,14 @@ create_spot_enabled_post() {
     ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || return 1
 
     switch_wallet "$CREATOR_ADDRESS" || return 1
-    log_step "create_post enable_spot=true content=${SPOT_CLAIM_TEXT}"
+    log_step "create_public_post enable_spot=true content=${SPOT_CLAIM_TEXT}"
     out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_as_capture "$CREATOR_ADDRESS" \
-        --move-call "${PKG_SOCIAL}::post::create_post" \
+        --move-call "${PKG_SOCIAL}::post::create_public_post" \
         "$ref_ur" "$ref_pr" "$ref_plat" "$ref_blr" "$ref_cfg" "$ref_mcfg" \
         "$body_lit" \
         "$media_opt" \
         none none none none none none none \
-        none some\(true\) none \
+        none some\(true\) \
         "$ref_mr" "$ref_mem" "$ref_clk")" || {
         restore_wallet
         return 1
@@ -168,7 +168,7 @@ create_spot_enabled_post() {
     POST_ID="$(extract_created_object_by_type "$digest" "post::Post")"
     [[ -n "$POST_ID" ]] || POST_ID="$(extract_created_object_by_type "$digest" "Post")"
     [[ -n "$POST_ID" ]] || {
-        echo "create_post did not produce a Post object" >&2
+        echo "create_public_post did not produce a Post object" >&2
         return 1
     }
     POST_ID="$(normalize_hex_id "$POST_ID")"

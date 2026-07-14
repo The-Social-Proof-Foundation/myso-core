@@ -136,8 +136,10 @@ run_migrations_boot() {
 boot_onchain_oracle_workers() {
     log_step "Starting spot-oracle workers (on-chain)"
     export_spot_oracle_env
-    SPOT_ORACLE_REVIEW_POLL_INTERVAL_SECS=5 \
-    SPOT_ORACLE_SCHEDULER_POLL_INTERVAL_SECS=5 \
+    # Local E2E: short lead + fast polls so review/market/resolve fit a 30s stall budget.
+    SPOT_ORACLE_MIN_DEADLINE_LEAD_SECS="${SPOT_ORACLE_MIN_DEADLINE_LEAD_SECS:-5}" \
+    SPOT_ORACLE_REVIEW_POLL_INTERVAL_SECS="${SPOT_ORACLE_REVIEW_POLL_INTERVAL_SECS:-1}" \
+    SPOT_ORACLE_SCHEDULER_POLL_INTERVAL_SECS="${SPOT_ORACLE_SCHEDULER_POLL_INTERVAL_SECS:-1}" \
     cargo run -p myso-spot-oracle &
     SVC_PID=$!
     wait_for_oracle_health || return 1
@@ -146,22 +148,24 @@ boot_onchain_oracle_workers() {
 wait_for_post_ingest() {
     local post_id="$1"
     local i found=0
-    log_step "Waiting for checkpoint ingest to ingest ${post_id}..."
-    for i in $(seq 1 90); do
+    local wait_secs="${SPOT_ORACLE_STALL_WAIT_SECS:-30}"
+    log_step "Waiting for checkpoint ingest to ingest ${post_id} (stall budget ${wait_secs}s)..."
+    for i in $(seq 1 "$wait_secs"); do
         found="$(psql_exec "SELECT COUNT(*) FROM markets WHERE post_id = '${post_id}'" || echo 0)"
         found="${found// /}"
         if [[ -n "$found" && "$found" -gt 0 ]]; then
             return 0
         fi
-        sleep 2
+        sleep 1
     done
-    echo "FAIL: market for POST_ID=${post_id} not ingested (is SubscribeCheckpoints streaming and enable_spot=true?)" >&2
+    echo "FAIL: stalled — market for POST_ID=${post_id} not ingested within ${wait_secs}s (is SubscribeCheckpoints streaming and enable_spot=true?)" >&2
     return 1
 }
 
 wait_for_accepted_review() {
     local post_filter="${1:-}"
     local reviews=0 accepted=0 reason='' i review_sql accepted_sql
+    local wait_secs="${SPOT_ORACLE_STALL_WAIT_SECS:-30}"
     if [[ -n "$post_filter" ]]; then
         review_sql="SELECT COUNT(*) FROM oracle_reviews WHERE post_id = '${post_filter}'"
         accepted_sql="SELECT COUNT(*) FROM oracle_reviews WHERE post_id = '${post_filter}' AND decision = 'accepted'"
@@ -169,8 +173,8 @@ wait_for_accepted_review() {
         review_sql="SELECT COUNT(*) FROM oracle_reviews"
         accepted_sql="SELECT COUNT(*) FROM oracle_reviews WHERE decision = 'accepted'"
     fi
-    log_step "Waiting for accepted oracle_reviews${post_filter:+ for $post_filter} (up to 3 min)..."
-    for i in $(seq 1 90); do
+    log_step "Waiting for accepted oracle_reviews${post_filter:+ for $post_filter} (stall budget ${wait_secs}s)..."
+    for i in $(seq 1 "$wait_secs"); do
         reviews="$(psql_exec "$review_sql" || echo 0)"
         reviews="${reviews// /}"
         accepted="$(psql_exec "$accepted_sql" || echo 0)"
@@ -184,13 +188,21 @@ wait_for_accepted_review() {
             reason="$(psql_exec "SELECT reject_reason FROM oracle_reviews WHERE post_id = '${post_filter}' AND decision = 'rejected' ORDER BY created_at DESC LIMIT 1" || true)"
             reason="${reason// /}"
             if [[ "$reason" == "missing_deadline" ]]; then
-                echo "FAIL: claim rejected — add when the claim should be evaluated (e.g. 'by the end of tomorrow' or 'before July 31, 2027')." >&2
+                echo "FAIL: claim rejected — add when the claim should be evaluated (e.g. 'in 40 seconds' or 'by the end of tomorrow')." >&2
+                return 1
+            fi
+            if [[ "$reason" == "deadline_in_past" ]]; then
+                echo "FAIL: claim rejected (deadline_in_past) — use a deadline ahead of SPOT_ORACLE_MIN_DEADLINE_LEAD_SECS (local E2E: 'in 40 seconds')." >&2
+                return 1
+            fi
+            if [[ -n "$reason" ]]; then
+                echo "FAIL: claim rejected (${reason})" >&2
                 return 1
             fi
         fi
-        sleep 2
+        sleep 1
     done
-    echo "FAIL: no accepted oracle_reviews after pipeline (total=${reviews:-0})" >&2
+    echo "FAIL: stalled — no accepted oracle_reviews within ${wait_secs}s (total reviews=${reviews:-0})" >&2
     return 1
 }
 
@@ -198,8 +210,9 @@ wait_for_market_active() {
     local post_id="$1"
     local require_spot_id="${2:-0}"
     local status='' market_obj='' i
-    log_step "Waiting for market active${require_spot_id:+ + spot_market_object_id} (POST_ID=$post_id)..."
-    for i in $(seq 1 90); do
+    local wait_secs="${SPOT_ORACLE_STALL_WAIT_SECS:-30}"
+    log_step "Waiting for market active${require_spot_id:+ + spot_market_object_id} (POST_ID=$post_id, stall budget ${wait_secs}s)..."
+    for i in $(seq 1 "$wait_secs"); do
         status="$(psql_exec "SELECT status FROM markets WHERE post_id = '${post_id}' LIMIT 1" || true)"
         status="${status// /}"
         market_obj="$(psql_exec "SELECT COALESCE(spot_market_object_id, '') FROM markets WHERE post_id = '${post_id}' LIMIT 1" || true)"
@@ -211,26 +224,27 @@ wait_for_market_active() {
                 return 0
             fi
         fi
-        sleep 2
+        sleep 1
     done
-    echo "FAIL: market not active (status='${status:-}' spot_market_object_id='${market_obj:-}')" >&2
+    echo "FAIL: stalled — market not active within ${wait_secs}s (status='${status:-}' spot_market_object_id='${market_obj:-}')" >&2
     return 1
 }
 
 wait_for_market_resolved() {
     local post_id="$1"
     local status='' i
-    log_step "Waiting for market resolved (POST_ID=$post_id, up to 5 min)..."
-    for i in $(seq 1 150); do
+    local wait_secs="${SPOT_ORACLE_STALL_WAIT_SECS:-30}"
+    log_step "Waiting for market resolved (POST_ID=$post_id, stall budget ${wait_secs}s)..."
+    for i in $(seq 1 "$wait_secs"); do
         status="$(psql_exec "SELECT status FROM markets WHERE post_id = '${post_id}' LIMIT 1" || true)"
         status="${status// /}"
         if [[ "$status" == "resolved" ]]; then
             MARKET_STATUS="$status"
             return 0
         fi
-        sleep 2
+        sleep 1
     done
-    echo "FAIL: market not resolved (status='${status:-}')" >&2
+    echo "FAIL: stalled — market not resolved within ${wait_secs}s (status='${status:-}')" >&2
     return 1
 }
 
@@ -350,7 +364,7 @@ run_insurance_walkthrough() {
     spot_insurance_buy_coverage "$BETTOR_ADDRESS" "$SPOT_MARKET_ID" "$BET_OPTION_ID" || return 1
     save_insurance_session
 
-    log_step "Waiting for oracle resolve (~1–3 min for price-threshold claims)..."
+    log_step "Waiting for oracle resolve (stall budget ${SPOT_ORACLE_STALL_WAIT_SECS:-30}s)..."
     wait_for_market_resolved "$POST_ID" || return 1
 
     spot_insurance_claim "$BETTOR_ADDRESS" "$SPOT_MARKET_ID" || return 1

@@ -156,15 +156,22 @@ fn parse_tomorrow_phrases(lower: &str, now: DateTime<Utc>) -> Option<DateTime<Ut
 }
 
 fn parse_relative_duration(lower: &str, now: DateTime<Utc>) -> Option<DateTime<Utc>> {
+    // Longer unit spellings first so "seconds"/"minutes" win over "second"/"min".
     for (unit, secs) in [
-        ("minute", 60),
+        ("seconds", 1),
+        ("second", 1),
+        ("secs", 1),
+        ("sec", 1),
         ("minutes", 60),
+        ("minute", 60),
+        ("mins", 60),
         ("min", 60),
-        ("hour", 3600),
         ("hours", 3600),
+        ("hour", 3600),
+        ("hrs", 3600),
         ("hr", 3600),
-        ("day", 86400),
         ("days", 86400),
+        ("day", 86400),
     ] {
         let needle = format!("in ");
         if let Some(idx) = lower.find(&needle) {
@@ -321,6 +328,15 @@ mod tests {
         let after = Utc::now();
         assert!(dt >= before + Duration::minutes(2));
         assert!(dt <= after + Duration::minutes(4));
+    }
+
+    #[test]
+    fn parses_in_seconds() {
+        let before = Utc::now();
+        let dt = parse_deadline_from_text("Will BTC trade above $1 in 15 seconds?").expect("deadline");
+        let after = Utc::now();
+        assert!(dt >= before + Duration::seconds(10));
+        assert!(dt <= after + Duration::seconds(20));
     }
 
     #[test]
