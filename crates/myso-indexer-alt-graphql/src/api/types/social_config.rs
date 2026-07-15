@@ -241,6 +241,16 @@ impl PostConfig {
         self.inner.min_view_duration_ms
     }
 
+    /// Platform fee bps taken from each confirmed promo view gross.
+    async fn platform_fee_bps(&self) -> i64 {
+        self.inner.platform_fee_bps
+    }
+
+    /// Ecosystem fee bps taken from each confirmed promo view gross.
+    async fn ecosystem_fee_bps(&self) -> i64 {
+        self.inner.ecosystem_fee_bps
+    }
+
     /// Configuration version.
     async fn version(&self) -> i64 {
         self.inner.version

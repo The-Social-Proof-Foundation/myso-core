@@ -45,6 +45,12 @@ pub struct PromotionViewRow {
     #[diesel(sql_type = BigInt)]
     pub payment_amount: i64,
     #[diesel(sql_type = BigInt)]
+    pub platform_fee: i64,
+    #[diesel(sql_type = BigInt)]
+    pub ecosystem_fee: i64,
+    #[diesel(sql_type = BigInt)]
+    pub recipient_amount: i64,
+    #[diesel(sql_type = BigInt)]
     pub view_duration: i64,
     #[diesel(sql_type = Text)]
     pub platform_id: String,
@@ -105,6 +111,9 @@ pub struct NewPromotionView {
     pub promotion_id: String,
     pub viewer: String,
     pub payment_amount: i64,
+    pub platform_fee: i64,
+    pub ecosystem_fee: i64,
+    pub recipient_amount: i64,
     pub view_duration: i64,
     pub platform_id: String,
     pub timestamp: i64,

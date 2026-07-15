@@ -34,7 +34,8 @@ Implements features like comments, reposts, and quotes
 -  [Struct `PostDeletedEvent`](#social_contracts_post_PostDeletedEvent)
 -  [Struct `CommentDeletedEvent`](#social_contracts_post_CommentDeletedEvent)
 -  [Struct `PromotedPostCreatedEvent`](#social_contracts_post_PromotedPostCreatedEvent)
--  [Struct `PromotedPostViewConfirmedEvent`](#social_contracts_post_PromotedPostViewConfirmedEvent)
+-  [Struct `PromotedViewConfirmItem`](#social_contracts_post_PromotedViewConfirmItem)
+-  [Struct `PromotedPostViewsBatchConfirmedEvent`](#social_contracts_post_PromotedPostViewsBatchConfirmedEvent)
 -  [Struct `PromotionStatusToggledEvent`](#social_contracts_post_PromotionStatusToggledEvent)
 -  [Struct `PromotionFundsWithdrawnEvent`](#social_contracts_post_PromotionFundsWithdrawnEvent)
 -  [Struct `ModerationRecord`](#social_contracts_post_ModerationRecord)
@@ -161,7 +162,7 @@ Implements features like comments, reposts, and quotes
 -  [Function `migrate_post_config`](#social_contracts_post_migrate_post_config)
 -  [Function `update_post_parameters`](#social_contracts_post_update_post_parameters)
 -  [Function `create_promoted_post`](#social_contracts_post_create_promoted_post)
--  [Function `confirm_promoted_post_view`](#social_contracts_post_confirm_promoted_post_view)
+-  [Function `confirm_promoted_post_views`](#social_contracts_post_confirm_promoted_post_views)
 -  [Function `toggle_promotion_status`](#social_contracts_post_toggle_promotion_status)
 -  [Function `withdraw_promotion_funds`](#social_contracts_post_withdraw_promotion_funds)
 -  [Function `get_promotion_stats`](#social_contracts_post_get_promotion_stats)
@@ -1007,6 +1008,18 @@ Global post feature configuration
  Minimum view duration for a promoted post view to count (ms)
 </dd>
 <dt>
+<code>platform_fee_bps: u64</code>
+</dt>
+<dd>
+ Platform fee bps taken from each confirmed promo view gross
+</dd>
+<dt>
+<code>ecosystem_fee_bps: u64</code>
+</dt>
+<dd>
+ Ecosystem fee bps taken from each confirmed promo view gross
+</dd>
+<dt>
 <code><a href="../social_contracts/post.md#social_contracts_post_version">version</a>: u64</code>
 </dt>
 <dd>
@@ -1111,6 +1124,18 @@ Event emitted when post parameters are updated
 </dt>
 <dd>
  New min view duration value (ms)
+</dd>
+<dt>
+<code>platform_fee_bps: u64</code>
+</dt>
+<dd>
+ New platform fee bps of each promo view gross
+</dd>
+<dt>
+<code>ecosystem_fee_bps: u64</code>
+</dt>
+<dd>
+ New ecosystem fee bps of each promo view gross
 </dd>
 </dl>
 
@@ -2080,14 +2105,14 @@ Event emitted when a promoted post is created
 
 </details>
 
-<a name="social_contracts_post_PromotedPostViewConfirmedEvent"></a>
+<a name="social_contracts_post_PromotedViewConfirmItem"></a>
 
-## Struct `PromotedPostViewConfirmedEvent`
+## Struct `PromotedViewConfirmItem`
 
-Event emitted when a promoted post view is confirmed and payment is made
+One item inside a batch promoted-view confirmation
 
 
-<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/post.md#social_contracts_post_PromotedPostViewConfirmedEvent">PromotedPostViewConfirmedEvent</a> <b>has</b> <b>copy</b>, drop
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/post.md#social_contracts_post_PromotedViewConfirmItem">PromotedViewConfirmItem</a> <b>has</b> <b>copy</b>, drop
 </code></pre>
 
 
@@ -2103,7 +2128,7 @@ Event emitted when a promoted post view is confirmed and payment is made
 <dd>
 </dd>
 <dt>
-<code>viewer: <b>address</b></code>
+<code>promotion_id: <b>address</b></code>
 </dt>
 <dd>
 </dd>
@@ -2111,9 +2136,53 @@ Event emitted when a promoted post view is confirmed and payment is made
 <code>payment_amount: u64</code>
 </dt>
 <dd>
+ Gross debit from this promotion's budget (<code>payment_per_view</code>)
+</dd>
+<dt>
+<code>platform_fee: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>ecosystem_fee: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>recipient_amount: u64</code>
+</dt>
+<dd>
+ Net attributed to this view (part of the merged wallet transfer)
 </dd>
 <dt>
 <code>view_duration: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_post_PromotedPostViewsBatchConfirmedEvent"></a>
+
+## Struct `PromotedPostViewsBatchConfirmedEvent`
+
+Event emitted when one viewer is paid for N (≥1) promoted views in a single tx
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/post.md#social_contracts_post_PromotedPostViewsBatchConfirmedEvent">PromotedPostViewsBatchConfirmedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>viewer: <b>address</b></code>
 </dt>
 <dd>
 </dd>
@@ -2124,6 +2193,31 @@ Event emitted when a promoted post view is confirmed and payment is made
 </dd>
 <dt>
 <code>timestamp: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>items: vector&lt;<a href="../social_contracts/post.md#social_contracts_post_PromotedViewConfirmItem">social_contracts::post::PromotedViewConfirmItem</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>total_payment_amount: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>total_platform_fee: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>total_ecosystem_fee: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>total_recipient_amount: u64</code>
 </dt>
 <dd>
 </dd>
@@ -2742,6 +2836,16 @@ Escrow/vault redirect slice must use the <code>PoCBeneficiaryVault</code> whose 
 
 
 
+<a name="social_contracts_post_EInvalidBatch"></a>
+
+Empty batch, length mismatch, or batch larger than <code><a href="../social_contracts/post.md#social_contracts_post_MAX_PROMOTION_VIEW_BATCH">MAX_PROMOTION_VIEW_BATCH</a></code>
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_EInvalidBatch">EInvalidBatch</a>: u64 = 39;
+</code></pre>
+
+
+
 <a name="social_contracts_post_MAX_CONTENT_LENGTH"></a>
 
 Constants for size limits
@@ -2848,6 +2952,43 @@ Constants for promoted posts
 
 
 <pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_MIN_VIEW_DURATION">MIN_VIEW_DURATION</a>: u64 = 3000;
+</code></pre>
+
+
+
+<a name="social_contracts_post_MAX_PROMOTION_VIEW_BATCH"></a>
+
+Max promotions confirmed in one <code><a href="../social_contracts/post.md#social_contracts_post_confirm_promoted_post_views">confirm_promoted_post_views</a></code> call (gas / object-lock bound)
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_MAX_PROMOTION_VIEW_BATCH">MAX_PROMOTION_VIEW_BATCH</a>: u64 = 50;
+</code></pre>
+
+
+
+<a name="social_contracts_post_BPS_DENOM"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_BPS_DENOM">BPS_DENOM</a>: u64 = 10000;
+</code></pre>
+
+
+
+<a name="social_contracts_post_DEFAULT_PLATFORM_FEE_BPS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_DEFAULT_PLATFORM_FEE_BPS">DEFAULT_PLATFORM_FEE_BPS</a>: u64 = 1000;
+</code></pre>
+
+
+
+<a name="social_contracts_post_DEFAULT_ECOSYSTEM_FEE_BPS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_DEFAULT_ECOSYSTEM_FEE_BPS">DEFAULT_ECOSYSTEM_FEE_BPS</a>: u64 = 1000;
 </code></pre>
 
 
@@ -4530,6 +4671,8 @@ Bootstrap initialization function - creates the post configuration
         min_promotion_amount: <a href="../social_contracts/post.md#social_contracts_post_MIN_PROMOTION_AMOUNT">MIN_PROMOTION_AMOUNT</a>,
         max_promotion_amount: <a href="../social_contracts/post.md#social_contracts_post_MAX_PROMOTION_AMOUNT">MAX_PROMOTION_AMOUNT</a>,
         min_view_duration_ms: <a href="../social_contracts/post.md#social_contracts_post_MIN_VIEW_DURATION">MIN_VIEW_DURATION</a>,
+        platform_fee_bps: <a href="../social_contracts/post.md#social_contracts_post_DEFAULT_PLATFORM_FEE_BPS">DEFAULT_PLATFORM_FEE_BPS</a>,
+        ecosystem_fee_bps: <a href="../social_contracts/post.md#social_contracts_post_DEFAULT_ECOSYSTEM_FEE_BPS">DEFAULT_ECOSYSTEM_FEE_BPS</a>,
         <a href="../social_contracts/post.md#social_contracts_post_version">version</a>: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     };
     // Emit event so indexer can populate post_config table
@@ -4547,6 +4690,8 @@ Bootstrap initialization function - creates the post configuration
         min_promotion_amount: <a href="../social_contracts/post.md#social_contracts_post_MIN_PROMOTION_AMOUNT">MIN_PROMOTION_AMOUNT</a>,
         max_promotion_amount: <a href="../social_contracts/post.md#social_contracts_post_MAX_PROMOTION_AMOUNT">MAX_PROMOTION_AMOUNT</a>,
         min_view_duration_ms: <a href="../social_contracts/post.md#social_contracts_post_MIN_VIEW_DURATION">MIN_VIEW_DURATION</a>,
+        platform_fee_bps: <a href="../social_contracts/post.md#social_contracts_post_DEFAULT_PLATFORM_FEE_BPS">DEFAULT_PLATFORM_FEE_BPS</a>,
+        ecosystem_fee_bps: <a href="../social_contracts/post.md#social_contracts_post_DEFAULT_ECOSYSTEM_FEE_BPS">DEFAULT_ECOSYSTEM_FEE_BPS</a>,
     });
     // Create and share <a href="../social_contracts/post.md#social_contracts_post">post</a> configuration
     transfer::share_object(config);
@@ -8530,6 +8675,9 @@ Migration function for PostConfig
     // Remember old <a href="../social_contracts/post.md#social_contracts_post_version">version</a> and update to new <a href="../social_contracts/post.md#social_contracts_post_version">version</a>
     <b>let</b> old_version = config.<a href="../social_contracts/post.md#social_contracts_post_version">version</a>;
     config.<a href="../social_contracts/post.md#social_contracts_post_version">version</a> = current_version;
+    // Seed promotion fee bps <b>for</b> configs created before these fields existed
+    config.platform_fee_bps = <a href="../social_contracts/post.md#social_contracts_post_DEFAULT_PLATFORM_FEE_BPS">DEFAULT_PLATFORM_FEE_BPS</a>;
+    config.ecosystem_fee_bps = <a href="../social_contracts/post.md#social_contracts_post_DEFAULT_ECOSYSTEM_FEE_BPS">DEFAULT_ECOSYSTEM_FEE_BPS</a>;
     // Emit event <b>for</b> object migration
     <b>let</b> config_id = object::id(config);
     <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
@@ -8552,7 +8700,7 @@ Migration function for PostConfig
 Update post parameters (admin only)
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_update_post_parameters">update_post_parameters</a>(_admin_cap: &<a href="../social_contracts/post.md#social_contracts_post_PostAdminCap">social_contracts::post::PostAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, max_content_length: u64, max_media_urls: u64, max_mentions: u64, max_metadata_size: u64, max_description_length: u64, max_reaction_length: u64, commenter_tip_percentage: u64, repost_tip_percentage: u64, min_promotion_amount: u64, max_promotion_amount: u64, min_view_duration_ms: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_update_post_parameters">update_post_parameters</a>(_admin_cap: &<a href="../social_contracts/post.md#social_contracts_post_PostAdminCap">social_contracts::post::PostAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, max_content_length: u64, max_media_urls: u64, max_mentions: u64, max_metadata_size: u64, max_description_length: u64, max_reaction_length: u64, commenter_tip_percentage: u64, repost_tip_percentage: u64, min_promotion_amount: u64, max_promotion_amount: u64, min_view_duration_ms: u64, platform_fee_bps: u64, ecosystem_fee_bps: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -8575,6 +8723,8 @@ Update post parameters (admin only)
     min_promotion_amount: u64,
     max_promotion_amount: u64,
     min_view_duration_ms: u64,
+    platform_fee_bps: u64,
+    ecosystem_fee_bps: u64,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
@@ -8586,6 +8736,9 @@ Update post parameters (admin only)
     <b>assert</b>!(max_mentions &gt; 0, <a href="../social_contracts/post.md#social_contracts_post_EInvalidConfig">EInvalidConfig</a>);
     <b>assert</b>!(min_promotion_amount &gt; 0, <a href="../social_contracts/post.md#social_contracts_post_EInvalidConfig">EInvalidConfig</a>);
     <b>assert</b>!(max_promotion_amount &gt;= min_promotion_amount, <a href="../social_contracts/post.md#social_contracts_post_EInvalidConfig">EInvalidConfig</a>);
+    <b>assert</b>!(platform_fee_bps &lt;= <a href="../social_contracts/post.md#social_contracts_post_BPS_DENOM">BPS_DENOM</a>, <a href="../social_contracts/post.md#social_contracts_post_EInvalidConfig">EInvalidConfig</a>);
+    <b>assert</b>!(ecosystem_fee_bps &lt;= <a href="../social_contracts/post.md#social_contracts_post_BPS_DENOM">BPS_DENOM</a>, <a href="../social_contracts/post.md#social_contracts_post_EInvalidConfig">EInvalidConfig</a>);
+    <b>assert</b>!(platform_fee_bps + ecosystem_fee_bps &lt;= <a href="../social_contracts/post.md#social_contracts_post_BPS_DENOM">BPS_DENOM</a>, <a href="../social_contracts/post.md#social_contracts_post_EInvalidConfig">EInvalidConfig</a>);
     // Update config
     config.max_content_length = max_content_length;
     config.max_media_urls = max_media_urls;
@@ -8598,6 +8751,8 @@ Update post parameters (admin only)
     config.min_promotion_amount = min_promotion_amount;
     config.max_promotion_amount = max_promotion_amount;
     config.min_view_duration_ms = min_view_duration_ms;
+    config.platform_fee_bps = platform_fee_bps;
+    config.ecosystem_fee_bps = ecosystem_fee_bps;
     // Emit update event
     event::emit(<a href="../social_contracts/post.md#social_contracts_post_PostParametersUpdatedEvent">PostParametersUpdatedEvent</a> {
         updated_by: tx_context::sender(ctx),
@@ -8613,6 +8768,8 @@ Update post parameters (admin only)
         min_promotion_amount,
         max_promotion_amount,
         min_view_duration_ms,
+        platform_fee_bps,
+        ecosystem_fee_bps,
     });
 }
 </code></pre>
@@ -8628,7 +8785,7 @@ Update post parameters (admin only)
 Create a promoted post with MYSO tokens for viewer payments
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_promoted_post">create_promoted_post</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, access: <a href="../social_contracts/post.md#social_contracts_post_PostAccess">social_contracts::post::PostAccess</a>, payment_per_view: u64, promotion_budget: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, enable_spt: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spot: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, mydata_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">social_contracts::mydata::MyDataRegistry</a>, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_promoted_post">create_promoted_post</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, payment_per_view: u64, promotion_budget: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, enable_spt: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spot: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, mydata_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">social_contracts::mydata::MyDataRegistry</a>, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -8648,7 +8805,6 @@ Create a promoted post with MYSO tokens for viewer payments
     <b>mut</b> media_urls: Option&lt;vector&lt;String&gt;&gt;,
     mentions: Option&lt;vector&lt;<b>address</b>&gt;&gt;,
     metadata_json: Option&lt;String&gt;,
-    access: <a href="../social_contracts/post.md#social_contracts_post_PostAccess">PostAccess</a>,
     payment_per_view: u64,
     promotion_budget: Coin&lt;MYSO&gt;,
     enable_spt: Option&lt;bool&gt;,
@@ -8658,6 +8814,7 @@ Create a promoted post with MYSO tokens for viewer payments
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
+    <b>let</b> access = PostAccess::Public;
     <b>let</b> acting = <a href="../social_contracts/post.md#social_contracts_post_resolve_social_actor">resolve_social_actor</a>(
         memory_config,
         registry,
@@ -8817,14 +8974,16 @@ Create a promoted post with MYSO tokens for viewer payments
 
 </details>
 
-<a name="social_contracts_post_confirm_promoted_post_view"></a>
+<a name="social_contracts_post_confirm_promoted_post_views"></a>
 
-## Function `confirm_promoted_post_view`
+## Function `confirm_promoted_post_views`
 
-Confirm a user has viewed a promoted post and pay them (platform only)
+Confirm that one viewer was paid for N (≥1) promoted post views in a single transaction.
+Takes promotions by value (MakeMoveVec), merges nets into one transfer, then re-shares each
+<code><a href="../social_contracts/post.md#social_contracts_post_PromotionData">PromotionData</a></code>. Fees come out of each view's <code>payment_per_view</code> gross.
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_confirm_promoted_post_view">confirm_promoted_post_view</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, promotion_data: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PromotionData">social_contracts::post::PromotionData</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, platform_obj: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, viewer_address: <b>address</b>, view_duration: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_confirm_promoted_post_views">confirm_promoted_post_views</a>(promotions: vector&lt;<a href="../social_contracts/post.md#social_contracts_post_PromotionData">social_contracts::post::PromotionData</a>&gt;, view_durations: vector&lt;u64&gt;, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, platform_obj: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, viewer_address: <b>address</b>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -8833,14 +8992,14 @@ Confirm a user has viewed a promoted post and pay them (platform only)
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_confirm_promoted_post_view">confirm_promoted_post_view</a>(
-    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
-    promotion_data: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PromotionData">PromotionData</a>,
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_confirm_promoted_post_views">confirm_promoted_post_views</a>(
+    <b>mut</b> promotions: vector&lt;<a href="../social_contracts/post.md#social_contracts_post_PromotionData">PromotionData</a>&gt;,
+    view_durations: vector&lt;u64&gt;,
     config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a>,
-    platform_obj: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">platform::Platform</a>,
+    platform_obj: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">platform::Platform</a>,
     group: &PermissionedGroup&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">platform::PlatformPackage</a>&gt;,
+    treasury: &EcosystemTreasury,
     viewer_address: <b>address</b>,
-    view_duration: u64,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
@@ -8849,53 +9008,102 @@ Confirm a user has viewed a promoted post and pay them (platform only)
         <a href="../social_contracts/platform.md#social_contracts_platform_has_moderator_permission">platform::has_moderator_permission</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPromotionAdmin">platform::PlatformPromotionAdmin</a>&gt;(group, platform_obj, caller),
         <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>,
     );
-    // Verify the <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> object is approved (ensures legitimate <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>)
-    <b>let</b> platform_id = object::uid_to_address(<a href="../social_contracts/platform.md#social_contracts_platform_id">platform::id</a>(platform_obj));
-    // Note: Cannot verify this matches <a href="../social_contracts/post.md#social_contracts_post">post</a>'s original <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> without storing platform_id in <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>
-    // This at least ensures the platform_obj is a valid, approved <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>
-    // Verify viewer_address <b>has</b> joined the <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> (prevents paying fake addresses)
+    <b>let</b> n = vector::length(&promotions);
+    <b>assert</b>!(n &gt; 0, <a href="../social_contracts/post.md#social_contracts_post_EInvalidBatch">EInvalidBatch</a>);
+    <b>assert</b>!(n == vector::length(&view_durations), <a href="../social_contracts/post.md#social_contracts_post_EInvalidBatch">EInvalidBatch</a>);
+    <b>assert</b>!(n &lt;= <a href="../social_contracts/post.md#social_contracts_post_MAX_PROMOTION_VIEW_BATCH">MAX_PROMOTION_VIEW_BATCH</a>, <a href="../social_contracts/post.md#social_contracts_post_EInvalidBatch">EInvalidBatch</a>);
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_has_joined_platform">platform::has_joined_platform</a>(platform_obj, viewer_address), <a href="../social_contracts/post.md#social_contracts_post_EUserNotJoinedPlatform">EUserNotJoinedPlatform</a>);
-    // Prevent <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> from paying themselves
     <b>assert</b>!(viewer_address != caller, <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
-    // Verify the <a href="../social_contracts/post.md#social_contracts_post">post</a> is promoted
-    <b>assert</b>!(option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.promotion_id), <a href="../social_contracts/post.md#social_contracts_post_ENotPromotedPost">ENotPromotedPost</a>);
-    <b>let</b> post_promotion_id = *option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.promotion_id);
-    <b>assert</b>!(post_promotion_id == object::uid_to_address(&promotion_data.id), <a href="../social_contracts/post.md#social_contracts_post_ENotPromotedPost">ENotPromotedPost</a>);
-    // Verify promotion is active
-    <b>assert</b>!(promotion_data.active, <a href="../social_contracts/post.md#social_contracts_post_EPromotionInactive">EPromotionInactive</a>);
-    // Verify view duration meets minimum requirement
-    <b>assert</b>!(view_duration &gt;= config.min_view_duration_ms, <a href="../social_contracts/post.md#social_contracts_post_EInvalidViewDuration">EInvalidViewDuration</a>);
-    // Verify user hasn't already been paid <b>for</b> viewing this <a href="../social_contracts/post.md#social_contracts_post">post</a>
-    <b>assert</b>!(!table::contains(&promotion_data.paid_viewers, viewer_address), <a href="../social_contracts/post.md#social_contracts_post_EUserAlreadyViewed">EUserAlreadyViewed</a>);
-    // Verify sufficient budget remains
-    <b>assert</b>!(balance::value(&promotion_data.promotion_budget) &gt;= promotion_data.payment_per_view, <a href="../social_contracts/post.md#social_contracts_post_EInsufficientPromotionFunds">EInsufficientPromotionFunds</a>);
-    // Record the view
-    <b>let</b> view_record = <a href="../social_contracts/post.md#social_contracts_post_PromotionView">PromotionView</a> {
-        viewer: viewer_address,
-        view_duration,
-        view_timestamp: clock::timestamp_ms(clock),
-        platform_id: object::uid_to_address(<a href="../social_contracts/platform.md#social_contracts_platform_id">platform::id</a>(platform_obj)), // Platform object ID
+    <b>let</b> platform_id = object::uid_to_address(<a href="../social_contracts/platform.md#social_contracts_platform_id">platform::id</a>(platform_obj));
+    <b>let</b> timestamp = clock::timestamp_ms(clock);
+    <b>let</b> <b>mut</b> items = vector::empty&lt;<a href="../social_contracts/post.md#social_contracts_post_PromotedViewConfirmItem">PromotedViewConfirmItem</a>&gt;();
+    <b>let</b> <b>mut</b> total_payment_amount = 0u64;
+    <b>let</b> <b>mut</b> total_platform_fee = 0u64;
+    <b>let</b> <b>mut</b> total_ecosystem_fee = 0u64;
+    <b>let</b> <b>mut</b> total_recipient_amount = 0u64;
+    <b>let</b> <b>mut</b> merged_payment: Option&lt;Coin&lt;MYSO&gt;&gt; = option::none();
+    <b>let</b> <b>mut</b> i = 0u64;
+    <b>while</b> (i &lt; n) {
+        <b>let</b> promotion_data = vector::borrow_mut(&<b>mut</b> promotions, i);
+        <b>let</b> view_duration = *vector::borrow(&view_durations, i);
+        <b>assert</b>!(promotion_data.active, <a href="../social_contracts/post.md#social_contracts_post_EPromotionInactive">EPromotionInactive</a>);
+        <b>assert</b>!(view_duration &gt;= config.min_view_duration_ms, <a href="../social_contracts/post.md#social_contracts_post_EInvalidViewDuration">EInvalidViewDuration</a>);
+        <b>assert</b>!(!table::contains(&promotion_data.paid_viewers, viewer_address), <a href="../social_contracts/post.md#social_contracts_post_EUserAlreadyViewed">EUserAlreadyViewed</a>);
+        <b>assert</b>!(
+            balance::value(&promotion_data.promotion_budget) &gt;= promotion_data.payment_per_view,
+            <a href="../social_contracts/post.md#social_contracts_post_EInsufficientPromotionFunds">EInsufficientPromotionFunds</a>,
+        );
+        <b>let</b> promotion_id = object::uid_to_address(&promotion_data.id);
+        <b>let</b> post_id = promotion_data.post_id;
+        vector::push_back(&<b>mut</b> promotion_data.views, <a href="../social_contracts/post.md#social_contracts_post_PromotionView">PromotionView</a> {
+            viewer: viewer_address,
+            view_duration,
+            view_timestamp: timestamp,
+            platform_id,
+        });
+        table::add(&<b>mut</b> promotion_data.paid_viewers, viewer_address, <b>true</b>);
+        <b>let</b> gross = promotion_data.payment_per_view;
+        <b>let</b> platform_fee = (gross * config.platform_fee_bps) / <a href="../social_contracts/post.md#social_contracts_post_BPS_DENOM">BPS_DENOM</a>;
+        <b>let</b> ecosystem_fee = (gross * config.ecosystem_fee_bps) / <a href="../social_contracts/post.md#social_contracts_post_BPS_DENOM">BPS_DENOM</a>;
+        <b>let</b> recipient_amount = gross - platform_fee - ecosystem_fee;
+        <b>assert</b>!(total_payment_amount &lt;= <a href="../social_contracts/post.md#social_contracts_post_MAX_U64">MAX_U64</a> - gross, <a href="../social_contracts/post.md#social_contracts_post_EOverflow">EOverflow</a>);
+        <b>assert</b>!(total_platform_fee &lt;= <a href="../social_contracts/post.md#social_contracts_post_MAX_U64">MAX_U64</a> - platform_fee, <a href="../social_contracts/post.md#social_contracts_post_EOverflow">EOverflow</a>);
+        <b>assert</b>!(total_ecosystem_fee &lt;= <a href="../social_contracts/post.md#social_contracts_post_MAX_U64">MAX_U64</a> - ecosystem_fee, <a href="../social_contracts/post.md#social_contracts_post_EOverflow">EOverflow</a>);
+        <b>assert</b>!(total_recipient_amount &lt;= <a href="../social_contracts/post.md#social_contracts_post_MAX_U64">MAX_U64</a> - recipient_amount, <a href="../social_contracts/post.md#social_contracts_post_EOverflow">EOverflow</a>);
+        total_payment_amount = total_payment_amount + gross;
+        total_platform_fee = total_platform_fee + platform_fee;
+        total_ecosystem_fee = total_ecosystem_fee + ecosystem_fee;
+        total_recipient_amount = total_recipient_amount + recipient_amount;
+        <b>let</b> payment = coin::from_balance(
+            balance::split(&<b>mut</b> promotion_data.promotion_budget, gross),
+            ctx,
+        );
+        <b>if</b> (option::is_none(&merged_payment)) {
+            option::fill(&<b>mut</b> merged_payment, payment);
+        } <b>else</b> {
+            coin::join(option::borrow_mut(&<b>mut</b> merged_payment), payment);
+        };
+        <b>if</b> (balance::value(&promotion_data.promotion_budget) &lt; promotion_data.payment_per_view) {
+            promotion_data.active = <b>false</b>;
+        };
+        vector::push_back(&<b>mut</b> items, <a href="../social_contracts/post.md#social_contracts_post_PromotedViewConfirmItem">PromotedViewConfirmItem</a> {
+            post_id,
+            promotion_id,
+            payment_amount: gross,
+            platform_fee,
+            ecosystem_fee,
+            recipient_amount,
+            view_duration,
+        });
+        i = i + 1;
     };
-    vector::push_back(&<b>mut</b> promotion_data.views, view_record);
-    // Mark user <b>as</b> paid
-    table::add(&<b>mut</b> promotion_data.paid_viewers, viewer_address, <b>true</b>);
-    // Split payment from promotion budget and transfer to viewer
-    <b>let</b> payment_balance = balance::split(&<b>mut</b> promotion_data.promotion_budget, promotion_data.payment_per_view);
-    <b>let</b> payment_coin = coin::from_balance(payment_balance, ctx);
-    transfer::public_transfer(payment_coin, viewer_address);
-    // If budget is exhausted, deactivate promotion
-    <b>if</b> (balance::value(&promotion_data.promotion_budget) &lt; promotion_data.payment_per_view) {
-        promotion_data.active = <b>false</b>;
+    <b>let</b> <b>mut</b> payment = option::extract(&<b>mut</b> merged_payment);
+    option::destroy_none(merged_payment);
+    <b>if</b> (total_ecosystem_fee &gt; 0) {
+        <b>let</b> eco_coin = coin::split(&<b>mut</b> payment, total_ecosystem_fee, ctx);
+        transfer::public_transfer(eco_coin, <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">profile::get_treasury_address</a>(treasury));
     };
-    // Emit view confirmation event
-    event::emit(<a href="../social_contracts/post.md#social_contracts_post_PromotedPostViewConfirmedEvent">PromotedPostViewConfirmedEvent</a> {
-        post_id: post_promotion_id,
+    <b>if</b> (total_platform_fee &gt; 0) {
+        <b>let</b> <b>mut</b> platform_coin = coin::split(&<b>mut</b> payment, total_platform_fee, ctx);
+        <a href="../social_contracts/platform.md#social_contracts_platform_add_to_treasury">platform::add_to_treasury</a>(platform_obj, &<b>mut</b> platform_coin, total_platform_fee, clock, ctx);
+        coin::destroy_zero(platform_coin);
+    };
+    transfer::public_transfer(payment, viewer_address);
+    event::emit(<a href="../social_contracts/post.md#social_contracts_post_PromotedPostViewsBatchConfirmedEvent">PromotedPostViewsBatchConfirmedEvent</a> {
         viewer: viewer_address,
-        payment_amount: promotion_data.payment_per_view,
-        view_duration,
-        platform_id: object::uid_to_address(<a href="../social_contracts/platform.md#social_contracts_platform_id">platform::id</a>(platform_obj)), // Platform object ID
-        timestamp: clock::timestamp_ms(clock),
+        platform_id,
+        timestamp,
+        items,
+        total_payment_amount,
+        total_platform_fee,
+        total_ecosystem_fee,
+        total_recipient_amount,
     });
+    <b>while</b> (!vector::is_empty(&promotions)) {
+        <b>let</b> promotion_data = vector::pop_back(&<b>mut</b> promotions);
+        transfer::share_object(promotion_data);
+    };
+    vector::destroy_empty(promotions);
 }
 </code></pre>
 

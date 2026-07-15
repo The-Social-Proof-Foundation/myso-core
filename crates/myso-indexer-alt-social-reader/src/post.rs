@@ -185,6 +185,10 @@ pub struct PostConfigRow {
     #[diesel(sql_type = BigInt)]
     pub min_view_duration_ms: i64,
     #[diesel(sql_type = BigInt)]
+    pub platform_fee_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub ecosystem_fee_bps: i64,
+    #[diesel(sql_type = BigInt)]
     pub version: i64,
     #[diesel(sql_type = BigInt)]
     pub updated_at: i64,
@@ -923,7 +927,8 @@ pub(crate) async fn get_post_config(
         SELECT updated_by, max_content_length, max_media_urls, max_mentions, max_metadata_size,
                max_description_length, max_reaction_length, commenter_tip_percentage,
                repost_tip_percentage, min_promotion_amount, max_promotion_amount,
-               min_view_duration_ms, version, updated_at, time, transaction_id
+               min_view_duration_ms, platform_fee_bps, ecosystem_fee_bps,
+               version, updated_at, time, transaction_id
         FROM post_config
         ORDER BY time DESC
         LIMIT 1

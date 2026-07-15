@@ -1,5 +1,58 @@
 
-## Fix SPoT Insurance E2E create_post Arity (2026-07-14)
+## Promoted posts always Public (2026-07-14)
+
+### Background and Motivation
+Promoted posts cannot be gated (subscription / paid). `create_promoted_post`
+hardcodes `PostAccess::Public` and drops the access PTB arg.
+
+### Project Status Board
+- [x] Move: drop `access` arg; hardcode Public
+- [x] Remove unused `post_access_public` PTB helper
+- [x] Runnable: 17-arg create PTB (no post_access_public)
+- [x] Indexer/GQL: no schema change — PostCreatedEvent still carries Public BCS
+
+### Executor's Feedback
+- Chain reset required to pick up Move change (user will reset).
+- PostCreatedEvent access parsing already handles Public.
+
+## Promoted-Post Batch View Confirm (2026-07-14)
+
+### Background and Motivation
+One viewer, N promotions per tx via `confirm_promoted_post_views` only.
+Indexer expands batch event → N `promotion_views` + `unified_revenue` legs.
+
+### Project Status Board
+- [x] Move: remove single confirm/event; add batch entry + event (cap 50)
+- [x] Move tests: len-1/len-2, empty, mismatch, unauthorized, double-view
+- [x] Indexer BCS/JSON expand + post_id on views
+- [x] Commit-time `unified_revenue` (viewer_net / platform / ecosystem)
+- [x] post-promotion-runnable → MakeMoveVec + batch event assert
+
+### Executor's Feedback
+- Move unit tests PASS (6). Indexer nextest PASS (BCS, expand, commit).
+- E2E needs rebuilt social package + indexer after localnet publish.
+
+## Promoted-Post Immediate Fees (2026-07-14)
+
+### Background and Motivation
+Keep immediate per-view payouts. Take configurable platform + ecosystem fee
+bps (default 1000 each = 10%) out of payment_per_view; viewer gets net.
+Require Platform on confirm; no lazy pool / non-platform splits.
+
+### Project Status Board
+- [x] Move: PostConfig fee bps + confirm fee split + event fields
+- [x] Move tests: fee math defaults + invalid fee update abort
+- [x] Schema migration + Diesel models
+- [x] Indexer handlers (BCS/JSON/PostConfig/PromotionView)
+- [x] Readers + GraphQL + REST types
+- [x] post-promotion-runnable.sh (treasury arg + net/fee asserts)
+- [x] mysocial-frontend PostAdmin + POST_CONFIGURATION_QUERY
+
+### Executor's Feedback
+- Compile check PASS for social schema/indexer/reader/server/graphql.
+- GraphQL SDL snapshots updated (schema + staging).
+- Empty leftover `20260714180000_promotion_reward_pool` dir removed.
+
 
 ### Background and Motivation
 `spot-insurance-runnable.sh --run-all` failed at post create: PTB expected 24

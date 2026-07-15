@@ -36,6 +36,10 @@ source "${SCRIPT_DIR}/lib/runnable-summary-common.sh"
 readonly PAYMENT_PER_VIEW='1000000'
 readonly PROMOTION_BUDGET='3000000'
 readonly VIEW_DURATION_MS='3000'
+# Default PostConfig fees are 1000 bps + 1000 bps => viewer gets 80% of gross.
+readonly EXPECTED_PLATFORM_FEE='100000'
+readonly EXPECTED_ECOSYSTEM_FEE='100000'
+readonly EXPECTED_RECIPIENT_AMOUNT='800000'
 
 SOCIAL_RUN_ID="$(date +%s)"
 RUN_MODE=''
@@ -173,15 +177,18 @@ step_create_promoted_post() {
 
     body_lit="$(literal_move_string "Promoted post ${SOCIAL_RUN_ID}")"
     log_step "create_promoted_post payment_per_view=$PAYMENT_PER_VIEW budget=$PROMOTION_BUDGET"
+    # Signature (17 PTB args; ctx omitted): registries/config…, content, media, mentions,
+    # metadata, payment_per_view, budget, enable_spt, enable_spot, mydata_registry,
+    # memory_account, clock. Access is always Public on-chain (no access arg).
     out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_as_capture "$CREATOR_ADDRESS" \
         --split-coins "@${pay_coin}" "[${PROMOTION_BUDGET}]" \
         --assign promotion_budget \
         --move-call "${PKG_SOCIAL}::post::create_promoted_post" \
         "$ref_ur" "$ref_pr" "$ref_plat" "$ref_blr" "$ref_cfg" "$ref_mcfg" \
         "$body_lit" \
-        none none none none \
-        "$PAYMENT_PER_VIEW" promotion_budget.0 \
         none none none \
+        "$PAYMENT_PER_VIEW" promotion_budget.0 \
+        none none \
         "$ref_mr" "$ref_mem" "$ref_clk")" || {
         PTB_GAS_COIN_ID=''
         restore_wallet
@@ -284,7 +291,15 @@ gql_post_promotion_snapshot() {
                     remainingBudget
                     budget
                     status
-                    viewsDetail(limit: 5) { viewer promotionId viewDuration }
+                    viewsDetail(limit: 5) {
+                        viewer
+                        promotionId
+                        viewDuration
+                        paymentAmount
+                        platformFee
+                        ecosystemFee
+                        recipientAmount
+                    }
                 }
             }
         }' \
@@ -327,38 +342,43 @@ assert_on_chain_promotion_view() {
         return 1
     }
     assert_tx_success '' "$CONFIRM_VIEW_TX_DIGEST" || {
-        echo "confirm_promoted_post_view tx $CONFIRM_VIEW_TX_DIGEST did not succeed" >&2
+        echo "confirm_promoted_post_views tx $CONFIRM_VIEW_TX_DIGEST did not succeed" >&2
         return 1
     }
-    tx_has_event_named "$CONFIRM_VIEW_TX_DIGEST" "PromotedPostViewConfirmedEvent" || {
-        echo "confirm_promoted_post_view tx missing PromotedPostViewConfirmedEvent" >&2
+    tx_has_event_named "$CONFIRM_VIEW_TX_DIGEST" "PromotedPostViewsBatchConfirmedEvent" || {
+        echo "confirm_promoted_post_views tx missing PromotedPostViewsBatchConfirmedEvent" >&2
         return 1
     }
-    log_step "On-chain promotion view confirmed ($CONFIRM_VIEW_TX_DIGEST)"
+    log_step "On-chain promotion view batch confirmed ($CONFIRM_VIEW_TX_DIGEST)"
 }
 
 step_confirm_promoted_view() {
-    local out
-    require_hex_ids POST_ID PROMOTION_ID POST_CONFIG_ID PLATFORM_OBJECT_ID \
-        MODERATORS_GROUP_ID CLOCK_ID || return 1
+    local out promo_type
+    require_hex_ids PROMOTION_ID POST_CONFIG_ID PLATFORM_OBJECT_ID \
+        MODERATORS_GROUP_ID ECOSYSTEM_TREASURY_ID CLOCK_ID || return 1
     switch_wallet "$CREATOR_ADDRESS" || return 1
-    log_step "confirm_promoted_post_view viewer=$VIEWER_ADDRESS duration=$VIEW_DURATION_MS"
+    promo_type="${PKG_SOCIAL}::post::PromotionData"
+    log_step "confirm_promoted_post_views viewer=$VIEWER_ADDRESS duration=$VIEW_DURATION_MS (len=1)"
     out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_as_capture "$CREATOR_ADDRESS" \
-        --move-call "${PKG_SOCIAL}::post::confirm_promoted_post_view" \
-        "$(ptb_shared_ref "$POST_ID")" \
-        "$(ptb_shared_ref "$PROMOTION_ID")" \
+        --make-move-vec "<${promo_type}>" "[$(ptb_shared_ref "$PROMOTION_ID")]" \
+        --assign promotions \
+        --make-move-vec "<u64>" "[${VIEW_DURATION_MS}]" \
+        --assign view_durations \
+        --move-call "${PKG_SOCIAL}::post::confirm_promoted_post_views" \
+        promotions \
+        view_durations \
         "$(ptb_shared_ref "$POST_CONFIG_ID")" \
         "$(ptb_shared_ref "$PLATFORM_OBJECT_ID")" \
         "$(ptb_shared_ref "$MODERATORS_GROUP_ID")" \
+        "$(ptb_shared_ref "$ECOSYSTEM_TREASURY_ID")" \
         "@${VIEWER_ADDRESS}" \
-        "$VIEW_DURATION_MS" \
         "$(ptb_shared_ref "$CLOCK_ID")")" || {
         restore_wallet
         return 1
     }
     CONFIRM_VIEW_TX_DIGEST="$(extract_tx_digest "$out")"
     [[ -n "$CONFIRM_VIEW_TX_DIGEST" ]] || {
-        echo "confirm_promoted_post_view missing transaction digest" >&2
+        echo "confirm_promoted_post_views missing transaction digest" >&2
         restore_wallet
         return 1
     }
@@ -367,6 +387,7 @@ step_confirm_promoted_view() {
 
 assert_promotion_graphql() {
     local resp views budget remaining viewer view_duration expected_remaining promotion_id
+    local payment_amount platform_fee ecosystem_fee recipient_amount
     expected_remaining="$((PROMOTION_BUDGET - PAYMENT_PER_VIEW))"
     log_step "GraphQL assert promotion views and budget (best-effort; on-chain already verified)"
     if ! resp="$(wait_for_gql_promotion_snapshot "$PROMOTION_ID" 1)"; then
@@ -381,6 +402,10 @@ assert_promotion_graphql() {
         remaining="$(echo "$resp" | jq -r '.data.promotion.remainingBudget // empty')"
         viewer="$(echo "$resp" | jq -r '.data.promotion.viewsDetail[0].viewer // empty')"
         view_duration="$(echo "$resp" | jq -r '.data.promotion.viewsDetail[0].viewDuration // empty')"
+        payment_amount="$(echo "$resp" | jq -r '.data.promotion.viewsDetail[0].paymentAmount // empty')"
+        platform_fee="$(echo "$resp" | jq -r '.data.promotion.viewsDetail[0].platformFee // empty')"
+        ecosystem_fee="$(echo "$resp" | jq -r '.data.promotion.viewsDetail[0].ecosystemFee // empty')"
+        recipient_amount="$(echo "$resp" | jq -r '.data.promotion.viewsDetail[0].recipientAmount // empty')"
         promotion_id="$(echo "$resp" | jq -r '.data.promotion.promotionId // empty')"
     else
         views="$(echo "$resp" | jq -r '.data.post.promotion.views // empty')"
@@ -388,6 +413,10 @@ assert_promotion_graphql() {
         remaining="$(echo "$resp" | jq -r '.data.post.promotion.remainingBudget // empty')"
         viewer="$(echo "$resp" | jq -r '.data.post.promotion.viewsDetail[0].viewer // empty')"
         view_duration="$(echo "$resp" | jq -r '.data.post.promotion.viewsDetail[0].viewDuration // empty')"
+        payment_amount="$(echo "$resp" | jq -r '.data.post.promotion.viewsDetail[0].paymentAmount // empty')"
+        platform_fee="$(echo "$resp" | jq -r '.data.post.promotion.viewsDetail[0].platformFee // empty')"
+        ecosystem_fee="$(echo "$resp" | jq -r '.data.post.promotion.viewsDetail[0].ecosystemFee // empty')"
+        recipient_amount="$(echo "$resp" | jq -r '.data.post.promotion.viewsDetail[0].recipientAmount // empty')"
         promotion_id="$(echo "$resp" | jq -r '.data.post.promotion.promotionId // empty')"
     fi
 
@@ -413,6 +442,26 @@ assert_promotion_graphql() {
     fi
     if [[ "$view_duration" != "$VIEW_DURATION_MS" ]]; then
         echo "Warning: promotion viewDuration expected $VIEW_DURATION_MS got ${view_duration:-<none>}" >&2
+        GQL_INDEXED='false'
+        return 0
+    fi
+    if [[ "$payment_amount" != "$PAYMENT_PER_VIEW" ]]; then
+        echo "Warning: promotion paymentAmount expected $PAYMENT_PER_VIEW got ${payment_amount:-<none>}" >&2
+        GQL_INDEXED='false'
+        return 0
+    fi
+    if [[ "$platform_fee" != "$EXPECTED_PLATFORM_FEE" ]]; then
+        echo "Warning: promotion platformFee expected $EXPECTED_PLATFORM_FEE got ${platform_fee:-<none>}" >&2
+        GQL_INDEXED='false'
+        return 0
+    fi
+    if [[ "$ecosystem_fee" != "$EXPECTED_ECOSYSTEM_FEE" ]]; then
+        echo "Warning: promotion ecosystemFee expected $EXPECTED_ECOSYSTEM_FEE got ${ecosystem_fee:-<none>}" >&2
+        GQL_INDEXED='false'
+        return 0
+    fi
+    if [[ "$recipient_amount" != "$EXPECTED_RECIPIENT_AMOUNT" ]]; then
+        echo "Warning: promotion recipientAmount expected $EXPECTED_RECIPIENT_AMOUNT got ${recipient_amount:-<none>}" >&2
         GQL_INDEXED='false'
         return 0
     fi
@@ -446,11 +495,11 @@ assert_viewer_balance_increased() {
     before="${VIEWER_BALANCE_BEFORE:-0}"
     delta=$((after - before))
     VIEWER_BALANCE_AFTER="$after"
-    if [[ "$delta" -lt "$PAYMENT_PER_VIEW" ]]; then
-        echo "Viewer total balance increase expected >= $PAYMENT_PER_VIEW (before=$before after=$after delta=$delta)" >&2
+    if [[ "$delta" -lt "$EXPECTED_RECIPIENT_AMOUNT" ]]; then
+        echo "Viewer total balance increase expected >= $EXPECTED_RECIPIENT_AMOUNT (before=$before after=$after delta=$delta)" >&2
         return 1
     fi
-    log_step "Viewer total balance increased by $delta MIST (>= $PAYMENT_PER_VIEW)"
+    log_step "Viewer total balance increased by $delta MIST (>= $EXPECTED_RECIPIENT_AMOUNT net after fees)"
 }
 
 print_post_promotion_run_all_summary() {
@@ -491,7 +540,7 @@ print_post_promotion_run_all_summary() {
     print_run_summary_line "Viewer payout (net)" "$(format_mist_with_units "$payout")"
     print_run_summary_line "GraphQL indexer" "$GRAPHQL_URL"
     print_run_summary_line "Session file" "$SOCIAL_SESSION_SAVE_PATH"
-    print_run_summary_line "Flow steps" "profile + join → create_promoted_post → activate → viewer join → confirm_promoted_post_view → on-chain verify → GraphQL verify (best-effort)"
+    print_run_summary_line "Flow steps" "profile + join → create_promoted_post → activate → viewer join → confirm_promoted_post_views → on-chain verify → GraphQL verify (best-effort)"
     outcome="Creator escrowed $(format_mist_with_units "$PROMOTION_BUDGET") for promotion at $(format_mist_with_units "$PAYMENT_PER_VIEW") per view. "
     outcome+="One view from $(normalize_hex_id "${viewer:-$VIEWER_ADDRESS}") was confirmed (${view_duration:-$VIEW_DURATION_MS} ms). "
     outcome+="Viewer received $(format_mist_with_units "$payout") on-chain; $(format_mist_with_units "${remaining:-$expected_remaining}") promotion budget remains."

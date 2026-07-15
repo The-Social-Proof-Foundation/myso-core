@@ -18,7 +18,7 @@ module social_contracts::post_tests {
     use myso::clock::{Self, Clock};
     use myso::test_utils;
     
-    use social_contracts::post::{Self, Post, Comment, PostConfig, PromotionData};
+    use social_contracts::post::{Self, Post, Comment, PostConfig, PostAdminCap, PromotionData};
     use social_contracts::profile::{Self, UsernameRegistry,
         ProfileConfig};
     use social_contracts::ai_credit::AiCreditConfig;
@@ -1132,6 +1132,71 @@ module social_contracts::post_tests {
             test_scenario::return_shared(clock);
         };
         
+        test_scenario::end(scenario);
+    }
+
+    /// Default promo fee bps are 10% / 10%; fee math yields 80% net to viewer.
+    #[test]
+    fun test_promotion_fee_defaults_and_math() {
+        let mut scenario = test_scenario::begin(USER1);
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            post::test_init(test_scenario::ctx(&mut scenario));
+        };
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let config = test_scenario::take_shared<PostConfig>(&scenario);
+            assert!(post::test_platform_fee_bps(&config) == 1000, 0);
+            assert!(post::test_ecosystem_fee_bps(&config) == 1000, 1);
+            let (platform_fee, ecosystem_fee, recipient_amount) =
+                post::test_promotion_view_fee_amounts(&config, 10_000);
+            assert!(platform_fee == 1_000, 2);
+            assert!(ecosystem_fee == 1_000, 3);
+            assert!(recipient_amount == 8_000, 4);
+            test_scenario::return_shared(config);
+        };
+        test_scenario::end(scenario);
+    }
+
+    /// update_post_parameters rejects fee bps that exceed 10000 combined.
+    #[test]
+    #[expected_failure(abort_code = 20, location = social_contracts::post)] // EInvalidConfig
+    fun test_update_post_parameters_rejects_fee_bps_overflow() {
+        let mut scenario = test_scenario::begin(USER1);
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            post::test_init(test_scenario::ctx(&mut scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
+        };
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut config = test_scenario::take_shared<PostConfig>(&scenario);
+            let admin_cap = test_scenario::take_from_sender<PostAdminCap>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            post::update_post_parameters(
+                &admin_cap,
+                &mut config,
+                5000,
+                10,
+                10,
+                10000,
+                500,
+                20,
+                80,
+                50,
+                1000,
+                100_000_000,
+                3000,
+                6000,
+                5000,
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            test_scenario::return_shared(config);
+            test_scenario::return_to_sender(&scenario, admin_cap);
+            test_scenario::return_shared(clock);
+        };
         test_scenario::end(scenario);
     }
 

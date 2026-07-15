@@ -167,7 +167,8 @@ pub(crate) async fn get_promotion_views(
     let _guard = metrics.latency.start_timer();
 
     let query = "
-        SELECT post_id, promotion_id, viewer, payment_amount, view_duration, platform_id, timestamp
+        SELECT post_id, promotion_id, viewer, payment_amount, platform_fee, ecosystem_fee,
+               recipient_amount, view_duration, platform_id, timestamp
         FROM promotion_views
         WHERE promotion_id = $1
         ORDER BY timestamp DESC

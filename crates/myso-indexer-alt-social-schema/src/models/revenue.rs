@@ -47,6 +47,9 @@ pub const REVENUE_TYPE_TIPS_COMMENT: &str = "comment_tip";
 
 pub const REVENUE_TYPE_POSTS_MONETIZATION: &str = "post_monetization";
 pub const REVENUE_TYPE_POSTS_PREMIUM: &str = "premium_content";
+pub const REVENUE_TYPE_PROMOTION_VIEWER_NET: &str = "promotion_viewer_net";
+pub const REVENUE_TYPE_PROMOTION_PLATFORM_FEE: &str = "promotion_platform_fee";
+pub const REVENUE_TYPE_PROMOTION_ECOSYSTEM_FEE: &str = "promotion_ecosystem_fee";
 
 pub const REVENUE_TYPE_MESSAGING_CLAIM: &str = "messaging_claim";
 pub const REVENUE_TYPE_MESSAGING_NET: &str = "messaging_net";

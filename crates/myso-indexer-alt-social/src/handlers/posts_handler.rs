@@ -27,11 +27,13 @@ use myso_indexer_alt_social_schema::models::{
     NewPocVaultClaim, NewPocVaultDeposit, NewPost, NewPostTransfer, NewPromotedPost,
     NewPromotionBudgetEvent, NewPromotionStatusEvent, NewPromotionView, NewReaction,
     NewReactionCount, NewReport, NewRepost, NewSubscriptionAccessLog, NewTip, NewUnifiedRevenue,
+    REVENUE_TYPE_PROMOTION_ECOSYSTEM_FEE, REVENUE_TYPE_PROMOTION_PLATFORM_FEE,
+    REVENUE_TYPE_PROMOTION_VIEWER_NET,
 };
 use myso_indexer_alt_social_schema::schema::{
-    comments, poc_analysis_results, poc_badges, poc_configuration, poc_creator_identity_links,
-    poc_dispute_votes, poc_disputes, poc_revenue_redirections, poc_username_beneficiary_events,
-    poc_vault_claims, poc_vault_deposits, post_config, posts,
+    comments, ecosystem_treasury, poc_analysis_results, poc_badges, poc_configuration,
+    poc_creator_identity_links, poc_dispute_votes, poc_disputes, poc_revenue_redirections,
+    poc_username_beneficiary_events, poc_vault_claims, poc_vault_deposits, post_config, posts,
     promoted_posts, promotion_budget_events, promotion_status_events, promotion_views,
     reaction_counts, reactions, reposts, subscription_access_logs, tips,
 };
@@ -148,6 +150,8 @@ pub enum PostRow {
         min_promotion_amount: i64,
         max_promotion_amount: i64,
         min_view_duration_ms: i64,
+        platform_fee_bps: i64,
+        ecosystem_fee_bps: i64,
         version: Option<i64>,
         updated_at: i64,
         transaction_id: String,
@@ -162,9 +166,13 @@ pub enum PostRow {
         transaction_id: String,
     },
     PromotionView {
+        post_id: String,
         promotion_id: String,
         viewer: String,
         payment_amount: i64,
+        platform_fee: i64,
+        ecosystem_fee: i64,
+        recipient_amount: i64,
         view_duration: i64,
         platform_id: String,
         timestamp: i64,
@@ -415,6 +423,8 @@ impl PostRow {
                 min_promotion_amount,
                 max_promotion_amount,
                 min_view_duration_ms,
+                platform_fee_bps,
+                ecosystem_fee_bps,
                 version,
                 updated_at,
                 transaction_id,
@@ -431,6 +441,8 @@ impl PostRow {
                 min_promotion_amount,
                 max_promotion_amount,
                 min_view_duration_ms,
+                platform_fee_bps,
+                ecosystem_fee_bps,
                 version,
                 updated_at,
                 transaction_id,
@@ -453,17 +465,25 @@ impl PostRow {
                 transaction_id,
             }),
             SocialEventRow::PromotionView {
+                post_id,
                 promotion_id,
                 viewer,
                 payment_amount,
+                platform_fee,
+                ecosystem_fee,
+                recipient_amount,
                 view_duration,
                 platform_id,
                 timestamp,
                 transaction_id,
             } => Some(PostRow::PromotionView {
+                post_id,
                 promotion_id,
                 viewer,
                 payment_amount,
+                platform_fee,
+                ecosystem_fee,
+                recipient_amount,
                 view_duration,
                 platform_id,
                 timestamp,
@@ -1434,6 +1454,8 @@ impl Handler for PostsHandler {
                     min_promotion_amount,
                     max_promotion_amount,
                     min_view_duration_ms,
+                    platform_fee_bps,
+                    ecosystem_fee_bps,
                     version,
                     updated_at,
                     transaction_id,
@@ -1454,6 +1476,8 @@ impl Handler for PostsHandler {
                                 post_config::min_promotion_amount.eq(min_promotion_amount),
                                 post_config::max_promotion_amount.eq(max_promotion_amount),
                                 post_config::min_view_duration_ms.eq(min_view_duration_ms),
+                                post_config::platform_fee_bps.eq(platform_fee_bps),
+                                post_config::ecosystem_fee_bps.eq(ecosystem_fee_bps),
                                 post_config::version.eq(version_val),
                                 post_config::updated_at.eq(updated_at),
                                 post_config::transaction_id.eq(transaction_id),
@@ -1462,8 +1486,8 @@ impl Handler for PostsHandler {
                             .await;
                     } else {
                         let _ = sql_query(
-                            r#"INSERT INTO post_config (updated_by, max_content_length, max_media_urls, max_mentions, max_metadata_size, max_description_length, max_reaction_length, commenter_tip_percentage, repost_tip_percentage, min_promotion_amount, max_promotion_amount, min_view_duration_ms, version, updated_at, transaction_id)
-                               SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, COALESCE((SELECT MAX(version) FROM post_config), 0) + 1, $13, $14"#,
+                            r#"INSERT INTO post_config (updated_by, max_content_length, max_media_urls, max_mentions, max_metadata_size, max_description_length, max_reaction_length, commenter_tip_percentage, repost_tip_percentage, min_promotion_amount, max_promotion_amount, min_view_duration_ms, platform_fee_bps, ecosystem_fee_bps, version, updated_at, transaction_id)
+                               SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, COALESCE((SELECT MAX(version) FROM post_config), 0) + 1, $15, $16"#,
                         )
                         .bind::<Text, _>(updated_by)
                         .bind::<BigInt, _>(max_content_length)
@@ -1477,6 +1501,8 @@ impl Handler for PostsHandler {
                         .bind::<BigInt, _>(min_promotion_amount)
                         .bind::<BigInt, _>(max_promotion_amount)
                         .bind::<BigInt, _>(min_view_duration_ms)
+                        .bind::<BigInt, _>(platform_fee_bps)
+                        .bind::<BigInt, _>(ecosystem_fee_bps)
                         .bind::<BigInt, _>(updated_at)
                         .bind::<Text, _>(transaction_id)
                         .execute(conn)
@@ -1523,29 +1549,45 @@ impl Handler for PostsHandler {
                     }
                 }
                 PostRow::PromotionView {
+                    post_id,
                     promotion_id,
                     viewer,
                     payment_amount,
+                    platform_fee,
+                    ecosystem_fee,
+                    recipient_amount,
                     view_duration,
                     platform_id,
                     timestamp,
                     transaction_id,
                 } => {
-                    let post_id_opt: Option<String> = promoted_posts::table
-                        .filter(promoted_posts::promotion_id.eq(promotion_id))
-                        .order(promoted_posts::time.desc())
-                        .select(promoted_posts::post_id)
-                        .first::<String>(conn)
-                        .await
-                        .ok();
-                    if let Some(post_id) = post_id_opt {
+                    let looked_up_post_id: Option<String> = if post_id.is_empty() {
+                        promoted_posts::table
+                            .filter(promoted_posts::promotion_id.eq(promotion_id))
+                            .order(promoted_posts::time.desc())
+                            .select(promoted_posts::post_id)
+                            .first::<String>(conn)
+                            .await
+                            .ok()
+                    } else {
+                        None
+                    };
+                    let resolved_post_id = if !post_id.is_empty() {
+                        Some(post_id.clone())
+                    } else {
+                        looked_up_post_id
+                    };
+                    if let Some(resolved_post_id) = resolved_post_id {
                         let time = chrono::DateTime::from_timestamp(*timestamp / 1000, 0)
                             .unwrap_or_else(chrono::Utc::now);
                         let row = NewPromotionView {
-                            post_id: post_id.clone(),
+                            post_id: resolved_post_id.clone(),
                             promotion_id: promotion_id.clone(),
                             viewer: viewer.clone(),
                             payment_amount: *payment_amount,
+                            platform_fee: *platform_fee,
+                            ecosystem_fee: *ecosystem_fee,
+                            recipient_amount: *recipient_amount,
                             view_duration: *view_duration,
                             platform_id: platform_id.clone(),
                             timestamp: *timestamp,
@@ -1572,7 +1614,7 @@ impl Handler for PostsHandler {
                             let still_active = new_remaining >= payment_per_view;
                             let budget_event = NewPromotionBudgetEvent {
                                 promotion_id: promotion_id.clone(),
-                                post_id: post_id.clone(),
+                                post_id: resolved_post_id.clone(),
                                 event_type: "view_payment".to_string(),
                                 amount: *payment_amount,
                                 remaining_budget: new_remaining,
@@ -1593,6 +1635,27 @@ impl Handler for PostsHandler {
                                 .execute(conn)
                                 .await?;
                         }
+
+                        total += insert_promotion_view_unified_revenue(
+                            conn,
+                            promotion_id,
+                            &resolved_post_id,
+                            viewer,
+                            platform_id,
+                            *payment_amount,
+                            *platform_fee,
+                            *ecosystem_fee,
+                            *recipient_amount,
+                            *timestamp,
+                            transaction_id,
+                        )
+                        .await?;
+                    } else {
+                        tracing::warn!(
+                            promotion_id = %promotion_id,
+                            transaction_id = %transaction_id,
+                            "PromotionView missing post_id and promoted_posts lookup failed; skipping"
+                        );
                     }
                 }
                 PostRow::PromotionStatusEvent {
@@ -2204,6 +2267,91 @@ impl Handler for PostsHandler {
     }
 }
 
+async fn load_ecosystem_treasury_address(conn: &mut Connection<'_>) -> Option<String> {
+    ecosystem_treasury::table
+        .order(ecosystem_treasury::time.desc())
+        .select(ecosystem_treasury::treasury_address)
+        .first(conn)
+        .await
+        .ok()
+}
+
+async fn insert_promotion_view_unified_revenue(
+    conn: &mut Connection<'_>,
+    promotion_id: &str,
+    post_id: &str,
+    viewer: &str,
+    platform_id: &str,
+    _payment_amount: i64,
+    platform_fee: i64,
+    ecosystem_fee: i64,
+    recipient_amount: i64,
+    revenue_time: i64,
+    transaction_id: &str,
+) -> Result<usize> {
+    let payer_address: String = promoted_posts::table
+        .filter(promoted_posts::promotion_id.eq(promotion_id))
+        .order(promoted_posts::time.desc())
+        .select(promoted_posts::owner)
+        .first(conn)
+        .await
+        .optional()?
+        .unwrap_or_else(|| "0x0".to_string());
+
+    let mut total = 0usize;
+    if recipient_amount > 0 {
+        total += diesel::insert_into(unified_revenue::table)
+            .values(NewUnifiedRevenue::from_post(
+                REVENUE_TYPE_PROMOTION_VIEWER_NET.to_string(),
+                viewer.to_string(),
+                Some(platform_id.to_string()),
+                recipient_amount,
+                post_id.to_string(),
+                payer_address.clone(),
+                viewer.to_string(),
+                revenue_time,
+                transaction_id.to_string(),
+            ))
+            .execute(conn)
+            .await?;
+    }
+    if platform_fee > 0 {
+        total += diesel::insert_into(unified_revenue::table)
+            .values(NewUnifiedRevenue::from_post(
+                REVENUE_TYPE_PROMOTION_PLATFORM_FEE.to_string(),
+                viewer.to_string(),
+                Some(platform_id.to_string()),
+                platform_fee,
+                post_id.to_string(),
+                payer_address.clone(),
+                platform_id.to_string(),
+                revenue_time,
+                transaction_id.to_string(),
+            ))
+            .execute(conn)
+            .await?;
+    }
+    if ecosystem_fee > 0 {
+        if let Some(treasury) = load_ecosystem_treasury_address(conn).await {
+            total += diesel::insert_into(unified_revenue::table)
+                .values(NewUnifiedRevenue::from_post(
+                    REVENUE_TYPE_PROMOTION_ECOSYSTEM_FEE.to_string(),
+                    viewer.to_string(),
+                    Some(platform_id.to_string()),
+                    ecosystem_fee,
+                    post_id.to_string(),
+                    payer_address,
+                    treasury,
+                    revenue_time,
+                    transaction_id.to_string(),
+                ))
+                .execute(conn)
+                .await?;
+        }
+    }
+    Ok(total)
+}
+
 #[cfg(test)]
 mod post_row_poc_mapping_tests {
     use super::{classify_reaction, PostRow, ReactionApplyKind};
@@ -2340,7 +2488,9 @@ mod promotion_view_commit_tests {
     use myso_indexer_alt_framework::postgres::handler::Handler;
     use myso_indexer_alt_social_schema::MIGRATIONS;
     use myso_indexer_alt_social_schema::models::NewPromotedPost;
-    use myso_indexer_alt_social_schema::schema::{promoted_posts, promotion_budget_events};
+    use myso_indexer_alt_social_schema::schema::{
+        promoted_posts, promotion_budget_events, promotion_views, unified_revenue,
+    };
     use myso_pg_db::temp::TempDb;
     use myso_pg_db::Db;
 
@@ -2402,9 +2552,13 @@ mod promotion_view_commit_tests {
             .expect("insert promoted post");
 
         let view_row = PostRow::PromotionView {
+            post_id: post_id.clone(),
             promotion_id: promotion_id.clone(),
             viewer: viewer.clone(),
             payment_amount: 1_000_000,
+            platform_fee: 100_000,
+            ecosystem_fee: 100_000,
+            recipient_amount: 800_000,
             view_duration: 3_000,
             platform_id: platform_id.clone(),
             timestamp: created_at + 1_000,
@@ -2430,6 +2584,32 @@ mod promotion_view_commit_tests {
             .await
             .expect("budget event count");
         assert_eq!(budget_events, 1);
+
+        let views: i64 = promotion_views::table
+            .filter(promotion_views::promotion_id.eq(&promotion_id))
+            .count()
+            .get_result(&mut conn)
+            .await
+            .expect("view count");
+        assert_eq!(views, 1);
+
+        let revenue_rows: Vec<(String, i64, String)> = unified_revenue::table
+            .filter(unified_revenue::transaction_id.eq("tx:view:0"))
+            .select((
+                unified_revenue::revenue_type,
+                unified_revenue::amount,
+                unified_revenue::recipient_address,
+            ))
+            .load(&mut conn)
+            .await
+            .expect("unified revenue");
+        assert_eq!(revenue_rows.len(), 2); // viewer net + platform fee (no treasury row seeded)
+        assert!(revenue_rows.iter().any(|(t, a, r)| {
+            t == "promotion_viewer_net" && *a == 800_000 && r == &viewer
+        }));
+        assert!(revenue_rows.iter().any(|(t, a, r)| {
+            t == "promotion_platform_fee" && *a == 100_000 && r == &platform_id
+        }));
     }
 }
 

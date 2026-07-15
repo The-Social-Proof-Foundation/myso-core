@@ -1455,7 +1455,15 @@ gql_promotion_snapshot() {
                 remainingBudget
                 budget
                 status
-                viewsDetail(limit: 5) { viewer promotionId viewDuration }
+                viewsDetail(limit: 5) {
+                    viewer
+                    promotionId
+                    viewDuration
+                    paymentAmount
+                    platformFee
+                    ecosystemFee
+                    recipientAmount
+                }
             }
         }' \
         "$vars")" || return 1

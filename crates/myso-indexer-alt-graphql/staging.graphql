@@ -6027,6 +6027,10 @@ type PostConfig {
 	"""
 	commenterTipPercentage: Int!
 	"""
+	Ecosystem fee bps taken from each confirmed promo view gross.
+	"""
+	ecosystemFeeBps: Int!
+	"""
 	Maximum content length in characters.
 	"""
 	maxContentLength: Int!
@@ -6062,6 +6066,10 @@ type PostConfig {
 	Minimum view duration (ms) required for a promoted-post view to count toward the campaign.
 	"""
 	minViewDurationMs: Int!
+	"""
+	Platform fee bps taken from each confirmed promo view gross.
+	"""
+	platformFeeBps: Int!
 	"""
 	Repost tip percentage (remainder to original post owner).
 	"""
@@ -6769,6 +6777,7 @@ type PromotionStats {
 	remainingBudget: Int!
 	"""
 	Total amount spent (MIST).
+	Advertiser gross spend across confirmed views (sum of `payment_amount`, MIST).
 	"""
 	totalSpent: Int!
 	"""
@@ -6794,9 +6803,17 @@ type PromotionTimeSeries {
 
 type PromotionView {
 	"""
-	Payment amount for this view (MIST).
+	Ecosystem fee taken from the gross (MIST).
+	"""
+	ecosystemFee: Int!
+	"""
+	Gross payment amount for this view (advertiser budget debit, MIST).
 	"""
 	paymentAmount: Int!
+	"""
+	Platform fee taken from the gross (MIST).
+	"""
+	platformFee: Int!
 	"""
 	Platform where the view occurred.
 	"""
@@ -6809,6 +6826,10 @@ type PromotionView {
 	Promotion ID.
 	"""
 	promotionId: String!
+	"""
+	Net MYSO transferred to the viewer (MIST).
+	"""
+	recipientAmount: Int!
 	"""
 	View timestamp (epoch ms).
 	"""

@@ -168,7 +168,8 @@ pub(crate) async fn get_post_config(db: &Db) -> Result<Option<PostConfigRow>, So
         SELECT updated_by, max_content_length, max_media_urls, max_mentions, max_metadata_size,
                max_description_length, max_reaction_length, commenter_tip_percentage,
                repost_tip_percentage, min_promotion_amount, max_promotion_amount,
-               min_view_duration_ms, version, updated_at
+               min_view_duration_ms, platform_fee_bps, ecosystem_fee_bps,
+               version, updated_at
         FROM post_config
         ORDER BY time DESC
         LIMIT 1

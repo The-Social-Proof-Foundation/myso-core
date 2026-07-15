@@ -147,11 +147,14 @@ pub(crate) async fn get_promotion_views(
             promotion_views::promotion_id,
             promotion_views::viewer,
             promotion_views::payment_amount,
+            promotion_views::platform_fee,
+            promotion_views::ecosystem_fee,
+            promotion_views::recipient_amount,
             promotion_views::view_duration,
             promotion_views::platform_id,
             promotion_views::timestamp,
         ))
-        .load::<(String, String, String, i64, i64, String, i64)>(&mut conn)
+        .load::<(String, String, String, i64, i64, i64, i64, i64, String, i64)>(&mut conn)
         .await?;
     Ok(results
         .into_iter()
@@ -161,6 +164,9 @@ pub(crate) async fn get_promotion_views(
                 promotion_id,
                 viewer,
                 payment_amount,
+                platform_fee,
+                ecosystem_fee,
+                recipient_amount,
                 view_duration,
                 platform_id,
                 timestamp,
@@ -169,6 +175,9 @@ pub(crate) async fn get_promotion_views(
                 promotion_id,
                 viewer,
                 payment_amount,
+                platform_fee,
+                ecosystem_fee,
+                recipient_amount,
                 view_duration,
                 platform_id,
                 timestamp,

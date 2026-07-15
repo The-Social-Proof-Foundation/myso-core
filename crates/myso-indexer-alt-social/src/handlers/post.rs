@@ -340,6 +340,10 @@ struct PostParametersUpdatedEvent {
     max_promotion_amount: u64,
     #[serde(default, deserialize_with = "de_u64")]
     min_view_duration_ms: u64,
+    #[serde(default, deserialize_with = "de_u64")]
+    platform_fee_bps: u64,
+    #[serde(default, deserialize_with = "de_u64")]
+    ecosystem_fee_bps: u64,
     #[serde(default, deserialize_with = "de_opt_u64")]
     version: Option<u64>,
 }
@@ -379,16 +383,36 @@ struct PromotedPostCreatedEvent {
 }
 
 #[derive(Debug, Deserialize)]
-struct PromotedPostViewConfirmedEvent {
+struct PromotedViewConfirmItem {
+    post_id: String,
     promotion_id: String,
-    viewer: String,
     #[serde(deserialize_with = "de_u64")]
     payment_amount: u64,
+    #[serde(default, deserialize_with = "de_u64")]
+    platform_fee: u64,
+    #[serde(default, deserialize_with = "de_u64")]
+    ecosystem_fee: u64,
+    #[serde(default, deserialize_with = "de_u64")]
+    recipient_amount: u64,
     #[serde(deserialize_with = "de_u64")]
     view_duration: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct PromotedPostViewsBatchConfirmedEvent {
+    viewer: String,
     platform_id: String,
     #[serde(deserialize_with = "de_u64")]
     timestamp: u64,
+    items: Vec<PromotedViewConfirmItem>,
+    #[serde(default, deserialize_with = "de_u64")]
+    total_payment_amount: u64,
+    #[serde(default, deserialize_with = "de_u64")]
+    total_platform_fee: u64,
+    #[serde(default, deserialize_with = "de_u64")]
+    total_ecosystem_fee: u64,
+    #[serde(default, deserialize_with = "de_u64")]
+    total_recipient_amount: u64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -454,8 +478,8 @@ pub fn handle_post_event(
         }
         "PostParametersUpdatedEvent" => process_post_parameters_updated_event(data, event_id),
         "PromotedPostCreatedEvent" => process_promoted_post_created_event(data, event_id),
-        "PromotedPostViewConfirmedEvent" => {
-            process_promoted_post_view_confirmed_event(data, event_id)
+        "PromotedPostViewsBatchConfirmedEvent" => {
+            process_promoted_post_views_batch_confirmed_event(data, event_id)
         }
         "PromotionStatusToggledEvent" => process_promotion_status_toggled_event(data, event_id),
         "PromotionFundsWithdrawnEvent" => process_promotion_funds_withdrawn_event(data, event_id),
@@ -947,6 +971,8 @@ fn process_post_parameters_updated_event(
         min_promotion_amount: ev.min_promotion_amount as i64,
         max_promotion_amount: ev.max_promotion_amount as i64,
         min_view_duration_ms: ev.min_view_duration_ms as i64,
+        platform_fee_bps: ev.platform_fee_bps as i64,
+        ecosystem_fee_bps: ev.ecosystem_fee_bps as i64,
         version: ev.version.map(|v| v as i64),
         updated_at: ev.timestamp as i64,
         transaction_id: event_id.to_string(),
@@ -1109,16 +1135,16 @@ fn process_promoted_post_created_event(
     }])
 }
 
-fn process_promoted_post_view_confirmed_event(
+fn process_promoted_post_views_batch_confirmed_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: PromotedPostViewConfirmedEvent = match serde_json::from_value(data.clone()) {
+    let ev: PromotedPostViewsBatchConfirmedEvent = match serde_json::from_value(data.clone()) {
         Ok(v) => v,
         Err(e) => {
             crate::metrics::SocialMetrics::record_event_json_deserialize_failed(
                 "post",
-                "PromotedPostViewConfirmedEvent",
+                "PromotedPostViewsBatchConfirmedEvent",
             );
             let keys: Vec<String> = data
                 .as_object()
@@ -1128,20 +1154,47 @@ fn process_promoted_post_view_confirmed_event(
                 event_id = %event_id,
                 error = %e,
                 json_keys = ?keys,
-                "post PromotedPostViewConfirmedEvent JSON did not match struct"
+                "post PromotedPostViewsBatchConfirmedEvent JSON did not match struct"
             );
             return None;
         }
     };
-    Some(vec![SocialEventRow::PromotionView {
-        promotion_id: ev.promotion_id,
-        viewer: ev.viewer,
-        payment_amount: ev.payment_amount as i64,
-        view_duration: ev.view_duration as i64,
-        platform_id: ev.platform_id,
-        timestamp: ev.timestamp as i64,
-        transaction_id: event_id.to_string(),
-    }])
+    if ev.items.is_empty() {
+        tracing::warn!(
+            event_id = %event_id,
+            "PromotedPostViewsBatchConfirmedEvent had empty items; treating as no-op"
+        );
+        return Some(vec![]);
+    }
+    let mut rows = Vec::with_capacity(ev.items.len());
+    for item in ev.items {
+        let recipient_amount = if item.recipient_amount > 0 {
+            item.recipient_amount as i64
+        } else {
+            item.payment_amount
+                .saturating_sub(item.platform_fee + item.ecosystem_fee) as i64
+        };
+        rows.push(SocialEventRow::PromotionView {
+            post_id: item.post_id,
+            promotion_id: item.promotion_id,
+            viewer: ev.viewer.clone(),
+            payment_amount: item.payment_amount as i64,
+            platform_fee: item.platform_fee as i64,
+            ecosystem_fee: item.ecosystem_fee as i64,
+            recipient_amount,
+            view_duration: item.view_duration as i64,
+            platform_id: ev.platform_id.clone(),
+            timestamp: ev.timestamp as i64,
+            transaction_id: event_id.to_string(),
+        });
+    }
+    let _ = (
+        ev.total_payment_amount,
+        ev.total_platform_fee,
+        ev.total_ecosystem_fee,
+        ev.total_recipient_amount,
+    );
+    Some(rows)
 }
 
 fn process_promotion_status_toggled_event(
@@ -1660,6 +1713,82 @@ mod tests {
         assert_eq!(*payment_per_view, 1_000_000);
         assert_eq!(*total_budget, 1_000_000);
         assert_eq!(transaction_id, "tx:promo1");
+    }
+
+    #[test]
+    fn promoted_post_views_batch_confirmed_expands_to_n_views() {
+        let data = serde_json::json!({
+            "viewer": "0x2458950181e415250823d6ce1d55f2b3427826a111939e0d6d38e9a1397411d8",
+            "platform_id": "0x8a8d7490ab0dee5e6a0092a463ade496a1352d89b5091e96e3d356d4f8577f72",
+            "timestamp": 1_742_000_000_000_u64,
+            "items": [
+                {
+                    "post_id": "0x320c97b64e7228da3b9f8a6adc5401b289bf41cf3f4e3a2e159d5ee939b8cdda",
+                    "promotion_id": "0xccf58c286df1ee89368c9b5dfb4f2bc79ca97ce57611df33cc340556a9a260c3",
+                    "payment_amount": 1_000_000_u64,
+                    "platform_fee": 100_000_u64,
+                    "ecosystem_fee": 100_000_u64,
+                    "recipient_amount": 800_000_u64,
+                    "view_duration": 3_000_u64,
+                },
+                {
+                    "post_id": "0xa7953fb1af6d0495b3da10d4d25888158e8dc451fa5354a9723dc70676d38f3d",
+                    "promotion_id": "0x9c5f189cdf741b0cf724297a5aee8536a0ef41ad356bed6070cc6703ec949c55",
+                    "payment_amount": 2_000_000_u64,
+                    "platform_fee": 200_000_u64,
+                    "ecosystem_fee": 200_000_u64,
+                    "recipient_amount": 1_600_000_u64,
+                    "view_duration": 4_000_u64,
+                }
+            ],
+            "total_payment_amount": 3_000_000_u64,
+            "total_platform_fee": 300_000_u64,
+            "total_ecosystem_fee": 300_000_u64,
+            "total_recipient_amount": 2_400_000_u64,
+        });
+        let rows = handle_post_event(
+            "PromotedPostViewsBatchConfirmedEvent",
+            &data,
+            "tx:batch1",
+            &HashMap::new(),
+            CK_MS,
+        )
+        .expect("rows");
+        assert_eq!(rows.len(), 2);
+        match &rows[0] {
+            SocialEventRow::PromotionView {
+                post_id,
+                promotion_id,
+                payment_amount,
+                recipient_amount,
+                transaction_id,
+                ..
+            } => {
+                assert_eq!(
+                    post_id,
+                    "0x320c97b64e7228da3b9f8a6adc5401b289bf41cf3f4e3a2e159d5ee939b8cdda"
+                );
+                assert_eq!(
+                    promotion_id,
+                    "0xccf58c286df1ee89368c9b5dfb4f2bc79ca97ce57611df33cc340556a9a260c3"
+                );
+                assert_eq!(*payment_amount, 1_000_000);
+                assert_eq!(*recipient_amount, 800_000);
+                assert_eq!(transaction_id, "tx:batch1");
+            }
+            _ => panic!("expected PromotionView"),
+        }
+        match &rows[1] {
+            SocialEventRow::PromotionView {
+                payment_amount,
+                view_duration,
+                ..
+            } => {
+                assert_eq!(*payment_amount, 2_000_000);
+                assert_eq!(*view_duration, 4_000);
+            }
+            _ => panic!("expected PromotionView"),
+        }
     }
 
     #[test]

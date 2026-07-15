@@ -10381,7 +10381,10 @@ CommentDeletedEvent
 PromotedPostCreatedEvent
 	public struct
 	0x50c1::post
-PromotedPostViewConfirmedEvent
+PromotedViewConfirmItem
+	public struct
+	0x50c1::post
+PromotedPostViewsBatchConfirmedEvent
 	public struct
 	0x50c1::post
 PromotionStatusToggledEvent
@@ -10759,7 +10762,7 @@ update_post_parameters
 create_promoted_post
 	public fun
 	0x50c1::post
-confirm_promoted_post_view
+confirm_promoted_post_views
 	public fun
 	0x50c1::post
 toggle_promotion_status

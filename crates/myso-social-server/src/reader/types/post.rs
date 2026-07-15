@@ -98,6 +98,10 @@ pub struct PostConfigRow {
     #[diesel(sql_type = BigInt)]
     pub min_view_duration_ms: i64,
     #[diesel(sql_type = BigInt)]
+    pub platform_fee_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub ecosystem_fee_bps: i64,
+    #[diesel(sql_type = BigInt)]
     pub version: i64,
     #[diesel(sql_type = BigInt)]
     pub updated_at: i64,
@@ -161,6 +165,9 @@ pub struct PromotionViewRow {
     pub promotion_id: String,
     pub viewer: String,
     pub payment_amount: i64,
+    pub platform_fee: i64,
+    pub ecosystem_fee: i64,
+    pub recipient_amount: i64,
     pub view_duration: i64,
     pub platform_id: String,
     pub timestamp: i64,

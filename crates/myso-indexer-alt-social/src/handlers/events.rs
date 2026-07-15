@@ -1642,6 +1642,8 @@ pub struct BcsPostParametersUpdatedEvent {
     min_promotion_amount: u64,
     max_promotion_amount: u64,
     min_view_duration_ms: u64,
+    platform_fee_bps: u64,
+    ecosystem_fee_bps: u64,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -1699,14 +1701,27 @@ pub struct BcsPromotedPostCreatedEvent {
     created_at: u64,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct BcsPromotedPostViewConfirmedEvent {
-    post_id: AccountAddress, // promotion_id (PromotionData object address)
-    viewer: AccountAddress,
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsPromotedViewConfirmItem {
+    post_id: AccountAddress,
+    promotion_id: AccountAddress,
     payment_amount: u64,
+    platform_fee: u64,
+    ecosystem_fee: u64,
+    recipient_amount: u64,
     view_duration: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsPromotedPostViewsBatchConfirmedEvent {
+    viewer: AccountAddress,
     platform_id: AccountAddress,
     timestamp: u64,
+    items: Vec<BcsPromotedViewConfirmItem>,
+    total_payment_amount: u64,
+    total_platform_fee: u64,
+    total_ecosystem_fee: u64,
+    total_recipient_amount: u64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -3992,16 +4007,33 @@ fn parse_post_event(
                 "created_at": ev.created_at,
             })))
         }
-        "PromotedPostViewConfirmedEvent" => {
-            let ev = bcs::from_bytes::<BcsPromotedPostViewConfirmedEvent>(contents)
+        "PromotedPostViewsBatchConfirmedEvent" => {
+            let ev = bcs::from_bytes::<BcsPromotedPostViewsBatchConfirmedEvent>(contents)
                 .map_err(|e| bcs_parse_err(e, contents))?;
+            let items: Vec<serde_json::Value> = ev
+                .items
+                .iter()
+                .map(|item| {
+                    serde_json::json!({
+                        "post_id": addr_to_string(&item.post_id),
+                        "promotion_id": addr_to_string(&item.promotion_id),
+                        "payment_amount": item.payment_amount,
+                        "platform_fee": item.platform_fee,
+                        "ecosystem_fee": item.ecosystem_fee,
+                        "recipient_amount": item.recipient_amount,
+                        "view_duration": item.view_duration,
+                    })
+                })
+                .collect();
             Ok(Some(serde_json::json!({
-                "promotion_id": addr_to_string(&ev.post_id),
                 "viewer": addr_to_string(&ev.viewer),
-                "payment_amount": ev.payment_amount,
-                "view_duration": ev.view_duration,
                 "platform_id": addr_to_string(&ev.platform_id),
                 "timestamp": ev.timestamp,
+                "items": items,
+                "total_payment_amount": ev.total_payment_amount,
+                "total_platform_fee": ev.total_platform_fee,
+                "total_ecosystem_fee": ev.total_ecosystem_fee,
+                "total_recipient_amount": ev.total_recipient_amount,
             })))
         }
         "PromotionStatusToggledEvent" => {
@@ -4053,6 +4085,8 @@ fn parse_post_event(
                 "min_promotion_amount": ev.min_promotion_amount,
                 "max_promotion_amount": ev.max_promotion_amount,
                 "min_view_duration_ms": ev.min_view_duration_ms,
+                "platform_fee_bps": ev.platform_fee_bps,
+                "ecosystem_fee_bps": ev.ecosystem_fee_bps,
             })))
         }
         _ => Ok(None),
@@ -7027,6 +7061,118 @@ mod tests {
         let json = parse_event_contents("post", "PromotedPostCreatedEvent", &bytes).expect("parse");
         assert_eq!(json["payment_per_view"], 1_000_000_i64);
         assert_eq!(json["total_budget"], 1_000_000_i64);
+    }
+
+    #[test]
+    fn promoted_post_views_batch_confirmed_event_bcs_round_trip_len_one() {
+        let viewer = AccountAddress::from_hex_literal(
+            "0x2458950181e415250823d6ce1d55f2b3427826a111939e0d6d38e9a1397411d8",
+        )
+        .unwrap();
+        let platform_id = AccountAddress::from_hex_literal(
+            "0x8a8d7490ab0dee5e6a0092a463ade496a1352d89b5091e96e3d356d4f8577f72",
+        )
+        .unwrap();
+        let post_id = AccountAddress::from_hex_literal(
+            "0x320c97b64e7228da3b9f8a6adc5401b289bf41cf3f4e3a2e159d5ee939b8cdda",
+        )
+        .unwrap();
+        let promotion_id = AccountAddress::from_hex_literal(
+            "0xccf58c286df1ee89368c9b5dfb4f2bc79ca97ce57611df33cc340556a9a260c3",
+        )
+        .unwrap();
+        let ev = BcsPromotedPostViewsBatchConfirmedEvent {
+            viewer,
+            platform_id,
+            timestamp: 1_742_000_000_000,
+            items: vec![BcsPromotedViewConfirmItem {
+                post_id,
+                promotion_id,
+                payment_amount: 1_000_000,
+                platform_fee: 100_000,
+                ecosystem_fee: 100_000,
+                recipient_amount: 800_000,
+                view_duration: 3_000,
+            }],
+            total_payment_amount: 1_000_000,
+            total_platform_fee: 100_000,
+            total_ecosystem_fee: 100_000,
+            total_recipient_amount: 800_000,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let back: BcsPromotedPostViewsBatchConfirmedEvent =
+            bcs::from_bytes(&bytes).expect("bcs from_bytes");
+        assert_eq!(back.items.len(), 1);
+        assert_eq!(back.total_recipient_amount, 800_000);
+        let json =
+            parse_event_contents("post", "PromotedPostViewsBatchConfirmedEvent", &bytes).expect("parse");
+        assert_eq!(json["items"].as_array().unwrap().len(), 1);
+        assert_eq!(json["items"][0]["payment_amount"], 1_000_000_i64);
+        assert_eq!(json["items"][0]["recipient_amount"], 800_000_i64);
+        assert_eq!(json["total_platform_fee"], 100_000_i64);
+    }
+
+    #[test]
+    fn promoted_post_views_batch_confirmed_event_bcs_round_trip_len_two() {
+        let viewer = AccountAddress::from_hex_literal(
+            "0x2458950181e415250823d6ce1d55f2b3427826a111939e0d6d38e9a1397411d8",
+        )
+        .unwrap();
+        let platform_id = AccountAddress::from_hex_literal(
+            "0x8a8d7490ab0dee5e6a0092a463ade496a1352d89b5091e96e3d356d4f8577f72",
+        )
+        .unwrap();
+        let post_a = AccountAddress::from_hex_literal(
+            "0x320c97b64e7228da3b9f8a6adc5401b289bf41cf3f4e3a2e159d5ee939b8cdda",
+        )
+        .unwrap();
+        let promo_a = AccountAddress::from_hex_literal(
+            "0xccf58c286df1ee89368c9b5dfb4f2bc79ca97ce57611df33cc340556a9a260c3",
+        )
+        .unwrap();
+        let post_b = AccountAddress::from_hex_literal(
+            "0xa7953fb1af6d0495b3da10d4d25888158e8dc451fa5354a9723dc70676d38f3d",
+        )
+        .unwrap();
+        let promo_b = AccountAddress::from_hex_literal(
+            "0x9c5f189cdf741b0cf724297a5aee8536a0ef41ad356bed6070cc6703ec949c55",
+        )
+        .unwrap();
+        let ev = BcsPromotedPostViewsBatchConfirmedEvent {
+            viewer,
+            platform_id,
+            timestamp: 1_742_000_000_100,
+            items: vec![
+                BcsPromotedViewConfirmItem {
+                    post_id: post_a,
+                    promotion_id: promo_a,
+                    payment_amount: 1_000_000,
+                    platform_fee: 100_000,
+                    ecosystem_fee: 100_000,
+                    recipient_amount: 800_000,
+                    view_duration: 3_000,
+                },
+                BcsPromotedViewConfirmItem {
+                    post_id: post_b,
+                    promotion_id: promo_b,
+                    payment_amount: 2_000_000,
+                    platform_fee: 200_000,
+                    ecosystem_fee: 200_000,
+                    recipient_amount: 1_600_000,
+                    view_duration: 4_000,
+                },
+            ],
+            total_payment_amount: 3_000_000,
+            total_platform_fee: 300_000,
+            total_ecosystem_fee: 300_000,
+            total_recipient_amount: 2_400_000,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let json =
+            parse_event_contents("post", "PromotedPostViewsBatchConfirmedEvent", &bytes).expect("parse");
+        assert_eq!(json["items"].as_array().unwrap().len(), 2);
+        assert_eq!(json["total_recipient_amount"], 2_400_000_i64);
+        assert_eq!(json["items"][1]["view_duration"], 4_000_i64);
     }
 
     #[test]

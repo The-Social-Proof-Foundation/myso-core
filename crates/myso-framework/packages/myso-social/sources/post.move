@@ -76,6 +76,8 @@ module social_contracts::post {
     const EWrongBeneficiaryVault: u64 = 37;
     /// [`tip_post_simple`] cannot deposit into an escrow vault; use [`tip_post`] with the vault for `revenue_redirect_to`.
     const ETipPostRequiresBeneficiaryVault: u64 = 38;
+    /// Empty batch, length mismatch, or batch larger than `MAX_PROMOTION_VIEW_BATCH`
+    const EInvalidBatch: u64 = 39;
 
     /// Constants for size limits
     const MAX_CONTENT_LENGTH: u64 = 5000; // 5000 chars max for content
@@ -92,6 +94,11 @@ module social_contracts::post {
     const MIN_PROMOTION_AMOUNT: u64 = 1000; // Minimum 0.001 MYSO (1000 MIST) per view
     const MAX_PROMOTION_AMOUNT: u64 = 100000000; // Maximum 100 MYSO per view
     const MIN_VIEW_DURATION: u64 = 3000; // Minimum 3 seconds view time in milliseconds
+    /// Max promotions confirmed in one `confirm_promoted_post_views` call (gas / object-lock bound)
+    const MAX_PROMOTION_VIEW_BATCH: u64 = 50;
+    const BPS_DENOM: u64 = 10000; 
+    const DEFAULT_PLATFORM_FEE_BPS: u64 = 1000; // Default platform fee on each confirmed promo view gross (10%)
+    const DEFAULT_ECOSYSTEM_FEE_BPS: u64 = 1000; // Default ecosystem fee on each confirmed promo view gross (10%)
 
     /// Valid post types
     const POST_TYPE_STANDARD: vector<u8> = b"standard";
@@ -725,6 +732,10 @@ module social_contracts::post {
         max_promotion_amount: u64,
         /// Minimum view duration for a promoted post view to count (ms)
         min_view_duration_ms: u64,
+        /// Platform fee bps taken from each confirmed promo view gross
+        platform_fee_bps: u64,
+        /// Ecosystem fee bps taken from each confirmed promo view gross
+        ecosystem_fee_bps: u64,
         /// Version for upgrades
         version: u64,
     }
@@ -757,6 +768,10 @@ module social_contracts::post {
         max_promotion_amount: u64,
         /// New min view duration value (ms)
         min_view_duration_ms: u64,
+        /// New platform fee bps of each promo view gross
+        platform_fee_bps: u64,
+        /// New ecosystem fee bps of each promo view gross
+        ecosystem_fee_bps: u64,
     }
 
     /// Post created event
@@ -947,14 +962,29 @@ module social_contracts::post {
         created_at: u64,
     }
 
-    /// Event emitted when a promoted post view is confirmed and payment is made
-    public struct PromotedPostViewConfirmedEvent has copy, drop {
+    /// One item inside a batch promoted-view confirmation
+    public struct PromotedViewConfirmItem has copy, drop {
         post_id: address,
-        viewer: address,
+        promotion_id: address,
+        /// Gross debit from this promotion's budget (`payment_per_view`)
         payment_amount: u64,
+        platform_fee: u64,
+        ecosystem_fee: u64,
+        /// Net attributed to this view (part of the merged wallet transfer)
+        recipient_amount: u64,
         view_duration: u64,
+    }
+
+    /// Event emitted when one viewer is paid for N (≥1) promoted views in a single tx
+    public struct PromotedPostViewsBatchConfirmedEvent has copy, drop {
+        viewer: address,
         platform_id: address,
         timestamp: u64,
+        items: vector<PromotedViewConfirmItem>,
+        total_payment_amount: u64,
+        total_platform_fee: u64,
+        total_ecosystem_fee: u64,
+        total_recipient_amount: u64,
     }
 
     /// Event emitted when promotion status is toggled
@@ -1000,6 +1030,8 @@ module social_contracts::post {
             min_promotion_amount: MIN_PROMOTION_AMOUNT,
             max_promotion_amount: MAX_PROMOTION_AMOUNT,
             min_view_duration_ms: MIN_VIEW_DURATION,
+            platform_fee_bps: DEFAULT_PLATFORM_FEE_BPS,
+            ecosystem_fee_bps: DEFAULT_ECOSYSTEM_FEE_BPS,
             version: upgrade::current_version(),
         };
 
@@ -1018,6 +1050,8 @@ module social_contracts::post {
             min_promotion_amount: MIN_PROMOTION_AMOUNT,
             max_promotion_amount: MAX_PROMOTION_AMOUNT,
             min_view_duration_ms: MIN_VIEW_DURATION,
+            platform_fee_bps: DEFAULT_PLATFORM_FEE_BPS,
+            ecosystem_fee_bps: DEFAULT_ECOSYSTEM_FEE_BPS,
         });
 
         // Create and share post configuration
@@ -3723,6 +3757,8 @@ module social_contracts::post {
                 min_promotion_amount: MIN_PROMOTION_AMOUNT,
                 max_promotion_amount: MAX_PROMOTION_AMOUNT,
                 min_view_duration_ms: MIN_VIEW_DURATION,
+                platform_fee_bps: DEFAULT_PLATFORM_FEE_BPS,
+                ecosystem_fee_bps: DEFAULT_ECOSYSTEM_FEE_BPS,
                 version: upgrade::current_version(),
             }
         );
@@ -4216,6 +4252,9 @@ module social_contracts::post {
         // Remember old version and update to new version
         let old_version = config.version;
         config.version = current_version;
+        // Seed promotion fee bps for configs created before these fields existed
+        config.platform_fee_bps = DEFAULT_PLATFORM_FEE_BPS;
+        config.ecosystem_fee_bps = DEFAULT_ECOSYSTEM_FEE_BPS;
         
         // Emit event for object migration
         let config_id = object::id(config);
@@ -4242,6 +4281,8 @@ module social_contracts::post {
         min_promotion_amount: u64,
         max_promotion_amount: u64,
         min_view_duration_ms: u64,
+        platform_fee_bps: u64,
+        ecosystem_fee_bps: u64,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
@@ -4253,6 +4294,9 @@ module social_contracts::post {
         assert!(max_mentions > 0, EInvalidConfig);
         assert!(min_promotion_amount > 0, EInvalidConfig);
         assert!(max_promotion_amount >= min_promotion_amount, EInvalidConfig);
+        assert!(platform_fee_bps <= BPS_DENOM, EInvalidConfig);
+        assert!(ecosystem_fee_bps <= BPS_DENOM, EInvalidConfig);
+        assert!(platform_fee_bps + ecosystem_fee_bps <= BPS_DENOM, EInvalidConfig);
 
         // Update config
         config.max_content_length = max_content_length;
@@ -4266,6 +4310,8 @@ module social_contracts::post {
         config.min_promotion_amount = min_promotion_amount;
         config.max_promotion_amount = max_promotion_amount;
         config.min_view_duration_ms = min_view_duration_ms;
+        config.platform_fee_bps = platform_fee_bps;
+        config.ecosystem_fee_bps = ecosystem_fee_bps;
 
         // Emit update event
         event::emit(PostParametersUpdatedEvent {
@@ -4282,6 +4328,8 @@ module social_contracts::post {
             min_promotion_amount,
             max_promotion_amount,
             min_view_duration_ms,
+            platform_fee_bps,
+            ecosystem_fee_bps,
         });
     }
 
@@ -4297,7 +4345,6 @@ module social_contracts::post {
         mut media_urls: Option<vector<String>>,
         mentions: Option<vector<address>>,
         metadata_json: Option<String>,
-        access: PostAccess,
         payment_per_view: u64,
         promotion_budget: Coin<MYSO>,
         enable_spt: Option<bool>,
@@ -4307,6 +4354,7 @@ module social_contracts::post {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        let access = PostAccess::Public;
         let acting = resolve_social_actor(
             memory_config,
             registry,
@@ -4481,15 +4529,17 @@ module social_contracts::post {
         });
     }
 
-    /// Confirm a user has viewed a promoted post and pay them (platform only)
-    public fun confirm_promoted_post_view(
-        post: &Post,
-        promotion_data: &mut PromotionData,
+    /// Confirm that one viewer was paid for N (≥1) promoted post views in a single transaction.
+    /// Takes promotions by value (MakeMoveVec), merges nets into one transfer, then re-shares each
+    /// `PromotionData`. Fees come out of each view's `payment_per_view` gross.
+    public fun confirm_promoted_post_views(
+        mut promotions: vector<PromotionData>,
+        view_durations: vector<u64>,
         config: &PostConfig,
-        platform_obj: &platform::Platform,
+        platform_obj: &mut platform::Platform,
         group: &PermissionedGroup<platform::PlatformPackage>,
+        treasury: &EcosystemTreasury,
         viewer_address: address,
-        view_duration: u64,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
@@ -4498,66 +4548,122 @@ module social_contracts::post {
             platform::has_moderator_permission<platform::PlatformPromotionAdmin>(group, platform_obj, caller),
             EUnauthorized,
         );
-        
-        // Verify the platform object is approved (ensures legitimate platform)
-        let platform_id = object::uid_to_address(platform::id(platform_obj));
-        // Note: Cannot verify this matches post's original platform without storing platform_id in Post
-        // This at least ensures the platform_obj is a valid, approved platform
-        
-        // Verify viewer_address has joined the platform (prevents paying fake addresses)
+
+        let n = vector::length(&promotions);
+        assert!(n > 0, EInvalidBatch);
+        assert!(n == vector::length(&view_durations), EInvalidBatch);
+        assert!(n <= MAX_PROMOTION_VIEW_BATCH, EInvalidBatch);
+
         assert!(platform::has_joined_platform(platform_obj, viewer_address), EUserNotJoinedPlatform);
-        
-        // Prevent platform from paying themselves
         assert!(viewer_address != caller, EUnauthorized);
-        
-        // Verify the post is promoted
-        assert!(option::is_some(&post.promotion_id), ENotPromotedPost);
-        let post_promotion_id = *option::borrow(&post.promotion_id);
-        assert!(post_promotion_id == object::uid_to_address(&promotion_data.id), ENotPromotedPost);
-        
-        // Verify promotion is active
-        assert!(promotion_data.active, EPromotionInactive);
-        
-        // Verify view duration meets minimum requirement
-        assert!(view_duration >= config.min_view_duration_ms, EInvalidViewDuration);
-        
-        // Verify user hasn't already been paid for viewing this post
-        assert!(!table::contains(&promotion_data.paid_viewers, viewer_address), EUserAlreadyViewed);
-        
-        // Verify sufficient budget remains
-        assert!(balance::value(&promotion_data.promotion_budget) >= promotion_data.payment_per_view, EInsufficientPromotionFunds);
-        
-        // Record the view
-        let view_record = PromotionView {
-            viewer: viewer_address,
-            view_duration,
-            view_timestamp: clock::timestamp_ms(clock),
-            platform_id: object::uid_to_address(platform::id(platform_obj)), // Platform object ID
+
+        let platform_id = object::uid_to_address(platform::id(platform_obj));
+        let timestamp = clock::timestamp_ms(clock);
+
+        let mut items = vector::empty<PromotedViewConfirmItem>();
+        let mut total_payment_amount = 0u64;
+        let mut total_platform_fee = 0u64;
+        let mut total_ecosystem_fee = 0u64;
+        let mut total_recipient_amount = 0u64;
+        let mut merged_payment: Option<Coin<MYSO>> = option::none();
+
+        let mut i = 0u64;
+        while (i < n) {
+            let promotion_data = vector::borrow_mut(&mut promotions, i);
+            let view_duration = *vector::borrow(&view_durations, i);
+
+            assert!(promotion_data.active, EPromotionInactive);
+            assert!(view_duration >= config.min_view_duration_ms, EInvalidViewDuration);
+            assert!(!table::contains(&promotion_data.paid_viewers, viewer_address), EUserAlreadyViewed);
+            assert!(
+                balance::value(&promotion_data.promotion_budget) >= promotion_data.payment_per_view,
+                EInsufficientPromotionFunds,
+            );
+
+            let promotion_id = object::uid_to_address(&promotion_data.id);
+            let post_id = promotion_data.post_id;
+
+            vector::push_back(&mut promotion_data.views, PromotionView {
+                viewer: viewer_address,
+                view_duration,
+                view_timestamp: timestamp,
+                platform_id,
+            });
+            table::add(&mut promotion_data.paid_viewers, viewer_address, true);
+
+            let gross = promotion_data.payment_per_view;
+            let platform_fee = (gross * config.platform_fee_bps) / BPS_DENOM;
+            let ecosystem_fee = (gross * config.ecosystem_fee_bps) / BPS_DENOM;
+            let recipient_amount = gross - platform_fee - ecosystem_fee;
+
+            assert!(total_payment_amount <= MAX_U64 - gross, EOverflow);
+            assert!(total_platform_fee <= MAX_U64 - platform_fee, EOverflow);
+            assert!(total_ecosystem_fee <= MAX_U64 - ecosystem_fee, EOverflow);
+            assert!(total_recipient_amount <= MAX_U64 - recipient_amount, EOverflow);
+            total_payment_amount = total_payment_amount + gross;
+            total_platform_fee = total_platform_fee + platform_fee;
+            total_ecosystem_fee = total_ecosystem_fee + ecosystem_fee;
+            total_recipient_amount = total_recipient_amount + recipient_amount;
+
+            let payment = coin::from_balance(
+                balance::split(&mut promotion_data.promotion_budget, gross),
+                ctx,
+            );
+            if (option::is_none(&merged_payment)) {
+                option::fill(&mut merged_payment, payment);
+            } else {
+                coin::join(option::borrow_mut(&mut merged_payment), payment);
+            };
+
+            if (balance::value(&promotion_data.promotion_budget) < promotion_data.payment_per_view) {
+                promotion_data.active = false;
+            };
+
+            vector::push_back(&mut items, PromotedViewConfirmItem {
+                post_id,
+                promotion_id,
+                payment_amount: gross,
+                platform_fee,
+                ecosystem_fee,
+                recipient_amount,
+                view_duration,
+            });
+
+            i = i + 1;
         };
-        vector::push_back(&mut promotion_data.views, view_record);
-        
-        // Mark user as paid
-        table::add(&mut promotion_data.paid_viewers, viewer_address, true);
-        
-        // Split payment from promotion budget and transfer to viewer
-        let payment_balance = balance::split(&mut promotion_data.promotion_budget, promotion_data.payment_per_view);
-        let payment_coin = coin::from_balance(payment_balance, ctx);
-        transfer::public_transfer(payment_coin, viewer_address);
-        
-        // If budget is exhausted, deactivate promotion
-        if (balance::value(&promotion_data.promotion_budget) < promotion_data.payment_per_view) {
-            promotion_data.active = false;
+
+        let mut payment = option::extract(&mut merged_payment);
+        option::destroy_none(merged_payment);
+
+        if (total_ecosystem_fee > 0) {
+            let eco_coin = coin::split(&mut payment, total_ecosystem_fee, ctx);
+            transfer::public_transfer(eco_coin, profile::get_treasury_address(treasury));
         };
-        
-        // Emit view confirmation event
-        event::emit(PromotedPostViewConfirmedEvent {
-            post_id: post_promotion_id,
+
+        if (total_platform_fee > 0) {
+            let mut platform_coin = coin::split(&mut payment, total_platform_fee, ctx);
+            platform::add_to_treasury(platform_obj, &mut platform_coin, total_platform_fee, clock, ctx);
+            coin::destroy_zero(platform_coin);
+        };
+
+        transfer::public_transfer(payment, viewer_address);
+
+        event::emit(PromotedPostViewsBatchConfirmedEvent {
             viewer: viewer_address,
-            payment_amount: promotion_data.payment_per_view,
-            view_duration,
-            platform_id: object::uid_to_address(platform::id(platform_obj)), // Platform object ID
-            timestamp: clock::timestamp_ms(clock),
+            platform_id,
+            timestamp,
+            items,
+            total_payment_amount,
+            total_platform_fee,
+            total_ecosystem_fee,
+            total_recipient_amount,
         });
+
+        while (!vector::is_empty(&promotions)) {
+            let promotion_data = vector::pop_back(&mut promotions);
+            transfer::share_object(promotion_data);
+        };
+        vector::destroy_empty(promotions);
     }
 
 
@@ -4880,6 +4986,30 @@ module social_contracts::post {
     }
     
     #[test_only]
+    /// Gross fee split used by confirmed promo views (for unit tests).
+    public fun test_promotion_view_fee_amounts(config: &PostConfig, gross: u64): (u64, u64, u64) {
+        let platform_fee = (gross * config.platform_fee_bps) / BPS_DENOM;
+        let ecosystem_fee = (gross * config.ecosystem_fee_bps) / BPS_DENOM;
+        let recipient_amount = gross - platform_fee - ecosystem_fee;
+        (platform_fee, ecosystem_fee, recipient_amount)
+    }
+
+    #[test_only]
+    public fun test_activate_promotion(promotion_data: &mut PromotionData) {
+        promotion_data.active = true;
+    }
+
+    #[test_only]
+    public fun test_platform_fee_bps(config: &PostConfig): u64 {
+        config.platform_fee_bps
+    }
+
+    #[test_only]
+    public fun test_ecosystem_fee_bps(config: &PostConfig): u64 {
+        config.ecosystem_fee_bps
+    }
+    
+    #[test_only]
     /// Initialize the post module for testing
     /// In testing, we create admin caps directly for convenience
     public fun init_for_testing(ctx: &mut TxContext) {
@@ -4908,6 +5038,8 @@ module social_contracts::post {
                 min_promotion_amount: MIN_PROMOTION_AMOUNT,
                 max_promotion_amount: MAX_PROMOTION_AMOUNT,
                 min_view_duration_ms: MIN_VIEW_DURATION,
+                platform_fee_bps: DEFAULT_PLATFORM_FEE_BPS,
+                ecosystem_fee_bps: DEFAULT_ECOSYSTEM_FEE_BPS,
                 version: upgrade::current_version(),
             }
         );

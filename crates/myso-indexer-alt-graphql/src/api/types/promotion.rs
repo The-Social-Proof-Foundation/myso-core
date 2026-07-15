@@ -183,9 +183,24 @@ impl PromotionView {
         resolve_profile_summary(ctx, &self.inner.viewer).await
     }
 
-    /// Payment amount for this view (MIST).
+    /// Gross payment amount for this view (advertiser budget debit, MIST).
     async fn payment_amount(&self) -> i64 {
         self.inner.payment_amount
+    }
+
+    /// Platform fee taken from the gross (MIST).
+    async fn platform_fee(&self) -> i64 {
+        self.inner.platform_fee
+    }
+
+    /// Ecosystem fee taken from the gross (MIST).
+    async fn ecosystem_fee(&self) -> i64 {
+        self.inner.ecosystem_fee
+    }
+
+    /// Net MYSO transferred to the viewer (MIST).
+    async fn recipient_amount(&self) -> i64 {
+        self.inner.recipient_amount
     }
 
     /// View duration (ms).
@@ -223,6 +238,7 @@ impl PromotionStats {
     }
 
     /// Total amount spent (MIST).
+    /// Advertiser gross spend across confirmed views (sum of `payment_amount`, MIST).
     async fn total_spent(&self) -> i64 {
         self.inner.total_spent
     }
