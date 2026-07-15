@@ -82,6 +82,12 @@ pub struct SpotConfigInfo {
     #[diesel(sql_type = BigInt)]
     pub ecosystem_fee_bps: i64,
     #[diesel(sql_type = BigInt)]
+    pub creator_fee_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub creator_claim_window_ms: i64,
+    #[diesel(sql_type = BigInt)]
+    pub expired_creator_ecosystem_bps: i64,
+    #[diesel(sql_type = BigInt)]
     pub min_betting_options: i64,
     #[diesel(sql_type = BigInt)]
     pub max_betting_options: i64,
@@ -95,6 +101,12 @@ pub struct SpotConfigInfo {
     pub oracle_address: String,
     #[diesel(sql_type = BigInt)]
     pub max_single_bet: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_bets_per_record: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_claim_per_post: i64,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub spot_governance_registry_id: Option<String>,
     #[diesel(sql_type = BigInt)]
     pub version: i64,
     #[diesel(sql_type = BigInt)]

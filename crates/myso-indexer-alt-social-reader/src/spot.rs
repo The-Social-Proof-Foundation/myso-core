@@ -47,6 +47,12 @@ pub struct SpotConfigRow {
     #[diesel(sql_type = BigInt)]
     pub max_single_bet: i64,
     #[diesel(sql_type = BigInt)]
+    pub max_bets_per_record: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_claim_per_post: i64,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub spot_governance_registry_id: Option<String>,
+    #[diesel(sql_type = BigInt)]
     pub version: i64,
     #[diesel(sql_type = BigInt)]
     pub updated_at: i64,
@@ -239,8 +245,12 @@ pub(crate) async fn get_spot_config(
         SELECT updated_by, truth_enabled, confidence_threshold_bps, resolution_window_ms,
                max_resolution_window_ms, payout_delay_ms, platform_fee_bps, ecosystem_fee_bps,
                min_betting_options, max_betting_options, min_reasoning_length, max_reasoning_length,
-               max_evidence_urls, oracle_address, max_single_bet, version, updated_at, time,
-               transaction_id, creator_fee_bps, creator_claim_window_ms, expired_creator_ecosystem_bps
+               max_evidence_urls, oracle_address, max_single_bet, max_bets_per_record,
+               max_claim_per_post, spot_governance_registry_id, version, updated_at, time,
+               transaction_id,
+               COALESCE(creator_fee_bps, 100) AS creator_fee_bps,
+               COALESCE(creator_claim_window_ms, 2592000000) AS creator_claim_window_ms,
+               COALESCE(expired_creator_ecosystem_bps, 10000) AS expired_creator_ecosystem_bps
         FROM spot_config
         ORDER BY time DESC
         LIMIT 1
@@ -468,9 +478,11 @@ pub(crate) async fn get_spot_route(
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
 
+    // Multi-claim: route via spot_post_links (per-claim link rows). Single-claim baseline picks
+    // the latest link for the post; opt-in columns on `posts` no longer exist.
     let query = "
         WITH post_row AS (
-            SELECT post_id, enable_spot, spot_id, spot_claim_id
+            SELECT post_id, spot_analysis_status
             FROM posts
             WHERE post_id = $1 AND deleted_at IS NULL
             ORDER BY created_at DESC
@@ -480,12 +492,11 @@ pub(crate) async fn get_spot_route(
             SELECT spl.claim_object_id, spl.market_object_id, spl.link_kind
             FROM spot_post_links spl
             WHERE spl.post_id = $1
+            ORDER BY spl.created_at DESC
+            LIMIT 1
         ),
         claim_id AS (
-            SELECT COALESCE(
-                (SELECT spot_claim_id FROM post_row),
-                (SELECT claim_object_id FROM link_row)
-            ) AS claim_object_id
+            SELECT (SELECT claim_object_id FROM link_row) AS claim_object_id
         ),
         open_market AS (
             SELECT sm.market_object_id
@@ -494,37 +505,25 @@ pub(crate) async fn get_spot_route(
             WHERE sm.status = 1
             ORDER BY sm.created_at_ms DESC NULLS LAST
             LIMIT 1
-        ),
-        legacy_record AS (
-            SELECT sr.record_object_id AS market_object_id
-            FROM spot_records sr
-            WHERE sr.post_id = $1 AND sr.status = 1
-            ORDER BY sr.created_at_ms DESC
-            LIMIT 1
         )
         SELECT
             pr.post_id,
-            c.claim_object_id,
+            (SELECT claim_object_id FROM claim_id) AS claim_object_id,
             COALESCE(
-                pr.spot_id,
                 (SELECT market_object_id FROM link_row WHERE market_object_id IS NOT NULL),
-                (SELECT market_object_id FROM open_market),
-                (SELECT market_object_id FROM legacy_record)
+                (SELECT market_object_id FROM open_market)
             ) AS target_market_id,
             (SELECT link_kind FROM link_row) AS link_kind,
             CASE
                 WHEN COALESCE(
-                    pr.spot_id,
                     (SELECT market_object_id FROM link_row WHERE market_object_id IS NOT NULL),
                     (SELECT market_object_id FROM open_market)
                 ) IS NOT NULL THEN 'open_market'
-                WHEN c.claim_object_id IS NOT NULL THEN 'claim_without_open_market'
-                WHEN (SELECT market_object_id FROM legacy_record) IS NOT NULL THEN 'legacy_record'
-                WHEN pr.enable_spot = true THEN 'pending_spot'
-                ELSE 'not_spot_enabled'
+                WHEN (SELECT claim_object_id FROM claim_id) IS NOT NULL THEN 'claim_without_open_market'
+                WHEN pr.spot_analysis_status = 0 THEN 'pending'
+                ELSE 'no_actionable'
             END AS routing_reason
         FROM post_row pr
-        LEFT JOIN claim_id c ON true
     ";
 
     let result = diesel::sql_query(query)
@@ -532,6 +531,118 @@ pub(crate) async fn get_spot_route(
         .get_result::<SpotRouteRow>(conn)
         .await
         .optional()?;
+
+    metrics.requests_succeeded.inc();
+    Ok(result)
+}
+
+#[derive(Debug, Clone, QueryableByName)]
+pub struct SpotPostAnalysisRow {
+    #[diesel(sql_type = Text)]
+    pub post_id: String,
+    #[diesel(sql_type = SmallInt)]
+    pub status: i16,
+    #[diesel(sql_type = BigInt)]
+    pub detected_claim_count: i64,
+    #[diesel(sql_type = BigInt)]
+    pub rejected_claim_count: i64,
+    #[diesel(sql_type = BigInt)]
+    pub truncated_claim_count: i64,
+    #[diesel(sql_type = BigInt)]
+    pub future_accepted_count: i64,
+    #[diesel(sql_type = BigInt)]
+    pub past_verified_count: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_claim_per_post_applied: i64,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub claim_manifest_hash: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub veracity_manifest_hash: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub finalize_tx_digest: Option<String>,
+}
+
+#[derive(Debug, Clone, QueryableByName)]
+pub struct SpotClaimVerdictRow {
+    #[diesel(sql_type = BigInt)]
+    pub claim_index: i64,
+    #[diesel(sql_type = SmallInt)]
+    pub verdict: i16,
+    #[diesel(sql_type = Text)]
+    pub policy_hash: String,
+    #[diesel(sql_type = Text)]
+    pub evidence_manifest_hash: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub related_market_object_id: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub related_claim_object_id: Option<String>,
+    #[diesel(sql_type = Jsonb)]
+    pub evidence_urls: serde_json::Value,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub summary: Option<String>,
+}
+
+/// Per-post analysis status/counts from the `spot_post_analyses` sidecar. Falls back to a
+/// synthetic pending row (from `posts.spot_analysis_status`) when analysis has not finalized.
+pub(crate) async fn get_spot_post_analysis(
+    conn: &mut Connection<'_>,
+    post_id: &str,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Option<SpotPostAnalysisRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+
+    let query = "
+        SELECT
+            p.post_id,
+            COALESCE(a.status, p.spot_analysis_status) AS status,
+            COALESCE(a.detected_claim_count, p.spot_detected_claim_count) AS detected_claim_count,
+            COALESCE(a.rejected_claim_count, p.spot_rejected_claim_count) AS rejected_claim_count,
+            COALESCE(a.truncated_claim_count, p.spot_truncated_claim_count) AS truncated_claim_count,
+            COALESCE(a.future_accepted_count, p.spot_future_accepted_count) AS future_accepted_count,
+            COALESCE(a.past_verified_count, p.spot_past_verified_count) AS past_verified_count,
+            COALESCE(a.max_claim_per_post_applied, p.spot_max_claim_per_post_applied) AS max_claim_per_post_applied,
+            COALESCE(a.claim_manifest_hash, p.spot_claim_manifest_hash) AS claim_manifest_hash,
+            COALESCE(a.veracity_manifest_hash, p.spot_veracity_manifest_hash) AS veracity_manifest_hash,
+            COALESCE(a.finalize_tx_digest, p.spot_analysis_tx_digest) AS finalize_tx_digest
+        FROM posts p
+        LEFT JOIN spot_post_analyses a ON a.post_id = p.post_id
+        WHERE p.post_id = $1 AND p.deleted_at IS NULL
+        ORDER BY p.created_at DESC
+        LIMIT 1
+    ";
+
+    let result = diesel::sql_query(query)
+        .bind::<Text, _>(post_id)
+        .get_result::<SpotPostAnalysisRow>(conn)
+        .await
+        .optional()?;
+
+    metrics.requests_succeeded.inc();
+    Ok(result)
+}
+
+/// Past-claim verdicts for a post, ordered by claim_index.
+pub(crate) async fn list_spot_verdicts_for_post(
+    conn: &mut Connection<'_>,
+    post_id: &str,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<SpotClaimVerdictRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+
+    let query = "
+        SELECT claim_index, verdict, policy_hash, evidence_manifest_hash,
+               related_market_object_id, related_claim_object_id, evidence_urls, summary
+        FROM spot_claim_verdicts
+        WHERE post_id = $1
+        ORDER BY claim_index ASC
+    ";
+
+    let result = diesel::sql_query(query)
+        .bind::<Text, _>(post_id)
+        .load::<SpotClaimVerdictRow>(conn)
+        .await?;
 
     metrics.requests_succeeded.inc();
     Ok(result)

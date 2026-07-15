@@ -74,7 +74,8 @@ use myso_indexer_alt_social_schema::models::{
     NewReaction, NewReport, NewRepost, NewRewardDistribution, NewSocialGraphEvent,
     NewSocialGraphRelationship, NewSocialProofTokensEvent, NewSpotBet,
     NewSpotBetWithdrawal, NewSpotClaim, NewSpotConfig, NewSpotCreatorPayout, NewSpotEventLog,
-    NewSpotMarket, NewSpotPayout, NewSpotPostLink, NewSpotRecord, NewSpotRefund,
+    NewSpotClaimVerdict, NewSpotMarket, NewSpotPayout, NewSpotPostLink,
+    NewSpotRecord, NewSpotRefund,
     NewSpotResolution, NewSptConfigEvent, NewSptHolding, NewSptPool,
     NewSptPriceHistory, NewSptReservation, NewSptReservationPool, NewSptTransaction,
     NewSubAgentEvent, NewSubscriptionAccessLog, NewSubscriptionConfig, NewSubscriptionEvent, NewTip, NewUnifiedRevenue,
@@ -654,6 +655,10 @@ pub enum SocialEventRow {
     SpotClaimUpsert(NewSpotClaim),
     SpotMarketUpsert(NewSpotMarket),
     SpotPostLinkUpsert(NewSpotPostLink),
+    /// Atomic batch-finalize projection: rewrites the `posts` analysis denorm and upserts the
+    /// `spot_post_analyses` sidecar.
+    SpotFinalize(Box<SpotFinalizeProjection>),
+    SpotClaimVerdictUpsert(NewSpotClaimVerdict),
     SpotCreatorPayoutUpsert(NewSpotCreatorPayout),
     SpotCreatorPayoutStatusUpdate {
         market_object_id: String,
@@ -676,11 +681,6 @@ pub enum SocialEventRow {
         last_resolution_at_ms: Option<i64>,
         resolution_timestamp_ms: Option<i64>,
         creator_fee_total: Option<i64>,
-    },
-    PostSpotFieldsUpdate {
-        post_id: String,
-        spot_id: Option<String>,
-        spot_claim_id: Option<String>,
     },
     SptPool(NewSptPool),
     SptTransaction(NewSptTransaction),
@@ -1060,6 +1060,28 @@ pub enum SocialEventRow {
         organization_id: Option<String>,
         activity_at_ms: i64,
     },
+}
+
+/// Transport for the atomic multi-claim finalize projection: `posts` analysis denorm + the
+/// `spot_post_analyses` sidecar row (past verdicts are emitted as separate rows). Future-link
+/// policy hashes are authoritative on `spot_post_links`, so the denorm array stays empty.
+#[derive(Debug, Clone)]
+pub struct SpotFinalizeProjection {
+    pub post_id: String,
+    pub status: i16,
+    pub detected_claim_count: i64,
+    pub rejected_claim_count: i64,
+    pub truncated_claim_count: i64,
+    pub future_accepted_count: i64,
+    pub past_verified_count: i64,
+    pub max_claim_per_post_applied: i64,
+    pub claim_indexes: serde_json::Value,
+    pub claim_ids: serde_json::Value,
+    pub market_ids: serde_json::Value,
+    pub claim_manifest_hash: Option<String>,
+    pub veracity_manifest_hash: Option<String>,
+    pub finalize_tx_digest: Option<String>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
 }
 
 #[derive(Debug, Clone)]

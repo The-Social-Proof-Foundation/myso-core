@@ -1,4 +1,70 @@
 
+## Spot Config Alignment (2026-07-15)
+
+### Background and Motivation
+Align on-chain `SpotConfig` / `SpotConfigUpdatedEvent` with social indexer `spot_config`,
+GraphQL `spotConfiguration`, and frontend `SpotAdmin`. Also rename DB table
+`poc_configuration` → `poc_config` (greenfield: edit existing migrations).
+
+### Field matrix (Move → indexer → GraphQL → UI)
+See plan; gaps being fixed: BCS missing `max_claim_per_post`, DB/GraphQL missing
+`max_bets_per_record` / `max_claim_per_post`, GraphQL missing `spotGovernanceRegistryId`,
+UI missing creator-fee / claim-window / expired-ecosystem / max-claim-per-post controls.
+
+### Move `update_spot_config` validation
+- `confidence_threshold_bps`, fee bps, `expired_creator_ecosystem_bps` ≤ 10000
+- `platform_fee_bps + ecosystem_fee_bps + creator_fee_bps` ≤ 10000
+- `max_claim_per_post` in [1, 20]
+- `min_betting_options > 0` and `min <= max`
+- `min_reasoning_length > 0` and `min <= max`
+- `max_evidence_urls > 0`
+
+### Defaults (`new_spot_config`)
+confidence 7000; resolution 72d; max resolution 144d; payout_delay 0;
+platform/ecosystem fee 50; creator fee 100; claim window 30d; expired→ecosystem 10000;
+min/max betting options 2/10; reasoning 10–5000; max evidence 10; max_single_bet 0;
+max_bets_per_record 10000; max_claim_per_post 10; truth_enabled false.
+
+### Project Status Board
+- [ ] Audit matrix documented
+- [ ] Fix BCS `max_claim_per_post`
+- [ ] Extend spot_claim_market_redesign migration for spot_config columns
+- [ ] Handler + reader + GraphQL + social-server
+- [ ] Frontend query + SpotAdmin UI
+- [ ] Rename poc_configuration → poc_config
+- [ ] cargo check + nextest (no clippy)
+
+### Executor's Feedback
+Starting implementation.
+
+---
+
+## Spot-oracle transactions.nonce overflow (2026-07-15)
+
+### Background and Motivation
+`SubmitChainTx` / `finalize_post` failed with `value too long for type character varying(64)`
+because nonce `finalize-post-{0x…66-char post_id}` is ~80 chars.
+
+### High-Level Task Breakdown
+- [x] Add migration widening `transactions.nonce` to `VARCHAR(160)`
+- [x] Keep human-readable finalize nonce (no hashing)
+- [x] Verify migration embeds via rebuild + insert of 80-char nonce
+
+### Project Status Board
+- [x] `20260715220000_transactions_nonce_widen` up/down
+- [x] Applied on local spot_oracle; `_sqlx_migrations` has version `20260715220000`
+- [x] Confirmed `INSERT` of `finalize-post-0xa554…` (len 80) succeeds
+
+### Executor's Feedback
+- `sqlx::migrate!` is compile-time; SQL-only adds need a touch/rebuild of
+  `myso-spot-oracle-schema` before the binary applies the new migration.
+- Restart `./scripts/run-spot-oracle.sh` (no wipe required) to pick up the widen.
+
+### Lessons
+- Object-id based idempotency keys need ≥ ~80 chars; `VARCHAR(64)` is too tight.
+
+---
+
 ## Promoted posts always Public (2026-07-14)
 
 ### Background and Motivation

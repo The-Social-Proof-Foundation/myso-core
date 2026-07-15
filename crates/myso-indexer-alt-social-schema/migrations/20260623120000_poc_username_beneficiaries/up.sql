@@ -66,10 +66,10 @@ CREATE INDEX IF NOT EXISTS idx_poc_username_beneficiary_events_username_time
 CREATE UNIQUE INDEX IF NOT EXISTS idx_poc_username_beneficiary_events_event_id
     ON poc_username_beneficiary_events (event_id);
 
-ALTER TABLE poc_configuration
+ALTER TABLE poc_config
     ADD COLUMN IF NOT EXISTS username_beneficiary_join_referral_bps BIGINT NOT NULL DEFAULT 500;
 
-COMMENT ON COLUMN poc_configuration.username_beneficiary_join_referral_bps IS
+COMMENT ON COLUMN poc_config.username_beneficiary_join_referral_bps IS
     'One-time join-referral fee (bps of post-treasury gross) on first username-beneficiary vault claim';
 
 ALTER TABLE poc_vault_claims

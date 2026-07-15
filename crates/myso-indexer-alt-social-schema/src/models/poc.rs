@@ -8,7 +8,7 @@ use diesel::sql_types::{BigInt, Bool, Nullable, SmallInt, Text, Timestamptz};
 use serde::{Deserialize, Serialize};
 
 use crate::schema::{
-    poc_analysis_results, poc_badges, poc_configuration, poc_dispute_votes, poc_disputes,
+    poc_analysis_results, poc_badges, poc_config, poc_dispute_votes, poc_disputes,
     poc_revenue_redirections, poc_vault_claims, poc_vault_deposits,
 };
 
@@ -291,7 +291,7 @@ pub struct NewPocDisputeVote {
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
-#[diesel(table_name = poc_configuration)]
+#[diesel(table_name = poc_config)]
 pub struct NewPocConfiguration {
     pub image_threshold: i64,
     pub video_threshold: i64,

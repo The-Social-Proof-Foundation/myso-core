@@ -830,7 +830,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    poc_configuration (id, time) {
+    poc_config (id, time) {
         id -> Int4,
         image_threshold -> Int8,
         video_threshold -> Int8,
@@ -1080,10 +1080,22 @@ diesel::table! {
         post_access_kind -> Nullable<Text>,
         encrypted_content_hash -> Nullable<Text>,
         enable_spt -> Bool,
-        enable_spot -> Bool,
-        spot_id -> Nullable<Text>,
-        spot_claim_id -> Nullable<Text>,
         spt_id -> Nullable<Text>,
+        spot_analysis_status -> Int2,
+        spot_detected_claim_count -> Int8,
+        spot_rejected_claim_count -> Int8,
+        spot_truncated_claim_count -> Int8,
+        spot_future_accepted_count -> Int8,
+        spot_past_verified_count -> Int8,
+        spot_max_claim_per_post_applied -> Int8,
+        spot_claim_indexes -> Jsonb,
+        spot_claim_ids -> Jsonb,
+        spot_market_ids -> Jsonb,
+        spot_policy_hashes -> Jsonb,
+        spot_claim_manifest_hash -> Nullable<Text>,
+        spot_veracity_manifest_hash -> Nullable<Text>,
+        spot_analysis_tx_digest -> Nullable<Text>,
+        spot_analyzed_checkpoint -> Nullable<Int8>,
         poc_reasoning -> Nullable<Text>,
         poc_evidence_urls -> Nullable<Jsonb>,
         poc_similarity_score -> Nullable<Int8>,
@@ -2179,6 +2191,45 @@ diesel::table! {
         link_kind -> Text,
         transaction_id -> Text,
         created_at -> Timestamp,
+        claim_index -> Int8,
+        policy_hash -> Text,
+    }
+}
+
+diesel::table! {
+    spot_post_analyses (post_id) {
+        post_id -> Text,
+        status -> Int2,
+        detected_claim_count -> Int8,
+        rejected_claim_count -> Int8,
+        truncated_claim_count -> Int8,
+        future_accepted_count -> Int8,
+        past_verified_count -> Int8,
+        max_claim_per_post_applied -> Int8,
+        claim_manifest_hash -> Nullable<Text>,
+        veracity_manifest_hash -> Nullable<Text>,
+        finalize_tx_digest -> Nullable<Text>,
+        checkpoint -> Nullable<Int8>,
+        updated_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    spot_claim_verdicts (id) {
+        id -> Int4,
+        post_id -> Text,
+        claim_index -> Int8,
+        time_class -> Text,
+        verdict -> Int2,
+        semantic_claim_hash -> Nullable<Text>,
+        policy_hash -> Text,
+        evidence_manifest_hash -> Text,
+        related_market_object_id -> Nullable<Text>,
+        related_claim_object_id -> Nullable<Text>,
+        evidence_urls -> Jsonb,
+        summary -> Nullable<Text>,
+        transaction_id -> Text,
+        created_at -> Timestamptz,
     }
 }
 
@@ -2190,8 +2241,6 @@ diesel::table! {
         confidence_threshold_bps -> Int8,
         resolution_window_ms -> Int8,
         max_resolution_window_ms -> Int8,
-        fee_bps -> Int8,
-        fee_split_bps_platform -> Int8,
         oracle_address -> Text,
         max_single_bet -> Int8,
         updated_at -> Int8,
@@ -2210,6 +2259,8 @@ diesel::table! {
         creator_fee_bps -> Nullable<Int8>,
         creator_claim_window_ms -> Nullable<Int8>,
         expired_creator_ecosystem_bps -> Nullable<Int8>,
+        max_bets_per_record -> Int8,
+        max_claim_per_post -> Int8,
     }
 }
 
@@ -2816,7 +2867,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     poc_analysis_results,
     poc_badges,
     poc_beneficiary_vaults,
-    poc_configuration,
+    poc_config,
     poc_creator_identity_links,
     poc_dispute_votes,
     poc_disputes,
@@ -2863,7 +2914,9 @@ diesel::allow_tables_to_appear_in_same_query!(
     spot_events,
     spot_markets,
     spot_payouts,
+    spot_post_analyses,
     spot_post_links,
+    spot_claim_verdicts,
     spot_records,
     spot_refunds,
     spot_resolutions,

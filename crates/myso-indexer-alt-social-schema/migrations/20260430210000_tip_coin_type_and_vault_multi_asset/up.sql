@@ -27,8 +27,8 @@ ALTER TABLE poc_beneficiary_vaults DROP COLUMN IF EXISTS balance;
 
 -- Max redirect ceiling (bps 0-10000) for VIDEO when only embedded audio matches upstream work.
 -- Default 3000 matches on-chain DEFAULT_VIDEO_EMBEDDED_AUDIO_REDIRECT_BPS (~30% after bps→percent rounding).
-ALTER TABLE poc_configuration
+ALTER TABLE poc_config
     ADD COLUMN IF NOT EXISTS video_embedded_audio_redirect_bps BIGINT NOT NULL DEFAULT 3000;
 
-COMMENT ON COLUMN poc_configuration.video_embedded_audio_redirect_bps IS
+COMMENT ON COLUMN poc_config.video_embedded_audio_redirect_bps IS
     'Max redirect ceiling as bps for VIDEO posts when oracle sets embedded-audio-only derivative; multiplied by similarity delta ramp on-chain';

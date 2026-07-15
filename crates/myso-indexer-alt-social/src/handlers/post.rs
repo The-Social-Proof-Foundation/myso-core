@@ -172,10 +172,6 @@ struct PostCreatedEvent {
     revenue_redirect_percentage: Option<u64>,
     #[serde(default)]
     enable_spt: bool,
-    #[serde(default)]
-    enable_spot: bool,
-    spot_id: Option<String>,
-    spot_claim_id: Option<String>,
     spt_id: Option<String>,
     #[serde(default, deserialize_with = "de_u8")]
     poc_redirection_kind: u8,
@@ -603,9 +599,6 @@ fn process_post_created_event(
         encrypted_content_hash: None,
         promotion_id: ev.promotion_id,
         enable_spt: ev.enable_spt,
-        enable_spot: ev.enable_spot,
-        spot_id: ev.spot_id,
-        spot_claim_id: ev.spot_claim_id,
         spt_id: ev.spt_id,
         platform_id: ev.platform_id,
         permissions: ev.permissions.map(|p| i16::from(p)),

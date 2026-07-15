@@ -135,8 +135,8 @@ pub fn evaluate(
         let fallback: &[&str] = match f.claim_category {
             ClaimCategory::PriceThreshold => &["coingecko", "coinbase", "http_official", "chainlink"],
             ClaimCategory::ReleasePublished => &["github_releases"],
-            ClaimCategory::EventOccurrence => &["rss_event", "http_official"],
-            ClaimCategory::CustomHttp => &["http_official"],
+            ClaimCategory::EventOccurrence => &["rss_event", "http_official", "wikipedia"],
+            ClaimCategory::CustomHttp => &["http_official", "wikipedia"],
             ClaimCategory::Unsupported => &[],
         };
         if crate::review::compiler::source_select::select_source(
@@ -276,6 +276,7 @@ mod tests {
             suggested_sources: vec!["coingecko".to_string()],
             suggested_options: vec!["Yes".to_string(), "No".to_string()],
             claim_category: ClaimCategory::PriceThreshold,
+            time_class: crate::types::TimeClass::Future,
             resolver_hints: ResolverHints::default(),
         };
         let canonical = canonicalize(Uuid::new_v4(), &extracted);

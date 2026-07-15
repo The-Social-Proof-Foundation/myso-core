@@ -1,4 +1,4 @@
--- Migration: Remove max_votes_per_dispute field from poc_configuration table
+-- Migration: Remove max_votes_per_dispute field from poc_config table
 -- Version: 20260122171440
 -- Purpose: Rollback addition of max_votes_per_dispute field
 
@@ -7,5 +7,5 @@
 -- ============================================================================
 
 -- Remove max_votes_per_dispute column
-ALTER TABLE poc_configuration 
+ALTER TABLE poc_config 
 DROP COLUMN IF EXISTS max_votes_per_dispute;

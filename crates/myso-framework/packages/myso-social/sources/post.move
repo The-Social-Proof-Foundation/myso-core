@@ -213,10 +213,6 @@ module social_contracts::post {
         promotion_id: Option<address>,
         /// Opt-in for Social Proof Tokens (reservation pool created at post creation when true)
         enable_spt: bool,
-        /// Opt-in for Social Proof of Truth
-        enable_spot: bool,
-        /// Optional Social Proof of Truth record ID (address of SpotRecord object)
-        spot_id: Option<address>,
         /// Optional Social Proof Token pool ID (address of TokenPool object)
         spt_id: Option<address>,
         /// Last applied PoC outcome (`POC_OUTCOME_*`); 0 if never analyzed or cleared
@@ -245,7 +241,40 @@ module social_contracts::post {
     const POST_ATTRIBUTION_DF_KEY: vector<u8> = b"post_attribution";
     const COMMENT_ATTRIBUTION_DF_KEY: vector<u8> = b"comment_attribution";
     const POC_DISPUTES_SUBMITTED_DF_KEY: vector<u8> = b"poc_disputes_submitted";
-    const SPOT_CLAIM_ID_DF_KEY: vector<u8> = b"spot_claim_id";
+    /// Multi-claim Social Proof of Truth analysis (Post is at the VM field-count limit).
+    const SPOT_ANALYSIS_DF_KEY: vector<u8> = b"spot_analysis";
+
+    /// SPoT multi-claim analysis lifecycle status (interpreted by `social_proof_of_truth`).
+    const SPOT_STATUS_PENDING: u8 = 0;
+    const SPOT_STATUS_COMPLETED: u8 = 1;
+    const SPOT_STATUS_COMPLETED_NO_ACTIONABLE: u8 = 2;
+
+    /// Errors surfaced by SPoT analysis mutators.
+    const ESpotAnalysisNotPending: u64 = 90;
+    const ESpotAnalysisVectorMismatch: u64 = 91;
+    const ESpotAnalysisIndexOrder: u64 = 92;
+    const ESpotAnalysisOverCap: u64 = 93;
+    const ESpotAnalysisDuplicateMarket: u64 = 94;
+
+    /// Per-post multi-claim SPoT analysis, attached to `post.id` via `SPOT_ANALYSIS_DF_KEY`.
+    /// Future-claim links are stored as aligned vectors (index/claim/market/policy); past
+    /// verdict detail lives off-chain (indexer/oracle) and is committed here only as counts
+    /// and manifest hashes.
+    public struct PostSpotAnalysis has store, copy, drop {
+        status: u8,
+        detected_claim_count: u64,
+        rejected_claim_count: u64,
+        truncated_claim_count: u64,
+        future_accepted_count: u64,
+        past_verified_count: u64,
+        max_claim_per_post_applied: u64,
+        claim_indexes: vector<u64>,
+        claim_ids: vector<address>,
+        market_ids: vector<address>,
+        policy_hashes: vector<vector<u8>>,
+        claim_manifest_hash: Option<vector<u8>>,
+        veracity_manifest_hash: Option<vector<u8>>,
+    }
 
     /// Helper: check if a bit is set in a bitfield
     fun has_flag(value: u8, flag: u8): bool {
@@ -382,11 +411,6 @@ module social_contracts::post {
     /// Query: check if SPT is enabled for this post
     public fun is_spt_enabled(post: &Post): bool {
         post.enable_spt
-    }
-
-    /// Query: check if SPoT is enabled for this post
-    public fun is_spot_enabled(post: &Post): bool {
-        post.enable_spot
     }
 
     /// Expose on-post PoC outcome for other modules (e.g. social_proof_tokens).
@@ -582,42 +606,146 @@ module social_contracts::post {
         }
     }
 
-    /// Get the SPoT record ID for a post
-    public fun get_spot_id(post: &Post): &Option<address> {
-        &post.spot_id
-    }
-
-    /// Get the linked SPoT claim ID for a post (stored as dynamic field).
-    public fun get_spot_claim_id(post: &Post): Option<address> {
-        if (df::exists_with_type<vector<u8>, address>(&post.id, SPOT_CLAIM_ID_DF_KEY)) {
-            option::some(*df::borrow(&post.id, SPOT_CLAIM_ID_DF_KEY))
-        } else {
-            option::none()
-        }
-    }
-
     /// Get the SPT pool ID for a post
     public fun get_spt_id(post: &Post): &Option<address> {
         &post.spt_id
     }
 
-    /// Internal function to set SPoT record ID (package visibility only)
-    public(package) fun set_spot_id(post: &mut Post, spot_id: address) {
-        post.spot_id = option::some(spot_id);
-    }
-
-    /// Internal function to set linked SPoT claim ID (package visibility only)
-    public(package) fun set_spot_claim_id(post: &mut Post, claim_id: address) {
-        if (df::exists_with_type<vector<u8>, address>(&post.id, SPOT_CLAIM_ID_DF_KEY)) {
-            *df::borrow_mut(&mut post.id, SPOT_CLAIM_ID_DF_KEY) = claim_id;
-        } else {
-            df::add(&mut post.id, SPOT_CLAIM_ID_DF_KEY, claim_id);
-        }
-    }
-
     /// Internal function to set SPT pool ID (package visibility only)
     public(package) fun set_spt_id(post: &mut Post, spt_id: address) {
         post.spt_id = option::some(spt_id);
+    }
+
+    // --- Multi-claim SPoT analysis (dynamic-field attached) ---
+
+    /// SPoT analysis status sentinels for cross-module use.
+    public fun spot_status_pending(): u8 { SPOT_STATUS_PENDING }
+    public fun spot_status_completed(): u8 { SPOT_STATUS_COMPLETED }
+    public fun spot_status_completed_no_actionable(): u8 { SPOT_STATUS_COMPLETED_NO_ACTIONABLE }
+
+    /// Whether an analysis record has been attached to this post yet.
+    public fun has_spot_analysis(post: &Post): bool {
+        df::exists_with_type<vector<u8>, PostSpotAnalysis>(&post.id, SPOT_ANALYSIS_DF_KEY)
+    }
+
+    /// Analysis status; `pending` (0) when no analysis has been attached.
+    public fun spot_analysis_status(post: &Post): u8 {
+        if (has_spot_analysis(post)) {
+            df::borrow<vector<u8>, PostSpotAnalysis>(&post.id, SPOT_ANALYSIS_DF_KEY).status
+        } else {
+            SPOT_STATUS_PENDING
+        }
+    }
+
+    /// Future-linked market object ids in claim_index order (empty when none/pending).
+    public fun spot_analysis_market_ids(post: &Post): vector<address> {
+        if (has_spot_analysis(post)) {
+            df::borrow<vector<u8>, PostSpotAnalysis>(&post.id, SPOT_ANALYSIS_DF_KEY).market_ids
+        } else {
+            vector::empty()
+        }
+    }
+
+    /// Future-linked claim indexes in ascending order (empty when none/pending).
+    public fun spot_analysis_claim_indexes(post: &Post): vector<u64> {
+        if (has_spot_analysis(post)) {
+            df::borrow<vector<u8>, PostSpotAnalysis>(&post.id, SPOT_ANALYSIS_DF_KEY).claim_indexes
+        } else {
+            vector::empty()
+        }
+    }
+
+    /// Future-linked claim object ids in claim_index order (empty when none/pending).
+    public fun spot_analysis_claim_ids(post: &Post): vector<address> {
+        if (has_spot_analysis(post)) {
+            df::borrow<vector<u8>, PostSpotAnalysis>(&post.id, SPOT_ANALYSIS_DF_KEY).claim_ids
+        } else {
+            vector::empty()
+        }
+    }
+
+    public fun spot_analysis_future_accepted_count(post: &Post): u64 {
+        if (has_spot_analysis(post)) {
+            df::borrow<vector<u8>, PostSpotAnalysis>(&post.id, SPOT_ANALYSIS_DF_KEY).future_accepted_count
+        } else { 0 }
+    }
+
+    /// Ensure a `pending` analysis exists so future links can accumulate before finalize.
+    public(package) fun ensure_spot_analysis_pending(post: &mut Post, max_claim_per_post_applied: u64) {
+        if (!has_spot_analysis(post)) {
+            df::add(&mut post.id, SPOT_ANALYSIS_DF_KEY, PostSpotAnalysis {
+                status: SPOT_STATUS_PENDING,
+                detected_claim_count: 0,
+                rejected_claim_count: 0,
+                truncated_claim_count: 0,
+                future_accepted_count: 0,
+                past_verified_count: 0,
+                max_claim_per_post_applied,
+                claim_indexes: vector::empty(),
+                claim_ids: vector::empty(),
+                market_ids: vector::empty(),
+                policy_hashes: vector::empty(),
+                claim_manifest_hash: option::none(),
+                veracity_manifest_hash: option::none(),
+            });
+        }
+    }
+
+    /// Append one future-claim link (must be pending, strictly increasing claim_index, unique market).
+    public(package) fun spot_analysis_append_future(
+        post: &mut Post,
+        claim_index: u64,
+        claim_id: address,
+        market_id: address,
+        policy_hash: vector<u8>,
+    ) {
+        ensure_spot_analysis_pending(post, 0);
+        let a = df::borrow_mut<vector<u8>, PostSpotAnalysis>(&mut post.id, SPOT_ANALYSIS_DF_KEY);
+        assert!(a.status == SPOT_STATUS_PENDING, ESpotAnalysisNotPending);
+        let n = vector::length(&a.claim_indexes);
+        if (n > 0) {
+            assert!(claim_index > *vector::borrow(&a.claim_indexes, n - 1), ESpotAnalysisIndexOrder);
+        };
+        assert!(!vector::contains(&a.market_ids, &market_id), ESpotAnalysisDuplicateMarket);
+        vector::push_back(&mut a.claim_indexes, claim_index);
+        vector::push_back(&mut a.claim_ids, claim_id);
+        vector::push_back(&mut a.market_ids, market_id);
+        vector::push_back(&mut a.policy_hashes, policy_hash);
+        a.future_accepted_count = a.future_accepted_count + 1;
+    }
+
+    /// Finalize analysis: validate future vectors, set terminal status, counts and manifests.
+    /// Aborts unless currently pending. Called by the SPoT batch-finalize entry.
+    public(package) fun finalize_spot_analysis(
+        post: &mut Post,
+        status: u8,
+        detected_claim_count: u64,
+        rejected_claim_count: u64,
+        truncated_claim_count: u64,
+        past_verified_count: u64,
+        max_claim_per_post_applied: u64,
+        claim_manifest_hash: Option<vector<u8>>,
+        veracity_manifest_hash: Option<vector<u8>>,
+    ) {
+        ensure_spot_analysis_pending(post, max_claim_per_post_applied);
+        let a = df::borrow_mut<vector<u8>, PostSpotAnalysis>(&mut post.id, SPOT_ANALYSIS_DF_KEY);
+        assert!(a.status == SPOT_STATUS_PENDING, ESpotAnalysisNotPending);
+        let future_len = vector::length(&a.claim_indexes);
+        assert!(vector::length(&a.claim_ids) == future_len, ESpotAnalysisVectorMismatch);
+        assert!(vector::length(&a.market_ids) == future_len, ESpotAnalysisVectorMismatch);
+        assert!(vector::length(&a.policy_hashes) == future_len, ESpotAnalysisVectorMismatch);
+        assert!(a.future_accepted_count == future_len, ESpotAnalysisVectorMismatch);
+        if (max_claim_per_post_applied > 0) {
+            assert!(future_len + past_verified_count <= max_claim_per_post_applied, ESpotAnalysisOverCap);
+        };
+        a.status = status;
+        a.detected_claim_count = detected_claim_count;
+        a.rejected_claim_count = rejected_claim_count;
+        a.truncated_claim_count = truncated_claim_count;
+        a.past_verified_count = past_verified_count;
+        a.max_claim_per_post_applied = max_claim_per_post_applied;
+        a.claim_manifest_hash = claim_manifest_hash;
+        a.veracity_manifest_hash = veracity_manifest_hash;
     }
 
     /// Comment object for posts, supporting nested comments
@@ -792,8 +920,6 @@ module social_contracts::post {
         revenue_redirect_to: Option<address>,
         revenue_redirect_percentage: Option<u64>,
         enable_spt: bool,
-        enable_spot: bool,
-        spot_id: Option<address>,
         spt_id: Option<address>,
         /// Matches `Post.poc_redirection_kind` at creation (`POC_REDIRECT_*`).
         poc_redirection_kind: u8,
@@ -1150,7 +1276,6 @@ module social_contracts::post {
         access: PostAccess,
         promotion_id: Option<address>,
         enable_spt: bool,
-        enable_spot: bool,
         poc_redirection_kind: u8,
         actor_address: address,
         sub_agent_id: Option<ID>,
@@ -1194,8 +1319,6 @@ module social_contracts::post {
             access,
             promotion_id,
             enable_spt,
-            enable_spot,
-            spot_id: option::none(), // Will be set when SPoT record is created
             spt_id: option::none(), // Will be set when SPT pool is created
             poc_outcome: POC_OUTCOME_NONE,
             poc_redirection_kind,
@@ -1397,12 +1520,9 @@ module social_contracts::post {
         } else {
             false // Default to opt-out (user must explicitly opt-in)
         };
-        let final_enable_spot = if (option::is_some(&enable_spot)) {
-            *option::borrow(&enable_spot)
-        } else {
-            false // Default to opt-out (user must explicitly opt-in)
-        };
-        
+        // enable_spot retained for entry-signature compatibility; SPoT is always-on.
+        let _ = enable_spot;
+
         // Convert media URLs to strings for event (before moving media_option)
         let media_urls_for_event = convert_urls_to_strings(&media_option);
 
@@ -1428,7 +1548,6 @@ module social_contracts::post {
             access,
             option::none(), // promotion_id
             final_enable_spt,
-            final_enable_spot,
             poc_redirection_kind,
             actor_address,
             sub_agent_id,
@@ -1465,8 +1584,6 @@ module social_contracts::post {
             revenue_redirect_to: option::none(),
             revenue_redirect_percentage: option::none(),
             enable_spt: final_enable_spt,
-            enable_spot: final_enable_spot,
-            spot_id: option::none(),
             spt_id: option::none(),
             poc_redirection_kind,
             actor_address,
@@ -2146,12 +2263,9 @@ module social_contracts::post {
         } else {
             false // Default to opt-out (user must explicitly opt-in)
         };
-        let final_enable_spot = if (option::is_some(&enable_spot)) {
-            *option::borrow(&enable_spot)
-        } else {
-            false // Default to opt-out (user must explicitly opt-in)
-        };
-        
+        // enable_spot retained for entry-signature compatibility; SPoT is always-on.
+        let _ = enable_spot;
+
         // Convert media URLs to strings for event (before moving media_option)
         let media_urls_for_event = convert_urls_to_strings(&media_option);
 
@@ -2177,7 +2291,6 @@ module social_contracts::post {
             PostAccess::Public,
             option::none(), // promotion_id
             final_enable_spt,
-            final_enable_spot,
             poc_redirection_kind,
             actor_address,
             sub_agent_id,
@@ -2214,8 +2327,6 @@ module social_contracts::post {
             revenue_redirect_to: option::none(),
             revenue_redirect_percentage: option::none(),
             enable_spt: final_enable_spt,
-            enable_spot: final_enable_spot,
-            spot_id: option::none(),
             spt_id: option::none(),
             poc_redirection_kind,
             actor_address,
@@ -2272,8 +2383,6 @@ module social_contracts::post {
             access: _,
             promotion_id: _,
             enable_spt: _,
-            enable_spot: _,
-            spot_id: _,
             spt_id: _,
             poc_outcome: _,
             poc_redirection_kind: _,
@@ -3801,7 +3910,6 @@ module social_contracts::post {
             PostAccess::Public,
             option::none(), // promotion_id
             false, // enable_spt - default to opt-out
-            false, // enable_spot - default to opt-out
             POC_REDIRECT_NONE,
             owner,
             option::none(),
@@ -3844,7 +3952,6 @@ module social_contracts::post {
             PostAccess::Public,
             option::none(),
             false,
-            false,
             POC_REDIRECT_WALLET,
             owner,
             option::none(),
@@ -3886,7 +3993,6 @@ module social_contracts::post {
             PostAccess::Public,
             option::none(),
             false,
-            false,
             POC_REDIRECT_ESCROW,
             owner,
             option::none(),
@@ -3927,7 +4033,6 @@ module social_contracts::post {
             PostAccess::Public,
             option::none(), // promotion_id
             false, // enable_spt - default to opt-out
-            true, // enable_spot - enable SPoT for tests
             POC_REDIRECT_NONE,
             owner,
             option::none(),
@@ -3987,7 +4092,6 @@ module social_contracts::post {
             PostAccess::Public,
             option::some(promotion_id), // promotion_id
             false, // enable_spt - default to opt-out
-            false, // enable_spot - default to opt-out
             poc_redirection_kind,
             owner,
             option::none(),
@@ -4016,8 +4120,6 @@ module social_contracts::post {
             revenue_redirect_to: option::none(),
             revenue_redirect_percentage: option::none(),
             enable_spt: false,
-            enable_spot: false,
-            spot_id: option::none(),
             spt_id: option::none(),
             poc_redirection_kind,
             actor_address: owner,
@@ -4438,12 +4540,8 @@ module social_contracts::post {
         } else {
             false // Default to opt-out (user must explicitly opt-in)
         };
-        let final_enable_spot = if (option::is_some(&enable_spot)) {
-            *option::borrow(&enable_spot)
-        } else {
-            false // Default to opt-out (user must explicitly opt-in)
-        };
-        
+        // enable_spot retained for entry-signature compatibility; SPoT is always-on.
+        let _ = enable_spot;
         // Convert media URLs to strings for PostCreatedEvent (before moving media_option)
         let media_urls_for_event = convert_urls_to_strings(&media_option);
 
@@ -4469,7 +4567,6 @@ module social_contracts::post {
             access,
             option::some(promotion_id),
             final_enable_spt,
-            final_enable_spot,
             poc_redirection_kind,
             actor_address,
             sub_agent_id,
@@ -4499,8 +4596,6 @@ module social_contracts::post {
             revenue_redirect_to: option::none(),
             revenue_redirect_percentage: option::none(),
             enable_spt: final_enable_spt,
-            enable_spot: final_enable_spot,
-            spot_id: option::none(),
             spt_id: option::none(),
             poc_redirection_kind,
             actor_address,
@@ -4924,7 +5019,6 @@ module social_contracts::post {
             },
             option::none(),
             false,
-            false,
             POC_REDIRECT_NONE,
             owner,
             option::none(),
@@ -4965,7 +5059,6 @@ module social_contracts::post {
                 min_tier_level: option::none(),
             },
             option::none(),
-            false,
             false,
             POC_REDIRECT_NONE,
             owner,

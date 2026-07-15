@@ -10312,6 +10312,9 @@ PostAttribution
 CommentAttribution
 	public struct
 	0x50c1::post
+PostSpotAnalysis
+	public struct
+	0x50c1::post
 Comment
 	public struct
 	0x50c1::post
@@ -10456,9 +10459,6 @@ allow_tips
 is_spt_enabled
 	public fun
 	0x50c1::post
-is_spot_enabled
-	public fun
-	0x50c1::post
 poc_outcome
 	public fun
 	0x50c1::post
@@ -10531,22 +10531,46 @@ get_poc_oracle_address
 get_poc_analyzed_at
 	public fun
 	0x50c1::post
-get_spot_id
-	public fun
-	0x50c1::post
-get_spot_claim_id
-	public fun
-	0x50c1::post
 get_spt_id
 	public fun
 	0x50c1::post
-set_spot_id
-	public(package) fun
-	0x50c1::post
-set_spot_claim_id
-	public(package) fun
-	0x50c1::post
 set_spt_id
+	public(package) fun
+	0x50c1::post
+spot_status_pending
+	public fun
+	0x50c1::post
+spot_status_completed
+	public fun
+	0x50c1::post
+spot_status_completed_no_actionable
+	public fun
+	0x50c1::post
+has_spot_analysis
+	public fun
+	0x50c1::post
+spot_analysis_status
+	public fun
+	0x50c1::post
+spot_analysis_market_ids
+	public fun
+	0x50c1::post
+spot_analysis_claim_indexes
+	public fun
+	0x50c1::post
+spot_analysis_claim_ids
+	public fun
+	0x50c1::post
+spot_analysis_future_accepted_count
+	public fun
+	0x50c1::post
+ensure_spot_analysis_pending
+	public(package) fun
+	0x50c1::post
+spot_analysis_append_future
+	public(package) fun
+	0x50c1::post
+finalize_spot_analysis
 	public(package) fun
 	0x50c1::post
 bootstrap_init
@@ -11164,6 +11188,12 @@ SpotConfig
 SpotPostLink
 	public struct
 	0x50c1::social_proof_of_truth
+PostClaimIndexKey
+	public struct
+	0x50c1::social_proof_of_truth
+PostMarketKey
+	public struct
+	0x50c1::social_proof_of_truth
 SpotClaim
 	public struct
 	0x50c1::social_proof_of_truth
@@ -11224,7 +11254,7 @@ SpotMarketCreatedEvent
 SpotPostLinkedEvent
 	public struct
 	0x50c1::social_proof_of_truth
-SpotRecordCreatedEvent
+SpotClaimsFinalizedForPost
 	public struct
 	0x50c1::social_proof_of_truth
 get_status
@@ -11281,6 +11311,9 @@ primary_post_id
 is_enabled
 	public fun
 	0x50c1::social_proof_of_truth
+max_claim_per_post
+	public fun
+	0x50c1::social_proof_of_truth
 spot_governance_registry_id
 	public fun
 	0x50c1::social_proof_of_truth
@@ -11326,25 +11359,25 @@ update_spot_config
 rescale_spot_config_windows_from_epoch_counts
 	public entry fun
 	0x50c1::social_proof_of_truth
-legacy_semantic_hash_from_post
-	fun
-	0x50c1::social_proof_of_truth
 register_spot_claim
 	fun
 	0x50c1::social_proof_of_truth
 create_spot_claim
 	public entry fun
 	0x50c1::social_proof_of_truth
+register_future_link
+	fun
+	0x50c1::social_proof_of_truth
 create_spot_market_for_claim
 	public entry fun
-	0x50c1::social_proof_of_truth
-link_post_to_claim_internal
-	fun
 	0x50c1::social_proof_of_truth
 link_post_to_spot_claim
 	public entry fun
 	0x50c1::social_proof_of_truth
-create_spot_record_for_post
+finalize_spot_claims_for_post
+	public entry fun
+	0x50c1::social_proof_of_truth
+create_and_finalize_spot_market_for_post
 	public entry fun
 	0x50c1::social_proof_of_truth
 assert_market_open_for_post
@@ -11420,9 +11453,6 @@ claim_creator_payout
 	public entry fun
 	0x50c1::social_proof_of_truth
 reclaim_expired_creator_rewards
-	public entry fun
-	0x50c1::social_proof_of_truth
-patch_spot_record_times_for_migration
 	public entry fun
 	0x50c1::social_proof_of_truth
 migrate_config

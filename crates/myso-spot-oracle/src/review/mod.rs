@@ -12,6 +12,7 @@ pub mod deadline;
 pub mod ingest;
 pub mod llm;
 pub mod rules;
+pub mod verify;
 pub mod worker;
 
 pub use canonicalize::{CanonicalClaim, CanonicalClaimFields, OutcomeType};

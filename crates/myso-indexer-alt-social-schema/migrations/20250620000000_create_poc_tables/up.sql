@@ -470,7 +470,7 @@ END $$;
 -- 8. CREATE POC CONFIGURATION TABLE (REGULAR TABLE)
 -- ============================================================================
 -- Configuration table doesn't need time partitioning (infrequent updates)
-CREATE TABLE IF NOT EXISTS poc_configuration (
+CREATE TABLE IF NOT EXISTS poc_config (
     id SERIAL PRIMARY KEY,
     image_threshold BIGINT NOT NULL,
     video_threshold BIGINT NOT NULL,
@@ -487,7 +487,7 @@ CREATE TABLE IF NOT EXISTS poc_configuration (
 );
 
 -- Simple index for latest configuration lookup
-CREATE INDEX IF NOT EXISTS idx_poc_config_time ON poc_configuration (time DESC);
+CREATE INDEX IF NOT EXISTS idx_poc_config_time ON poc_config (time DESC);
 
 -- ============================================================================
 -- 9. CREATE POC DAILY STATISTICS (TIMESCALEDB CONTINUOUS AGGREGATE)
@@ -671,7 +671,7 @@ COMMENT ON TABLE poc_revenue_redirections IS 'Revenue redirection records for de
 COMMENT ON TABLE poc_analysis_results IS 'Oracle analysis results for content similarity detection';
 COMMENT ON TABLE poc_disputes IS 'Community disputes challenging PoC decisions';
 COMMENT ON TABLE poc_dispute_votes IS 'Community votes on PoC disputes';
-COMMENT ON TABLE poc_configuration IS 'System-wide PoC configuration parameters';
+COMMENT ON TABLE poc_config IS 'System-wide PoC configuration parameters';
 
 COMMENT ON COLUMN poc_badges.media_type IS '1=image, 2=video, 3=audio';
 COMMENT ON COLUMN poc_disputes.dispute_type IS '1=challenge badge, 2=challenge redirection';

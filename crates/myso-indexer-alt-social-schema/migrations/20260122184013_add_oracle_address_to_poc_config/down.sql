@@ -1,4 +1,4 @@
--- Migration: Remove oracle_address from poc_configuration table
+-- Migration: Remove oracle_address from poc_config table
 -- Version: 20260122184013
 -- Purpose: Rollback addition of oracle_address column
 
@@ -16,8 +16,8 @@ DO $$
 BEGIN
     IF EXISTS (
         SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'poc_configuration' AND column_name = 'oracle_address'
+        WHERE table_name = 'poc_config' AND column_name = 'oracle_address'
     ) THEN
-        ALTER TABLE poc_configuration DROP COLUMN oracle_address;
+        ALTER TABLE poc_config DROP COLUMN oracle_address;
     END IF;
 END $$;

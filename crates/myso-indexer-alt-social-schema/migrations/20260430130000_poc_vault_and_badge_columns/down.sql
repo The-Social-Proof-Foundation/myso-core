@@ -8,8 +8,8 @@ DROP TABLE IF EXISTS poc_vault_deposits;
 DROP INDEX IF EXISTS idx_poc_beneficiary_vaults_beneficiary;
 DROP TABLE IF EXISTS poc_beneficiary_vaults;
 
-ALTER TABLE poc_configuration DROP COLUMN IF EXISTS max_referral_bps;
-ALTER TABLE poc_configuration DROP COLUMN IF EXISTS claim_treasury_fee_bps;
+ALTER TABLE poc_config DROP COLUMN IF EXISTS max_referral_bps;
+ALTER TABLE poc_config DROP COLUMN IF EXISTS claim_treasury_fee_bps;
 
 ALTER TABLE poc_badges DROP COLUMN IF EXISTS media_index;
 ALTER TABLE poc_badges DROP COLUMN IF EXISTS matched_anchor_id;

@@ -13,8 +13,6 @@ pub struct ParsedPostCreated {
     pub owner: String,
     pub content: String,
     pub post_type: String,
-    pub enable_spot: bool,
-    pub spot_id: Option<String>,
     pub created_at_ms: i64,
 }
 
@@ -48,8 +46,6 @@ struct BcsPostCreatedEvent {
     revenue_redirect_percentage: Option<u64>,
     #[allow(dead_code)]
     enable_spt: bool,
-    enable_spot: bool,
-    spot_id: Option<AccountAddress>,
     #[allow(dead_code)]
     spt_id: Option<AccountAddress>,
     #[allow(dead_code)]
@@ -66,14 +62,7 @@ struct BcsPostCreatedEvent {
 
 pub fn parse_post_created(contents: &[u8]) -> anyhow::Result<ParsedPostCreated> {
     let ev = bcs::from_bytes::<BcsPostCreatedEvent>(contents)?;
-    Ok(to_parsed(
-        ev.post_id,
-        ev.owner,
-        ev.content,
-        ev.post_type,
-        ev.enable_spot,
-        ev.spot_id,
-    ))
+    Ok(to_parsed(ev.post_id, ev.owner, ev.content, ev.post_type))
 }
 
 fn to_parsed(
@@ -81,16 +70,12 @@ fn to_parsed(
     owner: AccountAddress,
     content: String,
     post_type: String,
-    enable_spot: bool,
-    spot_id: Option<AccountAddress>,
 ) -> ParsedPostCreated {
     ParsedPostCreated {
         post_id: format!("0x{post_id}"),
         owner: format!("0x{owner}"),
         content,
         post_type,
-        enable_spot,
-        spot_id: spot_id.map(|a| format!("0x{a}")),
         created_at_ms: chrono::Utc::now().timestamp_millis(),
     }
 }

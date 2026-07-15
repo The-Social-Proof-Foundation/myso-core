@@ -31,7 +31,7 @@ use myso_indexer_alt_social_schema::models::{
     REVENUE_TYPE_PROMOTION_VIEWER_NET,
 };
 use myso_indexer_alt_social_schema::schema::{
-    comments, ecosystem_treasury, poc_analysis_results, poc_badges, poc_configuration,
+    comments, ecosystem_treasury, poc_analysis_results, poc_badges, poc_config,
     poc_creator_identity_links, poc_dispute_votes, poc_disputes, poc_revenue_redirections,
     poc_username_beneficiary_events, poc_vault_claims, poc_vault_deposits, post_config, posts,
     promoted_posts, promotion_budget_events, promotion_status_events, promotion_views,
@@ -971,7 +971,7 @@ async fn load_latest_poc_thresholds(conn: &mut Connection<'_>) -> poc::PocThresh
 
     diesel::sql_query(
         "SELECT image_threshold, video_threshold, audio_threshold \
-         FROM poc_configuration ORDER BY time DESC LIMIT 1",
+         FROM poc_config ORDER BY time DESC LIMIT 1",
     )
     .get_result::<ThresholdRow>(conn)
     .await
@@ -1817,7 +1817,7 @@ impl Handler for PostsHandler {
                         .await?;
                 }
                 PostRow::PocConfiguration(c) => {
-                    total += diesel::insert_into(poc_configuration::table)
+                    total += diesel::insert_into(poc_config::table)
                         .values(c)
                         .execute(conn)
                         .await?;
@@ -2680,9 +2680,6 @@ mod poc_analysis_result_commit_tests {
             encrypted_content_hash: None,
             promotion_id: None,
             enable_spt: false,
-            enable_spot: false,
-            spot_id: None,
-            spot_claim_id: None,
             spt_id: None,
             platform_id: None,
             permissions: None,

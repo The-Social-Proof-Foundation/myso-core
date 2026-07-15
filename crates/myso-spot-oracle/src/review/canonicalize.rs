@@ -329,6 +329,7 @@ mod tests {
             suggested_sources: vec![],
             suggested_options: vec!["Yes".to_string(), "No".to_string()],
             claim_category: ClaimCategory::PriceThreshold,
+            time_class: crate::types::TimeClass::Future,
             resolver_hints: ResolverHints::default(),
         };
         let claim = canonicalize(Uuid::new_v4(), &extracted);
@@ -358,7 +359,8 @@ mod tests {
                 suggested_sources: vec!["coingecko".to_string()],
                 suggested_options: vec!["Yes".to_string(), "No".to_string()],
                 claim_category: ClaimCategory::PriceThreshold,
-                resolver_hints: ResolverHints::default(),
+                time_class: crate::types::TimeClass::Future,
+            resolver_hints: ResolverHints::default(),
             };
             canonicalize(Uuid::new_v4(), &extracted).market_key_hash
         };

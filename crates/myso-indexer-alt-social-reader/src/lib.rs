@@ -68,8 +68,9 @@ pub use myso_indexer_alt_social_schema::models::{
     SptTransaction,
 };
 pub use spot::{
-    SpotClaimEarningsRow, SpotClaimRow, SpotCreatorStatsRow, SpotMarketEarningsRow,
-    SpotMarketRow, SpotPendingCreatorPayoutRow, SpotPostEarningsRow, SpotRouteRow,
+    SpotClaimEarningsRow, SpotClaimRow, SpotClaimVerdictRow, SpotCreatorStatsRow,
+    SpotMarketEarningsRow, SpotMarketRow, SpotPendingCreatorPayoutRow, SpotPostAnalysisRow,
+    SpotPostEarningsRow, SpotRouteRow,
 };
 pub use org_leaderboard::{
     OrganizationCategoryInfo, OrganizationLeaderboardEntry, OrganizationLeaderboardResult,

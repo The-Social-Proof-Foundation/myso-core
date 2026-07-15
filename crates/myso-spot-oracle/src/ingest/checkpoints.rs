@@ -1,7 +1,8 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-//! SubscribeCheckpoints gRPC ingest — filter `PostCreatedEvent.enable_spot` and enqueue review.
+//! SubscribeCheckpoints gRPC ingest — always-on: enqueue an analysis job for every
+//! `PostCreatedEvent` (no opt-in filter), deduped on the per-post analysis row.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -142,14 +143,14 @@ async fn process_checkpoint(state: &AppState, checkpoint: &Checkpoint) -> anyhow
                 }
             };
 
-            if !parsed.enable_spot {
-                state.metrics.posts_filtered_enable_spot.inc();
-                continue;
-            }
-            if parsed.spot_id.is_some() {
-                continue;
-            }
+            // Always-on multi-claim SPoT: analyze every post regardless of opt-in. Dedupe on
+            // the per-post analysis row so an already-ingested post is not re-enqueued.
             if state.store.market_exists(&parsed.post_id).await? {
+                state
+                    .metrics
+                    .checkpoint_ingest_total
+                    .with_label_values(&["skipped_duplicate"])
+                    .inc();
                 continue;
             }
 
@@ -176,6 +177,11 @@ async fn process_checkpoint(state: &AppState, checkpoint: &Checkpoint) -> anyhow
                 }),
             )
             .await?;
+            state
+                .metrics
+                .checkpoint_ingest_total
+                .with_label_values(&["enqueued"])
+                .inc();
             enqueued += 1;
         }
     }

@@ -1,4 +1,4 @@
--- Migration: Add max_votes_per_dispute field to poc_configuration table
+-- Migration: Add max_votes_per_dispute field to poc_config table
 -- Version: 20260122171440
 -- Purpose: Add max_votes_per_dispute field to match smart contract PoCConfigUpdatedEvent
 
@@ -7,13 +7,13 @@
 -- ============================================================================
 
 -- Add max_votes_per_dispute column (maximum votes allowed per dispute)
-ALTER TABLE poc_configuration 
+ALTER TABLE poc_config 
 ADD COLUMN IF NOT EXISTS max_votes_per_dispute BIGINT NOT NULL DEFAULT 10000;
 
 -- Backfill existing records with default value (in case DEFAULT wasn't applied)
-UPDATE poc_configuration 
+UPDATE poc_config 
 SET max_votes_per_dispute = 10000 
 WHERE max_votes_per_dispute IS NULL;
 
 -- Add comment for documentation
-COMMENT ON COLUMN poc_configuration.max_votes_per_dispute IS 'Maximum number of votes allowed per PoC dispute (default: 10000)';
+COMMENT ON COLUMN poc_config.max_votes_per_dispute IS 'Maximum number of votes allowed per PoC dispute (default: 10000)';

@@ -216,6 +216,7 @@ module social_contracts::social_proof_of_truth_tests {
                 ADMIN, // oracle_address
                 0,    // max_single_bet
                 10000, // max_bets_per_record
+                10,    // max_claim_per_post
                 spot_gov_id,
                 &clock,
                 test_scenario::ctx(&mut scen)
@@ -239,7 +240,7 @@ module social_contracts::social_proof_of_truth_tests {
             let mut cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
             let spot_gov_id = spot::spot_governance_registry_id(&cfg);
             let clock = test_scenario::take_shared<Clock>(&scen);
-            spot::update_spot_config(&admin_cap, &mut cfg, true, 0, 0, 0, 0, 5000, 5000, 0, 0, 10000, 2, 10, 1, 1000, 10, ADMIN, 0, 10000, spot_gov_id, &clock, test_scenario::ctx(&mut scen));
+            spot::update_spot_config(&admin_cap, &mut cfg, true, 0, 0, 0, 0, 5000, 5000, 0, 0, 10000, 2, 10, 1, 1000, 10, ADMIN, 0, 10000, 10, spot_gov_id, &clock, test_scenario::ctx(&mut scen));
             test_scenario::return_to_sender(&scen, admin_cap);
             test_scenario::return_shared(cfg);
             test_scenario::return_shared(clock);
@@ -342,7 +343,7 @@ module social_contracts::social_proof_of_truth_tests {
             let mut cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
             let spot_gov_id = spot::spot_governance_registry_id(&cfg);
             let clock = test_scenario::take_shared<Clock>(&scen);
-            spot::update_spot_config(&admin_cap, &mut cfg, true, 9000, 0, 0, 0, 5000, 5000, 0, 0, 10000, 2, 10, 1, 1000, 10, ADMIN, 0, 10000, spot_gov_id, &clock, test_scenario::ctx(&mut scen));
+            spot::update_spot_config(&admin_cap, &mut cfg, true, 9000, 0, 0, 0, 5000, 5000, 0, 0, 10000, 2, 10, 1, 1000, 10, ADMIN, 0, 10000, 10, spot_gov_id, &clock, test_scenario::ctx(&mut scen));
             test_scenario::return_to_sender(&scen, admin_cap);
             test_scenario::return_shared(cfg);
             test_scenario::return_shared(clock);
@@ -584,7 +585,7 @@ module social_contracts::social_proof_of_truth_tests {
             let mut cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
             let spot_gov_id = spot::spot_governance_registry_id(&cfg);
             let clock = test_scenario::take_shared<Clock>(&scen);
-            spot::update_spot_config(&admin_cap, &mut cfg, true, 7000, 0, 0, 0, 5000, 5000, 0, 0, 10000, 2, 10, 1, 1000, 10, ADMIN, 0, 10000, spot_gov_id, &clock, test_scenario::ctx(&mut scen));
+            spot::update_spot_config(&admin_cap, &mut cfg, true, 7000, 0, 0, 0, 5000, 5000, 0, 0, 10000, 2, 10, 1, 1000, 10, ADMIN, 0, 10000, 10, spot_gov_id, &clock, test_scenario::ctx(&mut scen));
             test_scenario::return_to_sender(&scen, admin_cap);
             test_scenario::return_shared(cfg);
             test_scenario::return_shared(clock);
@@ -678,7 +679,7 @@ module social_contracts::social_proof_of_truth_tests {
             let mut cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
             let spot_gov_id = spot::spot_governance_registry_id(&cfg);
             let clock = test_scenario::take_shared<Clock>(&scen);
-            spot::update_spot_config(&admin_cap, &mut cfg, true, 7000, 0, 0, 0, 5000, 5000, 0, 0, 10000, 2, 10, 1, 1000, 10, ADMIN, 0, 10000, spot_gov_id, &clock, test_scenario::ctx(&mut scen));
+            spot::update_spot_config(&admin_cap, &mut cfg, true, 7000, 0, 0, 0, 5000, 5000, 0, 0, 10000, 2, 10, 1, 1000, 10, ADMIN, 0, 10000, 10, spot_gov_id, &clock, test_scenario::ctx(&mut scen));
             test_scenario::return_to_sender(&scen, admin_cap);
             test_scenario::return_shared(cfg);
             test_scenario::return_shared(clock);
@@ -736,7 +737,7 @@ module social_contracts::social_proof_of_truth_tests {
             let mut cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
             let spot_gov_id = spot::spot_governance_registry_id(&cfg);
             let clock = test_scenario::take_shared<Clock>(&scen);
-            spot::update_spot_config(&admin_cap, &mut cfg, true, 9000, 0, 0, 0, 5000, 5000, 0, 0, 10000, 2, 10, 1, 1000, 10, ADMIN, 0, 10000, spot_gov_id, &clock, test_scenario::ctx(&mut scen));
+            spot::update_spot_config(&admin_cap, &mut cfg, true, 9000, 0, 0, 0, 5000, 5000, 0, 0, 10000, 2, 10, 1, 1000, 10, ADMIN, 0, 10000, 10, spot_gov_id, &clock, test_scenario::ctx(&mut scen));
             test_scenario::return_to_sender(&scen, admin_cap);
             test_scenario::return_shared(cfg);
             test_scenario::return_shared(clock);
@@ -870,6 +871,7 @@ module social_contracts::social_proof_of_truth_tests {
                 ADMIN,
                 0,
                 0,
+                10,
                 spot_gov_id,
                 &clock,
                 test_scenario::ctx(&mut scen)
@@ -953,7 +955,7 @@ module social_contracts::social_proof_of_truth_tests {
             let mut cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
             let spot_gov_id = spot::spot_governance_registry_id(&cfg);
             let clock = test_scenario::take_shared<Clock>(&scen);
-            spot::update_spot_config(&admin_cap, &mut cfg, true, 7000, 0, 0, 0, 5000, 5000, 0, 0, 10000, 2, 10, 1, 1000, 10, ADMIN, 0, 3, spot_gov_id, &clock, test_scenario::ctx(&mut scen)); // max_bets_per_record = 3
+            spot::update_spot_config(&admin_cap, &mut cfg, true, 7000, 0, 0, 0, 5000, 5000, 0, 0, 10000, 2, 10, 1, 1000, 10, ADMIN, 0, 3, 10, spot_gov_id, &clock, test_scenario::ctx(&mut scen)); // max_bets_per_record = 3
             test_scenario::return_to_sender(&scen, admin_cap);
             test_scenario::return_shared(cfg);
             test_scenario::return_shared(clock);

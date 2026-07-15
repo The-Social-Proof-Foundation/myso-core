@@ -10,7 +10,7 @@ DROP MATERIALIZED VIEW IF EXISTS poc_daily_stats CASCADE;
 -- ============================================================================
 -- 2. DROP POC TABLES (IN REVERSE ORDER)
 -- ============================================================================
-DROP TABLE IF EXISTS poc_configuration CASCADE;
+DROP TABLE IF EXISTS poc_config CASCADE;
 DROP TABLE IF EXISTS poc_dispute_votes CASCADE;
 DROP TABLE IF EXISTS poc_disputes CASCADE;
 DROP TABLE IF EXISTS poc_analysis_results CASCADE;

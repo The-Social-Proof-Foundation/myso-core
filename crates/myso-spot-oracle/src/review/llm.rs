@@ -66,6 +66,13 @@ Return JSON only with keys:
   suggested_sources (string array),
   suggested_options (string array, 2-10 unique labels),
   claim_category (price_threshold|release_published|event_occurrence|custom_http|unsupported),
+  time_class (future|past|unsupported): future = resolves after now (opens a betting market);
+    past = asserts something that already happened and is objectively checkable against public
+    sources (verify it, do NOT open a market); unsupported = not objectively checkable. Surface
+    past factual claims as past rather than collapsing them to unsupported. For past factual /
+    historical claims prefer claim_category=event_occurrence or custom_http, set
+    resolver_hints.preferred_sources to ["wikipedia"], and set resolver_hints.url to the relevant
+    Wikipedia REST summary (https://en.wikipedia.org/api/rest_v1/page/summary/<Title>) or subject.
   resolver_hints (object with optional fields):
     owner, repo, tag_predicate,
     feed_url, match_predicate, match_fields (string array),
@@ -113,6 +120,13 @@ If the claim is not objectively verifiable from public data, set claim_category 
         if claim.deadline.is_none() {
             claim.deadline = resolve_claim_deadline(content, claim.claim_category, registry);
         }
+        // Unsupported category implies unsupported time class; otherwise trust the model but fall
+        // back to the tense heuristic when it left the default.
+        if claim.claim_category == crate::types::ClaimCategory::Unsupported {
+            claim.time_class = crate::types::TimeClass::Unsupported;
+        } else if claim.time_class == crate::types::TimeClass::Future {
+            claim.time_class = classify_time_class(content);
+        }
         Ok((claim, raw))
     }
 }
@@ -123,6 +137,30 @@ pub fn extract_claim_heuristic(content: &str, registry: &EventRegistry) -> Extra
         return sports;
     }
     extract_price_claim(content, registry)
+}
+
+/// Heuristic time-class classification: explicit future intent wins; else past-result cues
+/// mark a claim as `past`. Used by the heuristic extractor and as an LLM fallback.
+pub fn classify_time_class(content: &str) -> crate::types::TimeClass {
+    use crate::types::TimeClass;
+    let lower = content.to_lowercase();
+    if lower.contains("will ")
+        || lower.contains("by tomorrow")
+        || lower.contains("next ")
+        || lower.contains("going to ")
+        || lower.contains("by the end of")
+        || lower.contains("by 20")
+    {
+        return TimeClass::Future;
+    }
+    const PAST_CUES: [&str; 11] = [
+        " won ", " won.", " was ", " were ", " did ", " beat ", " lost ", " finished ",
+        " happened", " already ", " back in ",
+    ];
+    if PAST_CUES.iter().any(|c| lower.contains(c)) {
+        return TimeClass::Past;
+    }
+    TimeClass::Future
 }
 
 fn extract_sports_comparison(content: &str, registry: &EventRegistry) -> Option<ExtractedClaim> {
@@ -156,6 +194,7 @@ fn extract_sports_comparison(content: &str, registry: &EventRegistry) -> Option<
         suggested_sources: vec!["rss_event".to_string()],
         suggested_options: vec!["Yes".to_string(), "No".to_string()],
         claim_category: category,
+        time_class: classify_time_class(content),
         resolver_hints: ResolverHints {
             feed_url: ev.feed_url.clone(),
             match_predicate: ev.match_predicate.clone(),
@@ -221,6 +260,7 @@ fn extract_price_claim(content: &str, registry: &EventRegistry) -> ExtractedClai
         suggested_sources: vec!["coingecko".to_string()],
         suggested_options: vec!["Yes".to_string(), "No".to_string()],
         claim_category: category,
+        time_class: classify_time_class(content),
         resolver_hints: ResolverHints {
             preferred_sources: vec!["coingecko".to_string()],
             ..Default::default()

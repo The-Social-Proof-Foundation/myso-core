@@ -12,6 +12,8 @@ Oracle/DAO resolves outcomes; winners and creators claim payouts after resolutio
 -  [Struct `SpotOracleAdminCap`](#social_contracts_social_proof_of_truth_SpotOracleAdminCap)
 -  [Struct `SpotConfig`](#social_contracts_social_proof_of_truth_SpotConfig)
 -  [Struct `SpotPostLink`](#social_contracts_social_proof_of_truth_SpotPostLink)
+-  [Struct `PostClaimIndexKey`](#social_contracts_social_proof_of_truth_PostClaimIndexKey)
+-  [Struct `PostMarketKey`](#social_contracts_social_proof_of_truth_PostMarketKey)
 -  [Struct `SpotClaim`](#social_contracts_social_proof_of_truth_SpotClaim)
 -  [Struct `SpotClaimRegistry`](#social_contracts_social_proof_of_truth_SpotClaimRegistry)
 -  [Struct `SpotCreatorPayout`](#social_contracts_social_proof_of_truth_SpotCreatorPayout)
@@ -32,7 +34,7 @@ Oracle/DAO resolves outcomes; winners and creators claim payouts after resolutio
 -  [Struct `SpotClaimCreatedEvent`](#social_contracts_social_proof_of_truth_SpotClaimCreatedEvent)
 -  [Struct `SpotMarketCreatedEvent`](#social_contracts_social_proof_of_truth_SpotMarketCreatedEvent)
 -  [Struct `SpotPostLinkedEvent`](#social_contracts_social_proof_of_truth_SpotPostLinkedEvent)
--  [Struct `SpotRecordCreatedEvent`](#social_contracts_social_proof_of_truth_SpotRecordCreatedEvent)
+-  [Struct `SpotClaimsFinalizedForPost`](#social_contracts_social_proof_of_truth_SpotClaimsFinalizedForPost)
 -  [Constants](#@Constants_0)
 -  [Function `get_status`](#social_contracts_social_proof_of_truth_get_status)
 -  [Function `get_bets_len`](#social_contracts_social_proof_of_truth_get_bets_len)
@@ -52,6 +54,7 @@ Oracle/DAO resolves outcomes; winners and creators claim payouts after resolutio
 -  [Function `market_key_hash`](#social_contracts_social_proof_of_truth_market_key_hash)
 -  [Function `primary_post_id`](#social_contracts_social_proof_of_truth_primary_post_id)
 -  [Function `is_enabled`](#social_contracts_social_proof_of_truth_is_enabled)
+-  [Function `max_claim_per_post`](#social_contracts_social_proof_of_truth_max_claim_per_post)
 -  [Function `spot_governance_registry_id`](#social_contracts_social_proof_of_truth_spot_governance_registry_id)
 -  [Function `active_proposal_id`](#social_contracts_social_proof_of_truth_active_proposal_id)
 -  [Function `proposed_outcome`](#social_contracts_social_proof_of_truth_proposed_outcome)
@@ -67,13 +70,13 @@ Oracle/DAO resolves outcomes; winners and creators claim payouts after resolutio
 -  [Function `create_spot_oracle_admin_cap`](#social_contracts_social_proof_of_truth_create_spot_oracle_admin_cap)
 -  [Function `update_spot_config`](#social_contracts_social_proof_of_truth_update_spot_config)
 -  [Function `rescale_spot_config_windows_from_epoch_counts`](#social_contracts_social_proof_of_truth_rescale_spot_config_windows_from_epoch_counts)
--  [Function `legacy_semantic_hash_from_post`](#social_contracts_social_proof_of_truth_legacy_semantic_hash_from_post)
 -  [Function `register_spot_claim`](#social_contracts_social_proof_of_truth_register_spot_claim)
 -  [Function `create_spot_claim`](#social_contracts_social_proof_of_truth_create_spot_claim)
+-  [Function `register_future_link`](#social_contracts_social_proof_of_truth_register_future_link)
 -  [Function `create_spot_market_for_claim`](#social_contracts_social_proof_of_truth_create_spot_market_for_claim)
--  [Function `link_post_to_claim_internal`](#social_contracts_social_proof_of_truth_link_post_to_claim_internal)
 -  [Function `link_post_to_spot_claim`](#social_contracts_social_proof_of_truth_link_post_to_spot_claim)
--  [Function `create_spot_record_for_post`](#social_contracts_social_proof_of_truth_create_spot_record_for_post)
+-  [Function `finalize_spot_claims_for_post`](#social_contracts_social_proof_of_truth_finalize_spot_claims_for_post)
+-  [Function `create_and_finalize_spot_market_for_post`](#social_contracts_social_proof_of_truth_create_and_finalize_spot_market_for_post)
 -  [Function `assert_market_open_for_post`](#social_contracts_social_proof_of_truth_assert_market_open_for_post)
 -  [Function `place_spot_bet_for_post`](#social_contracts_social_proof_of_truth_place_spot_bet_for_post)
 -  [Function `place_spot_bet_internal`](#social_contracts_social_proof_of_truth_place_spot_bet_internal)
@@ -99,7 +102,6 @@ Oracle/DAO resolves outcomes; winners and creators claim payouts after resolutio
 -  [Function `claim_payout`](#social_contracts_social_proof_of_truth_claim_payout)
 -  [Function `claim_creator_payout`](#social_contracts_social_proof_of_truth_claim_creator_payout)
 -  [Function `reclaim_expired_creator_rewards`](#social_contracts_social_proof_of_truth_reclaim_expired_creator_rewards)
--  [Function `patch_spot_record_times_for_migration`](#social_contracts_social_proof_of_truth_patch_spot_record_times_for_migration)
 -  [Function `migrate_config`](#social_contracts_social_proof_of_truth_migrate_config)
 -  [Function `migrate_market`](#social_contracts_social_proof_of_truth_migrate_market)
 -  [Function `migrate_record`](#social_contracts_social_proof_of_truth_migrate_record)
@@ -337,6 +339,11 @@ Oracle/DAO resolves outcomes; winners and creators claim payouts after resolutio
 <dd>
 </dd>
 <dt>
+<code><a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_max_claim_per_post">max_claim_per_post</a>: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
 <code><a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_spot_governance_registry_id">spot_governance_registry_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
 </dt>
 <dd>
@@ -355,7 +362,7 @@ Oracle/DAO resolves outcomes; winners and creators claim payouts after resolutio
 
 ## Struct `SpotPostLink`
 
-Post linked to a semantic claim (creator stored for fee routing).
+Post linked to a semantic claim at a specific claim index (creator stored for fee routing).
 
 
 <pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotPostLink">SpotPostLink</a> <b>has</b> <b>copy</b>, drop, store
@@ -375,6 +382,75 @@ Post linked to a semantic claim (creator stored for fee routing).
 </dd>
 <dt>
 <code>creator: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>claim_index: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_social_proof_of_truth_PostClaimIndexKey"></a>
+
+## Struct `PostClaimIndexKey`
+
+Registry key: a post's future-claim link at a given claim index.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_PostClaimIndexKey">PostClaimIndexKey</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>post_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>claim_index: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_social_proof_of_truth_PostMarketKey"></a>
+
+## Struct `PostMarketKey`
+
+Registry key: a (post, market) future-link — authoritative bet-eligibility check.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_PostMarketKey">PostMarketKey</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>post_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>market_id: <b>address</b></code>
 </dt>
 <dd>
 </dd>
@@ -434,7 +510,8 @@ Semantic claim object — deduped by <code><a href="../social_contracts/social_p
 
 ## Struct `SpotClaimRegistry`
 
-Shared registry mapping hashes and open markets.
+Shared registry mapping hashes and open markets. Multi-claim: a post may hold
+several future-claim links keyed by claim index / market.
 
 
 <pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaimRegistry">SpotClaimRegistry</a> <b>has</b> key
@@ -468,7 +545,12 @@ Shared registry mapping hashes and open markets.
 <dd>
 </dd>
 <dt>
-<code>post_to_claim: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<b>address</b>, <b>address</b>&gt;</code>
+<code>post_claim_index_to_market: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_PostClaimIndexKey">social_contracts::social_proof_of_truth::PostClaimIndexKey</a>, <b>address</b>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>post_market_to_claim: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_PostMarketKey">social_contracts::social_proof_of_truth::PostMarketKey</a>, <b>address</b>&gt;</code>
 </dt>
 <dd>
 </dd>
@@ -1295,6 +1377,11 @@ A single bet
 <dd>
 </dd>
 <dt>
+<code><a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_max_claim_per_post">max_claim_per_post</a>: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
 <code><a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_spot_governance_registry_id">spot_governance_registry_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
 </dt>
 <dd>
@@ -1428,6 +1515,16 @@ A single bet
 <dd>
 </dd>
 <dt>
+<code>claim_index: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>resolution_policy_hash: vector&lt;u8&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
 <code>created_at_ms: u64</code>
 </dt>
 <dd>
@@ -1483,18 +1580,30 @@ A single bet
 </dt>
 <dd>
 </dd>
+<dt>
+<code>claim_index: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>policy_hash: vector&lt;u8&gt;</code>
+</dt>
+<dd>
+</dd>
 </dl>
 
 
 </details>
 
-<a name="social_contracts_social_proof_of_truth_SpotRecordCreatedEvent"></a>
+<a name="social_contracts_social_proof_of_truth_SpotClaimsFinalizedForPost"></a>
 
-## Struct `SpotRecordCreatedEvent`
+## Struct `SpotClaimsFinalizedForPost`
+
+Batch finalize projection for a post's multi-claim analysis. Carries future-link
+arrays (claim_index order) plus parallel past-verdict vectors for the indexer.
 
 
-
-<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecordCreatedEvent">SpotRecordCreatedEvent</a> <b>has</b> <b>copy</b>, drop
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaimsFinalizedForPost">SpotClaimsFinalizedForPost</a> <b>has</b> <b>copy</b>, drop
 </code></pre>
 
 
@@ -1505,32 +1614,92 @@ A single bet
 
 <dl>
 <dt>
-<code>record_id: <b>address</b></code>
-</dt>
-<dd>
-</dd>
-<dt>
 <code>post_id: <b>address</b></code>
 </dt>
 <dd>
 </dd>
 <dt>
-<code>created_at_ms: u64</code>
+<code>status: u8</code>
 </dt>
 <dd>
 </dd>
 <dt>
-<code>betting_options: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+<code>detected_claim_count: u64</code>
 </dt>
 <dd>
 </dd>
 <dt>
-<code>resolution_window_ms: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+<code>rejected_claim_count: u64</code>
 </dt>
 <dd>
 </dd>
 <dt>
-<code>max_resolution_window_ms: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+<code>truncated_claim_count: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>future_accepted_count: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>past_verified_count: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_claim_per_post_applied: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>claim_manifest_hash: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;u8&gt;&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>veracity_manifest_hash: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;u8&gt;&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>future_claim_indexes: vector&lt;u64&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>future_claim_ids: vector&lt;<b>address</b>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>future_market_ids: vector&lt;<b>address</b>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>past_claim_indexes: vector&lt;u64&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>past_verdicts: vector&lt;u8&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>past_related_market_ids: vector&lt;<b>address</b>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>past_evidence_hashes: vector&lt;vector&lt;u8&gt;&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>finalized_at_ms: u64</code>
 </dt>
 <dd>
 </dd>
@@ -1842,6 +2011,33 @@ Errors
 
 
 
+<a name="social_contracts_social_proof_of_truth_ENotFinalized"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ENotFinalized">ENotFinalized</a>: u64 = 34;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_of_truth_EPastVerdictMismatch"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EPastVerdictMismatch">EPastVerdictMismatch</a>: u64 = 35;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_of_truth_ENoOpenMarket"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ENoOpenMarket">ENoOpenMarket</a>: u64 = 36;
+</code></pre>
+
+
+
 <a name="social_contracts_social_proof_of_truth_STATUS_OPEN"></a>
 
 Status
@@ -2047,6 +2243,61 @@ Outcomes
 
 
 <pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MAX_BETS_PER_RECORD">DEFAULT_MAX_BETS_PER_RECORD</a>: u64 = 10000;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_of_truth_DEFAULT_MAX_CLAIM_PER_POST"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MAX_CLAIM_PER_POST">DEFAULT_MAX_CLAIM_PER_POST</a>: u64 = 10;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_of_truth_MIN_MAX_CLAIM_PER_POST"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MIN_MAX_CLAIM_PER_POST">MIN_MAX_CLAIM_PER_POST</a>: u64 = 1;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_of_truth_MAX_MAX_CLAIM_PER_POST"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MAX_MAX_CLAIM_PER_POST">MAX_MAX_CLAIM_PER_POST</a>: u64 = 20;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_of_truth_VERDICT_TRUE"></a>
+
+Past-claim verdict values (mirror indexer/GraphQL): 1=true, 2=false, 3=unverifiable.
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_VERDICT_TRUE">VERDICT_TRUE</a>: u8 = 1;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_of_truth_VERDICT_FALSE"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_VERDICT_FALSE">VERDICT_FALSE</a>: u8 = 2;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_of_truth_VERDICT_UNVERIFIABLE"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_VERDICT_UNVERIFIABLE">VERDICT_UNVERIFIABLE</a>: u8 = 3;
 </code></pre>
 
 
@@ -2495,6 +2746,28 @@ Outcomes
 
 </details>
 
+<a name="social_contracts_social_proof_of_truth_max_claim_per_post"></a>
+
+## Function `max_claim_per_post`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_max_claim_per_post">max_claim_per_post</a>(config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_max_claim_per_post">max_claim_per_post</a>(config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">SpotConfig</a>): u64 { config.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_max_claim_per_post">max_claim_per_post</a> }
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_social_proof_of_truth_spot_governance_registry_id"></a>
 
 ## Function `spot_governance_registry_id`
@@ -2702,6 +2975,7 @@ Outcomes
         oracle_address: tx_context::sender(ctx),
         max_single_bet: 0,
         max_bets_per_record: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MAX_BETS_PER_RECORD">DEFAULT_MAX_BETS_PER_RECORD</a>,
+        <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_max_claim_per_post">max_claim_per_post</a>: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MAX_CLAIM_PER_POST">DEFAULT_MAX_CLAIM_PER_POST</a>,
         <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_spot_governance_registry_id">spot_governance_registry_id</a>,
         version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     }
@@ -2733,7 +3007,8 @@ Outcomes
         claims_by_semantic_hash: table::new(ctx),
         markets_by_key_hash: table::new(ctx),
         open_market_by_claim: table::new(ctx),
-        post_to_claim: table::new(ctx),
+        post_claim_index_to_market: table::new(ctx),
+        post_market_to_claim: table::new(ctx),
         version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     }
 }
@@ -2779,6 +3054,7 @@ Outcomes
         oracle_address: config.oracle_address,
         max_single_bet: config.max_single_bet,
         max_bets_per_record: config.max_bets_per_record,
+        <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_max_claim_per_post">max_claim_per_post</a>: config.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_max_claim_per_post">max_claim_per_post</a>,
         <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_spot_governance_registry_id">spot_governance_registry_id</a>: config.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_spot_governance_registry_id">spot_governance_registry_id</a>,
         timestamp: clock::timestamp_ms(clock),
     });
@@ -2874,7 +3150,7 @@ Outcomes
 
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_update_spot_config">update_spot_config</a>(_: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotAdminCap">social_contracts::social_proof_of_truth::SpotAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, truth_enabled: bool, confidence_threshold_bps: u64, resolution_window_ms: u64, max_resolution_window_ms: u64, payout_delay_ms: u64, platform_fee_bps: u64, ecosystem_fee_bps: u64, creator_fee_bps: u64, creator_claim_window_ms: u64, expired_creator_ecosystem_bps: u64, min_betting_options: u64, max_betting_options: u64, min_reasoning_length: u64, max_reasoning_length: u64, max_evidence_urls: u64, oracle_address: <b>address</b>, max_single_bet: u64, max_bets_per_record: u64, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_spot_governance_registry_id">spot_governance_registry_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_update_spot_config">update_spot_config</a>(_: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotAdminCap">social_contracts::social_proof_of_truth::SpotAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, truth_enabled: bool, confidence_threshold_bps: u64, resolution_window_ms: u64, max_resolution_window_ms: u64, payout_delay_ms: u64, platform_fee_bps: u64, ecosystem_fee_bps: u64, creator_fee_bps: u64, creator_claim_window_ms: u64, expired_creator_ecosystem_bps: u64, min_betting_options: u64, max_betting_options: u64, min_reasoning_length: u64, max_reasoning_length: u64, max_evidence_urls: u64, oracle_address: <b>address</b>, max_single_bet: u64, max_bets_per_record: u64, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_max_claim_per_post">max_claim_per_post</a>: u64, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_spot_governance_registry_id">spot_governance_registry_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2904,11 +3180,14 @@ Outcomes
     oracle_address: <b>address</b>,
     max_single_bet: u64,
     max_bets_per_record: u64,
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_max_claim_per_post">max_claim_per_post</a>: u64,
     <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_spot_governance_registry_id">spot_governance_registry_id</a>: ID,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>assert</b>!(confidence_threshold_bps &lt;= 10000, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
+    <b>assert</b>!(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_max_claim_per_post">max_claim_per_post</a> &gt;= <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MIN_MAX_CLAIM_PER_POST">MIN_MAX_CLAIM_PER_POST</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
+    <b>assert</b>!(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_max_claim_per_post">max_claim_per_post</a> &lt;= <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MAX_MAX_CLAIM_PER_POST">MAX_MAX_CLAIM_PER_POST</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
     <b>assert</b>!(platform_fee_bps &lt;= 10000, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
     <b>assert</b>!(ecosystem_fee_bps &lt;= 10000, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
     <b>assert</b>!(creator_fee_bps &lt;= 10000, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
@@ -2937,6 +3216,7 @@ Outcomes
     config.oracle_address = oracle_address;
     config.max_single_bet = max_single_bet;
     config.max_bets_per_record = max_bets_per_record;
+    config.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_max_claim_per_post">max_claim_per_post</a> = <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_max_claim_per_post">max_claim_per_post</a>;
     config.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_spot_governance_registry_id">spot_governance_registry_id</a> = <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_spot_governance_registry_id">spot_governance_registry_id</a>;
     <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_emit_config_updated">emit_config_updated</a>(config, clock, ctx);
 }
@@ -2970,32 +3250,6 @@ Outcomes
     config.resolution_window_ms = config.resolution_window_ms * epoch_duration_ms;
     config.max_resolution_window_ms = config.max_resolution_window_ms * epoch_duration_ms;
     config.creator_claim_window_ms = config.creator_claim_window_ms * epoch_duration_ms;
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_social_proof_of_truth_legacy_semantic_hash_from_post"></a>
-
-## Function `legacy_semantic_hash_from_post`
-
-
-
-<pre><code><b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_legacy_semantic_hash_from_post">legacy_semantic_hash_from_post</a>(post_id: <b>address</b>): vector&lt;u8&gt;
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_legacy_semantic_hash_from_post">legacy_semantic_hash_from_post</a>(post_id: <b>address</b>): vector&lt;u8&gt; {
-    <b>let</b> <b>mut</b> hash = bcs::to_bytes(&post_id);
-    vector::push_back(&<b>mut</b> hash, 0);
-    hash
 }
 </code></pre>
 
@@ -3085,14 +3339,57 @@ Oracle-only: register a semantic claim (deduped by hash).
 
 </details>
 
+<a name="social_contracts_social_proof_of_truth_register_future_link"></a>
+
+## Function `register_future_link`
+
+Record a future-claim link: registers <code>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, claim_index)</code> and <code>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, market)</code>,
+pushes a <code><a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotPostLink">SpotPostLink</a></code>, and appends to the post's pending analysis vectors.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_register_future_link">register_future_link</a>(registry: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaimRegistry">social_contracts::social_proof_of_truth::SpotClaimRegistry</a>, claim: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaim">social_contracts::social_proof_of_truth::SpotClaim</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, market_id: <b>address</b>, claim_index: u64, resolution_policy_hash: vector&lt;u8&gt;, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_max_claim_per_post">max_claim_per_post</a>: u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_register_future_link">register_future_link</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaimRegistry">SpotClaimRegistry</a>,
+    claim: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaim">SpotClaim</a>,
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> Post,
+    market_id: <b>address</b>,
+    claim_index: u64,
+    resolution_policy_hash: vector&lt;u8&gt;,
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_max_claim_per_post">max_claim_per_post</a>: u64,
+) {
+    <b>let</b> post_id = <a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    <b>let</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_claim_id">claim_id</a> = object::uid_to_address(&claim.id);
+    <b>let</b> idx_key = <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_PostClaimIndexKey">PostClaimIndexKey</a> { post_id, claim_index };
+    <b>assert</b>!(!table::contains(&registry.post_claim_index_to_market, idx_key), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EClaimExists">EClaimExists</a>);
+    <b>let</b> creator = <a href="../social_contracts/post.md#social_contracts_post_get_post_owner">post::get_post_owner</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    vector::push_back(&<b>mut</b> claim.linked_posts, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotPostLink">SpotPostLink</a> { post_id, creator, claim_index });
+    table::add(&<b>mut</b> registry.post_claim_index_to_market, idx_key, market_id);
+    table::add(&<b>mut</b> registry.post_market_to_claim, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_PostMarketKey">PostMarketKey</a> { post_id, market_id }, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_claim_id">claim_id</a>);
+    <a href="../social_contracts/post.md#social_contracts_post_ensure_spot_analysis_pending">post::ensure_spot_analysis_pending</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_max_claim_per_post">max_claim_per_post</a>);
+    <a href="../social_contracts/post.md#social_contracts_post_spot_analysis_append_future">post::spot_analysis_append_future</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, claim_index, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_claim_id">claim_id</a>, market_id, resolution_policy_hash);
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_social_proof_of_truth_create_spot_market_for_claim"></a>
 
 ## Function `create_spot_market_for_claim`
 
-Oracle-only: open a market for an existing claim.
+Oracle-only: open a market for an existing claim, linking <code>primary_post</code> at <code>claim_index</code>.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_create_spot_market_for_claim">create_spot_market_for_claim</a>(_: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotOracleAdminCap">social_contracts::social_proof_of_truth::SpotOracleAdminCap</a>, config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, registry: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaimRegistry">social_contracts::social_proof_of_truth::SpotClaimRegistry</a>, claim: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaim">social_contracts::social_proof_of_truth::SpotClaim</a>, primary_post: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_market_key_hash">market_key_hash</a>: vector&lt;u8&gt;, betting_options: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, resolution_at_ms: u64, max_resolution_window_ms: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_create_spot_market_for_claim">create_spot_market_for_claim</a>(_: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotOracleAdminCap">social_contracts::social_proof_of_truth::SpotOracleAdminCap</a>, config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, registry: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaimRegistry">social_contracts::social_proof_of_truth::SpotClaimRegistry</a>, claim: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaim">social_contracts::social_proof_of_truth::SpotClaim</a>, primary_post: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, claim_index: u64, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_market_key_hash">market_key_hash</a>: vector&lt;u8&gt;, resolution_policy_hash: vector&lt;u8&gt;, betting_options: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, resolution_at_ms: u64, max_resolution_window_ms: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3107,7 +3404,9 @@ Oracle-only: open a market for an existing claim.
     registry: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaimRegistry">SpotClaimRegistry</a>,
     claim: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaim">SpotClaim</a>,
     primary_post: &<b>mut</b> Post,
+    claim_index: u64,
     <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_market_key_hash">market_key_hash</a>: vector&lt;u8&gt;,
+    resolution_policy_hash: vector&lt;u8&gt;,
     betting_options: vector&lt;String&gt;,
     resolution_at_ms: u64,
     max_resolution_window_ms: Option&lt;u64&gt;,
@@ -3134,9 +3433,6 @@ Oracle-only: open a market for an existing claim.
     };
     <b>let</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_claim_id">claim_id</a> = object::uid_to_address(&claim.id);
     <b>let</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_primary_post_id">primary_post_id</a> = <a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(primary_post);
-    <b>if</b> (!table::contains(&registry.post_to_claim, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_primary_post_id">primary_post_id</a>)) {
-        <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_link_post_to_claim_internal">link_post_to_claim_internal</a>(registry, claim, primary_post);
-    };
     <b>let</b> primary_creator = <a href="../social_contracts/post.md#social_contracts_post_get_post_owner">post::get_post_owner</a>(primary_post);
     <b>let</b> market = <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotMarket">SpotMarket</a> {
         id: object::new(ctx),
@@ -3178,13 +3474,23 @@ Oracle-only: open a market for an existing claim.
         table::remove(&<b>mut</b> registry.open_market_by_claim, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_claim_id">claim_id</a>);
     };
     table::add(&<b>mut</b> registry.open_market_by_claim, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_claim_id">claim_id</a>, market_id);
-    <a href="../social_contracts/post.md#social_contracts_post_set_spot_id">post::set_spot_id</a>(primary_post, market_id);
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_register_future_link">register_future_link</a>(
+        registry,
+        claim,
+        primary_post,
+        market_id,
+        claim_index,
+        resolution_policy_hash,
+        config.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_max_claim_per_post">max_claim_per_post</a>,
+    );
     transfer::share_object(market);
     event::emit(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotMarketCreatedEvent">SpotMarketCreatedEvent</a> {
         market_id,
         <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_claim_id">claim_id</a>,
         <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_market_key_hash">market_key_hash</a>: hash_copy,
         <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_primary_post_id">primary_post_id</a>,
+        claim_index,
+        resolution_policy_hash,
         created_at_ms,
         betting_options: betting_options_copy,
         resolution_at_ms: resolution_at,
@@ -3197,56 +3503,15 @@ Oracle-only: open a market for an existing claim.
 
 </details>
 
-<a name="social_contracts_social_proof_of_truth_link_post_to_claim_internal"></a>
-
-## Function `link_post_to_claim_internal`
-
-
-
-<pre><code><b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_link_post_to_claim_internal">link_post_to_claim_internal</a>(registry: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaimRegistry">social_contracts::social_proof_of_truth::SpotClaimRegistry</a>, claim: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaim">social_contracts::social_proof_of_truth::SpotClaim</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_link_post_to_claim_internal">link_post_to_claim_internal</a>(
-    registry: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaimRegistry">SpotClaimRegistry</a>,
-    claim: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaim">SpotClaim</a>,
-    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> Post,
-): Option&lt;<b>address</b>&gt; {
-    <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post_is_spot_enabled">post::is_spot_enabled</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EDisabled">EDisabled</a>);
-    <b>let</b> post_id = <a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
-    <b>let</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_claim_id">claim_id</a> = object::uid_to_address(&claim.id);
-    <b>assert</b>!(!table::contains(&registry.post_to_claim, post_id), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EClaimExists">EClaimExists</a>);
-    <b>let</b> creator = <a href="../social_contracts/post.md#social_contracts_post_get_post_owner">post::get_post_owner</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
-    vector::push_back(&<b>mut</b> claim.linked_posts, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotPostLink">SpotPostLink</a> { post_id, creator });
-    table::add(&<b>mut</b> registry.post_to_claim, post_id, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_claim_id">claim_id</a>);
-    <a href="../social_contracts/post.md#social_contracts_post_set_spot_claim_id">post::set_spot_claim_id</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_claim_id">claim_id</a>);
-    <b>if</b> (table::contains(&registry.open_market_by_claim, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_claim_id">claim_id</a>)) {
-        <b>let</b> mid = *table::borrow(&registry.open_market_by_claim, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_claim_id">claim_id</a>);
-        <a href="../social_contracts/post.md#social_contracts_post_set_spot_id">post::set_spot_id</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, mid);
-        option::some(mid)
-    } <b>else</b> {
-        option::none()
-    }
-}
-</code></pre>
-
-
-
-</details>
-
 <a name="social_contracts_social_proof_of_truth_link_post_to_spot_claim"></a>
 
 ## Function `link_post_to_spot_claim`
 
-Link a post to a semantic claim (multiple posts may share one claim/market).
+Link an additional post as a future-claim referrer into an existing open market
+(hybrid liquidity reuse). Requires the claim to have a live open market.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_link_post_to_spot_claim">link_post_to_spot_claim</a>(_: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotOracleAdminCap">social_contracts::social_proof_of_truth::SpotOracleAdminCap</a>, registry: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaimRegistry">social_contracts::social_proof_of_truth::SpotClaimRegistry</a>, claim: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaim">social_contracts::social_proof_of_truth::SpotClaim</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_link_post_to_spot_claim">link_post_to_spot_claim</a>(_: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotOracleAdminCap">social_contracts::social_proof_of_truth::SpotOracleAdminCap</a>, config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, registry: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaimRegistry">social_contracts::social_proof_of_truth::SpotClaimRegistry</a>, claim: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaim">social_contracts::social_proof_of_truth::SpotClaim</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, claim_index: u64, resolution_policy_hash: vector&lt;u8&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3257,16 +3522,36 @@ Link a post to a semantic claim (multiple posts may share one claim/market).
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_link_post_to_spot_claim">link_post_to_spot_claim</a>(
     _: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotOracleAdminCap">SpotOracleAdminCap</a>,
+    config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">SpotConfig</a>,
     registry: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaimRegistry">SpotClaimRegistry</a>,
     claim: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaim">SpotClaim</a>,
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> Post,
+    claim_index: u64,
+    resolution_policy_hash: vector&lt;u8&gt;,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
-    <b>let</b> post_id = <a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    <b>assert</b>!(config.truth_enabled, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EDisabled">EDisabled</a>);
     <b>let</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_claim_id">claim_id</a> = object::uid_to_address(&claim.id);
-    <b>let</b> market_id = <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_link_post_to_claim_internal">link_post_to_claim_internal</a>(registry, claim, <a href="../social_contracts/post.md#social_contracts_post">post</a>);
-    event::emit(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotPostLinkedEvent">SpotPostLinkedEvent</a> { post_id, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_claim_id">claim_id</a>, market_id });
+    <b>assert</b>!(table::contains(&registry.open_market_by_claim, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_claim_id">claim_id</a>), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ENoOpenMarket">ENoOpenMarket</a>);
+    <b>let</b> market_id = *table::borrow(&registry.open_market_by_claim, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_claim_id">claim_id</a>);
+    <b>let</b> post_id = <a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_register_future_link">register_future_link</a>(
+        registry,
+        claim,
+        <a href="../social_contracts/post.md#social_contracts_post">post</a>,
+        market_id,
+        claim_index,
+        resolution_policy_hash,
+        config.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_max_claim_per_post">max_claim_per_post</a>,
+    );
+    event::emit(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotPostLinkedEvent">SpotPostLinkedEvent</a> {
+        post_id,
+        <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_claim_id">claim_id</a>,
+        market_id: option::some(market_id),
+        claim_index,
+        policy_hash: resolution_policy_hash,
+    });
     <b>let</b> _ = clock;
     <b>let</b> _ = ctx;
 }
@@ -3276,14 +3561,15 @@ Link a post to a semantic claim (multiple posts may share one claim/market).
 
 </details>
 
-<a name="social_contracts_social_proof_of_truth_create_spot_record_for_post"></a>
+<a name="social_contracts_social_proof_of_truth_finalize_spot_claims_for_post"></a>
 
-## Function `create_spot_record_for_post`
+## Function `finalize_spot_claims_for_post`
 
-Legacy one-shot market creation (claim + market + link) for oracle backward compatibility.
+Oracle-only: commit a post's multi-claim analysis. Sets terminal status, counts and
+manifests, and emits the batch projection (future arrays + parallel past verdicts).
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_create_spot_record_for_post">create_spot_record_for_post</a>(oracle_cap: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotOracleAdminCap">social_contracts::social_proof_of_truth::SpotOracleAdminCap</a>, config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, registry: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaimRegistry">social_contracts::social_proof_of_truth::SpotClaimRegistry</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, betting_options: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, resolution_window_ms: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, max_resolution_window_ms: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_finalize_spot_claims_for_post">finalize_spot_claims_for_post</a>(_: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotOracleAdminCap">social_contracts::social_proof_of_truth::SpotOracleAdminCap</a>, config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, detected_claim_count: u64, rejected_claim_count: u64, truncated_claim_count: u64, past_verified_count: u64, claim_manifest_hash: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;u8&gt;&gt;, veracity_manifest_hash: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;u8&gt;&gt;, past_claim_indexes: vector&lt;u64&gt;, past_verdicts: vector&lt;u8&gt;, past_related_market_ids: vector&lt;<b>address</b>&gt;, past_evidence_hashes: vector&lt;vector&lt;u8&gt;&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3292,54 +3578,155 @@ Legacy one-shot market creation (claim + market + link) for oracle backward comp
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_create_spot_record_for_post">create_spot_record_for_post</a>(
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_finalize_spot_claims_for_post">finalize_spot_claims_for_post</a>(
+    _: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotOracleAdminCap">SpotOracleAdminCap</a>,
+    config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">SpotConfig</a>,
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> Post,
+    detected_claim_count: u64,
+    rejected_claim_count: u64,
+    truncated_claim_count: u64,
+    past_verified_count: u64,
+    claim_manifest_hash: Option&lt;vector&lt;u8&gt;&gt;,
+    veracity_manifest_hash: Option&lt;vector&lt;u8&gt;&gt;,
+    past_claim_indexes: vector&lt;u64&gt;,
+    past_verdicts: vector&lt;u8&gt;,
+    past_related_market_ids: vector&lt;<b>address</b>&gt;,
+    past_evidence_hashes: vector&lt;vector&lt;u8&gt;&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>assert</b>!(config.truth_enabled, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EDisabled">EDisabled</a>);
+    <b>let</b> past_len = vector::length(&past_claim_indexes);
+    <b>assert</b>!(past_len == past_verified_count, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EPastVerdictMismatch">EPastVerdictMismatch</a>);
+    <b>assert</b>!(vector::length(&past_verdicts) == past_len, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EPastVerdictMismatch">EPastVerdictMismatch</a>);
+    <b>assert</b>!(vector::length(&past_related_market_ids) == past_len, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EPastVerdictMismatch">EPastVerdictMismatch</a>);
+    <b>assert</b>!(vector::length(&past_evidence_hashes) == past_len, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EPastVerdictMismatch">EPastVerdictMismatch</a>);
+    <b>let</b> <b>mut</b> vi = 0;
+    <b>while</b> (vi &lt; past_len) {
+        <b>let</b> v = *vector::borrow(&past_verdicts, vi);
+        <b>assert</b>!(v == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_VERDICT_TRUE">VERDICT_TRUE</a> || v == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_VERDICT_FALSE">VERDICT_FALSE</a> || v == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_VERDICT_UNVERIFIABLE">VERDICT_UNVERIFIABLE</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EPastVerdictMismatch">EPastVerdictMismatch</a>);
+        vi = vi + 1;
+    };
+    <b>let</b> future_accepted = <a href="../social_contracts/post.md#social_contracts_post_spot_analysis_future_accepted_count">post::spot_analysis_future_accepted_count</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    <b>let</b> status = <b>if</b> (future_accepted &gt; 0 || past_verified_count &gt; 0) {
+        <a href="../social_contracts/post.md#social_contracts_post_spot_status_completed">post::spot_status_completed</a>()
+    } <b>else</b> {
+        <a href="../social_contracts/post.md#social_contracts_post_spot_status_completed_no_actionable">post::spot_status_completed_no_actionable</a>()
+    };
+    <a href="../social_contracts/post.md#social_contracts_post_finalize_spot_analysis">post::finalize_spot_analysis</a>(
+        <a href="../social_contracts/post.md#social_contracts_post">post</a>,
+        status,
+        detected_claim_count,
+        rejected_claim_count,
+        truncated_claim_count,
+        past_verified_count,
+        config.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_max_claim_per_post">max_claim_per_post</a>,
+        claim_manifest_hash,
+        veracity_manifest_hash,
+    );
+    <b>let</b> post_id = <a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    event::emit(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaimsFinalizedForPost">SpotClaimsFinalizedForPost</a> {
+        post_id,
+        status,
+        detected_claim_count,
+        rejected_claim_count,
+        truncated_claim_count,
+        future_accepted_count: future_accepted,
+        past_verified_count,
+        max_claim_per_post_applied: config.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_max_claim_per_post">max_claim_per_post</a>,
+        claim_manifest_hash,
+        veracity_manifest_hash,
+        future_claim_indexes: <a href="../social_contracts/post.md#social_contracts_post_spot_analysis_claim_indexes">post::spot_analysis_claim_indexes</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>),
+        future_claim_ids: <a href="../social_contracts/post.md#social_contracts_post_spot_analysis_claim_ids">post::spot_analysis_claim_ids</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>),
+        future_market_ids: <a href="../social_contracts/post.md#social_contracts_post_spot_analysis_market_ids">post::spot_analysis_market_ids</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>),
+        past_claim_indexes,
+        past_verdicts,
+        past_related_market_ids,
+        past_evidence_hashes,
+        finalized_at_ms: clock::timestamp_ms(clock),
+    });
+    <b>let</b> _ = ctx;
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_of_truth_create_and_finalize_spot_market_for_post"></a>
+
+## Function `create_and_finalize_spot_market_for_post`
+
+Convenience one-shot: register claim + open one future market + finalize (single-claim
+posts and test setup). Emits <code><a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotMarketCreatedEvent">SpotMarketCreatedEvent</a></code> + <code><a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaimsFinalizedForPost">SpotClaimsFinalizedForPost</a></code>.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_create_and_finalize_spot_market_for_post">create_and_finalize_spot_market_for_post</a>(oracle_cap: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotOracleAdminCap">social_contracts::social_proof_of_truth::SpotOracleAdminCap</a>, config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, registry: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaimRegistry">social_contracts::social_proof_of_truth::SpotClaimRegistry</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_semantic_claim_hash">semantic_claim_hash</a>: vector&lt;u8&gt;, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_market_key_hash">market_key_hash</a>: vector&lt;u8&gt;, resolution_policy_hash: vector&lt;u8&gt;, betting_options: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, resolution_at_ms: u64, max_resolution_window_ms: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_create_and_finalize_spot_market_for_post">create_and_finalize_spot_market_for_post</a>(
     oracle_cap: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotOracleAdminCap">SpotOracleAdminCap</a>,
     config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">SpotConfig</a>,
     registry: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaimRegistry">SpotClaimRegistry</a>,
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> Post,
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_semantic_claim_hash">semantic_claim_hash</a>: vector&lt;u8&gt;,
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_market_key_hash">market_key_hash</a>: vector&lt;u8&gt;,
+    resolution_policy_hash: vector&lt;u8&gt;,
     betting_options: vector&lt;String&gt;,
-    resolution_window_ms: Option&lt;u64&gt;,
+    resolution_at_ms: u64,
     max_resolution_window_ms: Option&lt;u64&gt;,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>assert</b>!(config.truth_enabled, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EDisabled">EDisabled</a>);
-    <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post_is_spot_enabled">post::is_spot_enabled</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EDisabled">EDisabled</a>);
-    <b>let</b> post_id = <a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
-    <b>let</b> semantic_hash = <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_legacy_semantic_hash_from_post">legacy_semantic_hash_from_post</a>(post_id);
     <b>let</b> created_at_ms = clock::timestamp_ms(clock);
-    <b>let</b> <b>mut</b> claim = <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_register_spot_claim">register_spot_claim</a>(registry, semantic_hash, created_at_ms, ctx);
-    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_link_post_to_claim_internal">link_post_to_claim_internal</a>(registry, &<b>mut</b> claim, <a href="../social_contracts/post.md#social_contracts_post">post</a>);
-    <b>let</b> betting_options_copy = betting_options;
-    <b>let</b> resolution_at_ms = <b>if</b> (option::is_some(&max_resolution_window_ms)) {
-        created_at_ms + *option::borrow(&max_resolution_window_ms)
-    } <b>else</b> <b>if</b> (option::is_some(&resolution_window_ms)) {
-        created_at_ms + *option::borrow(&resolution_window_ms)
-    } <b>else</b> {
-        created_at_ms + <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MAX_RESOLUTION_WINDOW_MS">DEFAULT_MAX_RESOLUTION_WINDOW_MS</a>
-    };
+    <b>let</b> <b>mut</b> claim = <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_register_spot_claim">register_spot_claim</a>(registry, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_semantic_claim_hash">semantic_claim_hash</a>, created_at_ms, ctx);
     <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_create_spot_market_for_claim">create_spot_market_for_claim</a>(
         oracle_cap,
         config,
         registry,
         &<b>mut</b> claim,
         <a href="../social_contracts/post.md#social_contracts_post">post</a>,
-        semantic_hash,
+        0,
+        <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_market_key_hash">market_key_hash</a>,
+        resolution_policy_hash,
         betting_options,
         resolution_at_ms,
         max_resolution_window_ms,
         clock,
         ctx,
     );
-    <b>let</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_claim_id">claim_id</a> = object::uid_to_address(&claim.id);
     transfer::share_object(claim);
-    event::emit(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecordCreatedEvent">SpotRecordCreatedEvent</a> {
-        record_id: *table::borrow(&registry.open_market_by_claim, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_claim_id">claim_id</a>),
+    <b>let</b> status = <a href="../social_contracts/post.md#social_contracts_post_spot_status_completed">post::spot_status_completed</a>();
+    <a href="../social_contracts/post.md#social_contracts_post_finalize_spot_analysis">post::finalize_spot_analysis</a>(
+        <a href="../social_contracts/post.md#social_contracts_post">post</a>, status, 1, 0, 0, 0, config.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_max_claim_per_post">max_claim_per_post</a>, option::none(), option::none(),
+    );
+    <b>let</b> post_id = <a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    event::emit(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaimsFinalizedForPost">SpotClaimsFinalizedForPost</a> {
         post_id,
-        created_at_ms,
-        betting_options: betting_options_copy,
-        resolution_window_ms,
-        max_resolution_window_ms,
+        status,
+        detected_claim_count: 1,
+        rejected_claim_count: 0,
+        truncated_claim_count: 0,
+        future_accepted_count: 1,
+        past_verified_count: 0,
+        max_claim_per_post_applied: config.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_max_claim_per_post">max_claim_per_post</a>,
+        claim_manifest_hash: option::none(),
+        veracity_manifest_hash: option::none(),
+        future_claim_indexes: <a href="../social_contracts/post.md#social_contracts_post_spot_analysis_claim_indexes">post::spot_analysis_claim_indexes</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>),
+        future_claim_ids: <a href="../social_contracts/post.md#social_contracts_post_spot_analysis_claim_ids">post::spot_analysis_claim_ids</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>),
+        future_market_ids: <a href="../social_contracts/post.md#social_contracts_post_spot_analysis_market_ids">post::spot_analysis_market_ids</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>),
+        past_claim_indexes: vector::empty(),
+        past_verdicts: vector::empty(),
+        past_related_market_ids: vector::empty(),
+        past_evidence_hashes: vector::empty(),
+        finalized_at_ms: created_at_ms,
     });
 }
 </code></pre>
@@ -3371,11 +3758,13 @@ Legacy one-shot market creation (claim + market + link) for oracle backward comp
     <b>let</b> post_id = <a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
     <b>assert</b>!(market.status != <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_DAO_REQUIRED">STATUS_DAO_REQUIRED</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EDaoDebateFrozen">EDaoDebateFrozen</a>);
     <b>assert</b>!(market.status == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_OPEN">STATUS_OPEN</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EMarketNotOpen">EMarketNotOpen</a>);
-    <b>assert</b>!(table::contains(&registry.post_to_claim, post_id), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EPostNotLinked">EPostNotLinked</a>);
-    <b>let</b> linked_claim = *table::borrow(&registry.post_to_claim, post_id);
+    <b>let</b> market_id = object::uid_to_address(&market.id);
+    <b>let</b> key = <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_PostMarketKey">PostMarketKey</a> { post_id, market_id };
+    <b>assert</b>!(table::contains(&registry.post_market_to_claim, key), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EPostNotLinked">EPostNotLinked</a>);
+    <b>let</b> linked_claim = *table::borrow(&registry.post_market_to_claim, key);
     <b>assert</b>!(linked_claim == market.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_claim_id">claim_id</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EPostNotLinked">EPostNotLinked</a>);
     <b>let</b> open_id = *table::borrow(&registry.open_market_by_claim, market.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_claim_id">claim_id</a>);
-    <b>assert</b>!(open_id == object::uid_to_address(&market.id), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EMarketNotOpen">EMarketNotOpen</a>);
+    <b>assert</b>!(open_id == market_id, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EMarketNotOpen">EMarketNotOpen</a>);
 }
 </code></pre>
 
@@ -3412,6 +3801,7 @@ Sole public betting entry — registry validates the market is open for this cla
     ctx: &<b>mut</b> TxContext
 ) {
     <b>assert</b>!(spot_config.truth_enabled, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EDisabled">EDisabled</a>);
+    <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post_spot_analysis_status">post::spot_analysis_status</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>) == <a href="../social_contracts/post.md#social_contracts_post_spot_status_completed">post::spot_status_completed</a>(), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ENotFinalized">ENotFinalized</a>);
     <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_market_open_for_post">assert_market_open_for_post</a>(registry, market, <a href="../social_contracts/post.md#social_contracts_post">post</a>);
     <b>let</b> post_id = <a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
     <b>let</b> ref_id = <b>if</b> (option::is_some(&referrer_post_id)) {
@@ -4737,42 +5127,6 @@ Reclaim expired creator rewards to ecosystem (+ platform remainder).
 
 </details>
 
-<a name="social_contracts_social_proof_of_truth_patch_spot_record_times_for_migration"></a>
-
-## Function `patch_spot_record_times_for_migration`
-
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_patch_spot_record_times_for_migration">patch_spot_record_times_for_migration</a>(_: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotOracleAdminCap">social_contracts::social_proof_of_truth::SpotOracleAdminCap</a>, market: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotMarket">social_contracts::social_proof_of_truth::SpotMarket</a>, created_at_ms: u64, resolution_window_ms: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, max_resolution_window_ms: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, resolution_at_ms: u64, last_resolution_at_ms: u64)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_patch_spot_record_times_for_migration">patch_spot_record_times_for_migration</a>(
-    _: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotOracleAdminCap">SpotOracleAdminCap</a>,
-    market: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotMarket">SpotMarket</a>,
-    created_at_ms: u64,
-    resolution_window_ms: Option&lt;u64&gt;,
-    max_resolution_window_ms: Option&lt;u64&gt;,
-    resolution_at_ms: u64,
-    last_resolution_at_ms: u64,
-) {
-    market.created_at_ms = created_at_ms;
-    market.resolution_window_ms = resolution_window_ms;
-    market.max_resolution_window_ms = max_resolution_window_ms;
-    market.resolution_at_ms = resolution_at_ms;
-    market.last_resolution_at_ms = last_resolution_at_ms;
-}
-</code></pre>
-
-
-
-</details>
-
 <a name="social_contracts_social_proof_of_truth_migrate_config"></a>
 
 ## Function `migrate_config`
@@ -4803,6 +5157,9 @@ Reclaim expired creator rewards to ecosystem (+ platform remainder).
         config.creator_fee_bps = <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_CREATOR_FEE_BPS">DEFAULT_CREATOR_FEE_BPS</a>;
         config.creator_claim_window_ms = <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_CREATOR_CLAIM_WINDOW_MS">DEFAULT_CREATOR_CLAIM_WINDOW_MS</a>;
         config.expired_creator_ecosystem_bps = <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_EXPIRED_CREATOR_ECOSYSTEM_BPS">DEFAULT_EXPIRED_CREATOR_ECOSYSTEM_BPS</a>;
+    };
+    <b>if</b> (config.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_max_claim_per_post">max_claim_per_post</a> == 0) {
+        config.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_max_claim_per_post">max_claim_per_post</a> = <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MAX_CLAIM_PER_POST">DEFAULT_MAX_CLAIM_PER_POST</a>;
     };
     config.version = current_version;
     <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(

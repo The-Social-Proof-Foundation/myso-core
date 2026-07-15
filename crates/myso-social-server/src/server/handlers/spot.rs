@@ -31,7 +31,7 @@ pub struct PendingSpotPostsQuery {
 }
 
 /// Secret-gated endpoint consumed by the SPoT oracle PostPoller.
-/// Returns posts with `enable_spot = true` and `spot_id IS NULL`.
+/// Returns posts awaiting analysis finalization (`spot_analysis_status = 0`); SPoT is always-on.
 pub async fn list_pending_spot_posts(
     State(state): State<Arc<AppState>>,
     Query(params): Query<PendingSpotPostsQuery>,

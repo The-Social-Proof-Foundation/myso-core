@@ -492,6 +492,21 @@ impl SpotConfig {
         self.inner.max_single_bet
     }
 
+    /// Maximum bets allowed per SPoT record.
+    async fn max_bets_per_record(&self) -> i64 {
+        self.inner.max_bets_per_record
+    }
+
+    /// Maximum claims per post at finalize time (Move range 1–20).
+    async fn max_claim_per_post(&self) -> i64 {
+        self.inner.max_claim_per_post
+    }
+
+    /// Shared SPoT GovernanceDAO object ID (registry_type = 2).
+    async fn spot_governance_registry_id(&self) -> Option<&str> {
+        self.inner.spot_governance_registry_id.as_deref()
+    }
+
     /// Minimum number of betting options required on a SPoT record.
     async fn min_betting_options(&self) -> i64 {
         self.inner.min_betting_options

@@ -6,7 +6,8 @@
 --   1. DROP the 6 new config hypertables (with their time triggers/functions).
 --   2. DROP the columns added to the 8 existing config tables.
 --
--- Note: spot_config old fee_bps / fee_split_bps_platform columns are pre-existing
+-- Note: spot_config legacy fee_bps / fee_split_bps_platform columns are removed
+--       in the up migration; down rollback restores platform/ecosystem fee columns only.
 --       and are intentionally NOT dropped here.
 
 -- ============================================================================
@@ -142,13 +143,13 @@ DROP COLUMN IF EXISTS ecosystem_fee,
 DROP COLUMN IF EXISTS platform_fee,
 DROP COLUMN IF EXISTS gross_amount;
 
--- 2.6 poc_configuration
-ALTER TABLE poc_configuration
+-- 2.6 poc_config
+ALTER TABLE poc_config
 DROP COLUMN IF EXISTS dispute_governance_registry_id,
 DROP COLUMN IF EXISTS max_disputes_per_post,
 DROP COLUMN IF EXISTS min_vault_deposit_amount;
 
--- 2.5 spot_config — fee model redo (old fee_bps / fee_split_bps_platform kept)
+-- 2.5 spot_config — fee model
 ALTER TABLE spot_config
 DROP COLUMN IF EXISTS ecosystem_fee_bps,
 DROP COLUMN IF EXISTS platform_fee_bps;
@@ -210,7 +211,7 @@ DROP COLUMN IF EXISTS oracle_markup_bps;
 
 DROP INDEX IF EXISTS idx_ecosystem_treasury_time;
 DROP INDEX IF EXISTS idx_spt_config_time;
-DROP INDEX IF EXISTS idx_poc_configuration_time;
+DROP INDEX IF EXISTS idx_poc_config_time;
 
 DO $$
 BEGIN
@@ -222,23 +223,23 @@ BEGIN
     END IF;
     IF EXISTS (
         SELECT 1 FROM timescaledb_information.hypertables
-        WHERE hypertable_name = 'poc_configuration'
+        WHERE hypertable_name = 'poc_config'
     ) THEN
-        ALTER TABLE poc_configuration DROP CONSTRAINT IF EXISTS poc_configuration_pkey;
+        ALTER TABLE poc_config DROP CONSTRAINT IF EXISTS poc_config_pkey;
     END IF;
 END $$;
 
 DROP TRIGGER IF EXISTS set_spt_config_time ON spt_config;
 DROP FUNCTION IF EXISTS update_spt_config_time();
-DROP TRIGGER IF EXISTS set_poc_configuration_time ON poc_configuration;
-DROP FUNCTION IF EXISTS update_poc_configuration_time();
+DROP TRIGGER IF EXISTS set_poc_config_time ON poc_config;
+DROP FUNCTION IF EXISTS update_poc_config_time();
 DROP TRIGGER IF EXISTS set_ecosystem_treasury_time ON ecosystem_treasury;
 DROP FUNCTION IF EXISTS update_ecosystem_treasury_time();
 DROP TRIGGER IF EXISTS set_spt_exchange_config_time ON spt_exchange_config;
 DROP FUNCTION IF EXISTS update_spt_exchange_config_time();
 
 ALTER TABLE ecosystem_treasury DROP COLUMN IF EXISTS version;
-ALTER TABLE poc_configuration DROP COLUMN IF EXISTS version;
+ALTER TABLE poc_config DROP COLUMN IF EXISTS version;
 ALTER TABLE spt_exchange_config DROP COLUMN IF EXISTS version;
 ALTER TABLE mydata_config DROP COLUMN IF EXISTS version;
 

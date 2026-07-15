@@ -171,6 +171,7 @@ pub async fn submit_create_claim_market(state: Arc<AppState>, job: &SpotJob) -> 
                 market_object_id,
                 "create_spot_claim + create_spot_market_for_claim submitted"
             );
+            enqueue_finalize_post(&state, oracle_market_id, &market.post_id, 1).await?;
             Ok(())
         }
         Err(err) => {
@@ -289,6 +290,7 @@ pub async fn submit_link_post(state: Arc<AppState>, job: &SpotJob) -> anyhow::Re
                     .await?;
             }
             info!(market_id = %oracle_market_id, digest, "link_post submitted");
+            enqueue_finalize_post(&state, oracle_market_id, &market.post_id, 1).await?;
             Ok(())
         }
         Err(err) => {
@@ -308,6 +310,35 @@ pub async fn submit_link_post(state: Arc<AppState>, job: &SpotJob) -> anyhow::Re
 
 pub async fn submit_create_market(state: Arc<AppState>, job: &SpotJob) -> anyhow::Result<()> {
     submit_create_claim_market(state, job).await
+}
+
+/// Enqueue an on-chain `finalize_spot_claims_for_post` after a market create/link confirms, so
+/// the post's analysis reaches `completed` and its future-linked markets become bettable.
+/// Single future-claim baseline: `detected_claim_count = 1`, no past verdicts.
+async fn enqueue_finalize_post(
+    state: &Arc<AppState>,
+    oracle_market_id: Uuid,
+    post_id: &str,
+    detected: u64,
+) -> anyhow::Result<()> {
+    crate::store::jobs::enqueue_job(
+        state.store.pool(),
+        "SubmitChainTx",
+        Some(oracle_market_id),
+        None,
+        80,
+        chrono::Utc::now(),
+        serde_json::json!({
+            "tx_kind": "finalize_post",
+            "post_id": post_id,
+            "detected_claim_count": detected,
+            "rejected_claim_count": 0,
+            "truncated_claim_count": 0,
+            "past_verified_count": 0,
+        }),
+    )
+    .await?;
+    Ok(())
 }
 
 async fn submit_link_to_existing_market(
@@ -362,6 +393,7 @@ async fn submit_link_to_existing_market(
                 market_object_id,
                 "linked post to existing on-chain claim/market"
             );
+            enqueue_finalize_post(&state, oracle_market_id, post_id, 1).await?;
             Ok(())
         }
         Err(err) => {
@@ -446,7 +478,11 @@ async fn build_and_submit_create_market(
     let registry_input = ptb.obj(registry_arg)?;
     let claim_input = ptb.obj(claim_arg)?;
     let post_input = ptb.obj(post_arg)?;
+    // Single-claim baseline: primary post links this market at claim_index 0. The market key
+    // hash doubles as the resolution policy binding (both derived from the resolver spec).
+    let claim_index_input = ptb.pure(0u64)?;
     let key_input = ptb.pure(market_key_hash.to_vec())?;
+    let policy_input = ptb.pure(market_key_hash.to_vec())?;
     let options_input = ptb.pure(betting_options.to_vec())?;
     let resolution_at_input = ptb.pure(resolution_at_ms)?;
     let max_rw_input = ptb.pure(Some(max_resolution_buffer_ms))?;
@@ -462,7 +498,9 @@ async fn build_and_submit_create_market(
             registry_input,
             claim_input,
             post_input,
+            claim_index_input,
             key_input,
+            policy_input,
             options_input,
             resolution_at_input,
             max_rw_input,
@@ -665,6 +703,7 @@ async fn build_and_submit_link_post(
 
     let package = ObjectID::from_hex_literal(SOCIAL_PACKAGE_ID)?;
     let admin_cap = parse_object_id(args.admin_cap_object_id.as_ref().unwrap())?;
+    let spot_config = parse_object_id(args.spot_config_object_id.as_ref().unwrap())?;
     let registry_id = parse_object_id(args.spot_registry_object_id.as_ref().unwrap())?;
     let claim_obj = parse_object_id(claim_object_id)?;
     let post_obj = parse_object_id(post_id)?;
@@ -676,6 +715,8 @@ async fn build_and_submit_link_post(
         .await?
         .into_object()?;
     let admin_arg = ObjectArg::ImmOrOwnedObject(admin_obj.object_ref());
+    let config_arg =
+        shared_object_arg(&client, spot_config, SharedObjectMutability::Immutable).await?;
     let registry_arg =
         shared_object_arg(&client, registry_id, SharedObjectMutability::Mutable).await?;
     let claim_arg =
@@ -685,9 +726,14 @@ async fn build_and_submit_link_post(
 
     let mut ptb = ProgrammableTransactionBuilder::new();
     let admin_input = ptb.obj(admin_arg)?;
+    let config_input = ptb.obj(config_arg)?;
     let registry_input = ptb.obj(registry_arg)?;
     let claim_input = ptb.obj(claim_arg)?;
     let post_input = ptb.obj(post_arg)?;
+    // Single-claim baseline: hybrid referrers link at claim_index 0; the claim id bytes stand
+    // in as the resolution policy binding until per-claim policy threading lands.
+    let claim_index_input = ptb.pure(0u64)?;
+    let policy_input = ptb.pure(claim_obj.into_bytes().to_vec())?;
     let clock_input = ptb.obj(clock_arg)?;
 
     ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
@@ -697,9 +743,12 @@ async fn build_and_submit_link_post(
         type_arguments: vec![],
         arguments: vec![
             admin_input,
+            config_input,
             registry_input,
             claim_input,
             post_input,
+            claim_index_input,
+            policy_input,
             clock_input,
         ],
     })));

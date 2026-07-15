@@ -4,7 +4,9 @@ ALTER TABLE posts DROP COLUMN IF EXISTS spot_claim_id;
 ALTER TABLE spot_config
     DROP COLUMN IF EXISTS creator_fee_bps,
     DROP COLUMN IF EXISTS creator_claim_window_ms,
-    DROP COLUMN IF EXISTS expired_creator_ecosystem_bps;
+    DROP COLUMN IF EXISTS expired_creator_ecosystem_bps,
+    DROP COLUMN IF EXISTS max_bets_per_record,
+    DROP COLUMN IF EXISTS max_claim_per_post;
 
 DROP INDEX IF EXISTS idx_spot_bets_market;
 ALTER TABLE spot_bets

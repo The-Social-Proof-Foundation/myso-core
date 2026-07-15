@@ -101,15 +101,24 @@ CREATE INDEX IF NOT EXISTS idx_spot_bets_market ON spot_bets(market_object_id, t
 ALTER TABLE spot_config
     ADD COLUMN IF NOT EXISTS creator_fee_bps BIGINT,
     ADD COLUMN IF NOT EXISTS creator_claim_window_ms BIGINT,
-    ADD COLUMN IF NOT EXISTS expired_creator_ecosystem_bps BIGINT;
+    ADD COLUMN IF NOT EXISTS expired_creator_ecosystem_bps BIGINT,
+    ADD COLUMN IF NOT EXISTS max_bets_per_record BIGINT NOT NULL DEFAULT 10000,
+    ADD COLUMN IF NOT EXISTS max_claim_per_post BIGINT NOT NULL DEFAULT 10;
 
 UPDATE spot_config
 SET creator_fee_bps = COALESCE(creator_fee_bps, 0),
     creator_claim_window_ms = COALESCE(creator_claim_window_ms, 0),
-    expired_creator_ecosystem_bps = COALESCE(expired_creator_ecosystem_bps, 0)
+    expired_creator_ecosystem_bps = COALESCE(expired_creator_ecosystem_bps, 0),
+    max_bets_per_record = COALESCE(max_bets_per_record, 10000),
+    max_claim_per_post = COALESCE(max_claim_per_post, 10)
 WHERE creator_fee_bps IS NULL
    OR creator_claim_window_ms IS NULL
-   OR expired_creator_ecosystem_bps IS NULL;
+   OR expired_creator_ecosystem_bps IS NULL
+   OR max_bets_per_record IS NULL
+   OR max_claim_per_post IS NULL;
+
+COMMENT ON COLUMN spot_config.max_bets_per_record IS 'Maximum bets allowed per SPoT record (default: 10000)';
+COMMENT ON COLUMN spot_config.max_claim_per_post IS 'Maximum claims per post at finalize time (default: 10; Move range 1–20)';
 
 ALTER TABLE posts
     ADD COLUMN IF NOT EXISTS spot_claim_id TEXT;

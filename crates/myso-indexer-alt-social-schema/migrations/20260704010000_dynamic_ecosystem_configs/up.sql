@@ -11,9 +11,8 @@
 --      no persisted state (insurance_router_config, subscription_config, profile_config,
 --      memory_config, platform_config, messaging_config).
 --
--- Note: spot_config keeps its old fee_bps / fee_split_bps_platform columns for
---       rollback safety and Move struct parity during the transition window; the new
---       platform_fee_bps / ecosystem_fee_bps columns are added alongside them.
+-- Note: spot_config uses platform_fee_bps / ecosystem_fee_bps (legacy fee_bps /
+--       fee_split_bps_platform columns removed in this migration rollout).
 --
 -- Note: insurance_router_config does NOT already exist (the 20260503190000_insurance_router_marketplace
 --       migration created insurance_coverage_routes / insurance_route_fills, not a router
@@ -83,8 +82,7 @@ COMMENT ON COLUMN spot_config.min_reasoning_length IS 'Minimum reasoning text le
 COMMENT ON COLUMN spot_config.max_reasoning_length IS 'Maximum reasoning text length allowed when placing a bet (default: 5000)';
 COMMENT ON COLUMN spot_config.max_evidence_urls IS 'Maximum number of evidence URLs allowed on a bet (default: 10)';
 
--- 1.5 spot_config (hypertable) — fee model redo (direct platform % + ecosystem % of gross)
---      Old fee_bps / fee_split_bps_platform columns are intentionally KEPT.
+-- 1.5 spot_config (hypertable) — fee model (direct platform % + ecosystem % of gross)
 ALTER TABLE spot_config
 ADD COLUMN IF NOT EXISTS platform_fee_bps BIGINT NOT NULL DEFAULT 50,
 ADD COLUMN IF NOT EXISTS ecosystem_fee_bps BIGINT NOT NULL DEFAULT 50;
@@ -92,19 +90,22 @@ UPDATE spot_config SET platform_fee_bps = 50 WHERE platform_fee_bps IS NULL;
 UPDATE spot_config SET ecosystem_fee_bps = 50 WHERE ecosystem_fee_bps IS NULL;
 COMMENT ON COLUMN spot_config.platform_fee_bps IS 'Platform fee as a direct percentage of gross in bps (default: 50); platform_fee_bps + ecosystem_fee_bps <= 10000';
 COMMENT ON COLUMN spot_config.ecosystem_fee_bps IS 'Ecosystem treasury fee as a direct percentage of gross in bps (default: 50); platform_fee_bps + ecosystem_fee_bps <= 10000';
+ALTER TABLE spot_config
+DROP COLUMN IF EXISTS fee_bps,
+DROP COLUMN IF EXISTS fee_split_bps_platform;
 
--- 1.6 poc_configuration (append) — dispute cap + min vault deposit
-ALTER TABLE poc_configuration
+-- 1.6 poc_config (append) — dispute cap + min vault deposit
+ALTER TABLE poc_config
 ADD COLUMN IF NOT EXISTS max_disputes_per_post SMALLINT NOT NULL DEFAULT 2,
 ADD COLUMN IF NOT EXISTS min_vault_deposit_amount BIGINT NOT NULL DEFAULT 1;
-UPDATE poc_configuration SET max_disputes_per_post = 2 WHERE max_disputes_per_post IS NULL;
-UPDATE poc_configuration SET min_vault_deposit_amount = 1 WHERE min_vault_deposit_amount IS NULL;
-COMMENT ON COLUMN poc_configuration.max_disputes_per_post IS 'Max successful dispute submissions per post (lifetime, default: 2); SMALLINT mirrors Move u8';
-COMMENT ON COLUMN poc_configuration.min_vault_deposit_amount IS 'Minimum amount (per asset) accepted into a beneficiary vault deposit (default: 1)';
+UPDATE poc_config SET max_disputes_per_post = 2 WHERE max_disputes_per_post IS NULL;
+UPDATE poc_config SET min_vault_deposit_amount = 1 WHERE min_vault_deposit_amount IS NULL;
+COMMENT ON COLUMN poc_config.max_disputes_per_post IS 'Max successful dispute submissions per post (lifetime, default: 2); SMALLINT mirrors Move u8';
+COMMENT ON COLUMN poc_config.min_vault_deposit_amount IS 'Minimum amount (per asset) accepted into a beneficiary vault deposit (default: 1)';
 
-ALTER TABLE poc_configuration
+ALTER TABLE poc_config
   ADD COLUMN IF NOT EXISTS dispute_governance_registry_id TEXT NULL;
-COMMENT ON COLUMN poc_configuration.dispute_governance_registry_id IS
+COMMENT ON COLUMN poc_config.dispute_governance_registry_id IS
   'Shared PoC GovernanceDAO object ID (registry_type = 1)';
 
 -- 1.7 mydata_config (hypertable) — max encryption_id byte length
@@ -697,7 +698,7 @@ END $$;
 
 -- Add version where missing
 ALTER TABLE mydata_config ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0;
-ALTER TABLE poc_configuration ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0;
+ALTER TABLE poc_config ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0;
 ALTER TABLE ecosystem_treasury ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0;
 
 -- spt_config: normalize to standard metadata + hypertable
@@ -788,17 +789,17 @@ CREATE TRIGGER set_ecosystem_treasury_time
 BEFORE INSERT ON ecosystem_treasury FOR EACH ROW
 EXECUTE FUNCTION update_ecosystem_treasury_time();
 
-CREATE OR REPLACE FUNCTION update_poc_configuration_time()
+CREATE OR REPLACE FUNCTION update_poc_config_time()
 RETURNS TRIGGER AS $$
 BEGIN
     NEW.time = to_timestamp(NEW.updated_at / 1000);
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
-DROP TRIGGER IF EXISTS set_poc_configuration_time ON poc_configuration;
-CREATE TRIGGER set_poc_configuration_time
-BEFORE INSERT ON poc_configuration FOR EACH ROW
-EXECUTE FUNCTION update_poc_configuration_time();
+DROP TRIGGER IF EXISTS set_poc_config_time ON poc_config;
+CREATE TRIGGER set_poc_config_time
+BEFORE INSERT ON poc_config FOR EACH ROW
+EXECUTE FUNCTION update_poc_config_time();
 
 CREATE OR REPLACE FUNCTION update_spt_config_time()
 RETURNS TRIGGER AS $$
@@ -812,29 +813,29 @@ CREATE TRIGGER set_spt_config_time
 BEFORE INSERT ON spt_config FOR EACH ROW
 EXECUTE FUNCTION update_spt_config_time();
 
--- poc_configuration -> hypertable (if not already)
+-- poc_config -> hypertable (if not already)
 DO $$
 BEGIN
     IF EXISTS (
         SELECT 1 FROM information_schema.tables
-        WHERE table_schema = 'public' AND table_name = 'poc_configuration'
+        WHERE table_schema = 'public' AND table_name = 'poc_config'
     ) AND NOT EXISTS (
         SELECT 1 FROM timescaledb_information.hypertables
-        WHERE hypertable_name = 'poc_configuration'
+        WHERE hypertable_name = 'poc_config'
     ) THEN
         -- TimescaleDB rejects hypertables with a unique/PK that omits the partition column.
-        ALTER TABLE poc_configuration DROP CONSTRAINT IF EXISTS poc_configuration_pkey;
-        PERFORM create_hypertable('poc_configuration', 'time', if_not_exists => TRUE,
+        ALTER TABLE poc_config DROP CONSTRAINT IF EXISTS poc_config_pkey;
+        PERFORM create_hypertable('poc_config', 'time', if_not_exists => TRUE,
                                   create_default_indexes => FALSE,
                                   chunk_time_interval => INTERVAL '1 month');
     END IF;
     IF EXISTS (
         SELECT 1 FROM information_schema.tables
-        WHERE table_schema = 'public' AND table_name = 'poc_configuration'
+        WHERE table_schema = 'public' AND table_name = 'poc_config'
     ) AND NOT EXISTS (
-        SELECT 1 FROM pg_constraint WHERE conname = 'poc_configuration_pkey'
+        SELECT 1 FROM pg_constraint WHERE conname = 'poc_config_pkey'
     ) THEN
-        ALTER TABLE poc_configuration ADD PRIMARY KEY (id, time);
+        ALTER TABLE poc_config ADD PRIMARY KEY (id, time);
     END IF;
 END $$;
 
@@ -860,7 +861,7 @@ BEGIN
     END IF;
 END $$;
 
-CREATE INDEX IF NOT EXISTS idx_poc_configuration_time ON poc_configuration(time DESC);
+CREATE INDEX IF NOT EXISTS idx_poc_config_time ON poc_config(time DESC);
 CREATE INDEX IF NOT EXISTS idx_spt_config_time ON spt_config(time DESC);
 CREATE INDEX IF NOT EXISTS idx_ecosystem_treasury_time ON ecosystem_treasury(time DESC);
 

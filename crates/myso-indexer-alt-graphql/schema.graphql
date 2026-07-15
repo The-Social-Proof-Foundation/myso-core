@@ -5770,10 +5770,6 @@ type Post implements Node {
 	"""
 	deletionEvents(limit: Int, offset: Int): [PostDeletionEvent!]
 	"""
-	Whether SPoT (Social Proof of Truth) prediction markets are enabled for this post.
-	"""
-	enableSpot: Boolean!
-	"""
 	Whether Social Proof Token (SPT) features are enabled for this post.
 	"""
 	enableSpt: Boolean!
@@ -5945,6 +5941,10 @@ type Post implements Node {
 	"""
 	revenueRedirections(limit: Int, offset: Int): [PocRevenueRedirection!]
 	"""
+	Multi-claim SPoT analysis status/counts for this post (null only if the post is missing).
+	"""
+	spotAnalysis: SpotPostAnalysis
+	"""
 	Spot bet withdrawals for this post (paginated).
 	"""
 	spotBetWithdrawals(limit: Int, offset: Int): [SpotBetWithdrawal!]
@@ -5952,14 +5952,6 @@ type Post implements Node {
 	Spot bets for this post (paginated).
 	"""
 	spotBets(limit: Int, offset: Int): [SpotBet!]
-	"""
-	On-chain SpotClaim object id when this post is linked to a semantic claim.
-	"""
-	spotClaimId: String
-	"""
-	Address of the SpotRecord object (set when a SPoT record is created). Null if no record.
-	"""
-	spotId: String
 	"""
 	Spot payouts for this post (paginated).
 	"""
@@ -5976,6 +5968,10 @@ type Post implements Node {
 	Spot resolution for this post (1:1, null if not resolved).
 	"""
 	spotResolution: SpotResolution
+	"""
+	Past-claim verdicts for this post, in claim_index order (empty when none).
+	"""
+	spotVerdicts: [SpotClaimVerdict!]!
 	"""
 	Linked SPT pool id when set.
 	"""
@@ -8177,6 +8173,26 @@ type SpotClaimEarnings {
 	totalAmount: Int!
 }
 
+type SpotClaimVerdict {
+	claimIndex: Int!
+	evidenceManifestHash: String!
+	evidenceUrls: [String!]!
+	policyHash: String!
+	relatedClaimId: String
+	relatedMarketId: String
+	summary: String
+	verdict: SpotClaimVerdictValue!
+}
+
+"""
+Verdict value for a verified past claim.
+"""
+enum SpotClaimVerdictValue {
+	TRUE
+	FALSE
+	UNVERIFIABLE
+}
+
 type SpotConfig {
 	"""
 	Confidence threshold in basis points.
@@ -8342,6 +8358,28 @@ type SpotPendingCreatorPayout {
 	marketId: MySoAddress!
 	payoutId: Int!
 	referrerPostId: String!
+}
+
+type SpotPostAnalysis {
+	claimManifestHash: String
+	detectedClaimCount: Int!
+	finalizeTxDigest: String
+	futureAcceptedCount: Int!
+	maxClaimPerPost: Int!
+	pastVerifiedCount: Int!
+	rejectedClaimCount: Int!
+	status: SpotPostAnalysisStatus!
+	truncatedClaimCount: Int!
+	veracityManifestHash: String
+}
+
+"""
+Multi-claim SPoT analysis status.
+"""
+enum SpotPostAnalysisStatus {
+	PENDING
+	COMPLETED
+	COMPLETED_NO_ACTIONABLE
 }
 
 type SpotPostEarnings {

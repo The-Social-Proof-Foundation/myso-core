@@ -12,7 +12,7 @@
 //! - `DisputeVoteCastEvent` → `poc_dispute_votes`
 //! - `PoCDisputeResolvedEvent` → updates `poc_disputes`, may clear `posts` / `poc_badges` / `poc_revenue_redirections`
 //! - `VotingRewardClaimedEvent` → `poc_dispute_votes.reward_claimed` / `reward_amount`
-//! - `PoCConfigUpdatedEvent` → `poc_configuration`
+//! - `PoCConfigUpdatedEvent` → `poc_config`
 //! - `PoCBeneficiaryVaultDepositEvent` / `PoCBeneficiaryVaultClaimedEvent` → vault tables + balance materialization
 //!
 //! **`PostCreatedEvent` omission:** on-chain `Post` stores `platform_id` and `permissions`; the social indexer
@@ -36,7 +36,7 @@ fn transaction_id_from_event_id(event_id: &str) -> String {
     event_id.split(':').next().unwrap_or(event_id).to_string()
 }
 
-/// Matches Move `DEFAULT_*_THRESHOLD` (95 on a 0–100 scale) when no `poc_configuration` row exists.
+/// Matches Move `DEFAULT_*_THRESHOLD` (95 on a 0–100 scale) when no `poc_config` row exists.
 pub(crate) const DEFAULT_POC_SIMILARITY_THRESHOLD: i64 = 95;
 
 #[derive(Debug, Clone, Copy)]

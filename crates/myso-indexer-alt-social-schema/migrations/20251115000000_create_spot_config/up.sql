@@ -15,8 +15,6 @@ CREATE TABLE IF NOT EXISTS spot_config (
     resolution_window_epochs BIGINT NOT NULL DEFAULT 0,
     max_resolution_window_epochs BIGINT NOT NULL DEFAULT 0,
     payout_delay_epochs BIGINT NOT NULL DEFAULT 0,
-    fee_bps BIGINT NOT NULL DEFAULT 0,
-    fee_split_bps_platform BIGINT NOT NULL DEFAULT 0,
     platform_treasury TEXT NOT NULL,
     chain_treasury TEXT NOT NULL,
     oracle_address TEXT NOT NULL,

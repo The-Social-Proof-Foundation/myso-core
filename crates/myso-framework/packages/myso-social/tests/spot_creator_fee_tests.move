@@ -132,6 +132,7 @@ module social_contracts::spot_creator_fee_tests {
                 ADMIN,
                 0,
                 10000,
+                10,
                 spot_gov_id,
                 &clock,
                 test_scenario::ctx(scen),
@@ -194,19 +195,41 @@ module social_contracts::spot_creator_fee_tests {
         test_scenario::next_tx(scen, ADMIN);
         {
             let oracle_admin_cap = test_scenario::take_from_sender<spot::SpotOracleAdminCap>(scen);
+            let cfg = test_scenario::take_shared<spot::SpotConfig>(scen);
             let mut spot_registry = test_scenario::take_shared<spot::SpotClaimRegistry>(scen);
             let mut claim = test_scenario::take_shared<spot::SpotClaim>(scen);
             let mut p = test_scenario::take_shared_by_id<Post>(scen, object::id_from_address(secondary_post_id));
             let clock = test_scenario::take_shared<Clock>(scen);
             spot::link_post_to_spot_claim(
                 &oracle_admin_cap,
+                &cfg,
                 &mut spot_registry,
                 &mut claim,
                 &mut p,
+                0,
+                b"test_policy",
+                &clock,
+                test_scenario::ctx(scen),
+            );
+            spot::finalize_spot_claims_for_post(
+                &oracle_admin_cap,
+                &cfg,
+                &mut p,
+                1,
+                0,
+                0,
+                0,
+                option::none(),
+                option::none(),
+                vector::empty(),
+                vector::empty(),
+                vector::empty(),
+                vector::empty(),
                 &clock,
                 test_scenario::ctx(scen),
             );
             test_scenario::return_to_sender(scen, oracle_admin_cap);
+            test_scenario::return_shared(cfg);
             test_scenario::return_shared(clock);
             test_scenario::return_shared(p);
             test_scenario::return_shared(claim);
@@ -439,15 +462,19 @@ module social_contracts::spot_creator_fee_tests {
         test_scenario::next_tx(&mut scen, CREATOR);
         {
             let primary = test_scenario::take_shared_by_id<Post>(&scen, object::id_from_address(primary_post_id));
-            let primary_spot = *option::borrow(post::get_spot_id(&primary));
-            let primary_claim = post::get_spot_claim_id(&primary);
+            let primary_markets = post::spot_analysis_market_ids(&primary);
+            let primary_claims = post::spot_analysis_claim_ids(&primary);
+            let primary_spot = *vector::borrow(&primary_markets, 0);
+            let primary_claim = *vector::borrow(&primary_claims, 0);
             test_scenario::return_shared(primary);
             test_scenario::next_tx(&mut scen, REFERRER2);
             let secondary = test_scenario::take_shared_by_id<Post>(&scen, object::id_from_address(secondary_post_id));
-            let secondary_spot = *option::borrow(post::get_spot_id(&secondary));
-            let secondary_claim = post::get_spot_claim_id(&secondary);
+            let secondary_markets = post::spot_analysis_market_ids(&secondary);
+            let secondary_claims = post::spot_analysis_claim_ids(&secondary);
+            let secondary_spot = *vector::borrow(&secondary_markets, 0);
+            let secondary_claim = *vector::borrow(&secondary_claims, 0);
+            assert!(vector::length(&primary_markets) == 1, 2);
             assert!(primary_spot == secondary_spot, 1);
-            assert!(option::is_some(&primary_claim), 2);
             assert!(primary_claim == secondary_claim, 3);
             test_scenario::return_shared(secondary);
         };
@@ -479,7 +506,9 @@ module social_contracts::spot_creator_fee_tests {
         test_scenario::end(scen);
     }
 
-    #[test, expected_failure(abort_code = 29, location = social_contracts::social_proof_of_truth)]
+    // An unlinked post is also never finalized, so the finalize gate (ENotFinalized) rejects
+    // the bet before the link check.
+    #[test, expected_failure(abort_code = 34, location = social_contracts::social_proof_of_truth)]
     fun test_router_rejects_unlinked_post() {
         let mut scen = setup_env();
         configure_creator_fees(&mut scen, 0, 0, 10000);

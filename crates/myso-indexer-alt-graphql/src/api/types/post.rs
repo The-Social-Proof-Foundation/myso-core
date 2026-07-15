@@ -22,7 +22,8 @@ use crate::api::types::poc::{PocAnalysisResult, PocBadge, PocDispute, PocRevenue
 use crate::api::types::profile_summary::ProfileSummary;
 use crate::api::types::promotion::Promotion;
 use crate::api::types::spot::{
-    SpotBet, SpotBetWithdrawal, SpotPayout, SpotRecord, SpotRefund, SpotResolution,
+    SpotBet, SpotBetWithdrawal, SpotClaimVerdict, SpotPayout, SpotPostAnalysis, SpotRecord,
+    SpotRefund, SpotResolution,
 };
 
 // -----------------------------------------------------------------------------
@@ -213,21 +214,6 @@ impl Post {
     /// When the post was analyzed (epoch milliseconds).
     async fn poc_analyzed_at(&self) -> Option<i64> {
         self.inner.poc_analyzed_at
-    }
-
-    /// Whether SPoT (Social Proof of Truth) prediction markets are enabled for this post.
-    async fn enable_spot(&self) -> bool {
-        self.inner.enable_spot
-    }
-
-    /// Address of the SpotRecord object (set when a SPoT record is created). Null if no record.
-    async fn spot_id(&self) -> Option<&str> {
-        self.inner.spot_id.as_deref()
-    }
-
-    /// On-chain SpotClaim object id when this post is linked to a semantic claim.
-    async fn spot_claim_id(&self) -> Option<&str> {
-        self.inner.spot_claim_id.as_deref()
     }
 
     /// Linked SPT pool id when set.
@@ -501,6 +487,35 @@ impl Post {
         let reader = reader_opt.as_ref().as_ref()?;
         let row = reader.get_spot_record(&self.inner.post_id).await.ok()?;
         row.map(SpotRecord::from_row)
+    }
+
+    /// Multi-claim SPoT analysis status/counts for this post (null only if the post is missing).
+    async fn spot_analysis(&self, ctx: &Context<'_>) -> Option<SpotPostAnalysis> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let row = reader
+            .get_spot_post_analysis(&self.inner.post_id)
+            .await
+            .ok()?;
+        row.map(SpotPostAnalysis::from_row)
+    }
+
+    /// Past-claim verdicts for this post, in claim_index order (empty when none).
+    async fn spot_verdicts(&self, ctx: &Context<'_>) -> Vec<SpotClaimVerdict> {
+        let Some(reader_opt) =
+            ctx.data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()
+        else {
+            return Vec::new();
+        };
+        let Some(reader) = reader_opt.as_ref().as_ref() else {
+            return Vec::new();
+        };
+        reader
+            .list_spot_verdicts_for_post(&self.inner.post_id)
+            .await
+            .map(|rows| rows.into_iter().map(SpotClaimVerdict::from_row).collect())
+            .unwrap_or_default()
     }
 
     /// Spot payouts for this post (paginated).

@@ -42,7 +42,7 @@ CREATE INDEX IF NOT EXISTS idx_poc_analysis_reasoning ON poc_analysis_results US
 CREATE INDEX IF NOT EXISTS idx_platform_events_reasoning ON platform_events USING gin(to_tsvector('english', reasoning)) WHERE reasoning IS NOT NULL;
 
 -- Backfill poc_analysis_results.similarity_detected using score-threshold semantics (GraphQL-facing).
--- Uses latest poc_configuration thresholds only; skips when no config row exists (runtime indexer applies DEFAULT 95).
+-- Uses latest poc_config thresholds only; skips when no config row exists (runtime indexer applies DEFAULT 95).
 UPDATE poc_analysis_results par
 SET similarity_detected = par.highest_similarity_score >= (
     CASE par.media_type
@@ -54,11 +54,11 @@ SET similarity_detected = par.highest_similarity_score >= (
 )
 FROM (
     SELECT image_threshold, video_threshold, audio_threshold
-    FROM poc_configuration
+    FROM poc_config
     ORDER BY time DESC
     LIMIT 1
 ) cfg
-WHERE EXISTS (SELECT 1 FROM poc_configuration LIMIT 1);
+WHERE EXISTS (SELECT 1 FROM poc_config LIMIT 1);
 
 UPDATE poc_analysis_results par
 SET original_creator = prr.original_post_id

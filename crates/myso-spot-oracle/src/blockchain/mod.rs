@@ -3,6 +3,7 @@
 
 pub mod chain_lookup;
 pub mod create_market;
+pub mod finalize;
 pub mod refund;
 pub mod settle;
 pub mod worker;

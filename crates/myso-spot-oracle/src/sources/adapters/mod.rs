@@ -8,6 +8,7 @@ pub mod github_releases;
 pub mod http_official;
 pub mod rss_event;
 pub mod stub;
+pub mod wikipedia;
 
 use std::sync::Arc;
 
@@ -23,6 +24,7 @@ pub fn all_default_sources() -> Vec<Arc<dyn TrustedSource>> {
         Arc::new(rss_event::RssEventAdapter::new()),
         Arc::new(http_official::HttpOfficialAdapter::new()),
         Arc::new(github_releases::GithubReleasesAdapter::new()),
+        Arc::new(wikipedia::WikipediaAdapter::new()),
     ];
     let scaffolded: [&'static str; 16] = [
         "sec_edgar",

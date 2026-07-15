@@ -41,6 +41,9 @@ pub struct ExtractedClaim {
     pub suggested_options: Vec<String>,
     #[serde(default)]
     pub claim_category: crate::types::ClaimCategory,
+    /// future | past | unsupported. Future opens a market; past is verified; unsupported skipped.
+    #[serde(default)]
+    pub time_class: crate::types::TimeClass,
     #[serde(default)]
     pub resolver_hints: crate::types::ResolverHints,
 }

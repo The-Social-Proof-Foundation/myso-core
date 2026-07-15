@@ -1,15 +1,17 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use chrono::NaiveDateTime;
+use chrono::{DateTime, NaiveDateTime, Utc};
 use diesel::QueryableByName;
 use diesel::prelude::*;
 use diesel::sql_types::{BigInt, Int4, Jsonb, Nullable, SmallInt, Text};
 use serde::{Deserialize, Serialize};
+use serde_json::Value as JsonValue;
 
 use crate::schema::{
-    spot_bet_withdrawals, spot_bets, spot_claims, spot_config, spot_creator_payouts, spot_events,
-    spot_markets, spot_payouts, spot_post_links, spot_records, spot_refunds, spot_resolutions,
+    spot_bet_withdrawals, spot_bets, spot_claim_verdicts, spot_claims, spot_config,
+    spot_creator_payouts, spot_events, spot_markets, spot_payouts, spot_post_analyses,
+    spot_post_links, spot_records, spot_refunds, spot_resolutions,
 };
 
 pub const STATUS_OPEN: i16 = 1;
@@ -281,8 +283,6 @@ pub struct NewSpotConfig {
     pub resolution_window_ms: i64,
     pub max_resolution_window_ms: i64,
     pub payout_delay_ms: i64,
-    pub fee_bps: i64,
-    pub fee_split_bps_platform: i64,
     pub oracle_address: String,
     pub max_single_bet: i64,
     pub version: i64,
@@ -300,6 +300,8 @@ pub struct NewSpotConfig {
     pub creator_fee_bps: Option<i64>,
     pub creator_claim_window_ms: Option<i64>,
     pub expired_creator_ecosystem_bps: Option<i64>,
+    pub max_bets_per_record: i64,
+    pub max_claim_per_post: i64,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -358,6 +360,44 @@ pub struct NewSpotPostLink {
     pub link_kind: String,
     pub transaction_id: String,
     pub created_at: NaiveDateTime,
+    pub claim_index: i64,
+    pub policy_hash: String,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = spot_post_analyses)]
+pub struct NewSpotPostAnalysis {
+    pub post_id: String,
+    pub status: i16,
+    pub detected_claim_count: i64,
+    pub rejected_claim_count: i64,
+    pub truncated_claim_count: i64,
+    pub future_accepted_count: i64,
+    pub past_verified_count: i64,
+    pub max_claim_per_post_applied: i64,
+    pub claim_manifest_hash: Option<String>,
+    pub veracity_manifest_hash: Option<String>,
+    pub finalize_tx_digest: Option<String>,
+    pub checkpoint: Option<i64>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = spot_claim_verdicts)]
+pub struct NewSpotClaimVerdict {
+    pub post_id: String,
+    pub claim_index: i64,
+    pub time_class: String,
+    pub verdict: i16,
+    pub semantic_claim_hash: Option<String>,
+    pub policy_hash: String,
+    pub evidence_manifest_hash: String,
+    pub related_market_object_id: Option<String>,
+    pub related_claim_object_id: Option<String>,
+    pub evidence_urls: JsonValue,
+    pub summary: Option<String>,
+    pub transaction_id: String,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]

@@ -683,8 +683,6 @@ pub struct BcsPostCreatedEvent {
     revenue_redirect_to: Option<AccountAddress>,
     revenue_redirect_percentage: Option<u64>,
     enable_spt: bool,
-    enable_spot: bool,
-    spot_id: Option<AccountAddress>,
     spt_id: Option<AccountAddress>,
     poc_redirection_kind: u8,
     actor_address: AccountAddress,
@@ -713,8 +711,6 @@ struct ParsedPostCreated {
     revenue_redirect_to: Option<AccountAddress>,
     revenue_redirect_percentage: Option<u64>,
     enable_spt: bool,
-    enable_spot: bool,
-    spot_id: Option<AccountAddress>,
     spt_id: Option<AccountAddress>,
     poc_redirection_kind: u8,
     actor_address: AccountAddress,
@@ -752,8 +748,6 @@ impl From<BcsPostCreatedEvent> for ParsedPostCreated {
             revenue_redirect_to: ev.revenue_redirect_to,
             revenue_redirect_percentage: ev.revenue_redirect_percentage,
             enable_spt: ev.enable_spt,
-            enable_spot: ev.enable_spot,
-            spot_id: ev.spot_id,
             spt_id: ev.spt_id,
             poc_redirection_kind: ev.poc_redirection_kind,
             actor_address: ev.actor_address,
@@ -2379,6 +2373,7 @@ pub struct BcsSpotConfigUpdatedEvent {
     oracle_address: AccountAddress,
     max_single_bet: u64,
     max_bets_per_record: u64,
+    max_claim_per_post: u64,
     spot_governance_registry_id: AccountAddress,
     timestamp: u64,
 }
@@ -2430,6 +2425,8 @@ pub struct BcsSpotMarketCreatedEvent {
     claim_id: AccountAddress,
     market_key_hash: Vec<u8>,
     primary_post_id: AccountAddress,
+    claim_index: u64,
+    resolution_policy_hash: Vec<u8>,
     created_at_ms: u64,
     betting_options: Vec<String>,
     resolution_at_ms: u64,
@@ -2441,6 +2438,31 @@ pub struct BcsSpotPostLinkedEvent {
     post_id: AccountAddress,
     claim_id: AccountAddress,
     market_id: Option<AccountAddress>,
+    claim_index: u64,
+    policy_hash: Vec<u8>,
+}
+
+/// Batch finalize projection for a post's multi-claim analysis (future arrays + past verdicts).
+#[derive(Debug, Deserialize)]
+pub struct BcsSpotClaimsFinalizedForPost {
+    pub post_id: AccountAddress,
+    pub status: u8,
+    pub detected_claim_count: u64,
+    pub rejected_claim_count: u64,
+    pub truncated_claim_count: u64,
+    pub future_accepted_count: u64,
+    pub past_verified_count: u64,
+    pub max_claim_per_post_applied: u64,
+    pub claim_manifest_hash: Option<Vec<u8>>,
+    pub veracity_manifest_hash: Option<Vec<u8>>,
+    pub future_claim_indexes: Vec<u64>,
+    pub future_claim_ids: Vec<AccountAddress>,
+    pub future_market_ids: Vec<AccountAddress>,
+    pub past_claim_indexes: Vec<u64>,
+    pub past_verdicts: Vec<u8>,
+    pub past_related_market_ids: Vec<AccountAddress>,
+    pub past_evidence_hashes: Vec<Vec<u8>>,
+    pub finalized_at_ms: u64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -3837,8 +3859,6 @@ fn parse_post_event(
                 "revenue_redirect_to": ev.revenue_redirect_to.as_ref().map(addr_to_string),
                 "revenue_redirect_percentage": ev.revenue_redirect_percentage,
                 "enable_spt": ev.enable_spt,
-                "enable_spot": ev.enable_spot,
-                "spot_id": ev.spot_id.as_ref().map(addr_to_string),
                 "spt_id": ev.spt_id.as_ref().map(addr_to_string),
                 "poc_redirection_kind": ev.poc_redirection_kind,
                 "actor_address": addr_to_string(&ev.actor_address),
@@ -5706,6 +5726,7 @@ fn parse_spot_event(
                 "oracle_address": addr_to_string(&ev.oracle_address),
                 "max_single_bet": ev.max_single_bet,
                 "max_bets_per_record": ev.max_bets_per_record,
+                "max_claim_per_post": ev.max_claim_per_post,
                 "spot_governance_registry_id": addr_to_string(&ev.spot_governance_registry_id),
                 "timestamp": ev.timestamp,
             })))
@@ -5769,6 +5790,8 @@ fn parse_spot_event(
                 "claim_id": addr_to_string(&ev.claim_id),
                 "market_key_hash": format!("0x{}", hex::encode(&ev.market_key_hash)),
                 "primary_post_id": addr_to_string(&ev.primary_post_id),
+                "claim_index": ev.claim_index,
+                "resolution_policy_hash": format!("0x{}", hex::encode(&ev.resolution_policy_hash)),
                 "created_at_ms": ev.created_at_ms,
                 "betting_options": ev.betting_options,
                 "resolution_at_ms": ev.resolution_at_ms,
@@ -5782,6 +5805,32 @@ fn parse_spot_event(
                 "post_id": addr_to_string(&ev.post_id),
                 "claim_id": addr_to_string(&ev.claim_id),
                 "market_id": ev.market_id.as_ref().map(addr_to_string),
+                "claim_index": ev.claim_index,
+                "policy_hash": format!("0x{}", hex::encode(&ev.policy_hash)),
+            })))
+        }
+        "SpotClaimsFinalizedForPost" => {
+            let ev = bcs::from_bytes::<BcsSpotClaimsFinalizedForPost>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "post_id": addr_to_string(&ev.post_id),
+                "status": ev.status,
+                "detected_claim_count": ev.detected_claim_count,
+                "rejected_claim_count": ev.rejected_claim_count,
+                "truncated_claim_count": ev.truncated_claim_count,
+                "future_accepted_count": ev.future_accepted_count,
+                "past_verified_count": ev.past_verified_count,
+                "max_claim_per_post_applied": ev.max_claim_per_post_applied,
+                "claim_manifest_hash": ev.claim_manifest_hash.as_ref().map(|h| format!("0x{}", hex::encode(h))),
+                "veracity_manifest_hash": ev.veracity_manifest_hash.as_ref().map(|h| format!("0x{}", hex::encode(h))),
+                "future_claim_indexes": ev.future_claim_indexes,
+                "future_claim_ids": ev.future_claim_ids.iter().map(addr_to_string).collect::<Vec<_>>(),
+                "future_market_ids": ev.future_market_ids.iter().map(addr_to_string).collect::<Vec<_>>(),
+                "past_claim_indexes": ev.past_claim_indexes,
+                "past_verdicts": ev.past_verdicts,
+                "past_related_market_ids": ev.past_related_market_ids.iter().map(addr_to_string).collect::<Vec<_>>(),
+                "past_evidence_hashes": ev.past_evidence_hashes.iter().map(|h| format!("0x{}", hex::encode(h))).collect::<Vec<_>>(),
+                "finalized_at_ms": ev.finalized_at_ms,
             })))
         }
         "SpotCreatorPayoutAccruedEvent" => {
@@ -7725,8 +7774,6 @@ mod tests {
             revenue_redirect_to: None,
             revenue_redirect_percentage: None,
             enable_spt: false,
-            enable_spot: false,
-            spot_id: None,
             spt_id: None,
             poc_redirection_kind: 1,
             actor_address: AccountAddress::from_hex_literal("0x2").unwrap(),
@@ -7894,8 +7941,7 @@ mod tests {
         assert_eq!(json["oracle_markup_bps"], 250);
     }
 
-    /// SpotConfig fee redo: the event now carries `platform_fee_bps` +
-    /// `ecosystem_fee_bps` of gross, and no longer carries the legacy
+    /// SpotConfigUpdatedEvent carries platform/ecosystem fee bps, not legacy
     /// `fee_bps` / `fee_split_bps_platform` fields.
     #[test]
     fn spot_config_updated_bcs_roundtrip_fee_breakout() {
@@ -7927,6 +7973,7 @@ mod tests {
             oracle_address,
             max_single_bet: 1_000_000_000,
             max_bets_per_record: 100,
+            max_claim_per_post: 10,
             spot_governance_registry_id: oracle_address,
             timestamp: 1_700_000_000,
         };
@@ -7939,6 +7986,13 @@ mod tests {
         assert_eq!(json["max_betting_options"], 10);
         assert_eq!(json["max_reasoning_length"], 5000);
         assert_eq!(json["max_evidence_urls"], 10);
+        assert_eq!(json["max_bets_per_record"], 100);
+        assert_eq!(json["max_claim_per_post"], 10);
+        assert_eq!(
+            json["spot_governance_registry_id"].as_str().unwrap(),
+            format!("0x{}", hex::encode(oracle_address))
+        );
+        assert_eq!(json["timestamp"], 1_700_000_000);
         assert!(json.get("fee_bps").is_none());
         assert!(json.get("fee_split_bps_platform").is_none());
     }

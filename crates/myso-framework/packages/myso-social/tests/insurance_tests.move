@@ -62,7 +62,7 @@ module social_contracts::insurance_tests {
             let mut cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
             let spot_gov_id = spot::spot_governance_registry_id(&cfg);
             let clock = test_scenario::take_shared<Clock>(&scen);
-            spot::update_spot_config(&admin_cap, &mut cfg, true, 7000, 0, 0, 0, 100, 5000, 0, 0, 10000, 2, 10, 1, 1000, 10, ADMIN, 0, 10000, spot_gov_id, &clock, test_scenario::ctx(&mut scen));
+            spot::update_spot_config(&admin_cap, &mut cfg, true, 7000, 0, 0, 0, 100, 5000, 0, 0, 10000, 2, 10, 1, 1000, 10, ADMIN, 0, 10000, 10, spot_gov_id, &clock, test_scenario::ctx(&mut scen));
             test_scenario::return_to_sender(&scen, admin_cap);
             test_scenario::return_shared(cfg);
             test_scenario::return_shared(clock);

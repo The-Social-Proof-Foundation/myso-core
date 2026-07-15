@@ -215,6 +215,7 @@ module social_contracts::spot_governance_tests {
                 ADMIN,
                 0,
                 10000,
+                10,
                 spot_gov_id,
                 &clock,
                 test_scenario::ctx(scen),

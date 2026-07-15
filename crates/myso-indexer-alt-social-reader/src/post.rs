@@ -81,12 +81,6 @@ pub struct PostRow {
     pub poc_disputes_submitted: i16,
     #[diesel(sql_type = diesel::sql_types::Bool)]
     pub enable_spt: bool,
-    #[diesel(sql_type = diesel::sql_types::Bool)]
-    pub enable_spot: bool,
-    #[diesel(sql_type = Nullable<Text>)]
-    pub spot_id: Option<String>,
-    #[diesel(sql_type = Nullable<Text>)]
-    pub spot_claim_id: Option<String>,
     #[diesel(sql_type = Nullable<Text>)]
     pub spt_id: Option<String>,
     #[diesel(sql_type = Nullable<Text>)]
@@ -213,7 +207,7 @@ pub(crate) async fn get_post_by_id(
                 p.poc_reasoning, p.poc_evidence_urls, p.poc_similarity_score, p.poc_media_type,
                 p.poc_oracle_address, p.poc_analyzed_at, p.poc_outcome, p.poc_redirection_kind,
                 p.poc_disputes_submitted,
-                p.enable_spt, p.enable_spot, p.spot_id, p.spot_claim_id, p.spt_id, p.mydata_id,
+                p.enable_spt, p.spt_id, p.mydata_id,
                 p.revenue_recipient, p.requires_subscription, p.subscription_service_id, p.subscription_price,
                 p.subscription_min_tier_level,
                 p.encrypted_content_hash, p.removed_from_platform, p.removed_by, p.metadata_json, p.promotion_id,
@@ -321,7 +315,7 @@ pub(crate) async fn list_posts(
                p.poc_reasoning, p.poc_evidence_urls, p.poc_similarity_score, p.poc_media_type,
                p.poc_oracle_address, p.poc_analyzed_at, p.poc_outcome, p.poc_redirection_kind,
                p.poc_disputes_submitted,
-               p.enable_spt, p.enable_spot, p.spot_id, p.spot_claim_id, p.spt_id, p.mydata_id,
+               p.enable_spt, p.spt_id, p.mydata_id,
                p.revenue_recipient, p.requires_subscription, p.subscription_service_id, p.subscription_price,
                p.subscription_min_tier_level,
                p.encrypted_content_hash, p.removed_from_platform, p.removed_by, p.metadata_json, p.promotion_id,
@@ -388,7 +382,7 @@ pub(crate) async fn list_posts_for_profile(
                p.poc_reasoning, p.poc_evidence_urls, p.poc_similarity_score, p.poc_media_type,
                p.poc_oracle_address, p.poc_analyzed_at, p.poc_outcome, p.poc_redirection_kind,
                p.poc_disputes_submitted,
-               p.enable_spt, p.enable_spot, p.spot_id, p.spot_claim_id, p.spt_id, p.mydata_id,
+               p.enable_spt, p.spt_id, p.mydata_id,
                p.revenue_recipient, p.requires_subscription, p.subscription_service_id, p.subscription_price,
                p.subscription_min_tier_level,
                p.encrypted_content_hash, p.removed_from_platform, p.removed_by, p.metadata_json, p.promotion_id,

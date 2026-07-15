@@ -296,7 +296,17 @@ assert_poc_scenario_events() {
             assert_tx_event_absent "$digest" RevenueRedirectionActivatedEvent
             ;;
         tip_post)
-            assert_tx_events "$digest" TipEvent PoCBeneficiaryVaultDepositEvent
+            # A tip either pays the creator directly (TipEvent) or, when the post is under full PoC
+            # escrow redirect, deposits entirely into the beneficiary vault
+            # (PoCBeneficiaryVaultDepositEvent). Partial redirect emits both; require at least one.
+            if tx_has_event_named "$digest" TipEvent \
+                || tx_has_event_named "$digest" PoCBeneficiaryVaultDepositEvent; then
+                :
+            else
+                echo "FAIL: tip_post tx $digest emitted neither TipEvent nor PoCBeneficiaryVaultDepositEvent" >&2
+                echo "  events present: $(list_tx_event_names "$digest" | tr '\n' ' ')" >&2
+                return 1
+            fi
             ;;
         spt_reserve)
             assert_tx_events "$digest" ReservationCreatedEvent

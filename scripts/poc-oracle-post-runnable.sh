@@ -411,7 +411,7 @@ create_poc_post_for_analyze() {
         "$body_lit" \
         "$media_opt" \
         none none none none none none none \
-        some\(true\) none none \
+        some\(true\) none 1 none none none \
         "$ref_mr" "$ref_mem" "$ref_clk")" || {
         end_fresh_ptb_gas_coin
         restore_wallet
@@ -891,7 +891,7 @@ step_create_poc_post() {
         "$body_lit" \
         "$media_opt" \
         none none none none none none none \
-        some\(true\) none none \
+        some\(true\) none 1 none none none \
         "$ref_mr" "$ref_mem" "$ref_clk")" || {
         restore_wallet
         return 1
@@ -1043,7 +1043,7 @@ print_poc_oracle_post_summary() {
     print_run_summary_line "PoC registry" "$(normalize_hex_id "${POC_REGISTRY_ID:-}")"
     print_run_summary_line "Post content" "${content:-PoC oracle test post ${SOCIAL_RUN_ID}}"
     print_run_summary_line "enableSpt (on-chain)" "true"
-    print_run_summary_line "enableSpt (GraphQL)" "$(echo "$gql_resp" | jq -r '.data.post.enableSpt // pending')"
+    print_run_summary_line "enableSpt (GraphQL)" "$(echo "$gql_resp" | jq -r '.data.post.enableSpt // "pending"')"
     print_run_summary_line "Reservation pool" "$(normalize_hex_id "${RESERVATION_POOL_ID:-}")"
     print_run_summary_line "Media URL" "$POST_MEDIA_URL"
     print_run_summary_line "mediaUrls (GraphQL)" "${media_urls:-pending}"

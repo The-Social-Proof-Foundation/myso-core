@@ -66,6 +66,9 @@ module social_contracts::social_proof_of_truth {
     const ENotCreator: u64 = 31;
     const ECreatorPayoutExpired: u64 = 32;
     const EInvalidHash: u64 = 33;
+    const ENotFinalized: u64 = 34;
+    const EPastVerdictMismatch: u64 = 35;
+    const ENoOpenMarket: u64 = 36;
 
     /// Status
     const STATUS_OPEN: u8 = 1;
@@ -95,6 +98,14 @@ module social_contracts::social_proof_of_truth {
     const DEFAULT_MAX_REASONING_LENGTH: u64 = 5000;
     const DEFAULT_MAX_EVIDENCE_URLS: u64 = 10;
     const DEFAULT_MAX_BETS_PER_RECORD: u64 = 10000;
+    const DEFAULT_MAX_CLAIM_PER_POST: u64 = 10;
+    const MIN_MAX_CLAIM_PER_POST: u64 = 1;
+    const MAX_MAX_CLAIM_PER_POST: u64 = 20;
+
+    /// Past-claim verdict values (mirror indexer/GraphQL): 1=true, 2=false, 3=unverifiable.
+    const VERDICT_TRUE: u8 = 1;
+    const VERDICT_FALSE: u8 = 2;
+    const VERDICT_UNVERIFIABLE: u8 = 3;
 
     const MAX_U64: u64 = 18446744073709551615;
     const MIN_HASH_LEN: u64 = 8;
@@ -122,14 +133,28 @@ module social_contracts::social_proof_of_truth {
         oracle_address: address,
         max_single_bet: u64,
         max_bets_per_record: u64,
+        max_claim_per_post: u64,
         spot_governance_registry_id: ID,
         version: u64,
     }
 
-    /// Post linked to a semantic claim (creator stored for fee routing).
+    /// Post linked to a semantic claim at a specific claim index (creator stored for fee routing).
     public struct SpotPostLink has store, copy, drop {
         post_id: address,
         creator: address,
+        claim_index: u64,
+    }
+
+    /// Registry key: a post's future-claim link at a given claim index.
+    public struct PostClaimIndexKey has copy, drop, store {
+        post_id: address,
+        claim_index: u64,
+    }
+
+    /// Registry key: a (post, market) future-link — authoritative bet-eligibility check.
+    public struct PostMarketKey has copy, drop, store {
+        post_id: address,
+        market_id: address,
     }
 
     /// Semantic claim object — deduped by `semantic_claim_hash`.
@@ -141,13 +166,15 @@ module social_contracts::social_proof_of_truth {
         version: u64,
     }
 
-    /// Shared registry mapping hashes and open markets.
+    /// Shared registry mapping hashes and open markets. Multi-claim: a post may hold
+    /// several future-claim links keyed by claim index / market.
     public struct SpotClaimRegistry has key {
         id: UID,
         claims_by_semantic_hash: Table<vector<u8>, address>,
         markets_by_key_hash: Table<vector<u8>, address>,
         open_market_by_claim: Table<address, address>,
-        post_to_claim: Table<address, address>,
+        post_claim_index_to_market: Table<PostClaimIndexKey, address>,
+        post_market_to_claim: Table<PostMarketKey, address>,
         version: u64,
     }
 
@@ -298,6 +325,7 @@ module social_contracts::social_proof_of_truth {
         oracle_address: address,
         max_single_bet: u64,
         max_bets_per_record: u64,
+        max_claim_per_post: u64,
         spot_governance_registry_id: ID,
         timestamp: u64,
     }
@@ -321,6 +349,8 @@ module social_contracts::social_proof_of_truth {
         claim_id: address,
         market_key_hash: vector<u8>,
         primary_post_id: address,
+        claim_index: u64,
+        resolution_policy_hash: vector<u8>,
         created_at_ms: u64,
         betting_options: vector<String>,
         resolution_at_ms: u64,
@@ -331,15 +361,31 @@ module social_contracts::social_proof_of_truth {
         post_id: address,
         claim_id: address,
         market_id: Option<address>,
+        claim_index: u64,
+        policy_hash: vector<u8>,
     }
 
-    public struct SpotRecordCreatedEvent has copy, drop {
-        record_id: address,
+    /// Batch finalize projection for a post's multi-claim analysis. Carries future-link
+    /// arrays (claim_index order) plus parallel past-verdict vectors for the indexer.
+    public struct SpotClaimsFinalizedForPost has copy, drop {
         post_id: address,
-        created_at_ms: u64,
-        betting_options: vector<String>,
-        resolution_window_ms: Option<u64>,
-        max_resolution_window_ms: Option<u64>,
+        status: u8,
+        detected_claim_count: u64,
+        rejected_claim_count: u64,
+        truncated_claim_count: u64,
+        future_accepted_count: u64,
+        past_verified_count: u64,
+        max_claim_per_post_applied: u64,
+        claim_manifest_hash: Option<vector<u8>>,
+        veracity_manifest_hash: Option<vector<u8>>,
+        future_claim_indexes: vector<u64>,
+        future_claim_ids: vector<address>,
+        future_market_ids: vector<address>,
+        past_claim_indexes: vector<u64>,
+        past_verdicts: vector<u8>,
+        past_related_market_ids: vector<address>,
+        past_evidence_hashes: vector<vector<u8>>,
+        finalized_at_ms: u64,
     }
 
     // --- Getters (SpotMarket) ---
@@ -392,6 +438,7 @@ module social_contracts::social_proof_of_truth {
     public fun primary_post_id(market: &SpotMarket): address { market.primary_post_id }
 
     public fun is_enabled(config: &SpotConfig): bool { config.truth_enabled }
+    public fun max_claim_per_post(config: &SpotConfig): u64 { config.max_claim_per_post }
     public fun spot_governance_registry_id(config: &SpotConfig): ID {
         config.spot_governance_registry_id
     }
@@ -439,6 +486,7 @@ module social_contracts::social_proof_of_truth {
             oracle_address: tx_context::sender(ctx),
             max_single_bet: 0,
             max_bets_per_record: DEFAULT_MAX_BETS_PER_RECORD,
+            max_claim_per_post: DEFAULT_MAX_CLAIM_PER_POST,
             spot_governance_registry_id,
             version: upgrade::current_version(),
         }
@@ -450,7 +498,8 @@ module social_contracts::social_proof_of_truth {
             claims_by_semantic_hash: table::new(ctx),
             markets_by_key_hash: table::new(ctx),
             open_market_by_claim: table::new(ctx),
-            post_to_claim: table::new(ctx),
+            post_claim_index_to_market: table::new(ctx),
+            post_market_to_claim: table::new(ctx),
             version: upgrade::current_version(),
         }
     }
@@ -476,6 +525,7 @@ module social_contracts::social_proof_of_truth {
             oracle_address: config.oracle_address,
             max_single_bet: config.max_single_bet,
             max_bets_per_record: config.max_bets_per_record,
+            max_claim_per_post: config.max_claim_per_post,
             spot_governance_registry_id: config.spot_governance_registry_id,
             timestamp: clock::timestamp_ms(clock),
         });
@@ -530,11 +580,14 @@ module social_contracts::social_proof_of_truth {
         oracle_address: address,
         max_single_bet: u64,
         max_bets_per_record: u64,
+        max_claim_per_post: u64,
         spot_governance_registry_id: ID,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
         assert!(confidence_threshold_bps <= 10000, EInvalidAmount);
+        assert!(max_claim_per_post >= MIN_MAX_CLAIM_PER_POST, EInvalidAmount);
+        assert!(max_claim_per_post <= MAX_MAX_CLAIM_PER_POST, EInvalidAmount);
         assert!(platform_fee_bps <= 10000, EInvalidAmount);
         assert!(ecosystem_fee_bps <= 10000, EInvalidAmount);
         assert!(creator_fee_bps <= 10000, EInvalidAmount);
@@ -564,6 +617,7 @@ module social_contracts::social_proof_of_truth {
         config.oracle_address = oracle_address;
         config.max_single_bet = max_single_bet;
         config.max_bets_per_record = max_bets_per_record;
+        config.max_claim_per_post = max_claim_per_post;
         config.spot_governance_registry_id = spot_governance_registry_id;
 
         emit_config_updated(config, clock, ctx);
@@ -578,12 +632,6 @@ module social_contracts::social_proof_of_truth {
         config.resolution_window_ms = config.resolution_window_ms * epoch_duration_ms;
         config.max_resolution_window_ms = config.max_resolution_window_ms * epoch_duration_ms;
         config.creator_claim_window_ms = config.creator_claim_window_ms * epoch_duration_ms;
-    }
-
-    fun legacy_semantic_hash_from_post(post_id: address): vector<u8> {
-        let mut hash = bcs::to_bytes(&post_id);
-        vector::push_back(&mut hash, 0);
-        hash
     }
 
     fun register_spot_claim(
@@ -628,14 +676,39 @@ module social_contracts::social_proof_of_truth {
         });
     }
 
-    /// Oracle-only: open a market for an existing claim.
+    /// Record a future-claim link: registers `(post, claim_index)` and `(post, market)`,
+    /// pushes a `SpotPostLink`, and appends to the post's pending analysis vectors.
+    fun register_future_link(
+        registry: &mut SpotClaimRegistry,
+        claim: &mut SpotClaim,
+        post: &mut Post,
+        market_id: address,
+        claim_index: u64,
+        resolution_policy_hash: vector<u8>,
+        max_claim_per_post: u64,
+    ) {
+        let post_id = post::get_id_address(post);
+        let claim_id = object::uid_to_address(&claim.id);
+        let idx_key = PostClaimIndexKey { post_id, claim_index };
+        assert!(!table::contains(&registry.post_claim_index_to_market, idx_key), EClaimExists);
+        let creator = post::get_post_owner(post);
+        vector::push_back(&mut claim.linked_posts, SpotPostLink { post_id, creator, claim_index });
+        table::add(&mut registry.post_claim_index_to_market, idx_key, market_id);
+        table::add(&mut registry.post_market_to_claim, PostMarketKey { post_id, market_id }, claim_id);
+        post::ensure_spot_analysis_pending(post, max_claim_per_post);
+        post::spot_analysis_append_future(post, claim_index, claim_id, market_id, resolution_policy_hash);
+    }
+
+    /// Oracle-only: open a market for an existing claim, linking `primary_post` at `claim_index`.
     public entry fun create_spot_market_for_claim(
         _: &SpotOracleAdminCap,
         config: &SpotConfig,
         registry: &mut SpotClaimRegistry,
         claim: &mut SpotClaim,
         primary_post: &mut Post,
+        claim_index: u64,
         market_key_hash: vector<u8>,
+        resolution_policy_hash: vector<u8>,
         betting_options: vector<String>,
         resolution_at_ms: u64,
         max_resolution_window_ms: Option<u64>,
@@ -666,9 +739,6 @@ module social_contracts::social_proof_of_truth {
 
         let claim_id = object::uid_to_address(&claim.id);
         let primary_post_id = post::get_id_address(primary_post);
-        if (!table::contains(&registry.post_to_claim, primary_post_id)) {
-            link_post_to_claim_internal(registry, claim, primary_post);
-        };
         let primary_creator = post::get_post_owner(primary_post);
 
         let market = SpotMarket {
@@ -714,7 +784,15 @@ module social_contracts::social_proof_of_truth {
         };
         table::add(&mut registry.open_market_by_claim, claim_id, market_id);
 
-        post::set_spot_id(primary_post, market_id);
+        register_future_link(
+            registry,
+            claim,
+            primary_post,
+            market_id,
+            claim_index,
+            resolution_policy_hash,
+            config.max_claim_per_post,
+        );
         transfer::share_object(market);
 
         event::emit(SpotMarketCreatedEvent {
@@ -722,6 +800,8 @@ module social_contracts::social_proof_of_truth {
             claim_id,
             market_key_hash: hash_copy,
             primary_post_id,
+            claim_index,
+            resolution_policy_hash,
             created_at_ms,
             betting_options: betting_options_copy,
             resolution_at_ms: resolution_at,
@@ -729,101 +809,179 @@ module social_contracts::social_proof_of_truth {
         });
     }
 
-    fun link_post_to_claim_internal(
-        registry: &mut SpotClaimRegistry,
-        claim: &mut SpotClaim,
-        post: &mut Post,
-    ): Option<address> {
-        assert!(post::is_spot_enabled(post), EDisabled);
-        let post_id = post::get_id_address(post);
-        let claim_id = object::uid_to_address(&claim.id);
-        assert!(!table::contains(&registry.post_to_claim, post_id), EClaimExists);
-
-        let creator = post::get_post_owner(post);
-        vector::push_back(&mut claim.linked_posts, SpotPostLink { post_id, creator });
-        table::add(&mut registry.post_to_claim, post_id, claim_id);
-        post::set_spot_claim_id(post, claim_id);
-
-        if (table::contains(&registry.open_market_by_claim, claim_id)) {
-            let mid = *table::borrow(&registry.open_market_by_claim, claim_id);
-            post::set_spot_id(post, mid);
-            option::some(mid)
-        } else {
-            option::none()
-        }
-    }
-
-    /// Link a post to a semantic claim (multiple posts may share one claim/market).
+    /// Link an additional post as a future-claim referrer into an existing open market
+    /// (hybrid liquidity reuse). Requires the claim to have a live open market.
     public entry fun link_post_to_spot_claim(
         _: &SpotOracleAdminCap,
+        config: &SpotConfig,
         registry: &mut SpotClaimRegistry,
         claim: &mut SpotClaim,
         post: &mut Post,
+        claim_index: u64,
+        resolution_policy_hash: vector<u8>,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        let post_id = post::get_id_address(post);
+        assert!(config.truth_enabled, EDisabled);
         let claim_id = object::uid_to_address(&claim.id);
-        let market_id = link_post_to_claim_internal(registry, claim, post);
-        event::emit(SpotPostLinkedEvent { post_id, claim_id, market_id });
+        assert!(table::contains(&registry.open_market_by_claim, claim_id), ENoOpenMarket);
+        let market_id = *table::borrow(&registry.open_market_by_claim, claim_id);
+        let post_id = post::get_id_address(post);
+        register_future_link(
+            registry,
+            claim,
+            post,
+            market_id,
+            claim_index,
+            resolution_policy_hash,
+            config.max_claim_per_post,
+        );
+        event::emit(SpotPostLinkedEvent {
+            post_id,
+            claim_id,
+            market_id: option::some(market_id),
+            claim_index,
+            policy_hash: resolution_policy_hash,
+        });
         let _ = clock;
         let _ = ctx;
     }
 
-    /// Legacy one-shot market creation (claim + market + link) for oracle backward compatibility.
-    public entry fun create_spot_record_for_post(
+    /// Oracle-only: commit a post's multi-claim analysis. Sets terminal status, counts and
+    /// manifests, and emits the batch projection (future arrays + parallel past verdicts).
+    public entry fun finalize_spot_claims_for_post(
+        _: &SpotOracleAdminCap,
+        config: &SpotConfig,
+        post: &mut Post,
+        detected_claim_count: u64,
+        rejected_claim_count: u64,
+        truncated_claim_count: u64,
+        past_verified_count: u64,
+        claim_manifest_hash: Option<vector<u8>>,
+        veracity_manifest_hash: Option<vector<u8>>,
+        past_claim_indexes: vector<u64>,
+        past_verdicts: vector<u8>,
+        past_related_market_ids: vector<address>,
+        past_evidence_hashes: vector<vector<u8>>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert!(config.truth_enabled, EDisabled);
+
+        let past_len = vector::length(&past_claim_indexes);
+        assert!(past_len == past_verified_count, EPastVerdictMismatch);
+        assert!(vector::length(&past_verdicts) == past_len, EPastVerdictMismatch);
+        assert!(vector::length(&past_related_market_ids) == past_len, EPastVerdictMismatch);
+        assert!(vector::length(&past_evidence_hashes) == past_len, EPastVerdictMismatch);
+        let mut vi = 0;
+        while (vi < past_len) {
+            let v = *vector::borrow(&past_verdicts, vi);
+            assert!(v == VERDICT_TRUE || v == VERDICT_FALSE || v == VERDICT_UNVERIFIABLE, EPastVerdictMismatch);
+            vi = vi + 1;
+        };
+
+        let future_accepted = post::spot_analysis_future_accepted_count(post);
+        let status = if (future_accepted > 0 || past_verified_count > 0) {
+            post::spot_status_completed()
+        } else {
+            post::spot_status_completed_no_actionable()
+        };
+        post::finalize_spot_analysis(
+            post,
+            status,
+            detected_claim_count,
+            rejected_claim_count,
+            truncated_claim_count,
+            past_verified_count,
+            config.max_claim_per_post,
+            claim_manifest_hash,
+            veracity_manifest_hash,
+        );
+
+        let post_id = post::get_id_address(post);
+        event::emit(SpotClaimsFinalizedForPost {
+            post_id,
+            status,
+            detected_claim_count,
+            rejected_claim_count,
+            truncated_claim_count,
+            future_accepted_count: future_accepted,
+            past_verified_count,
+            max_claim_per_post_applied: config.max_claim_per_post,
+            claim_manifest_hash,
+            veracity_manifest_hash,
+            future_claim_indexes: post::spot_analysis_claim_indexes(post),
+            future_claim_ids: post::spot_analysis_claim_ids(post),
+            future_market_ids: post::spot_analysis_market_ids(post),
+            past_claim_indexes,
+            past_verdicts,
+            past_related_market_ids,
+            past_evidence_hashes,
+            finalized_at_ms: clock::timestamp_ms(clock),
+        });
+        let _ = ctx;
+    }
+
+    /// Convenience one-shot: register claim + open one future market + finalize (single-claim
+    /// posts and test setup). Emits `SpotMarketCreatedEvent` + `SpotClaimsFinalizedForPost`.
+    public entry fun create_and_finalize_spot_market_for_post(
         oracle_cap: &SpotOracleAdminCap,
         config: &SpotConfig,
         registry: &mut SpotClaimRegistry,
         post: &mut Post,
+        semantic_claim_hash: vector<u8>,
+        market_key_hash: vector<u8>,
+        resolution_policy_hash: vector<u8>,
         betting_options: vector<String>,
-        resolution_window_ms: Option<u64>,
+        resolution_at_ms: u64,
         max_resolution_window_ms: Option<u64>,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
         assert!(config.truth_enabled, EDisabled);
-        assert!(post::is_spot_enabled(post), EDisabled);
-
-        let post_id = post::get_id_address(post);
-        let semantic_hash = legacy_semantic_hash_from_post(post_id);
         let created_at_ms = clock::timestamp_ms(clock);
-
-        let mut claim = register_spot_claim(registry, semantic_hash, created_at_ms, ctx);
-        link_post_to_claim_internal(registry, &mut claim, post);
-
-        let betting_options_copy = betting_options;
-        let resolution_at_ms = if (option::is_some(&max_resolution_window_ms)) {
-            created_at_ms + *option::borrow(&max_resolution_window_ms)
-        } else if (option::is_some(&resolution_window_ms)) {
-            created_at_ms + *option::borrow(&resolution_window_ms)
-        } else {
-            created_at_ms + DEFAULT_MAX_RESOLUTION_WINDOW_MS
-        };
+        let mut claim = register_spot_claim(registry, semantic_claim_hash, created_at_ms, ctx);
         create_spot_market_for_claim(
             oracle_cap,
             config,
             registry,
             &mut claim,
             post,
-            semantic_hash,
+            0,
+            market_key_hash,
+            resolution_policy_hash,
             betting_options,
             resolution_at_ms,
             max_resolution_window_ms,
             clock,
             ctx,
         );
-
-        let claim_id = object::uid_to_address(&claim.id);
         transfer::share_object(claim);
 
-        event::emit(SpotRecordCreatedEvent {
-            record_id: *table::borrow(&registry.open_market_by_claim, claim_id),
+        let status = post::spot_status_completed();
+        post::finalize_spot_analysis(
+            post, status, 1, 0, 0, 0, config.max_claim_per_post, option::none(), option::none(),
+        );
+        let post_id = post::get_id_address(post);
+        event::emit(SpotClaimsFinalizedForPost {
             post_id,
-            created_at_ms,
-            betting_options: betting_options_copy,
-            resolution_window_ms,
-            max_resolution_window_ms,
+            status,
+            detected_claim_count: 1,
+            rejected_claim_count: 0,
+            truncated_claim_count: 0,
+            future_accepted_count: 1,
+            past_verified_count: 0,
+            max_claim_per_post_applied: config.max_claim_per_post,
+            claim_manifest_hash: option::none(),
+            veracity_manifest_hash: option::none(),
+            future_claim_indexes: post::spot_analysis_claim_indexes(post),
+            future_claim_ids: post::spot_analysis_claim_ids(post),
+            future_market_ids: post::spot_analysis_market_ids(post),
+            past_claim_indexes: vector::empty(),
+            past_verdicts: vector::empty(),
+            past_related_market_ids: vector::empty(),
+            past_evidence_hashes: vector::empty(),
+            finalized_at_ms: created_at_ms,
         });
     }
 
@@ -835,11 +993,13 @@ module social_contracts::social_proof_of_truth {
         let post_id = post::get_id_address(post);
         assert!(market.status != STATUS_DAO_REQUIRED, EDaoDebateFrozen);
         assert!(market.status == STATUS_OPEN, EMarketNotOpen);
-        assert!(table::contains(&registry.post_to_claim, post_id), EPostNotLinked);
-        let linked_claim = *table::borrow(&registry.post_to_claim, post_id);
+        let market_id = object::uid_to_address(&market.id);
+        let key = PostMarketKey { post_id, market_id };
+        assert!(table::contains(&registry.post_market_to_claim, key), EPostNotLinked);
+        let linked_claim = *table::borrow(&registry.post_market_to_claim, key);
         assert!(linked_claim == market.claim_id, EPostNotLinked);
         let open_id = *table::borrow(&registry.open_market_by_claim, market.claim_id);
-        assert!(open_id == object::uid_to_address(&market.id), EMarketNotOpen);
+        assert!(open_id == market_id, EMarketNotOpen);
     }
 
     /// Sole public betting entry — registry validates the market is open for this claim.
@@ -856,6 +1016,7 @@ module social_contracts::social_proof_of_truth {
         ctx: &mut TxContext
     ) {
         assert!(spot_config.truth_enabled, EDisabled);
+        assert!(post::spot_analysis_status(post) == post::spot_status_completed(), ENotFinalized);
         assert_market_open_for_post(registry, market, post);
         let post_id = post::get_id_address(post);
         let ref_id = if (option::is_some(&referrer_post_id)) {
@@ -1770,22 +1931,6 @@ module social_contracts::social_proof_of_truth {
         });
     }
 
-    public entry fun patch_spot_record_times_for_migration(
-        _: &SpotOracleAdminCap,
-        market: &mut SpotMarket,
-        created_at_ms: u64,
-        resolution_window_ms: Option<u64>,
-        max_resolution_window_ms: Option<u64>,
-        resolution_at_ms: u64,
-        last_resolution_at_ms: u64,
-    ) {
-        market.created_at_ms = created_at_ms;
-        market.resolution_window_ms = resolution_window_ms;
-        market.max_resolution_window_ms = max_resolution_window_ms;
-        market.resolution_at_ms = resolution_at_ms;
-        market.last_resolution_at_ms = last_resolution_at_ms;
-    }
-
     public entry fun migrate_config(
         config: &mut SpotConfig,
         _: &UpgradeAdminCap,
@@ -1801,6 +1946,9 @@ module social_contracts::social_proof_of_truth {
             config.creator_fee_bps = DEFAULT_CREATOR_FEE_BPS;
             config.creator_claim_window_ms = DEFAULT_CREATOR_CLAIM_WINDOW_MS;
             config.expired_creator_ecosystem_bps = DEFAULT_EXPIRED_CREATOR_ECOSYSTEM_BPS;
+        };
+        if (config.max_claim_per_post == 0) {
+            config.max_claim_per_post = DEFAULT_MAX_CLAIM_PER_POST;
         };
         config.version = current_version;
         upgrade::emit_migration_event(
@@ -1860,6 +2008,57 @@ module social_contracts::social_proof_of_truth {
     #[test_only]
     public fun get_creator_fee_bps(config: &SpotConfig): u64 {
         config.creator_fee_bps
+    }
+
+    /// Test-only shim mirroring the removed one-shot record flow: deterministic per-post
+    /// semantic/market hashes, claim + market + link + finalize for a single future claim.
+    #[test_only]
+    public fun create_spot_record_for_post(
+        oracle_cap: &SpotOracleAdminCap,
+        config: &SpotConfig,
+        registry: &mut SpotClaimRegistry,
+        post: &mut Post,
+        betting_options: vector<String>,
+        resolution_window_ms: Option<u64>,
+        max_resolution_window_ms: Option<u64>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        let post_id = post::get_id_address(post);
+        let mut semantic_hash = bcs::to_bytes(&post_id);
+        vector::push_back(&mut semantic_hash, 0);
+        let mut market_hash = bcs::to_bytes(&post_id);
+        vector::push_back(&mut market_hash, 1);
+        let created_at_ms = clock::timestamp_ms(clock);
+        let resolution_at_ms = if (option::is_some(&max_resolution_window_ms)) {
+            created_at_ms + *option::borrow(&max_resolution_window_ms)
+        } else if (option::is_some(&resolution_window_ms)) {
+            created_at_ms + *option::borrow(&resolution_window_ms)
+        } else {
+            created_at_ms + DEFAULT_MAX_RESOLUTION_WINDOW_MS
+        };
+        create_and_finalize_spot_market_for_post(
+            oracle_cap,
+            config,
+            registry,
+            post,
+            semantic_hash,
+            market_hash,
+            b"test_policy",
+            betting_options,
+            resolution_at_ms,
+            max_resolution_window_ms,
+            clock,
+            ctx,
+        );
+    }
+
+    /// Test-only: deterministic per-post semantic hash (matches the shim above).
+    #[test_only]
+    public fun test_semantic_hash_for_post(post_id: address): vector<u8> {
+        let mut semantic_hash = bcs::to_bytes(&post_id);
+        vector::push_back(&mut semantic_hash, 0);
+        semantic_hash
     }
 
     #[test_only]

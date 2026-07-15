@@ -241,7 +241,7 @@ pub(crate) async fn get_poc_configuration(db: &Db) -> Result<Option<PocConfigRow
                max_disputes_per_post, min_vault_deposit_amount,
                dispute_governance_registry_id,
                updated_by, updated_at, transaction_id
-        FROM poc_configuration
+        FROM poc_config
         ORDER BY updated_at DESC
         LIMIT 1
     ";

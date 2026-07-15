@@ -1891,6 +1891,24 @@ impl SocialPgReader {
         get_spot_route(&mut conn, post_id, &self.metrics).await
     }
 
+    /// Per-post multi-claim analysis status/counts.
+    pub async fn get_spot_post_analysis(
+        &self,
+        post_id: &str,
+    ) -> anyhow::Result<Option<crate::spot::SpotPostAnalysisRow>> {
+        let mut conn = self.connect().await?;
+        crate::spot::get_spot_post_analysis(&mut conn, post_id, &self.metrics).await
+    }
+
+    /// Past-claim verdicts for a post, ordered by claim_index.
+    pub async fn list_spot_verdicts_for_post(
+        &self,
+        post_id: &str,
+    ) -> anyhow::Result<Vec<crate::spot::SpotClaimVerdictRow>> {
+        let mut conn = self.connect().await?;
+        crate::spot::list_spot_verdicts_for_post(&mut conn, post_id, &self.metrics).await
+    }
+
     /// Get indexed SpotClaim by on-chain object id.
     pub async fn get_spot_claim(
         &self,

@@ -20,4 +20,4 @@ ALTER TABLE poc_vault_deposits DROP COLUMN IF EXISTS coin_type;
 
 ALTER TABLE tips DROP COLUMN IF EXISTS coin_type;
 
-ALTER TABLE poc_configuration DROP COLUMN IF EXISTS video_embedded_audio_redirect_bps;
+ALTER TABLE poc_config DROP COLUMN IF EXISTS video_embedded_audio_redirect_bps;

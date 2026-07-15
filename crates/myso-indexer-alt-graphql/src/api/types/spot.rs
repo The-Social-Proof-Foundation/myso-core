@@ -8,8 +8,9 @@ use async_graphql::Context;
 use async_graphql::Object;
 use myso_indexer_alt_social_reader::{
     SocialPgReader, SpotBetRow, SpotBetWithdrawalRow, SpotClaimEarningsRow, SpotClaimRow,
-    SpotCreatorStatsRow, SpotMarketEarningsRow, SpotMarketRow, SpotPayoutRow, SpotPendingCreatorPayoutRow,
-    SpotPostEarningsRow, SpotRecordRow, SpotRefundRow, SpotResolutionRow, SpotRouteRow,
+    SpotClaimVerdictRow, SpotCreatorStatsRow, SpotMarketEarningsRow, SpotMarketRow, SpotPayoutRow,
+    SpotPendingCreatorPayoutRow, SpotPostAnalysisRow, SpotPostEarningsRow, SpotRecordRow,
+    SpotRefundRow, SpotResolutionRow, SpotRouteRow,
 };
 
 use crate::api::resolve_profile::resolve_profile_summary;
@@ -793,5 +794,131 @@ impl SpotCreatorStats {
             .cloned()
             .map(SpotMarketEarnings::from_row)
             .collect()
+    }
+}
+
+/// Multi-claim SPoT analysis status.
+#[derive(async_graphql::Enum, Copy, Clone, Eq, PartialEq)]
+pub(crate) enum SpotPostAnalysisStatus {
+    Pending,
+    Completed,
+    CompletedNoActionable,
+}
+
+impl SpotPostAnalysisStatus {
+    fn from_i16(v: i16) -> Self {
+        match v {
+            1 => Self::Completed,
+            2 => Self::CompletedNoActionable,
+            _ => Self::Pending,
+        }
+    }
+}
+
+/// Verdict value for a verified past claim.
+#[derive(async_graphql::Enum, Copy, Clone, Eq, PartialEq)]
+pub(crate) enum SpotClaimVerdictValue {
+    True,
+    False,
+    Unverifiable,
+}
+
+impl SpotClaimVerdictValue {
+    fn from_i16(v: i16) -> Self {
+        match v {
+            1 => Self::True,
+            2 => Self::False,
+            _ => Self::Unverifiable,
+        }
+    }
+}
+
+pub(crate) struct SpotPostAnalysis {
+    inner: SpotPostAnalysisRow,
+}
+
+impl SpotPostAnalysis {
+    pub(crate) fn from_row(inner: SpotPostAnalysisRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl SpotPostAnalysis {
+    async fn status(&self) -> SpotPostAnalysisStatus {
+        SpotPostAnalysisStatus::from_i16(self.inner.status)
+    }
+    async fn detected_claim_count(&self) -> i64 {
+        self.inner.detected_claim_count
+    }
+    async fn rejected_claim_count(&self) -> i64 {
+        self.inner.rejected_claim_count
+    }
+    async fn truncated_claim_count(&self) -> i64 {
+        self.inner.truncated_claim_count
+    }
+    async fn future_accepted_count(&self) -> i64 {
+        self.inner.future_accepted_count
+    }
+    async fn past_verified_count(&self) -> i64 {
+        self.inner.past_verified_count
+    }
+    async fn max_claim_per_post(&self) -> i64 {
+        self.inner.max_claim_per_post_applied
+    }
+    async fn claim_manifest_hash(&self) -> Option<&str> {
+        self.inner.claim_manifest_hash.as_deref()
+    }
+    async fn veracity_manifest_hash(&self) -> Option<&str> {
+        self.inner.veracity_manifest_hash.as_deref()
+    }
+    async fn finalize_tx_digest(&self) -> Option<&str> {
+        self.inner.finalize_tx_digest.as_deref()
+    }
+}
+
+pub(crate) struct SpotClaimVerdict {
+    inner: SpotClaimVerdictRow,
+}
+
+impl SpotClaimVerdict {
+    pub(crate) fn from_row(inner: SpotClaimVerdictRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl SpotClaimVerdict {
+    async fn claim_index(&self) -> i64 {
+        self.inner.claim_index
+    }
+    async fn verdict(&self) -> SpotClaimVerdictValue {
+        SpotClaimVerdictValue::from_i16(self.inner.verdict)
+    }
+    async fn policy_hash(&self) -> &str {
+        &self.inner.policy_hash
+    }
+    async fn evidence_manifest_hash(&self) -> &str {
+        &self.inner.evidence_manifest_hash
+    }
+    async fn evidence_urls(&self) -> Vec<String> {
+        self.inner
+            .evidence_urls
+            .as_array()
+            .map(|a| {
+                a.iter()
+                    .filter_map(|v| v.as_str().map(String::from))
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+    async fn summary(&self) -> Option<&str> {
+        self.inner.summary.as_deref()
+    }
+    async fn related_market_id(&self) -> Option<&str> {
+        self.inner.related_market_object_id.as_deref()
+    }
+    async fn related_claim_id(&self) -> Option<&str> {
+        self.inner.related_claim_object_id.as_deref()
     }
 }

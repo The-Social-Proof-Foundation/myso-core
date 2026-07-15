@@ -1,13 +1,24 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use super::SocialEventRow;
+use super::{SocialEventRow, SpotFinalizeProjection};
 use myso_indexer_alt_social_schema::models::{
     CREATOR_PAYOUT_STATUS_ACCRUED, CREATOR_PAYOUT_STATUS_CLAIMED, CREATOR_PAYOUT_STATUS_RECLAIMED,
-    NewSpotBet, NewSpotBetWithdrawal, NewSpotClaim, NewSpotConfig, NewSpotCreatorPayout,
-    NewSpotEventLog, NewSpotMarket, NewSpotPayout, NewSpotPostLink, NewSpotRecord, NewSpotRefund,
-    NewSpotResolution, SPOT_LINK_KIND_PRIMARY, STATUS_DAO_REQUIRED, STATUS_OPEN, STATUS_RESOLVED,
+    NewSpotBet, NewSpotBetWithdrawal, NewSpotClaim, NewSpotClaimVerdict, NewSpotConfig,
+    NewSpotCreatorPayout, NewSpotEventLog, NewSpotMarket, NewSpotPayout, NewSpotPostLink,
+    NewSpotRecord, NewSpotRefund, NewSpotResolution, SPOT_LINK_KIND_PRIMARY, STATUS_DAO_REQUIRED,
+    STATUS_OPEN, STATUS_RESOLVED,
 };
+
+/// A related-market address of all zeros (0x0) encodes "no related market".
+fn non_zero_addr(s: &str) -> Option<String> {
+    let hex = s.trim_start_matches("0x");
+    if hex.chars().all(|c| c == '0') {
+        None
+    } else {
+        Some(s.to_string())
+    }
+}
 
 fn transaction_id_from_event_id(event_id: &str) -> String {
     event_id.split(':').next().unwrap_or(event_id).to_string()
@@ -72,6 +83,9 @@ pub fn handle_spot_event(
         }
         "SpotPostLinkedEvent" => {
             process_spot_post_linked_event(data, event_id, &transaction_id, now)
+        }
+        "SpotClaimsFinalizedForPost" => {
+            process_spot_claims_finalized_event(data, event_id, now)
         }
         "SpotCreatorPayoutAccruedEvent" => {
             process_spot_creator_payout_accrued_event(data, event_id, timestamp_ms, &transaction_id, now)
@@ -395,6 +409,14 @@ fn process_spot_config_updated_event(
         .unwrap_or("")
         .to_string();
     let max_single_bet = json_to_i64(data.get("max_single_bet")?);
+    let max_bets_per_record = data
+        .get("max_bets_per_record")
+        .and_then(json_opt_i64)
+        .unwrap_or(10_000);
+    let max_claim_per_post = data
+        .get("max_claim_per_post")
+        .and_then(json_opt_i64)
+        .unwrap_or(10);
     let version = data
         .get("version")
         .and_then(|v| json_opt_i64(v))
@@ -411,11 +433,6 @@ fn process_spot_config_updated_event(
         resolution_window_ms,
         max_resolution_window_ms,
         payout_delay_ms,
-        // Legacy fee columns retained on spot_config for rollback safety; the
-        // Move event no longer carries them and the new platform/ecosystem bps
-        // fields below are the source of truth.
-        fee_bps: 0,
-        fee_split_bps_platform: 0,
         platform_fee_bps,
         ecosystem_fee_bps,
         creator_fee_bps,
@@ -428,6 +445,8 @@ fn process_spot_config_updated_event(
         max_evidence_urls,
         oracle_address,
         max_single_bet,
+        max_bets_per_record,
+        max_claim_per_post,
         version,
         updated_at: event_timestamp_ms,
         time: now,
@@ -637,6 +656,12 @@ fn process_spot_market_created_event(
         link_kind: SPOT_LINK_KIND_PRIMARY.to_string(),
         transaction_id: transaction_id.to_string(),
         created_at: now_naive,
+        claim_index: data.get("claim_index").and_then(|v| v.as_i64()).unwrap_or(0),
+        policy_hash: data
+            .get("resolution_policy_hash")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
     };
 
     let log = new_event_log(
@@ -651,13 +676,92 @@ fn process_spot_market_created_event(
         SocialEventRow::SpotMarketUpsert(market),
         SocialEventRow::SpotRecordUpsert(record),
         SocialEventRow::SpotPostLinkUpsert(link),
-        SocialEventRow::PostSpotFieldsUpdate {
-            post_id: primary_post_id,
-            spot_id: Some(market_object_id),
-            spot_claim_id: Some(data.get("claim_id")?.as_str()?.to_string()),
-        },
         SocialEventRow::SpotEventLog(log),
     ])
+}
+
+/// Atomic multi-claim finalize projection: rewrite the `posts` analysis denorm + `spot_post_analyses`
+/// sidecar, upsert past `spot_claim_verdicts`, and append the forensic event log.
+fn process_spot_claims_finalized_event(
+    data: &serde_json::Value,
+    event_id: &str,
+    now: chrono::DateTime<chrono::Utc>,
+) -> Option<Vec<SocialEventRow>> {
+    let post_id = data.get("post_id")?.as_str()?.to_string();
+    let transaction_id = transaction_id_from_event_id(event_id);
+    let geti = |k: &str| data.get(k).map(json_to_i64).unwrap_or(0);
+    let gets = |k: &str| data.get(k).and_then(|v| v.as_str()).map(String::from);
+    let arr = |k: &str| data.get(k).cloned().unwrap_or_else(|| serde_json::json!([]));
+
+    let projection = SpotFinalizeProjection {
+        post_id: post_id.clone(),
+        status: geti("status") as i16,
+        detected_claim_count: geti("detected_claim_count"),
+        rejected_claim_count: geti("rejected_claim_count"),
+        truncated_claim_count: geti("truncated_claim_count"),
+        future_accepted_count: geti("future_accepted_count"),
+        past_verified_count: geti("past_verified_count"),
+        max_claim_per_post_applied: geti("max_claim_per_post_applied"),
+        claim_indexes: arr("future_claim_indexes"),
+        claim_ids: arr("future_claim_ids"),
+        market_ids: arr("future_market_ids"),
+        claim_manifest_hash: gets("claim_manifest_hash"),
+        veracity_manifest_hash: gets("veracity_manifest_hash"),
+        finalize_tx_digest: Some(transaction_id.clone()),
+        updated_at: now,
+    };
+
+    let mut rows = vec![SocialEventRow::SpotFinalize(Box::new(projection))];
+
+    // Past verdicts: parallel arrays (claim_index, verdict, related_market, evidence_hash).
+    let p_indexes = data
+        .get("past_claim_indexes")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+    let p_verdicts = data
+        .get("past_verdicts")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+    let p_markets = data
+        .get("past_related_market_ids")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+    let p_evidence = data
+        .get("past_evidence_hashes")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+    for i in 0..p_indexes.len() {
+        rows.push(SocialEventRow::SpotClaimVerdictUpsert(NewSpotClaimVerdict {
+            post_id: post_id.clone(),
+            claim_index: p_indexes[i].as_i64().unwrap_or(0),
+            time_class: "past".to_string(),
+            verdict: p_verdicts.get(i).and_then(|v| v.as_i64()).unwrap_or(0) as i16,
+            semantic_claim_hash: None,
+            policy_hash: String::new(),
+            evidence_manifest_hash: p_evidence
+                .get(i)
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string(),
+            related_market_object_id: p_markets
+                .get(i)
+                .and_then(|v| v.as_str())
+                .and_then(non_zero_addr),
+            related_claim_object_id: None,
+            evidence_urls: serde_json::json!([]),
+            summary: None,
+            transaction_id: transaction_id.clone(),
+            created_at: now,
+        }));
+    }
+
+    let log = new_event_log("SpotClaimsFinalizedForPost", &post_id, data, event_id, now);
+    rows.push(SocialEventRow::SpotEventLog(log));
+    Some(rows)
 }
 
 fn process_spot_post_linked_event(
@@ -680,17 +784,18 @@ fn process_spot_post_linked_event(
         link_kind: "linked".to_string(),
         transaction_id: transaction_id.to_string(),
         created_at: now.naive_utc(),
+        claim_index: data.get("claim_index").and_then(|v| v.as_i64()).unwrap_or(0),
+        policy_hash: data
+            .get("policy_hash")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
     };
 
     let log = new_event_log("SpotPostLinkedEvent", &post_id, data, event_id, now);
 
     Some(vec![
         SocialEventRow::SpotPostLinkUpsert(link),
-        SocialEventRow::PostSpotFieldsUpdate {
-            post_id,
-            spot_id: market_object_id,
-            spot_claim_id: Some(claim_object_id),
-        },
         SocialEventRow::SpotEventLog(log),
     ])
 }
@@ -820,9 +925,7 @@ mod tests {
     use super::*;
     use crate::handlers::SocialEventRow;
 
-    /// SpotConfig fee redo: the handler maps `platform_fee_bps` / `ecosystem_fee_bps`
-    /// of gross onto the new config columns and zeroes the legacy `fee_bps` /
-    /// `fee_split_bps_platform` columns (retained on the table for rollback safety).
+    /// SpotConfig fee fields map directly from the Move event platform/ecosystem bps.
     #[test]
     fn spot_config_fee_breakout_maps_to_row() {
         let data = serde_json::json!({
@@ -842,6 +945,8 @@ mod tests {
             "oracle_address": "0x2f41b4f43f505d427e8777c511461de8e50eac26558a996627dded27dce50918",
             "max_single_bet": 1000000000,
             "max_bets_per_record": 100,
+            "max_claim_per_post": 10,
+            "spot_governance_registry_id": "0xabcdef",
             "timestamp": 1700000000,
         });
         let rows = handle_spot_event("SpotConfigUpdatedEvent", &data, "tx:0", 0, 0)
@@ -855,11 +960,15 @@ mod tests {
             .expect("SpotConfig row should be emitted");
         assert_eq!(cfg.platform_fee_bps, 50);
         assert_eq!(cfg.ecosystem_fee_bps, 50);
-        assert_eq!(cfg.fee_bps, 0);
-        assert_eq!(cfg.fee_split_bps_platform, 0);
         assert_eq!(cfg.min_betting_options, 2);
         assert_eq!(cfg.max_betting_options, 10);
         assert_eq!(cfg.max_reasoning_length, 5000);
         assert_eq!(cfg.max_evidence_urls, 10);
+        assert_eq!(cfg.max_bets_per_record, 100);
+        assert_eq!(cfg.max_claim_per_post, 10);
+        assert_eq!(
+            cfg.spot_governance_registry_id.as_deref(),
+            Some("0xabcdef")
+        );
     }
 }

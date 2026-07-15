@@ -410,7 +410,7 @@ module social_contracts::proof_of_creativity {
             version: upgrade::current_version(),
         };
 
-        // Emit event so indexer can populate poc_configuration table
+        // Emit event so indexer can populate poc_config table
         event::emit(PoCConfigUpdatedEvent {
             updated_by: sender,
             oracle_address: sender,

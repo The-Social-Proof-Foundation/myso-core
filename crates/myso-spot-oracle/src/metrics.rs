@@ -13,7 +13,6 @@ pub struct OracleMetrics {
     pub queue_depth: IntGaugeVec,
     pub checkpoint_ingest_total: IntCounterVec,
     pub checkpoint_lag: IntGauge,
-    pub posts_filtered_enable_spot: IntCounter,
     pub source_fetch_errors: IntCounter,
     pub event_provider_sync_total: IntCounterVec,
     pub scheduled_events_active: IntGauge,
@@ -76,15 +75,6 @@ impl OracleMetrics {
             .register(Box::new(checkpoint_lag.clone()))
             .expect("register checkpoint_lag");
 
-        let posts_filtered_enable_spot = IntCounter::new(
-            "posts_filtered_enable_spot",
-            "Posts observed with enable_spot=false",
-        )
-        .expect("posts_filtered_enable_spot metric");
-        registry
-            .register(Box::new(posts_filtered_enable_spot.clone()))
-            .expect("register posts_filtered_enable_spot");
-
         let source_fetch_errors = IntCounter::new(
             "source_fetch_errors_total",
             "Trusted-source direct HTTP fetch failures",
@@ -133,7 +123,6 @@ impl OracleMetrics {
             queue_depth,
             checkpoint_ingest_total,
             checkpoint_lag,
-            posts_filtered_enable_spot,
             source_fetch_errors,
             event_provider_sync_total,
             scheduled_events_active,

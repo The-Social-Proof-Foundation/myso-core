@@ -6,17 +6,22 @@ use std::sync::Arc;
 use chrono::Utc;
 use tracing::{info, warn};
 
+use uuid::Uuid;
+
 use crate::api::AppState;
 use crate::claim::lifecycle::{default_context_for, LifecycleEvent};
 use crate::review::canonicalize::{
-    canonicalize_with_options, market_key_hash_hex, semantic_claim_hash_hex, CanonicalizeOptions,
+    canonicalize_with_options, market_key_hash_hex, semantic_claim_hash_hex, CanonicalClaim,
+    CanonicalizeOptions,
 };
 use crate::review::compiler::ResolverCompiler;
 use crate::review::deadline::DeadlinePolicy;
 use crate::review::llm::{extract_claim_heuristic, LlmClient};
 use crate::review::rules::ReviewDecision;
+use crate::review::verify::{verify_and_build_verdict, VERDICT_FALSE, VERDICT_TRUE};
 use crate::store::jobs::SpotJob;
-use crate::types::MarketStatus;
+use crate::store::SpotTrustedSourceRow;
+use crate::types::{ClaimCategory, MarketStatus, TimeClass};
 
 pub async fn process_review_job(state: Arc<AppState>, job: &SpotJob) -> anyhow::Result<()> {
     let market_id = job
@@ -95,6 +100,60 @@ pub async fn process_review_job(state: Arc<AppState>, job: &SpotJob) -> anyhow::
     )
     .await?;
 
+    // Unsupported claims are not objectively checkable: no market, no verdict. Finalize the post
+    // cleanly as `completed_no_actionable`.
+    if extracted.time_class == TimeClass::Unsupported
+        || extracted.claim_category == ClaimCategory::Unsupported
+    {
+        let reason = "unsupported_claim";
+        let review_id = crate::store::reviews::insert_oracle_review(
+            state.store.pool(),
+            post_id,
+            None,
+            "rejected",
+            Some(reason),
+        )
+        .await?;
+        state
+            .metrics
+            .reviews_total
+            .with_label_values(&["rejected", reason])
+            .inc();
+        let mut ctx = default_context_for(&LifecycleEvent::ReviewRejected);
+        ctx.job_id = Some(job.id);
+        ctx.status_reason = Some(reason.to_string());
+        state
+            .store
+            .transition_with_metadata(
+                market_id,
+                LifecycleEvent::ReviewRejected,
+                Some(review_id),
+                None,
+                None,
+                ctx,
+            )
+            .await?;
+        crate::store::jobs::enqueue_job(
+            state.store.pool(),
+            "SubmitChainTx",
+            Some(market_id),
+            None,
+            80,
+            Utc::now(),
+            serde_json::json!({
+                "tx_kind": "finalize_post",
+                "post_id": post_id,
+                "detected_claim_count": 1,
+                "rejected_claim_count": 1,
+                "truncated_claim_count": 0,
+                "past_verified_count": 0,
+            }),
+        )
+        .await?;
+        info!(post_id, reason, "unsupported claim; finalized as no-actionable");
+        return Ok(());
+    }
+
     let canonical = canonicalize_with_options(
         extraction_id,
         &extracted,
@@ -118,6 +177,22 @@ pub async fn process_review_job(state: Arc<AppState>, job: &SpotJob) -> anyhow::
     .await?;
 
     let source_rows = state.store.list_enabled_sources().await.unwrap_or_default();
+
+    // Past-claim track: verify against trusted sources and finalize with a verdict — never open a
+    // market (even when no prior market ever existed, e.g. long-settled historical facts).
+    if extracted.time_class == TimeClass::Past {
+        return verify_and_finalize_past(
+            &state,
+            job,
+            post_id,
+            market_id,
+            canonical_id,
+            &canonical,
+            &source_rows,
+        )
+        .await;
+    }
+
     let deadline_policy = DeadlinePolicy::from_secs(
         state.args.min_deadline_lead_secs,
         state.args.max_deadline_horizon_secs,
@@ -330,6 +405,94 @@ pub async fn process_review_job(state: Arc<AppState>, job: &SpotJob) -> anyhow::
             );
         }
     }
+    Ok(())
+}
+
+/// All-zero on-chain address encoding "no related market" in the finalize past-verdict vectors.
+const ZERO_ADDR: &str = "0x0000000000000000000000000000000000000000000000000000000000000000";
+
+/// Verify a past claim against trusted sources and enqueue an on-chain finalize carrying the
+/// verdict + evidence hash (+ related historical market when one exists). No market is opened.
+async fn verify_and_finalize_past(
+    state: &Arc<AppState>,
+    job: &SpotJob,
+    post_id: &str,
+    market_id: Uuid,
+    canonical_id: Uuid,
+    canonical: &CanonicalClaim,
+    source_rows: &[SpotTrustedSourceRow],
+) -> anyhow::Result<()> {
+    let verdict = verify_and_build_verdict(state, canonical, source_rows).await;
+    let decision_str = match verdict.verdict {
+        VERDICT_TRUE => "past_true",
+        VERDICT_FALSE => "past_false",
+        _ => "past_unverifiable",
+    };
+
+    let review_id = crate::store::reviews::insert_oracle_review(
+        state.store.pool(),
+        post_id,
+        Some(canonical_id),
+        decision_str,
+        None,
+    )
+    .await?;
+    state
+        .metrics
+        .reviews_total
+        .with_label_values(&[decision_str, "none"])
+        .inc();
+
+    let mut ctx = default_context_for(&LifecycleEvent::ReviewRejected);
+    ctx.job_id = Some(job.id);
+    ctx.status_reason = Some(decision_str.to_string());
+    state
+        .store
+        .transition_with_metadata(
+            market_id,
+            LifecycleEvent::ReviewRejected,
+            Some(review_id),
+            None,
+            None,
+            ctx,
+        )
+        .await?;
+
+    let related = verdict
+        .related_market_object_id
+        .clone()
+        .unwrap_or_else(|| ZERO_ADDR.to_string());
+    let evidence_hex = format!("0x{}", hex::encode(&verdict.evidence_hash));
+    crate::store::jobs::enqueue_job(
+        state.store.pool(),
+        "SubmitChainTx",
+        Some(market_id),
+        None,
+        80,
+        Utc::now(),
+        serde_json::json!({
+            "tx_kind": "finalize_post",
+            "post_id": post_id,
+            "detected_claim_count": 1,
+            "rejected_claim_count": 0,
+            "truncated_claim_count": 0,
+            "past_verified_count": 1,
+            "past_claim_indexes": [0],
+            "past_verdicts": [verdict.verdict],
+            "past_related_market_ids": [related],
+            "past_evidence_hashes": [evidence_hex],
+            "veracity_manifest_hash": evidence_hex,
+            "evidence_urls": verdict.evidence_urls,
+            "summary": verdict.summary,
+        }),
+    )
+    .await?;
+    info!(
+        post_id,
+        verdict = decision_str,
+        related = ?verdict.related_market_object_id,
+        "past claim verified and finalized"
+    );
     Ok(())
 }
 

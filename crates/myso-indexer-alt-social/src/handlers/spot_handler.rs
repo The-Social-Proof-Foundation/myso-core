@@ -16,15 +16,17 @@ use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
-    NewSpotBet, NewSpotBetWithdrawal, NewSpotClaim, NewSpotConfig, NewSpotCreatorPayout,
-    NewSpotEventLog, NewSpotMarket, NewSpotPayout, NewSpotPostLink, NewSpotRecord, NewSpotRefund,
-    NewSpotResolution,
+    NewSpotBet, NewSpotBetWithdrawal, NewSpotClaim, NewSpotClaimVerdict, NewSpotConfig,
+    NewSpotCreatorPayout, NewSpotEventLog, NewSpotMarket, NewSpotPayout, NewSpotPostAnalysis,
+    NewSpotPostLink, NewSpotRecord, NewSpotRefund, NewSpotResolution,
 };
 use myso_indexer_alt_social_schema::schema::{
-    posts, spot_bet_withdrawals, spot_bets, spot_claims, spot_config, spot_creator_earnings_daily,
-    spot_creator_payouts, spot_events, spot_markets, spot_payouts, spot_post_links, spot_records,
-    spot_refunds, spot_resolutions,
+    posts, spot_bet_withdrawals, spot_bets, spot_claim_verdicts, spot_claims, spot_config,
+    spot_creator_earnings_daily, spot_creator_payouts, spot_events, spot_markets, spot_payouts,
+    spot_post_analyses, spot_post_links, spot_records, spot_refunds, spot_resolutions,
 };
+
+use super::SpotFinalizeProjection;
 
 use super::common;
 use super::events;
@@ -67,6 +69,8 @@ pub enum SpotRow {
     SpotClaimUpsert(NewSpotClaim),
     SpotMarketUpsert(NewSpotMarket),
     SpotPostLinkUpsert(NewSpotPostLink),
+    SpotFinalize(Box<SpotFinalizeProjection>),
+    SpotClaimVerdictUpsert(NewSpotClaimVerdict),
     SpotCreatorPayoutUpsert(NewSpotCreatorPayout),
     SpotCreatorPayoutStatusUpdate {
         market_object_id: String,
@@ -89,11 +93,6 @@ pub enum SpotRow {
         last_resolution_at_ms: Option<i64>,
         resolution_timestamp_ms: Option<i64>,
         creator_fee_total: Option<i64>,
-    },
-    PostSpotFieldsUpdate {
-        post_id: String,
-        spot_id: Option<String>,
-        spot_claim_id: Option<String>,
     },
 }
 
@@ -155,6 +154,10 @@ impl SpotRow {
             crate::handlers::SocialEventRow::SpotPostLinkUpsert(link) => {
                 Some(SpotRow::SpotPostLinkUpsert(link))
             }
+            crate::handlers::SocialEventRow::SpotFinalize(p) => Some(SpotRow::SpotFinalize(p)),
+            crate::handlers::SocialEventRow::SpotClaimVerdictUpsert(v) => {
+                Some(SpotRow::SpotClaimVerdictUpsert(v))
+            }
             crate::handlers::SocialEventRow::SpotCreatorPayoutUpsert(payout) => {
                 Some(SpotRow::SpotCreatorPayoutUpsert(payout))
             }
@@ -198,15 +201,6 @@ impl SpotRow {
                 last_resolution_at_ms,
                 resolution_timestamp_ms,
                 creator_fee_total,
-            }),
-            crate::handlers::SocialEventRow::PostSpotFieldsUpdate {
-                post_id,
-                spot_id,
-                spot_claim_id,
-            } => Some(SpotRow::PostSpotFieldsUpdate {
-                post_id,
-                spot_id,
-                spot_claim_id,
             }),
             _ => None,
         }
@@ -453,7 +447,7 @@ impl Handler for SpotHandler {
                 SpotRow::SpotPostLinkUpsert(link) => {
                     total += diesel::insert_into(spot_post_links::table)
                         .values(link)
-                        .on_conflict(spot_post_links::post_id)
+                        .on_conflict((spot_post_links::post_id, spot_post_links::claim_index))
                         .do_update()
                         .set((
                             spot_post_links::claim_object_id
@@ -461,8 +455,98 @@ impl Handler for SpotHandler {
                             spot_post_links::market_object_id
                                 .eq(excluded(spot_post_links::market_object_id)),
                             spot_post_links::link_kind.eq(excluded(spot_post_links::link_kind)),
+                            spot_post_links::policy_hash.eq(excluded(spot_post_links::policy_hash)),
                             spot_post_links::transaction_id
                                 .eq(excluded(spot_post_links::transaction_id)),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                SpotRow::SpotFinalize(p) => {
+                    total += diesel::update(posts::table)
+                        .filter(posts::post_id.eq(&p.post_id))
+                        .set((
+                            posts::spot_analysis_status.eq(p.status),
+                            posts::spot_detected_claim_count.eq(p.detected_claim_count),
+                            posts::spot_rejected_claim_count.eq(p.rejected_claim_count),
+                            posts::spot_truncated_claim_count.eq(p.truncated_claim_count),
+                            posts::spot_future_accepted_count.eq(p.future_accepted_count),
+                            posts::spot_past_verified_count.eq(p.past_verified_count),
+                            posts::spot_max_claim_per_post_applied.eq(p.max_claim_per_post_applied),
+                            posts::spot_claim_indexes.eq(&p.claim_indexes),
+                            posts::spot_claim_ids.eq(&p.claim_ids),
+                            posts::spot_market_ids.eq(&p.market_ids),
+                            posts::spot_claim_manifest_hash.eq(&p.claim_manifest_hash),
+                            posts::spot_veracity_manifest_hash.eq(&p.veracity_manifest_hash),
+                            posts::spot_analysis_tx_digest.eq(&p.finalize_tx_digest),
+                        ))
+                        .execute(conn)
+                        .await?;
+                    total += diesel::insert_into(spot_post_analyses::table)
+                        .values(NewSpotPostAnalysis {
+                            post_id: p.post_id.clone(),
+                            status: p.status,
+                            detected_claim_count: p.detected_claim_count,
+                            rejected_claim_count: p.rejected_claim_count,
+                            truncated_claim_count: p.truncated_claim_count,
+                            future_accepted_count: p.future_accepted_count,
+                            past_verified_count: p.past_verified_count,
+                            max_claim_per_post_applied: p.max_claim_per_post_applied,
+                            claim_manifest_hash: p.claim_manifest_hash.clone(),
+                            veracity_manifest_hash: p.veracity_manifest_hash.clone(),
+                            finalize_tx_digest: p.finalize_tx_digest.clone(),
+                            checkpoint: None,
+                            updated_at: p.updated_at,
+                        })
+                        .on_conflict(spot_post_analyses::post_id)
+                        .do_update()
+                        .set((
+                            spot_post_analyses::status.eq(excluded(spot_post_analyses::status)),
+                            spot_post_analyses::detected_claim_count
+                                .eq(excluded(spot_post_analyses::detected_claim_count)),
+                            spot_post_analyses::rejected_claim_count
+                                .eq(excluded(spot_post_analyses::rejected_claim_count)),
+                            spot_post_analyses::truncated_claim_count
+                                .eq(excluded(spot_post_analyses::truncated_claim_count)),
+                            spot_post_analyses::future_accepted_count
+                                .eq(excluded(spot_post_analyses::future_accepted_count)),
+                            spot_post_analyses::past_verified_count
+                                .eq(excluded(spot_post_analyses::past_verified_count)),
+                            spot_post_analyses::max_claim_per_post_applied
+                                .eq(excluded(spot_post_analyses::max_claim_per_post_applied)),
+                            spot_post_analyses::claim_manifest_hash
+                                .eq(excluded(spot_post_analyses::claim_manifest_hash)),
+                            spot_post_analyses::veracity_manifest_hash
+                                .eq(excluded(spot_post_analyses::veracity_manifest_hash)),
+                            spot_post_analyses::finalize_tx_digest
+                                .eq(excluded(spot_post_analyses::finalize_tx_digest)),
+                            spot_post_analyses::updated_at
+                                .eq(excluded(spot_post_analyses::updated_at)),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                SpotRow::SpotClaimVerdictUpsert(verdict) => {
+                    total += diesel::insert_into(spot_claim_verdicts::table)
+                        .values(verdict)
+                        .on_conflict((
+                            spot_claim_verdicts::post_id,
+                            spot_claim_verdicts::claim_index,
+                        ))
+                        .do_update()
+                        .set((
+                            spot_claim_verdicts::verdict
+                                .eq(excluded(spot_claim_verdicts::verdict)),
+                            spot_claim_verdicts::evidence_manifest_hash
+                                .eq(excluded(spot_claim_verdicts::evidence_manifest_hash)),
+                            spot_claim_verdicts::related_market_object_id
+                                .eq(excluded(spot_claim_verdicts::related_market_object_id)),
+                            spot_claim_verdicts::evidence_urls
+                                .eq(excluded(spot_claim_verdicts::evidence_urls)),
+                            spot_claim_verdicts::summary
+                                .eq(excluded(spot_claim_verdicts::summary)),
+                            spot_claim_verdicts::transaction_id
+                                .eq(excluded(spot_claim_verdicts::transaction_id)),
                         ))
                         .execute(conn)
                         .await?;
@@ -554,20 +638,6 @@ impl Handler for SpotHandler {
                             spot_markets::resolution_timestamp_ms.eq(resolution_timestamp_ms),
                             spot_markets::creator_fee_total.eq(creator_fee_total),
                             spot_markets::updated_at.eq(chrono::Utc::now().naive_utc()),
-                        ))
-                        .execute(conn)
-                        .await?;
-                }
-                SpotRow::PostSpotFieldsUpdate {
-                    post_id,
-                    spot_id,
-                    spot_claim_id,
-                } => {
-                    total += diesel::update(posts::table)
-                        .filter(posts::post_id.eq(post_id))
-                        .set((
-                            posts::spot_id.eq(spot_id),
-                            posts::spot_claim_id.eq(spot_claim_id),
                         ))
                         .execute(conn)
                         .await?;

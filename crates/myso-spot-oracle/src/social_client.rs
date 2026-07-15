@@ -36,7 +36,7 @@ impl SocialClient {
         }
     }
 
-    /// Fetch posts with `enable_spot = true` and `spot_id IS NULL` from social-server.
+    /// Fetch posts awaiting SPoT analysis finalization (`spot_analysis_status = pending`).
     pub async fn list_pending_spot_posts(
         &self,
         limit: i64,

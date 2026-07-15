@@ -247,8 +247,12 @@ pub(crate) async fn get_spot_configuration(db: &Db) -> Result<Option<SpotConfigI
     let query = "
         SELECT updated_by, truth_enabled, confidence_threshold_bps, resolution_window_ms,
                max_resolution_window_ms, payout_delay_ms, platform_fee_bps, ecosystem_fee_bps,
+               COALESCE(creator_fee_bps, 100) AS creator_fee_bps,
+               COALESCE(creator_claim_window_ms, 2592000000) AS creator_claim_window_ms,
+               COALESCE(expired_creator_ecosystem_bps, 10000) AS expired_creator_ecosystem_bps,
                min_betting_options, max_betting_options, min_reasoning_length, max_reasoning_length,
-               max_evidence_urls, oracle_address, max_single_bet, version, updated_at, time,
+               max_evidence_urls, oracle_address, max_single_bet, max_bets_per_record,
+               max_claim_per_post, spot_governance_registry_id, version, updated_at, time,
                transaction_id
         FROM spot_config
         ORDER BY time DESC
@@ -261,9 +265,10 @@ pub(crate) async fn get_spot_configuration(db: &Db) -> Result<Option<SpotConfigI
     Ok(result)
 }
 
-/// Posts that opted into SPoT (`enable_spot = true`) but have no SpotRecord yet
-/// (`spot_id IS NULL`). Consumed by the SPoT oracle's PostPoller via the secret-gated
-/// `GET /spot/pending-posts` endpoint. Cursor is the last `created_at` (ms).
+/// Posts awaiting SPoT analysis finalization (`spot_analysis_status = 0`, i.e. pending).
+/// SPoT is now always-on, so every non-deleted post is pending until the oracle finalizes it.
+/// Consumed by the SPoT oracle's PostPoller via the secret-gated `GET /spot/pending-posts`
+/// endpoint. Cursor is the last `created_at` (ms).
 pub(crate) async fn list_pending_spot_posts(
     db: &Db,
     limit: i64,
@@ -273,8 +278,7 @@ pub(crate) async fn list_pending_spot_posts(
     let query = "
         SELECT post_id, owner, content, created_at, post_type
         FROM posts
-        WHERE enable_spot = true
-          AND spot_id IS NULL
+        WHERE spot_analysis_status = 0
           AND deleted_at IS NULL
           AND ($1::bigint IS NULL OR created_at > $1)
         ORDER BY created_at ASC
@@ -293,9 +297,11 @@ pub(crate) async fn get_spot_route(
     post_id: &str,
 ) -> Result<Option<SpotRouteResponse>, SocialError> {
     let mut conn = db.connect().await?;
+    // Multi-claim: route via spot_post_links (per-claim link rows). Single-claim baseline picks
+    // the latest link for the post; opt-in columns on `posts` no longer exist.
     let query = "
         WITH post_row AS (
-            SELECT post_id, enable_spot, spot_id, spot_claim_id
+            SELECT post_id, spot_analysis_status
             FROM posts
             WHERE post_id = $1 AND deleted_at IS NULL
             ORDER BY created_at DESC
@@ -305,12 +311,11 @@ pub(crate) async fn get_spot_route(
             SELECT spl.claim_object_id, spl.market_object_id, spl.link_kind
             FROM spot_post_links spl
             WHERE spl.post_id = $1
+            ORDER BY spl.created_at DESC
+            LIMIT 1
         ),
         claim_id AS (
-            SELECT COALESCE(
-                (SELECT spot_claim_id FROM post_row),
-                (SELECT claim_object_id FROM link_row)
-            ) AS claim_object_id
+            SELECT (SELECT claim_object_id FROM link_row) AS claim_object_id
         ),
         open_market AS (
             SELECT sm.market_object_id
@@ -319,37 +324,25 @@ pub(crate) async fn get_spot_route(
             WHERE sm.status = 1
             ORDER BY sm.created_at_ms DESC NULLS LAST
             LIMIT 1
-        ),
-        legacy_record AS (
-            SELECT sr.record_object_id AS market_object_id
-            FROM spot_records sr
-            WHERE sr.post_id = $1 AND sr.status = 1
-            ORDER BY sr.created_at_ms DESC
-            LIMIT 1
         )
         SELECT
             pr.post_id,
-            c.claim_object_id,
+            (SELECT claim_object_id FROM claim_id) AS claim_object_id,
             COALESCE(
-                pr.spot_id,
                 (SELECT market_object_id FROM link_row WHERE market_object_id IS NOT NULL),
-                (SELECT market_object_id FROM open_market),
-                (SELECT market_object_id FROM legacy_record)
+                (SELECT market_object_id FROM open_market)
             ) AS target_market_id,
             (SELECT link_kind FROM link_row) AS link_kind,
             CASE
                 WHEN COALESCE(
-                    pr.spot_id,
                     (SELECT market_object_id FROM link_row WHERE market_object_id IS NOT NULL),
                     (SELECT market_object_id FROM open_market)
                 ) IS NOT NULL THEN 'open_market'
-                WHEN c.claim_object_id IS NOT NULL THEN 'claim_without_open_market'
-                WHEN (SELECT market_object_id FROM legacy_record) IS NOT NULL THEN 'legacy_record'
-                WHEN pr.enable_spot = true THEN 'pending_spot'
-                ELSE 'not_spot_enabled'
+                WHEN (SELECT claim_object_id FROM claim_id) IS NOT NULL THEN 'claim_without_open_market'
+                WHEN pr.spot_analysis_status = 0 THEN 'pending'
+                ELSE 'no_actionable'
             END AS routing_reason
         FROM post_row pr
-        LEFT JOIN claim_id c ON true
     ";
     let result = diesel::sql_query(query)
         .bind::<Text, _>(post_id)

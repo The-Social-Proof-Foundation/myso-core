@@ -11,6 +11,7 @@ Implements features like comments, reposts, and quotes
 -  [Struct `Post`](#social_contracts_post_Post)
 -  [Struct `PostAttribution`](#social_contracts_post_PostAttribution)
 -  [Struct `CommentAttribution`](#social_contracts_post_CommentAttribution)
+-  [Struct `PostSpotAnalysis`](#social_contracts_post_PostSpotAnalysis)
 -  [Struct `Comment`](#social_contracts_post_Comment)
 -  [Struct `Repost`](#social_contracts_post_Repost)
 -  [Struct `PromotionView`](#social_contracts_post_PromotionView)
@@ -60,7 +61,6 @@ Implements features like comments, reposts, and quotes
 -  [Function `allow_quotes`](#social_contracts_post_allow_quotes)
 -  [Function `allow_tips`](#social_contracts_post_allow_tips)
 -  [Function `is_spt_enabled`](#social_contracts_post_is_spt_enabled)
--  [Function `is_spot_enabled`](#social_contracts_post_is_spot_enabled)
 -  [Function `poc_outcome`](#social_contracts_post_poc_outcome)
 -  [Function `poc_redirection_kind`](#social_contracts_post_poc_redirection_kind)
 -  [Function `poc_disputes_submitted`](#social_contracts_post_poc_disputes_submitted)
@@ -85,12 +85,20 @@ Implements features like comments, reposts, and quotes
 -  [Function `get_poc_media_type`](#social_contracts_post_get_poc_media_type)
 -  [Function `get_poc_oracle_address`](#social_contracts_post_get_poc_oracle_address)
 -  [Function `get_poc_analyzed_at`](#social_contracts_post_get_poc_analyzed_at)
--  [Function `get_spot_id`](#social_contracts_post_get_spot_id)
--  [Function `get_spot_claim_id`](#social_contracts_post_get_spot_claim_id)
 -  [Function `get_spt_id`](#social_contracts_post_get_spt_id)
--  [Function `set_spot_id`](#social_contracts_post_set_spot_id)
--  [Function `set_spot_claim_id`](#social_contracts_post_set_spot_claim_id)
 -  [Function `set_spt_id`](#social_contracts_post_set_spt_id)
+-  [Function `spot_status_pending`](#social_contracts_post_spot_status_pending)
+-  [Function `spot_status_completed`](#social_contracts_post_spot_status_completed)
+-  [Function `spot_status_completed_no_actionable`](#social_contracts_post_spot_status_completed_no_actionable)
+-  [Function `has_spot_analysis`](#social_contracts_post_has_spot_analysis)
+-  [Function `spot_analysis_status`](#social_contracts_post_spot_analysis_status)
+-  [Function `spot_analysis_market_ids`](#social_contracts_post_spot_analysis_market_ids)
+-  [Function `spot_analysis_claim_indexes`](#social_contracts_post_spot_analysis_claim_indexes)
+-  [Function `spot_analysis_claim_ids`](#social_contracts_post_spot_analysis_claim_ids)
+-  [Function `spot_analysis_future_accepted_count`](#social_contracts_post_spot_analysis_future_accepted_count)
+-  [Function `ensure_spot_analysis_pending`](#social_contracts_post_ensure_spot_analysis_pending)
+-  [Function `spot_analysis_append_future`](#social_contracts_post_spot_analysis_append_future)
+-  [Function `finalize_spot_analysis`](#social_contracts_post_finalize_spot_analysis)
 -  [Function `bootstrap_init`](#social_contracts_post_bootstrap_init)
 -  [Function `convert_urls_to_strings`](#social_contracts_post_convert_urls_to_strings)
 -  [Function `resolve_social_actor`](#social_contracts_post_resolve_social_actor)
@@ -467,18 +475,6 @@ Post object that contains content information
  Opt-in for Social Proof Tokens (reservation pool created at post creation when true)
 </dd>
 <dt>
-<code>enable_spot: bool</code>
-</dt>
-<dd>
- Opt-in for Social Proof of Truth
-</dd>
-<dt>
-<code>spot_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
-</dt>
-<dd>
- Optional Social Proof of Truth record ID (address of SpotRecord object)
-</dd>
-<dt>
 <code>spt_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
 </dt>
 <dd>
@@ -582,6 +578,96 @@ Published-action attribution stored as a dynamic field (Post is at the VM field-
 </dd>
 <dt>
 <code><a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>: u8</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_post_PostSpotAnalysis"></a>
+
+## Struct `PostSpotAnalysis`
+
+Per-post multi-claim SPoT analysis, attached to <code><a href="../social_contracts/post.md#social_contracts_post">post</a>.id</code> via <code><a href="../social_contracts/post.md#social_contracts_post_SPOT_ANALYSIS_DF_KEY">SPOT_ANALYSIS_DF_KEY</a></code>.
+Future-claim links are stored as aligned vectors (index/claim/market/policy); past
+verdict detail lives off-chain (indexer/oracle) and is committed here only as counts
+and manifest hashes.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/post.md#social_contracts_post_PostSpotAnalysis">PostSpotAnalysis</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>status: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>detected_claim_count: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>rejected_claim_count: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>truncated_claim_count: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>future_accepted_count: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>past_verified_count: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_claim_per_post_applied: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>claim_indexes: vector&lt;u64&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>claim_ids: vector&lt;<b>address</b>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>market_ids: vector&lt;<b>address</b>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>policy_hashes: vector&lt;vector&lt;u8&gt;&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>claim_manifest_hash: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;u8&gt;&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>veracity_manifest_hash: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;u8&gt;&gt;</code>
 </dt>
 <dd>
 </dd>
@@ -1236,16 +1322,6 @@ Post created event
 </dd>
 <dt>
 <code>enable_spt: bool</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>enable_spot: bool</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>spot_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
 </dt>
 <dd>
 </dd>
@@ -3280,11 +3356,86 @@ Event/indexer tags for [<code><a href="../social_contracts/post.md#social_contra
 
 
 
-<a name="social_contracts_post_SPOT_CLAIM_ID_DF_KEY"></a>
+<a name="social_contracts_post_SPOT_ANALYSIS_DF_KEY"></a>
+
+Multi-claim Social Proof of Truth analysis (Post is at the VM field-count limit).
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_SPOT_ANALYSIS_DF_KEY">SPOT_ANALYSIS_DF_KEY</a>: vector&lt;u8&gt; = vector[115, 112, 111, 116, 95, 97, 110, 97, 108, 121, 115, 105, 115];
+</code></pre>
 
 
 
-<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_SPOT_CLAIM_ID_DF_KEY">SPOT_CLAIM_ID_DF_KEY</a>: vector&lt;u8&gt; = vector[115, 112, 111, 116, 95, 99, 108, 97, 105, 109, 95, 105, 100];
+<a name="social_contracts_post_SPOT_STATUS_PENDING"></a>
+
+SPoT multi-claim analysis lifecycle status (interpreted by <code><a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth">social_proof_of_truth</a></code>).
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_SPOT_STATUS_PENDING">SPOT_STATUS_PENDING</a>: u8 = 0;
+</code></pre>
+
+
+
+<a name="social_contracts_post_SPOT_STATUS_COMPLETED"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_SPOT_STATUS_COMPLETED">SPOT_STATUS_COMPLETED</a>: u8 = 1;
+</code></pre>
+
+
+
+<a name="social_contracts_post_SPOT_STATUS_COMPLETED_NO_ACTIONABLE"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_SPOT_STATUS_COMPLETED_NO_ACTIONABLE">SPOT_STATUS_COMPLETED_NO_ACTIONABLE</a>: u8 = 2;
+</code></pre>
+
+
+
+<a name="social_contracts_post_ESpotAnalysisNotPending"></a>
+
+Errors surfaced by SPoT analysis mutators.
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_ESpotAnalysisNotPending">ESpotAnalysisNotPending</a>: u64 = 90;
+</code></pre>
+
+
+
+<a name="social_contracts_post_ESpotAnalysisVectorMismatch"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_ESpotAnalysisVectorMismatch">ESpotAnalysisVectorMismatch</a>: u64 = 91;
+</code></pre>
+
+
+
+<a name="social_contracts_post_ESpotAnalysisIndexOrder"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_ESpotAnalysisIndexOrder">ESpotAnalysisIndexOrder</a>: u64 = 92;
+</code></pre>
+
+
+
+<a name="social_contracts_post_ESpotAnalysisOverCap"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_ESpotAnalysisOverCap">ESpotAnalysisOverCap</a>: u64 = 93;
+</code></pre>
+
+
+
+<a name="social_contracts_post_ESpotAnalysisDuplicateMarket"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_ESpotAnalysisDuplicateMarket">ESpotAnalysisDuplicateMarket</a>: u64 = 94;
 </code></pre>
 
 
@@ -3777,31 +3928,6 @@ Query: check if SPT is enabled for this post
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_is_spt_enabled">is_spt_enabled</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): bool {
     <a href="../social_contracts/post.md#social_contracts_post">post</a>.enable_spt
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_post_is_spot_enabled"></a>
-
-## Function `is_spot_enabled`
-
-Query: check if SPoT is enabled for this post
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_is_spot_enabled">is_spot_enabled</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): bool
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_is_spot_enabled">is_spot_enabled</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): bool {
-    <a href="../social_contracts/post.md#social_contracts_post">post</a>.enable_spot
 }
 </code></pre>
 
@@ -4482,60 +4608,6 @@ Get PoC analysis timestamp (immutable query function)
 
 </details>
 
-<a name="social_contracts_post_get_spot_id"></a>
-
-## Function `get_spot_id`
-
-Get the SPoT record ID for a post
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_spot_id">get_spot_id</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): &<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_spot_id">get_spot_id</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): &Option&lt;<b>address</b>&gt; {
-    &<a href="../social_contracts/post.md#social_contracts_post">post</a>.spot_id
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_post_get_spot_claim_id"></a>
-
-## Function `get_spot_claim_id`
-
-Get the linked SPoT claim ID for a post (stored as dynamic field).
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_spot_claim_id">get_spot_claim_id</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_spot_claim_id">get_spot_claim_id</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): Option&lt;<b>address</b>&gt; {
-    <b>if</b> (df::exists_with_type&lt;vector&lt;u8&gt;, <b>address</b>&gt;(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_SPOT_CLAIM_ID_DF_KEY">SPOT_CLAIM_ID_DF_KEY</a>)) {
-        option::some(*df::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_SPOT_CLAIM_ID_DF_KEY">SPOT_CLAIM_ID_DF_KEY</a>))
-    } <b>else</b> {
-        option::none()
-    }
-}
-</code></pre>
-
-
-
-</details>
-
 <a name="social_contracts_post_get_spt_id"></a>
 
 ## Function `get_spt_id`
@@ -4561,60 +4633,6 @@ Get the SPT pool ID for a post
 
 </details>
 
-<a name="social_contracts_post_set_spot_id"></a>
-
-## Function `set_spot_id`
-
-Internal function to set SPoT record ID (package visibility only)
-
-
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_set_spot_id">set_spot_id</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, spot_id: <b>address</b>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_set_spot_id">set_spot_id</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>, spot_id: <b>address</b>) {
-    <a href="../social_contracts/post.md#social_contracts_post">post</a>.spot_id = option::some(spot_id);
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_post_set_spot_claim_id"></a>
-
-## Function `set_spot_claim_id`
-
-Internal function to set linked SPoT claim ID (package visibility only)
-
-
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_set_spot_claim_id">set_spot_claim_id</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, claim_id: <b>address</b>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_set_spot_claim_id">set_spot_claim_id</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>, claim_id: <b>address</b>) {
-    <b>if</b> (df::exists_with_type&lt;vector&lt;u8&gt;, <b>address</b>&gt;(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_SPOT_CLAIM_ID_DF_KEY">SPOT_CLAIM_ID_DF_KEY</a>)) {
-        *df::borrow_mut(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_SPOT_CLAIM_ID_DF_KEY">SPOT_CLAIM_ID_DF_KEY</a>) = claim_id;
-    } <b>else</b> {
-        df::add(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_SPOT_CLAIM_ID_DF_KEY">SPOT_CLAIM_ID_DF_KEY</a>, claim_id);
-    }
-}
-</code></pre>
-
-
-
-</details>
-
 <a name="social_contracts_post_set_spt_id"></a>
 
 ## Function `set_spt_id`
@@ -4633,6 +4651,378 @@ Internal function to set SPT pool ID (package visibility only)
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_set_spt_id">set_spt_id</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>, spt_id: <b>address</b>) {
     <a href="../social_contracts/post.md#social_contracts_post">post</a>.spt_id = option::some(spt_id);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_spot_status_pending"></a>
+
+## Function `spot_status_pending`
+
+SPoT analysis status sentinels for cross-module use.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_spot_status_pending">spot_status_pending</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_spot_status_pending">spot_status_pending</a>(): u8 { <a href="../social_contracts/post.md#social_contracts_post_SPOT_STATUS_PENDING">SPOT_STATUS_PENDING</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_spot_status_completed"></a>
+
+## Function `spot_status_completed`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_spot_status_completed">spot_status_completed</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_spot_status_completed">spot_status_completed</a>(): u8 { <a href="../social_contracts/post.md#social_contracts_post_SPOT_STATUS_COMPLETED">SPOT_STATUS_COMPLETED</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_spot_status_completed_no_actionable"></a>
+
+## Function `spot_status_completed_no_actionable`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_spot_status_completed_no_actionable">spot_status_completed_no_actionable</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_spot_status_completed_no_actionable">spot_status_completed_no_actionable</a>(): u8 { <a href="../social_contracts/post.md#social_contracts_post_SPOT_STATUS_COMPLETED_NO_ACTIONABLE">SPOT_STATUS_COMPLETED_NO_ACTIONABLE</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_has_spot_analysis"></a>
+
+## Function `has_spot_analysis`
+
+Whether an analysis record has been attached to this post yet.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_has_spot_analysis">has_spot_analysis</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_has_spot_analysis">has_spot_analysis</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): bool {
+    df::exists_with_type&lt;vector&lt;u8&gt;, <a href="../social_contracts/post.md#social_contracts_post_PostSpotAnalysis">PostSpotAnalysis</a>&gt;(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_SPOT_ANALYSIS_DF_KEY">SPOT_ANALYSIS_DF_KEY</a>)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_spot_analysis_status"></a>
+
+## Function `spot_analysis_status`
+
+Analysis status; <code>pending</code> (0) when no analysis has been attached.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_spot_analysis_status">spot_analysis_status</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_spot_analysis_status">spot_analysis_status</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): u8 {
+    <b>if</b> (<a href="../social_contracts/post.md#social_contracts_post_has_spot_analysis">has_spot_analysis</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>)) {
+        df::borrow&lt;vector&lt;u8&gt;, <a href="../social_contracts/post.md#social_contracts_post_PostSpotAnalysis">PostSpotAnalysis</a>&gt;(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_SPOT_ANALYSIS_DF_KEY">SPOT_ANALYSIS_DF_KEY</a>).status
+    } <b>else</b> {
+        <a href="../social_contracts/post.md#social_contracts_post_SPOT_STATUS_PENDING">SPOT_STATUS_PENDING</a>
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_spot_analysis_market_ids"></a>
+
+## Function `spot_analysis_market_ids`
+
+Future-linked market object ids in claim_index order (empty when none/pending).
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_spot_analysis_market_ids">spot_analysis_market_ids</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): vector&lt;<b>address</b>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_spot_analysis_market_ids">spot_analysis_market_ids</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): vector&lt;<b>address</b>&gt; {
+    <b>if</b> (<a href="../social_contracts/post.md#social_contracts_post_has_spot_analysis">has_spot_analysis</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>)) {
+        df::borrow&lt;vector&lt;u8&gt;, <a href="../social_contracts/post.md#social_contracts_post_PostSpotAnalysis">PostSpotAnalysis</a>&gt;(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_SPOT_ANALYSIS_DF_KEY">SPOT_ANALYSIS_DF_KEY</a>).market_ids
+    } <b>else</b> {
+        vector::empty()
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_spot_analysis_claim_indexes"></a>
+
+## Function `spot_analysis_claim_indexes`
+
+Future-linked claim indexes in ascending order (empty when none/pending).
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_spot_analysis_claim_indexes">spot_analysis_claim_indexes</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): vector&lt;u64&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_spot_analysis_claim_indexes">spot_analysis_claim_indexes</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): vector&lt;u64&gt; {
+    <b>if</b> (<a href="../social_contracts/post.md#social_contracts_post_has_spot_analysis">has_spot_analysis</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>)) {
+        df::borrow&lt;vector&lt;u8&gt;, <a href="../social_contracts/post.md#social_contracts_post_PostSpotAnalysis">PostSpotAnalysis</a>&gt;(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_SPOT_ANALYSIS_DF_KEY">SPOT_ANALYSIS_DF_KEY</a>).claim_indexes
+    } <b>else</b> {
+        vector::empty()
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_spot_analysis_claim_ids"></a>
+
+## Function `spot_analysis_claim_ids`
+
+Future-linked claim object ids in claim_index order (empty when none/pending).
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_spot_analysis_claim_ids">spot_analysis_claim_ids</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): vector&lt;<b>address</b>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_spot_analysis_claim_ids">spot_analysis_claim_ids</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): vector&lt;<b>address</b>&gt; {
+    <b>if</b> (<a href="../social_contracts/post.md#social_contracts_post_has_spot_analysis">has_spot_analysis</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>)) {
+        df::borrow&lt;vector&lt;u8&gt;, <a href="../social_contracts/post.md#social_contracts_post_PostSpotAnalysis">PostSpotAnalysis</a>&gt;(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_SPOT_ANALYSIS_DF_KEY">SPOT_ANALYSIS_DF_KEY</a>).claim_ids
+    } <b>else</b> {
+        vector::empty()
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_spot_analysis_future_accepted_count"></a>
+
+## Function `spot_analysis_future_accepted_count`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_spot_analysis_future_accepted_count">spot_analysis_future_accepted_count</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_spot_analysis_future_accepted_count">spot_analysis_future_accepted_count</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): u64 {
+    <b>if</b> (<a href="../social_contracts/post.md#social_contracts_post_has_spot_analysis">has_spot_analysis</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>)) {
+        df::borrow&lt;vector&lt;u8&gt;, <a href="../social_contracts/post.md#social_contracts_post_PostSpotAnalysis">PostSpotAnalysis</a>&gt;(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_SPOT_ANALYSIS_DF_KEY">SPOT_ANALYSIS_DF_KEY</a>).future_accepted_count
+    } <b>else</b> { 0 }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_ensure_spot_analysis_pending"></a>
+
+## Function `ensure_spot_analysis_pending`
+
+Ensure a <code>pending</code> analysis exists so future links can accumulate before finalize.
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_ensure_spot_analysis_pending">ensure_spot_analysis_pending</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, max_claim_per_post_applied: u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_ensure_spot_analysis_pending">ensure_spot_analysis_pending</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>, max_claim_per_post_applied: u64) {
+    <b>if</b> (!<a href="../social_contracts/post.md#social_contracts_post_has_spot_analysis">has_spot_analysis</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>)) {
+        df::add(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_SPOT_ANALYSIS_DF_KEY">SPOT_ANALYSIS_DF_KEY</a>, <a href="../social_contracts/post.md#social_contracts_post_PostSpotAnalysis">PostSpotAnalysis</a> {
+            status: <a href="../social_contracts/post.md#social_contracts_post_SPOT_STATUS_PENDING">SPOT_STATUS_PENDING</a>,
+            detected_claim_count: 0,
+            rejected_claim_count: 0,
+            truncated_claim_count: 0,
+            future_accepted_count: 0,
+            past_verified_count: 0,
+            max_claim_per_post_applied,
+            claim_indexes: vector::empty(),
+            claim_ids: vector::empty(),
+            market_ids: vector::empty(),
+            policy_hashes: vector::empty(),
+            claim_manifest_hash: option::none(),
+            veracity_manifest_hash: option::none(),
+        });
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_spot_analysis_append_future"></a>
+
+## Function `spot_analysis_append_future`
+
+Append one future-claim link (must be pending, strictly increasing claim_index, unique market).
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_spot_analysis_append_future">spot_analysis_append_future</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, claim_index: u64, claim_id: <b>address</b>, market_id: <b>address</b>, policy_hash: vector&lt;u8&gt;)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_spot_analysis_append_future">spot_analysis_append_future</a>(
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
+    claim_index: u64,
+    claim_id: <b>address</b>,
+    market_id: <b>address</b>,
+    policy_hash: vector&lt;u8&gt;,
+) {
+    <a href="../social_contracts/post.md#social_contracts_post_ensure_spot_analysis_pending">ensure_spot_analysis_pending</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, 0);
+    <b>let</b> a = df::borrow_mut&lt;vector&lt;u8&gt;, <a href="../social_contracts/post.md#social_contracts_post_PostSpotAnalysis">PostSpotAnalysis</a>&gt;(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_SPOT_ANALYSIS_DF_KEY">SPOT_ANALYSIS_DF_KEY</a>);
+    <b>assert</b>!(a.status == <a href="../social_contracts/post.md#social_contracts_post_SPOT_STATUS_PENDING">SPOT_STATUS_PENDING</a>, <a href="../social_contracts/post.md#social_contracts_post_ESpotAnalysisNotPending">ESpotAnalysisNotPending</a>);
+    <b>let</b> n = vector::length(&a.claim_indexes);
+    <b>if</b> (n &gt; 0) {
+        <b>assert</b>!(claim_index &gt; *vector::borrow(&a.claim_indexes, n - 1), <a href="../social_contracts/post.md#social_contracts_post_ESpotAnalysisIndexOrder">ESpotAnalysisIndexOrder</a>);
+    };
+    <b>assert</b>!(!vector::contains(&a.market_ids, &market_id), <a href="../social_contracts/post.md#social_contracts_post_ESpotAnalysisDuplicateMarket">ESpotAnalysisDuplicateMarket</a>);
+    vector::push_back(&<b>mut</b> a.claim_indexes, claim_index);
+    vector::push_back(&<b>mut</b> a.claim_ids, claim_id);
+    vector::push_back(&<b>mut</b> a.market_ids, market_id);
+    vector::push_back(&<b>mut</b> a.policy_hashes, policy_hash);
+    a.future_accepted_count = a.future_accepted_count + 1;
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_finalize_spot_analysis"></a>
+
+## Function `finalize_spot_analysis`
+
+Finalize analysis: validate future vectors, set terminal status, counts and manifests.
+Aborts unless currently pending. Called by the SPoT batch-finalize entry.
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_finalize_spot_analysis">finalize_spot_analysis</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, status: u8, detected_claim_count: u64, rejected_claim_count: u64, truncated_claim_count: u64, past_verified_count: u64, max_claim_per_post_applied: u64, claim_manifest_hash: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;u8&gt;&gt;, veracity_manifest_hash: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;u8&gt;&gt;)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_finalize_spot_analysis">finalize_spot_analysis</a>(
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
+    status: u8,
+    detected_claim_count: u64,
+    rejected_claim_count: u64,
+    truncated_claim_count: u64,
+    past_verified_count: u64,
+    max_claim_per_post_applied: u64,
+    claim_manifest_hash: Option&lt;vector&lt;u8&gt;&gt;,
+    veracity_manifest_hash: Option&lt;vector&lt;u8&gt;&gt;,
+) {
+    <a href="../social_contracts/post.md#social_contracts_post_ensure_spot_analysis_pending">ensure_spot_analysis_pending</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, max_claim_per_post_applied);
+    <b>let</b> a = df::borrow_mut&lt;vector&lt;u8&gt;, <a href="../social_contracts/post.md#social_contracts_post_PostSpotAnalysis">PostSpotAnalysis</a>&gt;(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_SPOT_ANALYSIS_DF_KEY">SPOT_ANALYSIS_DF_KEY</a>);
+    <b>assert</b>!(a.status == <a href="../social_contracts/post.md#social_contracts_post_SPOT_STATUS_PENDING">SPOT_STATUS_PENDING</a>, <a href="../social_contracts/post.md#social_contracts_post_ESpotAnalysisNotPending">ESpotAnalysisNotPending</a>);
+    <b>let</b> future_len = vector::length(&a.claim_indexes);
+    <b>assert</b>!(vector::length(&a.claim_ids) == future_len, <a href="../social_contracts/post.md#social_contracts_post_ESpotAnalysisVectorMismatch">ESpotAnalysisVectorMismatch</a>);
+    <b>assert</b>!(vector::length(&a.market_ids) == future_len, <a href="../social_contracts/post.md#social_contracts_post_ESpotAnalysisVectorMismatch">ESpotAnalysisVectorMismatch</a>);
+    <b>assert</b>!(vector::length(&a.policy_hashes) == future_len, <a href="../social_contracts/post.md#social_contracts_post_ESpotAnalysisVectorMismatch">ESpotAnalysisVectorMismatch</a>);
+    <b>assert</b>!(a.future_accepted_count == future_len, <a href="../social_contracts/post.md#social_contracts_post_ESpotAnalysisVectorMismatch">ESpotAnalysisVectorMismatch</a>);
+    <b>if</b> (max_claim_per_post_applied &gt; 0) {
+        <b>assert</b>!(future_len + past_verified_count &lt;= max_claim_per_post_applied, <a href="../social_contracts/post.md#social_contracts_post_ESpotAnalysisOverCap">ESpotAnalysisOverCap</a>);
+    };
+    a.status = status;
+    a.detected_claim_count = detected_claim_count;
+    a.rejected_claim_count = rejected_claim_count;
+    a.truncated_claim_count = truncated_claim_count;
+    a.past_verified_count = past_verified_count;
+    a.max_claim_per_post_applied = max_claim_per_post_applied;
+    a.claim_manifest_hash = claim_manifest_hash;
+    a.veracity_manifest_hash = veracity_manifest_hash;
 }
 </code></pre>
 
@@ -4836,7 +5226,7 @@ Resolve social actor: capability, principal platform join, block list, and appro
 Internal function to create a post object (not yet shared).
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_post_internal">create_post_internal</a>(owner: <b>address</b>, profile_id: <b>address</b>, platform_id: <b>address</b>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_option: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../myso/url.md#myso_url_Url">myso::url::Url</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, post_type: <a href="../std/string.md#std_string_String">std::string::String</a>, parent_post_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>: bool, revenue_redirect_to: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, revenue_redirect_percentage: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, access: <a href="../social_contracts/post.md#social_contracts_post_PostAccess">social_contracts::post::PostAccess</a>, promotion_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, enable_spt: bool, enable_spot: bool, <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>: u8, <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>: <b>address</b>, <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, organization_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>: u8, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_post_internal">create_post_internal</a>(owner: <b>address</b>, profile_id: <b>address</b>, platform_id: <b>address</b>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_option: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../myso/url.md#myso_url_Url">myso::url::Url</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, post_type: <a href="../std/string.md#std_string_String">std::string::String</a>, parent_post_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>: bool, revenue_redirect_to: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, revenue_redirect_percentage: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, access: <a href="../social_contracts/post.md#social_contracts_post_PostAccess">social_contracts::post::PostAccess</a>, promotion_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, enable_spt: bool, <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>: u8, <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>: <b>address</b>, <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, organization_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>: u8, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>
 </code></pre>
 
 
@@ -4865,7 +5255,6 @@ Internal function to create a post object (not yet shared).
     access: <a href="../social_contracts/post.md#social_contracts_post_PostAccess">PostAccess</a>,
     promotion_id: Option&lt;<b>address</b>&gt;,
     enable_spt: bool,
-    enable_spot: bool,
     <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>: u8,
     <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>: <b>address</b>,
     <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>: Option&lt;ID&gt;,
@@ -4908,8 +5297,6 @@ Internal function to create a post object (not yet shared).
         access,
         promotion_id,
         enable_spt,
-        enable_spot,
-        spot_id: option::none(), // Will be set when SPoT record is created
         spt_id: option::none(), // Will be set when SPT pool is created
         <a href="../social_contracts/post.md#social_contracts_post_poc_outcome">poc_outcome</a>: <a href="../social_contracts/post.md#social_contracts_post_POC_OUTCOME_NONE">POC_OUTCOME_NONE</a>,
         <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>,
@@ -5218,11 +5605,8 @@ Create a new post with interaction permissions.
     } <b>else</b> {
         <b>false</b> // Default to opt-out (user must explicitly opt-in)
     };
-    <b>let</b> final_enable_spot = <b>if</b> (option::is_some(&enable_spot)) {
-        *option::borrow(&enable_spot)
-    } <b>else</b> {
-        <b>false</b> // Default to opt-out (user must explicitly opt-in)
-    };
+    // enable_spot retained <b>for</b> <b>entry</b>-signature compatibility; SPoT is always-on.
+    <b>let</b> _ = enable_spot;
     // Convert media URLs to strings <b>for</b> event (before moving media_option)
     <b>let</b> media_urls_for_event = <a href="../social_contracts/post.md#social_contracts_post_convert_urls_to_strings">convert_urls_to_strings</a>(&media_option);
     <b>let</b> <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> = <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_NONE">POC_REDIRECT_NONE</a>;
@@ -5246,7 +5630,6 @@ Create a new post with interaction permissions.
         access,
         option::none(), // promotion_id
         final_enable_spt,
-        final_enable_spot,
         <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>,
         <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
         <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>,
@@ -5280,8 +5663,6 @@ Create a new post with interaction permissions.
         revenue_redirect_to: option::none(),
         revenue_redirect_percentage: option::none(),
         enable_spt: final_enable_spt,
-        enable_spot: final_enable_spot,
-        spot_id: option::none(),
         spt_id: option::none(),
         <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>,
         <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
@@ -6086,11 +6467,8 @@ If content is empty/none, it's treated as a standard repost
     } <b>else</b> {
         <b>false</b> // Default to opt-out (user must explicitly opt-in)
     };
-    <b>let</b> final_enable_spot = <b>if</b> (option::is_some(&enable_spot)) {
-        *option::borrow(&enable_spot)
-    } <b>else</b> {
-        <b>false</b> // Default to opt-out (user must explicitly opt-in)
-    };
+    // enable_spot retained <b>for</b> <b>entry</b>-signature compatibility; SPoT is always-on.
+    <b>let</b> _ = enable_spot;
     // Convert media URLs to strings <b>for</b> event (before moving media_option)
     <b>let</b> media_urls_for_event = <a href="../social_contracts/post.md#social_contracts_post_convert_urls_to_strings">convert_urls_to_strings</a>(&media_option);
     <b>let</b> <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> = <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_NONE">POC_REDIRECT_NONE</a>;
@@ -6114,7 +6492,6 @@ If content is empty/none, it's treated as a standard repost
         PostAccess::Public,
         option::none(), // promotion_id
         final_enable_spt,
-        final_enable_spot,
         <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>,
         <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
         <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>,
@@ -6148,8 +6525,6 @@ If content is empty/none, it's treated as a standard repost
         revenue_redirect_to: option::none(),
         revenue_redirect_percentage: option::none(),
         enable_spt: final_enable_spt,
-        enable_spot: final_enable_spot,
-        spot_id: option::none(),
         spt_id: option::none(),
         <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>,
         <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
@@ -6224,8 +6599,6 @@ Delete a post owned by the caller
         access: _,
         promotion_id: _,
         enable_spt: _,
-        enable_spot: _,
-        spot_id: _,
         spt_id: _,
         <a href="../social_contracts/post.md#social_contracts_post_poc_outcome">poc_outcome</a>: _,
         <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>: _,
@@ -8887,11 +9260,8 @@ Create a promoted post with MYSO tokens for viewer payments
     } <b>else</b> {
         <b>false</b> // Default to opt-out (user must explicitly opt-in)
     };
-    <b>let</b> final_enable_spot = <b>if</b> (option::is_some(&enable_spot)) {
-        *option::borrow(&enable_spot)
-    } <b>else</b> {
-        <b>false</b> // Default to opt-out (user must explicitly opt-in)
-    };
+    // enable_spot retained <b>for</b> <b>entry</b>-signature compatibility; SPoT is always-on.
+    <b>let</b> _ = enable_spot;
     // Convert media URLs to strings <b>for</b> <a href="../social_contracts/post.md#social_contracts_post_PostCreatedEvent">PostCreatedEvent</a> (before moving media_option)
     <b>let</b> media_urls_for_event = <a href="../social_contracts/post.md#social_contracts_post_convert_urls_to_strings">convert_urls_to_strings</a>(&media_option);
     <b>let</b> <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> = <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_NONE">POC_REDIRECT_NONE</a>;
@@ -8915,7 +9285,6 @@ Create a promoted post with MYSO tokens for viewer payments
         access,
         option::some(promotion_id),
         final_enable_spt,
-        final_enable_spot,
         <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>,
         <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
         <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>,
@@ -8943,8 +9312,6 @@ Create a promoted post with MYSO tokens for viewer payments
         revenue_redirect_to: option::none(),
         revenue_redirect_percentage: option::none(),
         enable_spt: final_enable_spt,
-        enable_spot: final_enable_spot,
-        spot_id: option::none(),
         spt_id: option::none(),
         <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>,
         <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,

@@ -5,18 +5,18 @@ ALTER TABLE posts
 
 COMMENT ON COLUMN posts.poc_disputes_submitted IS 'Successful PoC dispute submissions for this post (max 2); not reset when PoC cleared';
 
-ALTER TABLE poc_configuration
+ALTER TABLE poc_config
     ADD COLUMN IF NOT EXISTS dispute_quorum_base_stake BIGINT NOT NULL DEFAULT 0;
 
-ALTER TABLE poc_configuration
+ALTER TABLE poc_config
     ADD COLUMN IF NOT EXISTS dispute_second_round_fee_multiplier_bps BIGINT NOT NULL DEFAULT 10000;
 
-ALTER TABLE poc_configuration
+ALTER TABLE poc_config
     ADD COLUMN IF NOT EXISTS dispute_second_round_quorum_multiplier_bps BIGINT NOT NULL DEFAULT 10000;
 
-COMMENT ON COLUMN poc_configuration.dispute_quorum_base_stake IS 'Round-1 minimum total voting stake for full dispute resolution (0 = disabled)';
-COMMENT ON COLUMN poc_configuration.dispute_second_round_fee_multiplier_bps IS 'Round-2 dispute fee = dispute_cost * bps / 10000; must be >= 10000 on-chain';
-COMMENT ON COLUMN poc_configuration.dispute_second_round_quorum_multiplier_bps IS 'Round-2 quorum = base * bps / 10000; must be >= 10000 on-chain';
+COMMENT ON COLUMN poc_config.dispute_quorum_base_stake IS 'Round-1 minimum total voting stake for full dispute resolution (0 = disabled)';
+COMMENT ON COLUMN poc_config.dispute_second_round_fee_multiplier_bps IS 'Round-2 dispute fee = dispute_cost * bps / 10000; must be >= 10000 on-chain';
+COMMENT ON COLUMN poc_config.dispute_second_round_quorum_multiplier_bps IS 'Round-2 quorum = base * bps / 10000; must be >= 10000 on-chain';
 
 ALTER TABLE poc_disputes
     ADD COLUMN IF NOT EXISTS dispute_round SMALLINT NOT NULL DEFAULT 1;

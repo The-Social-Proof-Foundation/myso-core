@@ -6,14 +6,14 @@ ALTER TABLE poc_badges ADD COLUMN IF NOT EXISTS beneficiary_address TEXT NULL;
 ALTER TABLE poc_badges ADD COLUMN IF NOT EXISTS matched_anchor_id TEXT NULL;
 ALTER TABLE poc_badges ADD COLUMN IF NOT EXISTS media_index SMALLINT NULL;
 
-ALTER TABLE poc_configuration ADD COLUMN IF NOT EXISTS claim_treasury_fee_bps BIGINT NOT NULL DEFAULT 100;
-ALTER TABLE poc_configuration ADD COLUMN IF NOT EXISTS max_referral_bps BIGINT NOT NULL DEFAULT 500;
+ALTER TABLE poc_config ADD COLUMN IF NOT EXISTS claim_treasury_fee_bps BIGINT NOT NULL DEFAULT 100;
+ALTER TABLE poc_config ADD COLUMN IF NOT EXISTS max_referral_bps BIGINT NOT NULL DEFAULT 500;
 
 COMMENT ON COLUMN poc_badges.beneficiary_address IS 'Wallet receiving redirected PoC MYSO (from PoCBadgeIssuedEvent)';
 COMMENT ON COLUMN poc_badges.matched_anchor_id IS 'Optional anchor object address when similarity binds to media';
 COMMENT ON COLUMN poc_badges.media_index IS 'Oracle-assessed media slot (255 = unspecified)';
-COMMENT ON COLUMN poc_configuration.claim_treasury_fee_bps IS 'Treasury slice at vault claim (bps)';
-COMMENT ON COLUMN poc_configuration.max_referral_bps IS 'Max referral slice of amount after treasury (bps); optional referrer on claim';
+COMMENT ON COLUMN poc_config.claim_treasury_fee_bps IS 'Treasury slice at vault claim (bps)';
+COMMENT ON COLUMN poc_config.max_referral_bps IS 'Max referral slice of amount after treasury (bps); optional referrer on claim';
 
 CREATE TABLE IF NOT EXISTS poc_beneficiary_vaults (
     vault_id TEXT PRIMARY KEY,

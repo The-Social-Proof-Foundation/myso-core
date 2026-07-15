@@ -170,7 +170,7 @@ async fn enqueue_refund(state: Arc<AppState>, market_id: uuid::Uuid, def_id: uui
     Ok(())
 }
 
-fn evaluate_definition(
+pub(crate) fn evaluate_definition(
     def: &ResolverDefinition,
     evidence: &[SourceEvidence],
 ) -> anyhow::Result<ResolutionDraft> {
@@ -180,6 +180,30 @@ fn evaluate_definition(
         ResolverKind::EventOccurrence => evaluate_event(def, evidence),
         ResolverKind::CustomHttp => evaluate_custom_http(def, evidence),
     }
+}
+
+/// Fetch all supporting adapters for `def` and evaluate them into a draft — the shared core of
+/// both market resolution and past-claim verification (verification resolves "now").
+pub(crate) async fn fetch_and_evaluate(
+    sources: &crate::sources::ResolverRegistry,
+    def: &ResolverDefinition,
+) -> anyhow::Result<(ResolutionDraft, Vec<SourceEvidence>)> {
+    let adapters = sources.supports(def);
+    if adapters.is_empty() {
+        anyhow::bail!("no adapter supports resolver definition");
+    }
+    let mut evidence_list: Vec<SourceEvidence> = Vec::new();
+    for adapter in &adapters {
+        match adapter.resolve(def).await {
+            Ok(ev) => evidence_list.push(ev),
+            Err(err) => tracing::warn!(adapter = adapter.id(), error = %err, "adapter resolve failed"),
+        }
+    }
+    if evidence_list.is_empty() {
+        anyhow::bail!("all adapters failed to resolve");
+    }
+    let draft = evaluate_definition(def, &evidence_list)?;
+    Ok((draft, evidence_list))
 }
 
 fn evaluate_price_threshold(
