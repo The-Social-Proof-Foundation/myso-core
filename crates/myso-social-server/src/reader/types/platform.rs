@@ -121,7 +121,7 @@ pub struct PlatformUserAccessRow {
     pub can_block_users: bool,
     pub can_moderate_content: bool,
     pub can_manage_badges: bool,
-    pub can_airdrop_treasury: bool,
+    pub can_withdraw_from_platform_treasury: bool,
     pub can_manage_promotions: bool,
 }
 
@@ -131,9 +131,12 @@ impl PlatformUserAccessRow {
         is_blocked: bool,
         is_moderator: bool,
         moderator_permissions: JsonValue,
+        developer_address: &str,
+        user_address: &str,
     ) -> Self {
         let permissions: Vec<String> =
             serde_json::from_value(moderator_permissions).unwrap_or_default();
+        let is_developer = developer_address == user_address;
         let can_block_users = permissions.iter().any(|p| {
             p == myso_indexer_alt_social_schema::platform_permissions::PLATFORM_BLOCK_ADMIN
         });
@@ -143,9 +146,10 @@ impl PlatformUserAccessRow {
         let can_manage_badges = permissions.iter().any(|p| {
             p == myso_indexer_alt_social_schema::platform_permissions::PLATFORM_BADGE_ADMIN
         });
-        let can_airdrop_treasury = permissions.iter().any(|p| {
-            p == myso_indexer_alt_social_schema::platform_permissions::PLATFORM_TREASURY_ADMIN
-        });
+        let can_withdraw_from_platform_treasury = is_developer
+            || permissions.iter().any(|p| {
+                p == myso_indexer_alt_social_schema::platform_permissions::PLATFORM_TREASURY_ADMIN
+            });
         let can_manage_promotions = permissions.iter().any(|p| {
             p == myso_indexer_alt_social_schema::platform_permissions::PLATFORM_PROMOTION_ADMIN
         });
@@ -157,7 +161,7 @@ impl PlatformUserAccessRow {
             can_block_users,
             can_moderate_content,
             can_manage_badges,
-            can_airdrop_treasury,
+            can_withdraw_from_platform_treasury,
             can_manage_promotions,
         }
     }
@@ -182,8 +186,32 @@ impl From<PlatformUserAccessDbRow> for PlatformUserAccessRow {
             row.is_blocked,
             row.is_moderator,
             row.moderator_permissions,
+            "",
+            "",
         )
     }
+}
+
+#[derive(Debug, Serialize)]
+pub struct PlatformTreasuryInfo {
+    pub platform_id: String,
+    pub balance_mist: i64,
+    pub last_funded_at: Option<i64>,
+    pub last_withdrawn_at: Option<i64>,
+    pub updated_at: chrono::NaiveDateTime,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PlatformTreasuryWithdrawalRow {
+    pub id: i32,
+    pub platform_id: String,
+    pub recipient: String,
+    pub amount: i64,
+    pub reason_code: i16,
+    pub executed_by: String,
+    pub timestamp: i64,
+    pub created_at: chrono::NaiveDateTime,
+    pub event_id: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

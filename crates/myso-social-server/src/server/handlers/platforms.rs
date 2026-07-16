@@ -143,6 +143,28 @@ pub async fn get_platform_events(
     })))
 }
 
+pub async fn get_platform_treasury(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+) -> Result<Json<crate::reader::PlatformTreasuryInfo>, SocialError> {
+    let treasury = state.reader.get_platform_treasury(&id).await?;
+    Ok(Json(treasury))
+}
+
+pub async fn get_platform_treasury_withdrawals(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+    Query(params): Query<PageParams>,
+) -> Result<Json<serde_json::Value>, SocialError> {
+    let limit = params.limit();
+    let offset = params.offset();
+    let withdrawals = state
+        .reader
+        .list_platform_treasury_withdrawals(&id, limit, offset)
+        .await?;
+    Ok(Json(serde_json::json!({ "withdrawals": withdrawals })))
+}
+
 pub async fn get_platform_config(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<crate::reader::PlatformConfigInfo>, SocialError> {

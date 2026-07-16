@@ -7,7 +7,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::schema::{
     platform_blocked_profiles, platform_config, platform_events, platform_memberships,
-    platform_moderator_permissions, platform_moderators, platform_token_airdrops, platforms,
+    platform_moderator_permissions, platform_moderators, platform_treasury_balances,
+    platform_treasury_withdrawals, platforms,
 };
 
 pub const PLATFORM_STATUS_DEVELOPMENT: i16 = 0;
@@ -296,8 +297,28 @@ pub struct NewPlatformMembership {
 }
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
-#[diesel(table_name = platform_token_airdrops)]
-pub struct PlatformTokenAirdrop {
+#[diesel(table_name = platform_treasury_balances)]
+pub struct PlatformTreasuryBalance {
+    pub platform_id: String,
+    pub balance_mist: i64,
+    pub last_funded_at: Option<i64>,
+    pub last_withdrawn_at: Option<i64>,
+    pub updated_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize, AsChangeset)]
+#[diesel(table_name = platform_treasury_balances)]
+pub struct NewPlatformTreasuryBalance {
+    pub platform_id: String,
+    pub balance_mist: i64,
+    pub last_funded_at: Option<i64>,
+    pub last_withdrawn_at: Option<i64>,
+    pub updated_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = platform_treasury_withdrawals)]
+pub struct PlatformTreasuryWithdrawal {
     pub id: i32,
     pub platform_id: String,
     pub recipient: String,
@@ -310,8 +331,8 @@ pub struct PlatformTokenAirdrop {
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
-#[diesel(table_name = platform_token_airdrops)]
-pub struct NewPlatformTokenAirdrop {
+#[diesel(table_name = platform_treasury_withdrawals)]
+pub struct NewPlatformTreasuryWithdrawal {
     pub platform_id: String,
     pub recipient: String,
     pub amount: i64,

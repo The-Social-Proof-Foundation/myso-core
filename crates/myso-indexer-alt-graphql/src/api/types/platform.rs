@@ -16,9 +16,67 @@ use crate::api::resolve_profile::resolve_profile_summary;
 use crate::api::scalars::id::Id;
 use crate::api::scalars::json::Json;
 use crate::api::scalars::myso_address::MySoAddress;
+use crate::api::scalars::uint53::UInt53;
 use crate::api::types::blocked::PlatformBlockedProfileSummary;
+use crate::api::types::move_object::MoveObject;
+use crate::api::types::move_type::MoveType;
+use crate::api::types::move_value::MoveValue;
+use crate::api::types::object::Object;
 use crate::api::types::profile_summary::ProfileSummary;
+use crate::scope::Scope;
 use crate::error::RpcError;
+
+fn parse_platform_treasury_balance_from_json(value: &serde_json::Value) -> Option<u64> {
+    value
+        .get("treasury")
+        .and_then(|treasury| {
+            if let Some(s) = treasury.as_str() {
+                s.parse().ok()
+            } else if let Some(obj) = treasury.as_object() {
+                obj.get("value")
+                    .and_then(|v| v.as_str().and_then(|s| s.parse().ok()).or_else(|| v.as_u64()))
+            } else {
+                treasury.as_u64()
+            }
+        })
+}
+
+async fn load_live_platform_treasury_balance(
+    ctx: &Context<'_>,
+    platform_id: &str,
+) -> Option<Result<UInt53, RpcError>> {
+    let address = MySoAddress::from_str(platform_id).ok()?;
+    let scope: &Scope = ctx.data().ok()?;
+    let object = match Object::latest(ctx, scope.clone(), address).await {
+        Ok(Some(object)) => object,
+        Ok(None) => return None,
+        Err(error) => return Some(Err(error)),
+    };
+    let move_object = match MoveObject::from_object(&object, ctx).await {
+        Ok(Some(move_object)) => move_object,
+        Ok(None) => return None,
+        Err(error) => return Some(Err(error)),
+    };
+    let native = match move_object.native(ctx).await {
+        Ok(Some(native)) => native,
+        Ok(None) => return None,
+        Err(error) => return Some(Err(error)),
+    };
+    let scope = move_object
+        .super_
+        .super_
+        .scope
+        .with_root_version(native.version().value());
+    let move_type = MoveType::from_native(native.type_().clone().into(), scope);
+    let move_value = MoveValue::new(move_type, native.contents().to_owned());
+    let json_value = match move_value.to_json_value(ctx).await {
+        Ok(Some(json_value)) => json_value,
+        Ok(None) => return None,
+        Err(error) => return Some(Err(error)),
+    };
+    let balance = parse_platform_treasury_balance_from_json(&json_value)?;
+    Some(Ok(UInt53::from(balance)))
+}
 
 fn platform_status_to_text(status: i16) -> &'static str {
     match status {
@@ -231,6 +289,49 @@ impl Platform {
         self.inner.voting_period_epochs
     }
 
+    /// Materialized platform treasury balance in mist (indexed from on-chain events).
+    async fn treasury_balance(&self, ctx: &Context<'_>) -> Option<UInt53> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let row = reader
+            .get_platform_treasury_balance(&self.inner.platform_id)
+            .await
+            .ok()??;
+        Some(UInt53::from(row.balance_mist as u64))
+    }
+
+    /// Live platform treasury balance in mist (read from the Platform object on-chain).
+    async fn treasury_balance_live(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Option<Result<UInt53, RpcError>> {
+        load_live_platform_treasury_balance(ctx, &self.inner.platform_id).await
+    }
+
+    /// Paginated platform treasury withdrawals.
+    async fn treasury_withdrawals(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<PlatformTreasuryWithdrawalSummary>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .list_platform_treasury_withdrawals(&self.inner.platform_id, limit, offset)
+            .await
+            .ok()?;
+        Some(
+            rows.into_iter()
+                .map(PlatformTreasuryWithdrawalSummary::from_row)
+                .collect(),
+        )
+    }
+
     /// Wallets blocked by this platform (paginated).
     async fn blocked_profiles(
         &self,
@@ -315,13 +416,52 @@ impl Platform {
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
+        let developer_address = self.inner.developer_address.clone();
         Some(
             reader
                 .get_platform_user_access(&self.inner.platform_id, &user.to_string())
                 .await
                 .map_err(Into::into)
-                .map(PlatformUserAccess::from_row),
+                .map(|row| PlatformUserAccess::from_row(row, &developer_address, &user.to_string())),
         )
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct PlatformTreasuryWithdrawalSummary {
+    inner: myso_indexer_alt_social_reader::platform::PlatformTreasuryWithdrawalRow,
+}
+
+impl PlatformTreasuryWithdrawalSummary {
+    fn from_row(inner: myso_indexer_alt_social_reader::platform::PlatformTreasuryWithdrawalRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl PlatformTreasuryWithdrawalSummary {
+    async fn platform_id(&self) -> &str {
+        &self.inner.platform_id
+    }
+
+    async fn recipient(&self) -> &str {
+        &self.inner.recipient
+    }
+
+    async fn amount(&self) -> UInt53 {
+        UInt53::from(self.inner.amount as u64)
+    }
+
+    async fn reason_code(&self) -> i32 {
+        self.inner.reason_code as i32
+    }
+
+    async fn executed_by(&self) -> &str {
+        &self.inner.executed_by
+    }
+
+    async fn timestamp(&self) -> UInt53 {
+        UInt53::from(self.inner.timestamp as u64)
     }
 }
 
@@ -334,12 +474,17 @@ pub(crate) struct PlatformUserAccess {
     can_block_users: bool,
     can_moderate_content: bool,
     can_manage_badges: bool,
-    can_airdrop_treasury: bool,
+    can_withdraw_from_platform_treasury: bool,
     can_manage_promotions: bool,
 }
 
 impl PlatformUserAccess {
-    pub(crate) fn from_row(row: myso_indexer_alt_social_reader::PlatformUserAccessRow) -> Self {
+    pub(crate) fn from_row(
+        row: myso_indexer_alt_social_reader::PlatformUserAccessRow,
+        developer_address: &str,
+        user_address: &str,
+    ) -> Self {
+        let is_developer = developer_address == user_address;
         Self {
             is_member: row.is_member,
             is_blocked: row.is_blocked,
@@ -348,7 +493,7 @@ impl PlatformUserAccess {
             can_block_users: row.can_block_users(),
             can_moderate_content: row.can_moderate_content(),
             can_manage_badges: row.can_manage_badges(),
-            can_airdrop_treasury: row.can_airdrop_treasury(),
+            can_withdraw_from_platform_treasury: row.can_withdraw_from_platform_treasury(is_developer),
             can_manage_promotions: row.can_manage_promotions(),
         }
     }
@@ -388,8 +533,8 @@ impl PlatformUserAccess {
         self.can_manage_badges
     }
 
-    async fn can_airdrop_treasury(&self) -> bool {
-        self.can_airdrop_treasury
+    async fn can_withdraw_from_platform_treasury(&self) -> bool {
+        self.can_withdraw_from_platform_treasury
     }
 
     async fn can_manage_promotions(&self) -> bool {
@@ -570,9 +715,10 @@ impl PlatformMembershipSummary {
         self.row.voting_period_epochs
     }
 
-    /// On-chain treasury is not mirrored in Postgres; read the platform object via RPC when needed.
-    async fn treasury_address(&self) -> Option<String> {
-        None
+    /// Embedded platform treasury balance lives on the Platform object itself.
+    /// Query `platform(id).treasuryBalance` for the indexed balance.
+    async fn treasury_container_id(&self) -> &str {
+        &self.row.platform_id
     }
 
     async fn version(&self) -> Option<i64> {

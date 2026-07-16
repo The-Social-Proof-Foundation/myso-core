@@ -61,11 +61,10 @@ VALUES (
 )
 "#;
 
-/// Developer fee recipient (`platforms.developer_address`) or fallback `platform_id`, plus optional
-/// linked platform id for `unified_revenue.platform_scope` (matches reservation fee handling).
+/// Platform object id for revenue attribution (treasury container), plus optional linked platform id.
 #[derive(Debug, Clone)]
 struct ResolvedSptPlatform {
-    fee_recipient: String,
+    platform_id: String,
     linked_platform_id: Option<String>,
 }
 
@@ -75,19 +74,13 @@ struct CreatorPlatformIdRow {
     platform_id: String,
 }
 
-#[derive(QueryableByName)]
-struct PlatformDeveloperRow {
-    #[diesel(sql_type = Text)]
-    developer_address: String,
-}
-
 async fn resolve_spt_platform_for_creator<'a>(
     conn: &mut Connection<'a>,
     creator_address: &str,
 ) -> Result<ResolvedSptPlatform, diesel::result::Error> {
     if creator_address.trim().is_empty() {
         return Ok(ResolvedSptPlatform {
-            fee_recipient: String::new(),
+            platform_id: String::new(),
             linked_platform_id: None,
         });
     }
@@ -111,23 +104,10 @@ async fn resolve_spt_platform_for_creator<'a>(
     .map(|row| row.platform_id)
     .filter(|s| !s.is_empty());
 
-    let fee_recipient: String = if let Some(ref pid) = linked_platform_id {
-        diesel::sql_query(
-            "SELECT developer_address FROM platforms WHERE platform_id = $1 ORDER BY id DESC LIMIT 1",
-        )
-        .bind::<Text, _>(pid.as_str())
-        .get_result::<PlatformDeveloperRow>(conn)
-        .await
-        .optional()?
-        .map(|row| row.developer_address)
-        .filter(|s| !s.is_empty())
-        .unwrap_or_else(|| pid.clone())
-    } else {
-        String::new()
-    };
+    let platform_id: String = linked_platform_id.clone().unwrap_or_default();
 
     Ok(ResolvedSptPlatform {
-        fee_recipient,
+        platform_id,
         linked_platform_id,
     })
 }
@@ -966,7 +946,7 @@ impl Handler for SptHandler {
                                 resolve_spt_platform_for_creator(conn, creator_address.as_str())
                                     .await?;
                             let linked_platform_id = resolved.linked_platform_id.clone();
-                            let platform_fee_recipient = resolved.fee_recipient;
+                            let platform_fee_recipient = resolved.platform_id.clone();
 
                             // Reservation-phase fees are always keyed to the reservation pool object id.
                             let revenue_spt_pool_id = pool_id.clone();
@@ -1211,7 +1191,7 @@ impl Handler for SptHandler {
                         let resolved =
                             resolve_spt_platform_for_creator(conn, creator_address.as_str())
                                 .await?;
-                        let platform_address = resolved.fee_recipient;
+                        let platform_address = resolved.platform_id;
                         let platform_scope_for_fees: Option<String> =
                             Some(resolved.linked_platform_id.clone().unwrap_or_default());
 

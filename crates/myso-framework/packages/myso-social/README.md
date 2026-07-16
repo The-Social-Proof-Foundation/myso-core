@@ -108,7 +108,7 @@ MySocial is a feature-rich decentralized social platform that combines tradition
 - User join/leave functionality
 - Moderator management
 - Content blocking and approval
-- Token airdrops from platform treasuries
+- Platform treasury withdrawals to recipient wallets
 
 ### 7. **Subscription Services** (`subscription.move`)
 - **Profile Subscriptions**: Monthly subscription access to profile content

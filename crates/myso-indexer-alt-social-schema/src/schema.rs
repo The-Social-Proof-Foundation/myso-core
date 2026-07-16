@@ -742,7 +742,17 @@ diesel::table! {
 }
 
 diesel::table! {
-    platform_token_airdrops (id) {
+    platform_treasury_balances (platform_id) {
+        platform_id -> Text,
+        balance_mist -> Int8,
+        last_funded_at -> Nullable<Int8>,
+        last_withdrawn_at -> Nullable<Int8>,
+        updated_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    platform_treasury_withdrawals (id) {
         id -> Int4,
         platform_id -> Text,
         recipient -> Text,
@@ -2863,7 +2873,8 @@ diesel::allow_tables_to_appear_in_same_query!(
     platform_memberships,
     platform_moderator_permissions,
     platform_moderators,
-    platform_token_airdrops,
+    platform_treasury_balances,
+    platform_treasury_withdrawals,
     platforms,
     poc_analysis_results,
     poc_badges,

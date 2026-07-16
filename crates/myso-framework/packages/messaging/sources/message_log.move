@@ -6,12 +6,14 @@ module messaging::message_log;
 
 use messaging::messaging_config::{Self, MessagingConfig};
 use messaging::paid_escrow_settlement as escrow_fees;
+use social_contracts::platform::{Self, Platform};
 use std::string::{Self, String};
 use myso::balance::{Self, Balance};
 use myso::clock::{Self, Clock};
 use myso::coin::{Self, Coin};
 use myso::derived_object;
 use myso::event;
+use myso::object;
 use myso::myso::MYSO;
 use myso::table::{Self, Table};
 
@@ -111,6 +113,19 @@ public struct PaymentClaimedSettled has copy, drop {
     treasury_fee: u64,
     net_amount: u64,
     platform_fee_recipient: address,
+    ecosystem_fee_recipient: address,
+    claimed_at_ms: u64,
+}
+
+public struct PaymentClaimedSettledWithPlatformTreasury has copy, drop {
+    group_id: ID,
+    seq: u64,
+    recipient: address,
+    total_amount: u64,
+    platform_fee: u64,
+    treasury_fee: u64,
+    net_amount: u64,
+    platform_id: address,
     ecosystem_fee_recipient: address,
     claimed_at_ms: u64,
 }
@@ -391,6 +406,77 @@ public(package) fun reply_to_paid_message_claim_settled(
         treasury_fee: escrow_fees::treasury_fee(&totals),
         net_amount: escrow_fees::net_amount(&totals),
         platform_fee_recipient,
+        ecosystem_fee_recipient,
+        claimed_at_ms: clock::timestamp_ms(clock),
+    });
+}
+
+/// Same as [`reply_to_paid_message_claim_settled`], but deposits the platform fee into
+/// `Platform.treasury` instead of transferring to a wallet address.
+public(package) fun reply_to_paid_message_claim_settled_with_platform(
+    config: &MessagingConfig,
+    self: &mut MessageLog,
+    sender: address,
+    paid_msg_seq: u64,
+    char_count: u32,
+    dedupe_key: vector<u8>,
+    nonce: u128,
+    clock: &Clock,
+    platform: &mut Platform,
+    ecosystem_fee_recipient: address,
+    ctx: &mut TxContext,
+) {
+    assert!(table::contains(&self.paid_msg_escrow, paid_msg_seq), EPaidNotFound);
+    let escrow_ref = table::borrow(&self.paid_msg_escrow, paid_msg_seq);
+    assert!(sender == escrow_ref.recipient, EForbidden);
+    assert!(!escrow_ref.claimed, EPaymentClaimed);
+
+    let now_ms = clock::timestamp_ms(clock);
+    assert!(
+        now_ms - escrow_ref.created_at_ms <= messaging_config::payment_expiration_ms(config),
+        EPaymentExpired,
+    );
+    assert!(char_count >= messaging_config::min_reply_chars(config), EReplyTooShort);
+
+    consume_dedupe_and_nonce(config, self, sender, dedupe_key, nonce, ctx);
+
+    event::emit(PaidMessageReplied {
+        group_id: self.group_id,
+        paid_msg_seq,
+        recipient: sender,
+        reply_char_count: char_count,
+    });
+
+    let escrow = table::borrow_mut(&mut self.paid_msg_escrow, paid_msg_seq);
+    assert!(!escrow.claimed, EPaymentClaimed);
+    escrow.claimed = true;
+
+    let primary_recipient = escrow.recipient;
+    let total_amount = escrow.amount;
+
+    let coin = coin::from_balance(balance::withdraw_all(&mut escrow.escrowed_balance), ctx);
+    assert!(coin::value(&coin) > 0, EVaultEmpty);
+
+    let totals = escrow_fees::distribute_escrow_with_platform_treasury(
+        config,
+        coin,
+        platform,
+        ecosystem_fee_recipient,
+        primary_recipient,
+        clock,
+        ctx,
+    );
+
+    let platform_id = object::uid_to_address(platform::id(platform));
+    event::emit(PaymentClaimedSettledWithPlatformTreasury {
+        group_id: self.group_id,
+        seq: paid_msg_seq,
+        recipient: primary_recipient,
+        total_amount,
+        platform_fee: escrow_fees::platform_fee(&totals),
+        treasury_fee: escrow_fees::treasury_fee(&totals),
+        net_amount: escrow_fees::net_amount(&totals),
+        platform_id,
         ecosystem_fee_recipient,
         claimed_at_ms: clock::timestamp_ms(clock),
     });

@@ -9340,10 +9340,10 @@ UserJoinedPlatformEvent
 UserLeftPlatformEvent
 	public struct
 	0x50c1::platform
-TokenAirdropEvent
+PlatformTreasuryWithdrawalEvent
 	public struct
 	0x50c1::platform
-TreasuryFundedEvent
+PlatformTreasuryFundedEvent
 	public struct
 	0x50c1::platform
 bootstrap_init
@@ -9562,7 +9562,7 @@ governance_parameters
 update_platform_governance
 	public fun
 	0x50c1::platform
-airdrop_from_treasury
+withdraw_from_platform_treasury
 	public fun
 	0x50c1::platform
 assign_badge

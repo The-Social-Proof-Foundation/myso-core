@@ -5084,6 +5084,18 @@ type Platform implements Node {
 	"""
 	termsOfService: String
 	"""
+	Materialized platform treasury balance in mist (indexed from on-chain events).
+	"""
+	treasuryBalance: UInt53
+	"""
+	Live platform treasury balance in mist (read from the Platform object on-chain).
+	"""
+	treasuryBalanceLive: UInt53
+	"""
+	Paginated platform treasury withdrawals.
+	"""
+	treasuryWithdrawals(limit: Int, offset: Int): [PlatformTreasuryWithdrawalSummary!]
+	"""
 	When the platform was last updated (epoch milliseconds).
 	"""
 	updatedAt: Int!
@@ -5240,9 +5252,10 @@ type PlatformMembershipSummary {
 	tagline: String!
 	termsOfService: String
 	"""
-	On-chain treasury is not mirrored in Postgres; read the platform object via RPC when needed.
+	Embedded platform treasury balance lives on the Platform object itself.
+	Query `platform(id).treasuryBalance` for the indexed balance.
 	"""
-	treasuryAddress: String
+	treasuryContainerId: String!
 	"""
 	When the platform row was last updated (epoch ms).
 	"""
@@ -5318,12 +5331,21 @@ type PlatformRevenueSummary {
 	totalTransactions: Int!
 }
 
+type PlatformTreasuryWithdrawalSummary {
+	amount: UInt53!
+	executedBy: String!
+	platformId: String!
+	reasonCode: Int!
+	recipient: String!
+	timestamp: UInt53!
+}
+
 type PlatformUserAccess {
-	canAirdropTreasury: Boolean!
 	canBlockUsers: Boolean!
 	canManageBadges: Boolean!
 	canManagePromotions: Boolean!
 	canModerateContent: Boolean!
+	canWithdrawFromPlatformTreasury: Boolean!
 	"""
 	Whether the platform has blocked this wallet.
 	"""

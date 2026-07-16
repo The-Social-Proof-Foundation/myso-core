@@ -645,6 +645,11 @@ fn make_router(state: Arc<AppState>) -> Router {
             get(check_platform_membership),
         )
         .route("/platforms/:id/events", get(get_platform_events))
+        .route("/platforms/:id/treasury", get(get_platform_treasury))
+        .route(
+            "/platforms/:id/treasury/withdrawals",
+            get(get_platform_treasury_withdrawals),
+        )
         .route("/posts", get(list_posts))
         .route("/posts/configuration", get(get_post_config))
         .route("/posts/trending", get(get_trending_posts))

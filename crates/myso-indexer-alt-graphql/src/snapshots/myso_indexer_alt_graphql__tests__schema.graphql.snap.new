@@ -1,3 +1,8 @@
+---
+source: crates/myso-indexer-alt-graphql/src/lib.rs
+assertion_line: 493
+expression: sdl
+---
 """
 System transaction for creating the accumulator root.
 """

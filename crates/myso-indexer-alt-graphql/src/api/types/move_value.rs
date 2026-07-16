@@ -320,6 +320,26 @@ impl MoveValue {
     pub(crate) fn new(type_: MoveType, native: Vec<u8>) -> Self {
         Self { type_, native }
     }
+
+    pub(crate) async fn to_json_value(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Result<Option<serde_json::Value>, RpcError> {
+        let limits: &Limits = ctx.data()?;
+
+        let Some(layout) = self.type_.layout_impl().await? else {
+            return Ok(None);
+        };
+
+        let value = JsonVisitor::new(limits)
+            .deserialize_value(&self.native, &layout)
+            .map_err(|e| match &e {
+                VisitorError::Visitor(_) | VisitorError::UnexpectedType => anyhow!(e).into(),
+                VisitorError::TooBig | VisitorError::TooDeep => resource_exhausted(e),
+            })?;
+
+        Ok(Some(value))
+    }
 }
 
 impl<'f, 'r> DisplayStore<'f, 'r> {

@@ -11,7 +11,8 @@ use serde_json::Value as JsonValue;
 use crate::error::SocialError;
 use crate::reader::types::{
     PlatformApprovalRow, PlatformBlockedProfileRow, PlatformConfigInfo, PlatformEventRow,
-    PlatformMemberRow, PlatformModeratorRow, PlatformRow, PlatformUserAccessRow,
+    PlatformMemberRow, PlatformModeratorRow, PlatformRow, PlatformTreasuryInfo,
+    PlatformTreasuryWithdrawalRow, PlatformUserAccessRow,
 };
 use myso_pg_db::Db;
 
@@ -191,6 +192,8 @@ pub(crate) async fn get_platform_user_access(
     platform_id: &str,
     user_address: &str,
 ) -> Result<PlatformUserAccessRow, SocialError> {
+    use diesel::ExpressionMethods;
+    use diesel::QueryDsl;
     require_active_platform(db, platform_id).await?;
     let mut conn = db.connect().await?;
     #[derive(diesel::QueryableByName)]
@@ -236,11 +239,18 @@ pub(crate) async fn get_platform_user_access(
     .bind::<diesel::sql_types::Text, _>(user_address)
     .get_result::<Row>(&mut conn)
     .await?;
+    let developer_address: String = platforms::table
+        .filter(platforms::platform_id.eq(platform_id))
+        .select(platforms::developer_address)
+        .first(&mut conn)
+        .await?;
     Ok(PlatformUserAccessRow::from_db(
         row.is_member,
         row.is_blocked,
         row.is_moderator,
         row.moderator_permissions,
+        &developer_address,
+        user_address,
     ))
 }
 
@@ -426,4 +436,109 @@ pub(crate) async fn get_platform_configuration(
         .await
         .optional()?;
     Ok(result)
+}
+
+pub(crate) async fn get_platform_treasury(
+    db: &Db,
+    platform_id: &str,
+) -> Result<PlatformTreasuryInfo, SocialError> {
+    use diesel::OptionalExtension;
+    require_active_platform(db, platform_id).await?;
+    let mut conn = db.connect().await?;
+    #[derive(diesel::QueryableByName)]
+    struct Row {
+        #[diesel(sql_type = diesel::sql_types::Text)]
+        platform_id: String,
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        balance_mist: i64,
+        #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::BigInt>)]
+        last_funded_at: Option<i64>,
+        #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::BigInt>)]
+        last_withdrawn_at: Option<i64>,
+        #[diesel(sql_type = diesel::sql_types::Timestamp)]
+        updated_at: chrono::NaiveDateTime,
+    }
+    let row = diesel::sql_query(
+        "SELECT platform_id, balance_mist, last_funded_at, last_withdrawn_at, updated_at
+         FROM platform_treasury_balances
+         WHERE platform_id = $1
+         LIMIT 1",
+    )
+    .bind::<diesel::sql_types::Text, _>(platform_id)
+    .get_result::<Row>(&mut conn)
+    .await
+    .optional()?;
+    Ok(match row {
+        Some(r) => PlatformTreasuryInfo {
+            platform_id: r.platform_id,
+            balance_mist: r.balance_mist,
+            last_funded_at: r.last_funded_at,
+            last_withdrawn_at: r.last_withdrawn_at,
+            updated_at: r.updated_at,
+        },
+        None => PlatformTreasuryInfo {
+            platform_id: platform_id.to_string(),
+            balance_mist: 0,
+            last_funded_at: None,
+            last_withdrawn_at: None,
+            updated_at: chrono::Utc::now().naive_utc(),
+        },
+    })
+}
+
+pub(crate) async fn list_platform_treasury_withdrawals(
+    db: &Db,
+    platform_id: &str,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<PlatformTreasuryWithdrawalRow>, SocialError> {
+    require_active_platform(db, platform_id).await?;
+    let mut conn = db.connect().await?;
+    #[derive(diesel::QueryableByName)]
+    struct Row {
+        #[diesel(sql_type = diesel::sql_types::Int4)]
+        id: i32,
+        #[diesel(sql_type = diesel::sql_types::Text)]
+        platform_id: String,
+        #[diesel(sql_type = diesel::sql_types::Text)]
+        recipient: String,
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        amount: i64,
+        #[diesel(sql_type = diesel::sql_types::SmallInt)]
+        reason_code: i16,
+        #[diesel(sql_type = diesel::sql_types::Text)]
+        executed_by: String,
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        timestamp: i64,
+        #[diesel(sql_type = diesel::sql_types::Timestamp)]
+        created_at: chrono::NaiveDateTime,
+        #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::Text>)]
+        event_id: Option<String>,
+    }
+    let rows = diesel::sql_query(
+        "SELECT id, platform_id, recipient, amount, reason_code, executed_by, timestamp, created_at, event_id
+         FROM platform_treasury_withdrawals
+         WHERE platform_id = $1
+         ORDER BY timestamp DESC
+         LIMIT $2 OFFSET $3",
+    )
+    .bind::<diesel::sql_types::Text, _>(platform_id)
+    .bind::<diesel::sql_types::BigInt, _>(limit)
+    .bind::<diesel::sql_types::BigInt, _>(offset)
+    .load::<Row>(&mut conn)
+    .await?;
+    Ok(rows
+        .into_iter()
+        .map(|r| PlatformTreasuryWithdrawalRow {
+            id: r.id,
+            platform_id: r.platform_id,
+            recipient: r.recipient,
+            amount: r.amount,
+            reason_code: r.reason_code,
+            executed_by: r.executed_by,
+            timestamp: r.timestamp,
+            created_at: r.created_at,
+            event_id: r.event_id,
+        })
+        .collect())
 }

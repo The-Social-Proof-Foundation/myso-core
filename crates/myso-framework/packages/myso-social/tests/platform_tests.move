@@ -12,6 +12,8 @@ module social_contracts::platform_tests {
     use myso::object;
     use myso::transfer;
     use myso::clock::{Self, Clock};
+    use myso::coin::{Self, Coin};
+    use myso::myso::MYSO;
     use myso::permissioned_group::PermissionedGroup;
     
     use social_contracts::profile::{Self, Profile, UsernameRegistry,
@@ -1352,6 +1354,108 @@ let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
             test_scenario::return_shared(platform);
             test_scenario::return_shared(social_graph);
             test_scenario::return_shared(block_registry);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_platform_treasury_fund_and_withdraw() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        create_test_platform(&mut scenario);
+
+        test_scenario::next_tx(&mut scenario, PLATFORM_ADMIN);
+        {
+            let mut platform = test_scenario::take_shared<Platform>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let mut funding_coin = coin::mint_for_testing<MYSO>(500_000_000, test_scenario::ctx(&mut scenario));
+
+            platform::test_fund_platform_treasury(
+                &mut platform,
+                &mut funding_coin,
+                500_000_000,
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            assert!(platform::treasury_balance(&platform) == 500_000_000, 0);
+
+            coin::destroy_zero(funding_coin);
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(platform);
+        };
+
+        test_scenario::next_tx(&mut scenario, PLATFORM_ADMIN);
+        {
+            let mut platform = test_scenario::take_shared<Platform>(&scenario);
+            let group = test_scenario::take_shared<PermissionedGroup<PlatformPackage>>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let recipients = vector[USER1];
+            platform::withdraw_from_platform_treasury(
+                &mut platform,
+                &group,
+                recipients,
+                100_000_000,
+                1,
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            assert!(platform::treasury_balance(&platform) == 400_000_000, 1);
+
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(group);
+            test_scenario::return_shared(platform);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let withdrawn = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
+            assert!(coin::value(&withdrawn) == 100_000_000, 2);
+            coin::burn_for_testing(withdrawn);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test, expected_failure(abort_code = platform::EUnauthorized)]
+    fun test_platform_treasury_withdraw_requires_permission() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        create_test_platform_no_moderator(&mut scenario);
+
+        test_scenario::next_tx(&mut scenario, PLATFORM_ADMIN);
+        {
+            let mut platform = test_scenario::take_shared<Platform>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let mut funding_coin = coin::mint_for_testing<MYSO>(100_000_000, test_scenario::ctx(&mut scenario));
+            platform::test_fund_platform_treasury(
+                &mut platform,
+                &mut funding_coin,
+                100_000_000,
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            coin::destroy_zero(funding_coin);
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(platform);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut platform = test_scenario::take_shared<Platform>(&scenario);
+            let group = test_scenario::take_shared<PermissionedGroup<PlatformPackage>>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let recipients = vector[USER2];
+            platform::withdraw_from_platform_treasury(
+                &mut platform,
+                &group,
+                recipients,
+                10_000_000,
+                1,
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(group);
+            test_scenario::return_shared(platform);
         };
 
         test_scenario::end(scenario);

@@ -8,7 +8,7 @@ use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
     NewPlatform, NewPlatformBlockedProfile, NewPlatformConfig, NewPlatformEvent,
     NewPlatformMembership, NewPlatformModerator, NewPlatformModeratorPermission,
-    NewPlatformTokenAirdrop,
+    NewPlatformTreasuryWithdrawal,
 };
 use myso_indexer_alt_social_schema::platform_permissions::ALL_MODERATOR_EXTENSION_PERMISSIONS;
 
@@ -250,7 +250,7 @@ struct UserLeftPlatformEvent {
 }
 
 #[derive(Debug, Deserialize)]
-struct TokenAirdropEvent {
+struct PlatformTreasuryWithdrawalEvent {
     platform_id: String,
     recipient: String,
     #[serde(deserialize_with = "de_u64")]
@@ -274,15 +274,12 @@ struct PlatformDeletedEvent {
 }
 
 #[derive(Debug, Deserialize)]
-struct TreasuryFundedEvent {
+struct PlatformTreasuryFundedEvent {
     platform_id: String,
     #[serde(deserialize_with = "de_u64")]
-    _amount: u64,
-    _funded_by: String,
+    new_balance: u64,
     #[serde(deserialize_with = "de_u64")]
-    _new_balance: u64,
-    #[serde(deserialize_with = "de_u64")]
-    _timestamp: u64,
+    timestamp: u64,
 }
 
 pub fn handle_platform_event(
@@ -322,12 +319,14 @@ pub fn handle_platform_event(
         "UserLeftPlatformEvent" => {
             process_user_left_platform_event(data, event_id, checkpoint_timestamp_ms)
         }
-        "TokenAirdropEvent" => process_token_airdrop_event(data, event_id, checkpoint_timestamp_ms),
+        "PlatformTreasuryWithdrawalEvent" => {
+            process_platform_treasury_withdrawal_event(data, event_id, checkpoint_timestamp_ms)
+        }
         "PlatformDeletedEvent" => {
             process_platform_deleted_event(data, event_id, checkpoint_timestamp_ms)
         }
-        "TreasuryFundedEvent" => {
-            process_treasury_funded_event(data, event_id, checkpoint_timestamp_ms)
+        "PlatformTreasuryFundedEvent" => {
+            process_platform_treasury_funded_event(data, event_id, checkpoint_timestamp_ms)
         }
         "PlatformConfigUpdatedEvent" => {
             process_platform_config_updated_event(data, event_id, checkpoint_timestamp_ms)
@@ -899,17 +898,17 @@ fn process_user_left_platform_event(
     ])
 }
 
-fn process_token_airdrop_event(
+fn process_platform_treasury_withdrawal_event(
     data: &serde_json::Value,
     event_id: &str,
     checkpoint_timestamp_ms: u64,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: TokenAirdropEvent = common::deserialize_social_event_json(
+    let ev: PlatformTreasuryWithdrawalEvent = common::deserialize_social_event_json(
         "platform",
-        "TokenAirdropEvent",
+        "PlatformTreasuryWithdrawalEvent",
         event_id,
         data,
-        "platform TokenAirdropEvent JSON did not match TokenAirdropEvent",
+        "platform treasury withdrawal JSON did not match PlatformTreasuryWithdrawalEvent",
     )?;
     let now = common::chain_time_from_ms(common::chain_timestamp_ms(
         Some(ev.timestamp as i64),
@@ -917,7 +916,7 @@ fn process_token_airdrop_event(
     ))
     .naive_utc();
 
-    let airdrop = NewPlatformTokenAirdrop {
+    let withdrawal = NewPlatformTreasuryWithdrawal {
         platform_id: ev.platform_id.clone(),
         recipient: ev.recipient,
         amount: ev.amount as i64,
@@ -929,8 +928,8 @@ fn process_token_airdrop_event(
     };
 
     let platform_event = NewPlatformEvent {
-        event_type: "TokenAirdrop".to_string(),
-        platform_id: ev.platform_id,
+        event_type: "PlatformTreasuryWithdrawal".to_string(),
+        platform_id: ev.platform_id.clone(),
         event_data: data.clone(),
         event_id: Some(event_id.to_string()),
         created_at: now,
@@ -938,7 +937,49 @@ fn process_token_airdrop_event(
     };
 
     Some(vec![
-        SocialEventRow::PlatformTokenAirdrop(airdrop),
+        SocialEventRow::PlatformTreasuryWithdrawal(withdrawal),
+        SocialEventRow::PlatformTreasuryBalanceDecrement {
+            platform_id: ev.platform_id,
+            amount: ev.amount as i64,
+            withdrawn_at: ev.timestamp as i64,
+            updated_at: now,
+        },
+        SocialEventRow::PlatformEvent(platform_event),
+    ])
+}
+
+fn process_platform_treasury_funded_event(
+    data: &serde_json::Value,
+    event_id: &str,
+    checkpoint_timestamp_ms: u64,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: PlatformTreasuryFundedEvent = common::deserialize_social_event_json(
+        "platform",
+        "PlatformTreasuryFundedEvent",
+        event_id,
+        data,
+        "platform treasury funded JSON did not match PlatformTreasuryFundedEvent",
+    )?;
+    let now = common::chain_time_from_ms(common::chain_timestamp_ms(
+        Some(ev.timestamp as i64),
+        checkpoint_timestamp_ms,
+    ))
+    .naive_utc();
+    let platform_event = NewPlatformEvent {
+        event_type: "PlatformTreasuryFunded".to_string(),
+        platform_id: ev.platform_id.clone(),
+        event_data: data.clone(),
+        event_id: Some(event_id.to_string()),
+        created_at: now,
+        reasoning: None,
+    };
+    Some(vec![
+        SocialEventRow::PlatformTreasuryBalanceUpsert {
+            platform_id: ev.platform_id,
+            balance_mist: ev.new_balance as i64,
+            funded_at: ev.timestamp as i64,
+            updated_at: now,
+        },
         SocialEventRow::PlatformEvent(platform_event),
     ])
 }
@@ -989,33 +1030,6 @@ fn process_platform_deleted_event(
     ])
 }
 
-fn process_treasury_funded_event(
-    data: &serde_json::Value,
-    event_id: &str,
-    checkpoint_timestamp_ms: u64,
-) -> Option<Vec<SocialEventRow>> {
-    let ev: TreasuryFundedEvent = common::deserialize_social_event_json(
-        "platform",
-        "TreasuryFundedEvent",
-        event_id,
-        data,
-        "platform TreasuryFundedEvent JSON did not match TreasuryFundedEvent",
-    )?;
-    let now = common::chain_time_from_ms(common::chain_timestamp_ms(
-        Some(ev._timestamp as i64),
-        checkpoint_timestamp_ms,
-    ))
-    .naive_utc();
-    let platform_event = NewPlatformEvent {
-        event_type: "TreasuryFunded".to_string(),
-        platform_id: ev.platform_id,
-        event_data: data.clone(),
-        event_id: Some(event_id.to_string()),
-        created_at: now,
-        reasoning: None,
-    };
-    Some(vec![SocialEventRow::PlatformEvent(platform_event)])
-}
 
 #[cfg(test)]
 mod platform_deleted_tests {
@@ -1070,5 +1084,95 @@ mod platform_deleted_tests {
         assert_eq!(ev.platform_id.as_str(), platform_id.as_str());
         assert_eq!(ev.reasoning.as_deref(), Some("cleanup"));
         assert_eq!(&ev.event_data, &json);
+    }
+
+    #[test]
+    fn platform_treasury_funded_event_json_through_handler() {
+        let ts_ms = 1_735_891_200_000u64;
+        let platform_id =
+            "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
+        let json = serde_json::json!({
+            "platform_id": platform_id,
+            "amount": 5_000_000_000u64,
+            "funded_by": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "new_balance": 5_000_000_000u64,
+            "timestamp": ts_ms,
+        });
+        let event_id = "digest:funded";
+        let rows = handle_platform_event("PlatformTreasuryFundedEvent", &json, event_id, CK_MS)
+            .expect("handler should recognize PlatformTreasuryFundedEvent");
+        assert_eq!(rows.len(), 2);
+
+        let SocialEventRow::PlatformTreasuryBalanceUpsert {
+            platform_id: upsert_id,
+            balance_mist,
+            funded_at,
+            ..
+        } = &rows[0]
+        else {
+            panic!("expected PlatformTreasuryBalanceUpsert row first, got {:?}", rows[0]);
+        };
+        assert_eq!(upsert_id.as_str(), platform_id);
+        assert_eq!(*balance_mist, 5_000_000_000);
+        assert_eq!(*funded_at, ts_ms as i64);
+
+        let SocialEventRow::PlatformEvent(ev) = &rows[1] else {
+            panic!("expected PlatformEvent row second, got {:?}", rows[1]);
+        };
+        assert_eq!(ev.event_type, "PlatformTreasuryFunded");
+        assert_eq!(ev.event_id.as_deref(), Some(event_id));
+        assert_eq!(ev.platform_id.as_str(), platform_id);
+    }
+
+    #[test]
+    fn platform_treasury_withdrawal_event_json_through_handler() {
+        let ts_ms = 1_735_891_200_000u64;
+        let platform_id =
+            "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
+        let json = serde_json::json!({
+            "platform_id": platform_id,
+            "recipient": "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "amount": 1_000_000_000u64,
+            "reason_code": 1u8,
+            "executed_by": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "timestamp": ts_ms,
+        });
+        let event_id = "digest:withdraw";
+        let rows =
+            handle_platform_event("PlatformTreasuryWithdrawalEvent", &json, event_id, CK_MS)
+                .expect("handler should recognize PlatformTreasuryWithdrawalEvent");
+        assert_eq!(rows.len(), 3);
+
+        let SocialEventRow::PlatformTreasuryWithdrawal(w) = &rows[0] else {
+            panic!(
+                "expected PlatformTreasuryWithdrawal row first, got {:?}",
+                rows[0]
+            );
+        };
+        assert_eq!(w.platform_id.as_str(), platform_id);
+        assert_eq!(w.amount, 1_000_000_000);
+        assert_eq!(w.reason_code, 1);
+
+        let SocialEventRow::PlatformTreasuryBalanceDecrement {
+            platform_id: dec_id,
+            amount,
+            withdrawn_at,
+            ..
+        } = &rows[1]
+        else {
+            panic!(
+                "expected PlatformTreasuryBalanceDecrement row second, got {:?}",
+                rows[1]
+            );
+        };
+        assert_eq!(dec_id.as_str(), platform_id);
+        assert_eq!(*amount, 1_000_000_000);
+        assert_eq!(*withdrawn_at, ts_ms as i64);
+
+        let SocialEventRow::PlatformEvent(ev) = &rows[2] else {
+            panic!("expected PlatformEvent row third, got {:?}", rows[2]);
+        };
+        assert_eq!(ev.event_type, "PlatformTreasuryWithdrawal");
+        assert_eq!(ev.event_id.as_deref(), Some(event_id));
     }
 }

@@ -2790,12 +2790,16 @@ impl Query {
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
+        let platform_row = reader.get_platform_by_id(platform.as_str()).await.ok()??;
+        let developer_address = platform_row.developer_address;
         Some(
             reader
                 .get_platform_user_access(platform.as_str(), &user.to_string())
                 .await
                 .map_err(Into::into)
-                .map(PlatformUserAccess::from_row),
+                .map(|row| {
+                    PlatformUserAccess::from_row(row, &developer_address, &user.to_string())
+                }),
         )
     }
 

@@ -3236,6 +3236,9 @@ Platform.termsOfService
 Platform.privacyPolicy
   => {}
 
+Platform.redirectUri
+  => {}
+
 Platform.links
   => {}
 
@@ -3284,6 +3287,15 @@ Platform.quorumVotes
 Platform.votingPeriodEpochs
   => {}
 
+Platform.treasuryBalance
+  => {}
+
+Platform.treasuryBalanceLive
+  => {}
+
+Platform.treasuryWithdrawals
+  => {}
+
 Platform.blockedProfiles
   => {}
 
@@ -3320,19 +3332,10 @@ PlatformConfig.maxCoverPhotoUrlLength
 PlatformConfig.maxMediaPreviews
   => {}
 
-PlatformConfig.maxMediaPreviewUrlLength
-  => {}
-
 PlatformConfig.maxBadgeNameLength
   => {}
 
 PlatformConfig.maxBadgeDescriptionLength
-  => {}
-
-PlatformConfig.maxBadgeMediaUrlLength
-  => {}
-
-PlatformConfig.maxBadgeIconUrlLength
   => {}
 
 PlatformConfig.version
@@ -3410,6 +3413,9 @@ PlatformMembershipSummary.termsOfService
 PlatformMembershipSummary.privacyPolicy
   => {}
 
+PlatformMembershipSummary.redirectUri
+  => {}
+
 PlatformMembershipSummary.platformNames
   => {}
 
@@ -3473,7 +3479,7 @@ PlatformMembershipSummary.quorumVotes
 PlatformMembershipSummary.votingPeriodEpochs
   => {}
 
-PlatformMembershipSummary.treasuryAddress
+PlatformMembershipSummary.treasuryContainerId
   => {}
 
 PlatformMembershipSummary.version
@@ -3548,6 +3554,24 @@ PlatformRevenueSummary.activeMonths
 PlatformRevenueSummary.lastActiveMonth
   => {}
 
+PlatformTreasuryWithdrawalSummary.platformId
+  => {}
+
+PlatformTreasuryWithdrawalSummary.recipient
+  => {}
+
+PlatformTreasuryWithdrawalSummary.amount
+  => {}
+
+PlatformTreasuryWithdrawalSummary.reasonCode
+  => {}
+
+PlatformTreasuryWithdrawalSummary.executedBy
+  => {}
+
+PlatformTreasuryWithdrawalSummary.timestamp
+  => {}
+
 PlatformUserAccess.isMember
   => {}
 
@@ -3569,7 +3593,7 @@ PlatformUserAccess.canModerateContent
 PlatformUserAccess.canManageBadges
   => {}
 
-PlatformUserAccess.canAirdropTreasury
+PlatformUserAccess.canWithdrawFromPlatformTreasury
   => {}
 
 PlatformUserAccess.canManagePromotions
@@ -4079,15 +4103,6 @@ Post.pocOracleAddress
 Post.pocAnalyzedAt
   => {}
 
-Post.enableSpot
-  => {}
-
-Post.spotId
-  => {}
-
-Post.spotClaimId
-  => {}
-
 Post.sptId
   => {}
 
@@ -4161,6 +4176,12 @@ Post.spotBets
   => {}
 
 Post.spotRecord
+  => {}
+
+Post.spotAnalysis
+  => {}
+
+Post.spotVerdicts
   => {}
 
 Post.spotPayouts
@@ -4239,6 +4260,12 @@ PostConfig.maxPromotionAmount
   => {}
 
 PostConfig.minViewDurationMs
+  => {}
+
+PostConfig.platformFeeBps
+  => {}
+
+PostConfig.ecosystemFeeBps
   => {}
 
 PostConfig.version
@@ -4893,6 +4920,15 @@ PromotionView.viewerProfile
   => {}
 
 PromotionView.paymentAmount
+  => {}
+
+PromotionView.platformFee
+  => {}
+
+PromotionView.ecosystemFee
+  => {}
+
+PromotionView.recipientAmount
   => {}
 
 PromotionView.viewDuration
@@ -5849,6 +5885,30 @@ SpotClaimEarnings.claimId
 SpotClaimEarnings.totalAmount
   => {}
 
+SpotClaimVerdict.claimIndex
+  => {}
+
+SpotClaimVerdict.verdict
+  => {}
+
+SpotClaimVerdict.policyHash
+  => {}
+
+SpotClaimVerdict.evidenceManifestHash
+  => {}
+
+SpotClaimVerdict.evidenceUrls
+  => {}
+
+SpotClaimVerdict.summary
+  => {}
+
+SpotClaimVerdict.relatedMarketId
+  => {}
+
+SpotClaimVerdict.relatedClaimId
+  => {}
+
 SpotConfig.updatedBy
   => {}
 
@@ -5886,6 +5946,15 @@ SpotConfig.oracleAddress
   => {}
 
 SpotConfig.maxSingleBet
+  => {}
+
+SpotConfig.maxBetsPerRecord
+  => {}
+
+SpotConfig.maxClaimPerPost
+  => {}
+
+SpotConfig.spotGovernanceRegistryId
   => {}
 
 SpotConfig.minBettingOptions
@@ -6024,6 +6093,36 @@ SpotPendingCreatorPayout.isExpired
   => {}
 
 SpotPendingCreatorPayout.isClaimable
+  => {}
+
+SpotPostAnalysis.status
+  => {}
+
+SpotPostAnalysis.detectedClaimCount
+  => {}
+
+SpotPostAnalysis.rejectedClaimCount
+  => {}
+
+SpotPostAnalysis.truncatedClaimCount
+  => {}
+
+SpotPostAnalysis.futureAcceptedCount
+  => {}
+
+SpotPostAnalysis.pastVerifiedCount
+  => {}
+
+SpotPostAnalysis.maxClaimPerPost
+  => {}
+
+SpotPostAnalysis.claimManifestHash
+  => {}
+
+SpotPostAnalysis.veracityManifestHash
+  => {}
+
+SpotPostAnalysis.finalizeTxDigest
   => {}
 
 SpotPostEarnings.referrerPostId

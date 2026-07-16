@@ -2982,7 +2982,7 @@ pub struct BcsUserLeftPlatformEvent {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct BcsTokenAirdropEvent {
+pub struct BcsPlatformTreasuryWithdrawalEvent {
     platform_id: AccountAddress,
     recipient: AccountAddress,
     amount: u64,
@@ -2992,7 +2992,7 @@ pub struct BcsTokenAirdropEvent {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct BcsTreasuryFundedEvent {
+pub struct BcsPlatformTreasuryFundedEvent {
     platform_id: AccountAddress,
     amount: u64,
     funded_by: AccountAddress,
@@ -4829,8 +4829,8 @@ fn parse_platform_event(
                 "timestamp": ev.timestamp,
             })))
         }
-        "TokenAirdropEvent" => {
-            let ev = bcs::from_bytes::<BcsTokenAirdropEvent>(contents)
+        "PlatformTreasuryWithdrawalEvent" => {
+            let ev = bcs::from_bytes::<BcsPlatformTreasuryWithdrawalEvent>(contents)
                 .map_err(|e| bcs_parse_err(e, contents))?;
             Ok(Some(serde_json::json!({
                 "platform_id": addr_to_string(&ev.platform_id),
@@ -4841,8 +4841,8 @@ fn parse_platform_event(
                 "timestamp": ev.timestamp,
             })))
         }
-        "TreasuryFundedEvent" => {
-            let ev = bcs::from_bytes::<BcsTreasuryFundedEvent>(contents)
+        "PlatformTreasuryFundedEvent" => {
+            let ev = bcs::from_bytes::<BcsPlatformTreasuryFundedEvent>(contents)
                 .map_err(|e| bcs_parse_err(e, contents))?;
             Ok(Some(serde_json::json!({
                 "platform_id": addr_to_string(&ev.platform_id),

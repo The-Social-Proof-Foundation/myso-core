@@ -1034,6 +1034,43 @@ public fun reply_to_paid_message_claim_settled(
     );
 }
 
+/// Reply and settle with platform treasury: platform fee is deposited into `Platform.treasury`.
+public fun reply_to_paid_message_claim_settled_with_platform(
+    version: &Version,
+    config: &MessagingConfig,
+    group: &PermissionedGroup<Messaging>,
+    log: &mut MessageLog,
+    block_list: &BlockListRegistry,
+    paid_msg_seq: u64,
+    char_count: u32,
+    dedupe_key: vector<u8>,
+    nonce: u128,
+    clock: &Clock,
+    platform: &mut Platform,
+    ecosystem_treasury: &EcosystemTreasury,
+    ctx: &mut TxContext,
+) {
+    version.validate_version();
+    assert_group_not_archived(group);
+    assert_message_log_matches_group(log, group);
+    assert!(group.has_permission<Messaging, MessagingSender>(ctx.sender()), ENotPermitted);
+    assert_paid_parties_not_blocked(block_list, ctx.sender(), log, paid_msg_seq);
+    let ecosystem_fee_recipient = profile::get_treasury_address(ecosystem_treasury);
+    message_log::reply_to_paid_message_claim_settled_with_platform(
+        config,
+        log,
+        ctx.sender(),
+        paid_msg_seq,
+        char_count,
+        dedupe_key,
+        nonce,
+        clock,
+        platform,
+        ecosystem_fee_recipient,
+        ctx,
+    );
+}
+
 /// Refund expired paid escrow to the payer. Requires `MessagingSender` (payer must be a member).
 public fun refund_paid_escrow(
     version: &Version,

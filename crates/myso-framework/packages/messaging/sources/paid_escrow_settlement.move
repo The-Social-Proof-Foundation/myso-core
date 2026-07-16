@@ -7,13 +7,17 @@
 /// associated platform).
 ///
 /// Uses `transfer::public_transfer` to fee recipients. Credits to the live `Platform` treasury balance
-/// require `social_contracts::platform::add_to_treasury` (same-package); see
-/// `ref_social_contract/sources/messaging_paid_fee_bridge.move` for a foundation-side helper.
+/// require `social_contracts::platform::fund_platform_treasury_from_coin` (see
+/// `distribute_escrow_with_platform_treasury`).
 module messaging::paid_escrow_settlement;
 
 use messaging::messaging_config::{Self, MessagingConfig};
 use myso::coin::{Self, Coin};
+use myso::clock::{Self, Clock};
 use myso::myso::MYSO;
+use myso::transfer;
+use myso::tx_context::TxContext;
+use social_contracts::platform::{Self, Platform};
 
 /// Sentinel: pass as `platform_fee_recipient` when no platform is associated with the paid DM.
 public fun no_platform_fee_recipient(): address {
@@ -81,6 +85,43 @@ public fun distribute_escrow_to_recipients(
                 ecosystem_fee_recipient,
             );
         };
+    };
+    transfer::public_transfer(escrow_coin, primary_recipient);
+
+    EscrowFeeTotals { total_amount, platform_fee, treasury_fee, net_amount }
+}
+
+/// Splits `escrow_coin` per paid-message BPS and deposits the platform share into `Platform.treasury`.
+public fun distribute_escrow_with_platform_treasury(
+    config: &MessagingConfig,
+    mut escrow_coin: Coin<MYSO>,
+    platform: &mut Platform,
+    ecosystem_fee_recipient: address,
+    primary_recipient: address,
+    clock: &Clock,
+    ctx: &mut TxContext,
+): EscrowFeeTotals {
+    let total_amount = coin::value(&escrow_coin);
+    let platform_fee_bps = messaging_config::paid_msg_platform_fee_bps(config);
+    let treasury_fee_bps = messaging_config::paid_msg_treasury_fee_bps(config);
+    let platform_fee = (((total_amount as u128) * (platform_fee_bps as u128)) / 10000u128) as u64;
+    let treasury_fee = (((total_amount as u128) * (treasury_fee_bps as u128)) / 10000u128) as u64;
+    let net_amount = total_amount - platform_fee - treasury_fee;
+
+    if (platform_fee > 0) {
+        let mut platform_fee_coin = coin::split(&mut escrow_coin, platform_fee, ctx);
+        platform::fund_platform_treasury_from_coin(platform, &mut platform_fee_coin, platform_fee, clock, ctx);
+        if (coin::value(&platform_fee_coin) > 0) {
+            transfer::public_transfer(platform_fee_coin, primary_recipient);
+        } else {
+            coin::destroy_zero(platform_fee_coin);
+        };
+    };
+    if (treasury_fee > 0) {
+        transfer::public_transfer(
+            coin::split(&mut escrow_coin, treasury_fee, ctx),
+            ecosystem_fee_recipient,
+        );
     };
     transfer::public_transfer(escrow_coin, primary_recipient);
 

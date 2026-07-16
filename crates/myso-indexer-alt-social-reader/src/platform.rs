@@ -4,7 +4,7 @@
 use chrono::NaiveDateTime;
 use diesel::OptionalExtension;
 use diesel::QueryableByName;
-use diesel::sql_types::{BigInt, Bool, Nullable, SmallInt, Text, Timestamp};
+use diesel::sql_types::{BigInt, Bool, Int4, Nullable, SmallInt, Text, Timestamp};
 use diesel_async::RunQueryDsl;
 use serde_json::Value as JsonValue;
 
@@ -56,10 +56,11 @@ impl PlatformUserAccessRow {
         })
     }
 
-    pub fn can_airdrop_treasury(&self) -> bool {
-        self.permissions().iter().any(|p| {
-            p == myso_indexer_alt_social_schema::platform_permissions::PLATFORM_TREASURY_ADMIN
-        })
+    pub fn can_withdraw_from_platform_treasury(&self, is_developer: bool) -> bool {
+        is_developer
+            || self.permissions().iter().any(|p| {
+                p == myso_indexer_alt_social_schema::platform_permissions::PLATFORM_TREASURY_ADMIN
+            })
     }
 
     pub fn can_manage_promotions(&self) -> bool {
@@ -160,6 +161,88 @@ pub(crate) async fn get_platform_by_id(
     .optional()?;
     metrics.requests_succeeded.inc();
     Ok(result)
+}
+
+#[derive(Debug, Clone, QueryableByName)]
+pub struct PlatformTreasuryBalanceRow {
+    #[diesel(sql_type = Text)]
+    pub platform_id: String,
+    #[diesel(sql_type = BigInt)]
+    pub balance_mist: i64,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub last_funded_at: Option<i64>,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub last_withdrawn_at: Option<i64>,
+    #[diesel(sql_type = Timestamp)]
+    pub updated_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, QueryableByName)]
+pub struct PlatformTreasuryWithdrawalRow {
+    #[diesel(sql_type = Int4)]
+    pub id: i32,
+    #[diesel(sql_type = Text)]
+    pub platform_id: String,
+    #[diesel(sql_type = Text)]
+    pub recipient: String,
+    #[diesel(sql_type = BigInt)]
+    pub amount: i64,
+    #[diesel(sql_type = SmallInt)]
+    pub reason_code: i16,
+    #[diesel(sql_type = Text)]
+    pub executed_by: String,
+    #[diesel(sql_type = BigInt)]
+    pub timestamp: i64,
+    #[diesel(sql_type = Timestamp)]
+    pub created_at: NaiveDateTime,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub event_id: Option<String>,
+}
+
+pub(crate) async fn get_platform_treasury_balance(
+    conn: &mut Connection<'_>,
+    platform_id: &str,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Option<PlatformTreasuryBalanceRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    let result = diesel::sql_query(
+        "SELECT platform_id, balance_mist, last_funded_at, last_withdrawn_at, updated_at
+         FROM platform_treasury_balances
+         WHERE platform_id = $1
+         LIMIT 1",
+    )
+    .bind::<Text, _>(platform_id)
+    .get_result::<PlatformTreasuryBalanceRow>(conn)
+    .await
+    .optional()?;
+    metrics.requests_succeeded.inc();
+    Ok(result)
+}
+
+pub(crate) async fn list_platform_treasury_withdrawals(
+    conn: &mut Connection<'_>,
+    platform_id: &str,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<PlatformTreasuryWithdrawalRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    let rows = diesel::sql_query(
+        "SELECT id, platform_id, recipient, amount, reason_code, executed_by, timestamp, created_at, event_id
+         FROM platform_treasury_withdrawals
+         WHERE platform_id = $1
+         ORDER BY timestamp DESC
+         LIMIT $2 OFFSET $3",
+    )
+    .bind::<Text, _>(platform_id)
+    .bind::<BigInt, _>(limit)
+    .bind::<BigInt, _>(offset)
+    .load::<PlatformTreasuryWithdrawalRow>(conn)
+    .await?;
+    metrics.requests_succeeded.inc();
+    Ok(rows)
 }
 
 pub(crate) async fn get_platform_by_registry_id(

@@ -48,7 +48,8 @@ pub use myso_indexer_alt_social_schema::models::{
 };
 pub use platform::{
     PlatformApprovalRow, PlatformBlockedProfileRow, PlatformConfigInfo, PlatformEventRow,
-    PlatformMemberRow, PlatformModeratorRow, PlatformRow, PlatformUserAccessRow,
+    PlatformMemberRow, PlatformModeratorRow, PlatformRow, PlatformTreasuryInfo,
+    PlatformTreasuryWithdrawalRow, PlatformUserAccessRow,
 };
 pub use poc::{
     PocAnalysisResultRow, PocBadgeRow, PocBeneficiaryVaultRow, PocConfigRow, PocDisputeRow,

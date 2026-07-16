@@ -155,7 +155,7 @@ module social_contracts::platform {
     /// Permission to assign/revoke platform badges
     public struct PlatformBadgeAdmin() has drop;
 
-    /// Permission to airdrop from the platform treasury
+    /// Permission to withdraw from the platform treasury
     public struct PlatformTreasuryAdmin() has drop;
 
     /// Permission to moderate posts and comments on the platform
@@ -345,8 +345,8 @@ module social_contracts::platform {
         timestamp: u64,
     }
 
-    /// Event emitted when tokens are airdropped from the platform treasury
-    public struct TokenAirdropEvent has copy, drop {
+    /// Event emitted when tokens are withdrawn from the platform treasury
+    public struct PlatformTreasuryWithdrawalEvent has copy, drop {
         platform_id: address,
         recipient: address,
         amount: u64,
@@ -355,8 +355,8 @@ module social_contracts::platform {
         timestamp: u64,
     }
 
-    /// Event emitted when tokens are added to platform treasury
-    public struct TreasuryFundedEvent has copy, drop {
+    /// Event emitted when tokens are deposited into the platform treasury
+    public struct PlatformTreasuryFundedEvent has copy, drop {
         platform_id: address,
         amount: u64,
         funded_by: address,
@@ -768,13 +768,24 @@ module social_contracts::platform {
         // Emit treasury funded event
         let platform_id = object::uid_to_address(&platform.id);
         let new_balance = balance::value(&platform.treasury);
-        event::emit(TreasuryFundedEvent {
+        event::emit(PlatformTreasuryFundedEvent {
             platform_id,
             amount,
             funded_by: tx_context::sender(ctx),
             new_balance,
             timestamp: clock::timestamp_ms(clock),
         });
+    }
+
+    /// Fund platform treasury from an external module (e.g. messaging paid DMs).
+    public fun fund_platform_treasury_from_coin(
+        platform: &mut Platform,
+        coin: &mut Coin<MYSO>,
+        amount: u64,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        add_to_treasury(platform, coin, amount, clock, ctx);
     }
 
     /// Mark a platform-linked governance proposal as implemented; pay the proposer the implementation pool.
@@ -1783,9 +1794,9 @@ module social_contracts::platform {
         );
     }
 
-    /// Airdrop tokens to multiple recipients from the platform treasury
-    /// Can only be called by platform developer or moderator with treasury permission
-    public fun airdrop_from_treasury(
+    /// Withdraw tokens to multiple recipients from the platform treasury.
+    /// Callable by the platform developer or a moderator with treasury permission.
+    public entry fun withdraw_from_platform_treasury(
         platform: &mut Platform,
         group: &PermissionedGroup<PlatformPackage>,
         recipients: vector<address>,
@@ -1798,36 +1809,27 @@ module social_contracts::platform {
         
         assert_moderator_permission<PlatformTreasuryAdmin>(platform, group, caller);
         
-        // Check that recipients list is not empty
         let recipients_count = vector::length(&recipients);
         assert!(recipients_count > 0, EEmptyRecipientsList);
         
-        // Calculate total amount needed
         let total_amount = amount_per_recipient * recipients_count;
-        
-        // Verify platform treasury has enough funds
         assert!(balance::value(&platform.treasury) >= total_amount, EInsufficientTreasuryFunds);
         
-        // Get current timestamp for events
         let current_time = clock::timestamp_ms(clock);
         let platform_id = object::uid_to_address(&platform.id);
         
-        // Send tokens to each recipient
         let mut i = 0;
         while (i < recipients_count) {
             let recipient = *vector::borrow(&recipients, i);
             
-            // Create coin from platform treasury balance
-            let airdrop_coin = coin::from_balance(
+            let withdrawal_coin = coin::from_balance(
                 balance::split(&mut platform.treasury, amount_per_recipient), 
                 ctx
             );
             
-            // Transfer to recipient
-            transfer::public_transfer(airdrop_coin, recipient);
+            transfer::public_transfer(withdrawal_coin, recipient);
             
-            // Emit airdrop event for tracking
-            event::emit(TokenAirdropEvent {
+            event::emit(PlatformTreasuryWithdrawalEvent {
                 platform_id,
                 recipient,
                 amount: amount_per_recipient,
@@ -2085,6 +2087,17 @@ module social_contracts::platform {
         );
     }
     
+    #[test_only]
+    public fun test_fund_platform_treasury(
+        platform: &mut Platform,
+        coin: &mut Coin<MYSO>,
+        amount: u64,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        add_to_treasury(platform, coin, amount, clock, ctx);
+    }
+
     #[test_only]
     /// Test helper to set the approval status of a platform in the registry
     public fun test_set_approval(registry: &mut PlatformRegistry, platform_id: address, approved: bool) {

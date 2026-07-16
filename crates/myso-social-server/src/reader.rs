@@ -1656,6 +1656,22 @@ impl Reader {
         platform::get_platform_events(&self.db, platform_id, limit, offset).await
     }
 
+    pub async fn get_platform_treasury(
+        &self,
+        platform_id: &str,
+    ) -> Result<PlatformTreasuryInfo, crate::error::SocialError> {
+        platform::get_platform_treasury(&self.db, platform_id).await
+    }
+
+    pub async fn list_platform_treasury_withdrawals(
+        &self,
+        platform_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<PlatformTreasuryWithdrawalRow>, crate::error::SocialError> {
+        platform::list_platform_treasury_withdrawals(&self.db, platform_id, limit, offset).await
+    }
+
     pub async fn list_posts(
         &self,
         owner: Option<&str>,

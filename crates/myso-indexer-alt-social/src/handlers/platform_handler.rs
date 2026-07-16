@@ -17,11 +17,12 @@ use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
     NewPlatform, NewPlatformBlockedProfile, NewPlatformConfig, NewPlatformEvent,
     NewPlatformMembership, NewPlatformModerator, NewPlatformModeratorPermission,
-    NewPlatformTokenAirdrop,
+    NewPlatformTreasuryBalance, NewPlatformTreasuryWithdrawal,
 };
 use myso_indexer_alt_social_schema::schema::{
     platform_blocked_profiles, platform_config, platform_events, platform_memberships,
-    platform_moderator_permissions, platform_moderators, platform_token_airdrops, platforms,
+    platform_moderator_permissions, platform_moderators, platform_treasury_balances,
+    platform_treasury_withdrawals, platforms,
 };
 
 use super::common;
@@ -87,7 +88,19 @@ pub enum PlatformRow {
         platform_id: String,
         wallet_address: String,
     },
-    PlatformTokenAirdrop(NewPlatformTokenAirdrop),
+    PlatformTreasuryWithdrawal(NewPlatformTreasuryWithdrawal),
+    PlatformTreasuryBalanceUpsert {
+        platform_id: String,
+        balance_mist: i64,
+        funded_at: i64,
+        updated_at: chrono::NaiveDateTime,
+    },
+    PlatformTreasuryBalanceDecrement {
+        platform_id: String,
+        amount: i64,
+        withdrawn_at: i64,
+        updated_at: chrono::NaiveDateTime,
+    },
     PlatformEvent(NewPlatformEvent),
     PlatformDeleted {
         platform_id: String,
@@ -205,9 +218,31 @@ impl PlatformRow {
                 platform_id,
                 wallet_address,
             }),
-            crate::handlers::SocialEventRow::PlatformTokenAirdrop(a) => {
-                Some(PlatformRow::PlatformTokenAirdrop(a))
+            crate::handlers::SocialEventRow::PlatformTreasuryWithdrawal(a) => {
+                Some(PlatformRow::PlatformTreasuryWithdrawal(a))
             }
+            crate::handlers::SocialEventRow::PlatformTreasuryBalanceUpsert {
+                platform_id,
+                balance_mist,
+                funded_at,
+                updated_at,
+            } => Some(PlatformRow::PlatformTreasuryBalanceUpsert {
+                platform_id,
+                balance_mist,
+                funded_at,
+                updated_at,
+            }),
+            crate::handlers::SocialEventRow::PlatformTreasuryBalanceDecrement {
+                platform_id,
+                amount,
+                withdrawn_at,
+                updated_at,
+            } => Some(PlatformRow::PlatformTreasuryBalanceDecrement {
+                platform_id,
+                amount,
+                withdrawn_at,
+                updated_at,
+            }),
             crate::handlers::SocialEventRow::PlatformEvent(e) => {
                 Some(PlatformRow::PlatformEvent(e))
             }
@@ -487,9 +522,60 @@ impl Handler for PlatformHandler {
                         .execute(conn)
                         .await;
                 }
-                PlatformRow::PlatformTokenAirdrop(a) => {
-                    total += diesel::insert_into(platform_token_airdrops::table)
+                PlatformRow::PlatformTreasuryWithdrawal(a) => {
+                    total += diesel::insert_into(platform_treasury_withdrawals::table)
                         .values(a)
+                        .execute(conn)
+                        .await?;
+                }
+                PlatformRow::PlatformTreasuryBalanceUpsert {
+                    platform_id,
+                    balance_mist,
+                    funded_at,
+                    updated_at,
+                } => {
+                    let row = NewPlatformTreasuryBalance {
+                        platform_id: platform_id.clone(),
+                        balance_mist: *balance_mist,
+                        last_funded_at: Some(*funded_at),
+                        last_withdrawn_at: None,
+                        updated_at: *updated_at,
+                    };
+                    total += diesel::insert_into(platform_treasury_balances::table)
+                        .values(&row)
+                        .on_conflict(platform_treasury_balances::platform_id)
+                        .do_update()
+                        .set((
+                            platform_treasury_balances::balance_mist.eq(*balance_mist),
+                            platform_treasury_balances::last_funded_at.eq(Some(*funded_at)),
+                            platform_treasury_balances::updated_at.eq(*updated_at),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                PlatformRow::PlatformTreasuryBalanceDecrement {
+                    platform_id,
+                    amount,
+                    withdrawn_at,
+                    updated_at,
+                } => {
+                    total += diesel::insert_into(platform_treasury_balances::table)
+                        .values(NewPlatformTreasuryBalance {
+                            platform_id: platform_id.clone(),
+                            balance_mist: -amount,
+                            last_funded_at: None,
+                            last_withdrawn_at: Some(*withdrawn_at),
+                            updated_at: *updated_at,
+                        })
+                        .on_conflict(platform_treasury_balances::platform_id)
+                        .do_update()
+                        .set((
+                            platform_treasury_balances::balance_mist.eq(
+                                platform_treasury_balances::balance_mist - amount,
+                            ),
+                            platform_treasury_balances::last_withdrawn_at.eq(Some(*withdrawn_at)),
+                            platform_treasury_balances::updated_at.eq(*updated_at),
+                        ))
                         .execute(conn)
                         .await?;
                 }
