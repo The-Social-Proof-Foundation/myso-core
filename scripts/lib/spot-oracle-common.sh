@@ -122,6 +122,21 @@ load_spot_oracle_session() {
     spot_oracle_map_session_to_oracle_env
 }
 
+# Session files persist SPOT_CLAIM_TEXT from the last post; restore caller override after load.
+spot_restore_pinned_claim() {
+    local pinned_claim="$1"
+    if [[ -n "$pinned_claim" ]]; then
+        SPOT_CLAIM_TEXT="$pinned_claim"
+        export SPOT_CLAIM_TEXT
+    fi
+}
+
+load_spot_oracle_session_preserving_claim() {
+    local pinned_claim="${1:-${SPOT_CLAIM_TEXT:-}}"
+    load_spot_oracle_session
+    spot_restore_pinned_claim "$pinned_claim"
+}
+
 save_spot_oracle_session() {
     spot_oracle_map_session_to_oracle_env
     social_save_session "${SPOT_ORACLE_SESSION_KEYS[@]}"
@@ -139,6 +154,57 @@ export_spot_oracle_env() {
     export SPOT_ORACLE_SOCIAL_SYNC_SECRET SPOT_ORACLE_SYNC_SECRET
     export SPOT_ORACLE_ENABLED SPOT_ORACLE_LIVE_SOURCES RUST_LOG
     export SPOT_ORACLE_STREAMING_URL SPOT_ORACLE_INGEST_MODE
+}
+
+spot_oracle_compose_file() {
+    printf '%s/crates/myso-spot-oracle/docker-compose.yml' "$REPO_ROOT"
+}
+
+spot_oracle_psql_exec() {
+    local compose_file sql
+    compose_file="$(spot_oracle_compose_file)"
+    sql="$1"
+    docker compose -f "$compose_file" exec -T spot-oracle-postgres \
+        psql -U spot -d spot_oracle -tAc "$sql"
+}
+
+require_spot_oracle_postgres() {
+    local compose_file i
+    compose_file="$(spot_oracle_compose_file)"
+    spot_oracle_apply_runtime_defaults
+    if docker compose -f "$compose_file" exec -T spot-oracle-postgres \
+        pg_isready -U spot -d spot_oracle >/dev/null 2>&1; then
+        return 0
+    fi
+    log_step "Starting spot-oracle postgres (shared with ./scripts/run-spot-oracle.sh)"
+    docker compose -f "$compose_file" up -d spot-oracle-postgres
+    for i in $(seq 1 60); do
+        if docker compose -f "$compose_file" exec -T spot-oracle-postgres \
+            pg_isready -U spot -d spot_oracle >/dev/null 2>&1; then
+            return 0
+        fi
+        sleep 1
+    done
+    echo "FAIL: spot-oracle postgres not ready at ${SPOT_ORACLE_DATABASE_URL:-127.0.0.1:5435}" >&2
+    echo "Start it with: ./scripts/run-spot-oracle.sh" >&2
+    return 1
+}
+
+require_spot_oracle_service() {
+    local listen="${SPOT_ORACLE_LISTEN:-127.0.0.1:8097}"
+    spot_oracle_apply_runtime_defaults
+    if curl -sf --max-time 3 "http://${listen}/health" >/dev/null 2>&1; then
+        log_step "External spot-oracle OK (http://${listen}/health)"
+        return 0
+    fi
+    echo "FAIL: spot-oracle not reachable at http://${listen}/health" >&2
+    echo "Start it in another terminal: ./scripts/run-spot-oracle.sh" >&2
+    return 1
+}
+
+require_external_oracle_stack() {
+    require_spot_oracle_postgres || return 1
+    require_spot_oracle_service || return 1
 }
 
 require_social_stack_for_onchain() {
@@ -315,7 +381,7 @@ spot_prompt_walkthrough_claim() {
     echo ""
     echo "=== Your future prediction ==="
     echo "This claim drives the full walkthrough: post → oracle review → on-chain market → bet → resolve."
-    echo "Tip: include a deadline (e.g. 'in 40 seconds' for local E2E, or 'by the end of tomorrow')." >&2
+    echo "Tip: include a measurable threshold and deadline (e.g. 'Will BTC trade above \$100000 by December 31, 2027?' or 'in 40 seconds' for local E2E)." >&2
 
     if [[ -t 0 ]]; then
         local entered=''

@@ -1,3 +1,6 @@
+DROP TRIGGER IF EXISTS trg_canonical_claims_hash_sync ON canonical_claims;
+DROP FUNCTION IF EXISTS sync_canonical_claim_hash();
+
 DROP TABLE IF EXISTS post_claim_links;
 DROP TABLE IF EXISTS spot_markets;
 DROP TABLE IF EXISTS spot_claims;

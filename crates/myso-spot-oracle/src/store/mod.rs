@@ -9,6 +9,7 @@ pub mod claims;
 pub mod events;
 pub mod evidence;
 pub mod jobs;
+pub mod knowledge;
 pub mod markets;
 pub mod reviews;
 pub mod transactions;
@@ -51,19 +52,17 @@ impl OracleStore {
     pub async fn upsert_source_rows(&self, sources: &[SourceConfig]) -> anyhow::Result<()> {
         for cfg in sources {
             let config_json = serde_json::to_value(&cfg.config)?;
-            let source_url = first_feed_url(cfg).map(|s| s.to_string());
             let row: (Uuid,) = sqlx::query_as(
                 r#"
                 INSERT INTO spot_trusted_sources
-                    (id, source_key, adapter_type, domain, trust_score, enabled, source_url, config)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                    (id, source_key, adapter_type, domain, trust_score, enabled, config)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
                 ON CONFLICT (id) DO UPDATE SET
                     source_key = EXCLUDED.source_key,
                     adapter_type = EXCLUDED.adapter_type,
                     domain = EXCLUDED.domain,
                     trust_score = EXCLUDED.trust_score,
                     enabled = EXCLUDED.enabled,
-                    source_url = EXCLUDED.source_url,
                     config = EXCLUDED.config,
                     updated_at = NOW()
                 RETURNING id
@@ -75,7 +74,6 @@ impl OracleStore {
             .bind(cfg.domain.as_str())
             .bind(cfg.trust_score)
             .bind(cfg.enabled)
-            .bind(source_url.as_deref())
             .bind(&config_json)
             .fetch_one(&self.pool)
             .await?;
@@ -491,10 +489,6 @@ impl OracleStore {
     ) -> anyhow::Result<Vec<transactions::TransactionRow>> {
         transactions::list_pending_transactions(&self.pool, limit).await
     }
-}
-
-fn first_feed_url(cfg: &SourceConfig) -> Option<&str> {
-    cfg.config.feed_urls.first().map(|s| s.as_str())
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]

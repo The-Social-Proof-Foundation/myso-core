@@ -1275,6 +1275,8 @@ pub(crate) async fn get_profile_platform_memberships(
         terms_of_service: Option<String>,
         #[diesel(sql_type = Nullable<Text>)]
         privacy_policy: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        redirect_uri: Option<String>,
         #[diesel(sql_type = Nullable<Jsonb>)]
         platform_names: Option<JsonValue>,
         #[diesel(sql_type = Nullable<Jsonb>)]
@@ -1341,6 +1343,7 @@ pub(crate) async fn get_profile_platform_memberships(
                p.moderators_group_id,
                p.terms_of_service,
                p.privacy_policy,
+               p.redirect_uri,
                p.platforms AS platform_names,
                p.links,
                p.status,
@@ -1398,6 +1401,7 @@ pub(crate) async fn get_profile_platform_memberships(
             moderators_group_id: r.moderators_group_id,
             terms_of_service: r.terms_of_service,
             privacy_policy: r.privacy_policy,
+            redirect_uri: r.redirect_uri,
             platform_names: r.platform_names,
             links: r.links,
             status: r.status,

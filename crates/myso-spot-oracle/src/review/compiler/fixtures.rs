@@ -5,7 +5,43 @@ use chrono::Utc;
 use uuid::Uuid;
 
 use crate::review::canonicalize::{CanonicalClaimFields, OutcomeType};
+use crate::review::outcome_identity::{
+    build_outcome_identity, build_outcome_market_key,
+};
 use crate::types::{ClaimCategory, ComparisonOp, ResolverHints};
+
+fn test_claim(fields: CanonicalClaimFields) -> crate::review::CanonicalClaim {
+    let outcome_identity = build_outcome_identity(
+        fields.entity_ref.clone(),
+        fields.competition_ref.clone(),
+        fields.event_ref.clone(),
+        fields.metric_ref.clone(),
+        fields.predicate.clone(),
+        fields.object.clone(),
+        fields.metric.clone(),
+        fields.comparison,
+        fields.threshold.clone(),
+        fields.outcome_type,
+        fields.claim_category,
+        fields.suggested_sources.clone(),
+    );
+    let outcome_market_key = build_outcome_market_key(
+        outcome_identity.clone(),
+        fields.deadline,
+        fields.suggested_options.clone(),
+        fields.claim_category,
+        chrono::Duration::hours(24),
+    );
+    crate::review::CanonicalClaim {
+        normalized_fields: fields,
+        claim_hash: [0u8; 32],
+        semantic_claim_hash: [0u8; 32],
+        market_key_hash: [0u8; 32],
+        source_extraction_id: Uuid::new_v4(),
+        outcome_identity,
+        outcome_market_key,
+    }
+}
 
 pub fn btc_price_claim() -> crate::review::CanonicalClaim {
     let fields = CanonicalClaimFields {
@@ -24,14 +60,12 @@ pub fn btc_price_claim() -> crate::review::CanonicalClaim {
             preferred_sources: vec!["coingecko".to_string()],
             ..Default::default()
         },
+        entity_ref: None,
+        competition_ref: None,
+        event_ref: None,
+        metric_ref: Some("price_usd".to_string()),
     };
-    crate::review::CanonicalClaim {
-        normalized_fields: fields,
-        claim_hash: [0u8; 32],
-        semantic_claim_hash: [0u8; 32],
-        market_key_hash: [0u8; 32],
-        source_extraction_id: Uuid::new_v4(),
-    }
+    test_claim(fields)
 }
 
 pub fn github_release_claim() -> crate::review::CanonicalClaim {
@@ -54,14 +88,12 @@ pub fn github_release_claim() -> crate::review::CanonicalClaim {
             preferred_sources: vec!["github_releases".to_string()],
             ..Default::default()
         },
+        entity_ref: None,
+        competition_ref: None,
+        event_ref: None,
+        metric_ref: None,
     };
-    crate::review::CanonicalClaim {
-        normalized_fields: fields,
-        claim_hash: [0u8; 32],
-        semantic_claim_hash: [0u8; 32],
-        market_key_hash: [0u8; 32],
-        source_extraction_id: Uuid::new_v4(),
-    }
+    test_claim(fields)
 }
 
 pub fn rss_event_claim() -> crate::review::CanonicalClaim {
@@ -83,14 +115,12 @@ pub fn rss_event_claim() -> crate::review::CanonicalClaim {
             preferred_sources: vec!["rss_event".to_string()],
             ..Default::default()
         },
+        entity_ref: None,
+        competition_ref: None,
+        event_ref: None,
+        metric_ref: None,
     };
-    crate::review::CanonicalClaim {
-        normalized_fields: fields,
-        claim_hash: [0u8; 32],
-        semantic_claim_hash: [0u8; 32],
-        market_key_hash: [0u8; 32],
-        source_extraction_id: Uuid::new_v4(),
-    }
+    test_claim(fields)
 }
 
 pub fn custom_http_claim() -> crate::review::CanonicalClaim {
@@ -114,14 +144,12 @@ pub fn custom_http_claim() -> crate::review::CanonicalClaim {
             preferred_sources: vec!["http_official".to_string()],
             ..Default::default()
         },
+        entity_ref: None,
+        competition_ref: None,
+        event_ref: None,
+        metric_ref: None,
     };
-    crate::review::CanonicalClaim {
-        normalized_fields: fields,
-        claim_hash: [0u8; 32],
-        semantic_claim_hash: [0u8; 32],
-        market_key_hash: [0u8; 32],
-        source_extraction_id: Uuid::new_v4(),
-    }
+    test_claim(fields)
 }
 
 pub fn unsupported_claim() -> crate::review::CanonicalClaim {
@@ -138,12 +166,10 @@ pub fn unsupported_claim() -> crate::review::CanonicalClaim {
         suggested_options: vec!["Yes".to_string(), "No".to_string()],
         claim_category: ClaimCategory::Unsupported,
         resolver_hints: ResolverHints::default(),
+        entity_ref: None,
+        competition_ref: None,
+        event_ref: None,
+        metric_ref: None,
     };
-    crate::review::CanonicalClaim {
-        normalized_fields: fields,
-        claim_hash: [0u8; 32],
-        semantic_claim_hash: [0u8; 32],
-        market_key_hash: [0u8; 32],
-        source_extraction_id: Uuid::new_v4(),
-    }
+    test_claim(fields)
 }

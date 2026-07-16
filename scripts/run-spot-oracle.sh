@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # Run myso-spot-oracle locally (postgres via docker compose + cargo run).
+# Start this first; then use ./scripts/spot-oracle-runnable.sh in another terminal.
 #
 # Session: network.config/spot-oracle/spot-oracle-session.env
 #
@@ -10,6 +11,7 @@
 #   ./scripts/run-spot-oracle.sh
 #   ./scripts/run-spot-oracle.sh --refresh-session
 #
+# Postgres: Docker on 127.0.0.1:5435, db spot_oracle, user/password spot.
 # On launch, prompts whether to wipe the local Postgres volume (default: keep).
 
 set -euo pipefail
@@ -41,9 +43,17 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+wipe_spot_oracle_postgres() {
+    log_step "Wiping spot-oracle postgres (127.0.0.1:5435/spot_oracle)"
+    docker compose -f "$COMPOSE_FILE" down -v --remove-orphans
+    if docker volume inspect myso-spot-oracle_spot_oracle_postgres_data >/dev/null 2>&1; then
+        docker volume rm myso-spot-oracle_spot_oracle_postgres_data
+    fi
+}
+
 wipe_db=0
 if [[ -t 0 ]]; then
-    read -r -p "Wipe local spot-oracle Postgres (docker compose down -v)? [y/N] " ans
+    read -r -p "Wipe local spot-oracle Postgres (127.0.0.1:5435/spot_oracle)? [y/N] " ans
     case "${ans:-}" in
         [yY]|[yY][eE][sS]) wipe_db=1 ;;
     esac
@@ -52,8 +62,7 @@ else
 fi
 
 if [[ "$wipe_db" -eq 1 ]]; then
-    log_step "Wiping spot-oracle postgres volume"
-    docker compose -f "$COMPOSE_FILE" down -v
+    wipe_spot_oracle_postgres
 else
     log_step "Keeping existing spot-oracle postgres volume"
 fi
@@ -69,5 +78,7 @@ for i in $(seq 1 60); do
 done
 
 export_spot_oracle_env
+log_step "Building myso-spot-oracle (schema migrations + binary)"
+cargo build -p myso-spot-oracle-schema -p myso-spot-oracle
 log_step "Running myso-spot-oracle"
 exec cargo run -p myso-spot-oracle

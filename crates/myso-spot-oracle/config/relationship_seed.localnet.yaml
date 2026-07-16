@@ -1,0 +1,18 @@
+# Graph relationship seeds for localnet/dev.
+
+relationships:
+  - subject_id: jd_vance
+    object_id: us_presidential_election_2028
+    rel_type: candidate
+
+  - subject_id: marco_rubio
+    object_id: us_presidential_election_2028
+    rel_type: candidate
+
+  - subject_id: spain
+    object_id: fifa_world_cup_2026
+    rel_type: participant
+
+  - subject_id: patrick_mahomes
+    object_id: nfl_2026
+    rel_type: player

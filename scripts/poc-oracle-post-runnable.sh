@@ -769,7 +769,7 @@ create_poc_oracle_platform() {
         "$(literal_move_string '2023-01-01')" \
         false \
         none none none none none none none \
-        "$(literal_move_option_string "$SOCIAL_DEFAULT_PLATFORM_COVER_PHOTO_URL")" none \
+        "$(literal_move_option_string "$SOCIAL_DEFAULT_PLATFORM_COVER_PHOTO_URL")" none none \
         "$ref_clk")" || return 1
 
     digest="$(extract_tx_digest "$out")"

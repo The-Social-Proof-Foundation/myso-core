@@ -47,7 +47,7 @@ assert_file_executable_syntax "$SI"
 assert_contains "$UA" '0) Refresh session from GraphQL' 'username-admin menu 0'
 assert_contains "$UA" '1) Run rename flow (--run-all)' 'username-admin menu 1'
 assert_contains "$SI" '0) Refresh session from GraphQL' 'spot-insurance menu 0'
-assert_contains "$SI" '1) Run insurance walkthrough (--run-all)' 'spot-insurance menu 1'
+assert_contains "$SI" '1) Run insurance walkthrough (requires ./scripts/run-spot-oracle.sh in another terminal)' 'spot-insurance menu 1'
 
 # Username admin: single-profile rename (no secondary / source_replacement)
 assert_contains "$UA" 'profile admin_reassign_username' 'reassign call'
@@ -65,7 +65,8 @@ assert_contains "$UA" 'assert_on_chain_registry_username' 'rename on-chain asser
 assert_contains "$UA" 'prior username freed for reclaim' 'summary asserts prior freed'
 
 # Insurance E2E reuses SPOT + insurance helpers in the documented order
-assert_contains "$SI" 'spot-oracle-post-runnable.sh' 'creates spot post'
+assert_contains "$SI" 'spot-oracle-runnable.sh' 'creates spot post'
+assert_contains "$SI" '--create-post' 'create-post flag'
 assert_contains "$SI" 'spot_place_bet_for_post' 'places spot bet'
 assert_contains "$SI" 'spot_insurance_e2e_prepare' 'prepares insurance'
 assert_contains "$SI" 'spot_insurance_buy_coverage' 'buys coverage'
@@ -74,6 +75,19 @@ assert_contains "$SI" 'spot_insurance_assert_duplicate_claim_fails' 'duplicate c
 assert_contains "$SI" 'spot_claim_payout' 'claims spot payout'
 assert_contains "$SI" 'wait_for_market_resolved' 'waits for resolve'
 assert_contains "$SI" 'network.config/spot-insurance/spot-insurance-session.env' 'insurance session path'
+
+assert_contains "$SI" 'require_external_oracle_stack' 'uses external oracle stack'
+assert_not_contains "$SI" 'down -v' 'insurance does not wipe postgres'
+assert_not_contains "$SI" 'boot_onchain_oracle_workers' 'insurance does not boot second oracle'
+
+SO="$REPO_ROOT/scripts/spot-oracle-runnable.sh"
+assert_file_executable_syntax "$SO"
+assert_contains "$SO" 'require_external_oracle_stack' 'spot-oracle uses external stack'
+assert_not_contains "$SO" 'run_offchain_e2e' 'off-chain self-boot removed'
+assert_not_contains "$SO" 'down -v' 'spot-oracle runnable does not wipe postgres'
+assert_not_contains "$SO" 'boot_onchain_oracle_workers' 'spot-oracle runnable does not boot second oracle'
+assert_contains "$SO" 'missing_threshold' 'missing_threshold fast-fail'
+assert_contains "$SO" '1) Full market walkthrough (requires ./scripts/run-spot-oracle.sh in another terminal)' 'spot-oracle menu 1'
 
 # Session paths
 assert_contains "$UA" 'network.config/username-admin/username-admin-session.env' 'username-admin session path'

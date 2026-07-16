@@ -332,6 +332,7 @@ pub enum SocialEventRow {
         links: Option<serde_json::Value>,
         cover_photo: Option<String>,
         media_previews: Option<serde_json::Value>,
+        redirect_uri: Option<String>,
         status: i16,
         release_date: Option<String>,
         shutdown_date: Option<String>,

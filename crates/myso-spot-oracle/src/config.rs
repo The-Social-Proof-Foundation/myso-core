@@ -133,6 +133,14 @@ pub struct OracleArgs {
     #[arg(long, env = "SPOT_ORACLE_MAX_DEADLINE_HORIZON_SECS", default_value = "63072000")]
     pub max_deadline_horizon_secs: u64,
 
+    /// Maximum horizon for election event deadlines (seconds; default 1460 days / 4 years).
+    #[arg(long, env = "SPOT_ORACLE_MAX_ELECTION_HORIZON_SECS", default_value = "126144000")]
+    pub max_election_horizon_secs: u64,
+
+    /// Maximum horizon for sports mega-event deadlines (seconds; default 1095 days / 3 years).
+    #[arg(long, env = "SPOT_ORACLE_MAX_SPORTS_HORIZON_SECS", default_value = "94608000")]
+    pub max_sports_horizon_secs: u64,
+
     /// Buffer after resolution_at before refund_unresolved may run (ms; default 72h).
     #[arg(
         long,

@@ -7,10 +7,13 @@
 //! can reference them.
 
 pub mod canonicalize;
+pub mod claim_matcher;
 pub mod compiler;
+pub mod context_deadline;
 pub mod deadline;
 pub mod ingest;
 pub mod llm;
+pub mod outcome_identity;
 pub mod rules;
 pub mod verify;
 pub mod worker;

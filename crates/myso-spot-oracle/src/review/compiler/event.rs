@@ -51,7 +51,7 @@ pub fn compile(
         source_rows,
         &preview,
         &hints.preferred_sources,
-        &["rss_event", "http_official"],
+        &["rss_event", "wikipedia", "http_official"],
     )?;
 
     let spec = ResolverSpec::EventOccurrence {

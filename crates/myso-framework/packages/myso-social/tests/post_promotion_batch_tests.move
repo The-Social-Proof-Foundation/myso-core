@@ -72,6 +72,8 @@ module social_contracts::post_promotion_batch_tests {
                 option::none(),
                 option::none(),
                 option::none(),
+
+                option::none(),
                 &clock,
                 test_scenario::ctx(&mut scen),
             );

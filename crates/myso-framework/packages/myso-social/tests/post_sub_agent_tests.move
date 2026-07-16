@@ -81,6 +81,8 @@ module social_contracts::post_sub_agent_tests {
                 option::none(),
                 option::none(),
                 option::none(),
+
+                option::none(),
                 &clock,
                 test_scenario::ctx(scenario),
             );

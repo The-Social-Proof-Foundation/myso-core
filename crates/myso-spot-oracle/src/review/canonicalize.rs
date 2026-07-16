@@ -3,10 +3,13 @@
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
-use crate::review::deadline::{bucket_deadline_for_market_key, DEFAULT_PRICE_MARKET_SPACING};
+use crate::review::deadline::DEFAULT_PRICE_MARKET_SPACING;
+use crate::review::outcome_identity::{
+    build_outcome_identity, build_outcome_market_key, outcome_identity_hash,
+    outcome_market_hash, OutcomeIdentityFields, OutcomeMarketKey,
+};
 use crate::store::reviews::ExtractedClaim;
 use crate::types::{ClaimCategory, ComparisonOp, ResolverHints};
 
@@ -69,19 +72,29 @@ pub struct CanonicalClaimFields {
     pub claim_category: ClaimCategory,
     #[serde(default)]
     pub resolver_hints: ResolverHints,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub entity_ref: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub competition_ref: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub event_ref: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub metric_ref: Option<String>,
 }
 
 /// Canonical claim consumed by the Resolver Compiler.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CanonicalClaim {
     pub normalized_fields: CanonicalClaimFields,
-    /// SHA-256 of semantic fields (permanent claim identity).
+    /// SHA-256 of stable outcome identity (graph refs — no resolver_hints).
     pub semantic_claim_hash: [u8; 32],
-    /// SHA-256 of semantic + deadline + betting_options (shared market key).
+    /// SHA-256 of outcome identity + deadline day + betting_options.
     pub market_key_hash: [u8; 32],
     /// Legacy alias for market_key_hash.
     pub claim_hash: [u8; 32],
     pub source_extraction_id: Uuid,
+    pub outcome_identity: OutcomeIdentityFields,
+    pub outcome_market_key: OutcomeMarketKey,
 }
 
 const ASSET_ALIASES: &[(&str, &str)] = &[
@@ -104,12 +117,21 @@ impl Default for CanonicalizeOptions {
 }
 
 pub fn canonicalize(extraction_id: Uuid, extracted: &ExtractedClaim) -> CanonicalClaim {
-    canonicalize_with_options(extraction_id, extracted, &CanonicalizeOptions::default())
+    canonicalize_with_identity(extraction_id, extracted, None, &CanonicalizeOptions::default())
 }
 
 pub fn canonicalize_with_options(
     extraction_id: Uuid,
     extracted: &ExtractedClaim,
+    opts: &CanonicalizeOptions,
+) -> CanonicalClaim {
+    canonicalize_with_identity(extraction_id, extracted, None, opts)
+}
+
+pub fn canonicalize_with_identity(
+    extraction_id: Uuid,
+    extracted: &ExtractedClaim,
+    graph_refs: Option<crate::review::claim_matcher::ClaimMatch>,
     opts: &CanonicalizeOptions,
 ) -> CanonicalClaim {
     let subject = normalize_asset(&extracted.subject);
@@ -146,19 +168,35 @@ pub fn canonicalize_with_options(
     let predicate = extracted.predicate.trim().to_lowercase();
     let metric = extracted.metric.as_ref().map(|s| s.trim().to_lowercase());
 
-    let semantic = SemanticClaimFields {
-        subject: subject.clone(),
-        predicate: predicate.clone(),
-        object: object.clone(),
-        metric: metric.clone(),
+    let refs = graph_refs.as_ref();
+    let entity_ref = refs.and_then(|r| r.entity_ref.clone()).or_else(|| {
+        extracted
+            .resolver_hints
+            .matched_event_id
+            .as_ref()
+            .map(|_| slugify_entity(&subject))
+    });
+    let event_ref = refs
+        .and_then(|r| r.event_ref.clone())
+        .or_else(|| extracted.resolver_hints.matched_event_id.clone());
+    let competition_ref = refs.and_then(|r| r.competition_ref.clone());
+    let metric_ref = refs.and_then(|r| r.metric_ref.clone());
+
+    let outcome_identity = build_outcome_identity(
+        entity_ref.clone(),
+        competition_ref.clone(),
+        event_ref.clone(),
+        metric_ref.clone(),
+        predicate.clone(),
+        object.clone(),
+        metric.clone(),
         comparison,
-        threshold: threshold.clone(),
-        outcome_type: extracted.outcome_type,
-        suggested_sources: suggested_sources.clone(),
+        threshold.clone(),
+        extracted.outcome_type,
         claim_category,
-        resolver_hints: resolver_hints.clone(),
-    };
-    let semantic_claim_hash = hash_json(&semantic);
+        suggested_sources.clone(),
+    );
+    let semantic_claim_hash = outcome_identity_hash(&outcome_identity);
 
     let fields = CanonicalClaimFields {
         subject,
@@ -173,21 +211,20 @@ pub fn canonicalize_with_options(
         suggested_options: suggested_options.clone(),
         claim_category,
         resolver_hints,
+        entity_ref,
+        competition_ref,
+        event_ref,
+        metric_ref,
     };
 
-    let market_key_deadline = match claim_category {
-        ClaimCategory::PriceThreshold => extracted
-            .deadline
-            .map(|d| bucket_deadline_for_market_key(d, opts.price_market_spacing)),
-        _ => extracted.deadline,
-    };
-
-    let market_key = MarketKeyFields {
-        semantic,
-        deadline: market_key_deadline,
-        betting_options: suggested_options,
-    };
-    let market_key_hash = hash_json(&market_key);
+    let outcome_market_key = build_outcome_market_key(
+        outcome_identity.clone(),
+        extracted.deadline,
+        suggested_options,
+        claim_category,
+        opts.price_market_spacing,
+    );
+    let market_key_hash = outcome_market_hash(&outcome_market_key);
 
     CanonicalClaim {
         normalized_fields: fields,
@@ -195,7 +232,29 @@ pub fn canonicalize_with_options(
         market_key_hash,
         claim_hash: market_key_hash,
         source_extraction_id: extraction_id,
+        outcome_identity,
+        outcome_market_key,
     }
+}
+
+fn slugify_entity(name: &str) -> String {
+    name.trim()
+        .to_lowercase()
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() {
+                c
+            } else if c.is_whitespace() || c == '-' || c == '.' {
+                '_'
+            } else {
+                '_'
+            }
+        })
+        .collect::<String>()
+        .split('_')
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join("_")
 }
 
 fn derive_category(
@@ -301,19 +360,12 @@ fn infer_comparison(predicate: &str) -> Option<ComparisonOp> {
     }
 }
 
-fn hash_json<T: Serialize>(value: &T) -> [u8; 32] {
-    let json = serde_json::to_vec(value).expect("canonical fields serialize");
-    let mut hasher = Sha256::new();
-    hasher.update(&json);
-    hasher.finalize().into()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use chrono::Utc;
     use crate::store::reviews::ExtractedClaim;
-    use crate::types::ComparisonOp;
+    use crate::types::{ComparisonOp, ResolverHints};
 
     #[test]
     fn btc_alias_normalizes_to_bitcoin() {
@@ -342,9 +394,6 @@ mod tests {
 
     #[test]
     fn price_claims_in_same_spacing_bucket_share_market_key() {
-        use crate::store::reviews::ExtractedClaim;
-        use crate::types::{ComparisonOp, ResolverHints};
-
         let base = Utc::now() + chrono::Duration::minutes(10);
         let mk = |deadline: chrono::DateTime<Utc>| {
             let extracted = ExtractedClaim {
@@ -360,7 +409,7 @@ mod tests {
                 suggested_options: vec!["Yes".to_string(), "No".to_string()],
                 claim_category: ClaimCategory::PriceThreshold,
                 time_class: crate::types::TimeClass::Future,
-            resolver_hints: ResolverHints::default(),
+                resolver_hints: ResolverHints::default(),
             };
             canonicalize(Uuid::new_v4(), &extracted).market_key_hash
         };

@@ -1,0 +1,38 @@
+# Entity seed for Knowledge Graph (localnet/dev).
+
+entities:
+  - id: jd_vance
+    kind: person
+    name: JD Vance
+    aliases: [vance, j.d. vance, j d vance]
+    domain: election
+
+  - id: marco_rubio
+    kind: person
+    name: Marco Rubio
+    aliases: [rubio]
+    domain: election
+
+  - id: spain
+    kind: nation
+    name: Spain
+    aliases: [spain, spanish national team]
+    domain: sports
+
+  - id: sui
+    kind: token
+    name: SUI
+    aliases: [sui]
+    domain: crypto
+
+  - id: apple
+    kind: company
+    name: Apple
+    aliases: [apple, aapl]
+    domain: finance
+
+  - id: patrick_mahomes
+    kind: person
+    name: Patrick Mahomes
+    aliases: [mahomes, patrick mahomes]
+    domain: sports

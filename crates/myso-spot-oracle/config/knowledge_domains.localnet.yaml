@@ -1,0 +1,36 @@
+# Domain → trusted source mapping (curated; separate from knowledge discovery).
+
+domains:
+  election:
+    preferred_sources:
+      - wikipedia
+      - ap-news-rss
+      - reuters-world-rss
+      - npr-politics-rss
+      - politico-rss
+
+  sports:
+    preferred_sources:
+      - fifa-news-rss
+      - espn-rss
+      - olympics-news-rss
+      - wikipedia
+
+  crypto:
+    preferred_sources:
+      - coingecko-simple-price
+      - coinbase-btc-spot
+      - coinbase-eth-spot
+      - theblock-rss
+
+  finance:
+    preferred_sources:
+      - sec-press-rss
+      - fed-press-rss
+      - wikipedia
+
+  release:
+    preferred_sources:
+      - github_releases
+      - rust-lang-releases
+      - mystenlabs-sui-releases

@@ -5,8 +5,8 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use myso_json_rpc_types::{
-    MySoObjectDataOptions, MySoTransactionBlockEffectsAPI, MySoTransactionBlockResponseOptions,
-    ObjectChange,
+    MySoObjectDataOptions, MySoTransactionBlockEffectsAPI, MySoTransactionBlockResponse,
+    MySoTransactionBlockResponseOptions, ObjectChange,
 };
 use myso_sdk::MySoClientBuilder;
 use myso_types::base_types::{MySoAddress, ObjectID};
@@ -21,6 +21,7 @@ use uuid::Uuid;
 
 use crate::api::AppState;
 use crate::blockchain::chain_lookup::{
+    find_claim_id_in_tx_events, find_market_id_in_tx_events,
     lookup_claim_object_id_by_semantic_hash, lookup_market_by_key_hash,
 };
 use crate::blockchain::{chain_configured, parse_object_id, shared_object_arg, CLOCK_OBJECT_ID};
@@ -175,6 +176,42 @@ pub async fn submit_create_claim_market(state: Arc<AppState>, job: &SpotJob) -> 
             Ok(())
         }
         Err(err) => {
+            if is_on_chain_exists_error(&err) {
+                if let Some(on_chain) =
+                    lookup_market_by_key_hash(&state.args, &market_key_hash).await?
+                {
+                    return submit_link_to_existing_market(
+                        state,
+                        job,
+                        oracle_market_id,
+                        spot_claim_id,
+                        spot_market_id,
+                        &on_chain.claim_object_id,
+                        &on_chain.market_object_id,
+                        &market.post_id,
+                    )
+                    .await;
+                }
+                if let Some(claim_id) =
+                    lookup_claim_object_id_by_semantic_hash(&state.args, &semantic_hash).await?
+                {
+                    if let Some(on_chain) =
+                        lookup_market_by_key_hash(&state.args, &market_key_hash).await?
+                    {
+                        return submit_link_to_existing_market(
+                            state,
+                            job,
+                            oracle_market_id,
+                            spot_claim_id,
+                            spot_market_id,
+                            &claim_id,
+                            &on_chain.market_object_id,
+                            &market.post_id,
+                        )
+                        .await;
+                    }
+                }
+            }
             state
                 .store
                 .update_transaction_status(tx_id, "failed", None, Some(&err.to_string()))
@@ -524,19 +561,17 @@ async fn build_and_submit_create_market(
             signed,
             MySoTransactionBlockResponseOptions::new()
                 .with_effects()
+                .with_events()
                 .with_object_changes(),
             Some(ExecuteTransactionRequestType::WaitForLocalExecution),
         )
         .await?;
-    if response.status_ok() == Some(false) {
-        let status = response
-            .effects
-            .as_ref()
-            .map(|e| format!("{:?}", e.status()));
-        anyhow::bail!("create_spot_market_for_claim transaction failed: {status:?}");
-    }
+    ensure_tx_succeeded(&response, "create_spot_market_for_claim")?;
     let digest = response.digest.to_string();
-    let market_object_id = match find_created_type(&response.object_changes, "SpotMarket") {
+    let market_object_id = find_market_id_in_tx_events(response.events.as_ref(), Some(market_key_hash))
+        .or_else(|| find_created_type(&response.object_changes, "SpotMarket"))
+        .or_else(|| None);
+    let market_object_id = match market_object_id {
         Some(id) => id,
         None => lookup_market_by_key_hash(args, market_key_hash)
             .await?
@@ -637,32 +672,32 @@ async fn build_and_submit_create(
             .quorum_driver_api()
             .execute_transaction_block(
                 signed,
-                MySoTransactionBlockResponseOptions::new().with_object_changes(),
+                MySoTransactionBlockResponseOptions::new()
+                    .with_effects()
+                    .with_events()
+                    .with_object_changes(),
                 Some(ExecuteTransactionRequestType::WaitForLocalExecution),
             )
             .await?;
-        if response.status_ok() == Some(false) {
-            let status = response
-                .effects
-                .as_ref()
-                .map(|e| format!("{:?}", e.status()));
-            anyhow::bail!(
-                "create_spot_claim transaction failed (existing claim may already be registered): {status:?}"
-            );
-        }
-        match find_created_type(&response.object_changes, "SpotClaim") {
-            Some(id) => id,
-            None => lookup_claim_object_id_by_semantic_hash(args, semantic_claim_hash)
+        ensure_tx_succeeded(&response, "create_spot_claim")?;
+        if let Some(id) = find_claim_id_in_tx_events(
+            response.events.as_ref(),
+            Some(semantic_claim_hash),
+        )
+        .or_else(|| find_created_type(&response.object_changes, "SpotClaim"))
+        {
+            id
+        } else {
+            lookup_claim_object_id_by_semantic_hash(args, semantic_claim_hash)
                 .await?
                 .context(
                     "create_spot_claim did not create SpotClaim and no existing claim found on-chain",
-                )?,
+                )?
         }
     };
 
-    // place_spot_bet_for_post requires registry.post_to_claim — link before opening market.
-    build_and_submit_link_post(args, &claim_object_id, post_id).await?;
-
+    // Primary post linking happens inside create_spot_market_for_claim (register_future_link).
+    // link_post_to_spot_claim is only for additional referrer posts once a market is open.
     let (digest, market_object_id) = build_and_submit_create_market(
         args,
         &claim_object_id,
@@ -762,11 +797,36 @@ async fn build_and_submit_link_post(
         .quorum_driver_api()
         .execute_transaction_block(
             signed,
-            MySoTransactionBlockResponseOptions::new(),
+            MySoTransactionBlockResponseOptions::new().with_effects(),
             Some(ExecuteTransactionRequestType::WaitForLocalExecution),
         )
         .await?;
+    ensure_tx_succeeded(&response, "link_post_to_spot_claim")?;
     Ok(response.digest.to_string())
+}
+
+fn is_on_chain_exists_error(err: &anyhow::Error) -> bool {
+    let msg = err.to_string().to_lowercase();
+    msg.contains("emarketexists")
+        || msg.contains("eclaimexists")
+        || msg.contains("error code 27")
+        || msg.contains("error code 25")
+        || msg.contains("abort code: 27")
+        || msg.contains("abort code: 25")
+}
+
+fn ensure_tx_succeeded(response: &MySoTransactionBlockResponse, label: &str) -> anyhow::Result<()> {
+    match response.status_ok() {
+        Some(true) => Ok(()),
+        Some(false) => {
+            let status = response
+                .effects
+                .as_ref()
+                .map(|e| format!("{:?}", e.status()));
+            anyhow::bail!("{label} transaction failed: {status:?}");
+        }
+        None => anyhow::bail!("{label} transaction response missing effects"),
+    }
 }
 
 fn find_created_type(changes: &Option<Vec<ObjectChange>>, type_name: &str) -> Option<String> {

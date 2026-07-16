@@ -4,6 +4,7 @@
 //! Pluggable Event Provider framework — discovers future events into Postgres and
 //! powers implicit deadline inference at review time.
 
+pub mod calendar;
 pub mod config;
 pub mod providers;
 pub mod registry;

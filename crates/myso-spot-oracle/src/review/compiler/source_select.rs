@@ -99,6 +99,7 @@ fn adapter_id_matches_row(adapter_id: &str, row: &SpotTrustedSourceRow) -> bool 
         "coingecko" | "coinbase" | "chainlink" => row.adapter_type == adapter_id,
         "github_releases" => row.adapter_type == "github_releases",
         "http_official" => row.adapter_type == "http_official",
+        "wikipedia" => row.adapter_type == "wikipedia",
         _ => false,
     }
 }

@@ -131,5 +131,6 @@ pub async fn reload_registry(state: &AppState) -> anyhow::Result<()> {
     let count = rows.len() as i64;
     state.event_registry.reload(rows);
     state.metrics.scheduled_events_active.set(count);
+    crate::knowledge::sync::reload_knowledge_graph(state).await?;
     Ok(())
 }

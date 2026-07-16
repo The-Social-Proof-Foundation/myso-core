@@ -841,6 +841,8 @@ CREATOR,
                 option::none(),
                 option::none(),
                 option::none(),
+
+                option::none(),
                 &clock,
                 test_scenario::ctx(&mut scenario)
             );

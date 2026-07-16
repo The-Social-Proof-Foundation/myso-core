@@ -1,7 +1,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use myso_futures::service::Service;
 use myso_indexer_alt_metrics::{MetricsArgs, MetricsService};
@@ -13,6 +13,7 @@ use crate::api;
 use crate::api::AppState;
 use crate::config::OracleArgs;
 use crate::events::EventRegistry;
+use crate::knowledge::KnowledgeGraph;
 use crate::metrics::OracleMetrics;
 use crate::store::OracleStore;
 
@@ -22,6 +23,7 @@ pub async fn serve(args: OracleArgs) -> anyhow::Result<()> {
         .connect(&args.database_url)
         .await?;
     myso_spot_oracle_schema::run_migrations(&pool).await?;
+    myso_spot_oracle_schema::verify_knowledge_tables(&pool).await?;
     info!("spot_oracle DB migrations complete (spot schema)");
 
     let store = Arc::new(OracleStore::new(pool));
@@ -54,6 +56,7 @@ pub async fn serve(args: OracleArgs) -> anyhow::Result<()> {
     );
 
     let event_registry = Arc::new(EventRegistry::new());
+    let knowledge_graph = Arc::new(RwLock::new(KnowledgeGraph::new()));
 
     let state = Arc::new(AppState {
         store: store.clone(),
@@ -61,6 +64,7 @@ pub async fn serve(args: OracleArgs) -> anyhow::Result<()> {
         metrics: metrics.clone(),
         sources: Arc::new(registry),
         event_registry: event_registry.clone(),
+        knowledge_graph: knowledge_graph.clone(),
         cancel: cancel.clone(),
     });
 
@@ -71,6 +75,12 @@ pub async fn serve(args: OracleArgs) -> anyhow::Result<()> {
             events = state.event_registry.len(),
             "event registry ready"
         );
+    }
+
+    if let Err(err) = crate::knowledge::sync::bootstrap_knowledge_graph(&state).await {
+        tracing::warn!(error = %err, "knowledge graph bootstrap failed");
+    } else {
+        info!("knowledge graph ready");
     }
 
     let metrics_service = MetricsService::new(

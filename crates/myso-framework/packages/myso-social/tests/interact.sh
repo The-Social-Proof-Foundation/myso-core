@@ -1025,7 +1025,7 @@ invoke_platform_create_ptb() {
     shift 9
     local pc="$1" sc_arg="$2" st="$3" rd="$4" wdao="$5"
     local dc_a="$6" dt_a="$7" psc_a="$8" mv_a="$9" qb_a="${10}" vp_a="${11}" qv_a="${12}"
-    local cp_arg="${13}" mp_arg="${14}"
+    local cp_arg="${13}" mp_arg="${14}" ru_arg="${15}"
     local ref_preg ref_pcfg ref_clk out digest platform_id
 
     ref_preg="$(ptb_shared_ref "$preg")" || return 1
@@ -1046,7 +1046,7 @@ invoke_platform_create_ptb() {
         "$rd" \
         "$wdao" \
         "$dc_a" "$dt_a" "$psc_a" "$mv_a" "$qb_a" "$vp_a" "$qv_a" \
-        "$cp_arg" "$mp_arg" \
+        "$cp_arg" "$mp_arg" "$ru_arg" \
         "$ref_clk")" || return 1
 
     digest="$(extract_tx_digest "$out")"
@@ -1124,7 +1124,7 @@ ptb_platform_create_with_defaults() {
         "$(literal_move_string '2023-01-01')" \
         false \
         none none none none none none none \
-        "some($(literal_move_string 'https://pub-1f3749a8084a44c3abbd97a4875268a1.r2.dev/mysocial-banner.png'))" none \
+        "some($(literal_move_string 'https://pub-1f3749a8084a44c3abbd97a4875268a1.r2.dev/mysocial-banner.png'))" none none \
         || { press_enter; platform_menu; return; }
     print_success "Submitted."
     press_enter
@@ -1198,6 +1198,12 @@ ptb_platform_create() {
         done
         MP_ARG="some(vector[${acc}])"
     fi
+    read -r -p "redirect_uri optional URL (empty none): " ru
+    if [ -z "$ru" ]; then RU_ARG="none"
+    else
+        rul="$(literal_move_string "$ru")"
+        RU_ARG="some(${rul})"
+    fi
 
     if [ -z "$preg" ] || [ -z "${PLATFORM_CONFIG_ID:-}" ]; then
         print_info "PLATFORM_REGISTRY_ID and PLATFORM_CONFIG_ID required."
@@ -1220,7 +1226,7 @@ ptb_platform_create() {
         "$(literal_move_string "$rd")" \
         "${wdao}" \
         "$dc_a" "$dt_a" "$psc_a" "$mv_a" "$qb_a" "$vp_a" "$qv_a" \
-        "$CP_ARG" "$MP_ARG" \
+        "$CP_ARG" "$MP_ARG" "$RU_ARG" \
         || { press_enter; platform_menu; return; }
 
     print_success "Submitted."

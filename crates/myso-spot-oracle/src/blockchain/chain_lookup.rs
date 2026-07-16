@@ -3,11 +3,61 @@
 
 use anyhow::Context;
 use move_core_types::identifier::Identifier;
-use myso_json_rpc_types::EventFilter;
+use myso_json_rpc_types::{EventFilter, MySoTransactionBlockEvents};
 use myso_sdk::MySoClientBuilder;
 use myso_types::base_types::ObjectID;
 
 use crate::config::{OracleArgs, SOCIAL_PACKAGE_ID};
+
+/// Extract `claim_id` from `SpotClaimCreatedEvent` in the transaction response.
+pub fn find_claim_id_in_tx_events(
+    events: Option<&MySoTransactionBlockEvents>,
+    semantic_hash: Option<&[u8]>,
+) -> Option<String> {
+    let data = &events?.data;
+    for event in data {
+        if event.type_.name.as_str() != "SpotClaimCreatedEvent" {
+            continue;
+        }
+        if let Some(expected) = semantic_hash {
+            let hash = event.parsed_json.get("semantic_claim_hash")?;
+            if !hash_json_value_matches(hash, expected) {
+                continue;
+            }
+        }
+        return event
+            .parsed_json
+            .get("claim_id")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+    }
+    None
+}
+
+/// Extract `market_id` from `SpotMarketCreatedEvent` in the transaction response.
+pub fn find_market_id_in_tx_events(
+    events: Option<&MySoTransactionBlockEvents>,
+    market_key_hash: Option<&[u8]>,
+) -> Option<String> {
+    let data = &events?.data;
+    for event in data {
+        if event.type_.name.as_str() != "SpotMarketCreatedEvent" {
+            continue;
+        }
+        if let Some(expected) = market_key_hash {
+            let hash = event.parsed_json.get("market_key_hash")?;
+            if !hash_json_value_matches(hash, expected) {
+                continue;
+            }
+        }
+        return event
+            .parsed_json
+            .get("market_id")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+    }
+    None
+}
 
 const MAX_EVENT_PAGES: usize = 20;
 
@@ -136,5 +186,43 @@ mod tests {
             &serde_json::json!([62, 181, 214, 190, 125]),
             &bytes
         ));
+    }
+
+    #[test]
+    fn tx_events_yield_claim_id() {
+        use move_core_types::account_address::AccountAddress;
+        use move_core_types::identifier::Identifier;
+        use move_core_types::language_storage::StructTag;
+        use myso_json_rpc_types::{BcsEvent, MySoEvent, MySoTransactionBlockEvents};
+        use myso_types::base_types::TransactionDigest;
+        use myso_types::event::EventID;
+
+        let hash = vec![0xabu8; 32];
+        let events = MySoTransactionBlockEvents {
+            data: vec![MySoEvent {
+                id: EventID {
+                    tx_digest: TransactionDigest::random(),
+                    event_seq: 0,
+                },
+                package_id: ObjectID::from_hex_literal("0x50c1").expect("package"),
+                transaction_module: Identifier::new("social_proof_of_truth").expect("module"),
+                sender: AccountAddress::ZERO.into(),
+                type_: StructTag {
+                    address: AccountAddress::from_hex_literal("0x50c1").expect("addr"),
+                    module: Identifier::new("social_proof_of_truth").expect("module"),
+                    name: Identifier::new("SpotClaimCreatedEvent").expect("event"),
+                    type_params: vec![],
+                },
+                parsed_json: serde_json::json!({
+                    "claim_id": "0xclaim",
+                    "semantic_claim_hash": format!("0x{}", hex::encode(&hash)),
+                    "created_at_ms": 1
+                }),
+                bcs: BcsEvent::Base64 { bcs: vec![] },
+                timestamp_ms: None,
+            }],
+        };
+        let claim_id = super::find_claim_id_in_tx_events(Some(&events), Some(&hash));
+        assert_eq!(claim_id.as_deref(), Some("0xclaim"));
     }
 }

@@ -215,6 +215,8 @@ module social_contracts::platform {
         quorum_votes: Option<u64>,
         /// ID of governance registry if created
         governance_registry_id: Option<ID>,
+        /// Optional OAuth redirect URI for the platform
+        redirect_uri: Option<String>,
         /// Version for upgrades
         version: u64,
     }
@@ -260,6 +262,7 @@ module social_contracts::platform {
         voting_period_epochs: Option<u64>,
         quorum_votes: Option<u64>,
         moderators_group_id: ID,
+        redirect_uri: Option<String>,
     }
 
     /// Platform updated event
@@ -280,6 +283,7 @@ module social_contracts::platform {
         status: PlatformStatus,
         release_date: String,
         shutdown_date: Option<String>,
+        redirect_uri: Option<String>,
         updated_at: u64,
     }
 
@@ -422,6 +426,7 @@ module social_contracts::platform {
         quorum_votes: Option<u64>,
         cover_photo: Option<String>,
         media_previews: Option<vector<String>>,
+        redirect_uri: Option<String>,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
@@ -499,6 +504,7 @@ module social_contracts::platform {
             voting_period_epochs: actual_voting_period_epochs,
             quorum_votes: actual_quorum_votes,
             governance_registry_id: option::none(),
+            redirect_uri,
             version: upgrade::current_version(),
         };
 
@@ -628,6 +634,7 @@ module social_contracts::platform {
             voting_period_epochs: platform.voting_period_epochs,
             quorum_votes: platform.quorum_votes,
             moderators_group_id,
+            redirect_uri: platform.redirect_uri,
         });
         
         // Share platform as a shared object (publicly accessible)
@@ -653,6 +660,7 @@ module social_contracts::platform {
         new_shutdown_date: Option<String>,
         new_cover_photo: Option<String>,
         new_media_previews: Option<vector<String>>,
+        new_redirect_uri: Option<String>,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
@@ -694,6 +702,7 @@ module social_contracts::platform {
         platform.shutdown_date = new_shutdown_date;
         platform.cover_photo = new_cover_photo;
         platform.media_previews = new_media_previews;
+        platform.redirect_uri = new_redirect_uri;
 
         // Emit platform updated event
         event::emit(PlatformUpdatedEvent {
@@ -713,6 +722,7 @@ module social_contracts::platform {
             status: platform.status,
             release_date: platform.release_date,
             shutdown_date: platform.shutdown_date,
+            redirect_uri: platform.redirect_uri,
             updated_at: now,
         });
     }
@@ -1618,6 +1628,11 @@ module social_contracts::platform {
         &platform.media_previews
     }
 
+    /// Get platform OAuth redirect URI
+    public fun redirect_uri(platform: &Platform): &Option<String> {
+        &platform.redirect_uri
+    }
+
     /// Get platform developer
     public fun developer(platform: &Platform): address {
         platform.developer
@@ -2032,6 +2047,7 @@ module social_contracts::platform {
         let old_version = platform.version;
         platform.cover_photo = option::none();
         platform.media_previews = option::none();
+        platform.redirect_uri = option::none();
         platform.version = current_version;
         
         // Emit event for object migration

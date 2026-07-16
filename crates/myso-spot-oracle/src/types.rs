@@ -94,6 +94,12 @@ pub struct ResolverHints {
     pub expected: Option<String>,
     #[serde(default)]
     pub preferred_sources: Vec<String>,
+    /// How the review pipeline inferred the claim deadline (CADR audit trail).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub deadline_provenance: Option<serde_json::Value>,
+    /// External id of the matched scheduled event, when applicable.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub matched_event_id: Option<String>,
 }
 
 /// Off-chain market lifecycle status (stored in `markets.status`).

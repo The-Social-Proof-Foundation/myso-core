@@ -60,6 +60,19 @@ pub fn evaluate(
     registry: &ResolverRegistry,
     deadline_policy: &DeadlinePolicy,
 ) -> ReviewDecision {
+    match evaluate_provably(canonical, market_exists, registry) {
+        ReviewDecision::Accepted => {}
+        other => return other,
+    }
+    resolve_and_validate_deadline(canonical, deadline_policy)
+}
+
+/// Phase 1: provability — category, structure, sources. No deadline checks.
+pub fn evaluate_provably(
+    canonical: &CanonicalClaim,
+    market_exists: bool,
+    registry: &ResolverRegistry,
+) -> ReviewDecision {
     let f = &canonical.normalized_fields;
     if f.claim_category == ClaimCategory::Unsupported {
         return ReviewDecision::Rejected(RejectReason::UnsupportedCategory);
@@ -79,19 +92,6 @@ pub fn evaluate(
         return ReviewDecision::Rejected(RejectReason::InvalidOptions);
     }
 
-    if f.deadline.is_none() {
-        return ReviewDecision::Rejected(RejectReason::MissingDeadline);
-    }
-    match deadline_policy.validate(f.deadline.unwrap()) {
-        DeadlineValidation::Ok => {}
-        DeadlineValidation::InPast => {
-            return ReviewDecision::Rejected(RejectReason::DeadlineInPast);
-        }
-        DeadlineValidation::TooFar => {
-            return ReviewDecision::Rejected(RejectReason::DeadlineTooFar);
-        }
-    }
-
     match f.claim_category {
         ClaimCategory::PriceThreshold => {
             if f.threshold.is_none() {
@@ -109,9 +109,11 @@ pub fn evaluate(
             }
         }
         ClaimCategory::EventOccurrence => {
-            if f.resolver_hints.feed_url.as_ref().is_none_or(|s| s.is_empty())
-                && !f.suggested_sources.iter().any(|s| s.contains("rss"))
-            {
+            let has_feed = f.resolver_hints.feed_url.as_ref().is_some_and(|s| !s.is_empty());
+            let has_rss_hint = f.suggested_sources.iter().any(|s| s.contains("rss"));
+            let has_preferred = !f.resolver_hints.preferred_sources.is_empty();
+            let has_matched = f.resolver_hints.matched_event_id.is_some();
+            if !has_feed && !has_rss_hint && !has_preferred && !has_matched {
                 return ReviewDecision::Rejected(RejectReason::MissingFeedUrl);
             }
         }
@@ -135,7 +137,7 @@ pub fn evaluate(
         let fallback: &[&str] = match f.claim_category {
             ClaimCategory::PriceThreshold => &["coingecko", "coinbase", "http_official", "chainlink"],
             ClaimCategory::ReleasePublished => &["github_releases"],
-            ClaimCategory::EventOccurrence => &["rss_event", "http_official", "wikipedia"],
+            ClaimCategory::EventOccurrence => &["wikipedia", "rss_event", "http_official"],
             ClaimCategory::CustomHttp => &["http_official", "wikipedia"],
             ClaimCategory::Unsupported => &[],
         };
@@ -155,6 +157,63 @@ pub fn evaluate(
     }
 
     ReviewDecision::Accepted
+}
+
+/// Phase 2: deadline validation after provability passes.
+pub fn resolve_and_validate_deadline(
+    canonical: &CanonicalClaim,
+    deadline_policy: &DeadlinePolicy,
+) -> ReviewDecision {
+    let f = &canonical.normalized_fields;
+    if f.deadline.is_none() {
+        return ReviewDecision::Rejected(RejectReason::MissingDeadline);
+    }
+    let event_category = f
+        .resolver_hints
+        .matched_event_id
+        .as_ref()
+        .and_then(|_| infer_event_category_from_hints(f));
+    match deadline_policy.validate_for_category(
+        f.deadline.unwrap(),
+        f.claim_category,
+        event_category,
+    ) {
+        DeadlineValidation::Ok => ReviewDecision::Accepted,
+        DeadlineValidation::InPast => {
+            ReviewDecision::Rejected(RejectReason::DeadlineInPast)
+        }
+        DeadlineValidation::TooFar => {
+            ReviewDecision::Rejected(RejectReason::DeadlineTooFar)
+        }
+    }
+}
+
+fn infer_event_category_from_hints(
+    f: &crate::review::CanonicalClaimFields,
+) -> Option<crate::events::types::EventCategory> {
+    f.resolver_hints
+        .deadline_provenance
+        .as_ref()
+        .and_then(|p| p.get("event_id"))
+        .and_then(|v| v.as_str())
+        .and_then(|id| {
+            if id.contains("election") {
+                Some(crate::events::types::EventCategory::Election)
+            } else if id.contains("world_cup") || id.contains("fifa") {
+                Some(crate::events::types::EventCategory::Sports)
+            } else {
+                None
+            }
+        })
+        .or_else(|| {
+            if f.predicate.contains("win") && f.object.contains("election") {
+                Some(crate::events::types::EventCategory::Election)
+            } else if f.object.contains("tournament") || f.object.contains("world cup") {
+                Some(crate::events::types::EventCategory::Sports)
+            } else {
+                None
+            }
+        })
 }
 
 fn preview_definition(canonical: &CanonicalClaim) -> Option<ResolverDefinition> {

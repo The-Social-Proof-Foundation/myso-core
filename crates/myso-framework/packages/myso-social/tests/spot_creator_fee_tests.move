@@ -79,6 +79,8 @@ module social_contracts::spot_creator_fee_tests {
                 option::none(), option::none(), option::none(), option::none(),
                 option::none(), option::none(), option::none(),
                 option::none(), option::none(),
+
+                option::none(),
                 &clock,
                 test_scenario::ctx(&mut scen),
             );

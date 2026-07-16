@@ -5,17 +5,23 @@
 
 use chrono::{DateTime, Datelike, Duration, NaiveDate, TimeZone, Timelike, Utc};
 
-use crate::events::registry::{event_deadline, EventRegistry};
+use crate::events::calendar::{end_of_utc_day, quarter_end, us_midterm_election_deadline, us_presidential_election_deadline};
+use crate::events::registry::{EventRegistry, normalize_claim_text, extract_years};
+use crate::events::types::EventCategory;
 use crate::types::ClaimCategory;
 
 pub const MIN_DEADLINE_LEAD: Duration = Duration::minutes(5);
 pub const MAX_DEADLINE_HORIZON: Duration = Duration::days(730);
+pub const MAX_ELECTION_HORIZON: Duration = Duration::days(1460);
+pub const MAX_SPORTS_HORIZON: Duration = Duration::days(1095);
 pub const DEFAULT_PRICE_MARKET_SPACING: Duration = Duration::minutes(30);
 
 #[derive(Debug, Clone, Copy)]
 pub struct DeadlinePolicy {
     pub min_lead: Duration,
     pub max_horizon: Duration,
+    pub max_election_horizon: Duration,
+    pub max_sports_horizon: Duration,
 }
 
 impl Default for DeadlinePolicy {
@@ -23,26 +29,61 @@ impl Default for DeadlinePolicy {
         Self {
             min_lead: MIN_DEADLINE_LEAD,
             max_horizon: MAX_DEADLINE_HORIZON,
+            max_election_horizon: MAX_ELECTION_HORIZON,
+            max_sports_horizon: MAX_SPORTS_HORIZON,
         }
     }
 }
 
 impl DeadlinePolicy {
-    pub fn from_secs(min_lead_secs: u64, max_horizon_secs: u64) -> Self {
+    pub fn from_secs(
+        min_lead_secs: u64,
+        max_horizon_secs: u64,
+        max_election_horizon_secs: u64,
+        max_sports_horizon_secs: u64,
+    ) -> Self {
         Self {
             min_lead: Duration::seconds(min_lead_secs as i64),
             max_horizon: Duration::seconds(max_horizon_secs as i64),
+            max_election_horizon: Duration::seconds(max_election_horizon_secs as i64),
+            max_sports_horizon: Duration::seconds(max_sports_horizon_secs as i64),
         }
     }
 
     pub fn validate(&self, deadline: DateTime<Utc>) -> DeadlineValidation {
+        self.validate_for_category(deadline, ClaimCategory::Unsupported, None)
+    }
+
+    pub fn validate_for_category(
+        &self,
+        deadline: DateTime<Utc>,
+        category: ClaimCategory,
+        event_category: Option<EventCategory>,
+    ) -> DeadlineValidation {
         let now = Utc::now();
         if deadline <= now + self.min_lead {
-            DeadlineValidation::InPast
-        } else if deadline > now + self.max_horizon {
+            return DeadlineValidation::InPast;
+        }
+        let horizon = self.horizon_for(category, event_category);
+        if deadline > now + horizon {
             DeadlineValidation::TooFar
         } else {
             DeadlineValidation::Ok
+        }
+    }
+
+    fn horizon_for(&self, category: ClaimCategory, event_category: Option<EventCategory>) -> Duration {
+        if let Some(ec) = event_category {
+            match ec {
+                EventCategory::Election => return self.max_election_horizon,
+                EventCategory::Sports => return self.max_sports_horizon,
+                _ => {}
+            }
+        }
+        match category {
+            ClaimCategory::PriceThreshold => self.max_horizon,
+            ClaimCategory::EventOccurrence => self.max_horizon,
+            _ => self.max_horizon,
         }
     }
 }
@@ -54,9 +95,8 @@ pub enum DeadlineValidation {
     TooFar,
 }
 
-/// Parse an absolute resolution deadline from claim text (UTC). Returns `None` when
-/// no unambiguous expiration is present.
-pub fn parse_deadline_from_text(content: &str) -> Option<DateTime<Utc>> {
+/// Parse explicit non-event deadlines (relative, tomorrow, ISO, named month).
+pub fn parse_explicit_deadline_from_text(content: &str) -> Option<DateTime<Utc>> {
     let lower = content.to_lowercase();
     let now = Utc::now();
 
@@ -75,6 +115,24 @@ pub fn parse_deadline_from_text(content: &str) -> Option<DateTime<Utc>> {
     None
 }
 
+/// Parse an absolute resolution deadline from claim text (UTC). Returns `None` when
+/// no unambiguous expiration is present.
+pub fn parse_deadline_from_text(content: &str) -> Option<DateTime<Utc>> {
+    if let Some(dt) = parse_explicit_deadline_from_text(content) {
+        return Some(dt);
+    }
+    if let Some(dt) = parse_year_and_election(content) {
+        return Some(dt);
+    }
+    if let Some(dt) = parse_year_only(content) {
+        return Some(dt);
+    }
+    if let Some(dt) = parse_quarter_deadline(content) {
+        return Some(dt);
+    }
+    None
+}
+
 /// Resolve the claim evaluation deadline: explicit text, known event end, or (price only)
 /// the next spacing boundary for ongoing markets.
 pub fn resolve_claim_deadline(
@@ -82,17 +140,8 @@ pub fn resolve_claim_deadline(
     category: ClaimCategory,
     registry: &EventRegistry,
 ) -> Option<DateTime<Utc>> {
-    if let Some(dt) = parse_deadline_from_text(content) {
-        return Some(dt);
-    }
-    if let Some(ev) = registry.match_event(content) {
-        return Some(event_deadline(&ev));
-    }
-    if category == ClaimCategory::PriceThreshold {
-        let earliest = Utc::now() + MIN_DEADLINE_LEAD;
-        return Some(ceil_to_spacing(earliest, DEFAULT_PRICE_MARKET_SPACING));
-    }
-    None
+    crate::review::context_deadline::resolve_context_deadline(content, category, registry)
+        .map(|r| r.deadline)
 }
 
 /// Floor a deadline to a wall-clock spacing bucket for shared market identity (price claims).
@@ -244,10 +293,64 @@ fn parse_named_date(lower: &str) -> Option<NaiveDate> {
     None
 }
 
-fn end_of_utc_day(date: NaiveDate) -> DateTime<Utc> {
-    date.and_hms_milli_opt(23, 59, 59, 999)
-        .map(|t| Utc.from_utc_datetime(&t))
-        .unwrap_or_else(|| Utc.from_utc_datetime(&date.and_hms_opt(0, 0, 0).unwrap()))
+/// Election/year/quarter text parsing (after event registry and calendar templates).
+pub fn parse_calendar_text_deadline(content: &str) -> Option<DateTime<Utc>> {
+    parse_year_and_election(content)
+        .or_else(|| parse_year_only(content))
+        .or_else(|| parse_quarter_deadline(content))
+}
+
+fn parse_year_and_election(content: &str) -> Option<DateTime<Utc>> {
+    let normalized = normalize_claim_text(content);
+    if !normalized.contains("election") {
+        return None;
+    }
+    for year in extract_years(&normalized) {
+        if let Some(dt) = us_presidential_election_deadline(year) {
+            return Some(dt);
+        }
+        if let Some(dt) = us_midterm_election_deadline(year) {
+            return Some(dt);
+        }
+    }
+    None
+}
+
+fn parse_year_only(content: &str) -> Option<DateTime<Utc>> {
+    let normalized = normalize_claim_text(content);
+    let years = extract_years(&normalized);
+    if years.len() == 1 {
+        let year = years[0];
+        if normalized.contains("by ")
+            || normalized.contains("in ")
+            || normalized.contains("before ")
+            || normalized.contains("end of ")
+        {
+            return Some(end_of_utc_day(
+                NaiveDate::from_ymd_opt(year, 12, 31).unwrap(),
+            ));
+        }
+    }
+    None
+}
+
+fn parse_quarter_deadline(content: &str) -> Option<DateTime<Utc>> {
+    let normalized = normalize_claim_text(content);
+    for (pat, q) in [("q1", 1u32), ("q2", 2), ("q3", 3), ("q4", 4)] {
+        if let Some(idx) = normalized.find(pat) {
+            let rest = &normalized[idx + 2..];
+            for token in rest.split_whitespace() {
+                if token.len() == 4 {
+                    if let Ok(year) = token.parse::<i32>() {
+                        if let Some(date) = quarter_end(year, q) {
+                            return Some(end_of_utc_day(date));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
 }
 
 fn contains_word(haystack: &str, word: &str) -> bool {

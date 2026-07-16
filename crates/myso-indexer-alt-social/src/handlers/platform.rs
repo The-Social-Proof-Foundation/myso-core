@@ -119,6 +119,8 @@ struct PlatformCreatedEvent {
     cover_photo: Option<String>,
     #[serde(default)]
     media_previews: Option<Vec<String>>,
+    #[serde(default)]
+    redirect_uri: Option<String>,
     primary_category: String,
     #[serde(default)]
     secondary_category: Option<String>,
@@ -162,6 +164,8 @@ struct PlatformUpdatedEvent {
     cover_photo: Option<String>,
     #[serde(default)]
     media_previews: Option<Vec<String>>,
+    #[serde(default)]
+    redirect_uri: Option<String>,
     primary_category: String,
     #[serde(default)]
     secondary_category: Option<String>,
@@ -451,6 +455,7 @@ fn process_platform_created_event(
         media_previews: ev
             .media_previews
             .map(|v| serde_json::to_value(&v).unwrap_or_default()),
+        redirect_uri: ev.redirect_uri.filter(|s| !s.is_empty()),
         developer_address: developer.clone(),
         moderators_group_id: ev.moderators_group_id.clone(),
         terms_of_service: Some(ev.terms_of_service),
@@ -552,6 +557,7 @@ fn process_platform_updated_event(
             media_previews: ev
                 .media_previews
                 .map(|v| serde_json::to_value(&v).unwrap_or_default()),
+            redirect_uri: ev.redirect_uri.filter(|s| !s.is_empty()),
             status: ev.status.status as i16,
             release_date: Some(release_date),
             shutdown_date: ev.shutdown_date,

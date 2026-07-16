@@ -83,6 +83,7 @@ Manages social media platforms and their timelines
 -  [Function `logo`](#social_contracts_platform_logo)
 -  [Function `cover_photo`](#social_contracts_platform_cover_photo)
 -  [Function `media_previews`](#social_contracts_platform_media_previews)
+-  [Function `redirect_uri`](#social_contracts_platform_redirect_uri)
 -  [Function `developer`](#social_contracts_platform_developer)
 -  [Function `terms_of_service`](#social_contracts_platform_terms_of_service)
 -  [Function `privacy_policy`](#social_contracts_platform_privacy_policy)
@@ -675,6 +676,12 @@ Platform object that contains information about a social media platform
  ID of governance registry if created
 </dd>
 <dt>
+<code><a href="../social_contracts/platform.md#social_contracts_platform_redirect_uri">redirect_uri</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+ Optional OAuth redirect URI for the platform
+</dd>
+<dt>
 <code>version: u64</code>
 </dt>
 <dd>
@@ -883,6 +890,11 @@ Platform created event
 </dt>
 <dd>
 </dd>
+<dt>
+<code><a href="../social_contracts/platform.md#social_contracts_platform_redirect_uri">redirect_uri</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+</dd>
 </dl>
 
 
@@ -982,6 +994,11 @@ Platform updated event
 </dd>
 <dt>
 <code><a href="../social_contracts/platform.md#social_contracts_platform_shutdown_date">shutdown_date</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/platform.md#social_contracts_platform_redirect_uri">redirect_uri</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
 </dt>
 <dd>
 </dd>
@@ -2082,7 +2099,7 @@ Bootstrap initialization function - creates the platform registry and config
 Create a new platform and transfer to developer
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_create_platform">create_platform</a>(registry: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, config: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformConfig">social_contracts::platform::PlatformConfig</a>, <a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/platform.md#social_contracts_platform_tagline">tagline</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/platform.md#social_contracts_platform_description">description</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, logo_url: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/platform.md#social_contracts_platform_terms_of_service">terms_of_service</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/platform.md#social_contracts_platform_privacy_policy">privacy_policy</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, platforms: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, links: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/platform.md#social_contracts_platform_primary_category">primary_category</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/platform.md#social_contracts_platform_secondary_category">secondary_category</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/platform.md#social_contracts_platform_status">status</a>: u8, <a href="../social_contracts/platform.md#social_contracts_platform_release_date">release_date</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/platform.md#social_contracts_platform_wants_dao_governance">wants_dao_governance</a>: bool, delegate_count: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, delegate_term_epochs: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, proposal_submission_cost: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, max_votes_per_user: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, quadratic_base_cost: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, voting_period_epochs: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, quorum_votes: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, <a href="../social_contracts/platform.md#social_contracts_platform_cover_photo">cover_photo</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/platform.md#social_contracts_platform_media_previews">media_previews</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_create_platform">create_platform</a>(registry: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, config: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformConfig">social_contracts::platform::PlatformConfig</a>, <a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/platform.md#social_contracts_platform_tagline">tagline</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/platform.md#social_contracts_platform_description">description</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, logo_url: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/platform.md#social_contracts_platform_terms_of_service">terms_of_service</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/platform.md#social_contracts_platform_privacy_policy">privacy_policy</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, platforms: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, links: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/platform.md#social_contracts_platform_primary_category">primary_category</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/platform.md#social_contracts_platform_secondary_category">secondary_category</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/platform.md#social_contracts_platform_status">status</a>: u8, <a href="../social_contracts/platform.md#social_contracts_platform_release_date">release_date</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/platform.md#social_contracts_platform_wants_dao_governance">wants_dao_governance</a>: bool, delegate_count: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, delegate_term_epochs: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, proposal_submission_cost: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, max_votes_per_user: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, quadratic_base_cost: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, voting_period_epochs: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, quorum_votes: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, <a href="../social_contracts/platform.md#social_contracts_platform_cover_photo">cover_photo</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/platform.md#social_contracts_platform_media_previews">media_previews</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, <a href="../social_contracts/platform.md#social_contracts_platform_redirect_uri">redirect_uri</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2116,6 +2133,7 @@ Create a new platform and transfer to developer
     quorum_votes: Option&lt;u64&gt;,
     <a href="../social_contracts/platform.md#social_contracts_platform_cover_photo">cover_photo</a>: Option&lt;String&gt;,
     <a href="../social_contracts/platform.md#social_contracts_platform_media_previews">media_previews</a>: Option&lt;vector&lt;String&gt;&gt;,
+    <a href="../social_contracts/platform.md#social_contracts_platform_redirect_uri">redirect_uri</a>: Option&lt;String&gt;,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
@@ -2185,6 +2203,7 @@ Create a new platform and transfer to developer
         voting_period_epochs: actual_voting_period_epochs,
         quorum_votes: actual_quorum_votes,
         <a href="../social_contracts/platform.md#social_contracts_platform_governance_registry_id">governance_registry_id</a>: option::none(),
+        <a href="../social_contracts/platform.md#social_contracts_platform_redirect_uri">redirect_uri</a>,
         version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     };
     <b>let</b> <b>mut</b> moderators_group = permissioned_group::new_derived&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>, <a href="../social_contracts/platform.md#social_contracts_platform_ModeratorsGroupTag">ModeratorsGroupTag</a>&gt;(
@@ -2297,6 +2316,7 @@ Create a new platform and transfer to developer
         voting_period_epochs: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.voting_period_epochs,
         quorum_votes: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.quorum_votes,
         <a href="../social_contracts/platform.md#social_contracts_platform_moderators_group_id">moderators_group_id</a>,
+        <a href="../social_contracts/platform.md#social_contracts_platform_redirect_uri">redirect_uri</a>: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_redirect_uri">redirect_uri</a>,
     });
     // Share <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> <b>as</b> a shared object (publicly accessible)
     transfer::share_object(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>);
@@ -2314,7 +2334,7 @@ Create a new platform and transfer to developer
 Update platform information
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_update_platform">update_platform</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, config: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformConfig">social_contracts::platform::PlatformConfig</a>, new_name: <a href="../std/string.md#std_string_String">std::string::String</a>, new_tagline: <a href="../std/string.md#std_string_String">std::string::String</a>, new_description: <a href="../std/string.md#std_string_String">std::string::String</a>, new_logo_url: <a href="../std/string.md#std_string_String">std::string::String</a>, new_terms_of_service: <a href="../std/string.md#std_string_String">std::string::String</a>, new_privacy_policy: <a href="../std/string.md#std_string_String">std::string::String</a>, new_platforms: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, new_links: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, new_primary_category: <a href="../std/string.md#std_string_String">std::string::String</a>, new_secondary_category: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/platform.md#social_contracts_platform_new_status">new_status</a>: u8, new_release_date: <a href="../std/string.md#std_string_String">std::string::String</a>, new_shutdown_date: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, new_cover_photo: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, new_media_previews: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_update_platform">update_platform</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, config: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformConfig">social_contracts::platform::PlatformConfig</a>, new_name: <a href="../std/string.md#std_string_String">std::string::String</a>, new_tagline: <a href="../std/string.md#std_string_String">std::string::String</a>, new_description: <a href="../std/string.md#std_string_String">std::string::String</a>, new_logo_url: <a href="../std/string.md#std_string_String">std::string::String</a>, new_terms_of_service: <a href="../std/string.md#std_string_String">std::string::String</a>, new_privacy_policy: <a href="../std/string.md#std_string_String">std::string::String</a>, new_platforms: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, new_links: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, new_primary_category: <a href="../std/string.md#std_string_String">std::string::String</a>, new_secondary_category: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/platform.md#social_contracts_platform_new_status">new_status</a>: u8, new_release_date: <a href="../std/string.md#std_string_String">std::string::String</a>, new_shutdown_date: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, new_cover_photo: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, new_media_previews: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, new_redirect_uri: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2341,6 +2361,7 @@ Update platform information
     new_shutdown_date: Option&lt;String&gt;,
     new_cover_photo: Option&lt;String&gt;,
     new_media_previews: Option&lt;vector&lt;String&gt;&gt;,
+    new_redirect_uri: Option&lt;String&gt;,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
@@ -2376,6 +2397,7 @@ Update platform information
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_shutdown_date">shutdown_date</a> = new_shutdown_date;
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_cover_photo">cover_photo</a> = new_cover_photo;
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_media_previews">media_previews</a> = new_media_previews;
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_redirect_uri">redirect_uri</a> = new_redirect_uri;
     // Emit <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> updated event
     event::emit(<a href="../social_contracts/platform.md#social_contracts_platform_PlatformUpdatedEvent">PlatformUpdatedEvent</a> {
         platform_id: object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>),
@@ -2394,6 +2416,7 @@ Update platform information
         <a href="../social_contracts/platform.md#social_contracts_platform_status">status</a>: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_status">status</a>,
         <a href="../social_contracts/platform.md#social_contracts_platform_release_date">release_date</a>: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_release_date">release_date</a>,
         <a href="../social_contracts/platform.md#social_contracts_platform_shutdown_date">shutdown_date</a>: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_shutdown_date">shutdown_date</a>,
+        <a href="../social_contracts/platform.md#social_contracts_platform_redirect_uri">redirect_uri</a>: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_redirect_uri">redirect_uri</a>,
         updated_at: now,
     });
 }
@@ -4240,6 +4263,31 @@ Get platform media preview URLs
 
 </details>
 
+<a name="social_contracts_platform_redirect_uri"></a>
+
+## Function `redirect_uri`
+
+Get platform OAuth redirect URI
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_redirect_uri">redirect_uri</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>): &<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_redirect_uri">redirect_uri</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>): &Option&lt;String&gt; {
+    &<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_redirect_uri">redirect_uri</a>
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_platform_developer"></a>
 
 ## Function `developer`
@@ -5124,6 +5172,7 @@ Migration function for Platform
     <b>let</b> old_version = <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.version;
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_cover_photo">cover_photo</a> = option::none();
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_media_previews">media_previews</a> = option::none();
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_redirect_uri">redirect_uri</a> = option::none();
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.version = current_version;
     // Emit event <b>for</b> object migration
     <b>let</b> platform_id = object::id(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>);

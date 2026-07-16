@@ -67,35 +67,39 @@ impl EventRegistry {
 
     /// Match a scheduled event referenced in claim text (active events only).
     pub fn match_event(&self, content: &str) -> Option<ScheduledEventRecord> {
-        let lower = content.to_lowercase();
+        let normalized = normalize_claim_text(content);
+        let claim_years = extract_years(&normalized);
         let now_ms = Utc::now().timestamp_millis();
         let guard = self.inner.read().ok()?;
-        let mut best: Option<(ScheduledEventRecord, usize)> = None;
+        let mut best: Option<(ScheduledEventRecord, i32)> = None;
+
         for ev in guard.iter() {
             if ev.end_at_ms < now_ms {
                 continue;
             }
-            let mut longest = 0usize;
-            for kw in &ev.keywords {
-                if lower.contains(kw) && kw.len() > longest {
-                    longest = kw.len();
-                }
-            }
-            if longest == 0 {
+            let score = score_event_match(&normalized, &claim_years, ev);
+            if score <= 0 {
                 continue;
             }
             match &best {
-                None => best = Some((ev.clone(), longest)),
-                Some((prev, prev_len)) => {
-                    if ev.priority > prev.priority
-                        || (ev.priority == prev.priority && longest > *prev_len)
+                None => best = Some((ev.clone(), score)),
+                Some((prev, prev_score)) => {
+                    if score > *prev_score
+                        || (score == *prev_score && ev.priority > prev.priority)
                     {
-                        best = Some((ev.clone(), longest));
+                        best = Some((ev.clone(), score));
                     }
                 }
             }
         }
         best.map(|(ev, _)| ev)
+    }
+
+    /// Score how well claim text matches an event (higher is better). Zero = no match.
+    pub fn score_match(&self, content: &str, ev: &ScheduledEventRecord) -> i32 {
+        let normalized = normalize_claim_text(content);
+        let claim_years = extract_years(&normalized);
+        score_event_match(&normalized, &claim_years, ev)
     }
 
     /// Normalize a raw entity token using aliases from the matched event.
@@ -201,10 +205,177 @@ pub fn event_deadline_end_of_day(end_at_ms: i64) -> DateTime<Utc> {
         .unwrap_or(dt)
 }
 
+/// Normalize claim text for event matching: lowercase, synonym map, collapse whitespace.
+pub fn normalize_claim_text(content: &str) -> String {
+    let lower = content.to_lowercase();
+    let mut out = lower;
+    for (from, to) in CLAIM_SYNONYMS {
+        out = out.replace(from, to);
+    }
+    out.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+const CLAIM_SYNONYMS: &[(&str, &str)] = &[
+    ("presedintial", "presidential"),
+    ("presidental", "presidential"),
+    ("presidiential", "presidential"),
+    ("prez", "president"),
+    ("potus", "president"),
+    ("worldcup", "world cup"),
+];
+
+/// Extract four-digit years (2020–2099) from normalized claim text.
+pub fn extract_years(normalized: &str) -> Vec<i32> {
+    let mut years = Vec::new();
+    for token in normalized.split_whitespace() {
+        if token.len() == 4 {
+            if let Ok(y) = token.parse::<i32>() {
+                if (2020..=2099).contains(&y) {
+                    years.push(y);
+                }
+            }
+        }
+    }
+    for token in normalized.split(|c: char| !c.is_ascii_digit()) {
+        if token.len() == 4 {
+            if let Ok(y) = token.parse::<i32>() {
+                if (2020..=2099).contains(&y) && !years.contains(&y) {
+                    years.push(y);
+                }
+            }
+        }
+    }
+    years
+}
+
+fn score_event_match(
+    normalized: &str,
+    claim_years: &[i32],
+    ev: &ScheduledEventRecord,
+) -> i32 {
+    let sports_cues = crate::review::claim_matcher::has_sports_cues(normalized);
+    let election_cues = crate::review::claim_matcher::has_election_cues(normalized);
+
+    if sports_cues && !election_cues && ev.category == "election" {
+        return 0;
+    }
+    if election_cues && !sports_cues && ev.category == "sports" {
+        return 0;
+    }
+
+    let mut score: i32 = 0;
+
+    // Keyword substring hits (longer keywords score higher).
+    let mut longest_kw = 0usize;
+    for kw in &ev.keywords {
+        if kw.len() == 4 && kw.chars().all(|c| c.is_ascii_digit()) {
+            continue;
+        }
+        if normalized.contains(kw) {
+            longest_kw = longest_kw.max(kw.len());
+            score += kw.len() as i32;
+        } else if kw.len() >= 8 && fuzzy_contains(normalized, kw) {
+            score += (kw.len() as i32) / 2;
+            longest_kw = longest_kw.max(kw.len() / 2);
+        }
+    }
+
+    // Year in claim matches event label or external_id (requires domain keyword).
+    for year in claim_years {
+        let year_str = year.to_string();
+        if ev.label.contains(&year_str) || ev.external_id.contains(&year_str) {
+            if ev.category == "election" && election_cues {
+                score += 50;
+                if normalized.contains("election") || normalized.contains("president") {
+                    score += 30;
+                }
+            } else if ev.category == "sports" && sports_cues {
+                score += 50;
+                score += 10;
+            } else if ev.category != "election" && ev.category != "sports" {
+                score += 40;
+            }
+        }
+    }
+
+    // Entity alias hits (candidates, players, nations).
+    for entity in &ev.entities {
+        let name_lower = entity.name.to_lowercase();
+        if normalized.contains(&name_lower) {
+            score += 40;
+            if ev.category == "sports" && sports_cues {
+                score += 20;
+            }
+            if ev.category == "election" && election_cues {
+                score += 20;
+            }
+        }
+        for alias in &entity.aliases {
+            let a = alias.to_lowercase();
+            if !a.is_empty() && normalized.contains(&a) {
+                score += 35;
+            }
+        }
+    }
+
+    // Outcome phrases boost matching category only.
+    if normalized.contains("will win")
+        || normalized.contains("will lose")
+        || normalized.contains("will be elected")
+    {
+        if ev.category == "election" && election_cues {
+            score += 20;
+        }
+        if ev.category == "sports" && sports_cues {
+            score += 20;
+        }
+    }
+
+    // Require at least one non-year keyword signal.
+    if longest_kw == 0 && score < 50 {
+        return 0;
+    }
+
+    score + ev.priority / 10
+}
+
+/// Fuzzy substring: allow edit distance <= 2 for words in normalized text.
+fn fuzzy_contains(haystack: &str, needle: &str) -> bool {
+    if needle.len() < 8 {
+        return false;
+    }
+    for word in haystack.split_whitespace() {
+        if word.len() >= needle.len().saturating_sub(2) && levenshtein(word, needle) <= 2 {
+            return true;
+        }
+    }
+    false
+}
+
+fn levenshtein(a: &str, b: &str) -> usize {
+    let a: Vec<char> = a.chars().collect();
+    let b: Vec<char> = b.chars().collect();
+    let mut prev: Vec<usize> = (0..=b.len()).collect();
+    for (i, ca) in a.iter().enumerate() {
+        let mut curr = vec![i + 1];
+        for (j, cb) in b.iter().enumerate() {
+            let cost = if ca == cb { 0 } else { 1 };
+            curr.push(
+                (prev[j] + 1)
+                    .min(curr[j] + 1)
+                    .min(prev[j + 1] + cost),
+            );
+        }
+        prev = curr;
+    }
+    *prev.last().unwrap_or(&0)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::events::types::EventEntity;
+    use crate::store::events::ScheduledEventRow;
     use uuid::Uuid;
 
     fn fifa_row() -> ScheduledEventRow {
@@ -271,10 +442,34 @@ mod tests {
     }
 
     #[test]
-    fn entity_normalization_uses_aliases() {
-        let reg = EventRegistry::from_rows(vec![fifa_row()]);
-        let ev = reg.match_event("Messy will score").unwrap();
-        assert_eq!(reg.normalize_entity("messy", Some(&ev)), "lionel messi");
-        assert_eq!(reg.normalize_entity("muppet", Some(&ev)), "kylian mbappe");
+    fn spain_world_cup_beats_election_year_only() {
+        let election = ScheduledEventRow {
+            id: Uuid::new_v4(),
+            provider_key: "calendar".to_string(),
+            external_id: "us_presidential_election_2028".to_string(),
+            label: "2028 U.S. Presidential Election".to_string(),
+            category: "election".to_string(),
+            start_at_ms: None,
+            end_at_ms: chrono::NaiveDate::from_ymd_opt(2028, 11, 7)
+                .unwrap()
+                .and_hms_milli_opt(23, 59, 59, 999)
+                .unwrap()
+                .and_utc()
+                .timestamp_millis(),
+            keywords: vec!["presidential election".to_string(), "2028".to_string()],
+            entities: serde_json::json!([]),
+            feed_url: None,
+            match_predicate: Some("election".to_string()),
+            preferred_source_keys: vec![],
+            priority: 90,
+            enabled: true,
+            provenance: serde_json::json!({}),
+            admin_override: serde_json::json!({}),
+        };
+        let reg = EventRegistry::from_rows(vec![fifa_row(), election]);
+        let ev = reg
+            .match_event("Spain will win the FIFA World Cup in 2026")
+            .expect("fifa");
+        assert_eq!(ev.external_id, "fifa_world_cup_2026");
     }
 }

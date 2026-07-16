@@ -2854,7 +2854,7 @@ pub struct BcsPocRedirectionUpdatedEvent {
     timestamp: u64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsPlatformStatus {
     status: u8,
 }
@@ -2870,7 +2870,7 @@ pub struct BcsPlatformConfigUpdatedEvent {
     timestamp: u64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsPlatformCreatedEvent {
     platform_id: AccountAddress,
     name: String,
@@ -2898,6 +2898,7 @@ pub struct BcsPlatformCreatedEvent {
     voting_period_epochs: Option<u64>,
     quorum_votes: Option<u64>,
     moderators_group_id: BcsMoveObjectId,
+    redirect_uri: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -2926,7 +2927,7 @@ pub struct BcsModeratorRemovedEvent {
     removed_by: AccountAddress,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsPlatformUpdatedEvent {
     platform_id: AccountAddress,
     name: String,
@@ -2944,6 +2945,7 @@ pub struct BcsPlatformUpdatedEvent {
     status: BcsPlatformStatus,
     release_date: String,
     shutdown_date: Option<String>,
+    redirect_uri: Option<String>,
     updated_at: u64,
 }
 
@@ -4714,6 +4716,7 @@ fn parse_platform_event(
                 "links": ev.links,
                 "cover_photo": ev.cover_photo,
                 "media_previews": ev.media_previews,
+                "redirect_uri": ev.redirect_uri,
                 "primary_category": ev.primary_category,
                 "secondary_category": ev.secondary_category,
                 "status": {"status": ev.status.status},
@@ -4745,6 +4748,7 @@ fn parse_platform_event(
                 "links": ev.links,
                 "cover_photo": ev.cover_photo,
                 "media_previews": ev.media_previews,
+                "redirect_uri": ev.redirect_uri,
                 "primary_category": ev.primary_category,
                 "secondary_category": ev.secondary_category,
                 "status": {"status": ev.status.status},
@@ -6648,7 +6652,7 @@ mod tests {
 
     #[test]
     fn test_parse_platform_created_event_json_fallback() {
-        let json = r#"{"platform_id":"0xabc","name":"Test","tagline":"Tag","description":"Desc","developer":"0xdef","logo":"","terms_of_service":"","privacy_policy":"","platforms":[],"links":[],"cover_photo":null,"media_previews":null,"primary_category":"Social","secondary_category":null,"status":{"status":0},"release_date":"2024-01-01","wants_dao_governance":false,"governance_registry_id":null,"delegate_count":null,"delegate_term_epochs":null,"proposal_submission_cost":null,"max_votes_per_user":null,"quadratic_base_cost":null,"voting_period_epochs":null,"quorum_votes":null}"#;
+        let json = r#"{"platform_id":"0xabc","name":"Test","tagline":"Tag","description":"Desc","developer":"0xdef","logo":"","terms_of_service":"","privacy_policy":"","platforms":[],"links":[],"cover_photo":null,"media_previews":null,"primary_category":"Social","secondary_category":null,"status":{"status":0},"release_date":"2024-01-01","wants_dao_governance":false,"governance_registry_id":null,"delegate_count":null,"delegate_term_epochs":null,"proposal_submission_cost":null,"max_votes_per_user":null,"quadratic_base_cost":null,"voting_period_epochs":null,"quorum_votes":null,"moderators_group_id":"0x123","redirect_uri":"https://example.com/callback"}"#;
         let result = parse_event_contents("platform", "PlatformCreatedEvent", json.as_bytes());
         assert!(
             result.is_ok(),
@@ -6657,6 +6661,82 @@ mod tests {
         let parsed = result.unwrap();
         assert_eq!(parsed["platform_id"], "0xabc");
         assert_eq!(parsed["name"], "Test");
+        assert_eq!(parsed["redirect_uri"], "https://example.com/callback");
+    }
+
+    /// BCS field order must match Move `platform::PlatformCreatedEvent` (redirect_uri after moderators_group_id).
+    #[test]
+    fn platform_created_event_bcs_parse_then_handler_row_shape() {
+        use crate::handlers::platform::handle_platform_event;
+        use crate::handlers::SocialEventRow;
+
+        let pid = AccountAddress::from_hex_literal(
+            "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+        )
+        .unwrap();
+        let dev = AccountAddress::from_hex_literal(
+            "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        )
+        .unwrap();
+        let mods_gid = AccountAddress::from_hex_literal(
+            "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        )
+        .unwrap();
+        let ev = BcsPlatformCreatedEvent {
+            platform_id: pid,
+            name: "Test Platform".into(),
+            tagline: "Tag".into(),
+            description: "Desc".into(),
+            developer: dev,
+            logo: String::new(),
+            terms_of_service: String::new(),
+            privacy_policy: String::new(),
+            platforms: vec![],
+            links: vec![],
+            cover_photo: None,
+            media_previews: None,
+            primary_category: "Social".into(),
+            secondary_category: None,
+            status: BcsPlatformStatus { status: 0 },
+            release_date: "2024-01-01".into(),
+            wants_dao_governance: false,
+            governance_registry_id: None,
+            delegate_count: None,
+            delegate_term_epochs: None,
+            proposal_submission_cost: None,
+            max_votes_per_user: None,
+            quadratic_base_cost: None,
+            voting_period_epochs: None,
+            quorum_votes: None,
+            moderators_group_id: BcsMoveObjectId { bytes: mods_gid },
+            redirect_uri: Some("https://example.com/oauth/callback".into()),
+        };
+        let bytes = bcs::to_bytes(&ev).expect("serialize PlatformCreatedEvent BCS fixture");
+        let json = parse_event_contents("platform", "PlatformCreatedEvent", &bytes)
+            .expect("parse_event_contents should succeed for PlatformCreatedEvent BCS");
+        assert_eq!(
+            json["redirect_uri"].as_str(),
+            Some("https://example.com/oauth/callback")
+        );
+        let event_id = "digest:platform-created";
+        let rows = handle_platform_event("PlatformCreatedEvent", &json, event_id, 1_700_000_000_000)
+            .expect("handler should deserialize JSON from BCS path");
+        assert!(
+            rows.iter()
+                .any(|r| matches!(r, SocialEventRow::Platform(_))),
+            "expected Platform row from PlatformCreatedEvent"
+        );
+        let platform_row = rows
+            .iter()
+            .find_map(|r| match r {
+                SocialEventRow::Platform(p) => Some(p),
+                _ => None,
+            })
+            .expect("platform row");
+        assert_eq!(
+            platform_row.redirect_uri.as_deref(),
+            Some("https://example.com/oauth/callback")
+        );
     }
 
     /// BCS serialization matches Move `platform::PlatformDeletedEvent`; handlers produce delete + audit rows.

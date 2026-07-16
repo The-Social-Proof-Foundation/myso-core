@@ -137,6 +137,8 @@ module social_contracts::platform_tests {
                 option::some(15),
                 option::none(),
                 option::none(),
+
+                option::none(),
                 &clock,
                 test_scenario::ctx(scenario)
             );
@@ -200,6 +202,7 @@ module social_contracts::platform_tests {
                 option::some(15), // quorum_votes
                 option::none(), // cover_photo
                 option::none(), // media_previews
+                option::none(), // redirect_uri
                 &clock,
                 test_scenario::ctx(scenario)
             );
@@ -812,6 +815,8 @@ let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
                     string::utf8(b"https://example.com/preview1.png"),
                     string::utf8(b"https://example.com/preview2.mp4"),
                 ]),
+
+                option::none(),
                 &clock,
                 test_scenario::ctx(&mut scenario),
             );
@@ -868,6 +873,8 @@ let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
                 option::none(),
                 option::some(string::utf8(b"https://example.com/new-cover.png")),
                 option::some(vector[string::utf8(b"https://example.com/shot.png")]),
+
+                option::none(),
                 &clock,
                 test_scenario::ctx(&mut scenario),
             );
@@ -879,6 +886,112 @@ let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
             assert!(option::is_some(cover), 1);
             let previews = platform::media_previews(&platform);
             assert!(option::is_some(previews), 2);
+            test_scenario::return_shared(platform);
+            test_scenario::return_shared(platform_config);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_create_platform_with_redirect_uri() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        create_test_platform(&mut scenario);
+
+        test_scenario::next_tx(&mut scenario, PLATFORM_ADMIN);
+        {
+            let mut registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
+            let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+
+            platform::create_platform(
+                &mut registry,
+                &platform_config,
+                string::utf8(b"Redirect Platform"),
+                string::utf8(b"Tagline"),
+                string::utf8(b"Description"),
+                string::utf8(b"https://example.com/logo.png"),
+                string::utf8(b"https://example.com/terms"),
+                string::utf8(b"https://example.com/privacy"),
+                vector[string::utf8(b"web")],
+                vector[string::utf8(b"https://example.com")],
+                string::utf8(b"Social Network"),
+                option::none(),
+                3,
+                string::utf8(b"2024-01-01"),
+                false,
+                option::none(), option::none(), option::none(), option::none(),
+                option::none(), option::none(), option::none(),
+                option::none(),
+                option::none(),
+                option::some(string::utf8(b"https://app.example.com/auth/callback")),
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(platform_config);
+            test_scenario::return_shared(registry);
+        };
+
+        test_scenario::next_tx(&mut scenario, PLATFORM_ADMIN);
+        {
+            let platform = test_scenario::take_shared<Platform>(&scenario);
+            assert!(
+                platform::name(&platform) == string::utf8(b"Redirect Platform"),
+                0
+            );
+            let redirect = platform::redirect_uri(&platform);
+            assert!(option::is_some(redirect), 1);
+            assert!(
+                *option::borrow(redirect) == string::utf8(b"https://app.example.com/auth/callback"),
+                2
+            );
+            test_scenario::return_shared(platform);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_update_platform_redirect_uri() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        create_test_platform(&mut scenario);
+
+        test_scenario::next_tx(&mut scenario, PLATFORM_ADMIN);
+        {
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let mut platform = test_scenario::take_shared<Platform>(&scenario);
+            let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
+            platform::update_platform(
+                &mut platform,
+                &platform_config,
+                string::utf8(b"Test Platform"),
+                string::utf8(b"A test platform"),
+                string::utf8(b"This is a test platform for badge testing"),
+                string::utf8(b"https://example.com/logo.png"),
+                string::utf8(b"https://example.com/terms"),
+                string::utf8(b"https://example.com/privacy"),
+                vector[string::utf8(b"web"), string::utf8(b"mobile")],
+                vector[string::utf8(b"https://example.com")],
+                string::utf8(b"Social Network"),
+                option::none(),
+                2,
+                string::utf8(b"2023-01-01"),
+                option::none(),
+                option::none(),
+                option::none(),
+                option::some(string::utf8(b"https://dripdrop.social/auth/callback")),
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            let redirect = platform::redirect_uri(&platform);
+            assert!(option::is_some(redirect), 0);
+            assert!(
+                *option::borrow(redirect) == string::utf8(b"https://dripdrop.social/auth/callback"),
+                1
+            );
             test_scenario::return_shared(platform);
             test_scenario::return_shared(platform_config);
             test_scenario::return_shared(clock);
@@ -924,6 +1037,8 @@ let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
                 option::none(), option::none(), option::none(),
                 option::none(),
                 option::some(previews),
+
+                option::none(),
                 &clock,
                 test_scenario::ctx(&mut scenario),
             );

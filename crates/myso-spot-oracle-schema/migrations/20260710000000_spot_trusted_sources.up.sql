@@ -8,10 +8,7 @@ CREATE TABLE IF NOT EXISTS spot_trusted_sources (
     domain VARCHAR(32) NOT NULL DEFAULT 'factual',
     trust_score DOUBLE PRECISION NOT NULL DEFAULT 0.5,
     enabled BOOLEAN NOT NULL DEFAULT true,
-    source_url TEXT,
     config JSONB NOT NULL DEFAULT '{}',
-    health_healthy BOOLEAN,
-    health_message TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

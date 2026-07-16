@@ -5052,6 +5052,10 @@ type Platform implements Node {
 	"""
 	quorumVotes: Int
 	"""
+	Optional OAuth redirect URI for the platform.
+	"""
+	redirectUri: String
+	"""
 	Release date.
 	"""
 	releaseDate: String
@@ -5220,6 +5224,7 @@ type PlatformMembershipSummary {
 	proposalSubmissionCost: Int
 	quadraticBaseCost: Int
 	quorumVotes: Int
+	redirectUri: String
 	releaseDate: String
 	secondaryCategory: String
 	shutdownDate: String
@@ -8215,9 +8220,17 @@ type SpotConfig {
 	"""
 	expiredCreatorEcosystemBps: Int!
 	"""
+	Maximum bets allowed per SPoT record.
+	"""
+	maxBetsPerRecord: Int!
+	"""
 	Maximum number of betting options allowed on a SPoT record.
 	"""
 	maxBettingOptions: Int!
+	"""
+	Maximum claims per post at finalize time (Move range 1–20).
+	"""
+	maxClaimPerPost: Int!
 	"""
 	Maximum number of evidence URLs allowed on a SPoT record.
 	"""
@@ -8258,6 +8271,10 @@ type SpotConfig {
 	Resolution window duration in milliseconds (global default).
 	"""
 	resolutionWindowMs: Int!
+	"""
+	Shared SPoT GovernanceDAO object ID (registry_type = 2).
+	"""
+	spotGovernanceRegistryId: String
 	"""
 	When the configuration was last updated.
 	"""

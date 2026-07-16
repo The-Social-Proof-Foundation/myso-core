@@ -140,6 +140,11 @@ impl Platform {
         self.inner.privacy_policy.as_deref()
     }
 
+    /// Optional OAuth redirect URI for the platform.
+    async fn redirect_uri(&self) -> Option<&str> {
+        self.inner.redirect_uri.as_deref()
+    }
+
     /// Links (JSON).
     async fn links(&self) -> Option<Json> {
         self.inner
@@ -461,6 +466,10 @@ impl PlatformMembershipSummary {
 
     async fn privacy_policy(&self) -> Option<&str> {
         self.row.privacy_policy.as_deref()
+    }
+
+    async fn redirect_uri(&self) -> Option<&str> {
+        self.row.redirect_uri.as_deref()
     }
 
     /// Alternate names / labels (JSON array in the DB `platforms` column).

@@ -93,7 +93,6 @@ CREATE INDEX idx_resolver_definitions_claim ON resolver_definitions(canonical_cl
 CREATE TABLE resolver_state (
     market_id UUID PRIMARY KEY REFERENCES markets(id) ON DELETE CASCADE,
     last_poll_at TIMESTAMPTZ,
-    maturity_at TIMESTAMPTZ,
     outcome_draft VARCHAR(64),
     confidence_bps INTEGER,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

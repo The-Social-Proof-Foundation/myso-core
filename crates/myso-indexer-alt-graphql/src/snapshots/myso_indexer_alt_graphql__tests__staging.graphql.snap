@@ -5056,6 +5056,10 @@ type Platform implements Node {
 	"""
 	quorumVotes: Int
 	"""
+	Optional OAuth redirect URI for the platform.
+	"""
+	redirectUri: String
+	"""
 	Release date.
 	"""
 	releaseDate: String
@@ -5224,6 +5228,7 @@ type PlatformMembershipSummary {
 	proposalSubmissionCost: Int
 	quadraticBaseCost: Int
 	quorumVotes: Int
+	redirectUri: String
 	releaseDate: String
 	secondaryCategory: String
 	shutdownDate: String

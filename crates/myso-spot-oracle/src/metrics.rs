@@ -17,6 +17,13 @@ pub struct OracleMetrics {
     pub event_provider_sync_total: IntCounterVec,
     pub scheduled_events_active: IntGauge,
     pub event_match_total: IntCounterVec,
+    pub deadline_inference_total: IntCounterVec,
+    pub deadline_rejection_total: IntCounterVec,
+    pub claim_match_total: IntCounterVec,
+    pub knowledge_sync_total: IntCounterVec,
+    pub observation_ingest_total: IntCounterVec,
+    pub dedup_linked_total: IntCounter,
+    pub dedup_created_total: IntCounter,
 }
 
 impl OracleMetrics {
@@ -111,6 +118,75 @@ impl OracleMetrics {
             .register(Box::new(event_match_total.clone()))
             .expect("register event_match_total");
 
+        let deadline_inference_total = IntCounterVec::new(
+            Opts::new(
+                "deadline_inference_total",
+                "Context-aware deadline inferences by source",
+            ),
+            &["source"],
+        )
+        .expect("deadline_inference_total metric");
+        registry
+            .register(Box::new(deadline_inference_total.clone()))
+            .expect("register deadline_inference_total");
+
+        let deadline_rejection_total = IntCounterVec::new(
+            Opts::new(
+                "deadline_rejection_total",
+                "Review rejections from deadline validation",
+            ),
+            &["reason"],
+        )
+        .expect("deadline_rejection_total metric");
+        registry
+            .register(Box::new(deadline_rejection_total.clone()))
+            .expect("register deadline_rejection_total");
+
+        let claim_match_total = IntCounterVec::new(
+            Opts::new("claim_match_total", "Claim matcher outcomes by domain and tier"),
+            &["domain", "tier"],
+        )
+        .expect("claim_match_total metric");
+        registry
+            .register(Box::new(claim_match_total.clone()))
+            .expect("register claim_match_total");
+
+        let knowledge_sync_total = IntCounterVec::new(
+            Opts::new("knowledge_sync_total", "Knowledge provider sync by object type"),
+            &["provider", "object_type"],
+        )
+        .expect("knowledge_sync_total metric");
+        registry
+            .register(Box::new(knowledge_sync_total.clone()))
+            .expect("register knowledge_sync_total");
+
+        let observation_ingest_total = IntCounterVec::new(
+            Opts::new("observation_ingest_total", "Metric observations ingested"),
+            &["metric", "domain"],
+        )
+        .expect("observation_ingest_total metric");
+        registry
+            .register(Box::new(observation_ingest_total.clone()))
+            .expect("register observation_ingest_total");
+
+        let dedup_linked_total = IntCounter::new(
+            "dedup_linked_total",
+            "Posts linked to an existing market via dedup cascade",
+        )
+        .expect("dedup_linked_total metric");
+        registry
+            .register(Box::new(dedup_linked_total.clone()))
+            .expect("register dedup_linked_total");
+
+        let dedup_created_total = IntCounter::new(
+            "dedup_created_total",
+            "New markets created after dedup miss",
+        )
+        .expect("dedup_created_total metric");
+        registry
+            .register(Box::new(dedup_created_total.clone()))
+            .expect("register dedup_created_total");
+
         let uptime = myso_indexer_alt_metrics::uptime(env!("CARGO_PKG_VERSION"))
             .expect("uptime metric");
         registry.register(uptime).expect("register uptime");
@@ -127,6 +203,13 @@ impl OracleMetrics {
             event_provider_sync_total,
             scheduled_events_active,
             event_match_total,
+            deadline_inference_total,
+            deadline_rejection_total,
+            claim_match_total,
+            knowledge_sync_total,
+            observation_ingest_total,
+            dedup_linked_total,
+            dedup_created_total,
         }
     }
 }

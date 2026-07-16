@@ -8,3 +8,14 @@
   poll_interval_secs: 86400
   config:
     events_file: crates/myso-spot-oracle/config/seed_events.localnet.yaml
+
+- id: calendar-templates
+  provider_type: calendar_template
+  enabled: true
+  poll_interval_secs: 86400
+  config:
+    templates:
+      - us_presidential_election
+      - us_midterm_election
+      - fifa_world_cup
+    horizon_years: 6

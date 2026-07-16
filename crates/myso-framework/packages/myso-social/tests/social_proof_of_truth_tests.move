@@ -91,6 +91,8 @@ module social_contracts::social_proof_of_truth_tests {
                 false,
                 option::none(), option::none(), option::none(), option::none(), option::none(), option::none(), option::none(),
                 option::none(), option::none(),
+
+                option::none(),
                 &clock,
                 test_scenario::ctx(&mut scen)
             );

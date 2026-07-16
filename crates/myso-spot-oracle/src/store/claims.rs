@@ -124,6 +124,60 @@ pub async fn insert_spot_claim(
     Ok(row.0)
 }
 
+pub async fn find_market_by_object_id(
+    pool: &PgPool,
+    object_id: &str,
+) -> anyhow::Result<Option<SpotMarketRow>> {
+    let row = sqlx::query_as::<_, SpotMarketRow>(
+        r#"
+        SELECT id, claim_id, market_key_hash, spot_market_object_id, deadline, status
+        FROM spot_markets WHERE spot_market_object_id = $1
+        "#,
+    )
+    .bind(object_id)
+    .fetch_optional(pool)
+    .await?;
+    Ok(row)
+}
+
+pub async fn find_market_by_outcome_identity_hash(
+    pool: &PgPool,
+    outcome_identity_hash: &str,
+) -> anyhow::Result<Option<SpotMarketRow>> {
+    let row = sqlx::query_as::<_, SpotMarketRow>(
+        r#"
+        SELECT id, claim_id, market_key_hash, spot_market_object_id, deadline, status
+        FROM spot_markets WHERE outcome_identity_hash = $1
+        "#,
+    )
+    .bind(outcome_identity_hash)
+    .fetch_optional(pool)
+    .await?;
+    Ok(row)
+}
+
+pub async fn find_market_by_graph_refs(
+    pool: &PgPool,
+    event_ref: &str,
+    entity_ref: &str,
+    deadline_day: &str,
+) -> anyhow::Result<Option<SpotMarketRow>> {
+    let row = sqlx::query_as::<_, SpotMarketRow>(
+        r#"
+        SELECT id, claim_id, market_key_hash, spot_market_object_id, deadline, status
+        FROM spot_markets
+        WHERE event_ref = $1 AND entity_ref = $2 AND deadline_day = $3
+        LIMIT 1
+        "#,
+    )
+    .bind(event_ref)
+    .bind(entity_ref)
+    .bind(deadline_day)
+    .fetch_optional(pool)
+    .await?;
+    Ok(row)
+}
+
 pub async fn insert_spot_market(
     pool: &PgPool,
     claim_id: Uuid,
@@ -131,11 +185,20 @@ pub async fn insert_spot_market(
     deadline: Option<DateTime<Utc>>,
     betting_options: &serde_json::Value,
     resolver_definition_id: Option<Uuid>,
+    entity_ref: Option<&str>,
+    competition_ref: Option<&str>,
+    event_ref: Option<&str>,
+    metric_ref: Option<&str>,
+    outcome_identity_hash: Option<&str>,
+    deadline_day: Option<&str>,
 ) -> anyhow::Result<Uuid> {
     let row: (Uuid,) = sqlx::query_as(
         r#"
-        INSERT INTO spot_markets (claim_id, market_key_hash, deadline, betting_options, resolver_definition_id, status)
-        VALUES ($1, $2, $3, $4, $5, 'pending_create')
+        INSERT INTO spot_markets (
+            claim_id, market_key_hash, deadline, betting_options, resolver_definition_id, status,
+            entity_ref, competition_ref, event_ref, metric_ref, outcome_identity_hash, deadline_day
+        )
+        VALUES ($1, $2, $3, $4, $5, 'pending_create', $6, $7, $8, $9, $10, $11)
         ON CONFLICT (market_key_hash) DO UPDATE SET updated_at = NOW()
         RETURNING id
         "#,
@@ -145,6 +208,12 @@ pub async fn insert_spot_market(
     .bind(deadline)
     .bind(betting_options)
     .bind(resolver_definition_id)
+    .bind(entity_ref)
+    .bind(competition_ref)
+    .bind(event_ref)
+    .bind(metric_ref)
+    .bind(outcome_identity_hash)
+    .bind(deadline_day)
     .fetch_one(pool)
     .await?;
     Ok(row.0)

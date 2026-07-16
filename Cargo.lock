@@ -13666,6 +13666,7 @@ dependencies = [
 name = "myso-spot-oracle-schema"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "sqlx",
 ]
 

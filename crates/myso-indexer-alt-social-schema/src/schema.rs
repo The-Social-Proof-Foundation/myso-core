@@ -769,6 +769,7 @@ diesel::table! {
         moderators_group_id -> Nullable<Text>,
         terms_of_service -> Nullable<Text>,
         privacy_policy -> Nullable<Text>,
+        redirect_uri -> Nullable<Text>,
         #[sql_name = "platforms"]
         platform_names -> Nullable<Jsonb>,
         links -> Nullable<Jsonb>,

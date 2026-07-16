@@ -98,6 +98,8 @@ fun setup(scenario: &mut ts::Scenario) {
             option::none(),
             option::none(),
             option::none(),
+
+            option::none(),
             &clock,
             ts::ctx(scenario),
         );

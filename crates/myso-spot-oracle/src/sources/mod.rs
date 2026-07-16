@@ -146,6 +146,7 @@ pub fn build_registry_from_sources(
         "github_releases",
         "http_official",
         "rss_event",
+        "wikipedia",
     ] {
         if let Some(src) = default.get(id) {
             if reg.get(id).is_none() {

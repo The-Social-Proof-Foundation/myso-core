@@ -26,6 +26,8 @@ pub struct PlatformRow {
     pub is_approved: bool,
     pub primary_category: String,
     pub secondary_category: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub redirect_uri: Option<String>,
     pub created_at: chrono::NaiveDateTime,
     pub updated_at: chrono::NaiveDateTime,
     pub deleted_at: Option<chrono::NaiveDateTime>,
@@ -65,6 +67,7 @@ impl From<myso_indexer_alt_social_schema::models::Platform> for PlatformRow {
             is_approved: p.is_approved,
             primary_category: p.primary_category,
             secondary_category: p.secondary_category,
+            redirect_uri: p.redirect_uri,
             created_at: p.created_at,
             updated_at: p.updated_at,
             deleted_at: p.deleted_at,

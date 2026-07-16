@@ -9502,6 +9502,9 @@ cover_photo
 media_previews
 	public fun
 	0x50c1::platform
+redirect_uri
+	public fun
+	0x50c1::platform
 developer
 	public fun
 	0x50c1::platform

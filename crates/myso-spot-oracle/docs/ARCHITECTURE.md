@@ -31,11 +31,32 @@ Off-chain canonicalization splits `semantic_claim_hash` (claim identity) from `m
 
 ## Resolution timing
 
-Every accepted claim must include an extractable UTC deadline. Review rejects claims without one
-(`missing_deadline`), except:
+Every accepted claim must include an extractable UTC deadline. Review uses a **two-phase gate**:
+
+1. **Provability** (`rules::evaluate_provably`) — category, subject/predicate, options, trusted-source availability.
+2. **Context-Aware Deadline Resolver (CADR)** (`context_deadline::resolve_context_deadline` + `rules::resolve_and_validate_deadline`) — infers deadlines only after provability passes.
+
+CADR tiers (in order):
+
+- Explicit text parsing (relative dates, ISO dates, year + election phrases, quarters)
+- Calendar templates (`calendar_template` event provider — U.S. presidential/midterm election days)
+- `EventRegistry` scored matching (keywords, year tokens, entity aliases, fuzzy election typos)
+- Price ongoing 30-minute spacing (price claims only)
+
+Rejected when no deadline can be inferred (`missing_deadline`), except:
 
 - **Scheduled events** — discovered by pluggable **Event Providers** (`events/`) into Postgres and matched at review time from the in-memory `EventRegistry` (player names, tournament keywords, election phrases infer end dates).
 - **Ongoing price claims** — default to the next 30-minute boundary; identical semantic claims in the same bucket share one market.
+
+Category-aware deadline horizons (configurable via env):
+
+| Context | Default max horizon |
+|---------|---------------------|
+| Default | 730 days |
+| Election events | 1,460 days (4 years) |
+| Sports mega-events | 1,095 days (3 years) |
+
+`deadline_provenance` is stored in `resolver_hints` on the canonical claim for audit.
 
 On market creation the oracle stores immutable `SpotMarket.resolution_at_ms`
 on-chain and schedules:
@@ -68,6 +89,7 @@ Adapters fetch HTTP directly (`sources/http_fetch.rs` + per-adapter normalize):
 - `coingecko`, `coinbase`, `chainlink` (price)
 - `github_releases` (release compare)
 - `rss_event`, `http_official` (events / generic HTTP)
+- `wikipedia` (factual/historical REST summary)
 - `stub` (off-chain / unit tests when `SPOT_ORACLE_LIVE_SOURCES=false`)
 
 Resolution uses **quorum** across evidence: unanimous agreement → high confidence; conflict →
@@ -83,6 +105,7 @@ calls each enabled provider's `discover()` implementation, upserts normalized ro
 v1 provider types:
 
 - `yaml_seed` — bootstrap seed events from YAML (localnet/dev)
+- `calendar_template` — computable recurring public events (U.S. presidential/midterm elections)
 - `ical_feed` — parse ICS/VCALENDAR feeds when `SPOT_ORACLE_LIVE_SOURCES=true`
 - `stub` — deterministic test events
 
@@ -110,15 +133,26 @@ Job types: `ReviewPost`, `ResolveMarket`, `SubmitChainTx`
 
 ## Scripts
 
+Two-terminal local E2E (runnable scripts never start, stop, wipe, or migrate the oracle stack):
+
+```bash
+# Terminal 1 — postgres (:5435) + oracle workers (:8097); only place that may wipe DB
+./scripts/run-spot-oracle.sh
+
+# Terminal 2 — PTBs, session refresh, poll shared postgres / GraphQL
+./scripts/spot-oracle-runnable.sh
+```
+
 | Script | Purpose |
 |--------|---------|
-| `./scripts/run-spot-oracle.sh` | Local boot (postgres + cargo); `--refresh-session` from GraphQL |
-| `ASSUME_YES=1 ./scripts/spot-oracle-runnable.sh --run-all` | Off-chain review → evidence → resolved (**no Discovery**) |
-| `./scripts/spot-oracle-runnable.sh --run-all-onchain` | Checkpoint ingest + create/resolve PTBs (funded oracle key) |
+| `./scripts/run-spot-oracle.sh` | Start postgres + oracle service; optional DB wipe on launch; `--refresh-session` from GraphQL |
+| `./scripts/spot-oracle-runnable.sh` | E2E menu: walkthrough, create post, verify analysis (requires oracle running in terminal 1) |
+| `ASSUME_YES=1 ./scripts/spot-oracle-runnable.sh --run-all-onchain` | On-chain pipeline: post → review → resolve (no bet) |
 | `./scripts/spot-oracle-runnable.sh --run-walkthrough` | Full bet → resolve → payout; optional `ENABLE_INSURANCE_E2E=1` |
-| `./scripts/spot-oracle-post-runnable.sh --run-all` | Create `enable_spot=true` post via social GraphQL |
+| `./scripts/spot-oracle-runnable.sh --create-post` | Create always-on SPoT post on-chain |
 | `./scripts/spot-oracle-runnable.sh --run-router-only` | Router rejects unlinked post bets (Move) |
 | `./scripts/spot-oracle-runnable.sh --run-ownership-transfer` | Settlement creator gate on claim (Move) |
+| `./scripts/spot-insurance-runnable.sh --run-all` | Insurance walkthrough (also requires `./scripts/run-spot-oracle.sh`) |
 
 ## Session env
 
@@ -127,17 +161,23 @@ Job types: `ReviewPost`, `ResolveMarket`, `SubmitChainTx`
 | `network.config/spot-oracle/spot-oracle-session.env` | `run-spot-oracle.sh` / `spot-oracle-runnable.sh --refresh-session` |
 
 Key SPoT vars: `SPOT_ORACLE_STREAMING_URL`, `SPOT_ORACLE_INGEST_MODE` (default `checkpoint`),
-`SPOT_ORACLE_SOURCES_CONFIG`, `SPOT_ORACLE_LIVE_SOURCES`.
+`SPOT_ORACLE_SOURCES_CONFIG`, `SPOT_ORACLE_EVENT_PROVIDERS_CONFIG`, `SPOT_ORACLE_LIVE_SOURCES`,
+`SPOT_ORACLE_MAX_ELECTION_HORIZON_SECS`, `SPOT_ORACLE_MAX_SPORTS_HORIZON_SECS`.
 
 ## Local stack (compose, not merged)
+
+Prefer `./scripts/run-spot-oracle.sh` in one terminal; use `spot-oracle-runnable.sh` or
+`spot-insurance-runnable.sh` in a second terminal for E2E flows.
+
+Manual compose (postgres only):
 
 ```bash
 # SPoT DB (:5435) — Discovery not required
 docker compose -f crates/myso-spot-oracle/docker-compose.yml up -d spot-oracle-postgres
-
-# Social-server (:9126) + GraphQL (:9125) + fullnode gRPC (:9000) — localnet stack
-# Optional: myso start --with-social-indexer --with-spot
 ```
+
+Social-server (:9126) + GraphQL (:9125) + fullnode gRPC (:9000) — localnet stack.
+Optional: `myso start --with-social-indexer --with-spot`.
 
 Secrets: align `SPOT_ORACLE_SYNC_SECRET` ↔ `SPOT_ORACLE_SOCIAL_SYNC_SECRET`.
 On-chain resolve also needs `SPOT_ORACLE_PLATFORM_OBJECT_ID` +

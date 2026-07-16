@@ -78,6 +78,8 @@ module social_contracts::spot_governance_tests {
                 false,
                 option::none(), option::none(), option::none(), option::none(), option::none(), option::none(), option::none(),
                 option::none(), option::none(),
+
+                option::none(),
                 &clock,
                 test_scenario::ctx(&mut scen),
             );

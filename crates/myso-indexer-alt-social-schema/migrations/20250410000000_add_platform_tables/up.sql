@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS platforms (
     moderators_group_id TEXT,         -- derived PermissionedGroup<PlatformPackage> object id
     terms_of_service TEXT,
     privacy_policy TEXT,
+    redirect_uri TEXT,
     platforms JSONB,                  -- Array of platform names (Twitter, Instagram, etc.)
     links JSONB,                      -- Array of platform URLs
     status SMALLINT NOT NULL,         -- Platform status (0=dev, 1=alpha, 2=beta, 3=live, etc.)

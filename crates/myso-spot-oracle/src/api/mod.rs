@@ -1,7 +1,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use axum::extract::{Path, Query, State};
 use axum::http::HeaderMap;
@@ -14,6 +14,7 @@ use uuid::Uuid;
 
 use crate::config::OracleArgs;
 use crate::events::EventRegistry;
+use crate::knowledge::KnowledgeGraph;
 use crate::metrics::OracleMetrics;
 use crate::sources::ResolverRegistry;
 use crate::store::OracleStore;
@@ -25,6 +26,7 @@ pub struct AppState {
     pub metrics: Arc<OracleMetrics>,
     pub sources: Arc<ResolverRegistry>,
     pub event_registry: Arc<EventRegistry>,
+    pub knowledge_graph: Arc<RwLock<KnowledgeGraph>>,
     pub cancel: CancellationToken,
 }
 

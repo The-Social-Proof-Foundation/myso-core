@@ -99,6 +99,8 @@ module social_contracts::insurance_tests {
                 option::none(), option::none(), option::none(), option::none(),
                 option::none(), option::none(), option::none(),
                 option::none(), option::none(),
+
+                option::none(),
                 &clock,
                 test_scenario::ctx(&mut scen)
             );

@@ -92,3 +92,118 @@
   config:
     api_base_url: https://api.coinbase.com/v2
     poll_path: /prices/ETH-USD/spot
+
+- id: wikipedia-en
+  adapter_type: wikipedia
+  domain: factual
+  trust_score: 0.92
+  enabled: true
+  config: {}
+
+- id: ap-news-rss
+  adapter_type: rss
+  domain: factual
+  trust_score: 0.93
+  enabled: true
+  config:
+    feed_urls:
+      - https://apnews.com/hub/ap-top-news?output=rss
+
+- id: reuters-world-rss
+  adapter_type: rss
+  domain: factual
+  trust_score: 0.92
+  enabled: true
+  config:
+    feed_urls:
+      - https://www.reutersagency.com/feed/
+
+- id: bbc-news-rss
+  adapter_type: rss
+  domain: factual
+  trust_score: 0.90
+  enabled: true
+  config:
+    feed_urls:
+      - https://feeds.bbci.co.uk/news/world/rss.xml
+
+- id: npr-politics-rss
+  adapter_type: rss
+  domain: factual
+  trust_score: 0.88
+  enabled: true
+  config:
+    feed_urls:
+      - https://feeds.npr.org/1014/rss.xml
+
+- id: politico-rss
+  adapter_type: rss
+  domain: factual
+  trust_score: 0.87
+  enabled: true
+  config:
+    feed_urls:
+      - https://rss.politico.com/politics-news.xml
+
+- id: guardian-us-rss
+  adapter_type: rss
+  domain: factual
+  trust_score: 0.86
+  enabled: true
+  config:
+    feed_urls:
+      - https://www.theguardian.com/us-news/rss
+
+- id: nyt-politics-rss
+  adapter_type: rss
+  domain: factual
+  trust_score: 0.88
+  enabled: true
+  config:
+    feed_urls:
+      - https://rss.nytimes.com/services/xml/rss/nyt/Politics.xml
+
+- id: espn-rss
+  adapter_type: rss
+  domain: factual
+  trust_score: 0.87
+  enabled: true
+  config:
+    feed_urls:
+      - https://www.espn.com/espn/rss/news
+
+- id: whitehouse-briefings-rss
+  adapter_type: rss
+  domain: factual
+  trust_score: 0.95
+  enabled: true
+  config:
+    feed_urls:
+      - https://www.whitehouse.gov/feed/
+
+- id: congress-legislation-rss
+  adapter_type: rss
+  domain: factual
+  trust_score: 0.94
+  enabled: true
+  config:
+    feed_urls:
+      - https://www.congress.gov/rss/house-legislation.xml
+
+- id: olympics-news-rss
+  adapter_type: rss
+  domain: factual
+  trust_score: 0.90
+  enabled: true
+  config:
+    feed_urls:
+      - https://www.olympics.com/en/news/rss
+
+- id: fifa-news-rss
+  adapter_type: rss
+  domain: factual
+  trust_score: 0.89
+  enabled: true
+  config:
+    feed_urls:
+      - https://www.fifa.com/fifaplus/en/articles/rss.xml

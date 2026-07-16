@@ -7,6 +7,7 @@
 # prepare insurance vault → buy coverage → resolve → claim insurance → claim payout.
 #
 # Prerequisites:
+#   - ./scripts/run-spot-oracle.sh running in another terminal (postgres + oracle workers)
 #   - ./scripts/bootstrap.sh completed; social-proof2 owns SpotOracleAdminCap /
 #     InsuranceAdminCap (or the funder wallet used below)
 #   - Local indexer GraphQL at http://127.0.0.1:9125/graphql
@@ -17,7 +18,8 @@
 # Session: network.config/spot-insurance/spot-insurance-session.env
 #
 # Usage:
-#   ./scripts/spot-insurance-runnable.sh --refresh-session
+#   ./scripts/run-spot-oracle.sh                              # terminal 1
+#   ./scripts/spot-insurance-runnable.sh --refresh-session      # terminal 2
 #   ASSUME_YES=1 ./scripts/spot-insurance-runnable.sh --run-all
 #   ./scripts/spot-insurance-runnable.sh   # interactive menu (prompts for claim)
 
@@ -33,12 +35,8 @@ source "${SCRIPT_DIR}/lib/spot-oracle-common.sh"
 # shellcheck source=lib/runnable-summary-common.sh
 source "${SCRIPT_DIR}/lib/runnable-summary-common.sh"
 
-COMPOSE_FILE="$REPO_ROOT/crates/myso-spot-oracle/docker-compose.yml"
-KEEP_STACK="${KEEP_STACK:-0}"
-SVC_PID=""
 RUN_MODE=''
 ASSUME_YES="${ASSUME_YES:-0}"
-ONCHAIN_MODE=1
 
 BETTOR_ADDRESS=''
 BET_OPTION_ID=''
@@ -75,74 +73,7 @@ usage() {
 }
 
 psql_exec() {
-    docker compose -f "$COMPOSE_FILE" exec -T spot-oracle-postgres \
-        psql -U spot -d spot_oracle -tAc "$1"
-}
-
-cleanup() {
-    if [[ -n "$SVC_PID" ]]; then
-        kill "$SVC_PID" 2>/dev/null || true
-        wait "$SVC_PID" 2>/dev/null || true
-    fi
-    if [[ "$KEEP_STACK" != "1" ]]; then
-        docker compose -f "$COMPOSE_FILE" down -v >/dev/null 2>&1 || true
-    fi
-}
-
-start_postgres() {
-    log_step "Starting spot-oracle postgres (fresh volume for insurance E2E)"
-    if [[ "${KEEP_STACK:-0}" != "1" ]]; then
-        docker compose -f "$COMPOSE_FILE" down -v >/dev/null 2>&1 || true
-    fi
-    docker compose -f "$COMPOSE_FILE" up -d spot-oracle-postgres
-    local i
-    for i in $(seq 1 60); do
-        if docker compose -f "$COMPOSE_FILE" exec -T spot-oracle-postgres pg_isready -U spot -d spot_oracle >/dev/null 2>&1; then
-            return 0
-        fi
-        sleep 1
-    done
-    echo "spot-oracle postgres did not become ready" >&2
-    return 1
-}
-
-wait_for_oracle_health() {
-    local listen="$SPOT_ORACLE_LISTEN" i
-    for i in $(seq 1 120); do
-        if curl -sf "http://${listen}/health" >/dev/null 2>&1; then
-            return 0
-        fi
-        if [[ -n "$SVC_PID" ]] && ! kill -0 "$SVC_PID" 2>/dev/null; then
-            echo "spot-oracle exited before becoming healthy" >&2
-            return 1
-        fi
-        sleep 1
-    done
-    echo "spot-oracle did not become healthy" >&2
-    return 1
-}
-
-run_migrations_boot() {
-    log_step "Running DB migrations (spot-oracle boot, workers disabled)"
-    export_spot_oracle_env
-    SPOT_ORACLE_ENABLED=false cargo run -p myso-spot-oracle &
-    SVC_PID=$!
-    wait_for_oracle_health || return 1
-    kill "$SVC_PID" 2>/dev/null || true
-    wait "$SVC_PID" 2>/dev/null || true
-    SVC_PID=""
-}
-
-boot_onchain_oracle_workers() {
-    log_step "Starting spot-oracle workers (on-chain)"
-    export_spot_oracle_env
-    # Local E2E: short lead + fast polls so review/market/resolve fit a 30s stall budget.
-    SPOT_ORACLE_MIN_DEADLINE_LEAD_SECS="${SPOT_ORACLE_MIN_DEADLINE_LEAD_SECS:-5}" \
-    SPOT_ORACLE_REVIEW_POLL_INTERVAL_SECS="${SPOT_ORACLE_REVIEW_POLL_INTERVAL_SECS:-1}" \
-    SPOT_ORACLE_SCHEDULER_POLL_INTERVAL_SECS="${SPOT_ORACLE_SCHEDULER_POLL_INTERVAL_SECS:-1}" \
-    cargo run -p myso-spot-oracle &
-    SVC_PID=$!
-    wait_for_oracle_health || return 1
+    spot_oracle_psql_exec "$1"
 }
 
 wait_for_post_ingest() {
@@ -189,6 +120,10 @@ wait_for_accepted_review() {
             reason="${reason// /}"
             if [[ "$reason" == "missing_deadline" ]]; then
                 echo "FAIL: claim rejected — add when the claim should be evaluated (e.g. 'in 40 seconds' or 'by the end of tomorrow')." >&2
+                return 1
+            fi
+            if [[ "$reason" == "missing_threshold" ]]; then
+                echo "FAIL: claim rejected — include a measurable threshold and deadline (e.g. 'Will BTC trade above \$100000 by December 31, 2027?')." >&2
                 return 1
             fi
             if [[ "$reason" == "deadline_in_past" ]]; then
@@ -278,9 +213,6 @@ refresh_spot_insurance_session_from_graphql() {
 }
 
 run_insurance_walkthrough() {
-    ONCHAIN_MODE=1
-    trap cleanup EXIT
-
     spot_prompt_walkthrough_claim || return 1
     local walkthrough_claim="$SPOT_CLAIM_TEXT"
     load_spot_oracle_session
@@ -301,14 +233,12 @@ run_insurance_walkthrough() {
     spot_insurance_refresh_ids || return 1
     save_insurance_session
 
-    start_postgres || return 1
-    run_migrations_boot || return 1
+    require_external_oracle_stack || return 1
     walkthrough_ensure_platform || return 1
-    boot_onchain_oracle_workers || return 1
 
-    log_step "Creating enable_spot=true post"
+    log_step "Creating always-on SPoT post"
     SPOT_CLAIM_TEXT="$SPOT_CLAIM_TEXT" ASSUME_YES=1 \
-        "$SCRIPT_DIR/spot-oracle-post-runnable.sh" --run-all || return 1
+        "$SCRIPT_DIR/spot-oracle-runnable.sh" --create-post || return 1
     # Post runnable persists to spot-oracle-session.env (its own SOCIAL_SESSION_SAVE_PATH).
     local spot_session="$REPO_ROOT/network.config/spot-oracle/spot-oracle-session.env"
     [[ -f "$spot_session" ]] || {
@@ -326,7 +256,7 @@ run_insurance_walkthrough() {
         printf '%s' "${CREATOR_ADDRESS:-}"
     )"
     [[ -n "$POST_ID" ]] || {
-        echo "FAIL: POST_ID missing after spot-oracle-post-runnable" >&2
+        echo "FAIL: POST_ID missing after spot-oracle-runnable --create-post" >&2
         return 1
     }
     POST_ID="$(normalize_hex_id "$POST_ID")"
@@ -400,7 +330,7 @@ show_menu() {
     echo ""
     echo "=== SPoT Insurance E2E Menu ==="
     echo " 0) Refresh session from GraphQL"
-    echo " 1) Run insurance walkthrough (--run-all)"
+    echo " 1) Run insurance walkthrough (requires ./scripts/run-spot-oracle.sh in another terminal)"
     echo " h) Help"
     echo " q) Quit"
     read -r -p "Choice: " choice

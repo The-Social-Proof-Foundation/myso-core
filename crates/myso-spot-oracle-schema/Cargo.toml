@@ -8,3 +8,4 @@ edition = "2021"
 
 [dependencies]
 sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "json"] }
+anyhow.workspace = true

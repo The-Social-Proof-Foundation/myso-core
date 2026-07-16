@@ -16,6 +16,7 @@ pub mod evidence;
 pub mod events;
 pub mod ingest;
 pub mod jobs;
+pub mod knowledge;
 pub mod metrics;
 pub mod resolver;
 pub mod review;
