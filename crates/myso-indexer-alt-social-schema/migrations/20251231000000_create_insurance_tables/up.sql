@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS insurance_config (
     max_duration_ms BIGINT NOT NULL DEFAULT 0,
     fee_bps BIGINT NOT NULL DEFAULT 0,
     treasury TEXT NOT NULL,
-    version BIGINT NOT NULL DEFAULT 1,
+    version BIGINT NOT NULL DEFAULT 0,
     timestamp_ms BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     transaction_id TEXT NOT NULL
@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS insurance_vaults (
     utilization_multiplier_bps BIGINT NOT NULL DEFAULT 0,
     max_exposure_per_market BIGINT NOT NULL DEFAULT 0,
     max_exposure_per_user BIGINT NOT NULL DEFAULT 0,
-    version BIGINT NOT NULL DEFAULT 1,
+    version BIGINT NOT NULL DEFAULT 0,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     transaction_id TEXT NOT NULL
@@ -103,6 +103,7 @@ CREATE TABLE IF NOT EXISTS insurance_policies (
     expiry_time_ms BIGINT NOT NULL,
     vault_id TEXT NOT NULL,
     status SMALLINT NOT NULL DEFAULT 1, -- 1=ACTIVE, 2=CANCELLED, 3=CLAIMED, 4=EXPIRED
+    contract_version BIGINT NOT NULL DEFAULT 0,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     transaction_id TEXT NOT NULL

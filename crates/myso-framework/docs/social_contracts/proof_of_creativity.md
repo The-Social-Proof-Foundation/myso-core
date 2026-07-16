@@ -16,6 +16,9 @@ title: Module `social_contracts::poc_username_beneficiary`
 -  [Struct `UsernameBeneficiaryConflictEvent`](#social_contracts_poc_username_beneficiary_UsernameBeneficiaryConflictEvent)
 -  [Struct `CreatorIdentityWalletLinkedEvent`](#social_contracts_poc_username_beneficiary_CreatorIdentityWalletLinkedEvent)
 -  [Constants](#@Constants_0)
+-  [Function `assert_directory_version`](#social_contracts_poc_username_beneficiary_assert_directory_version)
+-  [Function `assert_shard_version`](#social_contracts_poc_username_beneficiary_assert_shard_version)
+-  [Function `assert_beneficiary_version`](#social_contracts_poc_username_beneficiary_assert_beneficiary_version)
 -  [Function `create_beneficiary_admin_cap`](#social_contracts_poc_username_beneficiary_create_beneficiary_admin_cap)
 -  [Function `bootstrap_init_directory`](#social_contracts_poc_username_beneficiary_bootstrap_init_directory)
 -  [Function `is_username_beneficiary_active`](#social_contracts_poc_username_beneficiary_is_username_beneficiary_active)
@@ -31,6 +34,9 @@ title: Module `social_contracts::poc_username_beneficiary`
 -  [Function `claim_username_beneficiary`](#social_contracts_poc_username_beneficiary_claim_username_beneficiary)
 -  [Function `claim_username_beneficiary_vault_balance`](#social_contracts_poc_username_beneficiary_claim_username_beneficiary_vault_balance)
 -  [Function `end_username_beneficiary`](#social_contracts_poc_username_beneficiary_end_username_beneficiary)
+-  [Function `migrate_poc_username_beneficiary_directory`](#social_contracts_poc_username_beneficiary_migrate_poc_username_beneficiary_directory)
+-  [Function `migrate_poc_username_beneficiary_shard`](#social_contracts_poc_username_beneficiary_migrate_poc_username_beneficiary_shard)
+-  [Function `migrate_poc_username_beneficiary`](#social_contracts_poc_username_beneficiary_migrate_poc_username_beneficiary)
 
 
 <pre><code><b>use</b> <a href="../myso/accumulator.md#myso_accumulator">myso::accumulator</a>;
@@ -781,6 +787,87 @@ Admin capability for username beneficiary provisioning lifecycle.
 
 
 
+<a name="social_contracts_poc_username_beneficiary_EWrongVersion"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_EWrongVersion">EWrongVersion</a>: u64 = 11;
+</code></pre>
+
+
+
+<a name="social_contracts_poc_username_beneficiary_assert_directory_version"></a>
+
+## Function `assert_directory_version`
+
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_assert_directory_version">assert_directory_version</a>(directory: &<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiaryDirectory">social_contracts::poc_username_beneficiary::PoCUsernameBeneficiaryDirectory</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_assert_directory_version">assert_directory_version</a>(directory: &<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiaryDirectory">PoCUsernameBeneficiaryDirectory</a>) {
+    <b>assert</b>!(directory.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_EWrongVersion">EWrongVersion</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_poc_username_beneficiary_assert_shard_version"></a>
+
+## Function `assert_shard_version`
+
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_assert_shard_version">assert_shard_version</a>(shard: &<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiaryShard">social_contracts::poc_username_beneficiary::PoCUsernameBeneficiaryShard</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_assert_shard_version">assert_shard_version</a>(shard: &<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiaryShard">PoCUsernameBeneficiaryShard</a>) {
+    <b>assert</b>!(shard.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_EWrongVersion">EWrongVersion</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_poc_username_beneficiary_assert_beneficiary_version"></a>
+
+## Function `assert_beneficiary_version`
+
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_assert_beneficiary_version">assert_beneficiary_version</a>(beneficiary: &<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiary">social_contracts::poc_username_beneficiary::PoCUsernameBeneficiary</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_assert_beneficiary_version">assert_beneficiary_version</a>(beneficiary: &<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiary">PoCUsernameBeneficiary</a>) {
+    <b>assert</b>!(beneficiary.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_EWrongVersion">EWrongVersion</a>);
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_poc_username_beneficiary_create_beneficiary_admin_cap"></a>
 
 ## Function `create_beneficiary_admin_cap`
@@ -1110,6 +1197,9 @@ Admin capability for username beneficiary provisioning lifecycle.
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
+    <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_assert_directory_version">assert_directory_version</a>(directory);
+    <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_assert_shard_version">assert_shard_version</a>(shard);
+    <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_assert_vault_directory_version">poc_vault::assert_vault_directory_version</a>(vault_directory);
     <b>let</b> username = <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_canonical_username">canonical_username</a>(username);
     <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_assert_shard_matches_username">assert_shard_matches_username</a>(shard, &username);
     <b>let</b> username_len = vector::length(string::as_bytes(&username));
@@ -1219,6 +1309,9 @@ Admin capability for username beneficiary provisioning lifecycle.
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
+    <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_assert_directory_version">assert_directory_version</a>(directory);
+    <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_assert_shard_version">assert_shard_version</a>(shard);
+    <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_assert_beneficiary_version">assert_beneficiary_version</a>(beneficiary);
     <b>assert</b>!(beneficiary.status == <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_STATUS_ACTIVE">STATUS_ACTIVE</a>, <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_EInvalidStatus">EInvalidStatus</a>);
     <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_assert_shard_matches_username">assert_shard_matches_username</a>(shard, &beneficiary.username);
     <b>let</b> attested = <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_canonical_x_handle">canonical_x_handle</a>(attested_x_handle);
@@ -1305,6 +1398,9 @@ Admin capability for username beneficiary provisioning lifecycle.
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
+    <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_assert_directory_version">assert_directory_version</a>(directory);
+    <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_assert_beneficiary_version">assert_beneficiary_version</a>(beneficiary);
+    <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_assert_vault_version">poc_vault::assert_vault_version</a>(vault);
     <b>assert</b>!(beneficiary.status == <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_STATUS_CLAIMED">STATUS_CLAIMED</a>, <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_EInvalidStatus">EInvalidStatus</a>);
     <b>assert</b>!(
         table::contains(&directory.wallet_by_identity, beneficiary.creator_identity),
@@ -1373,6 +1469,10 @@ Admin capability for username beneficiary provisioning lifecycle.
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
+    <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_assert_directory_version">assert_directory_version</a>(directory);
+    <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_assert_shard_version">assert_shard_version</a>(shard);
+    <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_assert_beneficiary_version">assert_beneficiary_version</a>(beneficiary);
+    <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_assert_vault_version">poc_vault::assert_vault_version</a>(vault);
     <b>assert</b>!(beneficiary.status == <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_STATUS_ACTIVE">STATUS_ACTIVE</a>, <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_EInvalidStatus">EInvalidStatus</a>);
     <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_assert_shard_matches_username">assert_shard_matches_username</a>(shard, &beneficiary.username);
     <b>let</b> ended_by = tx_context::sender(ctx);
@@ -1403,6 +1503,117 @@ Admin capability for username beneficiary provisioning lifecycle.
         swept_mys_amount,
         ended_at: now,
     });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_poc_username_beneficiary_migrate_poc_username_beneficiary_directory"></a>
+
+## Function `migrate_poc_username_beneficiary_directory`
+
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_migrate_poc_username_beneficiary_directory">migrate_poc_username_beneficiary_directory</a>(directory: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiaryDirectory">social_contracts::poc_username_beneficiary::PoCUsernameBeneficiaryDirectory</a>, _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_migrate_poc_username_beneficiary_directory">migrate_poc_username_beneficiary_directory</a>(
+    directory: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiaryDirectory">PoCUsernameBeneficiaryDirectory</a>,
+    _: &UpgradeAdminCap,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
+    <b>assert</b>!(directory.version &lt; current_version, <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_EWrongVersion">EWrongVersion</a>);
+    <b>let</b> old_version = directory.version;
+    directory.version = current_version;
+    <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
+        object::id(directory),
+        string::utf8(b"<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiaryDirectory">PoCUsernameBeneficiaryDirectory</a>"),
+        old_version,
+        tx_context::sender(ctx)
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_poc_username_beneficiary_migrate_poc_username_beneficiary_shard"></a>
+
+## Function `migrate_poc_username_beneficiary_shard`
+
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_migrate_poc_username_beneficiary_shard">migrate_poc_username_beneficiary_shard</a>(shard: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiaryShard">social_contracts::poc_username_beneficiary::PoCUsernameBeneficiaryShard</a>, _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_migrate_poc_username_beneficiary_shard">migrate_poc_username_beneficiary_shard</a>(
+    shard: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiaryShard">PoCUsernameBeneficiaryShard</a>,
+    _: &UpgradeAdminCap,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
+    <b>assert</b>!(shard.version &lt; current_version, <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_EWrongVersion">EWrongVersion</a>);
+    <b>let</b> old_version = shard.version;
+    shard.version = current_version;
+    <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
+        object::id(shard),
+        string::utf8(b"<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiaryShard">PoCUsernameBeneficiaryShard</a>"),
+        old_version,
+        tx_context::sender(ctx)
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_poc_username_beneficiary_migrate_poc_username_beneficiary"></a>
+
+## Function `migrate_poc_username_beneficiary`
+
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_migrate_poc_username_beneficiary">migrate_poc_username_beneficiary</a>(beneficiary: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiary">social_contracts::poc_username_beneficiary::PoCUsernameBeneficiary</a>, _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_migrate_poc_username_beneficiary">migrate_poc_username_beneficiary</a>(
+    beneficiary: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiary">PoCUsernameBeneficiary</a>,
+    _: &UpgradeAdminCap,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
+    <b>assert</b>!(beneficiary.version &lt; current_version, <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_EWrongVersion">EWrongVersion</a>);
+    <b>let</b> old_version = beneficiary.version;
+    beneficiary.version = current_version;
+    <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
+        object::id(beneficiary),
+        string::utf8(b"<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiary">PoCUsernameBeneficiary</a>"),
+        old_version,
+        tx_context::sender(ctx)
+    );
 }
 </code></pre>
 

@@ -38,31 +38,39 @@ pub fn apply_transition(
     let next = match (current, event) {
         (MarketStatus::PostCreated, LifecycleEvent::ReviewEnqueued) => MarketStatus::PendingReview,
         (MarketStatus::PendingReview, LifecycleEvent::ReviewRejected) => MarketStatus::Rejected,
-        (MarketStatus::PendingReview, LifecycleEvent::ReviewAccepted) => MarketStatus::PendingCreate,
+        (MarketStatus::PendingReview, LifecycleEvent::ReviewAccepted) => {
+            MarketStatus::PendingCreate
+        }
         (MarketStatus::PendingCreate, LifecycleEvent::CreateTxConfirmed) => MarketStatus::Waiting,
-        (MarketStatus::Waiting | MarketStatus::Resolving, LifecycleEvent::ResolveAttemptStarted) => {
-            MarketStatus::Resolving
-        }
-        (MarketStatus::Resolving, LifecycleEvent::ResolveTxConfirmed { high_confidence: true }) => {
-            MarketStatus::Resolved
-        }
-        (MarketStatus::Resolving, LifecycleEvent::ResolveTxConfirmed { high_confidence: false }) => {
-            MarketStatus::DaoRequired
-        }
+        (
+            MarketStatus::Waiting | MarketStatus::Resolving,
+            LifecycleEvent::ResolveAttemptStarted,
+        ) => MarketStatus::Resolving,
+        (
+            MarketStatus::Resolving,
+            LifecycleEvent::ResolveTxConfirmed {
+                high_confidence: true,
+            },
+        ) => MarketStatus::Resolved,
+        (
+            MarketStatus::Resolving,
+            LifecycleEvent::ResolveTxConfirmed {
+                high_confidence: false,
+            },
+        ) => MarketStatus::DaoRequired,
         (
             MarketStatus::Waiting | MarketStatus::Resolving | MarketStatus::DaoRequired,
             LifecycleEvent::RefundTxConfirmed,
         ) => MarketStatus::Refunded,
         (_, LifecycleEvent::Failed { .. }) => MarketStatus::Failed,
         (terminal, _) if terminal.is_terminal() => {
-            anyhow::bail!("cannot transition from terminal status {}", terminal.as_str())
+            anyhow::bail!(
+                "cannot transition from terminal status {}",
+                terminal.as_str()
+            )
         }
         (from, event) => {
-            anyhow::bail!(
-                "illegal transition from {} via {:?}",
-                from.as_str(),
-                event
-            )
+            anyhow::bail!("illegal transition from {} via {:?}", from.as_str(), event)
         }
     };
     Ok(next)
@@ -79,10 +87,12 @@ pub fn default_context_for(event: &LifecycleEvent) -> TransitionContext {
         LifecycleEvent::ReviewAccepted => "review_accepted",
         LifecycleEvent::CreateTxConfirmed => "create_tx_confirmed",
         LifecycleEvent::ResolveAttemptStarted => "resolve_attempt_started",
-        LifecycleEvent::ResolveTxConfirmed { high_confidence: true } => "resolve_tx_confirmed",
-        LifecycleEvent::ResolveTxConfirmed { high_confidence: false } => {
-            "resolve_tx_dao_required"
-        }
+        LifecycleEvent::ResolveTxConfirmed {
+            high_confidence: true,
+        } => "resolve_tx_confirmed",
+        LifecycleEvent::ResolveTxConfirmed {
+            high_confidence: false,
+        } => "resolve_tx_dao_required",
         LifecycleEvent::RefundTxConfirmed => "refund_tx_confirmed",
         LifecycleEvent::DeadlineExceeded => "deadline_exceeded",
         LifecycleEvent::Failed { .. } => "failed",

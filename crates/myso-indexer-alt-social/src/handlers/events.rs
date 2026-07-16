@@ -6719,8 +6719,9 @@ mod tests {
             Some("https://example.com/oauth/callback")
         );
         let event_id = "digest:platform-created";
-        let rows = handle_platform_event("PlatformCreatedEvent", &json, event_id, 1_700_000_000_000)
-            .expect("handler should deserialize JSON from BCS path");
+        let rows =
+            handle_platform_event("PlatformCreatedEvent", &json, event_id, 1_700_000_000_000)
+                .expect("handler should deserialize JSON from BCS path");
         assert!(
             rows.iter()
                 .any(|r| matches!(r, SocialEventRow::Platform(_))),
@@ -7233,8 +7234,8 @@ mod tests {
             bcs::from_bytes(&bytes).expect("bcs from_bytes");
         assert_eq!(back.items.len(), 1);
         assert_eq!(back.total_recipient_amount, 800_000);
-        let json =
-            parse_event_contents("post", "PromotedPostViewsBatchConfirmedEvent", &bytes).expect("parse");
+        let json = parse_event_contents("post", "PromotedPostViewsBatchConfirmedEvent", &bytes)
+            .expect("parse");
         assert_eq!(json["items"].as_array().unwrap().len(), 1);
         assert_eq!(json["items"][0]["payment_amount"], 1_000_000_i64);
         assert_eq!(json["items"][0]["recipient_amount"], 800_000_i64);
@@ -7297,8 +7298,8 @@ mod tests {
             total_recipient_amount: 2_400_000,
         };
         let bytes = bcs::to_bytes(&ev).expect("bcs");
-        let json =
-            parse_event_contents("post", "PromotedPostViewsBatchConfirmedEvent", &bytes).expect("parse");
+        let json = parse_event_contents("post", "PromotedPostViewsBatchConfirmedEvent", &bytes)
+            .expect("parse");
         assert_eq!(json["items"].as_array().unwrap().len(), 2);
         assert_eq!(json["total_recipient_amount"], 2_400_000_i64);
         assert_eq!(json["items"][1]["view_duration"], 4_000_i64);

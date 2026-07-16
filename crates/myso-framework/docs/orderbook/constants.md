@@ -62,7 +62,7 @@ title: Module `orderbook::constants`
 
 
 
-<pre><code><b>const</b> <a href="../orderbook/constants.md#orderbook_constants_CURRENT_VERSION">CURRENT_VERSION</a>: u64 = 1;
+<pre><code><b>const</b> <a href="../orderbook/constants.md#orderbook_constants_CURRENT_VERSION">CURRENT_VERSION</a>: u64 = 0;
 </code></pre>
 
 

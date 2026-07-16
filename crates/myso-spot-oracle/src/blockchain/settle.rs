@@ -16,9 +16,7 @@ use myso_types::transaction_driver_types::ExecuteTransactionRequestType;
 use tracing::info;
 
 use crate::api::AppState;
-use crate::blockchain::{
-    chain_configured, parse_object_id, shared_object_arg, CLOCK_OBJECT_ID,
-};
+use crate::blockchain::{chain_configured, parse_object_id, shared_object_arg, CLOCK_OBJECT_ID};
 use crate::claim::lifecycle::{default_context_for, LifecycleEvent};
 use crate::config::SOCIAL_PACKAGE_ID;
 use crate::resolver::engine::{is_high_confidence, on_chain_status_for_resolve};
@@ -202,10 +200,13 @@ async fn build_and_submit_resolve(
     reasoning: &str,
     evidence_urls: &[String],
 ) -> anyhow::Result<String> {
-    let key_hex = args.private_key_hex.as_ref().context("missing private key")?;
+    let key_hex = args
+        .private_key_hex
+        .as_ref()
+        .context("missing private key")?;
     let key_bytes = hex::decode(key_hex.trim())?;
-    let key_pair = MySoKeyPair::from_bytes(&key_bytes)
-        .map_err(|e| anyhow::anyhow!("invalid key: {:?}", e))?;
+    let key_pair =
+        MySoKeyPair::from_bytes(&key_bytes).map_err(|e| anyhow::anyhow!("invalid key: {:?}", e))?;
     let sender = MySoAddress::from(&key_pair.public());
 
     let client = MySoClientBuilder::default()
@@ -216,10 +217,7 @@ async fn build_and_submit_resolve(
         .coin_read_api()
         .get_coins(sender, None, None, None)
         .await?;
-    let gas_obj = gas_coins
-        .data
-        .first()
-        .context("sender has no gas coins")?;
+    let gas_obj = gas_coins.data.first().context("sender has no gas coins")?;
 
     let package = ObjectID::from_hex_literal(SOCIAL_PACKAGE_ID)?;
     let admin_cap = parse_object_id(args.admin_cap_object_id.as_ref().unwrap())?;
@@ -292,7 +290,8 @@ async fn build_and_submit_resolve(
 
     let pt = ptb.finish();
     let rgp = client.read_api().get_reference_gas_price().await?;
-    let tx_data = TransactionData::new_programmable(sender, vec![gas_obj.object_ref()], pt, 50_000_000, rgp);
+    let tx_data =
+        TransactionData::new_programmable(sender, vec![gas_obj.object_ref()], pt, 50_000_000, rgp);
     let signed = Transaction::from_data_and_signer(tx_data, vec![&key_pair]);
     let response = client
         .quorum_driver_api()

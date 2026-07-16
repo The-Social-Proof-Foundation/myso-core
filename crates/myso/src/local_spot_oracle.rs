@@ -101,11 +101,7 @@ pub fn log_spot_once(info: &SpotOracleLocalInfo) {
   streaming_url:       {}
   social_server:       {}
 ",
-            info.base_url,
-            info.listen,
-            info.myso_rpc,
-            info.streaming_url,
-            info.social_server_url
+            info.base_url, info.listen, info.myso_rpc, info.streaming_url, info.social_server_url
         )
         .green()
     );

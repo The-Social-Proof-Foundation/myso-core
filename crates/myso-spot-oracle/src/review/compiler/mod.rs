@@ -54,10 +54,7 @@ impl ResolverCompiler {
     }
 }
 
-pub fn compute_compile_fingerprint(
-    canonical: &CanonicalClaim,
-    def: &ResolverDefinition,
-) -> String {
+pub fn compute_compile_fingerprint(canonical: &CanonicalClaim, def: &ResolverDefinition) -> String {
     use sha2::{Digest, Sha256};
     let canonical_json = serde_json::to_vec(&canonical.normalized_fields).expect("serialize");
     let spec_json = serde_json::to_value(&def.spec).expect("serialize");

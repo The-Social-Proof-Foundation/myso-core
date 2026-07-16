@@ -10,7 +10,10 @@ use crate::api::AppState;
 pub async fn run_reconcile_loop(state: Arc<AppState>) -> anyhow::Result<()> {
     let pending_txs = state.store.list_pending_transactions(50).await?;
     if !pending_txs.is_empty() {
-        info!(count = pending_txs.len(), "reconcile: pending chain transactions");
+        info!(
+            count = pending_txs.len(),
+            "reconcile: pending chain transactions"
+        );
     }
 
     let dead_jobs = state.store.list_jobs(Some("dead_letter"), 20).await?;

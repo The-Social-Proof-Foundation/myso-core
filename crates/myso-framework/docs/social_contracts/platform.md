@@ -28,8 +28,8 @@ Manages social media platforms and their timelines
 -  [Struct `PlatformDeletedEvent`](#social_contracts_platform_PlatformDeletedEvent)
 -  [Struct `UserJoinedPlatformEvent`](#social_contracts_platform_UserJoinedPlatformEvent)
 -  [Struct `UserLeftPlatformEvent`](#social_contracts_platform_UserLeftPlatformEvent)
--  [Struct `TokenAirdropEvent`](#social_contracts_platform_TokenAirdropEvent)
--  [Struct `TreasuryFundedEvent`](#social_contracts_platform_TreasuryFundedEvent)
+-  [Struct `PlatformTreasuryWithdrawalEvent`](#social_contracts_platform_PlatformTreasuryWithdrawalEvent)
+-  [Struct `PlatformTreasuryFundedEvent`](#social_contracts_platform_PlatformTreasuryFundedEvent)
 -  [Constants](#@Constants_0)
 -  [Function `bootstrap_init`](#social_contracts_platform_bootstrap_init)
 -  [Function `create_platform`](#social_contracts_platform_create_platform)
@@ -39,6 +39,7 @@ Manages social media platforms and their timelines
 -  [Function `registry_version`](#social_contracts_platform_registry_version)
 -  [Function `borrow_registry_version_mut`](#social_contracts_platform_borrow_registry_version_mut)
 -  [Function `add_to_treasury`](#social_contracts_platform_add_to_treasury)
+-  [Function `fund_platform_treasury_from_coin`](#social_contracts_platform_fund_platform_treasury_from_coin)
 -  [Function `mark_platform_governance_proposal_implemented`](#social_contracts_platform_mark_platform_governance_proposal_implemented)
 -  [Function `delegate_vote_on_platform_governance_proposal`](#social_contracts_platform_delegate_vote_on_platform_governance_proposal)
 -  [Function `finalize_platform_governance_proposal`](#social_contracts_platform_finalize_platform_governance_proposal)
@@ -103,7 +104,7 @@ Manages social media platforms and their timelines
 -  [Function `governance_registry_id`](#social_contracts_platform_governance_registry_id)
 -  [Function `governance_parameters`](#social_contracts_platform_governance_parameters)
 -  [Function `update_platform_governance`](#social_contracts_platform_update_platform_governance)
--  [Function `airdrop_from_treasury`](#social_contracts_platform_airdrop_from_treasury)
+-  [Function `withdraw_from_platform_treasury`](#social_contracts_platform_withdraw_from_platform_treasury)
 -  [Function `assign_badge`](#social_contracts_platform_assign_badge)
 -  [Function `revoke_badge`](#social_contracts_platform_revoke_badge)
 -  [Function `add_moderator_register`](#social_contracts_platform_add_moderator_register)
@@ -435,7 +436,7 @@ Permission to assign/revoke platform badges
 
 ## Struct `PlatformTreasuryAdmin`
 
-Permission to airdrop from the platform treasury
+Permission to withdraw from the platform treasury
 
 
 <pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformTreasuryAdmin">PlatformTreasuryAdmin</a> <b>has</b> drop
@@ -1316,14 +1317,14 @@ Event emitted when a user leaves a platform
 
 </details>
 
-<a name="social_contracts_platform_TokenAirdropEvent"></a>
+<a name="social_contracts_platform_PlatformTreasuryWithdrawalEvent"></a>
 
-## Struct `TokenAirdropEvent`
+## Struct `PlatformTreasuryWithdrawalEvent`
 
-Event emitted when tokens are airdropped from the platform treasury
+Event emitted when tokens are withdrawn from the platform treasury
 
 
-<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/platform.md#social_contracts_platform_TokenAirdropEvent">TokenAirdropEvent</a> <b>has</b> <b>copy</b>, drop
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformTreasuryWithdrawalEvent">PlatformTreasuryWithdrawalEvent</a> <b>has</b> <b>copy</b>, drop
 </code></pre>
 
 
@@ -1368,14 +1369,14 @@ Event emitted when tokens are airdropped from the platform treasury
 
 </details>
 
-<a name="social_contracts_platform_TreasuryFundedEvent"></a>
+<a name="social_contracts_platform_PlatformTreasuryFundedEvent"></a>
 
-## Struct `TreasuryFundedEvent`
+## Struct `PlatformTreasuryFundedEvent`
 
-Event emitted when tokens are added to platform treasury
+Event emitted when tokens are deposited into the platform treasury
 
 
-<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/platform.md#social_contracts_platform_TreasuryFundedEvent">TreasuryFundedEvent</a> <b>has</b> <b>copy</b>, drop
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformTreasuryFundedEvent">PlatformTreasuryFundedEvent</a> <b>has</b> <b>copy</b>, drop
 </code></pre>
 
 
@@ -2559,13 +2560,44 @@ Add MYSO tokens to platform treasury
     // Emit treasury funded event
     <b>let</b> platform_id = object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>);
     <b>let</b> new_balance = balance::value(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.treasury);
-    event::emit(<a href="../social_contracts/platform.md#social_contracts_platform_TreasuryFundedEvent">TreasuryFundedEvent</a> {
+    event::emit(<a href="../social_contracts/platform.md#social_contracts_platform_PlatformTreasuryFundedEvent">PlatformTreasuryFundedEvent</a> {
         platform_id,
         amount,
         funded_by: tx_context::sender(ctx),
         new_balance,
         timestamp: clock::timestamp_ms(clock),
     });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_fund_platform_treasury_from_coin"></a>
+
+## Function `fund_platform_treasury_from_coin`
+
+Fund platform treasury from an external module (e.g. messaging paid DMs).
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_fund_platform_treasury_from_coin">fund_platform_treasury_from_coin</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, coin: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, amount: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_fund_platform_treasury_from_coin">fund_platform_treasury_from_coin</a>(
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    coin: &<b>mut</b> Coin&lt;MYSO&gt;,
+    amount: u64,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    <a href="../social_contracts/platform.md#social_contracts_platform_add_to_treasury">add_to_treasury</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, coin, amount, clock, ctx);
 }
 </code></pre>
 
@@ -4813,15 +4845,15 @@ Can only be called by the platform developer
 
 </details>
 
-<a name="social_contracts_platform_airdrop_from_treasury"></a>
+<a name="social_contracts_platform_withdraw_from_platform_treasury"></a>
 
-## Function `airdrop_from_treasury`
+## Function `withdraw_from_platform_treasury`
 
-Airdrop tokens to multiple recipients from the platform treasury
-Can only be called by platform developer or moderator with treasury permission
+Withdraw tokens to multiple recipients from the platform treasury.
+Callable by the platform developer or a moderator with treasury permission.
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_airdrop_from_treasury">airdrop_from_treasury</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, recipients: vector&lt;<b>address</b>&gt;, amount_per_recipient: u64, reason_code: u8, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_withdraw_from_platform_treasury">withdraw_from_platform_treasury</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, recipients: vector&lt;<b>address</b>&gt;, amount_per_recipient: u64, reason_code: u8, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4830,7 +4862,7 @@ Can only be called by platform developer or moderator with treasury permission
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_airdrop_from_treasury">airdrop_from_treasury</a>(
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_withdraw_from_platform_treasury">withdraw_from_platform_treasury</a>(
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
     group: &PermissionedGroup&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>&gt;,
     recipients: vector&lt;<b>address</b>&gt;,
@@ -4841,29 +4873,21 @@ Can only be called by platform developer or moderator with treasury permission
 ) {
     <b>let</b> caller = tx_context::sender(ctx);
     <a href="../social_contracts/platform.md#social_contracts_platform_assert_moderator_permission">assert_moderator_permission</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformTreasuryAdmin">PlatformTreasuryAdmin</a>&gt;(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, group, caller);
-    // Check that recipients list is not empty
     <b>let</b> recipients_count = vector::length(&recipients);
     <b>assert</b>!(recipients_count &gt; 0, <a href="../social_contracts/platform.md#social_contracts_platform_EEmptyRecipientsList">EEmptyRecipientsList</a>);
-    // Calculate total amount needed
     <b>let</b> total_amount = amount_per_recipient * recipients_count;
-    // Verify <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> treasury <b>has</b> enough funds
     <b>assert</b>!(balance::value(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.treasury) &gt;= total_amount, <a href="../social_contracts/platform.md#social_contracts_platform_EInsufficientTreasuryFunds">EInsufficientTreasuryFunds</a>);
-    // Get current timestamp <b>for</b> events
     <b>let</b> current_time = clock::timestamp_ms(clock);
     <b>let</b> platform_id = object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>);
-    // Send tokens to each recipient
     <b>let</b> <b>mut</b> i = 0;
     <b>while</b> (i &lt; recipients_count) {
         <b>let</b> recipient = *vector::borrow(&recipients, i);
-        // Create coin from <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> treasury balance
-        <b>let</b> airdrop_coin = coin::from_balance(
+        <b>let</b> withdrawal_coin = coin::from_balance(
             balance::split(&<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.treasury, amount_per_recipient),
             ctx
         );
-        // Transfer to recipient
-        transfer::public_transfer(airdrop_coin, recipient);
-        // Emit airdrop event <b>for</b> tracking
-        event::emit(<a href="../social_contracts/platform.md#social_contracts_platform_TokenAirdropEvent">TokenAirdropEvent</a> {
+        transfer::public_transfer(withdrawal_coin, recipient);
+        event::emit(<a href="../social_contracts/platform.md#social_contracts_platform_PlatformTreasuryWithdrawalEvent">PlatformTreasuryWithdrawalEvent</a> {
             platform_id,
             recipient,
             amount: amount_per_recipient,

@@ -184,7 +184,7 @@ pub(crate) async fn get_spot_record(
                last_resolution_at_ms, transaction_id, record_object_id,
                active_proposal_id, oracle_proposed_outcome, proposed_outcome,
                dao_escalated_at_ms, claim_object_id, market_object_id,
-               primary_post_id, market_key_hash, creator_fee_total
+               primary_post_id, market_key_hash, creator_fee_total, version
         FROM spot_records
         WHERE post_id = $1
     ";
@@ -394,7 +394,7 @@ pub(crate) async fn get_spot_record_by_active_proposal_id(
                last_resolution_at_ms, transaction_id, record_object_id,
                active_proposal_id, oracle_proposed_outcome, proposed_outcome,
                dao_escalated_at_ms, claim_object_id, market_object_id,
-               primary_post_id, market_key_hash, creator_fee_total
+               primary_post_id, market_key_hash, creator_fee_total, version
         FROM spot_records
         WHERE active_proposal_id = $1
     ";
@@ -423,7 +423,7 @@ pub(crate) async fn get_spot_record_by_object_id(
                last_resolution_at_ms, transaction_id, record_object_id,
                active_proposal_id, oracle_proposed_outcome, proposed_outcome,
                dao_escalated_at_ms, claim_object_id, market_object_id,
-               primary_post_id, market_key_hash, creator_fee_total
+               primary_post_id, market_key_hash, creator_fee_total, version
         FROM spot_records
         WHERE record_object_id = $1
     ";
@@ -453,7 +453,7 @@ pub(crate) async fn list_contested_spot_records(
                last_resolution_at_ms, transaction_id, record_object_id,
                active_proposal_id, oracle_proposed_outcome, proposed_outcome,
                dao_escalated_at_ms, claim_object_id, market_object_id,
-               primary_post_id, market_key_hash, creator_fee_total
+               primary_post_id, market_key_hash, creator_fee_total, version
         FROM spot_records
         WHERE status = 2
         ORDER BY dao_escalated_at_ms DESC NULLS LAST, updated_at DESC

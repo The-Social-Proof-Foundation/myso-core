@@ -48,6 +48,7 @@ use crate::api::types::insurance::{
     InsuranceCoverageRoute, InsuranceModuleEvent, InsurancePolicy, InsuranceRouteFill,
     InsuranceVault,
 };
+use crate::api::types::messaging::{MessagingAgentGroup, PaidMessageEscrow};
 use crate::api::types::move_object::MoveObject;
 use crate::api::types::move_package;
 use crate::api::types::move_package::MovePackage;
@@ -71,7 +72,6 @@ use crate::api::types::organization::{
     OrganizationLeaderboardSort, OrganizationStatsWindow, OrganizationType,
 };
 use crate::api::types::platform::{Platform, PlatformUserAccess};
-use crate::api::types::messaging::{MessagingAgentGroup, PaidMessageEscrow};
 use crate::api::types::poc::PocBeneficiaryVault;
 use crate::api::types::poc_username_beneficiary::PocUsernameBeneficiary;
 use crate::api::types::post::{CommentSummary, Post, ReactionSummary, RepostSummary, TipSummary};
@@ -2447,7 +2447,11 @@ impl Query {
                 .get_messaging_agent_groups_by_org(&organization_id, limit, offset)
                 .await
                 .map_err(Into::into)
-                .map(|rows| rows.into_iter().map(MessagingAgentGroup::from_row).collect()),
+                .map(|rows| {
+                    rows.into_iter()
+                        .map(MessagingAgentGroup::from_row)
+                        .collect()
+                }),
         )
     }
 
@@ -2509,7 +2513,11 @@ impl Query {
                 )
                 .await
                 .map_err(Into::into)
-                .map(|rows| rows.into_iter().map(ProfileSubscriptionPlan::from_row).collect()),
+                .map(|rows| {
+                    rows.into_iter()
+                        .map(ProfileSubscriptionPlan::from_row)
+                        .collect()
+                }),
         )
     }
 
@@ -2576,7 +2584,11 @@ impl Query {
                 )
                 .await
                 .map_err(Into::into)
-                .map(|rows| rows.into_iter().map(ProfileSubscription::from_row).collect()),
+                .map(|rows| {
+                    rows.into_iter()
+                        .map(ProfileSubscription::from_row)
+                        .collect()
+                }),
         )
     }
 

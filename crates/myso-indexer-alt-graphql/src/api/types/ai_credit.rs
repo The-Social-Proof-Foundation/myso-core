@@ -70,6 +70,10 @@ impl AiCreditBalance {
         self.inner.balance_mist
     }
 
+    async fn contract_version(&self) -> i64 {
+        self.inner.contract_version
+    }
+
     async fn credits(&self) -> i64 {
         self.inner.balance_mist / 1_000_000_000
     }

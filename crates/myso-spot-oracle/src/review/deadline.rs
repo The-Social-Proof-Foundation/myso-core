@@ -5,8 +5,10 @@
 
 use chrono::{DateTime, Datelike, Duration, NaiveDate, TimeZone, Timelike, Utc};
 
-use crate::events::calendar::{end_of_utc_day, quarter_end, us_midterm_election_deadline, us_presidential_election_deadline};
-use crate::events::registry::{EventRegistry, normalize_claim_text, extract_years};
+use crate::events::calendar::{
+    end_of_utc_day, quarter_end, us_midterm_election_deadline, us_presidential_election_deadline,
+};
+use crate::events::registry::{extract_years, normalize_claim_text, EventRegistry};
 use crate::events::types::EventCategory;
 use crate::types::ClaimCategory;
 
@@ -72,7 +74,11 @@ impl DeadlinePolicy {
         }
     }
 
-    fn horizon_for(&self, category: ClaimCategory, event_category: Option<EventCategory>) -> Duration {
+    fn horizon_for(
+        &self,
+        category: ClaimCategory,
+        event_category: Option<EventCategory>,
+    ) -> Duration {
         if let Some(ec) = event_category {
             match ec {
                 EventCategory::Election => return self.max_election_horizon,
@@ -145,10 +151,7 @@ pub fn resolve_claim_deadline(
 }
 
 /// Floor a deadline to a wall-clock spacing bucket for shared market identity (price claims).
-pub fn bucket_deadline_for_market_key(
-    deadline: DateTime<Utc>,
-    spacing: Duration,
-) -> DateTime<Utc> {
+pub fn bucket_deadline_for_market_key(deadline: DateTime<Utc>, spacing: Duration) -> DateTime<Utc> {
     floor_to_spacing(deadline, spacing)
 }
 
@@ -363,10 +366,10 @@ fn contains_word(haystack: &str, word: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::Timelike;
     use crate::events::registry::EventRegistry;
     use crate::events::types::EventEntity;
     use crate::store::events::ScheduledEventRow;
+    use chrono::Timelike;
     use uuid::Uuid;
 
     fn test_registry() -> EventRegistry {
@@ -427,7 +430,8 @@ mod tests {
     #[test]
     fn parses_in_minutes() {
         let before = Utc::now();
-        let dt = parse_deadline_from_text("Will BTC trade above $100 in 3 minutes?").expect("deadline");
+        let dt =
+            parse_deadline_from_text("Will BTC trade above $100 in 3 minutes?").expect("deadline");
         let after = Utc::now();
         assert!(dt >= before + Duration::minutes(2));
         assert!(dt <= after + Duration::minutes(4));
@@ -436,7 +440,8 @@ mod tests {
     #[test]
     fn parses_in_seconds() {
         let before = Utc::now();
-        let dt = parse_deadline_from_text("Will BTC trade above $1 in 15 seconds?").expect("deadline");
+        let dt =
+            parse_deadline_from_text("Will BTC trade above $1 in 15 seconds?").expect("deadline");
         let after = Utc::now();
         assert!(dt >= before + Duration::seconds(10));
         assert!(dt <= after + Duration::seconds(20));
@@ -449,8 +454,12 @@ mod tests {
 
     #[test]
     fn iso_date_end_of_day() {
-        let dt = parse_deadline_from_text("Will ETH exceed $2000 by 2027-07-31?").expect("deadline");
-        assert_eq!(dt.date_naive(), NaiveDate::from_ymd_opt(2027, 7, 31).unwrap());
+        let dt =
+            parse_deadline_from_text("Will ETH exceed $2000 by 2027-07-31?").expect("deadline");
+        assert_eq!(
+            dt.date_naive(),
+            NaiveDate::from_ymd_opt(2027, 7, 31).unwrap()
+        );
         assert_eq!(dt.time().hour(), 23);
     }
 
@@ -471,7 +480,10 @@ mod tests {
             &reg,
         )
         .expect("fifa deadline");
-        assert_eq!(dt.date_naive(), NaiveDate::from_ymd_opt(2026, 7, 19).unwrap());
+        assert_eq!(
+            dt.date_naive(),
+            NaiveDate::from_ymd_opt(2026, 7, 19).unwrap()
+        );
     }
 
     #[test]

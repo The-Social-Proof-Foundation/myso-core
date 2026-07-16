@@ -478,7 +478,7 @@ fn process_platform_created_event(
         quadratic_base_cost,
         quorum_votes,
         voting_period_epochs,
-        version: None,
+        version: Some(0),
         primary_category: ev.primary_category,
         secondary_category: ev.secondary_category,
         deleted_at: None,
@@ -1030,7 +1030,6 @@ fn process_platform_deleted_event(
     ])
 }
 
-
 #[cfg(test)]
 mod platform_deleted_tests {
     use super::handle_platform_event;
@@ -1089,8 +1088,7 @@ mod platform_deleted_tests {
     #[test]
     fn platform_treasury_funded_event_json_through_handler() {
         let ts_ms = 1_735_891_200_000u64;
-        let platform_id =
-            "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
+        let platform_id = "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
         let json = serde_json::json!({
             "platform_id": platform_id,
             "amount": 5_000_000_000u64,
@@ -1110,7 +1108,10 @@ mod platform_deleted_tests {
             ..
         } = &rows[0]
         else {
-            panic!("expected PlatformTreasuryBalanceUpsert row first, got {:?}", rows[0]);
+            panic!(
+                "expected PlatformTreasuryBalanceUpsert row first, got {:?}",
+                rows[0]
+            );
         };
         assert_eq!(upsert_id.as_str(), platform_id);
         assert_eq!(*balance_mist, 5_000_000_000);
@@ -1127,8 +1128,7 @@ mod platform_deleted_tests {
     #[test]
     fn platform_treasury_withdrawal_event_json_through_handler() {
         let ts_ms = 1_735_891_200_000u64;
-        let platform_id =
-            "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
+        let platform_id = "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
         let json = serde_json::json!({
             "platform_id": platform_id,
             "recipient": "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
@@ -1138,9 +1138,8 @@ mod platform_deleted_tests {
             "timestamp": ts_ms,
         });
         let event_id = "digest:withdraw";
-        let rows =
-            handle_platform_event("PlatformTreasuryWithdrawalEvent", &json, event_id, CK_MS)
-                .expect("handler should recognize PlatformTreasuryWithdrawalEvent");
+        let rows = handle_platform_event("PlatformTreasuryWithdrawalEvent", &json, event_id, CK_MS)
+            .expect("handler should recognize PlatformTreasuryWithdrawalEvent");
         assert_eq!(rows.len(), 3);
 
         let SocialEventRow::PlatformTreasuryWithdrawal(w) = &rows[0] else {

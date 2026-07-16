@@ -42,11 +42,11 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/v1/sources/health", get(sources_health))
         .route("/v1/events", get(list_events))
         .route("/v1/event-providers/health", get(event_providers_health))
+        .route("/v1/event-providers/:key/sync", post(sync_event_provider))
         .route(
-            "/v1/event-providers/:key/sync",
-            post(sync_event_provider),
+            "/v1/events/:id/override",
+            axum::routing::patch(patch_event_override),
         )
-        .route("/v1/events/:id/override", axum::routing::patch(patch_event_override))
         .route("/v1/markets/:id/recheck", post(recheck_market))
         .with_state(state)
 }
@@ -54,15 +54,20 @@ pub fn router(state: Arc<AppState>) -> Router {
 fn check_admin_secret(headers: &HeaderMap, expected: Option<&str>) -> bool {
     match expected {
         None => true,
-        Some(secret) => headers
-            .get("x-spot-oracle-admin-secret")
-            .and_then(|v| v.to_str().ok())
-            == Some(secret),
+        Some(secret) => {
+            headers
+                .get("x-spot-oracle-admin-secret")
+                .and_then(|v| v.to_str().ok())
+                == Some(secret)
+        }
     }
 }
 
 async fn health(State(state): State<Arc<AppState>>) -> Json<HealthResponse> {
-    let db_ok = sqlx::query("SELECT 1").execute(state.store.pool()).await.is_ok();
+    let db_ok = sqlx::query("SELECT 1")
+        .execute(state.store.pool())
+        .await
+        .is_ok();
     Json(HealthResponse {
         status: if db_ok { "ok" } else { "degraded" },
         workers_enabled: state.args.enabled,
@@ -73,19 +78,21 @@ async fn health(State(state): State<Arc<AppState>>) -> Json<HealthResponse> {
 
 async fn ready(State(state): State<Arc<AppState>>) -> Json<ReadyResponse> {
     let pool: &PgPool = state.store.pool();
-    let pending = sqlx::query_scalar::<_, i64>(
-        "SELECT COUNT(*) FROM spot_jobs WHERE status = 'pending'",
-    )
-    .fetch_one(pool)
-    .await
-    .unwrap_or(0);
-    let processing = sqlx::query_scalar::<_, i64>(
-        "SELECT COUNT(*) FROM spot_jobs WHERE status = 'processing'",
-    )
-    .fetch_one(pool)
-    .await
-    .unwrap_or(0);
-    state.metrics.queue_depth.with_label_values(&["pending"]).set(pending);
+    let pending =
+        sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM spot_jobs WHERE status = 'pending'")
+            .fetch_one(pool)
+            .await
+            .unwrap_or(0);
+    let processing =
+        sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM spot_jobs WHERE status = 'processing'")
+            .fetch_one(pool)
+            .await
+            .unwrap_or(0);
+    state
+        .metrics
+        .queue_depth
+        .with_label_values(&["pending"])
+        .set(pending);
     state
         .metrics
         .queue_depth
@@ -253,7 +260,11 @@ async fn patch_event_override(
     if !check_admin_secret(&headers, state.args.admin_secret.as_deref()) {
         return Json(serde_json::json!({ "error": "unauthorized" }));
     }
-    match state.store.patch_event_override(id, &body.override_data).await {
+    match state
+        .store
+        .patch_event_override(id, &body.override_data)
+        .await
+    {
         Ok(true) => {
             if let Err(err) = crate::events::sync::reload_registry(&state).await {
                 return Json(serde_json::json!({ "error": err.to_string() }));

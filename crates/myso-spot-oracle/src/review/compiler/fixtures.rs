@@ -5,9 +5,7 @@ use chrono::Utc;
 use uuid::Uuid;
 
 use crate::review::canonicalize::{CanonicalClaimFields, OutcomeType};
-use crate::review::outcome_identity::{
-    build_outcome_identity, build_outcome_market_key,
-};
+use crate::review::outcome_identity::{build_outcome_identity, build_outcome_market_key};
 use crate::types::{ClaimCategory, ComparisonOp, ResolverHints};
 
 fn test_claim(fields: CanonicalClaimFields) -> crate::review::CanonicalClaim {

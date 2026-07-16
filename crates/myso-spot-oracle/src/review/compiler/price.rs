@@ -92,6 +92,9 @@ mod tests {
         let a = compile(&canonical, &registry, &[]).unwrap();
         let b = compile(&canonical, &registry, &[]).unwrap();
         assert_eq!(a.compile_fingerprint, b.compile_fingerprint);
-        assert_eq!(a.resolver_definition.resolver_kind, ResolverKind::PriceThreshold);
+        assert_eq!(
+            a.resolver_definition.resolver_kind,
+            ResolverKind::PriceThreshold
+        );
     }
 }

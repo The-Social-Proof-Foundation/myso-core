@@ -101,6 +101,7 @@ pub struct ProfileByAddressResponse {
     pub selected_badge: Option<SelectedBadgeInfo>,
     pub selected_badge_id: Option<String>,
     pub selected_ecosystem_badge_id: Option<String>,
+    pub contract_version: i64,
 }
 
 async fn enrich_users_with_universal_data(
@@ -485,6 +486,7 @@ pub(crate) async fn get_profile_or_wallet_by_address(
                     selected_badge: None,
                     selected_badge_id: None,
                     selected_ecosystem_badge_id: None,
+                    contract_version: 0,
                 },
                 Err(_) => ProfileByAddressResponse {
                     id: None,
@@ -512,6 +514,7 @@ pub(crate) async fn get_profile_or_wallet_by_address(
                     selected_badge: None,
                     selected_badge_id: None,
                     selected_ecosystem_badge_id: None,
+                    contract_version: 0,
                 },
             };
             Ok(wallet_only)
@@ -547,6 +550,7 @@ fn profile_to_response(p: Profile) -> ProfileByAddressResponse {
         selected_badge: None,
         selected_badge_id: p.selected_badge_id,
         selected_ecosystem_badge_id: p.selected_ecosystem_badge_id,
+        contract_version: p.contract_version,
     }
 }
 

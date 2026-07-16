@@ -184,10 +184,7 @@ pub fn log_poc_once(info: &PocLocalInfo) {
   validate:        ASSUME_YES=1 ./scripts/poc-e2e-runnable.sh --run-all
   note:            on-chain PoCConfig.oracle_address must match oracle_address (poc-e2e syncs it)
 ",
-            info.api_base_url,
-            info.api_port,
-            info.repo,
-            info.oracle_address,
+            info.api_base_url, info.api_port, info.repo, info.oracle_address,
         )
         .green()
     );

@@ -10,6 +10,7 @@
 module social_contracts::ai_credit {
     use std::bcs;
     use std::option::{Self, Option};
+    use std::string;
     use std::vector;
 
     use myso::{
@@ -37,7 +38,7 @@ module social_contracts::ai_credit {
         OrgSpendApprover,
         SubAgent,
     };
-    use social_contracts::upgrade;
+    use social_contracts::upgrade::{Self, UpgradeAdminCap};
 
     const MIST_PER_MYSO: u64 = 1_000_000_000;
     const DAY_MS: u64 = 86_400_000;
@@ -1413,6 +1414,7 @@ module social_contracts::ai_credit {
         ctx: &TxContext,
     ) {
         assert_oracle_admin(cap, ctx);
+        assert!(config.version == upgrade::current_version(), EWrongVersion);
         assert!(vector::length(&new_pk) == ED25519_PK_LEN, EInvalidPubkey);
         config.oracle_pubkey = new_pk;
         event::emit(AiCreditOraclePubkeyUpdated {
@@ -1629,6 +1631,42 @@ module social_contracts::ai_credit {
     fun assert_version(config: &AiCreditConfig, balance: &AiCreditBalance) {
         assert!(config.version == upgrade::current_version(), EWrongVersion);
         assert!(balance.version == upgrade::current_version(), EWrongVersion);
+    }
+
+    /// Migrate AiCreditConfig to the current package version.
+    public entry fun migrate_config(
+        config: &mut AiCreditConfig,
+        _: &UpgradeAdminCap,
+        ctx: &mut TxContext,
+    ) {
+        let current_version = upgrade::current_version();
+        assert!(config.version < current_version, EWrongVersion);
+        let old_version = config.version;
+        config.version = current_version;
+        upgrade::emit_migration_event(
+            object::id(config),
+            string::utf8(b"AiCreditConfig"),
+            old_version,
+            tx_context::sender(ctx),
+        );
+    }
+
+    /// Migrate a single AiCreditBalance to the current package version.
+    public entry fun migrate_balance(
+        balance: &mut AiCreditBalance,
+        _: &UpgradeAdminCap,
+        ctx: &mut TxContext,
+    ) {
+        let current_version = upgrade::current_version();
+        assert!(balance.version < current_version, EWrongVersion);
+        let old_version = balance.version;
+        balance.version = current_version;
+        upgrade::emit_migration_event(
+            object::id(balance),
+            string::utf8(b"AiCreditBalance"),
+            old_version,
+            tx_context::sender(ctx),
+        );
     }
 
     fun assert_owner(balance: &AiCreditBalance, ctx: &TxContext) {
@@ -2406,4 +2444,73 @@ module social_contracts::ai_credit {
     public fun error_invalid_hash(): u64 { EInvalidHash }
     #[test_only]
     public fun error_markup_mismatch(): u64 { EMarkupMismatch }
+
+    #[test_only]
+    public fun config_version(config: &AiCreditConfig): u64 {
+        config.version
+    }
+
+    #[test_only]
+    public fun balance_version(balance: &AiCreditBalance): u64 {
+        balance.version
+    }
+
+    #[test_only]
+    public fun test_force_config_version(config: &mut AiCreditConfig, v: u64) {
+        config.version = v;
+    }
+
+    #[test_only]
+    public fun test_force_balance_version(balance: &mut AiCreditBalance, v: u64) {
+        balance.version = v;
+    }
+
+    #[test_only]
+    public fun error_wrong_version(): u64 {
+        EWrongVersion
+    }
+
+    #[test_only]
+    public entry fun test_migrate_config(
+        config: &mut AiCreditConfig,
+        cap: &UpgradeAdminCap,
+        ctx: &mut TxContext,
+    ) {
+        if (upgrade::test_migration_available()) {
+            migrate_config(config, cap, ctx);
+        } else {
+            let simulated_target = upgrade::test_pre_upgrade_object_version() + 1;
+            assert!(config.version < simulated_target, EWrongVersion);
+            let old_version = config.version;
+            config.version = upgrade::current_version();
+            upgrade::emit_migration_event(
+                object::id(config),
+                string::utf8(b"AiCreditConfig"),
+                old_version,
+                tx_context::sender(ctx),
+            );
+        }
+    }
+
+    #[test_only]
+    public entry fun test_migrate_balance(
+        balance: &mut AiCreditBalance,
+        cap: &UpgradeAdminCap,
+        ctx: &mut TxContext,
+    ) {
+        if (upgrade::test_migration_available()) {
+            migrate_balance(balance, cap, ctx);
+        } else {
+            let simulated_target = upgrade::test_pre_upgrade_object_version() + 1;
+            assert!(balance.version < simulated_target, EWrongVersion);
+            let old_version = balance.version;
+            balance.version = upgrade::current_version();
+            upgrade::emit_migration_event(
+                object::id(balance),
+                string::utf8(b"AiCreditBalance"),
+                old_version,
+                tx_context::sender(ctx),
+            );
+        }
+    }
 }

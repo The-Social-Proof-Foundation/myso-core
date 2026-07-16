@@ -484,6 +484,7 @@ module social_contracts::proof_of_creativity {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        assert_poc_config_version(config);
         // Admin capability verification is handled by type system
         
         // Validate thresholds (0-100)
@@ -576,6 +577,18 @@ module social_contracts::proof_of_creativity {
         config.dispute_governance_registry_id
     }
 
+    fun assert_poc_config_version(config: &PoCConfig) {
+        assert!(config.version == upgrade::current_version(), EWrongVersion);
+    }
+
+    fun assert_poc_registry_version(registry: &PoCRegistry) {
+        assert!(registry.version == upgrade::current_version(), EWrongVersion);
+    }
+
+    fun assert_poc_dispute_version(dispute: &PoCDispute) {
+        assert!(dispute.version == upgrade::current_version(), EWrongVersion);
+    }
+
     /// Provision a username beneficiary vault for an off-platform creator (admin only).
     public entry fun create_username_beneficiary(
         _: &PoCBeneficiaryAdminCap,
@@ -590,6 +603,9 @@ module social_contracts::proof_of_creativity {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
+        poc_username_beneficiary::assert_directory_version(directory);
+        poc_username_beneficiary::assert_shard_version(shard);
+        poc_vault::assert_vault_directory_version(vault_directory);
         poc_username_beneficiary::create_username_beneficiary(
             directory,
             shard,
@@ -616,6 +632,10 @@ module social_contracts::proof_of_creativity {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
+        poc_username_beneficiary::assert_directory_version(directory);
+        poc_username_beneficiary::assert_shard_version(shard);
+        poc_username_beneficiary::assert_beneficiary_version(beneficiary);
+        poc_vault::assert_vault_version(vault);
         poc_username_beneficiary::end_username_beneficiary(
             directory,
             shard,
@@ -648,6 +668,10 @@ module social_contracts::proof_of_creativity {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
+        assert_poc_config_version(config);
+        poc_username_beneficiary::assert_directory_version(directory);
+        poc_username_beneficiary::assert_shard_version(shard);
+        poc_username_beneficiary::assert_beneficiary_version(beneficiary);
         assert!(is_authorized_oracle(config, tx_context::sender(ctx)), ENotOracle);
         poc_username_beneficiary::claim_username_beneficiary(
             directory,
@@ -680,6 +704,10 @@ module social_contracts::proof_of_creativity {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
+        assert_poc_config_version(config);
+        poc_username_beneficiary::assert_directory_version(directory);
+        poc_username_beneficiary::assert_beneficiary_version(beneficiary);
+        poc_vault::assert_vault_version(vault);
         poc_username_beneficiary::claim_username_beneficiary_vault_balance<T>(
             config.claim_treasury_fee_bps,
             config.username_beneficiary_join_referral_bps,
@@ -756,6 +784,9 @@ module social_contracts::proof_of_creativity {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        assert_poc_config_version(config);
+        assert_poc_registry_version(registry);
+        poc_vault::assert_vault_directory_version(vault_directory);
         let caller = tx_context::sender(ctx);
         let timestamp = clock::timestamp_ms(clock);
         let post_id = social_contracts::post::get_id_address(post);
@@ -1084,6 +1115,8 @@ module social_contracts::proof_of_creativity {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        assert_poc_config_version(config);
+        poc_vault::assert_vault_version(vault);
         poc_vault::claim_vault_balance<T>(
             vault,
             treasury,
@@ -1106,6 +1139,8 @@ module social_contracts::proof_of_creativity {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        assert_poc_config_version(config);
+        assert_poc_registry_version(registry);
         let disputer = tx_context::sender(ctx);
         let now = clock::timestamp_ms(clock);
         let post_id = social_contracts::post::get_id_address(post);
@@ -1225,6 +1260,9 @@ module social_contracts::proof_of_creativity {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        assert_poc_config_version(config);
+        assert_poc_registry_version(registry);
+        assert_poc_dispute_version(dispute);
         let voter = tx_context::sender(ctx);
         let t = clock::timestamp_ms(clock);
         let stake_amount = coin::value(&stake_coin);
@@ -1359,6 +1397,7 @@ module social_contracts::proof_of_creativity {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        assert_poc_dispute_version(dispute);
         finalize_dispute_voting_resolution(dispute, post, clock, ctx);
     }
 
@@ -1371,6 +1410,7 @@ module social_contracts::proof_of_creativity {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        assert_poc_dispute_version(dispute);
         finalize_dispute_voting_resolution(dispute, post, clock, ctx);
         let post_id = social_contracts::post::get_id_address(post);
         let sender = tx_context::sender(ctx);
@@ -1394,6 +1434,7 @@ module social_contracts::proof_of_creativity {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        assert_poc_dispute_version(dispute);
         let claimer = tx_context::sender(ctx);
         let timestamp = clock::timestamp_ms(clock);
         let dispute_id = object::uid_to_address(&dispute.id);
@@ -1751,8 +1792,9 @@ module social_contracts::poc_vault {
         tx_context::{Self, TxContext},
     };
     use myso::myso::MYSO;
+    use std::string;
     use social_contracts::profile::{Self, EcosystemTreasury};
-    use social_contracts::upgrade;
+    use social_contracts::upgrade::{Self, UpgradeAdminCap};
 
     const EUnauthorized: u64 = 1;
     const EWrongBeneficiary: u64 = 2;
@@ -1761,6 +1803,15 @@ module social_contracts::poc_vault {
     const EBpsTooLarge: u64 = 5;
     const EDEPOSIT_BELOW_MINIMUM: u64 = 6;
     const EClaimInvariant: u64 = 7;
+    const EWrongVersion: u64 = 8;
+
+    public(package) fun assert_vault_directory_version(directory: &PoCVaultDirectory) {
+        assert!(directory.version == upgrade::current_version(), EWrongVersion);
+    }
+
+    public(package) fun assert_vault_version(vault: &PoCBeneficiaryVault) {
+        assert!(vault.version == upgrade::current_version(), EWrongVersion);
+    }
 
     /// Minimum amount (per asset) accepted into the vault; configurable via `PoCConfig`.
     /// Bag key for `Balance<T>` buckets (same phantom-key pattern as orderbook `BalanceKey`).
@@ -1846,6 +1897,7 @@ module social_contracts::poc_vault {
         beneficiary: address,
         ctx: &mut TxContext
     ): address {
+        assert_vault_directory_version(directory);
         if (table::contains(&directory.vault_by_beneficiary, beneficiary)) {
             *table::borrow(&directory.vault_by_beneficiary, beneficiary)
         } else {
@@ -1871,6 +1923,7 @@ module social_contracts::poc_vault {
         clock: &Clock,
         _ctx: &TxContext
     ) {
+        assert_vault_version(vault);
         assert!(vault.beneficiary == expected_beneficiary, EWrongBeneficiary);
         let amount = coin::value(&fee_coin);
         if (amount == 0) {
@@ -1908,6 +1961,7 @@ module social_contracts::poc_vault {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        assert_vault_version(vault);
         assert!(tx_context::sender(ctx) == vault.beneficiary, EUnauthorized);
         assert!(treasury_fee_bps <= 10000 && max_referral_bps <= 10000, EBpsTooLarge);
 
@@ -1980,6 +2034,7 @@ module social_contracts::poc_vault {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        assert_vault_version(vault);
         assert!(tx_context::sender(ctx) == linked_wallet, EUnauthorized);
         assert!(treasury_fee_bps <= 10000 && join_referral_bps <= 10000, EBpsTooLarge);
 
@@ -2050,6 +2105,7 @@ module social_contracts::poc_vault {
         treasury: &EcosystemTreasury,
         ctx: &mut TxContext
     ): u64 {
+        assert_vault_version(vault);
         let key = VaultBalanceKey<T> {};
         if (!bag::contains_with_type<VaultBalanceKey<T>, Balance<T>>(&vault.balances, key)) {
             return 0
@@ -2107,6 +2163,57 @@ module social_contracts::poc_vault {
         transfer::share_object(badge);
     }
 
+    public entry fun migrate_poc_vault_directory(
+        directory: &mut PoCVaultDirectory,
+        _: &UpgradeAdminCap,
+        ctx: &mut TxContext
+    ) {
+        let current_version = upgrade::current_version();
+        assert!(directory.version < current_version, EWrongVersion);
+        let old_version = directory.version;
+        directory.version = current_version;
+        upgrade::emit_migration_event(
+            object::id(directory),
+            string::utf8(b"PoCVaultDirectory"),
+            old_version,
+            tx_context::sender(ctx)
+        );
+    }
+
+    public entry fun migrate_poc_beneficiary_vault(
+        vault: &mut PoCBeneficiaryVault,
+        _: &UpgradeAdminCap,
+        ctx: &mut TxContext
+    ) {
+        let current_version = upgrade::current_version();
+        assert!(vault.version < current_version, EWrongVersion);
+        let old_version = vault.version;
+        vault.version = current_version;
+        upgrade::emit_migration_event(
+            object::id(vault),
+            string::utf8(b"PoCBeneficiaryVault"),
+            old_version,
+            tx_context::sender(ctx)
+        );
+    }
+
+    public entry fun migrate_poc_badge_object(
+        badge: &mut PoCBadgeObject,
+        _: &UpgradeAdminCap,
+        ctx: &mut TxContext
+    ) {
+        let current_version = upgrade::current_version();
+        assert!(badge.version < current_version, EWrongVersion);
+        let old_version = badge.version;
+        badge.version = current_version;
+        upgrade::emit_migration_event(
+            object::id(badge),
+            string::utf8(b"PoCBadgeObject"),
+            old_version,
+            tx_context::sender(ctx)
+        );
+    }
+
     public(package) fun po_badge_object_address(badge: &PoCBadgeObject): address {
         object::uid_to_address(&badge.id)
     }
@@ -2151,7 +2258,7 @@ module social_contracts::poc_username_beneficiary {
         hash as myso_hash,
     };
     use myso::myso::MYSO;
-    use social_contracts::upgrade;
+    use social_contracts::upgrade::{Self, UpgradeAdminCap};
     use social_contracts::profile::{Self, ProfileConfig, UsernameRegistry, EcosystemTreasury};
     use social_contracts::poc_vault::{Self as poc_vault, PoCBeneficiaryVault, PoCVaultDirectory};
     use social_contracts::memory;
@@ -2177,6 +2284,19 @@ module social_contracts::poc_username_beneficiary {
     const EJoinReferralAlreadyPaid: u64 = 8;
     const EInvalidIdentitySource: u64 = 9;
     const EInvalidUsername: u64 = 10;
+    const EWrongVersion: u64 = 11;
+
+    public(package) fun assert_directory_version(directory: &PoCUsernameBeneficiaryDirectory) {
+        assert!(directory.version == upgrade::current_version(), EWrongVersion);
+    }
+
+    public(package) fun assert_shard_version(shard: &PoCUsernameBeneficiaryShard) {
+        assert!(shard.version == upgrade::current_version(), EWrongVersion);
+    }
+
+    public(package) fun assert_beneficiary_version(beneficiary: &PoCUsernameBeneficiary) {
+        assert!(beneficiary.version == upgrade::current_version(), EWrongVersion);
+    }
 
     /// Admin capability for username beneficiary provisioning lifecycle.
     public struct PoCBeneficiaryAdminCap has key, store {
@@ -2369,6 +2489,9 @@ module social_contracts::poc_username_beneficiary {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
+        assert_directory_version(directory);
+        assert_shard_version(shard);
+        poc_vault::assert_vault_directory_version(vault_directory);
         let username = canonical_username(username);
         assert_shard_matches_username(shard, &username);
         let username_len = vector::length(string::as_bytes(&username));
@@ -2464,6 +2587,9 @@ module social_contracts::poc_username_beneficiary {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
+        assert_directory_version(directory);
+        assert_shard_version(shard);
+        assert_beneficiary_version(beneficiary);
         assert!(beneficiary.status == STATUS_ACTIVE, EInvalidStatus);
         assert_shard_matches_username(shard, &beneficiary.username);
         let attested = canonical_x_handle(attested_x_handle);
@@ -2535,6 +2661,9 @@ module social_contracts::poc_username_beneficiary {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
+        assert_directory_version(directory);
+        assert_beneficiary_version(beneficiary);
+        poc_vault::assert_vault_version(vault);
         assert!(beneficiary.status == STATUS_CLAIMED, EInvalidStatus);
         assert!(
             table::contains(&directory.wallet_by_identity, beneficiary.creator_identity),
@@ -2586,6 +2715,10 @@ module social_contracts::poc_username_beneficiary {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
+        assert_directory_version(directory);
+        assert_shard_version(shard);
+        assert_beneficiary_version(beneficiary);
+        poc_vault::assert_vault_version(vault);
         assert!(beneficiary.status == STATUS_ACTIVE, EInvalidStatus);
         assert_shard_matches_username(shard, &beneficiary.username);
         let ended_by = tx_context::sender(ctx);
@@ -2620,6 +2753,57 @@ module social_contracts::poc_username_beneficiary {
             swept_mys_amount,
             ended_at: now,
         });
+    }
+
+    public entry fun migrate_poc_username_beneficiary_directory(
+        directory: &mut PoCUsernameBeneficiaryDirectory,
+        _: &UpgradeAdminCap,
+        ctx: &mut TxContext
+    ) {
+        let current_version = upgrade::current_version();
+        assert!(directory.version < current_version, EWrongVersion);
+        let old_version = directory.version;
+        directory.version = current_version;
+        upgrade::emit_migration_event(
+            object::id(directory),
+            string::utf8(b"PoCUsernameBeneficiaryDirectory"),
+            old_version,
+            tx_context::sender(ctx)
+        );
+    }
+
+    public entry fun migrate_poc_username_beneficiary_shard(
+        shard: &mut PoCUsernameBeneficiaryShard,
+        _: &UpgradeAdminCap,
+        ctx: &mut TxContext
+    ) {
+        let current_version = upgrade::current_version();
+        assert!(shard.version < current_version, EWrongVersion);
+        let old_version = shard.version;
+        shard.version = current_version;
+        upgrade::emit_migration_event(
+            object::id(shard),
+            string::utf8(b"PoCUsernameBeneficiaryShard"),
+            old_version,
+            tx_context::sender(ctx)
+        );
+    }
+
+    public entry fun migrate_poc_username_beneficiary(
+        beneficiary: &mut PoCUsernameBeneficiary,
+        _: &UpgradeAdminCap,
+        ctx: &mut TxContext
+    ) {
+        let current_version = upgrade::current_version();
+        assert!(beneficiary.version < current_version, EWrongVersion);
+        let old_version = beneficiary.version;
+        beneficiary.version = current_version;
+        upgrade::emit_migration_event(
+            object::id(beneficiary),
+            string::utf8(b"PoCUsernameBeneficiary"),
+            old_version,
+            tx_context::sender(ctx)
+        );
     }
 
     #[test_only]

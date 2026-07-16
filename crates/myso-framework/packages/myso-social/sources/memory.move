@@ -34,6 +34,8 @@ module social_contracts::memory {
     use std::string::{Self, String};
     use std::vector;
 
+    use social_contracts::upgrade::{Self, UpgradeAdminCap};
+
     use myso::{
         object::{Self, UID, ID},
         tx_context::{Self, TxContext},
@@ -41,7 +43,6 @@ module social_contracts::memory {
         table::{Self, Table},
         clock::{Self, Clock},
         dynamic_field as df,
-        package::{Self, UpgradeCap},
         bcs,
         event,
         derived_object,
@@ -222,7 +223,6 @@ module social_contracts::memory {
     const MAX_ORG_DESCRIPTION_LENGTH: u64 = 1200;
     const MAX_AGENT_DEPTH: u8 = 8;
 
-    const VERSION: u64 = 4;
     const VERSION_DF_KEY: vector<u8> = b"memory_version";
 
     // ============================================================
@@ -779,7 +779,7 @@ module social_contracts::memory {
             max_label_length: MAX_LABEL_LENGTH,
             max_org_name_length: MAX_ORG_NAME_LENGTH,
             max_org_description_length: MAX_ORG_DESCRIPTION_LENGTH,
-            version: VERSION,
+            version: upgrade::current_version(),
         };
         event::emit(MemoryConfigUpdatedEvent {
             updated_by: admin,
@@ -797,7 +797,7 @@ module social_contracts::memory {
             id: object::new(ctx),
             accounts: table::new(ctx),
         };
-        set_version(&mut registry.id, VERSION);
+        set_version(&mut registry.id, upgrade::current_version());
         transfer::share_object(registry);
     }
 
@@ -819,6 +819,7 @@ module social_contracts::memory {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        assert!(config.version == upgrade::current_version(), EWrongVersion);
         assert!(max_organizations_per_user > 0, EInvalidConfig);
         assert!(max_agent_depth > 0, EInvalidConfig);
         assert!(max_label_length > 0, EInvalidConfig);
@@ -866,7 +867,7 @@ module social_contracts::memory {
             organizations: table::new(ctx),
             org_count: 0,
         };
-        set_version(&mut account.id, VERSION);
+        set_version(&mut account.id, upgrade::current_version());
 
         let account_id = object::id(&account);
         table::add(&mut registry.accounts, sender, account_id);
@@ -1776,43 +1777,85 @@ module social_contracts::memory {
 
     public entry fun migrate_account(account: &mut MemoryAccount, ctx: &mut TxContext) {
         assert!(account.owner == tx_context::sender(ctx), ENotOwner);
+        let current_version = upgrade::current_version();
         let cur = get_version(&account.id);
-        assert!(cur < VERSION, EAlreadyMigrated);
-        let _ = ctx;
-        bump_version(&mut account.id, VERSION);
+        assert!(cur < current_version, EAlreadyMigrated);
+        bump_version(&mut account.id, current_version);
 
         event::emit(MemoryAccountMigrated {
             account_id: object::id(account),
             from: cur,
-            to: VERSION,
+            to: current_version,
         });
+        upgrade::emit_migration_event(
+            object::id(account),
+            string::utf8(b"MemoryAccount"),
+            cur,
+            tx_context::sender(ctx),
+        );
     }
 
-    public entry fun admin_migrate_account(cap: &UpgradeCap, account: &mut MemoryAccount, ctx: &mut TxContext) {
-        assert_cap_for_this_package(cap);
+    public entry fun admin_migrate_account(
+        account: &mut MemoryAccount,
+        _: &UpgradeAdminCap,
+        ctx: &mut TxContext,
+    ) {
+        let current_version = upgrade::current_version();
         let cur = get_version(&account.id);
-        assert!(cur < VERSION, EAlreadyMigrated);
-        let _ = ctx;
-        bump_version(&mut account.id, VERSION);
+        assert!(cur < current_version, EAlreadyMigrated);
+        bump_version(&mut account.id, current_version);
 
         event::emit(MemoryAccountMigrated {
             account_id: object::id(account),
             from: cur,
-            to: VERSION,
+            to: current_version,
         });
+        upgrade::emit_migration_event(
+            object::id(account),
+            string::utf8(b"MemoryAccount"),
+            cur,
+            tx_context::sender(ctx),
+        );
     }
 
-    public entry fun migrate_registry(cap: &UpgradeCap, registry: &mut MemoryRegistry) {
-        assert_cap_for_this_package(cap);
+    public entry fun migrate_registry(
+        registry: &mut MemoryRegistry,
+        _: &UpgradeAdminCap,
+        ctx: &mut TxContext,
+    ) {
+        let current_version = upgrade::current_version();
         let cur = get_version(&registry.id);
-        assert!(cur < VERSION, EAlreadyMigrated);
-        bump_version(&mut registry.id, VERSION);
+        assert!(cur < current_version, EAlreadyMigrated);
+        bump_version(&mut registry.id, current_version);
 
         event::emit(MemoryRegistryMigrated {
             registry_id: object::id(registry),
             from: cur,
-            to: VERSION,
+            to: current_version,
         });
+        upgrade::emit_migration_event(
+            object::id(registry),
+            string::utf8(b"MemoryRegistry"),
+            cur,
+            tx_context::sender(ctx),
+        );
+    }
+
+    public entry fun migrate_config(
+        config: &mut MemoryConfig,
+        _: &UpgradeAdminCap,
+        ctx: &mut TxContext,
+    ) {
+        let current_version = upgrade::current_version();
+        assert!(config.version < current_version, EWrongVersion);
+        let old_version = config.version;
+        config.version = current_version;
+        upgrade::emit_migration_event(
+            object::id(config),
+            string::utf8(b"MemoryConfig"),
+            old_version,
+            tx_context::sender(ctx),
+        );
     }
 
     // ============================================================
@@ -2024,7 +2067,7 @@ module social_contracts::memory {
 
     public fun account_version(account: &MemoryAccount): u64 { get_version(&account.id) }
     public fun registry_version(registry: &MemoryRegistry): u64 { get_version(&registry.id) }
-    public fun current_contract_version(): u64 { VERSION }
+    public fun current_contract_version(): u64 { upgrade::current_version() }
 
     // ============================================================
     // Key-server access policies
@@ -3001,7 +3044,7 @@ module social_contracts::memory {
         if (df::exists_with_type<vector<u8>, u64>(uid, VERSION_DF_KEY)) {
             *df::borrow<vector<u8>, u64>(uid, VERSION_DF_KEY)
         } else {
-            1
+            0
         }
     }
 
@@ -3019,12 +3062,7 @@ module social_contracts::memory {
     }
 
     fun assert_object_version(uid: &UID) {
-        assert!(get_version(uid) == VERSION, EWrongVersion);
-    }
-
-    fun assert_cap_for_this_package(cap: &UpgradeCap) {
-        let cap_pkg = package::upgrade_package(cap);
-        assert!(object::id_to_address(&cap_pkg) == @social_contracts, ENotUpgradeAuthority);
+        assert!(get_version(uid) == upgrade::current_version(), EWrongVersion);
     }
 
     fun has_suffix(data: &vector<u8>, suffix: &vector<u8>): bool {
@@ -3078,16 +3116,6 @@ module social_contracts::memory {
     #[test_only]
     public fun test_bootstrap_init(clock: &Clock, ctx: &mut TxContext) {
         bootstrap_init(clock, ctx);
-    }
-
-    #[test_only]
-    public fun test_make_upgrade_cap(ctx: &mut TxContext): UpgradeCap {
-        package::test_publish(object::id_from_address(@social_contracts), ctx)
-    }
-
-    #[test_only]
-    public fun test_make_foreign_upgrade_cap(ctx: &mut TxContext): UpgradeCap {
-        package::test_publish(object::id_from_address(@0xBADBAD), ctx)
     }
 
     #[test_only]

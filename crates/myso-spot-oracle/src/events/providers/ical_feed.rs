@@ -6,11 +6,11 @@
 use async_trait::async_trait;
 use chrono::{DateTime, NaiveDate, TimeZone, Utc};
 
+use crate::events::types::{generate_keywords, normalize_discovered_event};
 use crate::events::{
     DiscoveredEvent, EventCategory, EventProvider, EventResolverHints, ProviderContext,
     ProviderHealth,
 };
-use crate::events::types::{generate_keywords, normalize_discovered_event};
 use crate::sources::http_fetch::HttpFetchClient;
 
 pub struct IcalFeedProvider;

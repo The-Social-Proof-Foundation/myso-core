@@ -96,7 +96,11 @@ impl KnowledgeGraph {
         }
         if let Ok(mut rels) = self.relationships.write() {
             for rel in &knowledge.relationships {
-                rels.push((rel.subject_id.clone(), rel.rel_type.clone(), rel.object_id.clone()));
+                rels.push((
+                    rel.subject_id.clone(),
+                    rel.rel_type.clone(),
+                    rel.object_id.clone(),
+                ));
             }
         }
     }

@@ -604,6 +604,26 @@ module social_contracts::mydata {
         }
     }
 
+    fun assert_config_version(config: &MyDataConfig) {
+        assert!(config.version == upgrade::current_version(), EInvalidInput);
+    }
+
+    fun assert_pool_registry_version(registry: &MyDataPoolRegistry) {
+        assert!(registry.version == upgrade::current_version(), EInvalidInput);
+    }
+
+    fun assert_snapshot_anchor_registry_version(registry: &SnapshotAnchorRegistry) {
+        assert!(registry.version == upgrade::current_version(), EInvalidInput);
+    }
+
+    fun assert_claim_vault_version(vault: &MyDataClaimVault) {
+        assert!(vault.version == upgrade::current_version(), EInvalidInput);
+    }
+
+    fun assert_distribution_registry_version(registry: &DistributionRegistry) {
+        assert!(registry.version == upgrade::current_version(), EInvalidInput);
+    }
+
     /// Update MyData configuration (admin only).
     /// `marketplace_enabled` controls only new query/pool marketplace snapshots.
     public entry fun update_mydata_config(
@@ -631,6 +651,7 @@ module social_contracts::mydata {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        assert_config_version(config);
         assert!(max_subscription_days > 0, EInvalidInput);
         assert!(max_tags > 0, EInvalidInput);
         assert!(max_free_access_grants > 0, EInvalidInput);
@@ -781,6 +802,8 @@ module social_contracts::mydata {
         platform_id: Option<address>,
         clock: &Clock,
     ) {
+        assert_config_version(config);
+        assert_pool_registry_version(registry);
         assert!(string::length(&name) > 0 && string::length(&name) <= config.max_metadata_bytes, EPqInvalidInput);
         assert!(string::length(&description) <= config.max_metadata_bytes, EPqInvalidInput);
         let nonce = registry.next_broad_pool_nonce;
@@ -849,6 +872,8 @@ module social_contracts::mydata {
         schema_metadata: Option<vector<u8>>,
         clock: &Clock,
     ) {
+        assert_config_version(config);
+        assert_pool_registry_version(registry);
         assert!(table::contains(&registry.broad_pools, broad_pool_id), EPqPoolNotFound);
         assert!(string::length(&name) > 0 && string::length(&name) <= config.max_metadata_bytes, EPqInvalidInput);
         assert!(string::length(&description) <= config.max_metadata_bytes, EPqInvalidInput);
@@ -891,6 +916,8 @@ module social_contracts::mydata {
         sub_pool_ids: vector<ID>,
         clock: &Clock,
     ) {
+        assert_config_version(config);
+        assert_pool_registry_version(registry);
         assert!(vector::length(&sub_pool_ids) > 0, EPqInvalidInput);
         assert!(vector::length(&sub_pool_ids) <= config.max_pool_assignments, EPqInvalidInput);
         let mut existing = if (table::contains(&registry.mydata_to_sub_pools, ip_id)) {
@@ -955,6 +982,10 @@ module social_contracts::mydata {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
+        assert_config_version(config);
+        assert_snapshot_anchor_registry_version(anchor_registry);
+        assert_claim_vault_version(vault);
+        assert_pool_registry_version(pool_registry);
         assert!(config.marketplace_enabled, EDisabled);
         assert!(table::contains(&pool_registry.broad_pools, source_pool_id), EPqPoolNotFound);
         assert!(table::contains(&pool_registry.sub_pools, source_sub_pool_id), EPqSubPoolNotFound);
@@ -1026,6 +1057,8 @@ module social_contracts::mydata {
         clock: &Clock,
         ctx: &TxContext,
     ) {
+        assert_snapshot_anchor_registry_version(anchor_registry);
+        assert_claim_vault_version(vault);
         assert!(table::contains(&anchor_registry.anchors, snapshot_id), EPqAnchorNotFound);
         assert!(!table::contains(&vault.merkle_roots, snapshot_id), EPqDistributionPublished);
         assert!(table::contains(&vault.snapshot_escrow, snapshot_id), EPqSnapshotEscrowMissing);
@@ -1058,6 +1091,10 @@ module social_contracts::mydata {
         contributor_count: u64,
         clock: &Clock,
     ) {
+        assert_config_version(config);
+        assert_snapshot_anchor_registry_version(anchor_registry);
+        assert_distribution_registry_version(dist_registry);
+        assert_claim_vault_version(vault);
         assert!(table::contains(&anchor_registry.anchors, snapshot_id), EPqAnchorNotFound);
         assert!(table::contains(&vault.snapshot_escrow, snapshot_id), EPqSnapshotEscrowMissing);
         assert!(vector::length(&root_hash) == 32, EPqInvalidInput);
@@ -1159,6 +1196,9 @@ module social_contracts::mydata {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
+        assert_config_version(config);
+        assert_distribution_registry_version(dist_registry);
+        assert_claim_vault_version(vault);
         assert!(amount > 0, EPqInvalidInput);
         assert!(vector::length(&proof) <= config.max_merkle_proof_depth, EPqInvalidProof);
         assert!(table::contains(&dist_registry.rounds, snapshot_id), EPqDistributionNotFound);
@@ -1226,6 +1266,9 @@ module social_contracts::mydata {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
+        assert_config_version(config);
+        assert_distribution_registry_version(dist_registry);
+        assert_claim_vault_version(vault);
         assert!(amount > 0, EPqInvalidInput);
         assert!(vector::length(&proof) <= config.max_merkle_proof_depth, EPqInvalidProof);
         assert!(table::contains(&dist_registry.rounds, snapshot_id), EPqDistributionNotFound);
@@ -1348,6 +1391,9 @@ module social_contracts::mydata {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
+        assert_snapshot_anchor_registry_version(anchor_registry);
+        assert_distribution_registry_version(dist_registry);
+        assert_claim_vault_version(vault);
         assert!(table::contains(&anchor_registry.anchors, snapshot_id), EPqAnchorNotFound);
         assert!(table::contains(&dist_registry.rounds, snapshot_id), EPqDistributionNotFound);
         assert!(table::contains(&vault.snapshot_escrow, snapshot_id), EPqSnapshotEscrowMissing);
@@ -2315,6 +2361,9 @@ module social_contracts::mydata {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
+        assert!(mydata.version == upgrade::current_version(), EInvalidInput);
+        assert_config_version(config);
+        assert_pool_registry_version(pool_registry);
         assert!(tx_context::sender(ctx) == mydata.owner, EUnauthorized);
         let ip_id = object::uid_to_address(&mydata.id);
         assign_mydata_to_sub_pools(config, pool_registry, ip_id, sub_pool_ids, clock);
@@ -2327,6 +2376,8 @@ module social_contracts::mydata {
         sub_pool_id: ID,
         ctx: &mut TxContext,
     ) {
+        assert!(mydata.version == upgrade::current_version(), EInvalidInput);
+        assert_pool_registry_version(pool_registry);
         assert!(tx_context::sender(ctx) == mydata.owner, EUnauthorized);
         let ip_id = object::uid_to_address(&mydata.id);
         remove_mydata_from_sub_pool(pool_registry, ip_id, sub_pool_id);
@@ -2890,6 +2941,86 @@ module social_contracts::mydata {
         upgrade::emit_migration_event(
             config_id,
             string::utf8(b"MyDataConfig"),
+            old_version,
+            tx_context::sender(ctx)
+        );
+    }
+
+    /// Migration function for MyDataPoolRegistry
+    public entry fun migrate_pool_registry(
+        registry: &mut MyDataPoolRegistry,
+        _: &UpgradeAdminCap,
+        ctx: &mut TxContext
+    ) {
+        let current_version = upgrade::current_version();
+        assert!(registry.version < current_version, EInvalidInput);
+
+        let old_version = registry.version;
+        registry.version = current_version;
+
+        upgrade::emit_migration_event(
+            object::id(registry),
+            string::utf8(b"MyDataPoolRegistry"),
+            old_version,
+            tx_context::sender(ctx)
+        );
+    }
+
+    /// Migration function for SnapshotAnchorRegistry
+    public entry fun migrate_snapshot_anchor_registry(
+        registry: &mut SnapshotAnchorRegistry,
+        _: &UpgradeAdminCap,
+        ctx: &mut TxContext
+    ) {
+        let current_version = upgrade::current_version();
+        assert!(registry.version < current_version, EInvalidInput);
+
+        let old_version = registry.version;
+        registry.version = current_version;
+
+        upgrade::emit_migration_event(
+            object::id(registry),
+            string::utf8(b"SnapshotAnchorRegistry"),
+            old_version,
+            tx_context::sender(ctx)
+        );
+    }
+
+    /// Migration function for MyDataClaimVault
+    public entry fun migrate_claim_vault(
+        vault: &mut MyDataClaimVault,
+        _: &UpgradeAdminCap,
+        ctx: &mut TxContext
+    ) {
+        let current_version = upgrade::current_version();
+        assert!(vault.version < current_version, EInvalidInput);
+
+        let old_version = vault.version;
+        vault.version = current_version;
+
+        upgrade::emit_migration_event(
+            object::id(vault),
+            string::utf8(b"MyDataClaimVault"),
+            old_version,
+            tx_context::sender(ctx)
+        );
+    }
+
+    /// Migration function for DistributionRegistry
+    public entry fun migrate_distribution_registry(
+        registry: &mut DistributionRegistry,
+        _: &UpgradeAdminCap,
+        ctx: &mut TxContext
+    ) {
+        let current_version = upgrade::current_version();
+        assert!(registry.version < current_version, EInvalidInput);
+
+        let old_version = registry.version;
+        registry.version = current_version;
+
+        upgrade::emit_migration_event(
+            object::id(registry),
+            string::utf8(b"DistributionRegistry"),
             old_version,
             tx_context::sender(ctx)
         );

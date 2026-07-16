@@ -23,6 +23,7 @@ module social_contracts::insurance_tests {
         PlatformConfig};
     use social_contracts::block_list;
     use social_contracts::profile::{Self, EcosystemTreasury};
+    use social_contracts::upgrade::{Self, UpgradeAdminCap};
 
     const ADMIN: address = @0xA0;
     const CREATOR: address = @0xC1;
@@ -1036,6 +1037,185 @@ module social_contracts::insurance_tests {
             test_scenario::return_shared(v3);
             test_scenario::return_shared(record);
             test_scenario::return_shared(clock);
+        };
+
+        test_scenario::end(scen);
+    }
+
+    // === Upgrade / migration tests ===
+
+    fun setup_env_with_insurance_and_upgrade_cap(): Scenario {
+        let mut scen = setup_env_with_insurance();
+        test_scenario::next_tx(&mut scen, ADMIN);
+        {
+            upgrade::init_for_testing(test_scenario::ctx(&mut scen));
+        };
+        scen
+    }
+
+    #[test]
+    fun test_insurance_genesis_versions() {
+        let mut scen = setup_env_with_insurance();
+        test_scenario::next_tx(&mut scen, ADMIN);
+        {
+            let config = test_scenario::take_shared<insurance::InsuranceConfig>(&scen);
+            assert!(insurance::config_version(&config) == upgrade::current_version(), 1);
+            test_scenario::return_shared(config);
+        };
+
+        setup_vault_with_capital(&mut scen, 1_000 * SCALING);
+        test_scenario::next_tx(&mut scen, UNDERWRITER);
+        {
+            let vault = test_scenario::take_shared<insurance::UnderwriterVault>(&scen);
+            assert!(insurance::vault_version(&vault) == upgrade::current_version(), 2);
+            test_scenario::return_shared(vault);
+        };
+
+        test_scenario::end(scen);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 17, location = social_contracts::insurance)]
+    fun test_insurance_wrong_version_aborts_config_mutation() {
+        let mut scen = setup_env_with_insurance();
+        test_scenario::next_tx(&mut scen, ADMIN);
+        {
+            let admin_cap = test_scenario::take_from_sender<insurance::InsuranceAdminCap>(&scen);
+            let mut config = test_scenario::take_shared<insurance::InsuranceConfig>(&scen);
+            let clock = test_scenario::take_shared<Clock>(&scen);
+            insurance::test_force_config_version(
+                &mut config,
+                upgrade::current_version() + 1,
+            );
+            insurance::set_insurance_enabled(
+                &admin_cap,
+                &mut config,
+                true,
+                &clock,
+                test_scenario::ctx(&mut scen),
+            );
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(config);
+            test_scenario::return_to_sender(&scen, admin_cap);
+        };
+
+        test_scenario::end(scen);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 17, location = social_contracts::insurance)]
+    fun test_insurance_wrong_version_aborts_vault_mutation() {
+        let mut scen = setup_env_with_insurance();
+        setup_vault_with_capital(&mut scen, 1_000 * SCALING);
+
+        test_scenario::next_tx(&mut scen, ADMIN);
+        {
+            let config = test_scenario::take_shared<insurance::InsuranceConfig>(&scen);
+            let mut vault = test_scenario::take_shared<insurance::UnderwriterVault>(&scen);
+            insurance::test_force_vault_version(
+                &mut vault,
+                upgrade::current_version() + 1,
+            );
+            let deposit = coin::mint_for_testing<MYSO>(100 * SCALING, test_scenario::ctx(&mut scen));
+            insurance::deposit_capital(&config, &mut vault, deposit, test_scenario::ctx(&mut scen));
+            test_scenario::return_shared(vault);
+            test_scenario::return_shared(config);
+        };
+
+        test_scenario::end(scen);
+    }
+
+    #[test]
+    fun test_insurance_migrate_config_and_vault_then_ops_work() {
+        let mut scen = setup_env_with_insurance_and_upgrade_cap();
+        setup_vault_with_capital(&mut scen, 1_000 * SCALING);
+
+        test_scenario::next_tx(&mut scen, ADMIN);
+        {
+            let admin_cap = test_scenario::take_from_sender<UpgradeAdminCap>(&scen);
+            let mut config = test_scenario::take_shared<insurance::InsuranceConfig>(&scen);
+            let mut vault = test_scenario::take_shared<insurance::UnderwriterVault>(&scen);
+            let stale = upgrade::test_stale_version_for_migration();
+            insurance::test_force_config_version(&mut config, stale);
+            insurance::test_force_vault_version(&mut vault, stale);
+
+            if (upgrade::test_migration_available()) {
+                insurance::migrate_config(&mut config, &admin_cap, test_scenario::ctx(&mut scen));
+                insurance::migrate_vault(&mut vault, &admin_cap, test_scenario::ctx(&mut scen));
+            } else {
+                insurance::test_migrate_config(&mut config, &admin_cap, test_scenario::ctx(&mut scen));
+                insurance::test_migrate_vault(&mut vault, &admin_cap, test_scenario::ctx(&mut scen));
+            };
+
+            assert!(insurance::config_version(&config) == upgrade::current_version(), 1);
+            assert!(insurance::vault_version(&vault) == upgrade::current_version(), 2);
+
+            let insurance_admin_cap = test_scenario::take_from_sender<insurance::InsuranceAdminCap>(&scen);
+            let clock = test_scenario::take_shared<Clock>(&scen);
+            insurance::set_insurance_enabled(
+                &insurance_admin_cap,
+                &mut config,
+                true,
+                &clock,
+                test_scenario::ctx(&mut scen),
+            );
+            let deposit = coin::mint_for_testing<MYSO>(100 * SCALING, test_scenario::ctx(&mut scen));
+            insurance::deposit_capital(&config, &mut vault, deposit, test_scenario::ctx(&mut scen));
+
+            test_scenario::return_shared(clock);
+            test_scenario::return_to_sender(&scen, insurance_admin_cap);
+            test_scenario::return_shared(vault);
+            test_scenario::return_shared(config);
+            test_scenario::return_to_sender(&scen, admin_cap);
+        };
+
+        test_scenario::end(scen);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 17, location = social_contracts::insurance)]
+    fun test_insurance_migrate_config_idempotent() {
+        let mut scen = setup_env_with_insurance_and_upgrade_cap();
+
+        test_scenario::next_tx(&mut scen, ADMIN);
+        {
+            let admin_cap = test_scenario::take_from_sender<UpgradeAdminCap>(&scen);
+            let mut config = test_scenario::take_shared<insurance::InsuranceConfig>(&scen);
+            let stale = upgrade::test_stale_version_for_migration();
+            insurance::test_force_config_version(&mut config, stale);
+            if (upgrade::test_migration_available()) {
+                insurance::migrate_config(&mut config, &admin_cap, test_scenario::ctx(&mut scen));
+            } else {
+                insurance::test_migrate_config(&mut config, &admin_cap, test_scenario::ctx(&mut scen));
+            };
+            insurance::migrate_config(&mut config, &admin_cap, test_scenario::ctx(&mut scen));
+            test_scenario::return_shared(config);
+            test_scenario::return_to_sender(&scen, admin_cap);
+        };
+
+        test_scenario::end(scen);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 17, location = social_contracts::insurance)]
+    fun test_insurance_migrate_vault_idempotent() {
+        let mut scen = setup_env_with_insurance_and_upgrade_cap();
+        setup_vault_with_capital(&mut scen, 1_000 * SCALING);
+
+        test_scenario::next_tx(&mut scen, ADMIN);
+        {
+            let admin_cap = test_scenario::take_from_sender<UpgradeAdminCap>(&scen);
+            let mut vault = test_scenario::take_shared<insurance::UnderwriterVault>(&scen);
+            let stale = upgrade::test_stale_version_for_migration();
+            insurance::test_force_vault_version(&mut vault, stale);
+            if (upgrade::test_migration_available()) {
+                insurance::migrate_vault(&mut vault, &admin_cap, test_scenario::ctx(&mut scen));
+            } else {
+                insurance::test_migrate_vault(&mut vault, &admin_cap, test_scenario::ctx(&mut scen));
+            };
+            insurance::migrate_vault(&mut vault, &admin_cap, test_scenario::ctx(&mut scen));
+            test_scenario::return_shared(vault);
+            test_scenario::return_to_sender(&scen, admin_cap);
         };
 
         test_scenario::end(scen);

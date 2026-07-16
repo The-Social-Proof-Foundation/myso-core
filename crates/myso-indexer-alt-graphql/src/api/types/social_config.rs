@@ -412,6 +412,11 @@ impl PocConfig {
     async fn transaction_id(&self) -> &str {
         &self.inner.transaction_id
     }
+
+    /// Configuration version.
+    async fn version(&self) -> i64 {
+        self.inner.version
+    }
 }
 
 #[derive(Clone)]
@@ -597,14 +602,30 @@ impl MyDataConfig {
         self.inner.max_encryption_id_bytes
     }
 
-    async fn max_encrypted_data_bytes(&self) -> i64 { self.inner.max_encrypted_data_bytes }
-    async fn max_tag_bytes(&self) -> i64 { self.inner.max_tag_bytes }
-    async fn max_metadata_bytes(&self) -> i64 { self.inner.max_metadata_bytes }
-    async fn max_payment_reference_bytes(&self) -> i64 { self.inner.max_payment_reference_bytes }
-    async fn max_pool_assignments(&self) -> i64 { self.inner.max_pool_assignments }
-    async fn max_merkle_proof_depth(&self) -> i64 { self.inner.max_merkle_proof_depth }
-    async fn max_paid_access_entries(&self) -> i64 { self.inner.max_paid_access_entries }
-    async fn default_claim_window_ms(&self) -> i64 { self.inner.default_claim_window_ms }
+    async fn max_encrypted_data_bytes(&self) -> i64 {
+        self.inner.max_encrypted_data_bytes
+    }
+    async fn max_tag_bytes(&self) -> i64 {
+        self.inner.max_tag_bytes
+    }
+    async fn max_metadata_bytes(&self) -> i64 {
+        self.inner.max_metadata_bytes
+    }
+    async fn max_payment_reference_bytes(&self) -> i64 {
+        self.inner.max_payment_reference_bytes
+    }
+    async fn max_pool_assignments(&self) -> i64 {
+        self.inner.max_pool_assignments
+    }
+    async fn max_merkle_proof_depth(&self) -> i64 {
+        self.inner.max_merkle_proof_depth
+    }
+    async fn max_paid_access_entries(&self) -> i64 {
+        self.inner.max_paid_access_entries
+    }
+    async fn default_claim_window_ms(&self) -> i64 {
+        self.inner.default_claim_window_ms
+    }
 
     /// P2P marketplace platform fee in bps (default 250 = 2.5%).
     async fn p2p_platform_fee_bps(&self) -> i64 {

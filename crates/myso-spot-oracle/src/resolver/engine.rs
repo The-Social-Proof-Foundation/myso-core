@@ -14,8 +14,8 @@ use crate::evidence::EvidenceBundle;
 use crate::resolver::{ResolutionDraft, ResolverDefinition, ResolverKind, ResolverSpec};
 use crate::sources::SourceEvidence;
 use crate::store::jobs::SpotJob;
-use crate::types::{MarketStatus, OnChainSpotStatus};
 use crate::types::ComparisonOp;
+use crate::types::{MarketStatus, OnChainSpotStatus};
 
 pub async fn resolve_market(state: Arc<AppState>, job: &SpotJob) -> anyhow::Result<()> {
     let market_id = job
@@ -38,7 +38,13 @@ pub async fn resolve_market(state: Arc<AppState>, job: &SpotJob) -> anyhow::Resu
 
     let status = MarketStatus::from_str(&market.status);
     match status {
-        Some(MarketStatus::Resolved | MarketStatus::Refunded | MarketStatus::Rejected | MarketStatus::DaoRequired | MarketStatus::Failed) => {
+        Some(
+            MarketStatus::Resolved
+            | MarketStatus::Refunded
+            | MarketStatus::Rejected
+            | MarketStatus::DaoRequired
+            | MarketStatus::Failed,
+        ) => {
             return Ok(());
         }
         Some(MarketStatus::Waiting | MarketStatus::Resolving) => {}
@@ -81,7 +87,11 @@ pub async fn resolve_market(state: Arc<AppState>, job: &SpotJob) -> anyhow::Resu
     if evidence_list.is_empty() {
         state
             .store
-            .requeue_job(job.id, now + chrono::Duration::minutes(5), "all adapters failed")
+            .requeue_job(
+                job.id,
+                now + chrono::Duration::minutes(5),
+                "all adapters failed",
+            )
             .await?;
         anyhow::bail!("all adapters failed to resolve");
     }
@@ -155,7 +165,11 @@ pub async fn resolve_market(state: Arc<AppState>, job: &SpotJob) -> anyhow::Resu
     Ok(())
 }
 
-async fn enqueue_refund(state: Arc<AppState>, market_id: uuid::Uuid, def_id: uuid::Uuid) -> anyhow::Result<()> {
+async fn enqueue_refund(
+    state: Arc<AppState>,
+    market_id: uuid::Uuid,
+    def_id: uuid::Uuid,
+) -> anyhow::Result<()> {
     state
         .store
         .enqueue_job(
@@ -196,7 +210,9 @@ pub(crate) async fn fetch_and_evaluate(
     for adapter in &adapters {
         match adapter.resolve(def).await {
             Ok(ev) => evidence_list.push(ev),
-            Err(err) => tracing::warn!(adapter = adapter.id(), error = %err, "adapter resolve failed"),
+            Err(err) => {
+                tracing::warn!(adapter = adapter.id(), error = %err, "adapter resolve failed")
+            }
         }
     }
     if evidence_list.is_empty() {
@@ -336,8 +352,16 @@ fn evaluate_release(
         .and_then(|v| v.as_str())
         .unwrap_or("");
     let matched = !tag.is_empty() && (tag_predicate.is_empty() || tag.contains(tag_predicate));
-    let yes = def.betting_options.first().cloned().unwrap_or_else(|| "Yes".to_string());
-    let no = def.betting_options.get(1).cloned().unwrap_or_else(|| "No".to_string());
+    let yes = def
+        .betting_options
+        .first()
+        .cloned()
+        .unwrap_or_else(|| "Yes".to_string());
+    let no = def
+        .betting_options
+        .get(1)
+        .cloned()
+        .unwrap_or_else(|| "No".to_string());
     Ok(ResolutionDraft {
         outcome_label: Some(if matched { yes } else { no }),
         confidence_bps: if matched { 9000 } else { 8000 },
@@ -350,7 +374,10 @@ fn evaluate_event(
     def: &ResolverDefinition,
     evidence: &[SourceEvidence],
 ) -> anyhow::Result<ResolutionDraft> {
-    let ResolverSpec::EventOccurrence { match_predicate, .. } = &def.spec else {
+    let ResolverSpec::EventOccurrence {
+        match_predicate, ..
+    } = &def.spec
+    else {
         anyhow::bail!("expected EventOccurrence spec");
     };
     let urls: Vec<String> = evidence.iter().map(|e| e.source_url.clone()).collect();
@@ -365,7 +392,11 @@ fn evaluate_event(
                     .contains(&match_predicate.to_lowercase())
             });
         }
-        let title = ev.payload.get("title").and_then(|v| v.as_str()).unwrap_or("");
+        let title = ev
+            .payload
+            .get("title")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
         let summary = ev
             .payload
             .get("summary")
@@ -382,8 +413,16 @@ fn evaluate_event(
             evidence_urls: urls,
         });
     }
-    let yes = def.betting_options.first().cloned().unwrap_or_else(|| "Yes".to_string());
-    let _no = def.betting_options.get(1).cloned().unwrap_or_else(|| "No".to_string());
+    let yes = def
+        .betting_options
+        .first()
+        .cloned()
+        .unwrap_or_else(|| "Yes".to_string());
+    let _no = def
+        .betting_options
+        .get(1)
+        .cloned()
+        .unwrap_or_else(|| "No".to_string());
     Ok(ResolutionDraft {
         outcome_label: Some(yes),
         confidence_bps: 8500,
@@ -420,13 +459,41 @@ fn evaluate_custom_http(
     let condition = match comparator {
         ComparisonOp::Eq => actual == *expected,
         ComparisonOp::Neq => actual != *expected,
-        ComparisonOp::Gt => actual.parse::<f64>().ok().zip(expected.parse::<f64>().ok()).map(|(a, e)| a > e).unwrap_or(false),
-        ComparisonOp::Gte => actual.parse::<f64>().ok().zip(expected.parse::<f64>().ok()).map(|(a, e)| a >= e).unwrap_or(false),
-        ComparisonOp::Lt => actual.parse::<f64>().ok().zip(expected.parse::<f64>().ok()).map(|(a, e)| a < e).unwrap_or(false),
-        ComparisonOp::Lte => actual.parse::<f64>().ok().zip(expected.parse::<f64>().ok()).map(|(a, e)| a <= e).unwrap_or(false),
+        ComparisonOp::Gt => actual
+            .parse::<f64>()
+            .ok()
+            .zip(expected.parse::<f64>().ok())
+            .map(|(a, e)| a > e)
+            .unwrap_or(false),
+        ComparisonOp::Gte => actual
+            .parse::<f64>()
+            .ok()
+            .zip(expected.parse::<f64>().ok())
+            .map(|(a, e)| a >= e)
+            .unwrap_or(false),
+        ComparisonOp::Lt => actual
+            .parse::<f64>()
+            .ok()
+            .zip(expected.parse::<f64>().ok())
+            .map(|(a, e)| a < e)
+            .unwrap_or(false),
+        ComparisonOp::Lte => actual
+            .parse::<f64>()
+            .ok()
+            .zip(expected.parse::<f64>().ok())
+            .map(|(a, e)| a <= e)
+            .unwrap_or(false),
     };
-    let yes = def.betting_options.first().cloned().unwrap_or_else(|| "Yes".to_string());
-    let no = def.betting_options.get(1).cloned().unwrap_or_else(|| "No".to_string());
+    let yes = def
+        .betting_options
+        .first()
+        .cloned()
+        .unwrap_or_else(|| "Yes".to_string());
+    let no = def
+        .betting_options
+        .get(1)
+        .cloned()
+        .unwrap_or_else(|| "No".to_string());
     Ok(ResolutionDraft {
         outcome_label: Some(if condition { yes } else { no }),
         confidence_bps: 8800,
@@ -440,7 +507,9 @@ fn json_path_value(payload: &serde_json::Value, path: &str) -> Option<f64> {
     for part in path.split('.') {
         current = current.get(part)?;
     }
-    current.as_f64().or_else(|| current.as_str().and_then(|s| s.parse().ok()))
+    current
+        .as_f64()
+        .or_else(|| current.as_str().and_then(|s| s.parse().ok()))
 }
 
 fn json_path_value_str(payload: &serde_json::Value, path: &str) -> Option<String> {

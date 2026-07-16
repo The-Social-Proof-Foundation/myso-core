@@ -10,9 +10,9 @@ use std::sync::Arc;
 use sha2::{Digest, Sha256};
 
 use crate::api::AppState;
+use crate::resolver::engine::fetch_and_evaluate;
 use crate::review::canonicalize::{market_key_hash_hex, CanonicalClaim};
 use crate::review::compiler::ResolverCompiler;
-use crate::resolver::engine::fetch_and_evaluate;
 use crate::store::SpotTrustedSourceRow;
 
 /// Verdict values, mirroring the Move/indexer encoding.
@@ -41,11 +41,15 @@ pub async fn verify_and_build_verdict(
     source_rows: &[SpotTrustedSourceRow],
 ) -> PastVerdict {
     let market_hex = market_key_hash_hex(canonical);
-    let related_market_object_id =
-        match crate::store::claims::find_market_by_key_hash(state.store.pool(), &market_hex).await {
-            Ok(Some(m)) => m.spot_market_object_id,
-            _ => None,
-        };
+    let related_market_object_id = match crate::store::claims::find_market_by_key_hash(
+        state.store.pool(),
+        &market_hex,
+    )
+    .await
+    {
+        Ok(Some(m)) => m.spot_market_object_id,
+        _ => None,
+    };
 
     let compiled = match ResolverCompiler::compile(canonical, &state.sources, source_rows) {
         Ok(c) => c,

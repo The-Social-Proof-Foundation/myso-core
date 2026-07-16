@@ -4,7 +4,9 @@
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::schema::{message_digests, messaging_agent_groups, messaging_config, paid_message_escrows};
+use crate::schema::{
+    message_digests, messaging_agent_groups, messaging_config, paid_message_escrows,
+};
 
 pub const PAID_MESSAGE_STATUS_ESCROWED: &str = "escrowed";
 pub const PAID_MESSAGE_STATUS_CLAIMED: &str = "claimed";

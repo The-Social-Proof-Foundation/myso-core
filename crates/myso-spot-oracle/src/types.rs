@@ -46,9 +46,7 @@ pub enum ClaimCategory {
 /// When a claim resolves relative to now. `future` claims open live betting markets; `past`
 /// claims are verified against trusted sources (never opening a new market); `unsupported`
 /// claims are objectively non-checkable.
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize,
-)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TimeClass {
     #[default]

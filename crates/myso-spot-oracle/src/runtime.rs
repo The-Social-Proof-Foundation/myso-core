@@ -34,7 +34,10 @@ pub async fn serve(args: OracleArgs) -> anyhow::Result<()> {
 
     let sources = crate::sources::load_sources_config(&args.sources_config)?;
     store.upsert_source_rows(&sources).await?;
-    info!(sources = sources.len(), "registered trusted sources from local YAML");
+    info!(
+        sources = sources.len(),
+        "registered trusted sources from local YAML"
+    );
 
     let default_registry = crate::sources::build_default_registry();
     let enabled_rows = store.list_enabled_sources().await?;
@@ -47,8 +50,7 @@ pub async fn serve(args: OracleArgs) -> anyhow::Result<()> {
         "resolver registry ready"
     );
 
-    let event_providers =
-        crate::events::load_event_providers_config(&args.event_providers_config)?;
+    let event_providers = crate::events::load_event_providers_config(&args.event_providers_config)?;
     store.upsert_event_provider_rows(&event_providers).await?;
     info!(
         providers = event_providers.len(),
@@ -71,10 +73,7 @@ pub async fn serve(args: OracleArgs) -> anyhow::Result<()> {
     if let Err(err) = crate::events::sync::bootstrap_event_registry(&state).await {
         tracing::warn!(error = %err, "event registry bootstrap failed; review may lack implicit deadlines");
     } else {
-        info!(
-            events = state.event_registry.len(),
-            "event registry ready"
-        );
+        info!(events = state.event_registry.len(), "event registry ready");
     }
 
     if let Err(err) = crate::knowledge::sync::bootstrap_knowledge_graph(&state).await {
@@ -130,7 +129,10 @@ fn spawn_workers(state: Arc<AppState>, cancel: CancellationToken) -> Service {
     let mut svc = Service::new()
         .spawn(run_scheduler_worker(state.clone(), cancel.clone()))
         .spawn(run_reconcile_worker(state.clone(), cancel.clone()))
-        .spawn(run_event_provider_sync_worker(state.clone(), cancel.clone()));
+        .spawn(run_event_provider_sync_worker(
+            state.clone(),
+            cancel.clone(),
+        ));
 
     if state.args.uses_checkpoint_ingest() {
         svc = svc.spawn(run_checkpoint_ingest_worker(state.clone(), cancel.clone()));
@@ -181,7 +183,10 @@ async fn run_review_worker(state: Arc<AppState>, cancel: CancellationToken) -> a
     Ok(())
 }
 
-async fn run_scheduler_worker(state: Arc<AppState>, cancel: CancellationToken) -> anyhow::Result<()> {
+async fn run_scheduler_worker(
+    state: Arc<AppState>,
+    cancel: CancellationToken,
+) -> anyhow::Result<()> {
     let state_clone = state.clone();
     let cancel_clone = cancel.clone();
     tokio::spawn(async move {

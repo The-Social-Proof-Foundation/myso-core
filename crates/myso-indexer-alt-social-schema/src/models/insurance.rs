@@ -84,6 +84,8 @@ pub struct InsurancePolicyRow {
     pub route_leg_index: Option<i16>,
     #[diesel(sql_type = BigInt)]
     pub backstop_sweep_amount: i64,
+    #[diesel(sql_type = BigInt)]
+    pub contract_version: i64,
 }
 
 /// Query result for an insurance vault (for GraphQL/reader).
@@ -262,6 +264,7 @@ pub struct InsurancePolicy {
     pub route_id: Option<String>,
     pub route_leg_index: Option<i16>,
     pub backstop_sweep_amount: i64,
+    pub contract_version: i64,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
     pub transaction_id: String,
@@ -290,6 +293,7 @@ pub struct NewInsurancePolicy {
     pub route_id: Option<String>,
     pub route_leg_index: Option<i16>,
     pub backstop_sweep_amount: i64,
+    pub contract_version: i64,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
     pub transaction_id: String,
@@ -390,6 +394,7 @@ pub struct NewInsuranceCoverageRoute {
     pub policy_ids: serde_json::Value,
     #[diesel(sql_type = diesel::sql_types::Jsonb)]
     pub vault_ids: serde_json::Value,
+    pub contract_version: i64,
     pub transaction_id: String,
     pub created_at: NaiveDateTime,
 }

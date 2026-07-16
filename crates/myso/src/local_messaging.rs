@@ -105,9 +105,7 @@ pub fn log_messaging_once(info: &MessagingLocalInfo) {
             info.base_url,
             info.listen,
             info.myso_rpc,
-            info.social_server_url
-                .as_deref()
-                .unwrap_or("(not set)"),
+            info.social_server_url.as_deref().unwrap_or("(not set)"),
             info.repo
         )
         .green()

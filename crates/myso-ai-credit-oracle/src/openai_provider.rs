@@ -129,9 +129,8 @@ pub fn authenticate_provider(
     identity: &ProviderIdentity,
     headers: &HeaderMap,
 ) -> Result<(), ProviderError> {
-    let presented = extract_bearer_token(headers).ok_or_else(|| {
-        ProviderError::Unauthorized("missing Authorization: Bearer token".into())
-    })?;
+    let presented = extract_bearer_token(headers)
+        .ok_or_else(|| ProviderError::Unauthorized("missing Authorization: Bearer token".into()))?;
     if !constant_time_eq(&identity.token, &presented) {
         return Err(ProviderError::Unauthorized(
             "invalid AI credit provider token".into(),
@@ -279,10 +278,7 @@ pub fn extract_chat_prompt(
     Ok(InferencePrompt {
         system_prompt,
         prompt,
-        max_tokens: req
-            .max_tokens
-            .or(req.max_completion_tokens)
-            .unwrap_or(512),
+        max_tokens: req.max_tokens.or(req.max_completion_tokens).unwrap_or(512),
         model_id: req
             .model
             .as_deref()

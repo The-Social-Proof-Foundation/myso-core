@@ -4238,7 +4238,7 @@ module social_contracts::post {
     }
 
     /// Migration function for Post
-    public fun migrate_post(
+    public entry fun migrate_post(
         post: &mut Post,
         _: &UpgradeAdminCap,
         ctx: &mut TxContext
@@ -4287,7 +4287,7 @@ module social_contracts::post {
     }
 
     /// Migration function for Comment
-    public fun migrate_comment(
+    public entry fun migrate_comment(
         comment: &mut Comment,
         _: &UpgradeAdminCap,
         ctx: &mut TxContext
@@ -4314,7 +4314,7 @@ module social_contracts::post {
     }
 
     /// Migration function for Repost
-    public fun migrate_repost(
+    public entry fun migrate_repost(
         repost: &mut Repost,
         _: &UpgradeAdminCap,
         ctx: &mut TxContext

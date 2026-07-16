@@ -98,7 +98,7 @@ pub(crate) async fn get_insurance_policy(
                premium_paid, premium_raw, implied_probability_bps, risk_multiplier_bps,
                base_premium, market_total_amount, option_escrow_amount,
                start_time_ms, expiry_time_ms, vault_id, status,
-               route_id, route_leg_index, backstop_sweep_amount,
+               route_id, route_leg_index, backstop_sweep_amount, contract_version,
                created_at, updated_at, transaction_id
         FROM insurance_policies
         WHERE policy_id = $1
@@ -129,7 +129,7 @@ pub(crate) async fn list_insurance_policies_by_insured(
                premium_paid, premium_raw, implied_probability_bps, risk_multiplier_bps,
                base_premium, market_total_amount, option_escrow_amount,
                start_time_ms, expiry_time_ms, vault_id, status,
-               route_id, route_leg_index, backstop_sweep_amount,
+               route_id, route_leg_index, backstop_sweep_amount, contract_version,
                created_at, updated_at, transaction_id
         FROM insurance_policies
         WHERE insured = $1
@@ -276,7 +276,7 @@ pub(crate) async fn list_insurance_policies(
                premium_paid, premium_raw, implied_probability_bps, risk_multiplier_bps,
                base_premium, market_total_amount, option_escrow_amount,
                start_time_ms, expiry_time_ms, vault_id, status,
-               route_id, route_leg_index, backstop_sweep_amount,
+               route_id, route_leg_index, backstop_sweep_amount, contract_version,
                created_at, updated_at, transaction_id
         FROM insurance_policies
         WHERE ($1::text IS NULL OR insured = $1)
@@ -316,7 +316,7 @@ pub(crate) async fn list_insurance_market_policies(
                premium_paid, premium_raw, implied_probability_bps, risk_multiplier_bps,
                base_premium, market_total_amount, option_escrow_amount,
                start_time_ms, expiry_time_ms, vault_id, status,
-               route_id, route_leg_index, backstop_sweep_amount,
+               route_id, route_leg_index, backstop_sweep_amount, contract_version,
                created_at, updated_at, transaction_id
         FROM insurance_policies
         WHERE market_id = $1
@@ -515,6 +515,8 @@ pub struct InsuranceCoverageRouteRow {
     pub policy_ids: serde_json::Value,
     #[diesel(sql_type = Jsonb)]
     pub vault_ids: serde_json::Value,
+    #[diesel(sql_type = BigInt)]
+    pub contract_version: i64,
     #[diesel(sql_type = Text)]
     pub transaction_id: String,
     #[diesel(sql_type = Timestamp)]
@@ -647,7 +649,7 @@ pub(crate) async fn get_insurance_coverage_route(
     let query = "
         SELECT route_id, insured, market_id, option_id, coverage_bps, duration_ms,
                total_covered, total_premium, total_reserve, total_backstop_sweep,
-               expiry_time_ms, policy_ids, vault_ids, transaction_id, created_at
+               expiry_time_ms, policy_ids, vault_ids, contract_version, transaction_id, created_at
         FROM insurance_coverage_routes
         WHERE route_id = $1
     ";

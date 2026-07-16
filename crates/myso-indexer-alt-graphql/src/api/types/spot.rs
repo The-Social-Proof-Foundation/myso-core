@@ -233,6 +233,11 @@ impl SpotRecord {
             .ok()?
             .map(Proposal::from_row)
     }
+
+    /// On-chain contract version for this SPoT record object.
+    async fn version(&self) -> i64 {
+        self.inner.version
+    }
 }
 
 #[derive(Clone)]
@@ -563,19 +568,17 @@ impl SpotRoute {
     }
 
     async fn claim_id(&self) -> Option<MySoAddress> {
-        self.inner.claim_object_id.as_ref().and_then(|id| {
-            MySoAddress::from_str(id)
-                .ok()
-                .map(MySoAddress::from)
-        })
+        self.inner
+            .claim_object_id
+            .as_ref()
+            .and_then(|id| MySoAddress::from_str(id).ok().map(MySoAddress::from))
     }
 
     async fn target_market_id(&self) -> Option<MySoAddress> {
-        self.inner.target_market_id.as_ref().and_then(|id| {
-            MySoAddress::from_str(id)
-                .ok()
-                .map(MySoAddress::from)
-        })
+        self.inner
+            .target_market_id
+            .as_ref()
+            .and_then(|id| MySoAddress::from_str(id).ok().map(MySoAddress::from))
     }
 
     async fn link_kind(&self) -> Option<&str> {
@@ -590,7 +593,11 @@ impl SpotRoute {
         let claim_id = self.inner.claim_object_id.as_deref()?;
         let reader_opt = ctx.data_opt::<Arc<Option<SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
-        reader.get_spot_claim(claim_id).await.ok()?.map(SpotClaim::from_row)
+        reader
+            .get_spot_claim(claim_id)
+            .await
+            .ok()?
+            .map(SpotClaim::from_row)
     }
 
     async fn spot_market(&self, ctx: &Context<'_>) -> Option<SpotMarket> {

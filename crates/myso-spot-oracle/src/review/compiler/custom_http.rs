@@ -26,7 +26,10 @@ pub fn compile(
         .clone()
         .filter(|s| !s.is_empty())
         .ok_or_else(|| anyhow::anyhow!("custom_http claim missing json_path"))?;
-    let comparator = hints.comparison.or(f.comparison).unwrap_or(ComparisonOp::Eq);
+    let comparator = hints
+        .comparison
+        .or(f.comparison)
+        .unwrap_or(ComparisonOp::Eq);
     let expected = hints
         .expected
         .clone()
@@ -34,8 +37,7 @@ pub fn compile(
         .ok_or_else(|| anyhow::anyhow!("custom_http claim missing expected value"))?;
 
     let betting_options = default_betting_options(canonical);
-    let maturity_schedule =
-        super::maturity::compute_schedule(canonical);
+    let maturity_schedule = super::maturity::compute_schedule(canonical);
 
     let preview = crate::resolver::ResolverDefinition {
         id: uuid::Uuid::new_v4(),

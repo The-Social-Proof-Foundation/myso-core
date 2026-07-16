@@ -17,6 +17,7 @@ Authorization is enforced in <code><a href="../messaging/messaging.md#messaging_
 -  [Struct `PaidMessageReplied`](#messaging_message_log_PaidMessageReplied)
 -  [Struct `PaymentClaimed`](#messaging_message_log_PaymentClaimed)
 -  [Struct `PaymentClaimedSettled`](#messaging_message_log_PaymentClaimedSettled)
+-  [Struct `PaymentClaimedSettledWithPlatformTreasury`](#messaging_message_log_PaymentClaimedSettledWithPlatformTreasury)
 -  [Struct `PaymentRefunded`](#messaging_message_log_PaymentRefunded)
 -  [Constants](#@Constants_0)
 -  [Function `new`](#messaging_message_log_new)
@@ -29,6 +30,7 @@ Authorization is enforced in <code><a href="../messaging/messaging.md#messaging_
 -  [Function `send_paid_message`](#messaging_message_log_send_paid_message)
 -  [Function `reply_to_paid_message_claim_coin`](#messaging_message_log_reply_to_paid_message_claim_coin)
 -  [Function `reply_to_paid_message_claim_settled`](#messaging_message_log_reply_to_paid_message_claim_settled)
+-  [Function `reply_to_paid_message_claim_settled_with_platform`](#messaging_message_log_reply_to_paid_message_claim_settled_with_platform)
 -  [Function `refund_paid_message`](#messaging_message_log_refund_paid_message)
 
 
@@ -532,6 +534,77 @@ records its immutable digest, location, sender, recipient, and replay key.
 </dd>
 <dt>
 <code>platform_fee_recipient: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>ecosystem_fee_recipient: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>claimed_at_ms: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="messaging_message_log_PaymentClaimedSettledWithPlatformTreasury"></a>
+
+## Struct `PaymentClaimedSettledWithPlatformTreasury`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../messaging/message_log.md#messaging_message_log_PaymentClaimedSettledWithPlatformTreasury">PaymentClaimedSettledWithPlatformTreasury</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code><a href="../messaging/message_log.md#messaging_message_log_group_id">group_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>seq: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>recipient: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>total_amount: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>platform_fee: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>treasury_fee: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>net_amount: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>platform_id: <b>address</b></code>
 </dt>
 <dd>
 </dd>
@@ -1161,6 +1234,89 @@ Same as [<code><a href="../messaging/message_log.md#messaging_message_log_reply_
         treasury_fee: escrow_fees::treasury_fee(&totals),
         net_amount: escrow_fees::net_amount(&totals),
         platform_fee_recipient,
+        ecosystem_fee_recipient,
+        claimed_at_ms: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="messaging_message_log_reply_to_paid_message_claim_settled_with_platform"></a>
+
+## Function `reply_to_paid_message_claim_settled_with_platform`
+
+Same as [<code><a href="../messaging/message_log.md#messaging_message_log_reply_to_paid_message_claim_settled">reply_to_paid_message_claim_settled</a></code>], but deposits the platform fee into
+<code>Platform.treasury</code> instead of transferring to a wallet address.
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../messaging/message_log.md#messaging_message_log_reply_to_paid_message_claim_settled_with_platform">reply_to_paid_message_claim_settled_with_platform</a>(config: &<a href="../messaging/messaging_config.md#messaging_messaging_config_MessagingConfig">messaging::messaging_config::MessagingConfig</a>, self: &<b>mut</b> <a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>, sender: <b>address</b>, paid_msg_seq: u64, char_count: u32, dedupe_key: vector&lt;u8&gt;, nonce: u128, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, platform: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, ecosystem_fee_recipient: <b>address</b>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../messaging/message_log.md#messaging_message_log_reply_to_paid_message_claim_settled_with_platform">reply_to_paid_message_claim_settled_with_platform</a>(
+    config: &MessagingConfig,
+    self: &<b>mut</b> <a href="../messaging/message_log.md#messaging_message_log_MessageLog">MessageLog</a>,
+    sender: <b>address</b>,
+    paid_msg_seq: u64,
+    char_count: u32,
+    dedupe_key: vector&lt;u8&gt;,
+    nonce: u128,
+    clock: &Clock,
+    platform: &<b>mut</b> Platform,
+    ecosystem_fee_recipient: <b>address</b>,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(table::contains(&self.paid_msg_escrow, paid_msg_seq), <a href="../messaging/message_log.md#messaging_message_log_EPaidNotFound">EPaidNotFound</a>);
+    <b>let</b> escrow_ref = table::borrow(&self.paid_msg_escrow, paid_msg_seq);
+    <b>assert</b>!(sender == escrow_ref.recipient, <a href="../messaging/message_log.md#messaging_message_log_EForbidden">EForbidden</a>);
+    <b>assert</b>!(!escrow_ref.claimed, <a href="../messaging/message_log.md#messaging_message_log_EPaymentClaimed">EPaymentClaimed</a>);
+    <b>let</b> now_ms = clock::timestamp_ms(clock);
+    <b>assert</b>!(
+        now_ms - escrow_ref.created_at_ms &lt;= <a href="../messaging/messaging_config.md#messaging_messaging_config_payment_expiration_ms">messaging_config::payment_expiration_ms</a>(config),
+        <a href="../messaging/message_log.md#messaging_message_log_EPaymentExpired">EPaymentExpired</a>,
+    );
+    <b>assert</b>!(char_count &gt;= <a href="../messaging/messaging_config.md#messaging_messaging_config_min_reply_chars">messaging_config::min_reply_chars</a>(config), <a href="../messaging/message_log.md#messaging_message_log_EReplyTooShort">EReplyTooShort</a>);
+    <a href="../messaging/message_log.md#messaging_message_log_consume_dedupe_and_nonce">consume_dedupe_and_nonce</a>(config, self, sender, dedupe_key, nonce, ctx);
+    event::emit(<a href="../messaging/message_log.md#messaging_message_log_PaidMessageReplied">PaidMessageReplied</a> {
+        <a href="../messaging/message_log.md#messaging_message_log_group_id">group_id</a>: self.<a href="../messaging/message_log.md#messaging_message_log_group_id">group_id</a>,
+        paid_msg_seq,
+        recipient: sender,
+        reply_char_count: char_count,
+    });
+    <b>let</b> escrow = table::borrow_mut(&<b>mut</b> self.paid_msg_escrow, paid_msg_seq);
+    <b>assert</b>!(!escrow.claimed, <a href="../messaging/message_log.md#messaging_message_log_EPaymentClaimed">EPaymentClaimed</a>);
+    escrow.claimed = <b>true</b>;
+    <b>let</b> primary_recipient = escrow.recipient;
+    <b>let</b> total_amount = escrow.amount;
+    <b>let</b> coin = coin::from_balance(balance::withdraw_all(&<b>mut</b> escrow.escrowed_balance), ctx);
+    <b>assert</b>!(coin::value(&coin) &gt; 0, <a href="../messaging/message_log.md#messaging_message_log_EVaultEmpty">EVaultEmpty</a>);
+    <b>let</b> totals = escrow_fees::distribute_escrow_with_platform_treasury(
+        config,
+        coin,
+        platform,
+        ecosystem_fee_recipient,
+        primary_recipient,
+        clock,
+        ctx,
+    );
+    <b>let</b> platform_id = object::uid_to_address(platform::id(platform));
+    event::emit(<a href="../messaging/message_log.md#messaging_message_log_PaymentClaimedSettledWithPlatformTreasury">PaymentClaimedSettledWithPlatformTreasury</a> {
+        <a href="../messaging/message_log.md#messaging_message_log_group_id">group_id</a>: self.<a href="../messaging/message_log.md#messaging_message_log_group_id">group_id</a>,
+        seq: paid_msg_seq,
+        recipient: primary_recipient,
+        total_amount,
+        platform_fee: escrow_fees::platform_fee(&totals),
+        treasury_fee: escrow_fees::treasury_fee(&totals),
+        net_amount: escrow_fees::net_amount(&totals),
+        platform_id,
         ecosystem_fee_recipient,
         claimed_at_ms: clock::timestamp_ms(clock),
     });

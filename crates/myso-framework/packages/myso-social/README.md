@@ -375,6 +375,19 @@ myso client publish --gas-budget 200000000000
 ### Upgrading Contracts
 The upgrade system allows for seamless contract updates while preserving user data and maintaining backward compatibility.
 
+**Greenfield genesis:** `social_contracts::upgrade::CURRENT_VERSION` starts at `0`. Shared objects initialize with `version: upgrade::current_version()`.
+
+**Production upgrade sequence:**
+1. Build the upgraded package and compute its digest.
+2. `upgrade::authorize_upgrade` → publish → `upgrade::commit_upgrade` (requires package `UpgradeCap`).
+3. Increment `CURRENT_VERSION` in the same release (first upgrade: `0 → 1`).
+4. With `UpgradeAdminCap`, call per-type `migrate_*` entry points only for object types that need it:
+   - Shared configs first (platform, profile, post, mydata, subscription, memory, SPT, SPoT, insurance, ai_credit, …)
+   - Then registries (social graph, username, governance, claim registry, …)
+   - Then per-object instances (profiles, posts, vaults, balances, policies, markets, …)
+5. Verify via `ObjectMigratedEvent` (indexer table `object_migrated_events` / REST upgrade handlers) and spot-check `contractVersion` in GraphQL.
+6. Skip step 4 at genesis when all objects already match `CURRENT_VERSION = 0`.
+
 ## License
 
 Copyright (c) The Social Proof Foundation, LLC.  

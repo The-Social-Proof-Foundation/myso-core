@@ -547,10 +547,7 @@ fn process_post_created_event(
         attribution_fields(data, &ev.owner);
 
     let access_fields = post_access_fields_from_json(data);
-    let mydata_id = access_fields
-        .mydata_id
-        .clone()
-        .or(ev.mydata_id);
+    let mydata_id = access_fields.mydata_id.clone().or(ev.mydata_id);
 
     let mut post = NewPost {
         post_id: ev.post_id,
@@ -608,6 +605,7 @@ fn process_post_created_event(
             .map(i16::from)
             .or(action_identity_class),
         organization_id: ev.organization_id.or(organization_id),
+        contract_version: 0,
     };
     if let Some(mydata_id) = post.mydata_id.clone() {
         post_mydata::enrich_post_from_mydata_id(&mut post, &mydata_id, mydata_snapshots);
@@ -675,6 +673,7 @@ fn process_comment_created_event(
             .map(i16::from)
             .or(action_identity_class),
         organization_id: ev.organization_id.or(organization_id),
+        contract_version: 0,
     };
     Some(vec![
         SocialEventRow::Comment(comment),
@@ -780,6 +779,7 @@ fn process_repost_event(
             .map(i16::from)
             .or(action_identity_class),
         organization_id: ev.organization_id.or(organization_id),
+        contract_version: 0,
     };
     Some(vec![
         SocialEventRow::Repost(repost),
@@ -1507,7 +1507,10 @@ mod tests {
             })
             .expect("post row");
         assert_eq!(post.mydata_id.as_deref(), Some(mydata_id));
-        assert_eq!(post.post_access_kind.as_deref(), Some("marketplace_one_time"));
+        assert_eq!(
+            post.post_access_kind.as_deref(),
+            Some("marketplace_one_time")
+        );
         assert_eq!(post.requires_subscription, Some(false));
         assert_eq!(post.subscription_price, None);
         assert_eq!(post.encrypted_content_hash.as_deref(), Some("0xdeadbeef"));

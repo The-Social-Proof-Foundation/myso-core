@@ -65,16 +65,25 @@ mod tests {
 
     #[test]
     fn us_election_2028_is_nov_7() {
-        assert_eq!(us_election_day(2028), NaiveDate::from_ymd_opt(2028, 11, 7).unwrap());
+        assert_eq!(
+            us_election_day(2028),
+            NaiveDate::from_ymd_opt(2028, 11, 7).unwrap()
+        );
     }
 
     #[test]
     fn us_election_2024_is_nov_5() {
-        assert_eq!(us_election_day(2024), NaiveDate::from_ymd_opt(2024, 11, 5).unwrap());
+        assert_eq!(
+            us_election_day(2024),
+            NaiveDate::from_ymd_opt(2024, 11, 5).unwrap()
+        );
     }
 
     #[test]
     fn midterm_2026_is_nov_3() {
-        assert_eq!(us_election_day(2026), NaiveDate::from_ymd_opt(2026, 11, 3).unwrap());
+        assert_eq!(
+            us_election_day(2026),
+            NaiveDate::from_ymd_opt(2026, 11, 3).unwrap()
+        );
     }
 }

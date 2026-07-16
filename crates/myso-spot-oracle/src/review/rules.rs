@@ -1,9 +1,9 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::resolver::{ResolverDefinition, ResolverSpec};
 use crate::review::deadline::{DeadlinePolicy, DeadlineValidation};
 use crate::review::CanonicalClaim;
-use crate::resolver::{ResolverDefinition, ResolverSpec};
 use crate::sources::ResolverRegistry;
 use crate::types::{ClaimCategory, ComparisonOp};
 
@@ -109,7 +109,11 @@ pub fn evaluate_provably(
             }
         }
         ClaimCategory::EventOccurrence => {
-            let has_feed = f.resolver_hints.feed_url.as_ref().is_some_and(|s| !s.is_empty());
+            let has_feed = f
+                .resolver_hints
+                .feed_url
+                .as_ref()
+                .is_some_and(|s| !s.is_empty());
             let has_rss_hint = f.suggested_sources.iter().any(|s| s.contains("rss"));
             let has_preferred = !f.resolver_hints.preferred_sources.is_empty();
             let has_matched = f.resolver_hints.matched_event_id.is_some();
@@ -121,7 +125,11 @@ pub fn evaluate_provably(
             if f.resolver_hints.url.as_ref().is_none_or(|s| s.is_empty()) {
                 return ReviewDecision::Rejected(RejectReason::MissingUrl);
             }
-            if f.resolver_hints.json_path.as_ref().is_none_or(|s| s.is_empty()) {
+            if f.resolver_hints
+                .json_path
+                .as_ref()
+                .is_none_or(|s| s.is_empty())
+            {
                 return ReviewDecision::Rejected(RejectReason::MissingJsonPath);
             }
         }
@@ -135,7 +143,9 @@ pub fn evaluate_provably(
     if let Some(preview) = preview_definition(canonical) {
         let preferred = &f.resolver_hints.preferred_sources;
         let fallback: &[&str] = match f.claim_category {
-            ClaimCategory::PriceThreshold => &["coingecko", "coinbase", "http_official", "chainlink"],
+            ClaimCategory::PriceThreshold => {
+                &["coingecko", "coinbase", "http_official", "chainlink"]
+            }
             ClaimCategory::ReleasePublished => &["github_releases"],
             ClaimCategory::EventOccurrence => &["wikipedia", "rss_event", "http_official"],
             ClaimCategory::CustomHttp => &["http_official", "wikipedia"],
@@ -179,12 +189,8 @@ pub fn resolve_and_validate_deadline(
         event_category,
     ) {
         DeadlineValidation::Ok => ReviewDecision::Accepted,
-        DeadlineValidation::InPast => {
-            ReviewDecision::Rejected(RejectReason::DeadlineInPast)
-        }
-        DeadlineValidation::TooFar => {
-            ReviewDecision::Rejected(RejectReason::DeadlineTooFar)
-        }
+        DeadlineValidation::InPast => ReviewDecision::Rejected(RejectReason::DeadlineInPast),
+        DeadlineValidation::TooFar => ReviewDecision::Rejected(RejectReason::DeadlineTooFar),
     }
 }
 
@@ -275,16 +281,15 @@ fn preview_definition(canonical: &CanonicalClaim) -> Option<ResolverDefinition> 
 }
 
 pub fn is_price_claim(canonical: &CanonicalClaim) -> bool {
-    canonical.normalized_fields.claim_category == ClaimCategory::PriceThreshold
-        || {
-            let f = &canonical.normalized_fields;
-            f.metric.as_deref() == Some("price")
-                || f.predicate.contains("price")
-                || matches!(
-                    f.comparison,
-                    Some(ComparisonOp::Gt | ComparisonOp::Lt | ComparisonOp::Gte | ComparisonOp::Lte)
-                )
-        }
+    canonical.normalized_fields.claim_category == ClaimCategory::PriceThreshold || {
+        let f = &canonical.normalized_fields;
+        f.metric.as_deref() == Some("price")
+            || f.predicate.contains("price")
+            || matches!(
+                f.comparison,
+                Some(ComparisonOp::Gt | ComparisonOp::Lt | ComparisonOp::Gte | ComparisonOp::Lte)
+            )
+    }
 }
 
 #[cfg(test)]

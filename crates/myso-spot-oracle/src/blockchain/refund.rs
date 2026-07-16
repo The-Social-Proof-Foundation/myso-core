@@ -106,10 +106,13 @@ async fn build_and_submit_refund(
     spot_market_object_id: &str,
     post_id: &str,
 ) -> anyhow::Result<String> {
-    let key_hex = args.private_key_hex.as_ref().context("missing private key")?;
+    let key_hex = args
+        .private_key_hex
+        .as_ref()
+        .context("missing private key")?;
     let key_bytes = hex::decode(key_hex.trim())?;
-    let key_pair = MySoKeyPair::from_bytes(&key_bytes)
-        .map_err(|e| anyhow::anyhow!("invalid key: {:?}", e))?;
+    let key_pair =
+        MySoKeyPair::from_bytes(&key_bytes).map_err(|e| anyhow::anyhow!("invalid key: {:?}", e))?;
     let sender = MySoAddress::from(&key_pair.public());
 
     let client = MySoClientBuilder::default()
@@ -120,10 +123,7 @@ async fn build_and_submit_refund(
         .coin_read_api()
         .get_coins(sender, None, None, None)
         .await?;
-    let gas_obj = gas_coins
-        .data
-        .first()
-        .context("sender has no gas coins")?;
+    let gas_obj = gas_coins.data.first().context("sender has no gas coins")?;
 
     let package = ObjectID::from_hex_literal(SOCIAL_PACKAGE_ID)?;
     let admin_cap = parse_object_id(args.admin_cap_object_id.as_ref().unwrap())?;

@@ -199,14 +199,8 @@ fn process_mydata_purchase_event(
     let ip_id = data.get("ip_id")?.as_str()?.to_string();
     let buyer = data.get("buyer")?.as_str()?.to_string();
     let price = json_to_i64(data.get("price")?);
-    let platform_fee = data
-        .get("platform_fee")
-        .map(json_to_i64)
-        .unwrap_or(0);
-    let ecosystem_fee = data
-        .get("ecosystem_fee")
-        .map(json_to_i64)
-        .unwrap_or(0);
+    let platform_fee = data.get("platform_fee").map(json_to_i64).unwrap_or(0);
+    let ecosystem_fee = data.get("ecosystem_fee").map(json_to_i64).unwrap_or(0);
     let creator_amount = data
         .get("creator_amount")
         .map(json_to_i64)
@@ -365,14 +359,35 @@ fn process_mydata_config_updated_event(
     let max_subscription_days = json_to_i64(data.get("max_subscription_days")?);
     let max_free_access_grants = json_to_i64(data.get("max_free_access_grants")?);
     let max_encryption_id_bytes = json_to_i64(data.get("max_encryption_id_bytes")?);
-    let max_encrypted_data_bytes = data.get("max_encrypted_data_bytes").map(json_to_i64).unwrap_or(262_144);
+    let max_encrypted_data_bytes = data
+        .get("max_encrypted_data_bytes")
+        .map(json_to_i64)
+        .unwrap_or(262_144);
     let max_tag_bytes = data.get("max_tag_bytes").map(json_to_i64).unwrap_or(64);
-    let max_metadata_bytes = data.get("max_metadata_bytes").map(json_to_i64).unwrap_or(1_024);
-    let max_payment_reference_bytes = data.get("max_payment_reference_bytes").map(json_to_i64).unwrap_or(256);
-    let max_pool_assignments = data.get("max_pool_assignments").map(json_to_i64).unwrap_or(32);
-    let max_merkle_proof_depth = data.get("max_merkle_proof_depth").map(json_to_i64).unwrap_or(64);
-    let max_paid_access_entries = data.get("max_paid_access_entries").map(json_to_i64).unwrap_or(100_000);
-    let default_claim_window_ms = data.get("default_claim_window_ms").map(json_to_i64).unwrap_or(2_592_000_000);
+    let max_metadata_bytes = data
+        .get("max_metadata_bytes")
+        .map(json_to_i64)
+        .unwrap_or(1_024);
+    let max_payment_reference_bytes = data
+        .get("max_payment_reference_bytes")
+        .map(json_to_i64)
+        .unwrap_or(256);
+    let max_pool_assignments = data
+        .get("max_pool_assignments")
+        .map(json_to_i64)
+        .unwrap_or(32);
+    let max_merkle_proof_depth = data
+        .get("max_merkle_proof_depth")
+        .map(json_to_i64)
+        .unwrap_or(64);
+    let max_paid_access_entries = data
+        .get("max_paid_access_entries")
+        .map(json_to_i64)
+        .unwrap_or(100_000);
+    let default_claim_window_ms = data
+        .get("default_claim_window_ms")
+        .map(json_to_i64)
+        .unwrap_or(2_592_000_000);
     let p2p_platform_fee_bps = data
         .get("p2p_platform_fee_bps")
         .map(json_to_i64)
@@ -618,19 +633,9 @@ fn process_query_claim_executed(
     let gross_amount = data
         .get("gross_amount")
         .map(json_to_i64)
-        .unwrap_or_else(|| {
-            data.get("amount")
-                .map(json_to_i64)
-                .unwrap_or(0)
-        });
-    let platform_fee = data
-        .get("platform_fee")
-        .map(json_to_i64)
-        .unwrap_or(0);
-    let ecosystem_fee = data
-        .get("ecosystem_fee")
-        .map(json_to_i64)
-        .unwrap_or(0);
+        .unwrap_or_else(|| data.get("amount").map(json_to_i64).unwrap_or(0));
+    let platform_fee = data.get("platform_fee").map(json_to_i64).unwrap_or(0);
+    let ecosystem_fee = data.get("ecosystem_fee").map(json_to_i64).unwrap_or(0);
     let net_amount = data
         .get("net_amount")
         .map(json_to_i64)
@@ -639,17 +644,17 @@ fn process_query_claim_executed(
     let claimed_at_ms = json_to_i64(data.get("claimed_at")?);
     Some(vec![
         SocialEventRow::MyDataClaim(NewMyDataClaim {
-        snapshot_id: snapshot_id.clone(),
-        claimant,
-        amount: gross_amount,
-        gross_amount,
-        platform_fee,
-        ecosystem_fee,
-        net_amount,
-        platform_address: platform_id,
-        claimed_at_ms,
-        event_id: event_id.to_string(),
-        transaction_id,
+            snapshot_id: snapshot_id.clone(),
+            claimant,
+            amount: gross_amount,
+            gross_amount,
+            platform_fee,
+            ecosystem_fee,
+            net_amount,
+            platform_address: platform_id,
+            claimed_at_ms,
+            event_id: event_id.to_string(),
+            transaction_id,
         }),
         SocialEventRow::MyDataEscrowClaimed {
             snapshot_id,
@@ -798,4 +803,3 @@ mod tests {
         );
     }
 }
-

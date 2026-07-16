@@ -420,9 +420,9 @@ impl OracleArgs {
             self.provider_memory_account_id.as_deref(),
             self.provider_agent_object_id.as_deref(),
         ];
-        let any_provider = provider_fields.iter().any(|value| {
-            value.is_some_and(|value| !value.trim().is_empty())
-        });
+        let any_provider = provider_fields
+            .iter()
+            .any(|value| value.is_some_and(|value| !value.trim().is_empty()));
         if any_provider && !self.openai_provider_configured() {
             anyhow::bail!(
                 "OpenAI provider requires AI_CREDIT_PROVIDER_TOKEN, _OWNER, _BALANCE_ID, _MEMORY_ACCOUNT_ID, and _AGENT_OBJECT_ID"
@@ -530,7 +530,10 @@ mod tests {
         args.provider_models = Some("openai/gpt-4o-mini, openai/gpt-4o".into());
         assert_eq!(
             args.provider_model_ids(),
-            vec!["openai/gpt-4o-mini".to_string(), "openai/gpt-4o".to_string()]
+            vec![
+                "openai/gpt-4o-mini".to_string(),
+                "openai/gpt-4o".to_string()
+            ]
         );
     }
 }

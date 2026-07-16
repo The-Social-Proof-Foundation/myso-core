@@ -68,7 +68,7 @@ BEGIN
         SELECT 1 FROM information_schema.columns 
         WHERE table_name = 'platforms' AND column_name = 'version'
     ) THEN
-        ALTER TABLE platforms ADD COLUMN version BIGINT;
+        ALTER TABLE platforms ADD COLUMN version BIGINT NOT NULL DEFAULT 0;
     END IF;
 END $$;
 

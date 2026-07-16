@@ -5,9 +5,7 @@
 
 use move_core_types::account_address::AccountAddress;
 use move_core_types::ident_str;
-use myso_indexer_alt_framework::types::full_checkpoint_content::{
-    ExecutedTransaction, ObjectSet,
-};
+use myso_indexer_alt_framework::types::full_checkpoint_content::{ExecutedTransaction, ObjectSet};
 use myso_types::id::UID;
 use myso_types::storage::ObjectKey;
 use myso_types::storage::WriteKind;
@@ -153,7 +151,9 @@ mod tests {
             created_at: 1_700_000_000_000,
             expires_at: 1_700_002_592_000_000,
             auto_renew: true,
-            renewal_balance: BcsBalance { value: 5_000_000_000 },
+            renewal_balance: BcsBalance {
+                value: 5_000_000_000,
+            },
             renewal_count: 0,
         };
         let bytes = bcs::to_bytes(&sub).unwrap();

@@ -48,8 +48,7 @@ pub fn compile(
         .unwrap_or_else(|| f.predicate.clone());
 
     let betting_options = default_betting_options(canonical);
-    let maturity_schedule =
-        super::maturity::compute_schedule(canonical);
+    let maturity_schedule = super::maturity::compute_schedule(canonical);
 
     let preview = crate::resolver::ResolverDefinition {
         id: uuid::Uuid::new_v4(),

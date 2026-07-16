@@ -99,6 +99,8 @@ pub struct SpotRecordRow {
     pub market_key_hash: Option<String>,
     #[diesel(sql_type = Nullable<BigInt>)]
     pub creator_fee_total: Option<i64>,
+    #[diesel(sql_type = BigInt)]
+    pub version: i64,
 }
 
 /// Query result for a spot payout (for GraphQL/reader).

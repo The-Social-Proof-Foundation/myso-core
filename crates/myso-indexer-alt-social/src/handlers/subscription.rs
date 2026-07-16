@@ -792,8 +792,7 @@ mod tests {
             .iter()
             .find_map(|r| {
                 if let SocialEventRow::ProfileSubscriptionUpdate {
-                    subscription_id,
-                    ..
+                    subscription_id, ..
                 } = r
                 {
                     Some(subscription_id.clone())

@@ -1,8 +1,8 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::review::compiler::CompiledMarketSpec;
 use crate::resolver::{ResolverDefinition, ResolverSpec};
+use crate::review::compiler::CompiledMarketSpec;
 use crate::sources::ResolverRegistry;
 
 pub fn validate_compiled(

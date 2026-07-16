@@ -240,7 +240,6 @@ module social_contracts::memory_organization_tests {
             let memory_config = test_scenario::take_shared<MemoryConfig>(scenario);
             let mut memory_account = test_scenario::take_shared<MemoryAccount>(scenario);
             let clock = test_scenario::take_shared<Clock>(scenario);
-            memory::test_force_account_version(&mut memory_account, 4);
             memory::test_create_agentic_organization(
                 &memory_config,
                 &mut memory_account,
@@ -276,7 +275,6 @@ module social_contracts::memory_organization_tests {
             let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
             let mut memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
-            memory::test_force_account_version(&mut memory_account, 4);
             memory::test_create_agentic_organization(
                 &memory_config,
                 &mut memory_account,

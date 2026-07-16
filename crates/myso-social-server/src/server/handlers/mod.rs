@@ -77,8 +77,8 @@ pub use organization::{
 pub use platforms::{
     check_platform_membership, get_platform_approval, get_platform_blocked, get_platform_by_id,
     get_platform_config, get_platform_events, get_platform_members, get_platform_moderators,
-    get_platform_treasury, get_platform_treasury_withdrawals,
-    get_platform_user_access, list_platforms, list_platforms_approved,
+    get_platform_treasury, get_platform_treasury_withdrawals, get_platform_user_access,
+    list_platforms, list_platforms_approved,
 };
 pub use poc::{
     get_poc_analytics, get_poc_badge_by_id, get_poc_beneficiary_vault_by_beneficiary,

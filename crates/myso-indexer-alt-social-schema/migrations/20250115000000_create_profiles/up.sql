@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS profiles (
     bio TEXT,
     avatar_url TEXT,
     website_url TEXT,
+    contract_version BIGINT NOT NULL DEFAULT 0,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );

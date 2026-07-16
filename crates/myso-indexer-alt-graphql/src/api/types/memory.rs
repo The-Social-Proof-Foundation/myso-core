@@ -210,6 +210,10 @@ impl MemoryAccount {
     async fn created_at(&self) -> i64 {
         self.inner.created_at_ms
     }
+
+    async fn contract_version(&self) -> i64 {
+        self.inner.contract_version
+    }
 }
 
 #[derive(Clone)]

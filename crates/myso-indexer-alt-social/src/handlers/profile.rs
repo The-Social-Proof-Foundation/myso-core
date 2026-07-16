@@ -10,7 +10,7 @@ use super::common;
 use super::{ProfileUpdate, SocialEventRow};
 use myso_indexer_alt_social_schema::models::{
     NewEcosystemTreasury, NewProfile, NewProfileConfig, NewProfileEvent, NewUsernameListing,
-    NewUsernameOffer, NewUsernameSaleFee, NewUsernameRegistry, NewUsernameReservation,
+    NewUsernameOffer, NewUsernameRegistry, NewUsernameReservation, NewUsernameSaleFee,
     NewVestingEvent, NewVestingWallet, USERNAME_RESERVATION_STATUS_ACTIVE,
 };
 
@@ -205,6 +205,7 @@ impl ProfileCreatedEvent {
             selected_ecosystem_badge_id: None,
             memory_account_id: None,
             ai_credit_balance_id: None,
+            contract_version: 0,
         }
     }
 }
@@ -613,11 +614,13 @@ fn process_username_reassigned_event(
             rows.push(SocialEventRow::UsernameRegistryDelete { username: prior });
         }
     }
-    rows.push(SocialEventRow::UsernameRegistryUpsert(NewUsernameRegistry {
-        username: ev.username.clone(),
-        profile_id: ev.profile_id.clone(),
-        transaction_id: tx_id,
-    }));
+    rows.push(SocialEventRow::UsernameRegistryUpsert(
+        NewUsernameRegistry {
+            username: ev.username.clone(),
+            profile_id: ev.profile_id.clone(),
+            transaction_id: tx_id,
+        },
+    ));
     rows.push(SocialEventRow::ProfileUsernameSet {
         profile_id: ev.profile_id,
         username: ev.username,
@@ -2028,10 +2031,9 @@ mod tests {
             SocialEventRow::ProfileUsernameSet { profile_id: pid, username, .. }
                 if *pid == profile_id_string && username == "brandnew"
         )));
-        assert!(!rows.iter().any(|r| matches!(
-            r,
-            SocialEventRow::UsernameRegistryReassign { .. }
-        )));
+        assert!(!rows
+            .iter()
+            .any(|r| matches!(r, SocialEventRow::UsernameRegistryReassign { .. })));
         let audit_event = rows
             .iter()
             .find_map(|row| match row {
@@ -2065,8 +2067,8 @@ mod tests {
             "reason": 1,
             "reserved_by": reserved_by.to_canonical_string(true),
         });
-        let rows =
-            handle_profile_event("UsernameReservedEvent", &json, "tx:reserve:0", CK_MS).expect("handler");
+        let rows = handle_profile_event("UsernameReservedEvent", &json, "tx:reserve:0", CK_MS)
+            .expect("handler");
         assert!(rows.iter().any(|r| matches!(
             r,
             SocialEventRow::UsernameReservation(reservation)
@@ -2090,8 +2092,8 @@ mod tests {
             "reason": 1,
             "released_by": released_by.to_canonical_string(true),
         });
-        let rows =
-            handle_profile_event("UsernameReleasedEvent", &json, "tx:release:0", CK_MS).expect("handler");
+        let rows = handle_profile_event("UsernameReleasedEvent", &json, "tx:release:0", CK_MS)
+            .expect("handler");
         assert!(rows.iter().any(|r| matches!(
             r,
             SocialEventRow::UsernameReservationRelease {
@@ -2118,7 +2120,10 @@ mod tests {
         };
         let bytes = bcs::to_bytes(&ev).expect("serialize");
         let json = parse_event_contents("profile", "UsernameReservedEvent", &bytes).expect("parse");
-        assert_eq!(json.get("username").and_then(|v| v.as_str()), Some("locked_name"));
+        assert_eq!(
+            json.get("username").and_then(|v| v.as_str()),
+            Some("locked_name")
+        );
         assert_eq!(json.get("reason").and_then(|v| v.as_u64()), Some(2));
         assert_eq!(
             json.get("reserved_by").and_then(|v| v.as_str()),
@@ -2136,7 +2141,10 @@ mod tests {
         };
         let bytes = bcs::to_bytes(&ev).expect("serialize");
         let json = parse_event_contents("profile", "UsernameReleasedEvent", &bytes).expect("parse");
-        assert_eq!(json.get("username").and_then(|v| v.as_str()), Some("locked_name"));
+        assert_eq!(
+            json.get("username").and_then(|v| v.as_str()),
+            Some("locked_name")
+        );
         assert_eq!(json.get("reason").and_then(|v| v.as_u64()), Some(3));
         assert_eq!(
             json.get("released_by").and_then(|v| v.as_str()),

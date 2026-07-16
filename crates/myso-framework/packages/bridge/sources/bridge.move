@@ -122,7 +122,7 @@ const ETokenValueIsZero: u64 = 19;
 const EMustUseSendMySoToken: u64 = 20;
 const EMustUseClaimMySoToken: u64 = 21;
 
-const CURRENT_VERSION: u64 = 1;
+const CURRENT_VERSION: u64 = 0;
 
 public struct TokenTransferApproved has copy, drop {
     message_key: BridgeMessageKey,

@@ -26,9 +26,8 @@ pub async fn fetch_coingecko_price(
     quote: &str,
 ) -> anyhow::Result<SourceEvidence> {
     rate_limiter().throttle(adapter_id).await;
-    let url = format!(
-        "https://api.coingecko.com/api/v3/simple/price?ids={asset}&vs_currencies={quote}"
-    );
+    let url =
+        format!("https://api.coingecko.com/api/v3/simple/price?ids={asset}&vs_currencies={quote}");
     let fetched = client().get_text(&url).await?;
     let payload: serde_json::Value = serde_json::from_str(&fetched.body)?;
     Ok(SourceEvidence {
@@ -102,10 +101,7 @@ pub async fn fetch_github_release(
 }
 
 /// Fetch an RSS/Atom feed snapshot as event evidence.
-pub async fn fetch_rss_events(
-    adapter_id: &str,
-    feed_url: &str,
-) -> anyhow::Result<SourceEvidence> {
+pub async fn fetch_rss_events(adapter_id: &str, feed_url: &str) -> anyhow::Result<SourceEvidence> {
     rate_limiter().throttle(adapter_id).await;
     let fetched = client().get_text(feed_url).await?;
     let events = vec![serde_json::json!({
@@ -124,10 +120,7 @@ pub async fn fetch_rss_events(
 }
 
 /// Fetch an arbitrary HTTP JSON endpoint and return the raw JSON as payload.
-pub async fn fetch_http_json(
-    adapter_id: &str,
-    url: &str,
-) -> anyhow::Result<SourceEvidence> {
+pub async fn fetch_http_json(adapter_id: &str, url: &str) -> anyhow::Result<SourceEvidence> {
     rate_limiter().throttle(adapter_id).await;
     let fetched = client().get_text(url).await?;
     let payload: serde_json::Value =

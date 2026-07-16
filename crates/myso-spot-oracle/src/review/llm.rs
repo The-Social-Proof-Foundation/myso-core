@@ -115,10 +115,12 @@ If the claim is not objectively verifiable from public data, set claim_category 
             .and_then(|c| c.message.as_ref())
             .and_then(|m| m.content.as_ref())
             .context("empty LLM response")?;
-        let mut claim: ExtractedClaim = serde_json::from_str(content_json)
-            .context("parse extracted claim JSON")?;
+        let mut claim: ExtractedClaim =
+            serde_json::from_str(content_json).context("parse extracted claim JSON")?;
         if claim.deadline.is_none() {
-            if let Some(resolution) = resolve_context_deadline(content, claim.claim_category, registry) {
+            if let Some(resolution) =
+                resolve_context_deadline(content, claim.claim_category, registry)
+            {
                 apply_deadline_resolution(&mut claim, &resolution);
             } else {
                 claim.deadline = resolve_claim_deadline(content, claim.claim_category, registry);
@@ -175,8 +177,17 @@ pub fn classify_time_class(content: &str) -> crate::types::TimeClass {
         return TimeClass::Future;
     }
     const PAST_CUES: [&str; 11] = [
-        " won ", " won.", " was ", " were ", " did ", " beat ", " lost ", " finished ",
-        " happened", " already ", " back in ",
+        " won ",
+        " won.",
+        " was ",
+        " were ",
+        " did ",
+        " beat ",
+        " lost ",
+        " finished ",
+        " happened",
+        " already ",
+        " back in ",
     ];
     if PAST_CUES.iter().any(|c| lower.contains(c)) {
         return TimeClass::Past;
@@ -305,7 +316,8 @@ fn parse_outcome_entities(
         let subject = normalize_outcome_subject(subject_raw, registry, matched);
         return Some((subject, "election".to_string(), "elected".to_string()));
     }
-    if let Some(pres_idx) = lower.find(" will become president")
+    if let Some(pres_idx) = lower
+        .find(" will become president")
         .or_else(|| lower.find(" will become the president"))
     {
         let subject_raw = lower[..pres_idx].trim();
@@ -416,13 +428,14 @@ fn parse_comparison_entities(
 
 fn extract_price_claim(content: &str, registry: &EventRegistry) -> ExtractedClaim {
     let lower = content.to_lowercase();
-    let comparison = if lower.contains("above") || lower.contains("exceed") || lower.contains("over") {
-        Some(ComparisonOp::Gt)
-    } else if lower.contains("below") || lower.contains("under") {
-        Some(ComparisonOp::Lt)
-    } else {
-        None
-    };
+    let comparison =
+        if lower.contains("above") || lower.contains("exceed") || lower.contains("over") {
+            Some(ComparisonOp::Gt)
+        } else if lower.contains("below") || lower.contains("under") {
+            Some(ComparisonOp::Lt)
+        } else {
+            None
+        };
     let threshold = extract_threshold(&lower);
     let subject = if lower.contains("btc") || lower.contains("bitcoin") {
         "bitcoin".to_string()
@@ -622,10 +635,8 @@ mod threshold_tests {
     #[test]
     fn vance_2028_election_outcome_claim() {
         let reg = election_registry();
-        let claim = extract_claim_heuristic(
-            "JD Vance will win the 2028 presedintial election.",
-            &reg,
-        );
+        let claim =
+            extract_claim_heuristic("JD Vance will win the 2028 presedintial election.", &reg);
         assert_eq!(claim.claim_category, ClaimCategory::EventOccurrence);
         assert_eq!(claim.subject, "jd vance");
         assert!(claim.deadline.is_some());

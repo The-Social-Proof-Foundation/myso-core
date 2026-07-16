@@ -7747,6 +7747,9 @@ admin_migrate_account
 migrate_registry
 	public entry fun
 	0x50c1::memory
+migrate_config
+	public entry fun
+	0x50c1::memory
 resolve_human_actor
 	public fun
 	0x50c1::memory
@@ -8012,9 +8015,6 @@ bump_version
 	fun
 	0x50c1::memory
 assert_object_version
-	fun
-	0x50c1::memory
-assert_cap_for_this_package
 	fun
 	0x50c1::memory
 has_suffix
@@ -8313,6 +8313,12 @@ assert_agent_may_spend
 	0x50c1::ai_credit
 assert_version
 	fun
+	0x50c1::ai_credit
+migrate_config
+	public entry fun
+	0x50c1::ai_credit
+migrate_balance
+	public entry fun
 	0x50c1::ai_credit
 assert_owner
 	fun
@@ -8795,6 +8801,9 @@ borrow_version_mut
 	public(package) fun
 	0x50c1::profile
 migrate_registry
+	public entry fun
+	0x50c1::profile
+migrate_username_marketplace
 	public entry fun
 	0x50c1::profile
 linked_memory_account_id
@@ -9370,6 +9379,9 @@ borrow_registry_version_mut
 add_to_treasury
 	public(package) fun
 	0x50c1::platform
+fund_platform_treasury_from_coin
+	public fun
+	0x50c1::platform
 mark_platform_governance_proposal_implemented
 	public entry fun
 	0x50c1::platform
@@ -9563,7 +9575,7 @@ update_platform_governance
 	public fun
 	0x50c1::platform
 withdraw_from_platform_treasury
-	public fun
+	public entry fun
 	0x50c1::platform
 assign_badge
 	public fun
@@ -9820,6 +9832,12 @@ PoCBeneficiaryVaultDepositEvent
 PoCBeneficiaryVaultClaimedEvent
 	public struct
 	0x50c1::poc_vault
+assert_vault_directory_version
+	public(package) fun
+	0x50c1::poc_vault
+assert_vault_version
+	public(package) fun
+	0x50c1::poc_vault
 media_index_unspecified
 	public fun
 	0x50c1::poc_vault
@@ -9855,6 +9873,15 @@ new_poc_badge_object
 	0x50c1::poc_vault
 share_po_badge_object
 	public(package) fun
+	0x50c1::poc_vault
+migrate_poc_vault_directory
+	public entry fun
+	0x50c1::poc_vault
+migrate_poc_beneficiary_vault
+	public entry fun
+	0x50c1::poc_vault
+migrate_poc_badge_object
+	public entry fun
 	0x50c1::poc_vault
 po_badge_object_address
 	public(package) fun
@@ -9984,6 +10011,21 @@ emit_mydata_config_updated
 	0x50c1::mydata
 create_mydata_admin_cap
 	public(package) fun
+	0x50c1::mydata
+assert_config_version
+	fun
+	0x50c1::mydata
+assert_pool_registry_version
+	fun
+	0x50c1::mydata
+assert_snapshot_anchor_registry_version
+	fun
+	0x50c1::mydata
+assert_claim_vault_version
+	fun
+	0x50c1::mydata
+assert_distribution_registry_version
+	fun
 	0x50c1::mydata
 update_mydata_config
 	public entry fun
@@ -10301,6 +10343,18 @@ migrate_registry
 	public entry fun
 	0x50c1::mydata
 migrate_config
+	public entry fun
+	0x50c1::mydata
+migrate_pool_registry
+	public entry fun
+	0x50c1::mydata
+migrate_snapshot_anchor_registry
+	public entry fun
+	0x50c1::mydata
+migrate_claim_vault
+	public entry fun
+	0x50c1::mydata
+migrate_distribution_registry
 	public entry fun
 	0x50c1::mydata
 PoCBadgeSnapshot
@@ -10772,13 +10826,13 @@ borrow_repost_version_mut
 	public(package) fun
 	0x50c1::post
 migrate_post
-	public fun
+	public entry fun
 	0x50c1::post
 migrate_comment
-	public fun
+	public entry fun
 	0x50c1::post
 migrate_repost
-	public fun
+	public entry fun
 	0x50c1::post
 migrate_post_config
 	public entry fun
@@ -11356,6 +11410,18 @@ create_spot_admin_cap
 create_spot_oracle_admin_cap
 	public(package) fun
 	0x50c1::social_proof_of_truth
+assert_config_version
+	fun
+	0x50c1::social_proof_of_truth
+assert_registry_version
+	fun
+	0x50c1::social_proof_of_truth
+assert_claim_version
+	fun
+	0x50c1::social_proof_of_truth
+assert_market_version
+	fun
+	0x50c1::social_proof_of_truth
 update_spot_config
 	public entry fun
 	0x50c1::social_proof_of_truth
@@ -11459,6 +11525,12 @@ reclaim_expired_creator_rewards
 	public entry fun
 	0x50c1::social_proof_of_truth
 migrate_config
+	public entry fun
+	0x50c1::social_proof_of_truth
+migrate_claim_registry
+	public entry fun
+	0x50c1::social_proof_of_truth
+migrate_claim
 	public entry fun
 	0x50c1::social_proof_of_truth
 migrate_market
@@ -11575,6 +11647,15 @@ UsernameBeneficiaryConflictEvent
 CreatorIdentityWalletLinkedEvent
 	public struct
 	0x50c1::poc_username_beneficiary
+assert_directory_version
+	public(package) fun
+	0x50c1::poc_username_beneficiary
+assert_shard_version
+	public(package) fun
+	0x50c1::poc_username_beneficiary
+assert_beneficiary_version
+	public(package) fun
+	0x50c1::poc_username_beneficiary
 create_beneficiary_admin_cap
 	public(package) fun
 	0x50c1::poc_username_beneficiary
@@ -11619,6 +11700,15 @@ claim_username_beneficiary_vault_balance
 	0x50c1::poc_username_beneficiary
 end_username_beneficiary
 	public(package) fun
+	0x50c1::poc_username_beneficiary
+migrate_poc_username_beneficiary_directory
+	public entry fun
+	0x50c1::poc_username_beneficiary
+migrate_poc_username_beneficiary_shard
+	public entry fun
+	0x50c1::poc_username_beneficiary
+migrate_poc_username_beneficiary
+	public entry fun
 	0x50c1::poc_username_beneficiary
 PoCAdminCap
 	public struct
@@ -11682,6 +11772,15 @@ min_vault_deposit_amount
 	0x50c1::proof_of_creativity
 dispute_governance_registry_id
 	public fun
+	0x50c1::proof_of_creativity
+assert_poc_config_version
+	fun
+	0x50c1::proof_of_creativity
+assert_poc_registry_version
+	fun
+	0x50c1::proof_of_creativity
+assert_poc_dispute_version
+	fun
 	0x50c1::proof_of_creativity
 create_username_beneficiary
 	public entry fun
@@ -12022,10 +12121,43 @@ get_option_reserved
 set_option_reserved
 	fun
 	0x50c1::insurance
+assert_config_version
+	fun
+	0x50c1::insurance
+assert_router_version
+	fun
+	0x50c1::insurance
+assert_backstop_version
+	fun
+	0x50c1::insurance
+assert_vault_version
+	fun
+	0x50c1::insurance
+assert_policy_version
+	fun
+	0x50c1::insurance
+borrow_config_version_mut
+	public(package) fun
+	0x50c1::insurance
+borrow_vault_version_mut
+	public(package) fun
+	0x50c1::insurance
 migrate_config
 	public entry fun
 	0x50c1::insurance
 migrate_vault
+	public entry fun
+	0x50c1::insurance
+migrate_router_config
+	public entry fun
+	0x50c1::insurance
+migrate_backstop_pool
+	public entry fun
+	0x50c1::insurance
+migrate_coverage_route
+	public entry fun
+	0x50c1::insurance
+migrate_policy
 	public entry fun
 	0x50c1::insurance
 MessagingAdminCap
@@ -12322,6 +12454,9 @@ net_amount
 distribute_escrow_to_recipients
 	public fun
 	0xe110::paid_escrow_settlement
+distribute_escrow_with_platform_treasury
+	public fun
+	0xe110::paid_escrow_settlement
 MessageLogTag
 	public struct
 	0xe110::message_log
@@ -12347,6 +12482,9 @@ PaymentClaimed
 	public struct
 	0xe110::message_log
 PaymentClaimedSettled
+	public struct
+	0xe110::message_log
+PaymentClaimedSettledWithPlatformTreasury
 	public struct
 	0xe110::message_log
 PaymentRefunded
@@ -12380,6 +12518,9 @@ reply_to_paid_message_claim_coin
 	public(package) fun
 	0xe110::message_log
 reply_to_paid_message_claim_settled
+	public(package) fun
+	0xe110::message_log
+reply_to_paid_message_claim_settled_with_platform
 	public(package) fun
 	0xe110::message_log
 refund_paid_message
@@ -12527,6 +12668,9 @@ reply_to_paid_message_claim_coin
 	public fun
 	0xe110::messaging
 reply_to_paid_message_claim_settled
+	public fun
+	0xe110::messaging
+reply_to_paid_message_claim_settled_with_platform
 	public fun
 	0xe110::messaging
 refund_paid_escrow

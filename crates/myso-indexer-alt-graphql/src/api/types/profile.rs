@@ -80,6 +80,7 @@ impl Profile {
             selected_badge: None,
             selected_badge_id: inner.selected_badge_id,
             selected_ecosystem_badge_id: inner.selected_ecosystem_badge_id,
+            contract_version: inner.contract_version,
         };
         Self { inner: response }
     }
@@ -137,6 +138,11 @@ impl Profile {
     /// When the profile was created (Unix ms from chain Clock at 0x6).
     async fn created_at(&self) -> Option<i64> {
         self.inner.created_at
+    }
+
+    /// On-chain contract version for this profile object.
+    async fn contract_version(&self) -> i64 {
+        self.inner.contract_version
     }
 
     /// When the profile was last updated (Unix ms from chain Clock at 0x6).

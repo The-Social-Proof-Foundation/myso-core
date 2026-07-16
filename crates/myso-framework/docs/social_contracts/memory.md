@@ -189,6 +189,7 @@ computed off-chain (indexer/server).
 -  [Function `migrate_account`](#social_contracts_memory_migrate_account)
 -  [Function `admin_migrate_account`](#social_contracts_memory_admin_migrate_account)
 -  [Function `migrate_registry`](#social_contracts_memory_migrate_registry)
+-  [Function `migrate_config`](#social_contracts_memory_migrate_config)
 -  [Function `resolve_human_actor`](#social_contracts_memory_resolve_human_actor)
 -  [Function `resolve_actor_from_account`](#social_contracts_memory_resolve_actor_from_account)
 -  [Function `resolve_actor_with_cap`](#social_contracts_memory_resolve_actor_with_cap)
@@ -278,7 +279,6 @@ computed off-chain (indexer/server).
 -  [Function `set_version`](#social_contracts_memory_set_version)
 -  [Function `bump_version`](#social_contracts_memory_bump_version)
 -  [Function `assert_object_version`](#social_contracts_memory_assert_object_version)
--  [Function `assert_cap_for_this_package`](#social_contracts_memory_assert_cap_for_this_package)
 -  [Function `has_suffix`](#social_contracts_memory_has_suffix)
 
 
@@ -305,6 +305,7 @@ computed off-chain (indexer/server).
 <b>use</b> <a href="../myso/unpause_cap.md#myso_unpause_cap">myso::unpause_cap</a>;
 <b>use</b> <a href="../myso/vec_map.md#myso_vec_map">myso::vec_map</a>;
 <b>use</b> <a href="../myso/vec_set.md#myso_vec_set">myso::vec_set</a>;
+<b>use</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade">social_contracts::upgrade</a>;
 <b>use</b> <a href="../std/address.md#std_address">std::address</a>;
 <b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
 <b>use</b> <a href="../std/bcs.md#std_bcs">std::bcs</a>;
@@ -3825,15 +3826,6 @@ Default bootstrap values for MemoryConfig
 
 
 
-<a name="social_contracts_memory_VERSION"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_VERSION">VERSION</a>: u64 = 4;
-</code></pre>
-
-
-
 <a name="social_contracts_memory_VERSION_DF_KEY"></a>
 
 
@@ -5296,7 +5288,7 @@ Default bootstrap values for MemoryConfig
         max_label_length: <a href="../social_contracts/memory.md#social_contracts_memory_MAX_LABEL_LENGTH">MAX_LABEL_LENGTH</a>,
         max_org_name_length: <a href="../social_contracts/memory.md#social_contracts_memory_MAX_ORG_NAME_LENGTH">MAX_ORG_NAME_LENGTH</a>,
         max_org_description_length: <a href="../social_contracts/memory.md#social_contracts_memory_MAX_ORG_DESCRIPTION_LENGTH">MAX_ORG_DESCRIPTION_LENGTH</a>,
-        version: <a href="../social_contracts/memory.md#social_contracts_memory_VERSION">VERSION</a>,
+        version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     };
     event::emit(<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfigUpdatedEvent">MemoryConfigUpdatedEvent</a> {
         updated_by: admin,
@@ -5313,7 +5305,7 @@ Default bootstrap values for MemoryConfig
         id: object::new(ctx),
         accounts: table::new(ctx),
     };
-    <a href="../social_contracts/memory.md#social_contracts_memory_set_version">set_version</a>(&<b>mut</b> registry.id, <a href="../social_contracts/memory.md#social_contracts_memory_VERSION">VERSION</a>);
+    <a href="../social_contracts/memory.md#social_contracts_memory_set_version">set_version</a>(&<b>mut</b> registry.id, <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>());
     transfer::share_object(registry);
 }
 </code></pre>
@@ -5375,6 +5367,7 @@ Update global memory configuration (admin only).
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
+    <b>assert</b>!(config.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/memory.md#social_contracts_memory_EWrongVersion">EWrongVersion</a>);
     <b>assert</b>!(<a href="../social_contracts/memory.md#social_contracts_memory_max_organizations_per_user">max_organizations_per_user</a> &gt; 0, <a href="../social_contracts/memory.md#social_contracts_memory_EInvalidConfig">EInvalidConfig</a>);
     <b>assert</b>!(max_agent_depth &gt; 0, <a href="../social_contracts/memory.md#social_contracts_memory_EInvalidConfig">EInvalidConfig</a>);
     <b>assert</b>!(max_label_length &gt; 0, <a href="../social_contracts/memory.md#social_contracts_memory_EInvalidConfig">EInvalidConfig</a>);
@@ -5438,7 +5431,7 @@ Update global memory configuration (admin only).
         organizations: table::new(ctx),
         org_count: 0,
     };
-    <a href="../social_contracts/memory.md#social_contracts_memory_set_version">set_version</a>(&<b>mut</b> account.id, <a href="../social_contracts/memory.md#social_contracts_memory_VERSION">VERSION</a>);
+    <a href="../social_contracts/memory.md#social_contracts_memory_set_version">set_version</a>(&<b>mut</b> account.id, <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>());
     <b>let</b> account_id = object::id(&account);
     table::add(&<b>mut</b> registry.accounts, sender, account_id);
     event::emit(<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccountCreated">MemoryAccountCreated</a> {
@@ -6902,15 +6895,21 @@ Lazy-create per-agent memory vault derived from the sub-agent object.
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_migrate_account">migrate_account</a>(account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>, ctx: &<b>mut</b> TxContext) {
     <b>assert</b>!(account.<a href="../social_contracts/memory.md#social_contracts_memory_owner">owner</a> == tx_context::sender(ctx), <a href="../social_contracts/memory.md#social_contracts_memory_ENotOwner">ENotOwner</a>);
+    <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
     <b>let</b> cur = <a href="../social_contracts/memory.md#social_contracts_memory_get_version">get_version</a>(&account.id);
-    <b>assert</b>!(cur &lt; <a href="../social_contracts/memory.md#social_contracts_memory_VERSION">VERSION</a>, <a href="../social_contracts/memory.md#social_contracts_memory_EAlreadyMigrated">EAlreadyMigrated</a>);
-    <b>let</b> _ = ctx;
-    <a href="../social_contracts/memory.md#social_contracts_memory_bump_version">bump_version</a>(&<b>mut</b> account.id, <a href="../social_contracts/memory.md#social_contracts_memory_VERSION">VERSION</a>);
+    <b>assert</b>!(cur &lt; current_version, <a href="../social_contracts/memory.md#social_contracts_memory_EAlreadyMigrated">EAlreadyMigrated</a>);
+    <a href="../social_contracts/memory.md#social_contracts_memory_bump_version">bump_version</a>(&<b>mut</b> account.id, current_version);
     event::emit(<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccountMigrated">MemoryAccountMigrated</a> {
         account_id: object::id(account),
         from: cur,
-        to: <a href="../social_contracts/memory.md#social_contracts_memory_VERSION">VERSION</a>,
+        to: current_version,
     });
+    <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
+        object::id(account),
+        string::utf8(b"<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>"),
+        cur,
+        tx_context::sender(ctx),
+    );
 }
 </code></pre>
 
@@ -6924,7 +6923,7 @@ Lazy-create per-agent memory vault derived from the sub-agent object.
 
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_admin_migrate_account">admin_migrate_account</a>(cap: &<a href="../myso/package.md#myso_package_UpgradeCap">myso::package::UpgradeCap</a>, account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_admin_migrate_account">admin_migrate_account</a>(account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -6933,17 +6932,26 @@ Lazy-create per-agent memory vault derived from the sub-agent object.
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_admin_migrate_account">admin_migrate_account</a>(cap: &UpgradeCap, account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>, ctx: &<b>mut</b> TxContext) {
-    <a href="../social_contracts/memory.md#social_contracts_memory_assert_cap_for_this_package">assert_cap_for_this_package</a>(cap);
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_admin_migrate_account">admin_migrate_account</a>(
+    account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    _: &UpgradeAdminCap,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
     <b>let</b> cur = <a href="../social_contracts/memory.md#social_contracts_memory_get_version">get_version</a>(&account.id);
-    <b>assert</b>!(cur &lt; <a href="../social_contracts/memory.md#social_contracts_memory_VERSION">VERSION</a>, <a href="../social_contracts/memory.md#social_contracts_memory_EAlreadyMigrated">EAlreadyMigrated</a>);
-    <b>let</b> _ = ctx;
-    <a href="../social_contracts/memory.md#social_contracts_memory_bump_version">bump_version</a>(&<b>mut</b> account.id, <a href="../social_contracts/memory.md#social_contracts_memory_VERSION">VERSION</a>);
+    <b>assert</b>!(cur &lt; current_version, <a href="../social_contracts/memory.md#social_contracts_memory_EAlreadyMigrated">EAlreadyMigrated</a>);
+    <a href="../social_contracts/memory.md#social_contracts_memory_bump_version">bump_version</a>(&<b>mut</b> account.id, current_version);
     event::emit(<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccountMigrated">MemoryAccountMigrated</a> {
         account_id: object::id(account),
         from: cur,
-        to: <a href="../social_contracts/memory.md#social_contracts_memory_VERSION">VERSION</a>,
+        to: current_version,
     });
+    <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
+        object::id(account),
+        string::utf8(b"<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>"),
+        cur,
+        tx_context::sender(ctx),
+    );
 }
 </code></pre>
 
@@ -6957,7 +6965,7 @@ Lazy-create per-agent memory vault derived from the sub-agent object.
 
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_migrate_registry">migrate_registry</a>(cap: &<a href="../myso/package.md#myso_package_UpgradeCap">myso::package::UpgradeCap</a>, registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">social_contracts::memory::MemoryRegistry</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_migrate_registry">migrate_registry</a>(registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">social_contracts::memory::MemoryRegistry</a>, _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -6966,16 +6974,63 @@ Lazy-create per-agent memory vault derived from the sub-agent object.
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_migrate_registry">migrate_registry</a>(cap: &UpgradeCap, registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">MemoryRegistry</a>) {
-    <a href="../social_contracts/memory.md#social_contracts_memory_assert_cap_for_this_package">assert_cap_for_this_package</a>(cap);
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_migrate_registry">migrate_registry</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">MemoryRegistry</a>,
+    _: &UpgradeAdminCap,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
     <b>let</b> cur = <a href="../social_contracts/memory.md#social_contracts_memory_get_version">get_version</a>(&registry.id);
-    <b>assert</b>!(cur &lt; <a href="../social_contracts/memory.md#social_contracts_memory_VERSION">VERSION</a>, <a href="../social_contracts/memory.md#social_contracts_memory_EAlreadyMigrated">EAlreadyMigrated</a>);
-    <a href="../social_contracts/memory.md#social_contracts_memory_bump_version">bump_version</a>(&<b>mut</b> registry.id, <a href="../social_contracts/memory.md#social_contracts_memory_VERSION">VERSION</a>);
+    <b>assert</b>!(cur &lt; current_version, <a href="../social_contracts/memory.md#social_contracts_memory_EAlreadyMigrated">EAlreadyMigrated</a>);
+    <a href="../social_contracts/memory.md#social_contracts_memory_bump_version">bump_version</a>(&<b>mut</b> registry.id, current_version);
     event::emit(<a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistryMigrated">MemoryRegistryMigrated</a> {
         registry_id: object::id(registry),
         from: cur,
-        to: <a href="../social_contracts/memory.md#social_contracts_memory_VERSION">VERSION</a>,
+        to: current_version,
     });
+    <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
+        object::id(registry),
+        string::utf8(b"<a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">MemoryRegistry</a>"),
+        cur,
+        tx_context::sender(ctx),
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_migrate_config"></a>
+
+## Function `migrate_config`
+
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_migrate_config">migrate_config</a>(config: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_migrate_config">migrate_config</a>(
+    config: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">MemoryConfig</a>,
+    _: &UpgradeAdminCap,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
+    <b>assert</b>!(config.version &lt; current_version, <a href="../social_contracts/memory.md#social_contracts_memory_EWrongVersion">EWrongVersion</a>);
+    <b>let</b> old_version = config.version;
+    config.version = current_version;
+    <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
+        object::id(config),
+        string::utf8(b"<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">MemoryConfig</a>"),
+        old_version,
+        tx_context::sender(ctx),
+    );
 }
 </code></pre>
 
@@ -7874,7 +7929,7 @@ True when <code>descendant_id</code> sits strictly below <code>ancestor_id</code
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_current_contract_version">current_contract_version</a>(): u64 { <a href="../social_contracts/memory.md#social_contracts_memory_VERSION">VERSION</a> }
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_current_contract_version">current_contract_version</a>(): u64 { <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>() }
 </code></pre>
 
 
@@ -9869,7 +9924,7 @@ Revoke each witness in <code>mask</code> the member currently holds. Returns the
     <b>if</b> (df::exists_with_type&lt;vector&lt;u8&gt;, u64&gt;(uid, <a href="../social_contracts/memory.md#social_contracts_memory_VERSION_DF_KEY">VERSION_DF_KEY</a>)) {
         *df::borrow&lt;vector&lt;u8&gt;, u64&gt;(uid, <a href="../social_contracts/memory.md#social_contracts_memory_VERSION_DF_KEY">VERSION_DF_KEY</a>)
     } <b>else</b> {
-        1
+        0
     }
 }
 </code></pre>
@@ -9947,32 +10002,7 @@ Revoke each witness in <code>mask</code> the member currently holds. Returns the
 
 
 <pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_assert_object_version">assert_object_version</a>(uid: &UID) {
-    <b>assert</b>!(<a href="../social_contracts/memory.md#social_contracts_memory_get_version">get_version</a>(uid) == <a href="../social_contracts/memory.md#social_contracts_memory_VERSION">VERSION</a>, <a href="../social_contracts/memory.md#social_contracts_memory_EWrongVersion">EWrongVersion</a>);
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_memory_assert_cap_for_this_package"></a>
-
-## Function `assert_cap_for_this_package`
-
-
-
-<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_assert_cap_for_this_package">assert_cap_for_this_package</a>(cap: &<a href="../myso/package.md#myso_package_UpgradeCap">myso::package::UpgradeCap</a>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_assert_cap_for_this_package">assert_cap_for_this_package</a>(cap: &UpgradeCap) {
-    <b>let</b> cap_pkg = package::upgrade_package(cap);
-    <b>assert</b>!(object::id_to_address(&cap_pkg) == @social_contracts, <a href="../social_contracts/memory.md#social_contracts_memory_ENotUpgradeAuthority">ENotUpgradeAuthority</a>);
+    <b>assert</b>!(<a href="../social_contracts/memory.md#social_contracts_memory_get_version">get_version</a>(uid) == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/memory.md#social_contracts_memory_EWrongVersion">EWrongVersion</a>);
 }
 </code></pre>
 

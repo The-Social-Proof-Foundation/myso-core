@@ -115,6 +115,11 @@ impl InsurancePolicy {
         self.inner.status
     }
 
+    /// On-chain contract version for this policy object.
+    async fn contract_version(&self) -> i64 {
+        self.inner.contract_version
+    }
+
     /// Created at (epoch milliseconds).
     async fn created_at(&self) -> i64 {
         self.inner.created_at.and_utc().timestamp_millis()
@@ -565,6 +570,10 @@ impl InsuranceCoverageRoute {
 impl InsuranceCoverageRoute {
     async fn route_id(&self) -> &str {
         &self.inner.route_id
+    }
+
+    async fn contract_version(&self) -> i64 {
+        self.inner.contract_version
     }
 
     async fn insured(&self) -> MySoAddress {

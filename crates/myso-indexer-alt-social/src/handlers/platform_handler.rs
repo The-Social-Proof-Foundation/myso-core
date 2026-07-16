@@ -570,9 +570,8 @@ impl Handler for PlatformHandler {
                         .on_conflict(platform_treasury_balances::platform_id)
                         .do_update()
                         .set((
-                            platform_treasury_balances::balance_mist.eq(
-                                platform_treasury_balances::balance_mist - amount,
-                            ),
+                            platform_treasury_balances::balance_mist
+                                .eq(platform_treasury_balances::balance_mist - amount),
                             platform_treasury_balances::last_withdrawn_at.eq(Some(*withdrawn_at)),
                             platform_treasury_balances::updated_at.eq(*updated_at),
                         ))

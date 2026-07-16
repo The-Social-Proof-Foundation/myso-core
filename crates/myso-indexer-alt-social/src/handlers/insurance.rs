@@ -32,7 +32,7 @@ pub(crate) fn new_insurance_config_with_defaults() -> NewInsuranceConfig {
         max_coverage_bps: DEFAULT_MAX_COVERAGE_BPS,
         max_duration_ms: DEFAULT_MAX_DURATION_MS,
         fee_bps: INSURANCE_DEFAULT_FEE_BPS,
-        version: 1,
+        version: 0,
         updated_at: 0,
         time: Utc::now(),
         transaction_id: String::new(),
@@ -149,7 +149,7 @@ fn process_config_initialized_event(
     config.max_coverage_bps = max_coverage_bps;
     config.max_duration_ms = max_duration_ms;
     config.fee_bps = fee_bps;
-    config.version = 1;
+    config.version = 0;
     config.updated_at = timestamp_ms;
     config.time = Utc::now();
     config.transaction_id = tx.to_string();
@@ -191,7 +191,7 @@ fn process_config_updated_event(
     config.max_duration_ms = max_duration_ms;
     config.fee_bps = fee_bps;
     config.odds_base_bps = odds_base_bps;
-    config.version = 1;
+    config.version = 0;
     config.updated_at = timestamp_ms;
     config.time = Utc::now();
     config.transaction_id = tx.to_string();
@@ -238,7 +238,7 @@ fn process_router_config_updated_event(
         max_vault_concentration_bps,
         min_vault_health_factor_bps,
         max_route_legs,
-        version: 1,
+        version: 0,
         updated_at: timestamp_ms,
         time: Utc::now(),
         transaction_id: tx.to_string(),
@@ -358,7 +358,7 @@ fn process_vault_created_event(
         max_exposure_per_option,
         enabled,
         paused,
-        version: 1,
+        version: 0,
         created_at: now,
         updated_at: now,
         transaction_id: tx.to_string(),
@@ -493,6 +493,7 @@ fn process_coverage_purchased_event(
         route_id,
         route_leg_index,
         backstop_sweep_amount,
+        contract_version: 0,
         created_at: now,
         updated_at: now,
         transaction_id: tx.to_string(),
@@ -720,6 +721,7 @@ fn process_coverage_routed_event(
         expiry_time_ms,
         policy_ids,
         vault_ids,
+        contract_version: 0,
         transaction_id: tx.to_string(),
         created_at: now,
     };

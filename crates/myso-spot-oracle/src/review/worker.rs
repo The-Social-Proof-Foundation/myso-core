@@ -185,7 +185,10 @@ pub async fn process_review_job(state: Arc<AppState>, job: &SpotJob) -> anyhow::
             }),
         )
         .await?;
-        info!(post_id, reason, "unsupported claim; finalized as no-actionable");
+        info!(
+            post_id,
+            reason, "unsupported claim; finalized as no-actionable"
+        );
         return Ok(());
     }
 
@@ -308,10 +311,7 @@ pub async fn process_review_job(state: Arc<AppState>, job: &SpotJob) -> anyhow::
                 Some(&crate::review::outcome_identity::outcome_identity_hash_hex(
                     &canonical.outcome_identity,
                 )),
-                canonical
-                    .outcome_market_key
-                    .deadline_day
-                    .as_deref(),
+                canonical.outcome_market_key.deadline_day.as_deref(),
             )
             .await?;
             crate::store::claims::upsert_post_claim_link(
@@ -339,16 +339,11 @@ pub async fn process_review_job(state: Arc<AppState>, job: &SpotJob) -> anyhow::
                 )
                 .await?;
 
-            let resolution_window_ms =
-                (deadline - market.created_at).num_milliseconds().max(0);
+            let resolution_window_ms = (deadline - market.created_at).num_milliseconds().max(0);
             let max_buffer_ms = state.args.max_resolution_buffer_ms as i64;
             state
                 .store
-                .set_market_resolution_timing(
-                    market_id,
-                    resolution_window_ms,
-                    max_buffer_ms,
-                )
+                .set_market_resolution_timing(market_id, resolution_window_ms, max_buffer_ms)
                 .await?;
 
             crate::store::jobs::enqueue_job(
@@ -467,11 +462,7 @@ pub async fn process_review_job(state: Arc<AppState>, job: &SpotJob) -> anyhow::
                     ctx,
                 )
                 .await?;
-            info!(
-                post_id,
-                reason = reason.as_str(),
-                "claim rejected"
-            );
+            info!(post_id, reason = reason.as_str(), "claim rejected");
         }
     }
     Ok(())
@@ -488,9 +479,8 @@ async fn resolve_dedup_target(
         return Ok(Some(row));
     }
 
-    let identity_hex = crate::review::outcome_identity::outcome_identity_hash_hex(
-        &canonical.outcome_identity,
-    );
+    let identity_hex =
+        crate::review::outcome_identity::outcome_identity_hash_hex(&canonical.outcome_identity);
     if let Some(row) = crate::store::claims::find_market_by_outcome_identity_hash(
         state.store.pool(),
         &identity_hex,

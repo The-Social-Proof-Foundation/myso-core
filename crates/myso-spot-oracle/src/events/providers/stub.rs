@@ -6,11 +6,11 @@
 use async_trait::async_trait;
 use chrono::{Duration, Utc};
 
+use crate::events::types::normalize_discovered_event;
 use crate::events::{
     DiscoveredEvent, EventCategory, EventEntity, EventProvider, EventResolverHints,
     ProviderContext, ProviderHealth,
 };
-use crate::events::types::normalize_discovered_event;
 
 pub struct StubEventProvider {
     pub events: Vec<DiscoveredEvent>,

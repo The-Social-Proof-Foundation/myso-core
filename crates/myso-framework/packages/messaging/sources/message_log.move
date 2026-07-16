@@ -13,7 +13,6 @@ use myso::clock::{Self, Clock};
 use myso::coin::{Self, Coin};
 use myso::derived_object;
 use myso::event;
-use myso::object;
 use myso::myso::MYSO;
 use myso::table::{Self, Table};
 

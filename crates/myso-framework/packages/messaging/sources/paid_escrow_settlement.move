@@ -13,10 +13,8 @@ module messaging::paid_escrow_settlement;
 
 use messaging::messaging_config::{Self, MessagingConfig};
 use myso::coin::{Self, Coin};
-use myso::clock::{Self, Clock};
+use myso::clock::Clock;
 use myso::myso::MYSO;
-use myso::transfer;
-use myso::tx_context::TxContext;
 use social_contracts::platform::{Self, Platform};
 
 /// Sentinel: pass as `platform_fee_recipient` when no platform is associated with the paid DM.

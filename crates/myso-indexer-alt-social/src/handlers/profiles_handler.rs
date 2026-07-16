@@ -24,19 +24,18 @@ use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
-    NewAiCreditBalance, NewEcosystemTreasury, NewMemoryAccount, NewProfile, NewProfileBadge,
-    NewProfileConfig, NewProfileEvent, NewUnifiedRevenue, NewUsernameListing, NewUsernameOffer,
-    NewUsernameSaleFee, NewUsernameRegistry, NewUsernameReservation, NewVestingEvent,
-    NewVestingWallet, ProfileUpdateSet, USERNAME_RESERVATION_STATUS_ACTIVE,
+    default_profile_config, merge_profile_config, NewAiCreditBalance, NewEcosystemTreasury,
+    NewMemoryAccount, NewProfile, NewProfileBadge, NewProfileConfig, NewProfileEvent,
+    NewUnifiedRevenue, NewUsernameListing, NewUsernameOffer, NewUsernameRegistry,
+    NewUsernameReservation, NewUsernameSaleFee, NewVestingEvent, NewVestingWallet,
+    ProfileUpdateSet, REVENUE_TYPE_USERNAME_MARKETPLACE_ECOSYSTEM_FEE,
+    REVENUE_TYPE_USERNAME_MARKETPLACE_SELLER_NET, USERNAME_RESERVATION_STATUS_ACTIVE,
     USERNAME_RESERVATION_STATUS_RELEASED,
-    REVENUE_TYPE_USERNAME_MARKETPLACE_ECOSYSTEM_FEE, REVENUE_TYPE_USERNAME_MARKETPLACE_SELLER_NET,
-    default_profile_config, merge_profile_config,
 };
 use myso_indexer_alt_social_schema::schema::{
     ai_credit_balances, ecosystem_treasury, memory_accounts, profile_badges, profile_config,
-    profile_events, profiles, unified_revenue, username_listings, username_offers, username_registry,
-    username_reservations, username_sale_fees, vesting_events,
-    vesting_wallets,
+    profile_events, profiles, unified_revenue, username_listings, username_offers,
+    username_registry, username_reservations, username_sale_fees, vesting_events, vesting_wallets,
 };
 
 use super::ai_credit;
@@ -540,9 +539,7 @@ fn merge_ecosystem_treasury(
     }
 }
 
-async fn load_latest_profile_config(
-    conn: &mut Connection<'_>,
-) -> Result<Option<NewProfileConfig>> {
+async fn load_latest_profile_config(conn: &mut Connection<'_>) -> Result<Option<NewProfileConfig>> {
     profile_config::table
         .order(profile_config::time.desc())
         .select(NewProfileConfig::as_select())
@@ -980,31 +977,32 @@ async fn insert_username_marketplace_unified_revenue(
 #[cfg(test)]
 mod tests {
     use chrono::DateTime;
+    use diesel::OptionalExtension;
     use move_core_types::account_address::AccountAddress;
     use myso_indexer_alt_framework::postgres::handler::Handler;
-    use diesel::OptionalExtension;
-    use myso_indexer_alt_social_schema::MIGRATIONS;
     use myso_indexer_alt_social_schema::models::{
-        NewProfile, NewUsernameRegistry, NewUsernameSaleFee, USERNAME_RESERVATION_STATUS_ACTIVE,
+        NewProfile, NewUsernameRegistry, NewUsernameSaleFee,
+        REVENUE_TYPE_USERNAME_MARKETPLACE_ECOSYSTEM_FEE,
+        REVENUE_TYPE_USERNAME_MARKETPLACE_SELLER_NET, USERNAME_RESERVATION_STATUS_ACTIVE,
         USERNAME_RESERVATION_STATUS_RELEASED,
-        REVENUE_TYPE_USERNAME_MARKETPLACE_ECOSYSTEM_FEE, REVENUE_TYPE_USERNAME_MARKETPLACE_SELLER_NET,
     };
     use myso_indexer_alt_social_schema::schema::{
         profile_events, profiles, unified_revenue, username_registry, username_reservations,
     };
+    use myso_indexer_alt_social_schema::MIGRATIONS;
     use myso_pg_db::temp::TempDb;
     use myso_pg_db::Db;
 
+    use super::common;
     use super::profile;
+    use super::profile_row_commit_pass;
     use super::ProfileRow;
     use super::ProfilesHandler;
-    use super::profile_row_commit_pass;
     use super::COMMIT_PASS_MARKETPLACE;
+    use super::COMMIT_PASS_OTHER;
     use super::COMMIT_PASS_REGISTRY_REASSIGN;
     use super::COMMIT_PASS_REGISTRY_UPSERT;
     use super::COMMIT_PASS_USERNAME_SET;
-    use super::COMMIT_PASS_OTHER;
-    use super::common;
 
     fn addr(id: u8) -> AccountAddress {
         let mut bytes = [0u8; 32];
@@ -1017,7 +1015,9 @@ mod tests {
     }
 
     fn sample_profile(owner: &str, profile_id: &str, username: &str) -> NewProfile {
-        let now = DateTime::from_timestamp(1_700_000_000, 0).unwrap().naive_utc();
+        let now = DateTime::from_timestamp(1_700_000_000, 0)
+            .unwrap()
+            .naive_utc();
         NewProfile {
             owner_address: owner.to_string(),
             username: username.to_string(),
@@ -1042,6 +1042,7 @@ mod tests {
             selected_ecosystem_badge_id: None,
             memory_account_id: None,
             ai_credit_balance_id: None,
+            contract_version: 0,
         }
     }
 
@@ -1183,13 +1184,9 @@ mod tests {
         });
 
         let mut rows = Vec::new();
-        for row in profile::handle_profile_event(
-            "UsernameSaleSettledEvent",
-            &settle_json,
-            "tx:0",
-            0,
-        )
-        .expect("settle handler")
+        for row in
+            profile::handle_profile_event("UsernameSaleSettledEvent", &settle_json, "tx:0", 0)
+                .expect("settle handler")
         {
             if let Some(r) = ProfileRow::from_social(row) {
                 rows.push(r);
@@ -1227,7 +1224,10 @@ mod tests {
             .await
             .optional()
             .expect("buyer prior lookup");
-        assert!(buyer_prior.is_none(), "buyer prior username should be deleted from registry");
+        assert!(
+            buyer_prior.is_none(),
+            "buyer prior username should be deleted from registry"
+        );
 
         let settled_events: i64 = profile_events::table
             .filter(profile_events::event_type.eq("UsernameSaleSettled"))
@@ -1342,7 +1342,10 @@ mod tests {
             .await
             .optional()
             .expect("prior lookup");
-        assert!(prior.is_none(), "prior username should be deleted from registry");
+        assert!(
+            prior.is_none(),
+            "prior username should be deleted from registry"
+        );
 
         let other_still: String = username_registry::table
             .filter(username_registry::username.eq("user1"))
@@ -1635,7 +1638,11 @@ mod tests {
         use diesel::QueryDsl;
         use diesel_async::RunQueryDsl;
 
-        let registry_count: i64 = username_registry::table.count().get_result(&mut conn).await.expect("registry count");
+        let registry_count: i64 = username_registry::table
+            .count()
+            .get_result(&mut conn)
+            .await
+            .expect("registry count");
         assert_eq!(registry_count, 0);
 
         let profile_username: String = profiles::table

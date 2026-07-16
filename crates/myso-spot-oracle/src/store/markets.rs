@@ -5,7 +5,9 @@ use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::claim::lifecycle::{apply_transition, default_context_for, LifecycleEvent, TransitionContext};
+use crate::claim::lifecycle::{
+    apply_transition, default_context_for, LifecycleEvent, TransitionContext,
+};
 use crate::types::MarketStatus;
 
 #[derive(Debug, Clone, sqlx::FromRow, serde::Serialize)]
@@ -73,7 +75,10 @@ pub async fn insert_market(
     Ok(existing.0)
 }
 
-pub async fn get_market_by_post_id(pool: &PgPool, post_id: &str) -> anyhow::Result<Option<MarketRow>> {
+pub async fn get_market_by_post_id(
+    pool: &PgPool,
+    post_id: &str,
+) -> anyhow::Result<Option<MarketRow>> {
     let row = sqlx::query_as::<_, MarketRow>(&format!(
         "SELECT {MARKET_COLUMNS} FROM markets WHERE post_id = $1"
     ))
@@ -226,13 +231,11 @@ pub async fn set_spot_market_object_id(
     ctx: TransitionContext,
 ) -> anyhow::Result<()> {
     apply_market_transition(pool, market_id, &LifecycleEvent::CreateTxConfirmed, &ctx).await?;
-    sqlx::query(
-        "UPDATE markets SET spot_market_object_id = $2, updated_at = NOW() WHERE id = $1",
-    )
-    .bind(market_id)
-    .bind(spot_market_object_id)
-    .execute(pool)
-    .await?;
+    sqlx::query("UPDATE markets SET spot_market_object_id = $2, updated_at = NOW() WHERE id = $1")
+        .bind(market_id)
+        .bind(spot_market_object_id)
+        .execute(pool)
+        .await?;
     Ok(())
 }
 

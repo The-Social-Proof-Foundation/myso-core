@@ -10,9 +10,7 @@ use chrono::Utc;
 use tracing::{error, info, warn};
 
 use crate::api::AppState;
-use crate::events::{
-    build_default_event_provider_registry, ProviderContext,
-};
+use crate::events::{build_default_event_provider_registry, ProviderContext};
 use crate::store::events::EventProviderRow;
 
 pub async fn bootstrap_event_registry(state: &AppState) -> anyhow::Result<()> {

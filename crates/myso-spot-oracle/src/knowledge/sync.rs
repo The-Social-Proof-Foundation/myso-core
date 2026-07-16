@@ -8,7 +8,9 @@ use std::sync::Arc;
 use tracing::{info, warn};
 
 use crate::api::AppState;
-use crate::knowledge::{build_default_knowledge_provider_registry, DiscoveredKnowledge, KnowledgeProvider};
+use crate::knowledge::{
+    build_default_knowledge_provider_registry, DiscoveredKnowledge, KnowledgeProvider,
+};
 
 pub async fn bootstrap_knowledge_graph(state: &AppState) -> anyhow::Result<()> {
     sync_default_knowledge_providers(state).await?;
@@ -57,7 +59,10 @@ pub async fn sync_default_knowledge_providers(state: &AppState) -> anyhow::Resul
             .into_iter()
             .map(|(k, e)| format!("{k}: {e}"))
             .collect();
-        anyhow::bail!("knowledge provider bootstrap failed: {}", summary.join("; "));
+        anyhow::bail!(
+            "knowledge provider bootstrap failed: {}",
+            summary.join("; ")
+        );
     }
     Ok(())
 }

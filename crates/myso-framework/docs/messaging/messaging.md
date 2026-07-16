@@ -95,6 +95,7 @@ Messaging-specific:
 -  [Function `send_agent_paid_message_digest`](#messaging_messaging_send_agent_paid_message_digest)
 -  [Function `reply_to_paid_message_claim_coin`](#messaging_messaging_reply_to_paid_message_claim_coin)
 -  [Function `reply_to_paid_message_claim_settled`](#messaging_messaging_reply_to_paid_message_claim_settled)
+-  [Function `reply_to_paid_message_claim_settled_with_platform`](#messaging_messaging_reply_to_paid_message_claim_settled_with_platform)
 -  [Function `refund_paid_escrow`](#messaging_messaging_refund_paid_escrow)
 -  [Function `grant_all_messaging_permissions`](#messaging_messaging_grant_all_messaging_permissions)
 -  [Function `grant_agent_messaging_permissions`](#messaging_messaging_grant_agent_messaging_permissions)
@@ -2016,6 +2017,63 @@ paid-message BPS to <code>platform_fee_recipient</code> and the ecosystem treasu
         nonce,
         clock,
         platform_fee_recipient,
+        ecosystem_fee_recipient,
+        ctx,
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="messaging_messaging_reply_to_paid_message_claim_settled_with_platform"></a>
+
+## Function `reply_to_paid_message_claim_settled_with_platform`
+
+Reply and settle with platform treasury: platform fee is deposited into <code>Platform.treasury</code>.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_reply_to_paid_message_claim_settled_with_platform">reply_to_paid_message_claim_settled_with_platform</a>(<a href="../messaging/version.md#messaging_version">version</a>: &<a href="../messaging/version.md#messaging_version_Version">messaging::version::Version</a>, config: &<a href="../messaging/messaging_config.md#messaging_messaging_config_MessagingConfig">messaging::messaging_config::MessagingConfig</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, log: &<b>mut</b> <a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, paid_msg_seq: u64, char_count: u32, dedupe_key: vector&lt;u8&gt;, nonce: u128, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, platform: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, ecosystem_treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_reply_to_paid_message_claim_settled_with_platform">reply_to_paid_message_claim_settled_with_platform</a>(
+    <a href="../messaging/version.md#messaging_version">version</a>: &Version,
+    config: &MessagingConfig,
+    group: &PermissionedGroup&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>&gt;,
+    log: &<b>mut</b> MessageLog,
+    block_list: &BlockListRegistry,
+    paid_msg_seq: u64,
+    char_count: u32,
+    dedupe_key: vector&lt;u8&gt;,
+    nonce: u128,
+    clock: &Clock,
+    platform: &<b>mut</b> Platform,
+    ecosystem_treasury: &EcosystemTreasury,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <a href="../messaging/version.md#messaging_version">version</a>.validate_version();
+    <a href="../messaging/messaging.md#messaging_messaging_assert_group_not_archived">assert_group_not_archived</a>(group);
+    <a href="../messaging/messaging.md#messaging_messaging_assert_message_log_matches_group">assert_message_log_matches_group</a>(log, group);
+    <b>assert</b>!(group.has_permission&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>, <a href="../messaging/messaging.md#messaging_messaging_MessagingSender">MessagingSender</a>&gt;(ctx.sender()), <a href="../messaging/messaging.md#messaging_messaging_ENotPermitted">ENotPermitted</a>);
+    <a href="../messaging/messaging.md#messaging_messaging_assert_paid_parties_not_blocked">assert_paid_parties_not_blocked</a>(block_list, ctx.sender(), log, paid_msg_seq);
+    <b>let</b> ecosystem_fee_recipient = profile::get_treasury_address(ecosystem_treasury);
+    <a href="../messaging/message_log.md#messaging_message_log_reply_to_paid_message_claim_settled_with_platform">message_log::reply_to_paid_message_claim_settled_with_platform</a>(
+        config,
+        log,
+        ctx.sender(),
+        paid_msg_seq,
+        char_count,
+        dedupe_key,
+        nonce,
+        clock,
+        platform,
         ecosystem_fee_recipient,
         ctx,
     );

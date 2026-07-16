@@ -2643,15 +2643,27 @@ module social_contracts::governance {
     }
 
     /// Public entry function that migrates registry to the latest version
-    public entry fun migrate_registry(registry: &mut GovernanceDAO, _ctx: &mut TxContext) {
+    public entry fun migrate_registry(
+        registry: &mut GovernanceDAO,
+        _: &UpgradeAdminCap,
+        ctx: &mut TxContext,
+    ) {
         let current_version = registry.version;
         let latest_version = upgrade::current_version();
 
         assert!(current_version < latest_version, EWrongVersion);
 
         // Version-specific migrations would go here when needed
-        
+
+        let old_version = current_version;
         registry.version = latest_version;
+
+        upgrade::emit_migration_event(
+            object::id(registry),
+            string::utf8(b"GovernanceDAO"),
+            old_version,
+            tx_context::sender(ctx),
+        );
     }
 
     /// One-time admin path for existing networks that bootstrapped before the SPoT registry existed.

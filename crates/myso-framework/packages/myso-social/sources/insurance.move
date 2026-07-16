@@ -70,7 +70,6 @@ module social_contracts::insurance {
     const BPS_DENOM: u64 = 10_000;
     const DAY_MS: u64 = 86_400_000;
     const MAX_U64: u64 = 18446744073709551615;
-    const DEFAULT_VERSION: u64 = 1;
     const DEFAULT_MIN_COVERAGE_BPS: u64 = 1000;
     const DEFAULT_MAX_COVERAGE_BPS: u64 = 9000;
     const DEFAULT_MAX_DURATION_MS: u64 = 30 * DAY_MS;
@@ -201,6 +200,7 @@ module social_contracts::insurance {
         status: u8,
         route_id: Option<ID>,
         route_leg_index: u8,
+        version: u64,
     }
 
     public struct PremiumQuote has copy, drop {
@@ -445,7 +445,7 @@ module social_contracts::insurance {
             exposure_cap_bps: DEFAULT_EXPOSURE_CAP_BPS,
             exposure_k_bps: DEFAULT_EXPOSURE_K_BPS,
             odds_base_bps: DEFAULT_ODDS_BASE_BPS,
-            version: DEFAULT_VERSION,
+            version: upgrade::current_version(),
         });
         transfer::share_object(new_router_config_defaults(ctx));
         transfer::share_object(new_backstop_pool_defaults(ctx));
@@ -494,6 +494,7 @@ module social_contracts::insurance {
         assert!(max_duration_ms > 0, EInvalidDuration);
         assert!(fee_bps <= BPS_DENOM, EInvalidCoverage);
         assert!(odds_base_bps > 0, EInvalidCoverage);
+        assert_config_version(config);
 
         config.min_coverage_bps = min_coverage_bps;
         config.max_coverage_bps = max_coverage_bps;
@@ -548,6 +549,7 @@ module social_contracts::insurance {
         );
         assert!(max_risk_multiplier_bps >= BPS_DENOM, EInvalidCoverage);
         assert!(min_premium_amount > 0, EInvalidAmount);
+        assert_config_version(config);
 
         config.min_spot_total_liquidity = min_spot_total_liquidity;
         config.max_coverage_fraction_of_option_bps = max_coverage_fraction_of_option_bps;
@@ -588,6 +590,7 @@ module social_contracts::insurance {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        assert_config_version(config);
         config.insurance_enabled = insurance_enabled;
 
         let updated_by = tx_context::sender(ctx);
@@ -631,7 +634,7 @@ module social_contracts::insurance {
             exposure_cap_bps: DEFAULT_EXPOSURE_CAP_BPS,
             exposure_k_bps: DEFAULT_EXPOSURE_K_BPS,
             odds_base_bps: DEFAULT_ODDS_BASE_BPS,
-            version: DEFAULT_VERSION,
+            version: upgrade::current_version(),
         };
 
         transfer::share_object(new_backstop_pool_defaults(ctx));
@@ -696,7 +699,7 @@ module social_contracts::insurance {
             paused,
             market_exposures: table::new(ctx),
             user_exposures: table::new(ctx),
-            version: DEFAULT_VERSION,
+            version: upgrade::current_version(),
         };
         let vault_id = object::id(&vault);
         transfer::share_object(vault);
@@ -723,6 +726,7 @@ module social_contracts::insurance {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
+        assert_vault_version(vault);
         assert!(tx_context::sender(ctx) == vault.underwriter, ENotAdmin);
         vault.enabled = enabled;
         vault.paused = paused;
@@ -761,6 +765,7 @@ module social_contracts::insurance {
         );
         assert!(min_vault_health_factor_bps > 0, EInvalidAmount);
         assert!(max_route_legs > 0, EInvalidAmount);
+        assert_router_version(router_cfg);
         router_cfg.paused = paused;
         router_cfg.max_route_reserve_market = max_route_reserve_market;
         router_cfg.max_route_reserve_user = max_route_reserve_user;
@@ -783,6 +788,7 @@ module social_contracts::insurance {
         paused: bool,
         ctx: &mut TxContext,
     ) {
+        assert_router_version(router_cfg);
         if (table::contains(&router_cfg.market_pause, market_id)) {
             *table::borrow_mut(&mut router_cfg.market_pause, market_id) = paused;
         } else {
@@ -802,6 +808,7 @@ module social_contracts::insurance {
         ctx: &mut TxContext,
     ) {
         assert!(sweep_premium_bps <= BPS_DENOM, EInvalidCoverage);
+        assert_backstop_version(pool);
         pool.max_payout_per_market = max_payout_per_market;
         pool.max_payout_per_event = max_payout_per_event;
         pool.global_hard_cap = global_hard_cap;
@@ -816,6 +823,7 @@ module social_contracts::insurance {
         tail_mode_enabled: bool,
         ctx: &mut TxContext,
     ) {
+        assert_backstop_version(pool);
         pool.tail_mode_enabled = tail_mode_enabled;
         let _ = ctx;
     }
@@ -826,6 +834,7 @@ module social_contracts::insurance {
         enabled: bool,
         ctx: &mut TxContext,
     ) {
+        assert_backstop_version(pool);
         pool.insurance_backstop_pool_enabled = enabled;
         let _ = ctx;
     }
@@ -836,6 +845,7 @@ module social_contracts::insurance {
         payment: Coin<MYSO>,
         ctx: &mut TxContext,
     ) {
+        assert_backstop_version(pool);
         let amt = coin::value(&payment);
         assert!(amt > 0, EInvalidAmount);
         let sender = tx_context::sender(ctx);
@@ -859,6 +869,8 @@ module social_contracts::insurance {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
+        assert_config_version(config);
+        assert_backstop_version(pool);
         assert!(config.insurance_enabled, EDisabled);
         assert!(pool.tail_mode_enabled, ETailModeDisabled);
         assert!(pool.insurance_backstop_pool_enabled, EBackstopPaused);
@@ -945,7 +957,7 @@ module social_contracts::insurance {
             min_vault_health_factor_bps: BPS_DENOM,
             max_route_legs: DEFAULT_MAX_ROUTE_LEGS,
             market_pause: table::new(ctx),
-            version: DEFAULT_VERSION,
+            version: upgrade::current_version(),
         }
     }
 
@@ -980,7 +992,7 @@ module social_contracts::insurance {
             insurance_backstop_pool_enabled: true,
             sweep_premium_bps: 0,
             tail_pay_partial_on_cap: true,
-            version: DEFAULT_VERSION,
+            version: upgrade::current_version(),
         }
     }
 
@@ -1011,6 +1023,8 @@ module social_contracts::insurance {
         payment: Coin<MYSO>,
         ctx: &mut TxContext
     ) {
+        assert_config_version(config);
+        assert_vault_version(vault);
         assert!(config.insurance_enabled, EDisabled);
         let deposit_amount = coin::value(&payment);
         assert!(deposit_amount > 0, EInvalidAmount);
@@ -1029,6 +1043,8 @@ module social_contracts::insurance {
         amount: u64,
         ctx: &mut TxContext
     ) {
+        assert_config_version(config);
+        assert_vault_version(vault);
         assert!(config.insurance_enabled, EDisabled);
         assert!(tx_context::sender(ctx) == vault.underwriter, ENotAdmin);
         assert!(amount > 0, EInvalidAmount);
@@ -1483,6 +1499,10 @@ module social_contracts::insurance {
         check_market_router: bool,
         ctx: &mut TxContext,
     ): (ID, ID, u64, u64, u64, u64, u64) {
+        assert_config_version(config);
+        assert_router_version(router_cfg);
+        assert_backstop_version(backstop);
+        assert_vault_version(vault);
         assert!(config.insurance_enabled, EDisabled);
         assert!(spot::is_enabled(spot_config), EMarketClosed);
         assert!(spot::is_open(record), EMarketClosed);
@@ -1561,6 +1581,7 @@ module social_contracts::insurance {
             status: STATUS_ACTIVE,
             route_id,
             route_leg_index,
+            version: upgrade::current_version(),
         };
         let policy_id = object::id(&policy);
         transfer::share_object(policy);
@@ -1674,6 +1695,13 @@ module social_contracts::insurance {
         ctx: &mut TxContext,
     ) {
         assert!(clock::timestamp_ms(clock) <= deadline_ms, EDeadlinePassed);
+        assert_config_version(config);
+        assert_router_version(router_cfg);
+        assert_backstop_version(backstop);
+        assert_vault_version(v0);
+        assert_vault_version(v1);
+        assert_vault_version(v2);
+        assert_vault_version(v3);
         assert!(config.insurance_enabled, EDisabled);
         assert!(!router_cfg.paused, ERouterPaused);
         assert!(spot::is_enabled(spot_config), EMarketClosed);
@@ -1794,7 +1822,7 @@ module social_contracts::insurance {
             total_premium: 0,
             total_reserve: 0,
             total_backstop_sweep: 0,
-            version: DEFAULT_VERSION,
+            version: upgrade::current_version(),
         };
         let route_id = object::id(&route);
 
@@ -1993,6 +2021,9 @@ module social_contracts::insurance {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        assert_config_version(config);
+        assert_vault_version(vault);
+        assert_policy_version(policy);
         assert!(config.insurance_enabled, EDisabled);
         assert!(spot::is_enabled(spot_config), EMarketClosed);
         assert!(spot::is_open(record), EMarketClosed);
@@ -2055,6 +2086,9 @@ module social_contracts::insurance {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        assert_config_version(config);
+        assert_vault_version(vault);
+        assert_policy_version(policy);
         assert!(config.insurance_enabled, EDisabled);
         assert!(spot::is_enabled(spot_config), EMarketClosed);
         assert!(policy.status == STATUS_ACTIVE, EPolicyNotActive);
@@ -2111,6 +2145,8 @@ module social_contracts::insurance {
         policy: &mut CoveragePolicy,
         clock: &Clock
     ) {
+        assert_vault_version(vault);
+        assert_policy_version(policy);
         if (policy.status != STATUS_ACTIVE) {
             return
         };
@@ -2284,6 +2320,34 @@ module social_contracts::insurance {
         };
     }
 
+    fun assert_config_version(config: &InsuranceConfig) {
+        assert!(config.version == upgrade::current_version(), EWrongVersion);
+    }
+
+    fun assert_router_version(router_cfg: &InsuranceRouterConfig) {
+        assert!(router_cfg.version == upgrade::current_version(), EWrongVersion);
+    }
+
+    fun assert_backstop_version(pool: &InsuranceBackstopPool) {
+        assert!(pool.version == upgrade::current_version(), EWrongVersion);
+    }
+
+    fun assert_vault_version(vault: &UnderwriterVault) {
+        assert!(vault.version == upgrade::current_version(), EWrongVersion);
+    }
+
+    fun assert_policy_version(policy: &CoveragePolicy) {
+        assert!(policy.version == upgrade::current_version(), EWrongVersion);
+    }
+
+    public(package) fun borrow_config_version_mut(config: &mut InsuranceConfig): &mut u64 {
+        &mut config.version
+    }
+
+    public(package) fun borrow_vault_version_mut(vault: &mut UnderwriterVault): &mut u64 {
+        &mut vault.version
+    }
+
     /// Migration function for InsuranceConfig
     public entry fun migrate_config(
         config: &mut InsuranceConfig,
@@ -2291,18 +2355,11 @@ module social_contracts::insurance {
         ctx: &mut TxContext
     ) {
         let current_version = upgrade::current_version();
-        
-        // Verify this is an upgrade (new version > current version)
         assert!(config.version < current_version, EWrongVersion);
-        
-        // Remember old version and update to new version
         let old_version = config.version;
         config.version = current_version;
-        
-        // Emit event for object migration
-        let config_id = object::id(config);
         upgrade::emit_migration_event(
-            config_id,
+            object::id(config),
             string::utf8(b"InsuranceConfig"),
             old_version,
             tx_context::sender(ctx)
@@ -2316,21 +2373,157 @@ module social_contracts::insurance {
         ctx: &mut TxContext
     ) {
         let current_version = upgrade::current_version();
-        
-        // Verify this is an upgrade (new version > current version)
         assert!(vault.version < current_version, EWrongVersion);
-        
-        // Remember old version and update to new version
         let old_version = vault.version;
         vault.version = current_version;
-        
-        // Emit event for object migration
-        let vault_id = object::id(vault);
         upgrade::emit_migration_event(
-            vault_id,
+            object::id(vault),
             string::utf8(b"UnderwriterVault"),
             old_version,
             tx_context::sender(ctx)
         );
+    }
+
+    public entry fun migrate_router_config(
+        router_cfg: &mut InsuranceRouterConfig,
+        _: &UpgradeAdminCap,
+        ctx: &mut TxContext
+    ) {
+        let current_version = upgrade::current_version();
+        assert!(router_cfg.version < current_version, EWrongVersion);
+        let old_version = router_cfg.version;
+        router_cfg.version = current_version;
+        upgrade::emit_migration_event(
+            object::id(router_cfg),
+            string::utf8(b"InsuranceRouterConfig"),
+            old_version,
+            tx_context::sender(ctx)
+        );
+    }
+
+    public entry fun migrate_backstop_pool(
+        pool: &mut InsuranceBackstopPool,
+        _: &UpgradeAdminCap,
+        ctx: &mut TxContext
+    ) {
+        let current_version = upgrade::current_version();
+        assert!(pool.version < current_version, EWrongVersion);
+        let old_version = pool.version;
+        pool.version = current_version;
+        upgrade::emit_migration_event(
+            object::id(pool),
+            string::utf8(b"InsuranceBackstopPool"),
+            old_version,
+            tx_context::sender(ctx)
+        );
+    }
+
+    public entry fun migrate_coverage_route(
+        route: &mut CoverageRoute,
+        _: &UpgradeAdminCap,
+        ctx: &mut TxContext
+    ) {
+        let current_version = upgrade::current_version();
+        assert!(route.version < current_version, EWrongVersion);
+        let old_version = route.version;
+        route.version = current_version;
+        upgrade::emit_migration_event(
+            object::id(route),
+            string::utf8(b"CoverageRoute"),
+            old_version,
+            tx_context::sender(ctx)
+        );
+    }
+
+    public entry fun migrate_policy(
+        policy: &mut CoveragePolicy,
+        _: &UpgradeAdminCap,
+        ctx: &mut TxContext
+    ) {
+        let current_version = upgrade::current_version();
+        assert!(policy.version < current_version, EWrongVersion);
+        let old_version = policy.version;
+        policy.version = current_version;
+        upgrade::emit_migration_event(
+            object::id(policy),
+            string::utf8(b"CoveragePolicy"),
+            old_version,
+            tx_context::sender(ctx)
+        );
+    }
+
+    // ============================================================
+    // Test helpers
+    // ============================================================
+
+    #[test_only]
+    public fun config_version(config: &InsuranceConfig): u64 {
+        config.version
+    }
+
+    #[test_only]
+    public fun vault_version(vault: &UnderwriterVault): u64 {
+        vault.version
+    }
+
+    #[test_only]
+    public fun test_force_config_version(config: &mut InsuranceConfig, v: u64) {
+        *borrow_config_version_mut(config) = v;
+    }
+
+    #[test_only]
+    public fun test_force_vault_version(vault: &mut UnderwriterVault, v: u64) {
+        *borrow_vault_version_mut(vault) = v;
+    }
+
+    #[test_only]
+    public fun error_wrong_version(): u64 {
+        EWrongVersion
+    }
+
+    /// Test-only migration shim for genesis (`CURRENT_VERSION == 0`). Production upgrades
+    /// use `migrate_config` directly once `current_version()` exceeds the stale object version.
+    #[test_only]
+    public entry fun test_migrate_config(
+        config: &mut InsuranceConfig,
+        cap: &UpgradeAdminCap,
+        ctx: &mut TxContext,
+    ) {
+        if (upgrade::test_migration_available()) {
+            migrate_config(config, cap, ctx);
+        } else {
+            let simulated_target = upgrade::test_pre_upgrade_object_version() + 1;
+            assert!(config.version < simulated_target, EWrongVersion);
+            let old_version = config.version;
+            config.version = upgrade::current_version();
+            upgrade::emit_migration_event(
+                object::id(config),
+                string::utf8(b"InsuranceConfig"),
+                old_version,
+                tx_context::sender(ctx),
+            );
+        }
+    }
+
+    #[test_only]
+    public entry fun test_migrate_vault(
+        vault: &mut UnderwriterVault,
+        cap: &UpgradeAdminCap,
+        ctx: &mut TxContext,
+    ) {
+        if (upgrade::test_migration_available()) {
+            migrate_vault(vault, cap, ctx);
+        } else {
+            let simulated_target = upgrade::test_pre_upgrade_object_version() + 1;
+            assert!(vault.version < simulated_target, EWrongVersion);
+            let old_version = vault.version;
+            vault.version = upgrade::current_version();
+            upgrade::emit_migration_event(
+                object::id(vault),
+                string::utf8(b"UnderwriterVault"),
+                old_version,
+                tx_context::sender(ctx),
+            );
+        }
     }
 }

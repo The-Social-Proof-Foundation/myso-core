@@ -8,7 +8,8 @@ use chrono::Utc;
 
 use crate::events::types::ProviderHealth;
 use crate::knowledge::types::{
-    DiscoveredKnowledge, DiscoveredMetric, DiscoveredObservation, KnowledgeProvider, ProviderContext,
+    DiscoveredKnowledge, DiscoveredMetric, DiscoveredObservation, KnowledgeProvider,
+    ProviderContext,
 };
 
 pub struct MetricsObservationProvider;

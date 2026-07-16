@@ -50,7 +50,10 @@ impl OracleMetrics {
             .expect("register resolver_latency");
 
         let chain_tx_total = IntCounterVec::new(
-            Opts::new("chain_tx_total", "Chain transaction attempts by kind and status"),
+            Opts::new(
+                "chain_tx_total",
+                "Chain transaction attempts by kind and status",
+            ),
             &["kind", "status"],
         )
         .expect("chain_tx_total metric");
@@ -110,7 +113,10 @@ impl OracleMetrics {
             .expect("register scheduled_events_active");
 
         let event_match_total = IntCounterVec::new(
-            Opts::new("event_match_total", "Scheduled event matches at review time"),
+            Opts::new(
+                "event_match_total",
+                "Scheduled event matches at review time",
+            ),
             &["category"],
         )
         .expect("event_match_total metric");
@@ -143,7 +149,10 @@ impl OracleMetrics {
             .expect("register deadline_rejection_total");
 
         let claim_match_total = IntCounterVec::new(
-            Opts::new("claim_match_total", "Claim matcher outcomes by domain and tier"),
+            Opts::new(
+                "claim_match_total",
+                "Claim matcher outcomes by domain and tier",
+            ),
             &["domain", "tier"],
         )
         .expect("claim_match_total metric");
@@ -152,7 +161,10 @@ impl OracleMetrics {
             .expect("register claim_match_total");
 
         let knowledge_sync_total = IntCounterVec::new(
-            Opts::new("knowledge_sync_total", "Knowledge provider sync by object type"),
+            Opts::new(
+                "knowledge_sync_total",
+                "Knowledge provider sync by object type",
+            ),
             &["provider", "object_type"],
         )
         .expect("knowledge_sync_total metric");
@@ -187,8 +199,8 @@ impl OracleMetrics {
             .register(Box::new(dedup_created_total.clone()))
             .expect("register dedup_created_total");
 
-        let uptime = myso_indexer_alt_metrics::uptime(env!("CARGO_PKG_VERSION"))
-            .expect("uptime metric");
+        let uptime =
+            myso_indexer_alt_metrics::uptime(env!("CARGO_PKG_VERSION")).expect("uptime metric");
         registry.register(uptime).expect("register uptime");
 
         Self {

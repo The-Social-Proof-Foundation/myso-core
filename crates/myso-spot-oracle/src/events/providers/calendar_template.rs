@@ -6,12 +6,14 @@
 use async_trait::async_trait;
 use chrono::{Datelike, Utc};
 
-use crate::events::calendar::{end_of_utc_day, is_us_midterm_year, is_us_presidential_year, us_election_day};
+use crate::events::calendar::{
+    end_of_utc_day, is_us_midterm_year, is_us_presidential_year, us_election_day,
+};
+use crate::events::types::{generate_keywords, normalize_discovered_event};
 use crate::events::{
     DiscoveredEvent, EventCategory, EventProvider, EventResolverHints, ProviderContext,
     ProviderHealth,
 };
-use crate::events::types::{generate_keywords, normalize_discovered_event};
 
 pub struct CalendarTemplateProvider;
 
@@ -148,7 +150,9 @@ impl EventProvider for CalendarTemplateProvider {
                             continue;
                         }
                         let end_date = chrono::NaiveDate::from_ymd_opt(year + 1, 7, 19)
-                            .unwrap_or_else(|| chrono::NaiveDate::from_ymd_opt(year, 7, 19).unwrap());
+                            .unwrap_or_else(|| {
+                                chrono::NaiveDate::from_ymd_opt(year, 7, 19).unwrap()
+                            });
                         let end_at = end_of_utc_day(end_date);
                         if end_at <= Utc::now() {
                             continue;

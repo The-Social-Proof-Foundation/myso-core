@@ -7,8 +7,8 @@ use crate::metrics::SocialMetrics;
 use myso_indexer_alt_social_schema::models::{
     NewSocialProofTokensEvent, NewSptConfigEvent, NewSptHolding, NewSptPool, NewSptPriceHistory,
     NewSptReservation, NewSptReservationPool, NewSptTransaction, RESERVATION_POOL_STATUS_ACTIVE,
-    RESERVATION_POOL_STATUS_THRESHOLD_MET, TOKEN_TYPE_POST, TOKEN_TYPE_PROFILE, TRANSACTION_TYPE_BUY,
-    TRANSACTION_TYPE_SELL,
+    RESERVATION_POOL_STATUS_THRESHOLD_MET, TOKEN_TYPE_POST, TOKEN_TYPE_PROFILE,
+    TRANSACTION_TYPE_BUY, TRANSACTION_TYPE_SELL,
 };
 
 fn transaction_id_from_event_id(event_id: &str) -> String {

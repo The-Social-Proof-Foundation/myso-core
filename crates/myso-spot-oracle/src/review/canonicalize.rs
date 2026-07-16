@@ -7,8 +7,8 @@ use uuid::Uuid;
 
 use crate::review::deadline::DEFAULT_PRICE_MARKET_SPACING;
 use crate::review::outcome_identity::{
-    build_outcome_identity, build_outcome_market_key, outcome_identity_hash,
-    outcome_market_hash, OutcomeIdentityFields, OutcomeMarketKey,
+    build_outcome_identity, build_outcome_market_key, outcome_identity_hash, outcome_market_hash,
+    OutcomeIdentityFields, OutcomeMarketKey,
 };
 use crate::store::reviews::ExtractedClaim;
 use crate::types::{ClaimCategory, ComparisonOp, ResolverHints};
@@ -97,11 +97,8 @@ pub struct CanonicalClaim {
     pub outcome_market_key: OutcomeMarketKey,
 }
 
-const ASSET_ALIASES: &[(&str, &str)] = &[
-    ("btc", "bitcoin"),
-    ("eth", "ethereum"),
-    ("sol", "solana"),
-];
+const ASSET_ALIASES: &[(&str, &str)] =
+    &[("btc", "bitcoin"), ("eth", "ethereum"), ("sol", "solana")];
 
 #[derive(Debug, Clone, Copy)]
 pub struct CanonicalizeOptions {
@@ -117,7 +114,12 @@ impl Default for CanonicalizeOptions {
 }
 
 pub fn canonicalize(extraction_id: Uuid, extracted: &ExtractedClaim) -> CanonicalClaim {
-    canonicalize_with_identity(extraction_id, extracted, None, &CanonicalizeOptions::default())
+    canonicalize_with_identity(
+        extraction_id,
+        extracted,
+        None,
+        &CanonicalizeOptions::default(),
+    )
 }
 
 pub fn canonicalize_with_options(
@@ -137,7 +139,9 @@ pub fn canonicalize_with_identity(
     let subject = normalize_asset(&extracted.subject);
     let object = normalize_repo_or_asset(&extracted.object);
     let threshold = extracted.threshold.as_ref().map(|t| normalize_number(t));
-    let comparison = extracted.comparison.or_else(|| infer_comparison(&extracted.predicate));
+    let comparison = extracted
+        .comparison
+        .or_else(|| infer_comparison(&extracted.predicate));
     let mut suggested_sources = extracted.suggested_sources.clone();
     suggested_sources.sort();
     suggested_sources.dedup();
@@ -158,9 +162,7 @@ pub fn canonicalize_with_identity(
     if let Some(url) = resolver_hints.url.as_ref() {
         resolver_hints.url = Some(normalize_url(url));
     }
-    resolver_hints
-        .preferred_sources
-        .sort();
+    resolver_hints.preferred_sources.sort();
     resolver_hints.preferred_sources.dedup();
 
     let claim_category = derive_category(extracted, &subject, &comparison);
@@ -274,13 +276,19 @@ fn derive_category(
         return ClaimCategory::PriceThreshold;
     }
     if extracted.predicate.to_lowercase().contains("release")
-        || extracted.suggested_sources.iter().any(|s| s.contains("github"))
+        || extracted
+            .suggested_sources
+            .iter()
+            .any(|s| s.contains("github"))
         || extracted.resolver_hints.owner.is_some()
     {
         return ClaimCategory::ReleasePublished;
     }
     if extracted.resolver_hints.feed_url.is_some()
-        || extracted.suggested_sources.iter().any(|s| s.contains("rss"))
+        || extracted
+            .suggested_sources
+            .iter()
+            .any(|s| s.contains("rss"))
     {
         return ClaimCategory::EventOccurrence;
     }
@@ -363,9 +371,9 @@ fn infer_comparison(predicate: &str) -> Option<ComparisonOp> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::Utc;
     use crate::store::reviews::ExtractedClaim;
     use crate::types::{ComparisonOp, ResolverHints};
+    use chrono::Utc;
 
     #[test]
     fn btc_alias_normalizes_to_bitcoin() {

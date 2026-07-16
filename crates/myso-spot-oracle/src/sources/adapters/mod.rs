@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 pub mod chainlink;
-pub mod coingecko;
 pub mod coinbase;
+pub mod coingecko;
 pub mod github_releases;
 pub mod http_official;
 pub mod rss_event;

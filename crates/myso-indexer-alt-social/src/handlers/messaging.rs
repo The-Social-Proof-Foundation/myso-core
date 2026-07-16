@@ -8,11 +8,11 @@ use serde::Deserialize;
 use super::common;
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
-    NewMessageDigest, NewMessagingAgentGroup, NewMessagingConfig, NewPaidMessageEscrow, NewUnifiedRevenue,
-    NewWalletMessagingPolicy, PAID_MESSAGE_STATUS_CLAIMED, PAID_MESSAGE_STATUS_ESCROWED,
-    PAID_MESSAGE_STATUS_REFUNDED, PAID_MESSAGE_STATUS_SETTLED, REVENUE_TYPE_MESSAGING_CLAIM,
-    REVENUE_TYPE_MESSAGING_NET, REVENUE_TYPE_MESSAGING_PLATFORM_FEE, REVENUE_TYPE_MESSAGING_REFUND,
-    REVENUE_TYPE_MESSAGING_TREASURY_FEE,
+    NewMessageDigest, NewMessagingAgentGroup, NewMessagingConfig, NewPaidMessageEscrow,
+    NewUnifiedRevenue, NewWalletMessagingPolicy, PAID_MESSAGE_STATUS_CLAIMED,
+    PAID_MESSAGE_STATUS_ESCROWED, PAID_MESSAGE_STATUS_REFUNDED, PAID_MESSAGE_STATUS_SETTLED,
+    REVENUE_TYPE_MESSAGING_CLAIM, REVENUE_TYPE_MESSAGING_NET, REVENUE_TYPE_MESSAGING_PLATFORM_FEE,
+    REVENUE_TYPE_MESSAGING_REFUND, REVENUE_TYPE_MESSAGING_TREASURY_FEE,
 };
 
 #[derive(Debug, Deserialize)]
@@ -135,12 +135,9 @@ pub fn handle_message_log_event(
             process_paid_message_sent_event(data, event_id, checkpoint_timestamp_ms)
         }
         "PaidMessageReplied" => None,
-        "PaymentClaimed" => process_payment_claimed_event(
-            data,
-            event_id,
-            checkpoint_timestamp_ms,
-            reply_char_count,
-        ),
+        "PaymentClaimed" => {
+            process_payment_claimed_event(data, event_id, checkpoint_timestamp_ms, reply_char_count)
+        }
         "PaymentClaimedSettled" => process_payment_claimed_settled_event(
             data,
             event_id,
@@ -166,10 +163,8 @@ fn process_message_digest_sent_event(
         data,
         "message_log MessageDigestSent JSON did not match MessageDigestSentEvent",
     )?;
-    let timestamp_ms = common::chain_timestamp_ms(
-        Some(ev.created_at_ms as i64),
-        checkpoint_timestamp_ms,
-    );
+    let timestamp_ms =
+        common::chain_timestamp_ms(Some(ev.created_at_ms as i64), checkpoint_timestamp_ms);
     Some(vec![SocialEventRow::MessageDigest(NewMessageDigest {
         group_id: ev.group_id,
         seq: ev.seq as i64,
@@ -517,10 +512,7 @@ fn process_payment_refunded_event(
     ])
 }
 
-pub fn stash_paid_message_reply(
-    data: &serde_json::Value,
-    event_id: &str,
-) -> Option<(String, u32)> {
+pub fn stash_paid_message_reply(data: &serde_json::Value, event_id: &str) -> Option<(String, u32)> {
     let ev: PaidMessageRepliedEvent = common::deserialize_social_event_json(
         "message_log",
         "PaidMessageReplied",
@@ -528,7 +520,10 @@ pub fn stash_paid_message_reply(
         data,
         "message_log PaidMessageReplied JSON did not match PaidMessageRepliedEvent",
     )?;
-    Some((content_id(&ev.group_id, ev.paid_msg_seq), ev.reply_char_count))
+    Some((
+        content_id(&ev.group_id, ev.paid_msg_seq),
+        ev.reply_char_count,
+    ))
 }
 
 pub fn handle_paid_messaging_policy_event(

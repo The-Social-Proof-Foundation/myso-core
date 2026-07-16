@@ -23,22 +23,23 @@ use crate::api::types::move_type::MoveType;
 use crate::api::types::move_value::MoveValue;
 use crate::api::types::object::Object;
 use crate::api::types::profile_summary::ProfileSummary;
-use crate::scope::Scope;
 use crate::error::RpcError;
+use crate::scope::Scope;
 
 fn parse_platform_treasury_balance_from_json(value: &serde_json::Value) -> Option<u64> {
-    value
-        .get("treasury")
-        .and_then(|treasury| {
-            if let Some(s) = treasury.as_str() {
-                s.parse().ok()
-            } else if let Some(obj) = treasury.as_object() {
-                obj.get("value")
-                    .and_then(|v| v.as_str().and_then(|s| s.parse().ok()).or_else(|| v.as_u64()))
-            } else {
-                treasury.as_u64()
-            }
-        })
+    value.get("treasury").and_then(|treasury| {
+        if let Some(s) = treasury.as_str() {
+            s.parse().ok()
+        } else if let Some(obj) = treasury.as_object() {
+            obj.get("value").and_then(|v| {
+                v.as_str()
+                    .and_then(|s| s.parse().ok())
+                    .or_else(|| v.as_u64())
+            })
+        } else {
+            treasury.as_u64()
+        }
+    })
 }
 
 async fn load_live_platform_treasury_balance(
@@ -302,10 +303,7 @@ impl Platform {
     }
 
     /// Live platform treasury balance in mist (read from the Platform object on-chain).
-    async fn treasury_balance_live(
-        &self,
-        ctx: &Context<'_>,
-    ) -> Option<Result<UInt53, RpcError>> {
+    async fn treasury_balance_live(&self, ctx: &Context<'_>) -> Option<Result<UInt53, RpcError>> {
         load_live_platform_treasury_balance(ctx, &self.inner.platform_id).await
     }
 
@@ -422,7 +420,9 @@ impl Platform {
                 .get_platform_user_access(&self.inner.platform_id, &user.to_string())
                 .await
                 .map_err(Into::into)
-                .map(|row| PlatformUserAccess::from_row(row, &developer_address, &user.to_string())),
+                .map(|row| {
+                    PlatformUserAccess::from_row(row, &developer_address, &user.to_string())
+                }),
         )
     }
 }
@@ -433,7 +433,9 @@ pub(crate) struct PlatformTreasuryWithdrawalSummary {
 }
 
 impl PlatformTreasuryWithdrawalSummary {
-    fn from_row(inner: myso_indexer_alt_social_reader::platform::PlatformTreasuryWithdrawalRow) -> Self {
+    fn from_row(
+        inner: myso_indexer_alt_social_reader::platform::PlatformTreasuryWithdrawalRow,
+    ) -> Self {
         Self { inner }
     }
 }
@@ -493,7 +495,8 @@ impl PlatformUserAccess {
             can_block_users: row.can_block_users(),
             can_moderate_content: row.can_moderate_content(),
             can_manage_badges: row.can_manage_badges(),
-            can_withdraw_from_platform_treasury: row.can_withdraw_from_platform_treasury(is_developer),
+            can_withdraw_from_platform_treasury: row
+                .can_withdraw_from_platform_treasury(is_developer),
             can_manage_promotions: row.can_manage_promotions(),
         }
     }

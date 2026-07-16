@@ -183,11 +183,8 @@ mod tests {
 
     #[test]
     fn mydata_access_from_indexed_kind() {
-        let kind = resolve_mydata_access_configuration_kind(
-            Some("marketplace_recurring"),
-            None,
-            None,
-        );
+        let kind =
+            resolve_mydata_access_configuration_kind(Some("marketplace_recurring"), None, None);
         assert_eq!(kind, MyDataAccessConfigurationKind::MarketplaceRecurring);
     }
 

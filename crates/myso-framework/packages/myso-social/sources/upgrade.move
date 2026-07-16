@@ -19,8 +19,8 @@ module social_contracts::upgrade {
     const EInvalidDigest: u64 = 0;
     const EWrongVersion: u64 = 1;
 
-    // Current package version - increment with each upgrade
-    const CURRENT_VERSION: u64 = 1;
+    // Current package version - increment with each upgrade (0 = greenfield genesis)
+    const CURRENT_VERSION: u64 = 0;
 
     // Object type constants removed to avoid dependencies
 
@@ -137,6 +137,28 @@ module social_contracts::upgrade {
     }
     
     // Test utilities
+    #[test_only]
+    /// Object version before the first package upgrade (always 0 at genesis).
+    public fun test_pre_upgrade_object_version(): u64 {
+        0
+    }
+
+    #[test_only]
+    /// Stale version to force in migration tests (one below live `current_version()`).
+    public fun test_stale_version_for_migration(): u64 {
+        if (CURRENT_VERSION > test_pre_upgrade_object_version()) {
+            CURRENT_VERSION - 1
+        } else {
+            test_pre_upgrade_object_version()
+        }
+    }
+
+    #[test_only]
+    /// Whether production `migrate_*` entry points can succeed (`version < current_version()`).
+    public fun test_migration_available(): bool {
+        CURRENT_VERSION > test_pre_upgrade_object_version()
+    }
+
     #[test_only]
     public fun create_test_digest(bytes: vector<u8>): vector<u8> {
         let mut res = bytes;

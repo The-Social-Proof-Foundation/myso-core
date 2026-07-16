@@ -83,6 +83,11 @@ impl Post {
         self.inner.created_at
     }
 
+    /// On-chain contract version for this post object.
+    async fn contract_version(&self) -> i64 {
+        self.inner.contract_version
+    }
+
     /// Number of reactions.
     async fn reaction_count(&self) -> i64 {
         self.inner.reaction_count
@@ -254,9 +259,7 @@ impl Post {
     #[graphql(deprecation = "Use `access.kind` instead.")]
     async fn requires_subscription(&self) -> Option<bool> {
         Some(
-            self.inner
-                .resolve_post_access()
-                .kind
+            self.inner.resolve_post_access().kind
                 == myso_indexer_alt_social_reader::PostAccessKind::ProfileSubscription,
         )
     }
@@ -503,8 +506,8 @@ impl Post {
 
     /// Past-claim verdicts for this post, in claim_index order (empty when none).
     async fn spot_verdicts(&self, ctx: &Context<'_>) -> Vec<SpotClaimVerdict> {
-        let Some(reader_opt) =
-            ctx.data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()
+        let Some(reader_opt) = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()
         else {
             return Vec::new();
         };

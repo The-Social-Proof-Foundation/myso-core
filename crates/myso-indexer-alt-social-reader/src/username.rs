@@ -7,8 +7,8 @@ use diesel::QueryDsl;
 use diesel::SelectableHelper;
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::{
-    UsernameListing, UsernameRegistryRow, USERNAME_BENEFICIARY_STATUS_ACTIVE,
-    USERNAME_LISTING_STATUS_ACTIVE,
+    USERNAME_BENEFICIARY_STATUS_ACTIVE, USERNAME_LISTING_STATUS_ACTIVE, UsernameListing,
+    UsernameRegistryRow,
 };
 use myso_indexer_alt_social_schema::schema::{profiles, username_listings, username_registry};
 use serde::Serialize;
@@ -51,10 +51,8 @@ pub fn canonical_username_key(input: &str) -> Result<String, InvalidUsername> {
             return Err(InvalidUsername::InvalidCharset);
         }
         let lower = if b >= b'A' && b <= b'Z' { b + 32 } else { b };
-        let ok = lower.is_ascii_lowercase()
-            || lower.is_ascii_digit()
-            || lower == b'_'
-            || lower == b'.';
+        let ok =
+            lower.is_ascii_lowercase() || lower.is_ascii_digit() || lower == b'_' || lower == b'.';
         if !ok {
             return Err(InvalidUsername::InvalidCharset);
         }
@@ -184,9 +182,9 @@ pub(crate) async fn get_username_availability(
 
     let active_beneficiary =
         poc_username_beneficiary::get_by_username(conn, &canonical, metrics).await?;
-    let beneficiary_provisioned = active_beneficiary.as_ref().is_some_and(|row| {
-        row.status == USERNAME_BENEFICIARY_STATUS_ACTIVE
-    });
+    let beneficiary_provisioned = active_beneficiary
+        .as_ref()
+        .is_some_and(|row| row.status == USERNAME_BENEFICIARY_STATUS_ACTIVE);
     let beneficiary_id = if beneficiary_provisioned {
         active_beneficiary
             .as_ref()

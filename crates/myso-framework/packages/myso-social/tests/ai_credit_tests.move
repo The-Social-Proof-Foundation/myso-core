@@ -21,6 +21,7 @@ module social_contracts::ai_credit_tests {
     use social_contracts::profile::{Self, Profile, UsernameRegistry,
         ProfileConfig};
     use social_contracts::ai_credit::{Self, AiCreditBalance, AiCreditConfig};
+    use social_contracts::upgrade::{Self, UpgradeAdminCap};
 
     const ADMIN: address = @0xAD;
     const USER1: address = @0x1;
@@ -929,6 +930,150 @@ module social_contracts::ai_credit_tests {
             test_scenario::return_shared(balance);
             test_scenario::return_shared(config);
             test_scenario::return_shared(clock);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    // === Upgrade / migration tests ===
+
+    fun init_env_with_upgrade_cap(scenario: &mut test_scenario::Scenario) {
+        init_env(scenario);
+        test_scenario::next_tx(scenario, ADMIN);
+        {
+            upgrade::init_for_testing(test_scenario::ctx(scenario));
+        };
+    }
+
+    #[test]
+    fun test_ai_credit_genesis_versions() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        init_env(&mut scenario);
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let config = test_scenario::take_shared<AiCreditConfig>(&scenario);
+            let balance = test_scenario::take_shared<AiCreditBalance>(&scenario);
+            assert!(ai_credit::config_version(&config) == upgrade::current_version(), 1);
+            assert!(ai_credit::balance_version(&balance) == upgrade::current_version(), 2);
+            test_scenario::return_shared(balance);
+            test_scenario::return_shared(config);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 2, location = social_contracts::ai_credit)]
+    fun test_ai_credit_wrong_version_aborts_deposit() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        init_env(&mut scenario);
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let config = test_scenario::take_shared<AiCreditConfig>(&scenario);
+            let mut balance = test_scenario::take_shared<AiCreditBalance>(&scenario);
+            ai_credit::test_force_balance_version(
+                &mut balance,
+                upgrade::current_version() + 1,
+            );
+            let payment = coin::mint_for_testing<MYSO>(DEPOSIT_MIST, test_scenario::ctx(&mut scenario));
+            ai_credit::deposit(&config, &mut balance, payment, test_scenario::ctx(&mut scenario));
+            test_scenario::return_shared(balance);
+            test_scenario::return_shared(config);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_ai_credit_migrate_config_and_balance_then_ops_work() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        init_env_with_upgrade_cap(&mut scenario);
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let admin_cap = test_scenario::take_from_sender<UpgradeAdminCap>(&scenario);
+            let mut config = test_scenario::take_shared<AiCreditConfig>(&scenario);
+            let mut balance = test_scenario::take_shared<AiCreditBalance>(&scenario);
+            let stale = upgrade::test_stale_version_for_migration();
+            ai_credit::test_force_config_version(&mut config, stale);
+            ai_credit::test_force_balance_version(&mut balance, stale);
+
+            if (upgrade::test_migration_available()) {
+                ai_credit::migrate_config(&mut config, &admin_cap, test_scenario::ctx(&mut scenario));
+                ai_credit::migrate_balance(&mut balance, &admin_cap, test_scenario::ctx(&mut scenario));
+            } else {
+                ai_credit::test_migrate_config(&mut config, &admin_cap, test_scenario::ctx(&mut scenario));
+                ai_credit::test_migrate_balance(&mut balance, &admin_cap, test_scenario::ctx(&mut scenario));
+            };
+
+            assert!(ai_credit::config_version(&config) == upgrade::current_version(), 1);
+            assert!(ai_credit::balance_version(&balance) == upgrade::current_version(), 2);
+
+            test_scenario::return_shared(balance);
+            test_scenario::return_shared(config);
+            test_scenario::return_to_sender(&scenario, admin_cap);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let config = test_scenario::take_shared<AiCreditConfig>(&scenario);
+            let mut balance = test_scenario::take_shared<AiCreditBalance>(&scenario);
+            let payment = coin::mint_for_testing<MYSO>(DEPOSIT_MIST, test_scenario::ctx(&mut scenario));
+            ai_credit::deposit(&config, &mut balance, payment, test_scenario::ctx(&mut scenario));
+            test_scenario::return_shared(balance);
+            test_scenario::return_shared(config);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 2, location = social_contracts::ai_credit)]
+    fun test_ai_credit_migrate_config_idempotent() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        init_env_with_upgrade_cap(&mut scenario);
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let admin_cap = test_scenario::take_from_sender<UpgradeAdminCap>(&scenario);
+            let mut config = test_scenario::take_shared<AiCreditConfig>(&scenario);
+            let stale = upgrade::test_stale_version_for_migration();
+            ai_credit::test_force_config_version(&mut config, stale);
+            if (upgrade::test_migration_available()) {
+                ai_credit::migrate_config(&mut config, &admin_cap, test_scenario::ctx(&mut scenario));
+            } else {
+                ai_credit::test_migrate_config(&mut config, &admin_cap, test_scenario::ctx(&mut scenario));
+            };
+            ai_credit::migrate_config(&mut config, &admin_cap, test_scenario::ctx(&mut scenario));
+            test_scenario::return_shared(config);
+            test_scenario::return_to_sender(&scenario, admin_cap);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 2, location = social_contracts::ai_credit)]
+    fun test_ai_credit_migrate_balance_idempotent() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        init_env_with_upgrade_cap(&mut scenario);
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let admin_cap = test_scenario::take_from_sender<UpgradeAdminCap>(&scenario);
+            let mut balance = test_scenario::take_shared<AiCreditBalance>(&scenario);
+            let stale = upgrade::test_stale_version_for_migration();
+            ai_credit::test_force_balance_version(&mut balance, stale);
+            if (upgrade::test_migration_available()) {
+                ai_credit::migrate_balance(&mut balance, &admin_cap, test_scenario::ctx(&mut scenario));
+            } else {
+                ai_credit::test_migrate_balance(&mut balance, &admin_cap, test_scenario::ctx(&mut scenario));
+            };
+            ai_credit::migrate_balance(&mut balance, &admin_cap, test_scenario::ctx(&mut scenario));
+            test_scenario::return_shared(balance);
+            test_scenario::return_to_sender(&scenario, admin_cap);
         };
 
         test_scenario::end(scenario);

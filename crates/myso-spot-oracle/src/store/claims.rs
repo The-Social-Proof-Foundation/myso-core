@@ -33,7 +33,10 @@ pub struct PostClaimLinkRow {
     pub link_kind: String,
 }
 
-pub async fn get_claim_by_id(pool: &PgPool, claim_id: Uuid) -> anyhow::Result<Option<SpotClaimRow>> {
+pub async fn get_claim_by_id(
+    pool: &PgPool,
+    claim_id: Uuid,
+) -> anyhow::Result<Option<SpotClaimRow>> {
     let row = sqlx::query_as::<_, SpotClaimRow>(
         r#"
         SELECT id, semantic_claim_hash, spot_claim_object_id, canonical_claim_id
@@ -95,12 +98,11 @@ pub async fn find_market_by_key_hash(
 }
 
 pub async fn market_key_hash_exists(pool: &PgPool, market_key_hash: &str) -> anyhow::Result<bool> {
-    let row: (bool,) = sqlx::query_as(
-        "SELECT EXISTS(SELECT 1 FROM spot_markets WHERE market_key_hash = $1)",
-    )
-    .bind(market_key_hash)
-    .fetch_one(pool)
-    .await?;
+    let row: (bool,) =
+        sqlx::query_as("SELECT EXISTS(SELECT 1 FROM spot_markets WHERE market_key_hash = $1)")
+            .bind(market_key_hash)
+            .fetch_one(pool)
+            .await?;
     Ok(row.0)
 }
 
@@ -270,10 +272,12 @@ pub async fn set_spot_market_object_id(
     market_id: Uuid,
     object_id: &str,
 ) -> anyhow::Result<()> {
-    sqlx::query("UPDATE spot_markets SET spot_market_object_id = $2, status = 'waiting' WHERE id = $1")
-        .bind(market_id)
-        .bind(object_id)
-        .execute(pool)
-        .await?;
+    sqlx::query(
+        "UPDATE spot_markets SET spot_market_object_id = $2, status = 'waiting' WHERE id = $1",
+    )
+    .bind(market_id)
+    .bind(object_id)
+    .execute(pool)
+    .await?;
     Ok(())
 }

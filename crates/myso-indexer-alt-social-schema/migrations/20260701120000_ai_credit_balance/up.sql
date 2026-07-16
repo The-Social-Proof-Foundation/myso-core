@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS ai_credit_balances (
     spent_month_mist BIGINT NOT NULL DEFAULT 0,
     settlement_nonce BIGINT NOT NULL DEFAULT 0,
     active BOOLEAN NOT NULL DEFAULT TRUE,
+    contract_version BIGINT NOT NULL DEFAULT 0,
     updated_at_ms BIGINT NOT NULL,
     event_id TEXT NOT NULL,
     transaction_id TEXT NOT NULL,

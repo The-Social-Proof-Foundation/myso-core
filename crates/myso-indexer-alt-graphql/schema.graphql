@@ -263,6 +263,7 @@ type AiCreditBalance {
 	agentBudgets: [AiCreditAgentBudget!]
 	balanceId: String!
 	balanceMist: Int!
+	contractVersion: Int!
 	credits: Int!
 	dailyCapMist: Int
 	monthlyCapMist: Int
@@ -2378,6 +2379,7 @@ type InsuranceConfiguration {
 }
 
 type InsuranceCoverageRoute {
+	contractVersion: Int!
 	coverageBps: Int!
 	createdAt: Int!
 	durationMs: Int!
@@ -2472,6 +2474,10 @@ type InsurancePolicy {
 	Combined risk multiplier in basis points (post caps; premium ≈ base × this / 10_000 before floor).
 	"""
 	riskMultiplierBps: Int!
+	"""
+	On-chain contract version for this policy object.
+	"""
+	contractVersion: Int!
 	"""
 	Aggregated route object id when this policy was bought via `route_buy_coverage_4`.
 	"""
@@ -2749,6 +2755,7 @@ type MakeMoveVecCommand {
 type MemoryAccount {
 	accountId: String!
 	active: Boolean!
+	contractVersion: Int!
 	createdAt: Int!
 	principalOwner: MySoAddress!
 	profileId: MySoAddress!
@@ -4192,6 +4199,10 @@ type MyDataRecord {
 	Update frequency (e.g. "daily", "weekly", "monthly").
 	"""
 	updateFrequency: String
+	"""
+	On-chain contract version for this MyData record object.
+	"""
+	version: Int!
 }
 
 type MyDataRevenue {
@@ -5544,6 +5555,10 @@ type PocConfig {
 	"""
 	updatedBy: String!
 	"""
+	Configuration version.
+	"""
+	version: Int!
+	"""
 	One-time join-referral fee (bps) on first username-beneficiary vault claim.
 	"""
 	usernameBeneficiaryJoinReferralBps: Int!
@@ -5792,6 +5807,10 @@ type Post implements Node {
 	When the post was created (Unix timestamp in milliseconds).
 	"""
 	createdAt: Int!
+	"""
+	On-chain contract version for this post object.
+	"""
+	contractVersion: Int!
 	"""
 	Deletion events for this post (paginated, newest first).
 	"""
@@ -6283,6 +6302,10 @@ type Profile implements Node {
 	When the profile was created (Unix ms from chain Clock at 0x6).
 	"""
 	createdAt: Int
+	"""
+	On-chain contract version for this profile object.
+	"""
+	contractVersion: Int!
 	"""
 	The profile's display name.
 	"""
@@ -8499,6 +8522,10 @@ type SpotRecord {
 	Transaction ID of the record creation/update.
 	"""
 	transactionId: String!
+	"""
+	On-chain contract version for this SPoT record object.
+	"""
+	version: Int!
 }
 
 type SpotRefund {

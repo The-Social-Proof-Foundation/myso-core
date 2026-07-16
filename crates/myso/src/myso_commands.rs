@@ -114,8 +114,7 @@ const LOCAL_MYSO_START_ORDERBOOK_ADMIN_TOKEN: &str = "bearer_admin_token";
 const DEFAULT_MYDATA_KEY_SERVER_PORT: u16 = 2024;
 const DEFAULT_SPOT_ORACLE_PORT: u16 = crate::local_spot_oracle::DEFAULT_SPOT_ORACLE_PORT;
 const DEFAULT_POC_API_PORT: u16 = crate::local_poc::DEFAULT_POC_API_PORT;
-const DEFAULT_MESSAGING_RELAYER_PORT: u16 =
-    crate::local_messaging::DEFAULT_MESSAGING_RELAYER_PORT;
+const DEFAULT_MESSAGING_RELAYER_PORT: u16 = crate::local_messaging::DEFAULT_MESSAGING_RELAYER_PORT;
 
 /// Max connections per embedded Postgres pool when `myso start` runs indexers + APIs on one server.
 /// Typical local `max_connections` is 100; several pools must fit under that. Raise Postgres
@@ -1376,9 +1375,7 @@ async fn start(
         );
     }
 
-    if let (Some(db_url), Some(orderbook_opt)) =
-        (database_url.as_ref(), with_orderbook.as_ref())
-    {
+    if let (Some(db_url), Some(orderbook_opt)) = (database_url.as_ref(), with_orderbook.as_ref()) {
         info!("Starting orderbook indexer and REST API");
 
         let orderbook_database_url = match orderbook_opt.as_ref() {
@@ -1613,7 +1610,9 @@ async fn start(
     };
 
     if need_poc {
-        info!("Starting Proof of Creativity docker stack (--profile app, includes discovery-worker)");
+        info!(
+            "Starting Proof of Creativity docker stack (--profile app, includes discovery-worker)"
+        );
         let info = crate::local_poc::spawn_poc_stack(poc_repo, poc_api_port)
             .await
             .context("Failed to start PoC docker stack")?;

@@ -7,11 +7,11 @@ use async_trait::async_trait;
 use chrono::{DateTime, NaiveDate, TimeZone, Utc};
 use serde::Deserialize;
 
+use crate::events::types::{generate_keywords, normalize_discovered_event};
 use crate::events::{
     DiscoveredEvent, EventCategory, EventEntity, EventProvider, EventResolverHints,
     ProviderContext, ProviderHealth,
 };
-use crate::events::types::{generate_keywords, normalize_discovered_event};
 
 pub struct YamlSeedProvider;
 

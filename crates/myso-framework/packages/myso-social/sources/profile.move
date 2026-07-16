@@ -2127,6 +2127,33 @@ module social_contracts::profile {
         // Any migration logic can be added here for future upgrades
     }
 
+    /// Migration function for UsernameMarketplace
+    public entry fun migrate_username_marketplace(
+        marketplace: &mut UsernameMarketplace,
+        _: &upgrade::UpgradeAdminCap,
+        ctx: &mut TxContext,
+    ) {
+        let current_version = upgrade::current_version();
+
+        // Verify this is an upgrade (new version > current version)
+        assert!(marketplace.version < current_version, 1);
+
+        // Remember old version and update to new version
+        let old_version = marketplace.version;
+        marketplace.version = current_version;
+
+        // Emit event for object migration
+        let marketplace_id = object::id(marketplace);
+        upgrade::emit_migration_event(
+            marketplace_id,
+            string::utf8(b"UsernameMarketplace"),
+            old_version,
+            tx_context::sender(ctx),
+        );
+
+        // Any migration logic can be added here for future upgrades
+    }
+
     #[test_only]
     /// Initialize test environment for profile module
     public fun test_init(clock: &Clock, ctx: &mut TxContext) {

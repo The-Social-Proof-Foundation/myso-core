@@ -12,9 +12,8 @@ use crate::events::calendar::{
 use crate::events::registry::{event_deadline, EventRegistry, ScheduledEventRecord};
 use crate::events::types::EventCategory;
 use crate::review::deadline::{
-    parse_calendar_text_deadline, parse_explicit_deadline_from_text,
-    bucket_deadline_for_market_key, ceil_to_spacing,
-    DEFAULT_PRICE_MARKET_SPACING, MIN_DEADLINE_LEAD,
+    bucket_deadline_for_market_key, ceil_to_spacing, parse_calendar_text_deadline,
+    parse_explicit_deadline_from_text, DEFAULT_PRICE_MARKET_SPACING, MIN_DEADLINE_LEAD,
 };
 use crate::types::ClaimCategory;
 
@@ -330,7 +329,10 @@ mod tests {
         let claim = "JD Vance will win the 2028 presedintial election.";
         let res = resolve_context_deadline(claim, ClaimCategory::EventOccurrence, &reg)
             .expect("deadline");
-        assert_eq!(res.deadline.date_naive(), NaiveDate::from_ymd_opt(2028, 11, 7).unwrap());
+        assert_eq!(
+            res.deadline.date_naive(),
+            NaiveDate::from_ymd_opt(2028, 11, 7).unwrap()
+        );
         assert_eq!(
             res.provenance.source,
             DeadlineProvenanceSource::EventRegistry
@@ -347,7 +349,10 @@ mod tests {
             &reg,
         )
         .expect("calendar");
-        assert_eq!(res.deadline.date_naive(), NaiveDate::from_ymd_opt(2028, 11, 7).unwrap());
+        assert_eq!(
+            res.deadline.date_naive(),
+            NaiveDate::from_ymd_opt(2028, 11, 7).unwrap()
+        );
         assert_eq!(
             res.provenance.source,
             DeadlineProvenanceSource::CalendarTemplate

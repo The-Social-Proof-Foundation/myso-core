@@ -319,11 +319,7 @@ pub async fn submit_link_post(state: Arc<AppState>, job: &SpotJob) -> anyhow::Re
                 ctx.on_chain_status = Some(1);
                 state
                     .store
-                    .set_spot_market_object_id_on_market(
-                        oracle_market_id,
-                        market_object_id,
-                        ctx,
-                    )
+                    .set_spot_market_object_id_on_market(oracle_market_id, market_object_id, ctx)
                     .await?;
             }
             info!(market_id = %oracle_market_id, digest, "link_post submitted");
@@ -466,10 +462,13 @@ async fn build_and_submit_create_market(
     max_resolution_buffer_ms: u64,
     market_key_hash: &[u8],
 ) -> anyhow::Result<(String, String)> {
-    let key_hex = args.private_key_hex.as_ref().context("missing private key")?;
+    let key_hex = args
+        .private_key_hex
+        .as_ref()
+        .context("missing private key")?;
     let key_bytes = hex::decode(key_hex.trim())?;
-    let key_pair = MySoKeyPair::from_bytes(&key_bytes)
-        .map_err(|e| anyhow::anyhow!("invalid key: {:?}", e))?;
+    let key_pair =
+        MySoKeyPair::from_bytes(&key_bytes).map_err(|e| anyhow::anyhow!("invalid key: {:?}", e))?;
     let sender = MySoAddress::from(&key_pair.public());
 
     let client = MySoClientBuilder::default()
@@ -480,10 +479,7 @@ async fn build_and_submit_create_market(
         .coin_read_api()
         .get_coins(sender, None, None, None)
         .await?;
-    let gas_obj = gas_coins
-        .data
-        .first()
-        .context("sender has no gas coins")?;
+    let gas_obj = gas_coins.data.first().context("sender has no gas coins")?;
 
     let package = ObjectID::from_hex_literal(SOCIAL_PACKAGE_ID)?;
     let admin_cap = parse_object_id(args.admin_cap_object_id.as_ref().unwrap())?;
@@ -504,8 +500,7 @@ async fn build_and_submit_create_market(
     let registry_arg =
         shared_object_arg(&client, registry_id, SharedObjectMutability::Mutable).await?;
     // Move entry takes `&mut SpotClaim` (may call link_post_to_claim_internal).
-    let claim_arg =
-        shared_object_arg(&client, claim_obj, SharedObjectMutability::Mutable).await?;
+    let claim_arg = shared_object_arg(&client, claim_obj, SharedObjectMutability::Mutable).await?;
     let post_arg = shared_object_arg(&client, post_obj, SharedObjectMutability::Mutable).await?;
     let clock_arg = shared_object_arg(&client, clock, SharedObjectMutability::Immutable).await?;
 
@@ -547,13 +542,8 @@ async fn build_and_submit_create_market(
 
     let pt = ptb.finish();
     let rgp = client.read_api().get_reference_gas_price().await?;
-    let tx_data = TransactionData::new_programmable(
-        sender,
-        vec![gas_obj.object_ref()],
-        pt,
-        50_000_000,
-        rgp,
-    );
+    let tx_data =
+        TransactionData::new_programmable(sender, vec![gas_obj.object_ref()], pt, 50_000_000, rgp);
     let signed = Transaction::from_data_and_signer(tx_data, vec![&key_pair]);
     let response = client
         .quorum_driver_api()
@@ -568,9 +558,10 @@ async fn build_and_submit_create_market(
         .await?;
     ensure_tx_succeeded(&response, "create_spot_market_for_claim")?;
     let digest = response.digest.to_string();
-    let market_object_id = find_market_id_in_tx_events(response.events.as_ref(), Some(market_key_hash))
-        .or_else(|| find_created_type(&response.object_changes, "SpotMarket"))
-        .or_else(|| None);
+    let market_object_id =
+        find_market_id_in_tx_events(response.events.as_ref(), Some(market_key_hash))
+            .or_else(|| find_created_type(&response.object_changes, "SpotMarket"))
+            .or_else(|| None);
     let market_object_id = match market_object_id {
         Some(id) => id,
         None => lookup_market_by_key_hash(args, market_key_hash)
@@ -598,10 +589,13 @@ async fn build_and_submit_create(
         .timestamp_millis()
         .try_into()
         .context("resolution_at_ms overflow")?;
-    let key_hex = args.private_key_hex.as_ref().context("missing private key")?;
+    let key_hex = args
+        .private_key_hex
+        .as_ref()
+        .context("missing private key")?;
     let key_bytes = hex::decode(key_hex.trim())?;
-    let key_pair = MySoKeyPair::from_bytes(&key_bytes)
-        .map_err(|e| anyhow::anyhow!("invalid key: {:?}", e))?;
+    let key_pair =
+        MySoKeyPair::from_bytes(&key_bytes).map_err(|e| anyhow::anyhow!("invalid key: {:?}", e))?;
     let sender = MySoAddress::from(&key_pair.public());
 
     let client = MySoClientBuilder::default()
@@ -612,10 +606,7 @@ async fn build_and_submit_create(
         .coin_read_api()
         .get_coins(sender, None, None, None)
         .await?;
-    let gas_obj = gas_coins
-        .data
-        .first()
-        .context("sender has no gas coins")?;
+    let gas_obj = gas_coins.data.first().context("sender has no gas coins")?;
 
     let package = ObjectID::from_hex_literal(SOCIAL_PACKAGE_ID)?;
     let admin_cap = parse_object_id(args.admin_cap_object_id.as_ref().unwrap())?;
@@ -680,11 +671,9 @@ async fn build_and_submit_create(
             )
             .await?;
         ensure_tx_succeeded(&response, "create_spot_claim")?;
-        if let Some(id) = find_claim_id_in_tx_events(
-            response.events.as_ref(),
-            Some(semantic_claim_hash),
-        )
-        .or_else(|| find_created_type(&response.object_changes, "SpotClaim"))
+        if let Some(id) =
+            find_claim_id_in_tx_events(response.events.as_ref(), Some(semantic_claim_hash))
+                .or_else(|| find_created_type(&response.object_changes, "SpotClaim"))
         {
             id
         } else {
@@ -717,10 +706,13 @@ async fn build_and_submit_link_post(
     claim_object_id: &str,
     post_id: &str,
 ) -> anyhow::Result<String> {
-    let key_hex = args.private_key_hex.as_ref().context("missing private key")?;
+    let key_hex = args
+        .private_key_hex
+        .as_ref()
+        .context("missing private key")?;
     let key_bytes = hex::decode(key_hex.trim())?;
-    let key_pair = MySoKeyPair::from_bytes(&key_bytes)
-        .map_err(|e| anyhow::anyhow!("invalid key: {:?}", e))?;
+    let key_pair =
+        MySoKeyPair::from_bytes(&key_bytes).map_err(|e| anyhow::anyhow!("invalid key: {:?}", e))?;
     let sender = MySoAddress::from(&key_pair.public());
 
     let client = MySoClientBuilder::default()
@@ -731,10 +723,7 @@ async fn build_and_submit_link_post(
         .coin_read_api()
         .get_coins(sender, None, None, None)
         .await?;
-    let gas_obj = gas_coins
-        .data
-        .first()
-        .context("sender has no gas coins")?;
+    let gas_obj = gas_coins.data.first().context("sender has no gas coins")?;
 
     let package = ObjectID::from_hex_literal(SOCIAL_PACKAGE_ID)?;
     let admin_cap = parse_object_id(args.admin_cap_object_id.as_ref().unwrap())?;
@@ -754,8 +743,7 @@ async fn build_and_submit_link_post(
         shared_object_arg(&client, spot_config, SharedObjectMutability::Immutable).await?;
     let registry_arg =
         shared_object_arg(&client, registry_id, SharedObjectMutability::Mutable).await?;
-    let claim_arg =
-        shared_object_arg(&client, claim_obj, SharedObjectMutability::Mutable).await?;
+    let claim_arg = shared_object_arg(&client, claim_obj, SharedObjectMutability::Mutable).await?;
     let post_arg = shared_object_arg(&client, post_obj, SharedObjectMutability::Mutable).await?;
     let clock_arg = shared_object_arg(&client, clock, SharedObjectMutability::Immutable).await?;
 

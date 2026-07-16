@@ -128,6 +128,7 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `version`](#social_contracts_profile_version)
 -  [Function `borrow_version_mut`](#social_contracts_profile_borrow_version_mut)
 -  [Function `migrate_registry`](#social_contracts_profile_migrate_registry)
+-  [Function `migrate_username_marketplace`](#social_contracts_profile_migrate_username_marketplace)
 -  [Function `linked_memory_account_id`](#social_contracts_profile_linked_memory_account_id)
 -  [Function `linked_ai_credit_balance_id`](#social_contracts_profile_linked_ai_credit_balance_id)
 -  [Function `x_username`](#social_contracts_profile_x_username)
@@ -5928,6 +5929,49 @@ Migration function for the registry
         string::utf8(b"<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>"),
         old_version,
         tx_context::sender(ctx)
+    );
+    // Any migration logic can be added here <b>for</b> future upgrades
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_migrate_username_marketplace"></a>
+
+## Function `migrate_username_marketplace`
+
+Migration function for UsernameMarketplace
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_migrate_username_marketplace">migrate_username_marketplace</a>(marketplace: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameMarketplace">social_contracts::profile::UsernameMarketplace</a>, _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_migrate_username_marketplace">migrate_username_marketplace</a>(
+    marketplace: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameMarketplace">UsernameMarketplace</a>,
+    _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">upgrade::UpgradeAdminCap</a>,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
+    // Verify this is an <a href="../social_contracts/upgrade.md#social_contracts_upgrade">upgrade</a> (new <a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> &gt; current <a href="../social_contracts/profile.md#social_contracts_profile_version">version</a>)
+    <b>assert</b>!(marketplace.<a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> &lt; current_version, 1);
+    // Remember old <a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> and update to new <a href="../social_contracts/profile.md#social_contracts_profile_version">version</a>
+    <b>let</b> old_version = marketplace.<a href="../social_contracts/profile.md#social_contracts_profile_version">version</a>;
+    marketplace.<a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> = current_version;
+    // Emit event <b>for</b> object migration
+    <b>let</b> marketplace_id = object::id(marketplace);
+    <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
+        marketplace_id,
+        string::utf8(b"<a href="../social_contracts/profile.md#social_contracts_profile_UsernameMarketplace">UsernameMarketplace</a>"),
+        old_version,
+        tx_context::sender(ctx),
     );
     // Any migration logic can be added here <b>for</b> future upgrades
 }

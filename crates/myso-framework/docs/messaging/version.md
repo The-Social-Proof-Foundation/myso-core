@@ -107,7 +107,7 @@ Shared object that keeps track of the package version
 Current version of the package, starting from version 1
 
 
-<pre><code><b>const</b> <a href="../messaging/version.md#messaging_version_PACKAGE_VERSION">PACKAGE_VERSION</a>: u64 = 1;
+<pre><code><b>const</b> <a href="../messaging/version.md#messaging_version_PACKAGE_VERSION">PACKAGE_VERSION</a>: u64 = 0;
 </code></pre>
 
 

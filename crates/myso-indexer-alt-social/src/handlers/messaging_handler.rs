@@ -16,12 +16,12 @@ use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
-    NewMessageDigest, NewMessagingAgentGroup, NewMessagingConfig, NewPaidMessageEscrow, NewUnifiedRevenue,
-    NewWalletMessagingPolicy,
+    NewMessageDigest, NewMessagingAgentGroup, NewMessagingConfig, NewPaidMessageEscrow,
+    NewUnifiedRevenue, NewWalletMessagingPolicy,
 };
 use myso_indexer_alt_social_schema::schema::{
-    message_digests, messaging_agent_groups, messaging_config, paid_message_escrows, unified_revenue,
-    wallet_messaging_policies,
+    message_digests, messaging_agent_groups, messaging_config, paid_message_escrows,
+    unified_revenue, wallet_messaging_policies,
 };
 
 use super::common;
@@ -116,14 +116,11 @@ impl Processor for MessagingHandler {
                 }
 
                 if module == MESSAGING_CONFIG_MODULE {
-                    let event_data = match events::parse_event_contents(
-                        module,
-                        event_name,
-                        &ev.contents,
-                    ) {
-                        Ok(v) => v,
-                        Err(_) => continue,
-                    };
+                    let event_data =
+                        match events::parse_event_contents(module, event_name, &ev.contents) {
+                            Ok(v) => v,
+                            Err(_) => continue,
+                        };
                     if let Some(rows) = messaging::handle_messaging_event(
                         event_name,
                         &event_data,

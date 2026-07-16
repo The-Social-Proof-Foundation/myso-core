@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS insurance_coverage_routes (
     expiry_time_ms BIGINT NOT NULL,
     policy_ids JSONB NOT NULL,
     vault_ids JSONB NOT NULL,
+    contract_version BIGINT NOT NULL DEFAULT 0,
     transaction_id TEXT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );

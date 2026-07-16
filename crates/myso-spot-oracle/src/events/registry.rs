@@ -84,8 +84,7 @@ impl EventRegistry {
             match &best {
                 None => best = Some((ev.clone(), score)),
                 Some((prev, prev_score)) => {
-                    if score > *prev_score
-                        || (score == *prev_score && ev.priority > prev.priority)
+                    if score > *prev_score || (score == *prev_score && ev.priority > prev.priority)
                     {
                         best = Some((ev.clone(), score));
                     }
@@ -185,7 +184,10 @@ fn apply_admin_override(record: &mut ScheduledEventRecord, override_json: &serde
     if let Some(feed) = override_json.get("feed_url").and_then(|v| v.as_str()) {
         record.feed_url = Some(feed.to_string());
     }
-    if let Some(pred) = override_json.get("match_predicate").and_then(|v| v.as_str()) {
+    if let Some(pred) = override_json
+        .get("match_predicate")
+        .and_then(|v| v.as_str())
+    {
         record.match_predicate = Some(pred.to_string());
     }
     if let Some(pri) = override_json.get("priority").and_then(|v| v.as_i64()) {
@@ -248,11 +250,7 @@ pub fn extract_years(normalized: &str) -> Vec<i32> {
     years
 }
 
-fn score_event_match(
-    normalized: &str,
-    claim_years: &[i32],
-    ev: &ScheduledEventRecord,
-) -> i32 {
+fn score_event_match(normalized: &str, claim_years: &[i32], ev: &ScheduledEventRecord) -> i32 {
     let sports_cues = crate::review::claim_matcher::has_sports_cues(normalized);
     let election_cues = crate::review::claim_matcher::has_election_cues(normalized);
 
@@ -360,11 +358,7 @@ fn levenshtein(a: &str, b: &str) -> usize {
         let mut curr = vec![i + 1];
         for (j, cb) in b.iter().enumerate() {
             let cost = if ca == cb { 0 } else { 1 };
-            curr.push(
-                (prev[j] + 1)
-                    .min(curr[j] + 1)
-                    .min(prev[j + 1] + cost),
-            );
+            curr.push((prev[j] + 1).min(curr[j] + 1).min(prev[j + 1] + cost));
         }
         prev = curr;
     }
@@ -435,9 +429,7 @@ mod tests {
     #[test]
     fn explicit_fifa_keyword_matches() {
         let reg = EventRegistry::from_rows(vec![fifa_row()]);
-        let ev = reg
-            .match_event("Brazil wins FIFA World Cup")
-            .expect("fifa");
+        let ev = reg.match_event("Brazil wins FIFA World Cup").expect("fifa");
         assert_eq!(ev.external_id, "fifa_world_cup_2026");
     }
 

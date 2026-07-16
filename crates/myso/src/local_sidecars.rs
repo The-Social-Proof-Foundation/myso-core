@@ -25,13 +25,9 @@ impl LocalSidecars {
     }
 
     pub fn kill_children(&mut self) {
-        for child in [
-            &mut self.spot,
-            &mut self.messaging,
-            &mut self.mydata,
-        ]
-        .into_iter()
-        .flatten()
+        for child in [&mut self.spot, &mut self.messaging, &mut self.mydata]
+            .into_iter()
+            .flatten()
         {
             let _ = child.start_kill();
         }

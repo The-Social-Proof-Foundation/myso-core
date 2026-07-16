@@ -7,8 +7,8 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use async_trait::async_trait;
-use diesel::ExpressionMethods;
 use diesel::upsert::excluded;
+use diesel::ExpressionMethods;
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_framework::pipeline::Processor;
 use myso_indexer_alt_framework::postgres::handler::Handler;
@@ -425,7 +425,8 @@ impl Handler for SpotHandler {
                         .set((
                             spot_markets::status.eq(excluded(spot_markets::status)),
                             spot_markets::outcome.eq(excluded(spot_markets::outcome)),
-                            spot_markets::betting_options.eq(excluded(spot_markets::betting_options)),
+                            spot_markets::betting_options
+                                .eq(excluded(spot_markets::betting_options)),
                             spot_markets::option_escrow.eq(excluded(spot_markets::option_escrow)),
                             spot_markets::resolution_window_ms
                                 .eq(excluded(spot_markets::resolution_window_ms)),
@@ -535,16 +536,14 @@ impl Handler for SpotHandler {
                         ))
                         .do_update()
                         .set((
-                            spot_claim_verdicts::verdict
-                                .eq(excluded(spot_claim_verdicts::verdict)),
+                            spot_claim_verdicts::verdict.eq(excluded(spot_claim_verdicts::verdict)),
                             spot_claim_verdicts::evidence_manifest_hash
                                 .eq(excluded(spot_claim_verdicts::evidence_manifest_hash)),
                             spot_claim_verdicts::related_market_object_id
                                 .eq(excluded(spot_claim_verdicts::related_market_object_id)),
                             spot_claim_verdicts::evidence_urls
                                 .eq(excluded(spot_claim_verdicts::evidence_urls)),
-                            spot_claim_verdicts::summary
-                                .eq(excluded(spot_claim_verdicts::summary)),
+                            spot_claim_verdicts::summary.eq(excluded(spot_claim_verdicts::summary)),
                             spot_claim_verdicts::transaction_id
                                 .eq(excluded(spot_claim_verdicts::transaction_id)),
                         ))
@@ -611,10 +610,9 @@ impl Handler for SpotHandler {
                         ))
                         .do_update()
                         .set((
-                            spot_creator_earnings_daily::amount.eq(
-                                spot_creator_earnings_daily::amount
-                                    + excluded(spot_creator_earnings_daily::amount),
-                            ),
+                            spot_creator_earnings_daily::amount
+                                .eq(spot_creator_earnings_daily::amount
+                                    + excluded(spot_creator_earnings_daily::amount)),
                             spot_creator_earnings_daily::updated_at
                                 .eq(chrono::Utc::now().naive_utc()),
                         ))

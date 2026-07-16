@@ -107,6 +107,8 @@ reserve-and-capture migration.
 -  [Function `mist_per_myso`](#social_contracts_ai_credit_mist_per_myso)
 -  [Function `assert_agent_may_spend`](#social_contracts_ai_credit_assert_agent_may_spend)
 -  [Function `assert_version`](#social_contracts_ai_credit_assert_version)
+-  [Function `migrate_config`](#social_contracts_ai_credit_migrate_config)
+-  [Function `migrate_balance`](#social_contracts_ai_credit_migrate_balance)
 -  [Function `assert_owner`](#social_contracts_ai_credit_assert_owner)
 -  [Function `assert_active`](#social_contracts_ai_credit_assert_active)
 -  [Function `assert_agent_linked`](#social_contracts_ai_credit_assert_agent_linked)
@@ -4092,6 +4094,7 @@ not <code><a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_A
     ctx: &TxContext,
 ) {
     <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_oracle_admin">assert_oracle_admin</a>(cap, ctx);
+    <b>assert</b>!(config.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EWrongVersion">EWrongVersion</a>);
     <b>assert</b>!(vector::length(&new_pk) == <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_ED25519_PK_LEN">ED25519_PK_LEN</a>, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EInvalidPubkey">EInvalidPubkey</a>);
     config.oracle_pubkey = new_pk;
     event::emit(<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditOraclePubkeyUpdated">AiCreditOraclePubkeyUpdated</a> {
@@ -4885,6 +4888,82 @@ Approval threshold on the agent's budget entry, if configured.
 <pre><code><b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_assert_version">assert_version</a>(config: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">AiCreditConfig</a>, balance: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>) {
     <b>assert</b>!(config.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EWrongVersion">EWrongVersion</a>);
     <b>assert</b>!(balance.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EWrongVersion">EWrongVersion</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_migrate_config"></a>
+
+## Function `migrate_config`
+
+Migrate AiCreditConfig to the current package version.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_migrate_config">migrate_config</a>(config: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">social_contracts::ai_credit::AiCreditConfig</a>, _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_migrate_config">migrate_config</a>(
+    config: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">AiCreditConfig</a>,
+    _: &UpgradeAdminCap,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
+    <b>assert</b>!(config.version &lt; current_version, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EWrongVersion">EWrongVersion</a>);
+    <b>let</b> old_version = config.version;
+    config.version = current_version;
+    <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
+        object::id(config),
+        string::utf8(b"<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditConfig">AiCreditConfig</a>"),
+        old_version,
+        tx_context::sender(ctx),
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_migrate_balance"></a>
+
+## Function `migrate_balance`
+
+Migrate a single AiCreditBalance to the current package version.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_migrate_balance">migrate_balance</a>(balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_migrate_balance">migrate_balance</a>(
+    balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>,
+    _: &UpgradeAdminCap,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
+    <b>assert</b>!(balance.version &lt; current_version, <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_EWrongVersion">EWrongVersion</a>);
+    <b>let</b> old_version = balance.version;
+    balance.version = current_version;
+    <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
+        object::id(balance),
+        string::utf8(b"<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>"),
+        old_version,
+        tx_context::sender(ctx),
+    );
 }
 </code></pre>
 

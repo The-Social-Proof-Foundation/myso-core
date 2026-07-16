@@ -41,10 +41,7 @@ pub fn load_event_providers_config(path: &Path) -> anyhow::Result<Vec<EventProvi
             return Err(anyhow!("event provider config has empty id"));
         }
         if cfg.provider_type.trim().is_empty() {
-            return Err(anyhow!(
-                "event provider {} missing provider_type",
-                cfg.id
-            ));
+            return Err(anyhow!("event provider {} missing provider_type", cfg.id));
         }
     }
     Ok(configs)

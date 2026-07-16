@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS memory_accounts (
     principal_owner TEXT NOT NULL,
     profile_id TEXT NOT NULL,
     active BOOLEAN NOT NULL DEFAULT TRUE,
+    contract_version BIGINT NOT NULL DEFAULT 0,
     created_at_ms BIGINT NOT NULL,
     event_id TEXT NOT NULL,
     transaction_id TEXT NOT NULL,

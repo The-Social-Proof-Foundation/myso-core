@@ -318,9 +318,15 @@ impl PostRow {
                 is_post,
             }),
             SocialEventRow::Repost(r) => Some(PostRow::Repost(r)),
-            SocialEventRow::RepostRemoved { repost_id, original_id, is_original_post } => {
-                Some(PostRow::RepostRemoved { repost_id, original_id, is_original_post })
-            }
+            SocialEventRow::RepostRemoved {
+                repost_id,
+                original_id,
+                is_original_post,
+            } => Some(PostRow::RepostRemoved {
+                repost_id,
+                original_id,
+                is_original_post,
+            }),
             SocialEventRow::Tip(t) => Some(PostRow::Tip(t)),
             SocialEventRow::ModerationEvent(m) => Some(PostRow::ModerationEvent(m)),
             SocialEventRow::Report(r) => Some(PostRow::Report(r)),
@@ -956,8 +962,8 @@ async fn resolve_attribution_organization_id(
 }
 
 async fn load_latest_poc_thresholds(conn: &mut Connection<'_>) -> poc::PocThresholds {
-    use diesel::QueryableByName;
     use diesel::sql_types::BigInt;
+    use diesel::QueryableByName;
 
     #[derive(QueryableByName)]
     struct ThresholdRow {
@@ -1178,7 +1184,11 @@ impl Handler for PostsHandler {
                             .await;
                     }
                 }
-                PostRow::RepostRemoved { repost_id, original_id, is_original_post } => {
+                PostRow::RepostRemoved {
+                    repost_id,
+                    original_id,
+                    is_original_post,
+                } => {
                     let _ = diesel::delete(reposts::table)
                         .filter(reposts::repost_id.eq(repost_id))
                         .execute(conn)
@@ -2486,11 +2496,11 @@ mod promotion_view_commit_tests {
     use diesel::QueryDsl;
     use diesel_async::RunQueryDsl;
     use myso_indexer_alt_framework::postgres::handler::Handler;
-    use myso_indexer_alt_social_schema::MIGRATIONS;
     use myso_indexer_alt_social_schema::models::NewPromotedPost;
     use myso_indexer_alt_social_schema::schema::{
         promoted_posts, promotion_budget_events, promotion_views, unified_revenue,
     };
+    use myso_indexer_alt_social_schema::MIGRATIONS;
     use myso_pg_db::temp::TempDb;
     use myso_pg_db::Db;
 
@@ -2530,7 +2540,8 @@ mod promotion_view_commit_tests {
         let owner = addr_hex(5);
         let profile_id = addr_hex(6);
         let created_at = 1_700_000_000_000i64;
-        let time = chrono::DateTime::from_timestamp_millis(created_at).unwrap_or_else(chrono::Utc::now);
+        let time =
+            chrono::DateTime::from_timestamp_millis(created_at).unwrap_or_else(chrono::Utc::now);
 
         let mut conn = store.connect().await.expect("connection");
         diesel::insert_into(promoted_posts::table)
@@ -2604,9 +2615,9 @@ mod promotion_view_commit_tests {
             .await
             .expect("unified revenue");
         assert_eq!(revenue_rows.len(), 2); // viewer net + platform fee (no treasury row seeded)
-        assert!(revenue_rows.iter().any(|(t, a, r)| {
-            t == "promotion_viewer_net" && *a == 800_000 && r == &viewer
-        }));
+        assert!(revenue_rows
+            .iter()
+            .any(|(t, a, r)| { t == "promotion_viewer_net" && *a == 800_000 && r == &viewer }));
         assert!(revenue_rows.iter().any(|(t, a, r)| {
             t == "promotion_platform_fee" && *a == 100_000 && r == &platform_id
         }));
@@ -2620,9 +2631,13 @@ mod poc_analysis_result_commit_tests {
     use diesel::QueryDsl;
     use diesel_async::RunQueryDsl;
     use myso_indexer_alt_framework::postgres::handler::Handler;
+    use myso_indexer_alt_social_schema::models::{
+        NewPocAnalysisResult, NewPocRevenueRedirection, NewPost,
+    };
+    use myso_indexer_alt_social_schema::schema::{
+        poc_analysis_results, poc_revenue_redirections, posts,
+    };
     use myso_indexer_alt_social_schema::MIGRATIONS;
-    use myso_indexer_alt_social_schema::models::{NewPocAnalysisResult, NewPocRevenueRedirection, NewPost};
-    use myso_indexer_alt_social_schema::schema::{poc_analysis_results, poc_revenue_redirections, posts};
     use myso_pg_db::temp::TempDb;
     use myso_pg_db::Db;
 
@@ -2686,6 +2701,7 @@ mod poc_analysis_result_commit_tests {
             sub_agent_id: None,
             action_identity_class: None,
             organization_id: None,
+            contract_version: 0,
         }
     }
 

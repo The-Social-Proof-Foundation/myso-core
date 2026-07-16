@@ -119,6 +119,8 @@ pub struct PostRow {
     pub organization_id: Option<String>,
     #[diesel(sql_type = Nullable<Text>)]
     pub post_access_kind: Option<String>,
+    #[diesel(sql_type = BigInt)]
+    pub contract_version: i64,
 }
 
 #[derive(Debug, Clone)]
@@ -213,7 +215,7 @@ pub(crate) async fn get_post_by_id(
                 p.encrypted_content_hash, p.removed_from_platform, p.removed_by, p.metadata_json, p.promotion_id,
                 p.platform_id, p.permissions, COALESCE(sa.derived_address, p.owner) AS actor_address,
                 p.sub_agent_id, p.action_identity_class,
-                p.organization_id, p.post_access_kind
+                p.organization_id, p.post_access_kind, p.contract_version
          FROM posts p
          LEFT JOIN sub_agents sa ON sa.agent_object_id = p.sub_agent_id
          WHERE p.post_id = $1 AND p.deleted_at IS NULL
@@ -321,7 +323,7 @@ pub(crate) async fn list_posts(
                p.encrypted_content_hash, p.removed_from_platform, p.removed_by, p.metadata_json, p.promotion_id,
                p.platform_id, p.permissions, COALESCE(sa.derived_address, p.owner) AS actor_address,
                p.sub_agent_id, p.action_identity_class,
-               p.organization_id, p.post_access_kind
+               p.organization_id, p.post_access_kind, p.contract_version
         FROM posts p
         LEFT JOIN sub_agents sa ON sa.agent_object_id = p.sub_agent_id
         WHERE p.deleted_at IS NULL
@@ -388,7 +390,7 @@ pub(crate) async fn list_posts_for_profile(
                p.encrypted_content_hash, p.removed_from_platform, p.removed_by, p.metadata_json, p.promotion_id,
                p.platform_id, p.permissions, COALESCE(sa.derived_address, p.owner) AS actor_address,
                p.sub_agent_id, p.action_identity_class,
-               p.organization_id, p.post_access_kind
+               p.organization_id, p.post_access_kind, p.contract_version
         FROM (
             SELECT DISTINCT ON (post_id) *
             FROM posts

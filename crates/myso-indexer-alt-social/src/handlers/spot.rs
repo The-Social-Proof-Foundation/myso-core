@@ -3,11 +3,11 @@
 
 use super::{SocialEventRow, SpotFinalizeProjection};
 use myso_indexer_alt_social_schema::models::{
-    CREATOR_PAYOUT_STATUS_ACCRUED, CREATOR_PAYOUT_STATUS_CLAIMED, CREATOR_PAYOUT_STATUS_RECLAIMED,
     NewSpotBet, NewSpotBetWithdrawal, NewSpotClaim, NewSpotClaimVerdict, NewSpotConfig,
     NewSpotCreatorPayout, NewSpotEventLog, NewSpotMarket, NewSpotPayout, NewSpotPostLink,
-    NewSpotRecord, NewSpotRefund, NewSpotResolution, SPOT_LINK_KIND_PRIMARY, STATUS_DAO_REQUIRED,
-    STATUS_OPEN, STATUS_RESOLVED,
+    NewSpotRecord, NewSpotRefund, NewSpotResolution, CREATOR_PAYOUT_STATUS_ACCRUED,
+    CREATOR_PAYOUT_STATUS_CLAIMED, CREATOR_PAYOUT_STATUS_RECLAIMED, SPOT_LINK_KIND_PRIMARY,
+    STATUS_DAO_REQUIRED, STATUS_OPEN, STATUS_RESOLVED,
 };
 
 /// A related-market address of all zeros (0x0) encodes "no related market".
@@ -84,18 +84,28 @@ pub fn handle_spot_event(
         "SpotPostLinkedEvent" => {
             process_spot_post_linked_event(data, event_id, &transaction_id, now)
         }
-        "SpotClaimsFinalizedForPost" => {
-            process_spot_claims_finalized_event(data, event_id, now)
-        }
-        "SpotCreatorPayoutAccruedEvent" => {
-            process_spot_creator_payout_accrued_event(data, event_id, timestamp_ms, &transaction_id, now)
-        }
-        "SpotCreatorPayoutClaimedEvent" => {
-            process_spot_creator_payout_claimed_event(data, event_id, timestamp_ms, &transaction_id, now)
-        }
-        "SpotCreatorPayoutReclaimedEvent" => {
-            process_spot_creator_payout_reclaimed_event(data, event_id, timestamp_ms, &transaction_id, now)
-        }
+        "SpotClaimsFinalizedForPost" => process_spot_claims_finalized_event(data, event_id, now),
+        "SpotCreatorPayoutAccruedEvent" => process_spot_creator_payout_accrued_event(
+            data,
+            event_id,
+            timestamp_ms,
+            &transaction_id,
+            now,
+        ),
+        "SpotCreatorPayoutClaimedEvent" => process_spot_creator_payout_claimed_event(
+            data,
+            event_id,
+            timestamp_ms,
+            &transaction_id,
+            now,
+        ),
+        "SpotCreatorPayoutReclaimedEvent" => process_spot_creator_payout_reclaimed_event(
+            data,
+            event_id,
+            timestamp_ms,
+            &transaction_id,
+            now,
+        ),
         _ => None,
     }
 }
@@ -498,7 +508,7 @@ fn process_spot_record_created_event(
         resolution_at_ms,
         created_at_ms,
         last_resolution_at_ms: None,
-        version: 1,
+        version: 0,
         created_at: now_naive,
         updated_at: now_naive,
         transaction_id: transaction_id.to_string(),
@@ -633,7 +643,7 @@ fn process_spot_market_created_event(
         resolution_at_ms,
         created_at_ms,
         last_resolution_at_ms: None,
-        version: 1,
+        version: 0,
         created_at: now_naive,
         updated_at: now_naive,
         transaction_id: transaction_id.to_string(),
@@ -656,7 +666,10 @@ fn process_spot_market_created_event(
         link_kind: SPOT_LINK_KIND_PRIMARY.to_string(),
         transaction_id: transaction_id.to_string(),
         created_at: now_naive,
-        claim_index: data.get("claim_index").and_then(|v| v.as_i64()).unwrap_or(0),
+        claim_index: data
+            .get("claim_index")
+            .and_then(|v| v.as_i64())
+            .unwrap_or(0),
         policy_hash: data
             .get("resolution_policy_hash")
             .and_then(|v| v.as_str())
@@ -691,7 +704,11 @@ fn process_spot_claims_finalized_event(
     let transaction_id = transaction_id_from_event_id(event_id);
     let geti = |k: &str| data.get(k).map(json_to_i64).unwrap_or(0);
     let gets = |k: &str| data.get(k).and_then(|v| v.as_str()).map(String::from);
-    let arr = |k: &str| data.get(k).cloned().unwrap_or_else(|| serde_json::json!([]));
+    let arr = |k: &str| {
+        data.get(k)
+            .cloned()
+            .unwrap_or_else(|| serde_json::json!([]))
+    };
 
     let projection = SpotFinalizeProjection {
         post_id: post_id.clone(),
@@ -735,28 +752,30 @@ fn process_spot_claims_finalized_event(
         .cloned()
         .unwrap_or_default();
     for i in 0..p_indexes.len() {
-        rows.push(SocialEventRow::SpotClaimVerdictUpsert(NewSpotClaimVerdict {
-            post_id: post_id.clone(),
-            claim_index: p_indexes[i].as_i64().unwrap_or(0),
-            time_class: "past".to_string(),
-            verdict: p_verdicts.get(i).and_then(|v| v.as_i64()).unwrap_or(0) as i16,
-            semantic_claim_hash: None,
-            policy_hash: String::new(),
-            evidence_manifest_hash: p_evidence
-                .get(i)
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string(),
-            related_market_object_id: p_markets
-                .get(i)
-                .and_then(|v| v.as_str())
-                .and_then(non_zero_addr),
-            related_claim_object_id: None,
-            evidence_urls: serde_json::json!([]),
-            summary: None,
-            transaction_id: transaction_id.clone(),
-            created_at: now,
-        }));
+        rows.push(SocialEventRow::SpotClaimVerdictUpsert(
+            NewSpotClaimVerdict {
+                post_id: post_id.clone(),
+                claim_index: p_indexes[i].as_i64().unwrap_or(0),
+                time_class: "past".to_string(),
+                verdict: p_verdicts.get(i).and_then(|v| v.as_i64()).unwrap_or(0) as i16,
+                semantic_claim_hash: None,
+                policy_hash: String::new(),
+                evidence_manifest_hash: p_evidence
+                    .get(i)
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string(),
+                related_market_object_id: p_markets
+                    .get(i)
+                    .and_then(|v| v.as_str())
+                    .and_then(non_zero_addr),
+                related_claim_object_id: None,
+                evidence_urls: serde_json::json!([]),
+                summary: None,
+                transaction_id: transaction_id.clone(),
+                created_at: now,
+            },
+        ));
     }
 
     let log = new_event_log("SpotClaimsFinalizedForPost", &post_id, data, event_id, now);
@@ -784,7 +803,10 @@ fn process_spot_post_linked_event(
         link_kind: "linked".to_string(),
         transaction_id: transaction_id.to_string(),
         created_at: now.naive_utc(),
-        claim_index: data.get("claim_index").and_then(|v| v.as_i64()).unwrap_or(0),
+        claim_index: data
+            .get("claim_index")
+            .and_then(|v| v.as_i64())
+            .unwrap_or(0),
         policy_hash: data
             .get("policy_hash")
             .and_then(|v| v.as_str())
@@ -966,9 +988,6 @@ mod tests {
         assert_eq!(cfg.max_evidence_urls, 10);
         assert_eq!(cfg.max_bets_per_record, 100);
         assert_eq!(cfg.max_claim_per_post, 10);
-        assert_eq!(
-            cfg.spot_governance_registry_id.as_deref(),
-            Some("0xabcdef")
-        );
+        assert_eq!(cfg.spot_governance_registry_id.as_deref(), Some("0xabcdef"));
     }
 }

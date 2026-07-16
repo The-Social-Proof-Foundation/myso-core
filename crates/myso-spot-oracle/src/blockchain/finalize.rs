@@ -150,7 +150,10 @@ async fn build_and_submit_finalize(
     counts: FinalizeCounts,
     past: &PastVerdicts,
 ) -> anyhow::Result<String> {
-    let key_hex = args.private_key_hex.as_ref().context("missing private key")?;
+    let key_hex = args
+        .private_key_hex
+        .as_ref()
+        .context("missing private key")?;
     let key_bytes = hex::decode(key_hex.trim())?;
     let key_pair =
         MySoKeyPair::from_bytes(&key_bytes).map_err(|e| anyhow::anyhow!("invalid key: {:?}", e))?;
@@ -237,7 +240,10 @@ async fn build_and_submit_finalize(
         )
         .await?;
     if response.status_ok() == Some(false) {
-        anyhow::bail!("finalize_spot_claims_for_post failed: {:?}", response.effects);
+        anyhow::bail!(
+            "finalize_spot_claims_for_post failed: {:?}",
+            response.effects
+        );
     }
     Ok(response.digest.to_string())
 }

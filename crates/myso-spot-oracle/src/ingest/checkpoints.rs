@@ -11,9 +11,9 @@ use chrono::Utc;
 use futures::StreamExt;
 use myso_rpc::proto::myso::rpc::v2::subscription_service_client::SubscriptionServiceClient;
 use myso_rpc::proto::myso::rpc::v2::SubscribeCheckpointsRequest;
+use myso_types::base_types::ObjectID;
 use myso_types::full_checkpoint_content::Checkpoint;
 use tonic::transport::Endpoint;
-use myso_types::base_types::ObjectID;
 use tracing::{error, info, warn};
 
 use crate::api::AppState;
@@ -57,8 +57,8 @@ pub async fn run_checkpoint_ingest_loop(state: Arc<AppState>) -> anyhow::Result<
 }
 
 async fn run_stream_once(state: Arc<AppState>, streaming_url: &str) -> anyhow::Result<()> {
-    let endpoint = Endpoint::from_shared(streaming_url.to_string())?
-        .connect_timeout(Duration::from_secs(10));
+    let endpoint =
+        Endpoint::from_shared(streaming_url.to_string())?.connect_timeout(Duration::from_secs(10));
     let mut client = SubscriptionServiceClient::connect(endpoint)
         .await?
         .max_decoding_message_size(MAX_GRPC_MESSAGE_SIZE_BYTES);
@@ -93,7 +93,10 @@ async fn run_stream_once(state: Arc<AppState>, streaming_url: &str) -> anyhow::R
         ingest_store.set_watermark(seq).await?;
         state.metrics.checkpoint_lag.set(seq as i64);
         if ingested > 0 {
-            info!(checkpoint = seq, ingested, "checkpoint ingest enqueued posts");
+            info!(
+                checkpoint = seq,
+                ingested, "checkpoint ingest enqueued posts"
+            );
             state
                 .metrics
                 .checkpoint_ingest_total
@@ -112,8 +115,8 @@ async fn run_stream_once(state: Arc<AppState>, streaming_url: &str) -> anyhow::R
 
 async fn process_checkpoint(state: &AppState, checkpoint: &Checkpoint) -> anyhow::Result<usize> {
     let mut enqueued = 0usize;
-    let social_package =
-        ObjectID::from_hex_literal(&state.args.social_package_id).unwrap_or_else(|_| ObjectID::ZERO);
+    let social_package = ObjectID::from_hex_literal(&state.args.social_package_id)
+        .unwrap_or_else(|_| ObjectID::ZERO);
 
     for tx in &checkpoint.transactions {
         let Some(events) = &tx.events else {

@@ -10,7 +10,8 @@ use myso_indexer_alt_social_schema::models::{
     MyDataAccessAnalyticsRow, MyDataAccessLogRow, MyDataBroadPoolRow, MyDataClaimRow,
     MyDataDailyRevenueRow, MyDataDistributionRoundRow, MyDataListingSubPoolRow,
     MyDataMerkleRootRow, MyDataPurchaseRow, MyDataRecordRow, MyDataRevenueRow,
-    MyDataSnapshotAnchorRow, MyDataSnapshotEscrowRow, MyDataStatsRow, MyDataSubPoolRow, MyDataSubscriptionRow,
+    MyDataSnapshotAnchorRow, MyDataSnapshotEscrowRow, MyDataStatsRow, MyDataSubPoolRow,
+    MyDataSubscriptionRow,
 };
 use myso_pg_db::Connection;
 
@@ -81,7 +82,7 @@ pub(crate) async fn get_mydata_record(
         SELECT mydata_id, owner, media_type, tags, platform_id, timestamp_start, timestamp_end,
                created_at, last_updated, one_time_price, subscription_price, subscription_duration_days,
                geographic_region, data_quality, sample_size, collection_method, is_updating, update_frequency,
-               access_configuration_kind
+               access_configuration_kind, version
         FROM mydata_data
         WHERE mydata_id = $1
     ";
@@ -110,7 +111,7 @@ pub(crate) async fn list_mydata_records_by_owner(
         SELECT mydata_id, owner, media_type, tags, platform_id, timestamp_start, timestamp_end,
                created_at, last_updated, one_time_price, subscription_price, subscription_duration_days,
                geographic_region, data_quality, sample_size, collection_method, is_updating, update_frequency,
-               access_configuration_kind
+               access_configuration_kind, version
         FROM mydata_data
         WHERE owner = $1
         ORDER BY time DESC
@@ -213,7 +214,7 @@ pub(crate) async fn list_mydata(
         SELECT mydata_id, owner, media_type, tags, platform_id, timestamp_start, timestamp_end,
                created_at, last_updated, one_time_price, subscription_price, subscription_duration_days,
                geographic_region, data_quality, sample_size, collection_method, is_updating, update_frequency,
-               access_configuration_kind
+               access_configuration_kind, version
         FROM mydata_data
         WHERE ($1::text IS NULL OR owner = $1)
           AND ($2::text IS NULL OR media_type = $2)

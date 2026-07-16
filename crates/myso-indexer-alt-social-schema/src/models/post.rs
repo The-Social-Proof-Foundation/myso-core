@@ -92,6 +92,7 @@ pub struct NewPost {
     pub sub_agent_id: Option<String>,
     pub action_identity_class: Option<i16>,
     pub organization_id: Option<String>,
+    pub contract_version: i64,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -122,6 +123,7 @@ pub struct NewComment {
     pub sub_agent_id: Option<String>,
     pub action_identity_class: Option<i16>,
     pub organization_id: Option<String>,
+    pub contract_version: i64,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -166,6 +168,7 @@ pub struct NewRepost {
     pub sub_agent_id: Option<String>,
     pub action_identity_class: Option<i16>,
     pub organization_id: Option<String>,
+    pub contract_version: i64,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]

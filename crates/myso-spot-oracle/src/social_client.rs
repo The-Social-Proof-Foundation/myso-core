@@ -42,10 +42,7 @@ impl SocialClient {
         limit: i64,
         cursor_ms: Option<i64>,
     ) -> anyhow::Result<Vec<PendingSpotPost>> {
-        let mut url = format!(
-            "{}/spot/pending-posts?limit={}",
-            self.base_url, limit
-        );
+        let mut url = format!("{}/spot/pending-posts?limit={}", self.base_url, limit);
         if let Some(cursor) = cursor_ms {
             url.push_str(&format!("&cursor={cursor}"));
         }
@@ -60,7 +57,10 @@ impl SocialClient {
         resp.json().await.context("parse pending-posts")
     }
 
-    pub async fn get_spot_record(&self, post_id: &str) -> anyhow::Result<Option<serde_json::Value>> {
+    pub async fn get_spot_record(
+        &self,
+        post_id: &str,
+    ) -> anyhow::Result<Option<serde_json::Value>> {
         let url = format!("{}/spot/records/{post_id}", self.base_url);
         let resp = self.client.get(&url).send().await?;
         if resp.status() == reqwest::StatusCode::NOT_FOUND {

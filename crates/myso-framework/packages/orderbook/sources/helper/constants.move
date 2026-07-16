@@ -4,7 +4,7 @@
 
 module orderbook::constants;
 
-const CURRENT_VERSION: u64 = 1; // Update version during upgrades
+const CURRENT_VERSION: u64 = 0; // Update version during upgrades (0 = greenfield genesis)
 const POOL_CREATION_FEE: u64 = 5 * 1_000_000_000; // 5 MYSO
 const FLOAT_SCALING: u64 = 1_000_000_000;
 const FLOAT_SCALING_U128: u128 = 1_000_000_000;

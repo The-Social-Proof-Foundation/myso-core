@@ -51,8 +51,14 @@ pub async fn insert_evidence_bundle(
     let bundle_id = row.0;
 
     for record in &bundle.records {
-        insert_evidence_record(pool, bundle.market_id, bundle.resolver_job_id, bundle_id, record)
-            .await?;
+        insert_evidence_record(
+            pool,
+            bundle.market_id,
+            bundle.resolver_job_id,
+            bundle_id,
+            record,
+        )
+        .await?;
     }
     Ok(bundle_id)
 }

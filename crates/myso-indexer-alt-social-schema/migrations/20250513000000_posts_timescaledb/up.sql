@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS posts (
     tips_received BIGINT DEFAULT 0,
     removed_from_platform BOOLEAN DEFAULT FALSE,
     removed_by TEXT,
+    contract_version BIGINT NOT NULL DEFAULT 0,
     transaction_id TEXT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -128,6 +129,7 @@ CREATE TABLE IF NOT EXISTS comments (
     tips_received BIGINT DEFAULT 0,
     removed_from_platform BOOLEAN DEFAULT FALSE,
     removed_by TEXT,
+    contract_version BIGINT NOT NULL DEFAULT 0,
     transaction_id TEXT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -332,6 +334,7 @@ CREATE TABLE IF NOT EXISTS reposts (
     is_original_post BOOLEAN NOT NULL,
     owner TEXT NOT NULL,
     profile_id TEXT NOT NULL,
+    contract_version BIGINT NOT NULL DEFAULT 0,
     created_at BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     transaction_id TEXT NOT NULL

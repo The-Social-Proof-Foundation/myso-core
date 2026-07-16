@@ -45,11 +45,10 @@ use crate::mydata::{
     check_mydata_has_access, get_mydata_access_analytics, get_mydata_access_logs,
     get_mydata_config, get_mydata_distribution_round, get_mydata_merkle_root, get_mydata_purchases,
     get_mydata_record, get_mydata_revenue, get_mydata_revenue_timeline, get_mydata_snapshot_anchor,
-    get_mydata_snapshot_escrow,
-    get_mydata_stats, get_mydata_subscriptions, get_popular_mydata, list_mydata,
-    list_mydata_broad_pools, list_mydata_claims_for_snapshot, list_mydata_distribution_rounds,
-    list_mydata_listings_for_sub_pool, list_mydata_purchases_by_buyer,
-    list_mydata_records_by_owner, list_mydata_snapshot_anchors,
+    get_mydata_snapshot_escrow, get_mydata_stats, get_mydata_subscriptions, get_popular_mydata,
+    list_mydata, list_mydata_broad_pools, list_mydata_claims_for_snapshot,
+    list_mydata_distribution_rounds, list_mydata_listings_for_sub_pool,
+    list_mydata_purchases_by_buyer, list_mydata_records_by_owner, list_mydata_snapshot_anchors,
     list_mydata_sub_pools_for_broad_pool, list_mydata_sub_pools_for_listing,
 };
 use crate::org_leaderboard::{
@@ -93,9 +92,9 @@ use crate::social_graph::{
     resolve_profile_address,
 };
 use crate::spot::{
-    get_spot_claim_by_object_id, get_spot_config, get_spot_creator_stats, get_spot_market_by_object_id,
-    get_spot_record, get_spot_record_by_active_proposal_id, get_spot_record_by_object_id,
-    get_spot_resolution, get_spot_route, list_contested_spot_records,
+    get_spot_claim_by_object_id, get_spot_config, get_spot_creator_stats,
+    get_spot_market_by_object_id, get_spot_record, get_spot_record_by_active_proposal_id,
+    get_spot_record_by_object_id, get_spot_resolution, get_spot_route, list_contested_spot_records,
     list_expired_unclaimed_creator_payouts, list_pending_creator_payouts,
     list_spot_bet_withdrawals, list_spot_bets, list_spot_creator_earnings_by_market,
     list_spot_creator_earnings_by_post, list_spot_creator_top_claims, list_spot_payouts,
@@ -1074,7 +1073,8 @@ impl SocialPgReader {
         offset: i64,
     ) -> anyhow::Result<Vec<crate::platform::PlatformTreasuryWithdrawalRow>> {
         let mut conn = self.connect().await?;
-        list_platform_treasury_withdrawals(&mut conn, platform_id, limit, offset, &self.metrics).await
+        list_platform_treasury_withdrawals(&mut conn, platform_id, limit, offset, &self.metrics)
+            .await
     }
 
     /// Get a comment by ID.
@@ -1750,12 +1750,8 @@ impl SocialPgReader {
         plan_id: &str,
     ) -> anyhow::Result<Option<crate::subscription::ProfileSubscriptionPlanRow>> {
         let mut conn = self.connect().await?;
-        crate::subscription::get_profile_subscription_plan_by_id(
-            &mut conn,
-            &self.metrics,
-            plan_id,
-        )
-        .await
+        crate::subscription::get_profile_subscription_plan_by_id(&mut conn, &self.metrics, plan_id)
+            .await
     }
 
     /// Get latest paid-messaging configuration.
@@ -1803,10 +1799,7 @@ impl SocialPgReader {
     }
 
     /// Total inbound paid-messaging revenue for a wallet.
-    pub async fn get_messaging_revenue_summary(
-        &self,
-        address: &str,
-    ) -> anyhow::Result<i64> {
+    pub async fn get_messaging_revenue_summary(&self, address: &str) -> anyhow::Result<i64> {
         let mut conn = self.connect().await?;
         get_messaging_revenue_summary(&mut conn, &self.metrics, address).await
     }
@@ -2351,7 +2344,8 @@ impl SocialPgReader {
     pub async fn get_mydata_snapshot_escrow(
         &self,
         snapshot_id: &str,
-    ) -> anyhow::Result<Option<myso_indexer_alt_social_schema::models::MyDataSnapshotEscrowRow>> {
+    ) -> anyhow::Result<Option<myso_indexer_alt_social_schema::models::MyDataSnapshotEscrowRow>>
+    {
         let mut conn = self.connect().await?;
         get_mydata_snapshot_escrow(&mut conn, snapshot_id, &self.metrics).await
     }

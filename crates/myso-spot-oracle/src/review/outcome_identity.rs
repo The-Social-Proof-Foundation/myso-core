@@ -90,8 +90,9 @@ pub fn build_outcome_market_key(
     price_market_spacing: chrono::Duration,
 ) -> OutcomeMarketKey {
     let market_deadline = match claim_category {
-        ClaimCategory::PriceThreshold => deadline
-            .map(|d| bucket_deadline_for_market_key(d, price_market_spacing)),
+        ClaimCategory::PriceThreshold => {
+            deadline.map(|d| bucket_deadline_for_market_key(d, price_market_spacing))
+        }
         _ => deadline,
     };
     let deadline_day = market_deadline.map(deadline_day_bucket);

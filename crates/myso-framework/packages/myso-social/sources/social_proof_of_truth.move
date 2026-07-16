@@ -559,6 +559,22 @@ module social_contracts::social_proof_of_truth {
         transfer::public_transfer(SpotOracleAdminCap { id: object::new(ctx) }, sender);
     }
 
+    fun assert_config_version(config: &SpotConfig) {
+        assert!(config.version == upgrade::current_version(), EWrongVersion);
+    }
+
+    fun assert_registry_version(registry: &SpotClaimRegistry) {
+        assert!(registry.version == upgrade::current_version(), EWrongVersion);
+    }
+
+    fun assert_claim_version(claim: &SpotClaim) {
+        assert!(claim.version == upgrade::current_version(), EWrongVersion);
+    }
+
+    fun assert_market_version(market: &SpotMarket) {
+        assert!(market.version == upgrade::current_version(), EWrongVersion);
+    }
+
     public entry fun update_spot_config(
         _: &SpotAdminCap,
         config: &mut SpotConfig,
@@ -585,6 +601,7 @@ module social_contracts::social_proof_of_truth {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        assert_config_version(config);
         assert!(confidence_threshold_bps <= 10000, EInvalidAmount);
         assert!(max_claim_per_post >= MIN_MAX_CLAIM_PER_POST, EInvalidAmount);
         assert!(max_claim_per_post <= MAX_MAX_CLAIM_PER_POST, EInvalidAmount);
@@ -628,6 +645,7 @@ module social_contracts::social_proof_of_truth {
         config: &mut SpotConfig,
         epoch_duration_ms: u64,
     ) {
+        assert_config_version(config);
         assert!(epoch_duration_ms > 0, EInvalidAmount);
         config.resolution_window_ms = config.resolution_window_ms * epoch_duration_ms;
         config.max_resolution_window_ms = config.max_resolution_window_ms * epoch_duration_ms;
@@ -663,6 +681,8 @@ module social_contracts::social_proof_of_truth {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        assert_config_version(config);
+        assert_registry_version(registry);
         assert!(config.truth_enabled, EDisabled);
         let created_at_ms = clock::timestamp_ms(clock);
         let claim = register_spot_claim(registry, semantic_claim_hash, created_at_ms, ctx);
@@ -715,6 +735,9 @@ module social_contracts::social_proof_of_truth {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        assert_config_version(config);
+        assert_registry_version(registry);
+        assert_claim_version(claim);
         assert!(config.truth_enabled, EDisabled);
         assert_valid_hash(&market_key_hash);
         assert!(!table::contains(&registry.markets_by_key_hash, market_key_hash), EMarketExists);
@@ -822,6 +845,9 @@ module social_contracts::social_proof_of_truth {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        assert_config_version(config);
+        assert_registry_version(registry);
+        assert_claim_version(claim);
         assert!(config.truth_enabled, EDisabled);
         let claim_id = object::uid_to_address(&claim.id);
         assert!(table::contains(&registry.open_market_by_claim, claim_id), ENoOpenMarket);
@@ -866,6 +892,7 @@ module social_contracts::social_proof_of_truth {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        assert_config_version(config);
         assert!(config.truth_enabled, EDisabled);
 
         let past_len = vector::length(&past_claim_indexes);
@@ -938,6 +965,8 @@ module social_contracts::social_proof_of_truth {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        assert_config_version(config);
+        assert_registry_version(registry);
         assert!(config.truth_enabled, EDisabled);
         let created_at_ms = clock::timestamp_ms(clock);
         let mut claim = register_spot_claim(registry, semantic_claim_hash, created_at_ms, ctx);
@@ -1015,6 +1044,9 @@ module social_contracts::social_proof_of_truth {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        assert_config_version(spot_config);
+        assert_registry_version(registry);
+        assert_market_version(market);
         assert!(spot_config.truth_enabled, EDisabled);
         assert!(post::spot_analysis_status(post) == post::spot_status_completed(), ENotFinalized);
         assert_market_open_for_post(registry, market, post);
@@ -1125,6 +1157,9 @@ module social_contracts::social_proof_of_truth {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        assert_config_version(spot_config);
+        assert_claim_version(claim);
+        assert_market_version(market);
         assert!(spot_config.truth_enabled, EDisabled);
         assert!(market.status == STATUS_OPEN, EWithdrawalNotAllowed);
 
@@ -1224,6 +1259,10 @@ module social_contracts::social_proof_of_truth {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        assert_config_version(spot_config);
+        assert_registry_version(registry);
+        assert_claim_version(claim);
+        assert_market_version(market);
         assert!(market.status == STATUS_OPEN, EWrongStatus);
         assert!(option::is_none(&market.outcome), EAlreadyResolved);
 
@@ -1282,6 +1321,8 @@ module social_contracts::social_proof_of_truth {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        assert_config_version(spot_config);
+        assert_market_version(market);
         assert_spot_governance_registry(spot_config, registry);
         assert!(market.status == STATUS_DAO_REQUIRED, ENotDaoRequired);
         assert!(option::is_none(&market.active_proposal_id), EActiveProposalExists);
@@ -1325,6 +1366,10 @@ module social_contracts::social_proof_of_truth {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        assert_config_version(spot_config);
+        assert_registry_version(spot_registry);
+        assert_claim_version(claim);
+        assert_market_version(market);
         assert_spot_governance_registry(spot_config, registry_gov);
         assert!(market.status == STATUS_DAO_REQUIRED, ENotDaoRequired);
         assert!(option::is_some(&market.active_proposal_id), ENoActiveProposal);
@@ -1394,6 +1439,8 @@ module social_contracts::social_proof_of_truth {
         market: &mut SpotMarket,
         post: &Post,
     ) {
+        assert_config_version(spot_config);
+        assert_market_version(market);
         assert_spot_governance_registry(spot_config, registry);
         assert!(market.status == STATUS_DAO_REQUIRED, ENotDaoRequired);
         assert!(option::is_some(&market.active_proposal_id), ENoActiveProposal);
@@ -1425,6 +1472,8 @@ module social_contracts::social_proof_of_truth {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        assert_config_version(spot_config);
+        assert_market_version(market);
         assert_spot_governance_registry(spot_config, registry);
         governance::finalize_proposal(registry, proposal, ecosystem_treasury, clock, ctx);
         if (governance::proposal_status(proposal) == governance::status_rejected_value()) {
@@ -1496,7 +1545,9 @@ module social_contracts::social_proof_of_truth {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        let _ = spot_config;
+        assert_config_version(spot_config);
+        assert_registry_version(registry);
+        assert_market_version(market);
         assert!(option::is_some(&market.max_resolution_window_ms), EInvalidAmount);
         let now_ms = clock::timestamp_ms(clock);
         let max_window = *option::borrow(&market.max_resolution_window_ms);
@@ -1827,6 +1878,8 @@ module social_contracts::social_proof_of_truth {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        assert_config_version(spot_config);
+        assert_market_version(market);
         assert!(spot_config.truth_enabled, EDisabled);
         assert!(market.status == STATUS_RESOLVED, EWrongStatus);
         assert!(option::is_some(&market.outcome), ENotOracle);
@@ -1860,6 +1913,8 @@ module social_contracts::social_proof_of_truth {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        assert_config_version(spot_config);
+        assert_market_version(market);
         assert!(spot_config.truth_enabled, EDisabled);
         assert!(market.status == STATUS_RESOLVED, EWrongStatus);
         assert!(table::contains(&market.pending_creator_payouts, payout_id), EPayoutNotFound);
@@ -1896,6 +1951,8 @@ module social_contracts::social_proof_of_truth {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        assert_config_version(spot_config);
+        assert_market_version(market);
         assert!(market.status == STATUS_RESOLVED, EWrongStatus);
         assert!(table::contains(&market.pending_creator_payouts, payout_id), EPayoutNotFound);
 
@@ -1954,6 +2011,40 @@ module social_contracts::social_proof_of_truth {
         upgrade::emit_migration_event(
             object::id(config),
             string::utf8(b"SpotConfig"),
+            old_version,
+            tx_context::sender(ctx),
+        );
+    }
+
+    public entry fun migrate_claim_registry(
+        registry: &mut SpotClaimRegistry,
+        _: &UpgradeAdminCap,
+        ctx: &mut TxContext
+    ) {
+        let current_version = upgrade::current_version();
+        assert!(registry.version < current_version, EWrongVersion);
+        let old_version = registry.version;
+        registry.version = current_version;
+        upgrade::emit_migration_event(
+            object::id(registry),
+            string::utf8(b"SpotClaimRegistry"),
+            old_version,
+            tx_context::sender(ctx),
+        );
+    }
+
+    public entry fun migrate_claim(
+        claim: &mut SpotClaim,
+        _: &UpgradeAdminCap,
+        ctx: &mut TxContext
+    ) {
+        let current_version = upgrade::current_version();
+        assert!(claim.version < current_version, EWrongVersion);
+        let old_version = claim.version;
+        claim.version = current_version;
+        upgrade::emit_migration_event(
+            object::id(claim),
+            string::utf8(b"SpotClaim"),
             old_version,
             tx_context::sender(ctx),
         );

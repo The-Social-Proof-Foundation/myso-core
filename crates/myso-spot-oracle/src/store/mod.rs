@@ -5,6 +5,7 @@
 //! The PG job-queue pattern (`FOR UPDATE SKIP LOCKED` + priority + attempts) is
 //! implemented against `spot_jobs`.
 
+pub mod checkpoint;
 pub mod claims;
 pub mod events;
 pub mod evidence;
@@ -13,7 +14,6 @@ pub mod knowledge;
 pub mod markets;
 pub mod reviews;
 pub mod transactions;
-pub mod checkpoint;
 
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
@@ -261,8 +261,7 @@ impl OracleStore {
         spot_market_object_id: &str,
         ctx: crate::claim::lifecycle::TransitionContext,
     ) -> anyhow::Result<()> {
-        markets::set_spot_market_object_id(&self.pool, market_id, spot_market_object_id, ctx)
-            .await
+        markets::set_spot_market_object_id(&self.pool, market_id, spot_market_object_id, ctx).await
     }
 
     /// Legacy alias — stores the on-chain SpotMarket object id.
@@ -271,8 +270,9 @@ impl OracleStore {
         market_id: Uuid,
         spot_market_object_id: &str,
     ) -> anyhow::Result<()> {
-        let mut ctx =
-            crate::claim::lifecycle::default_context_for(&crate::claim::lifecycle::LifecycleEvent::CreateTxConfirmed);
+        let mut ctx = crate::claim::lifecycle::default_context_for(
+            &crate::claim::lifecycle::LifecycleEvent::CreateTxConfirmed,
+        );
         ctx.on_chain_status = Some(1);
         self.set_spot_market_object_id_on_market(market_id, spot_market_object_id, ctx)
             .await
@@ -358,7 +358,10 @@ impl OracleStore {
         .await
     }
 
-    pub async fn get_claim_by_id(&self, claim_id: Uuid) -> anyhow::Result<Option<claims::SpotClaimRow>> {
+    pub async fn get_claim_by_id(
+        &self,
+        claim_id: Uuid,
+    ) -> anyhow::Result<Option<claims::SpotClaimRow>> {
         claims::get_claim_by_id(&self.pool, claim_id).await
     }
 

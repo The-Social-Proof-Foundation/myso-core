@@ -87,6 +87,7 @@ diesel::table! {
         tips_received -> Nullable<Int8>,
         removed_from_platform -> Nullable<Bool>,
         removed_by -> Nullable<Text>,
+        contract_version -> Int8,
         transaction_id -> Text,
         time -> Timestamptz,
         actor_address -> Nullable<Text>,
@@ -267,6 +268,7 @@ diesel::table! {
         expiry_time_ms -> Int8,
         policy_ids -> Jsonb,
         vault_ids -> Jsonb,
+        contract_version -> Int8,
         transaction_id -> Text,
         created_at -> Timestamp,
     }
@@ -325,6 +327,7 @@ diesel::table! {
         route_id -> Nullable<Text>,
         route_leg_index -> Nullable<Int2>,
         backstop_sweep_amount -> Int8,
+        contract_version -> Int8,
         created_at -> Timestamp,
         updated_at -> Timestamp,
         transaction_id -> Text,
@@ -1123,6 +1126,7 @@ diesel::table! {
         sub_agent_id -> Nullable<Text>,
         action_identity_class -> Nullable<Int2>,
         organization_id -> Nullable<Text>,
+        contract_version -> Int8,
     }
 }
 
@@ -1335,6 +1339,7 @@ diesel::table! {
         settlement_nonce -> Int8,
         reservation_nonce -> Int8,
         active -> Bool,
+        contract_version -> Int8,
         updated_at_ms -> Int8,
         event_id -> Text,
         transaction_id -> Text,
@@ -1597,6 +1602,7 @@ diesel::table! {
         search_text -> Nullable<Text>,
         memory_account_id -> Nullable<Text>,
         ai_credit_balance_id -> Nullable<Text>,
+        contract_version -> Int8,
     }
 }
 
@@ -1764,6 +1770,7 @@ diesel::table! {
         principal_owner -> Text,
         profile_id -> Text,
         active -> Bool,
+        contract_version -> Int8,
         created_at_ms -> Int8,
         event_id -> Text,
         transaction_id -> Text,
@@ -1988,6 +1995,7 @@ diesel::table! {
         is_original_post -> Bool,
         owner -> Text,
         profile_id -> Text,
+        contract_version -> Int8,
         created_at -> Int8,
         time -> Timestamptz,
         transaction_id -> Text,

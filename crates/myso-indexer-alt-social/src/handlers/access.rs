@@ -200,14 +200,12 @@ pub fn post_access_fields_from_json(data: &serde_json::Value) -> PostAccessField
             subscription_min_tier_level: json_opt_i64(data, "subscription_min_tier_level")
                 .or_else(|| json_opt_i64(data, "min_tier_level")),
             requires_subscription: json_opt_bool(data, "requires_subscription")
-                .or_else(|| {
-                    Some(kind == POST_ACCESS_KIND_PROFILE_SUB || kind == "profile_sub")
-                }),
+                .or_else(|| Some(kind == POST_ACCESS_KIND_PROFILE_SUB || kind == "profile_sub")),
         };
     }
 
-    if let Some(tag) = json_opt_u8(data, "access_kind")
-        .or_else(|| json_opt_u8(data, "post_access_kind"))
+    if let Some(tag) =
+        json_opt_u8(data, "access_kind").or_else(|| json_opt_u8(data, "post_access_kind"))
     {
         if let Some(kind) = post_access_kind_from_tag(tag) {
             if post_access_tag_from_kind(kind) == Some(tag) {
@@ -238,13 +236,12 @@ pub fn post_access_fields_from_json(data: &serde_json::Value) -> PostAccessField
 }
 
 fn post_access_fields_from_access_object(access: &serde_json::Value) -> Option<PostAccessFields> {
-    let kind = access
-        .get("kind")
-        .and_then(|v| {
-            v.as_str()
-                .map(String::from)
-                .or_else(|| v.as_u64().and_then(|n| post_access_kind_from_tag(n as u8).map(str::to_string)))
-        })?;
+    let kind = access.get("kind").and_then(|v| {
+        v.as_str().map(String::from).or_else(|| {
+            v.as_u64()
+                .and_then(|n| post_access_kind_from_tag(n as u8).map(str::to_string))
+        })
+    })?;
 
     let kind = normalize_post_access_kind(&kind);
 

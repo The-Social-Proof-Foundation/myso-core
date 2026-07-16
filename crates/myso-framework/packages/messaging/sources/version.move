@@ -8,7 +8,7 @@ const EInvalidVersion: u64 = 0;
 // === Constants ===
 
 /// Current version of the package, starting from version 1
-const PACKAGE_VERSION: u64 = 1;
+const PACKAGE_VERSION: u64 = 0;
 
 // === Witnesses ===
 

@@ -12,7 +12,8 @@ use myso_indexer_alt_social_schema::models::{
     MyDataAccessAnalyticsRow, MyDataAccessLogRow, MyDataBroadPoolRow, MyDataClaimRow,
     MyDataDailyRevenueRow, MyDataDistributionRoundRow, MyDataListingSubPoolRow,
     MyDataMerkleRootRow, MyDataPurchaseRow, MyDataRecordRow, MyDataRevenueRow,
-    MyDataSnapshotAnchorRow, MyDataSnapshotEscrowRow, MyDataStatsRow, MyDataSubPoolRow, MyDataSubscriptionRow,
+    MyDataSnapshotAnchorRow, MyDataSnapshotEscrowRow, MyDataStatsRow, MyDataSubPoolRow,
+    MyDataSubscriptionRow,
 };
 
 use crate::api::resolve_profile::resolve_profile_summary;
@@ -156,6 +157,11 @@ impl MyDataRecord {
     /// Update frequency (e.g. "daily", "weekly", "monthly").
     async fn update_frequency(&self) -> Option<&str> {
         self.inner.update_frequency.as_deref()
+    }
+
+    /// On-chain contract version for this MyData record object.
+    async fn version(&self) -> i64 {
+        self.inner.version
     }
 
     /// Purchases for this MyData record (paginated).
@@ -698,7 +704,10 @@ impl MyDataBroadPool {
     }
 
     async fn platform_id(&self) -> Option<MySoAddress> {
-        self.inner.platform_address.as_ref().and_then(|a| MySoAddress::from_str(a).ok())
+        self.inner
+            .platform_address
+            .as_ref()
+            .and_then(|a| MySoAddress::from_str(a).ok())
     }
 
     async fn created_at_ms(&self) -> i64 {
@@ -832,12 +841,21 @@ impl MyDataSnapshotAnchor {
         self.inner.price_paid
     }
 
-    async fn source_pool_id(&self) -> &str { &self.inner.source_pool_id }
-    async fn source_sub_pool_id(&self) -> &str { &self.inner.source_sub_pool_id }
-    async fn platform_id(&self) -> Option<MySoAddress> {
-        self.inner.platform_address.as_ref().and_then(|a| MySoAddress::from_str(a).ok())
+    async fn source_pool_id(&self) -> &str {
+        &self.inner.source_pool_id
     }
-    async fn initial_escrow(&self) -> i64 { self.inner.initial_escrow }
+    async fn source_sub_pool_id(&self) -> &str {
+        &self.inner.source_sub_pool_id
+    }
+    async fn platform_id(&self) -> Option<MySoAddress> {
+        self.inner
+            .platform_address
+            .as_ref()
+            .and_then(|a| MySoAddress::from_str(a).ok())
+    }
+    async fn initial_escrow(&self) -> i64 {
+        self.inner.initial_escrow
+    }
 
     async fn created_at_ms(&self) -> i64 {
         self.inner.created_at_ms
@@ -894,10 +912,15 @@ impl MyDataDistributionRound {
     }
 
     async fn platform_id(&self) -> Option<MySoAddress> {
-        self.inner.platform_address.as_ref().and_then(|a| MySoAddress::from_str(a).ok())
+        self.inner
+            .platform_address
+            .as_ref()
+            .and_then(|a| MySoAddress::from_str(a).ok())
     }
 
-    async fn claim_deadline_ms(&self) -> i64 { self.inner.claim_deadline_ms }
+    async fn claim_deadline_ms(&self) -> i64 {
+        self.inner.claim_deadline_ms
+    }
 
     async fn published_at_ms(&self) -> i64 {
         self.inner.published_at_ms
@@ -960,21 +983,43 @@ pub(crate) struct MyDataSnapshotEscrow {
 }
 
 impl MyDataSnapshotEscrow {
-    pub(crate) fn from_row(inner: MyDataSnapshotEscrowRow) -> Self { Self { inner } }
+    pub(crate) fn from_row(inner: MyDataSnapshotEscrowRow) -> Self {
+        Self { inner }
+    }
 }
 
 #[Object]
 impl MyDataSnapshotEscrow {
-    async fn snapshot_id(&self) -> &str { &self.inner.snapshot_id }
-    async fn total_funded(&self) -> i64 { self.inner.total_funded }
-    async fn total_claimed(&self) -> i64 { self.inner.total_claimed }
-    async fn remaining_amount(&self) -> i64 { self.inner.remaining_amount }
-    async fn claim_deadline_ms(&self) -> Option<i64> { self.inner.claim_deadline_ms }
-    async fn reclaimed_at_ms(&self) -> Option<i64> { self.inner.reclaimed_at_ms }
-    async fn status(&self) -> &str { &self.inner.status }
-    async fn updated_at_ms(&self) -> i64 { self.inner.updated_at_ms }
-    async fn transaction_id(&self) -> &str { &self.inner.transaction_id }
-    async fn time(&self) -> DateTime { DateTime::from_chrono(self.inner.time) }
+    async fn snapshot_id(&self) -> &str {
+        &self.inner.snapshot_id
+    }
+    async fn total_funded(&self) -> i64 {
+        self.inner.total_funded
+    }
+    async fn total_claimed(&self) -> i64 {
+        self.inner.total_claimed
+    }
+    async fn remaining_amount(&self) -> i64 {
+        self.inner.remaining_amount
+    }
+    async fn claim_deadline_ms(&self) -> Option<i64> {
+        self.inner.claim_deadline_ms
+    }
+    async fn reclaimed_at_ms(&self) -> Option<i64> {
+        self.inner.reclaimed_at_ms
+    }
+    async fn status(&self) -> &str {
+        &self.inner.status
+    }
+    async fn updated_at_ms(&self) -> i64 {
+        self.inner.updated_at_ms
+    }
+    async fn transaction_id(&self) -> &str {
+        &self.inner.transaction_id
+    }
+    async fn time(&self) -> DateTime {
+        DateTime::from_chrono(self.inner.time)
+    }
 }
 
 #[derive(Clone)]

@@ -9,8 +9,8 @@ use serde::{Deserialize, Serialize};
 use crate::schema::{
     mydata_access_logs, mydata_broad_pools, mydata_claims, mydata_config, mydata_data,
     mydata_distribution_rounds, mydata_listing_sub_pools, mydata_merkle_roots, mydata_purchases,
-    mydata_registry, mydata_revenue, mydata_snapshot_anchors, mydata_snapshot_escrow, mydata_sub_pools,
-    mydata_subscriptions,
+    mydata_registry, mydata_revenue, mydata_snapshot_anchors, mydata_snapshot_escrow,
+    mydata_sub_pools, mydata_subscriptions,
 };
 
 // Constants matching social_contracts::mydata Move module
@@ -79,6 +79,8 @@ pub struct MyDataRecordRow {
     pub is_updating: bool,
     #[diesel(sql_type = Nullable<Text>)]
     pub update_frequency: Option<String>,
+    #[diesel(sql_type = BigInt)]
+    pub version: i64,
 }
 
 /// Query result for a mydata subscription (for GraphQL/reader).

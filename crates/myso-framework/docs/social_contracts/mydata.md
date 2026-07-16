@@ -67,6 +67,11 @@ not row-level dataset membership.
 -  [Function `assert_platform_matches_listing`](#social_contracts_mydata_assert_platform_matches_listing)
 -  [Function `emit_mydata_config_updated`](#social_contracts_mydata_emit_mydata_config_updated)
 -  [Function `create_mydata_admin_cap`](#social_contracts_mydata_create_mydata_admin_cap)
+-  [Function `assert_config_version`](#social_contracts_mydata_assert_config_version)
+-  [Function `assert_pool_registry_version`](#social_contracts_mydata_assert_pool_registry_version)
+-  [Function `assert_snapshot_anchor_registry_version`](#social_contracts_mydata_assert_snapshot_anchor_registry_version)
+-  [Function `assert_claim_vault_version`](#social_contracts_mydata_assert_claim_vault_version)
+-  [Function `assert_distribution_registry_version`](#social_contracts_mydata_assert_distribution_registry_version)
 -  [Function `update_mydata_config`](#social_contracts_mydata_update_mydata_config)
 -  [Function `marketplace_enabled`](#social_contracts_mydata_marketplace_enabled)
 -  [Function `share_mydata_system_objects`](#social_contracts_mydata_share_mydata_system_objects)
@@ -173,6 +178,10 @@ not row-level dataset membership.
 -  [Function `migrate_mydata`](#social_contracts_mydata_migrate_mydata)
 -  [Function `migrate_registry`](#social_contracts_mydata_migrate_registry)
 -  [Function `migrate_config`](#social_contracts_mydata_migrate_config)
+-  [Function `migrate_pool_registry`](#social_contracts_mydata_migrate_pool_registry)
+-  [Function `migrate_snapshot_anchor_registry`](#social_contracts_mydata_migrate_snapshot_anchor_registry)
+-  [Function `migrate_claim_vault`](#social_contracts_mydata_migrate_claim_vault)
+-  [Function `migrate_distribution_registry`](#social_contracts_mydata_migrate_distribution_registry)
 
 
 <pre><code><b>use</b> <a href="../mydata/bf_hmac_encryption.md#mydata_bf_hmac_encryption">mydata::bf_hmac_encryption</a>;
@@ -2885,6 +2894,126 @@ Create a MyDataAdminCap for bootstrap (package visibility only)
 
 </details>
 
+<a name="social_contracts_mydata_assert_config_version"></a>
+
+## Function `assert_config_version`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_config_version">assert_config_version</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_config_version">assert_config_version</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>) {
+    <b>assert</b>!(config.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_assert_pool_registry_version"></a>
+
+## Function `assert_pool_registry_version`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_pool_registry_version">assert_pool_registry_version</a>(registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolRegistry">social_contracts::mydata::MyDataPoolRegistry</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_pool_registry_version">assert_pool_registry_version</a>(registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolRegistry">MyDataPoolRegistry</a>) {
+    <b>assert</b>!(registry.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_assert_snapshot_anchor_registry_version"></a>
+
+## Function `assert_snapshot_anchor_registry_version`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_snapshot_anchor_registry_version">assert_snapshot_anchor_registry_version</a>(registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_SnapshotAnchorRegistry">social_contracts::mydata::SnapshotAnchorRegistry</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_snapshot_anchor_registry_version">assert_snapshot_anchor_registry_version</a>(registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_SnapshotAnchorRegistry">SnapshotAnchorRegistry</a>) {
+    <b>assert</b>!(registry.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_assert_claim_vault_version"></a>
+
+## Function `assert_claim_vault_version`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_claim_vault_version">assert_claim_vault_version</a>(vault: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">social_contracts::mydata::MyDataClaimVault</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_claim_vault_version">assert_claim_vault_version</a>(vault: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">MyDataClaimVault</a>) {
+    <b>assert</b>!(vault.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_assert_distribution_registry_version"></a>
+
+## Function `assert_distribution_registry_version`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_distribution_registry_version">assert_distribution_registry_version</a>(registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_DistributionRegistry">social_contracts::mydata::DistributionRegistry</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_distribution_registry_version">assert_distribution_registry_version</a>(registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_DistributionRegistry">DistributionRegistry</a>) {
+    <b>assert</b>!(registry.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_mydata_update_mydata_config"></a>
 
 ## Function `update_mydata_config`
@@ -2927,6 +3056,7 @@ Update MyData configuration (admin only).
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_config_version">assert_config_version</a>(config);
     <b>assert</b>!(max_subscription_days &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>assert</b>!(max_tags &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>assert</b>!(max_free_access_grants &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
@@ -3188,6 +3318,8 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
     <a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>: Option&lt;<b>address</b>&gt;,
     clock: &Clock,
 ) {
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_config_version">assert_config_version</a>(config);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_pool_registry_version">assert_pool_registry_version</a>(registry);
     <b>assert</b>!(string::length(&name) &gt; 0 && string::length(&name) &lt;= config.max_metadata_bytes, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqInvalidInput">EPqInvalidInput</a>);
     <b>assert</b>!(string::length(&description) &lt;= config.max_metadata_bytes, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqInvalidInput">EPqInvalidInput</a>);
     <b>let</b> nonce = registry.next_broad_pool_nonce;
@@ -3313,6 +3445,8 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
     schema_metadata: Option&lt;vector&lt;u8&gt;&gt;,
     clock: &Clock,
 ) {
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_config_version">assert_config_version</a>(config);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_pool_registry_version">assert_pool_registry_version</a>(registry);
     <b>assert</b>!(table::contains(&registry.broad_pools, <a href="../social_contracts/mydata.md#social_contracts_mydata_broad_pool_id">broad_pool_id</a>), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqPoolNotFound">EPqPoolNotFound</a>);
     <b>assert</b>!(string::length(&name) &gt; 0 && string::length(&name) &lt;= config.max_metadata_bytes, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqInvalidInput">EPqInvalidInput</a>);
     <b>assert</b>!(string::length(&description) &lt;= config.max_metadata_bytes, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqInvalidInput">EPqInvalidInput</a>);
@@ -3370,6 +3504,8 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
     sub_pool_ids: vector&lt;ID&gt;,
     clock: &Clock,
 ) {
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_config_version">assert_config_version</a>(config);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_pool_registry_version">assert_pool_registry_version</a>(registry);
     <b>assert</b>!(vector::length(&sub_pool_ids) &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqInvalidInput">EPqInvalidInput</a>);
     <b>assert</b>!(vector::length(&sub_pool_ids) &lt;= config.max_pool_assignments, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqInvalidInput">EPqInvalidInput</a>);
     <b>let</b> <b>mut</b> existing = <b>if</b> (table::contains(&registry.mydata_to_sub_pools, ip_id)) {
@@ -3491,6 +3627,10 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_config_version">assert_config_version</a>(config);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_snapshot_anchor_registry_version">assert_snapshot_anchor_registry_version</a>(anchor_registry);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_claim_vault_version">assert_claim_vault_version</a>(vault);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_pool_registry_version">assert_pool_registry_version</a>(pool_registry);
     <b>assert</b>!(config.<a href="../social_contracts/mydata.md#social_contracts_mydata_marketplace_enabled">marketplace_enabled</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EDisabled">EDisabled</a>);
     <b>assert</b>!(table::contains(&pool_registry.broad_pools, source_pool_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqPoolNotFound">EPqPoolNotFound</a>);
     <b>assert</b>!(table::contains(&pool_registry.sub_pools, source_sub_pool_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqSubPoolNotFound">EPqSubPoolNotFound</a>);
@@ -3596,6 +3736,8 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
     clock: &Clock,
     ctx: &TxContext,
 ) {
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_snapshot_anchor_registry_version">assert_snapshot_anchor_registry_version</a>(anchor_registry);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_claim_vault_version">assert_claim_vault_version</a>(vault);
     <b>assert</b>!(table::contains(&anchor_registry.anchors, snapshot_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqAnchorNotFound">EPqAnchorNotFound</a>);
     <b>assert</b>!(!table::contains(&vault.merkle_roots, snapshot_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqDistributionPublished">EPqDistributionPublished</a>);
     <b>assert</b>!(table::contains(&vault.snapshot_escrow, snapshot_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqSnapshotEscrowMissing">EPqSnapshotEscrowMissing</a>);
@@ -3647,6 +3789,10 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
     contributor_count: u64,
     clock: &Clock,
 ) {
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_config_version">assert_config_version</a>(config);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_snapshot_anchor_registry_version">assert_snapshot_anchor_registry_version</a>(anchor_registry);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_distribution_registry_version">assert_distribution_registry_version</a>(dist_registry);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_claim_vault_version">assert_claim_vault_version</a>(vault);
     <b>assert</b>!(table::contains(&anchor_registry.anchors, snapshot_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqAnchorNotFound">EPqAnchorNotFound</a>);
     <b>assert</b>!(table::contains(&vault.snapshot_escrow, snapshot_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqSnapshotEscrowMissing">EPqSnapshotEscrowMissing</a>);
     <b>assert</b>!(vector::length(&root_hash) == 32, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqInvalidInput">EPqInvalidInput</a>);
@@ -3801,6 +3947,9 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_config_version">assert_config_version</a>(config);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_distribution_registry_version">assert_distribution_registry_version</a>(dist_registry);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_claim_vault_version">assert_claim_vault_version</a>(vault);
     <b>assert</b>!(amount &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqInvalidInput">EPqInvalidInput</a>);
     <b>assert</b>!(vector::length(&proof) &lt;= config.max_merkle_proof_depth, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqInvalidProof">EPqInvalidProof</a>);
     <b>assert</b>!(table::contains(&dist_registry.rounds, snapshot_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqDistributionNotFound">EPqDistributionNotFound</a>);
@@ -3882,6 +4031,9 @@ Bootstrap: shared config, ownership registry, and query-marketplace objects (poo
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_config_version">assert_config_version</a>(config);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_distribution_registry_version">assert_distribution_registry_version</a>(dist_registry);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_claim_vault_version">assert_claim_vault_version</a>(vault);
     <b>assert</b>!(amount &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqInvalidInput">EPqInvalidInput</a>);
     <b>assert</b>!(vector::length(&proof) &lt;= config.max_merkle_proof_depth, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqInvalidProof">EPqInvalidProof</a>);
     <b>assert</b>!(table::contains(&dist_registry.rounds, snapshot_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqDistributionNotFound">EPqDistributionNotFound</a>);
@@ -4058,6 +4210,9 @@ Claim MyData marketplace pool payout with platform treasury routing.
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_snapshot_anchor_registry_version">assert_snapshot_anchor_registry_version</a>(anchor_registry);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_distribution_registry_version">assert_distribution_registry_version</a>(dist_registry);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_claim_vault_version">assert_claim_vault_version</a>(vault);
     <b>assert</b>!(table::contains(&anchor_registry.anchors, snapshot_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqAnchorNotFound">EPqAnchorNotFound</a>);
     <b>assert</b>!(table::contains(&dist_registry.rounds, snapshot_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqDistributionNotFound">EPqDistributionNotFound</a>);
     <b>assert</b>!(table::contains(&vault.snapshot_escrow, snapshot_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPqSnapshotEscrowMissing">EPqSnapshotEscrowMissing</a>);
@@ -5684,6 +5839,9 @@ Assign MyData to sub-pools (owner only).
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
+    <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_config_version">assert_config_version</a>(config);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_pool_registry_version">assert_pool_registry_version</a>(pool_registry);
     <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EUnauthorized">EUnauthorized</a>);
     <b>let</b> ip_id = object::uid_to_address(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id);
     <a href="../social_contracts/mydata.md#social_contracts_mydata_assign_mydata_to_sub_pools">assign_mydata_to_sub_pools</a>(config, pool_registry, ip_id, sub_pool_ids, clock);
@@ -5716,6 +5874,8 @@ Remove this listing from a sub-pool (owner only).
     <a href="../social_contracts/mydata.md#social_contracts_mydata_sub_pool_id">sub_pool_id</a>: ID,
     ctx: &<b>mut</b> TxContext,
 ) {
+    <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_pool_registry_version">assert_pool_registry_version</a>(pool_registry);
     <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EUnauthorized">EUnauthorized</a>);
     <b>let</b> ip_id = object::uid_to_address(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id);
     <a href="../social_contracts/mydata.md#social_contracts_mydata_remove_mydata_from_sub_pool">remove_mydata_from_sub_pool</a>(pool_registry, ip_id, <a href="../social_contracts/mydata.md#social_contracts_mydata_sub_pool_id">sub_pool_id</a>);
@@ -7179,6 +7339,158 @@ Migration function for MyDataConfig
     <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
         config_id,
         string::utf8(b"<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>"),
+        old_version,
+        tx_context::sender(ctx)
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_migrate_pool_registry"></a>
+
+## Function `migrate_pool_registry`
+
+Migration function for MyDataPoolRegistry
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_migrate_pool_registry">migrate_pool_registry</a>(registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolRegistry">social_contracts::mydata::MyDataPoolRegistry</a>, _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_migrate_pool_registry">migrate_pool_registry</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolRegistry">MyDataPoolRegistry</a>,
+    _: &UpgradeAdminCap,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
+    <b>assert</b>!(registry.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> &lt; current_version, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <b>let</b> old_version = registry.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a>;
+    registry.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> = current_version;
+    <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
+        object::id(registry),
+        string::utf8(b"<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataPoolRegistry">MyDataPoolRegistry</a>"),
+        old_version,
+        tx_context::sender(ctx)
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_migrate_snapshot_anchor_registry"></a>
+
+## Function `migrate_snapshot_anchor_registry`
+
+Migration function for SnapshotAnchorRegistry
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_migrate_snapshot_anchor_registry">migrate_snapshot_anchor_registry</a>(registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_SnapshotAnchorRegistry">social_contracts::mydata::SnapshotAnchorRegistry</a>, _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_migrate_snapshot_anchor_registry">migrate_snapshot_anchor_registry</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_SnapshotAnchorRegistry">SnapshotAnchorRegistry</a>,
+    _: &UpgradeAdminCap,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
+    <b>assert</b>!(registry.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> &lt; current_version, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <b>let</b> old_version = registry.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a>;
+    registry.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> = current_version;
+    <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
+        object::id(registry),
+        string::utf8(b"<a href="../social_contracts/mydata.md#social_contracts_mydata_SnapshotAnchorRegistry">SnapshotAnchorRegistry</a>"),
+        old_version,
+        tx_context::sender(ctx)
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_migrate_claim_vault"></a>
+
+## Function `migrate_claim_vault`
+
+Migration function for MyDataClaimVault
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_migrate_claim_vault">migrate_claim_vault</a>(vault: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">social_contracts::mydata::MyDataClaimVault</a>, _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_migrate_claim_vault">migrate_claim_vault</a>(
+    vault: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">MyDataClaimVault</a>,
+    _: &UpgradeAdminCap,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
+    <b>assert</b>!(vault.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> &lt; current_version, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <b>let</b> old_version = vault.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a>;
+    vault.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> = current_version;
+    <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
+        object::id(vault),
+        string::utf8(b"<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataClaimVault">MyDataClaimVault</a>"),
+        old_version,
+        tx_context::sender(ctx)
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_migrate_distribution_registry"></a>
+
+## Function `migrate_distribution_registry`
+
+Migration function for DistributionRegistry
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_migrate_distribution_registry">migrate_distribution_registry</a>(registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_DistributionRegistry">social_contracts::mydata::DistributionRegistry</a>, _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_migrate_distribution_registry">migrate_distribution_registry</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_DistributionRegistry">DistributionRegistry</a>,
+    _: &UpgradeAdminCap,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
+    <b>assert</b>!(registry.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> &lt; current_version, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <b>let</b> old_version = registry.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a>;
+    registry.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> = current_version;
+    <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
+        object::id(registry),
+        string::utf8(b"<a href="../social_contracts/mydata.md#social_contracts_mydata_DistributionRegistry">DistributionRegistry</a>"),
         old_version,
         tx_context::sender(ctx)
     );

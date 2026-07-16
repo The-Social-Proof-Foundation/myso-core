@@ -123,6 +123,7 @@ pub fn handle_ai_credit_event(
                     settlement_nonce: 0,
                     reservation_nonce: 0,
                     active: true,
+                    contract_version: 0,
                     updated_at_ms: now.timestamp_millis(),
                     event_id: event_id.to_string(),
                     transaction_id: transaction_id.clone(),

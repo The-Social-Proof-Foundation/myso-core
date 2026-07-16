@@ -52,11 +52,19 @@ pub struct OracleArgs {
     pub event_providers_config: PathBuf,
 
     /// Event provider sync loop tick interval (seconds).
-    #[arg(long, env = "SPOT_ORACLE_EVENT_SYNC_INTERVAL_SECS", default_value = "300")]
+    #[arg(
+        long,
+        env = "SPOT_ORACLE_EVENT_SYNC_INTERVAL_SECS",
+        default_value = "300"
+    )]
     pub event_sync_interval_secs: u64,
 
     /// MySo RPC URL for PTB submission (create / resolve / refund).
-    #[arg(long, env = "SPOT_ORACLE_MYSO_RPC", default_value = "http://127.0.0.1:9000")]
+    #[arg(
+        long,
+        env = "SPOT_ORACLE_MYSO_RPC",
+        default_value = "http://127.0.0.1:9000"
+    )]
     pub myso_rpc: String,
 
     /// Oracle signer private key (hex). Required to submit `oracle_resolve` / create PTBs.
@@ -100,45 +108,89 @@ pub struct OracleArgs {
     pub admin_secret: Option<String>,
 
     /// OpenRouter LLM provider (NLU extraction only — never approves/resolves).
-    #[arg(long, env = "SPOT_ORACLE_OPENROUTER_API_URL", default_value = "https://openrouter.ai/api/v1/chat/completions")]
+    #[arg(
+        long,
+        env = "SPOT_ORACLE_OPENROUTER_API_URL",
+        default_value = "https://openrouter.ai/api/v1/chat/completions"
+    )]
     pub openrouter_api_url: String,
     #[arg(long, env = "SPOT_ORACLE_OPENROUTER_API_KEY")]
     pub openrouter_api_key: Option<String>,
-    #[arg(long, env = "SPOT_ORACLE_LLM_MODEL", default_value = "openai/gpt-4o-mini")]
+    #[arg(
+        long,
+        env = "SPOT_ORACLE_LLM_MODEL",
+        default_value = "openai/gpt-4o-mini"
+    )]
     pub llm_model: String,
 
     // Worker cadence (seconds).
-    #[arg(long, env = "SPOT_ORACLE_REVIEW_POLL_INTERVAL_SECS", default_value = "15")]
+    #[arg(
+        long,
+        env = "SPOT_ORACLE_REVIEW_POLL_INTERVAL_SECS",
+        default_value = "15"
+    )]
     pub review_poll_interval_secs: u64,
-    #[arg(long, env = "SPOT_ORACLE_SCHEDULER_POLL_INTERVAL_SECS", default_value = "10")]
+    #[arg(
+        long,
+        env = "SPOT_ORACLE_SCHEDULER_POLL_INTERVAL_SECS",
+        default_value = "10"
+    )]
     pub scheduler_poll_interval_secs: u64,
     #[arg(long, env = "SPOT_ORACLE_RESOLVER_CONCURRENCY", default_value = "4")]
     pub resolver_concurrency: usize,
     #[arg(long, env = "SPOT_ORACLE_RSS_POLL_INTERVAL_SECS", default_value = "60")]
     pub rss_poll_interval_secs: u64,
-    #[arg(long, env = "SPOT_ORACLE_CHAIN_SUBMIT_INTERVAL_SECS", default_value = "10")]
+    #[arg(
+        long,
+        env = "SPOT_ORACLE_CHAIN_SUBMIT_INTERVAL_SECS",
+        default_value = "10"
+    )]
     pub chain_submit_interval_secs: u64,
-    #[arg(long, env = "SPOT_ORACLE_RECONCILE_INTERVAL_SECS", default_value = "120")]
+    #[arg(
+        long,
+        env = "SPOT_ORACLE_RECONCILE_INTERVAL_SECS",
+        default_value = "120"
+    )]
     pub reconcile_interval_secs: u64,
 
     /// Confidence threshold (bps) matching on-chain SpotConfig default (70%).
-    #[arg(long, env = "SPOT_ORACLE_CONFIDENCE_THRESHOLD_BPS", default_value = "7000")]
+    #[arg(
+        long,
+        env = "SPOT_ORACLE_CONFIDENCE_THRESHOLD_BPS",
+        default_value = "7000"
+    )]
     pub confidence_threshold_bps: u64,
 
     /// Minimum lead time before a parsed claim deadline (seconds).
-    #[arg(long, env = "SPOT_ORACLE_MIN_DEADLINE_LEAD_SECS", default_value = "300")]
+    #[arg(
+        long,
+        env = "SPOT_ORACLE_MIN_DEADLINE_LEAD_SECS",
+        default_value = "300"
+    )]
     pub min_deadline_lead_secs: u64,
 
     /// Maximum horizon for claim deadlines (seconds; default 730 days).
-    #[arg(long, env = "SPOT_ORACLE_MAX_DEADLINE_HORIZON_SECS", default_value = "63072000")]
+    #[arg(
+        long,
+        env = "SPOT_ORACLE_MAX_DEADLINE_HORIZON_SECS",
+        default_value = "63072000"
+    )]
     pub max_deadline_horizon_secs: u64,
 
     /// Maximum horizon for election event deadlines (seconds; default 1460 days / 4 years).
-    #[arg(long, env = "SPOT_ORACLE_MAX_ELECTION_HORIZON_SECS", default_value = "126144000")]
+    #[arg(
+        long,
+        env = "SPOT_ORACLE_MAX_ELECTION_HORIZON_SECS",
+        default_value = "126144000"
+    )]
     pub max_election_horizon_secs: u64,
 
     /// Maximum horizon for sports mega-event deadlines (seconds; default 1095 days / 3 years).
-    #[arg(long, env = "SPOT_ORACLE_MAX_SPORTS_HORIZON_SECS", default_value = "94608000")]
+    #[arg(
+        long,
+        env = "SPOT_ORACLE_MAX_SPORTS_HORIZON_SECS",
+        default_value = "94608000"
+    )]
     pub max_sports_horizon_secs: u64,
 
     /// Buffer after resolution_at before refund_unresolved may run (ms; default 72h).
@@ -150,7 +202,11 @@ pub struct OracleArgs {
     pub max_resolution_buffer_ms: u64,
 
     /// Minimum spacing between price market keys (seconds; default 30 minutes).
-    #[arg(long, env = "SPOT_ORACLE_PRICE_MARKET_SPACING_SECS", default_value = "1800")]
+    #[arg(
+        long,
+        env = "SPOT_ORACLE_PRICE_MARKET_SPACING_SECS",
+        default_value = "1800"
+    )]
     pub price_market_spacing_secs: u64,
 
     /// Persist raw evidence bodies (config: `SPOT_ORACLE_STORE_RAW_EVIDENCE=true`).

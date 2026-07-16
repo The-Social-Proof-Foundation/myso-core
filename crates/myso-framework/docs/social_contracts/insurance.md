@@ -87,8 +87,19 @@ Sells coverage against losing outcomes and pays out deterministically on SPoT re
 -  [Function `set_user_exposure`](#social_contracts_insurance_set_user_exposure)
 -  [Function `get_option_reserved`](#social_contracts_insurance_get_option_reserved)
 -  [Function `set_option_reserved`](#social_contracts_insurance_set_option_reserved)
+-  [Function `assert_config_version`](#social_contracts_insurance_assert_config_version)
+-  [Function `assert_router_version`](#social_contracts_insurance_assert_router_version)
+-  [Function `assert_backstop_version`](#social_contracts_insurance_assert_backstop_version)
+-  [Function `assert_vault_version`](#social_contracts_insurance_assert_vault_version)
+-  [Function `assert_policy_version`](#social_contracts_insurance_assert_policy_version)
+-  [Function `borrow_config_version_mut`](#social_contracts_insurance_borrow_config_version_mut)
+-  [Function `borrow_vault_version_mut`](#social_contracts_insurance_borrow_vault_version_mut)
 -  [Function `migrate_config`](#social_contracts_insurance_migrate_config)
 -  [Function `migrate_vault`](#social_contracts_insurance_migrate_vault)
+-  [Function `migrate_router_config`](#social_contracts_insurance_migrate_router_config)
+-  [Function `migrate_backstop_pool`](#social_contracts_insurance_migrate_backstop_pool)
+-  [Function `migrate_coverage_route`](#social_contracts_insurance_migrate_coverage_route)
+-  [Function `migrate_policy`](#social_contracts_insurance_migrate_policy)
 
 
 <pre><code><b>use</b> <a href="../mydata/bf_hmac_encryption.md#mydata_bf_hmac_encryption">mydata::bf_hmac_encryption</a>;
@@ -755,6 +766,11 @@ Sells coverage against losing outcomes and pays out deterministically on SPoT re
 </dd>
 <dt>
 <code>route_leg_index: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>version: u64</code>
 </dt>
 <dd>
 </dd>
@@ -2191,15 +2207,6 @@ Constants
 
 
 
-<a name="social_contracts_insurance_DEFAULT_VERSION"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_VERSION">DEFAULT_VERSION</a>: u64 = 1;
-</code></pre>
-
-
-
 <a name="social_contracts_insurance_DEFAULT_MIN_COVERAGE_BPS"></a>
 
 
@@ -2489,7 +2496,7 @@ Creates InsuranceConfig and transfers InsuranceAdminCap to caller.
         exposure_cap_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_EXPOSURE_CAP_BPS">DEFAULT_EXPOSURE_CAP_BPS</a>,
         exposure_k_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_EXPOSURE_K_BPS">DEFAULT_EXPOSURE_K_BPS</a>,
         odds_base_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_ODDS_BASE_BPS">DEFAULT_ODDS_BASE_BPS</a>,
-        version: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_VERSION">DEFAULT_VERSION</a>,
+        version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     });
     transfer::share_object(<a href="../social_contracts/insurance.md#social_contracts_insurance_new_router_config_defaults">new_router_config_defaults</a>(ctx));
     transfer::share_object(<a href="../social_contracts/insurance.md#social_contracts_insurance_new_backstop_pool_defaults">new_backstop_pool_defaults</a>(ctx));
@@ -2557,6 +2564,7 @@ Update config (admin only)
     <b>assert</b>!(max_duration_ms &gt; 0, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidDuration">EInvalidDuration</a>);
     <b>assert</b>!(fee_bps &lt;= <a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a>, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidCoverage">EInvalidCoverage</a>);
     <b>assert</b>!(odds_base_bps &gt; 0, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidCoverage">EInvalidCoverage</a>);
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_config_version">assert_config_version</a>(config);
     config.min_coverage_bps = min_coverage_bps;
     config.max_coverage_bps = max_coverage_bps;
     config.max_duration_ms = max_duration_ms;
@@ -2629,6 +2637,7 @@ Update SPoT-linked risk pricing (admin only).
     );
     <b>assert</b>!(max_risk_multiplier_bps &gt;= <a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a>, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidCoverage">EInvalidCoverage</a>);
     <b>assert</b>!(min_premium_amount &gt; 0, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidAmount">EInvalidAmount</a>);
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_config_version">assert_config_version</a>(config);
     config.min_spot_total_liquidity = min_spot_total_liquidity;
     config.max_coverage_fraction_of_option_bps = max_coverage_fraction_of_option_bps;
     config.max_risk_multiplier_bps = max_risk_multiplier_bps;
@@ -2687,6 +2696,7 @@ Emergency enable/disable toggle (admin only)
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_config_version">assert_config_version</a>(config);
     config.insurance_enabled = insurance_enabled;
     <b>let</b> updated_by = tx_context::sender(ctx);
     <b>let</b> timestamp = clock::timestamp_ms(clock);
@@ -2769,7 +2779,7 @@ Emergency enable/disable toggle (admin only)
         exposure_cap_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_EXPOSURE_CAP_BPS">DEFAULT_EXPOSURE_CAP_BPS</a>,
         exposure_k_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_EXPOSURE_K_BPS">DEFAULT_EXPOSURE_K_BPS</a>,
         odds_base_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_ODDS_BASE_BPS">DEFAULT_ODDS_BASE_BPS</a>,
-        version: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_VERSION">DEFAULT_VERSION</a>,
+        version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     };
     transfer::share_object(<a href="../social_contracts/insurance.md#social_contracts_insurance_new_backstop_pool_defaults">new_backstop_pool_defaults</a>(ctx));
     <b>let</b> router_cfg = <a href="../social_contracts/insurance.md#social_contracts_insurance_new_router_config_defaults">new_router_config_defaults</a>(ctx);
@@ -2850,7 +2860,7 @@ Create an underwriter vault
         paused,
         market_exposures: table::new(ctx),
         user_exposures: table::new(ctx),
-        version: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_VERSION">DEFAULT_VERSION</a>,
+        version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     };
     <b>let</b> vault_id = object::id(&vault);
     transfer::share_object(vault);
@@ -2896,6 +2906,7 @@ Underwriter updates vault listing parameters (emit for indexer discovery).
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_vault_version">assert_vault_version</a>(vault);
     <b>assert</b>!(tx_context::sender(ctx) == vault.underwriter, <a href="../social_contracts/insurance.md#social_contracts_insurance_ENotAdmin">ENotAdmin</a>);
     vault.enabled = enabled;
     vault.paused = paused;
@@ -2953,6 +2964,7 @@ Underwriter updates vault listing parameters (emit for indexer discovery).
     );
     <b>assert</b>!(min_vault_health_factor_bps &gt; 0, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidAmount">EInvalidAmount</a>);
     <b>assert</b>!(max_route_legs &gt; 0, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidAmount">EInvalidAmount</a>);
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_router_version">assert_router_version</a>(router_cfg);
     router_cfg.paused = paused;
     router_cfg.max_route_reserve_market = max_route_reserve_market;
     router_cfg.max_route_reserve_user = max_route_reserve_user;
@@ -2995,6 +3007,7 @@ Underwriter updates vault listing parameters (emit for indexer discovery).
     paused: bool,
     ctx: &<b>mut</b> TxContext,
 ) {
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_router_version">assert_router_version</a>(router_cfg);
     <b>if</b> (table::contains(&router_cfg.market_pause, market_id)) {
         *table::borrow_mut(&<b>mut</b> router_cfg.market_pause, market_id) = paused;
     } <b>else</b> {
@@ -3034,6 +3047,7 @@ Underwriter updates vault listing parameters (emit for indexer discovery).
     ctx: &<b>mut</b> TxContext,
 ) {
     <b>assert</b>!(sweep_premium_bps &lt;= <a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a>, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidCoverage">EInvalidCoverage</a>);
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_backstop_version">assert_backstop_version</a>(pool);
     pool.max_payout_per_market = max_payout_per_market;
     pool.max_payout_per_event = max_payout_per_event;
     pool.global_hard_cap = global_hard_cap;
@@ -3068,6 +3082,7 @@ Underwriter updates vault listing parameters (emit for indexer discovery).
     tail_mode_enabled: bool,
     ctx: &<b>mut</b> TxContext,
 ) {
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_backstop_version">assert_backstop_version</a>(pool);
     pool.tail_mode_enabled = tail_mode_enabled;
     <b>let</b> _ = ctx;
 }
@@ -3098,6 +3113,7 @@ Underwriter updates vault listing parameters (emit for indexer discovery).
     enabled: bool,
     ctx: &<b>mut</b> TxContext,
 ) {
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_backstop_version">assert_backstop_version</a>(pool);
     pool.insurance_backstop_pool_enabled = enabled;
     <b>let</b> _ = ctx;
 }
@@ -3128,6 +3144,7 @@ Underwriter updates vault listing parameters (emit for indexer discovery).
     payment: Coin&lt;MYSO&gt;,
     ctx: &<b>mut</b> TxContext,
 ) {
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_backstop_version">assert_backstop_version</a>(pool);
     <b>let</b> amt = coin::value(&payment);
     <b>assert</b>!(amt &gt; 0, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidAmount">EInvalidAmount</a>);
     <b>let</b> sender = tx_context::sender(ctx);
@@ -3171,6 +3188,8 @@ Tail shortfall payout only (<code>tail_mode_enabled</code> + caps). Does not int
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_config_version">assert_config_version</a>(config);
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_backstop_version">assert_backstop_version</a>(pool);
     <b>assert</b>!(config.insurance_enabled, <a href="../social_contracts/insurance.md#social_contracts_insurance_EDisabled">EDisabled</a>);
     <b>assert</b>!(pool.tail_mode_enabled, <a href="../social_contracts/insurance.md#social_contracts_insurance_ETailModeDisabled">ETailModeDisabled</a>);
     <b>assert</b>!(pool.insurance_backstop_pool_enabled, <a href="../social_contracts/insurance.md#social_contracts_insurance_EBackstopPaused">EBackstopPaused</a>);
@@ -3333,7 +3352,7 @@ Tail shortfall payout only (<code>tail_mode_enabled</code> + caps). Does not int
         min_vault_health_factor_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_BPS_DENOM">BPS_DENOM</a>,
         max_route_legs: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MAX_ROUTE_LEGS">DEFAULT_MAX_ROUTE_LEGS</a>,
         market_pause: table::new(ctx),
-        version: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_VERSION">DEFAULT_VERSION</a>,
+        version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     }
 }
 </code></pre>
@@ -3408,7 +3427,7 @@ Tail shortfall payout only (<code>tail_mode_enabled</code> + caps). Does not int
         insurance_backstop_pool_enabled: <b>true</b>,
         sweep_premium_bps: 0,
         tail_pay_partial_on_cap: <b>true</b>,
-        version: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_VERSION">DEFAULT_VERSION</a>,
+        version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     }
 }
 </code></pre>
@@ -3499,6 +3518,8 @@ Deposit capital into vault
     payment: Coin&lt;MYSO&gt;,
     ctx: &<b>mut</b> TxContext
 ) {
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_config_version">assert_config_version</a>(config);
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_vault_version">assert_vault_version</a>(vault);
     <b>assert</b>!(config.insurance_enabled, <a href="../social_contracts/insurance.md#social_contracts_insurance_EDisabled">EDisabled</a>);
     <b>let</b> deposit_amount = coin::value(&payment);
     <b>assert</b>!(deposit_amount &gt; 0, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidAmount">EInvalidAmount</a>);
@@ -3537,6 +3558,8 @@ Withdraw unreserved capital (underwriter only)
     amount: u64,
     ctx: &<b>mut</b> TxContext
 ) {
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_config_version">assert_config_version</a>(config);
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_vault_version">assert_vault_version</a>(vault);
     <b>assert</b>!(config.insurance_enabled, <a href="../social_contracts/insurance.md#social_contracts_insurance_EDisabled">EDisabled</a>);
     <b>assert</b>!(tx_context::sender(ctx) == vault.underwriter, <a href="../social_contracts/insurance.md#social_contracts_insurance_ENotAdmin">ENotAdmin</a>);
     <b>assert</b>!(amount &gt; 0, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidAmount">EInvalidAmount</a>);
@@ -4261,6 +4284,10 @@ Preview premium with SPoT pool odds, liquidity, and vault concentration on this 
     check_market_router: bool,
     ctx: &<b>mut</b> TxContext,
 ): (ID, ID, u64, u64, u64, u64, u64) {
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_config_version">assert_config_version</a>(config);
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_router_version">assert_router_version</a>(router_cfg);
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_backstop_version">assert_backstop_version</a>(backstop);
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_vault_version">assert_vault_version</a>(vault);
     <b>assert</b>!(config.insurance_enabled, <a href="../social_contracts/insurance.md#social_contracts_insurance_EDisabled">EDisabled</a>);
     <b>assert</b>!(spot::is_enabled(spot_config), <a href="../social_contracts/insurance.md#social_contracts_insurance_EMarketClosed">EMarketClosed</a>);
     <b>assert</b>!(spot::is_open(record), <a href="../social_contracts/insurance.md#social_contracts_insurance_EMarketClosed">EMarketClosed</a>);
@@ -4328,6 +4355,7 @@ Preview premium with SPoT pool odds, liquidity, and vault concentration on this 
         status: <a href="../social_contracts/insurance.md#social_contracts_insurance_STATUS_ACTIVE">STATUS_ACTIVE</a>,
         route_id,
         route_leg_index,
+        version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     };
     <b>let</b> policy_id = object::id(&policy);
     transfer::share_object(policy);
@@ -4476,6 +4504,13 @@ Buy coverage for a SPoT position
     ctx: &<b>mut</b> TxContext,
 ) {
     <b>assert</b>!(clock::timestamp_ms(clock) &lt;= deadline_ms, <a href="../social_contracts/insurance.md#social_contracts_insurance_EDeadlinePassed">EDeadlinePassed</a>);
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_config_version">assert_config_version</a>(config);
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_router_version">assert_router_version</a>(router_cfg);
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_backstop_version">assert_backstop_version</a>(backstop);
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_vault_version">assert_vault_version</a>(v0);
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_vault_version">assert_vault_version</a>(v1);
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_vault_version">assert_vault_version</a>(v2);
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_vault_version">assert_vault_version</a>(v3);
     <b>assert</b>!(config.insurance_enabled, <a href="../social_contracts/insurance.md#social_contracts_insurance_EDisabled">EDisabled</a>);
     <b>assert</b>!(!router_cfg.paused, <a href="../social_contracts/insurance.md#social_contracts_insurance_ERouterPaused">ERouterPaused</a>);
     <b>assert</b>!(spot::is_enabled(spot_config), <a href="../social_contracts/insurance.md#social_contracts_insurance_EMarketClosed">EMarketClosed</a>);
@@ -4587,7 +4622,7 @@ Buy coverage for a SPoT position
         total_premium: 0,
         total_reserve: 0,
         total_backstop_sweep: 0,
-        version: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_VERSION">DEFAULT_VERSION</a>,
+        version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     };
     <b>let</b> route_id = object::id(&route);
     <b>let</b> <b>mut</b> leg: u8 = 0;
@@ -4801,6 +4836,9 @@ Cancellation can result in 0 refund due to fee + rounding
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_config_version">assert_config_version</a>(config);
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_vault_version">assert_vault_version</a>(vault);
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_policy_version">assert_policy_version</a>(policy);
     <b>assert</b>!(config.insurance_enabled, <a href="../social_contracts/insurance.md#social_contracts_insurance_EDisabled">EDisabled</a>);
     <b>assert</b>!(spot::is_enabled(spot_config), <a href="../social_contracts/insurance.md#social_contracts_insurance_EMarketClosed">EMarketClosed</a>);
     <b>assert</b>!(spot::is_open(record), <a href="../social_contracts/insurance.md#social_contracts_insurance_EMarketClosed">EMarketClosed</a>);
@@ -4876,6 +4914,9 @@ This prevents exploitation where user buys insurance then exits bet.
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_config_version">assert_config_version</a>(config);
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_vault_version">assert_vault_version</a>(vault);
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_policy_version">assert_policy_version</a>(policy);
     <b>assert</b>!(config.insurance_enabled, <a href="../social_contracts/insurance.md#social_contracts_insurance_EDisabled">EDisabled</a>);
     <b>assert</b>!(spot::is_enabled(spot_config), <a href="../social_contracts/insurance.md#social_contracts_insurance_EMarketClosed">EMarketClosed</a>);
     <b>assert</b>!(policy.status == <a href="../social_contracts/insurance.md#social_contracts_insurance_STATUS_ACTIVE">STATUS_ACTIVE</a>, <a href="../social_contracts/insurance.md#social_contracts_insurance_EPolicyNotActive">EPolicyNotActive</a>);
@@ -4946,6 +4987,8 @@ Expire policy and release reserves
     policy: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_CoveragePolicy">CoveragePolicy</a>,
     clock: &Clock
 ) {
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_vault_version">assert_vault_version</a>(vault);
+    <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_policy_version">assert_policy_version</a>(policy);
     <b>if</b> (policy.status != <a href="../social_contracts/insurance.md#social_contracts_insurance_STATUS_ACTIVE">STATUS_ACTIVE</a>) {
         <b>return</b>
     };
@@ -5294,6 +5337,174 @@ Expire policy and release reserves
 
 </details>
 
+<a name="social_contracts_insurance_assert_config_version"></a>
+
+## Function `assert_config_version`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_config_version">assert_config_version</a>(config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_config_version">assert_config_version</a>(config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">InsuranceConfig</a>) {
+    <b>assert</b>!(config.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/insurance.md#social_contracts_insurance_EWrongVersion">EWrongVersion</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_assert_router_version"></a>
+
+## Function `assert_router_version`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_router_version">assert_router_version</a>(router_cfg: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">social_contracts::insurance::InsuranceRouterConfig</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_router_version">assert_router_version</a>(router_cfg: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">InsuranceRouterConfig</a>) {
+    <b>assert</b>!(router_cfg.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/insurance.md#social_contracts_insurance_EWrongVersion">EWrongVersion</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_assert_backstop_version"></a>
+
+## Function `assert_backstop_version`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_backstop_version">assert_backstop_version</a>(pool: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceBackstopPool">social_contracts::insurance::InsuranceBackstopPool</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_backstop_version">assert_backstop_version</a>(pool: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceBackstopPool">InsuranceBackstopPool</a>) {
+    <b>assert</b>!(pool.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/insurance.md#social_contracts_insurance_EWrongVersion">EWrongVersion</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_assert_vault_version"></a>
+
+## Function `assert_vault_version`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_vault_version">assert_vault_version</a>(vault: &<a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_vault_version">assert_vault_version</a>(vault: &<a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">UnderwriterVault</a>) {
+    <b>assert</b>!(vault.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/insurance.md#social_contracts_insurance_EWrongVersion">EWrongVersion</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_assert_policy_version"></a>
+
+## Function `assert_policy_version`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_policy_version">assert_policy_version</a>(policy: &<a href="../social_contracts/insurance.md#social_contracts_insurance_CoveragePolicy">social_contracts::insurance::CoveragePolicy</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_assert_policy_version">assert_policy_version</a>(policy: &<a href="../social_contracts/insurance.md#social_contracts_insurance_CoveragePolicy">CoveragePolicy</a>) {
+    <b>assert</b>!(policy.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/insurance.md#social_contracts_insurance_EWrongVersion">EWrongVersion</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_borrow_config_version_mut"></a>
+
+## Function `borrow_config_version_mut`
+
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_borrow_config_version_mut">borrow_config_version_mut</a>(config: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>): &<b>mut</b> u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_borrow_config_version_mut">borrow_config_version_mut</a>(config: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">InsuranceConfig</a>): &<b>mut</b> u64 {
+    &<b>mut</b> config.version
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_borrow_vault_version_mut"></a>
+
+## Function `borrow_vault_version_mut`
+
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_borrow_vault_version_mut">borrow_vault_version_mut</a>(vault: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>): &<b>mut</b> u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_borrow_vault_version_mut">borrow_vault_version_mut</a>(vault: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">UnderwriterVault</a>): &<b>mut</b> u64 {
+    &<b>mut</b> vault.version
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_insurance_migrate_config"></a>
 
 ## Function `migrate_config`
@@ -5316,15 +5527,11 @@ Migration function for InsuranceConfig
     ctx: &<b>mut</b> TxContext
 ) {
     <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
-    // Verify this is an <a href="../social_contracts/upgrade.md#social_contracts_upgrade">upgrade</a> (new version &gt; current version)
     <b>assert</b>!(config.version &lt; current_version, <a href="../social_contracts/insurance.md#social_contracts_insurance_EWrongVersion">EWrongVersion</a>);
-    // Remember old version and update to new version
     <b>let</b> old_version = config.version;
     config.version = current_version;
-    // Emit event <b>for</b> object migration
-    <b>let</b> config_id = object::id(config);
     <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
-        config_id,
+        object::id(config),
         string::utf8(b"<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">InsuranceConfig</a>"),
         old_version,
         tx_context::sender(ctx)
@@ -5358,16 +5565,160 @@ Migration function for UnderwriterVault
     ctx: &<b>mut</b> TxContext
 ) {
     <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
-    // Verify this is an <a href="../social_contracts/upgrade.md#social_contracts_upgrade">upgrade</a> (new version &gt; current version)
     <b>assert</b>!(vault.version &lt; current_version, <a href="../social_contracts/insurance.md#social_contracts_insurance_EWrongVersion">EWrongVersion</a>);
-    // Remember old version and update to new version
     <b>let</b> old_version = vault.version;
     vault.version = current_version;
-    // Emit event <b>for</b> object migration
-    <b>let</b> vault_id = object::id(vault);
     <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
-        vault_id,
+        object::id(vault),
         string::utf8(b"<a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">UnderwriterVault</a>"),
+        old_version,
+        tx_context::sender(ctx)
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_migrate_router_config"></a>
+
+## Function `migrate_router_config`
+
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_migrate_router_config">migrate_router_config</a>(router_cfg: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">social_contracts::insurance::InsuranceRouterConfig</a>, _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_migrate_router_config">migrate_router_config</a>(
+    router_cfg: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">InsuranceRouterConfig</a>,
+    _: &UpgradeAdminCap,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
+    <b>assert</b>!(router_cfg.version &lt; current_version, <a href="../social_contracts/insurance.md#social_contracts_insurance_EWrongVersion">EWrongVersion</a>);
+    <b>let</b> old_version = router_cfg.version;
+    router_cfg.version = current_version;
+    <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
+        object::id(router_cfg),
+        string::utf8(b"<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceRouterConfig">InsuranceRouterConfig</a>"),
+        old_version,
+        tx_context::sender(ctx)
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_migrate_backstop_pool"></a>
+
+## Function `migrate_backstop_pool`
+
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_migrate_backstop_pool">migrate_backstop_pool</a>(pool: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceBackstopPool">social_contracts::insurance::InsuranceBackstopPool</a>, _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_migrate_backstop_pool">migrate_backstop_pool</a>(
+    pool: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceBackstopPool">InsuranceBackstopPool</a>,
+    _: &UpgradeAdminCap,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
+    <b>assert</b>!(pool.version &lt; current_version, <a href="../social_contracts/insurance.md#social_contracts_insurance_EWrongVersion">EWrongVersion</a>);
+    <b>let</b> old_version = pool.version;
+    pool.version = current_version;
+    <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
+        object::id(pool),
+        string::utf8(b"<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceBackstopPool">InsuranceBackstopPool</a>"),
+        old_version,
+        tx_context::sender(ctx)
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_migrate_coverage_route"></a>
+
+## Function `migrate_coverage_route`
+
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_migrate_coverage_route">migrate_coverage_route</a>(route: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_CoverageRoute">social_contracts::insurance::CoverageRoute</a>, _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_migrate_coverage_route">migrate_coverage_route</a>(
+    route: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_CoverageRoute">CoverageRoute</a>,
+    _: &UpgradeAdminCap,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
+    <b>assert</b>!(route.version &lt; current_version, <a href="../social_contracts/insurance.md#social_contracts_insurance_EWrongVersion">EWrongVersion</a>);
+    <b>let</b> old_version = route.version;
+    route.version = current_version;
+    <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
+        object::id(route),
+        string::utf8(b"<a href="../social_contracts/insurance.md#social_contracts_insurance_CoverageRoute">CoverageRoute</a>"),
+        old_version,
+        tx_context::sender(ctx)
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_migrate_policy"></a>
+
+## Function `migrate_policy`
+
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_migrate_policy">migrate_policy</a>(policy: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_CoveragePolicy">social_contracts::insurance::CoveragePolicy</a>, _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_migrate_policy">migrate_policy</a>(
+    policy: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_CoveragePolicy">CoveragePolicy</a>,
+    _: &UpgradeAdminCap,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
+    <b>assert</b>!(policy.version &lt; current_version, <a href="../social_contracts/insurance.md#social_contracts_insurance_EWrongVersion">EWrongVersion</a>);
+    <b>let</b> old_version = policy.version;
+    policy.version = current_version;
+    <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
+        object::id(policy),
+        string::utf8(b"<a href="../social_contracts/insurance.md#social_contracts_insurance_CoveragePolicy">CoveragePolicy</a>"),
         old_version,
         tx_context::sender(ctx)
     );

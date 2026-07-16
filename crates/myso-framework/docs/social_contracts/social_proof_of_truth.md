@@ -68,6 +68,10 @@ Oracle/DAO resolves outcomes; winners and creators claim payouts after resolutio
 -  [Function `bootstrap_init`](#social_contracts_social_proof_of_truth_bootstrap_init)
 -  [Function `create_spot_admin_cap`](#social_contracts_social_proof_of_truth_create_spot_admin_cap)
 -  [Function `create_spot_oracle_admin_cap`](#social_contracts_social_proof_of_truth_create_spot_oracle_admin_cap)
+-  [Function `assert_config_version`](#social_contracts_social_proof_of_truth_assert_config_version)
+-  [Function `assert_registry_version`](#social_contracts_social_proof_of_truth_assert_registry_version)
+-  [Function `assert_claim_version`](#social_contracts_social_proof_of_truth_assert_claim_version)
+-  [Function `assert_market_version`](#social_contracts_social_proof_of_truth_assert_market_version)
 -  [Function `update_spot_config`](#social_contracts_social_proof_of_truth_update_spot_config)
 -  [Function `rescale_spot_config_windows_from_epoch_counts`](#social_contracts_social_proof_of_truth_rescale_spot_config_windows_from_epoch_counts)
 -  [Function `register_spot_claim`](#social_contracts_social_proof_of_truth_register_spot_claim)
@@ -103,6 +107,8 @@ Oracle/DAO resolves outcomes; winners and creators claim payouts after resolutio
 -  [Function `claim_creator_payout`](#social_contracts_social_proof_of_truth_claim_creator_payout)
 -  [Function `reclaim_expired_creator_rewards`](#social_contracts_social_proof_of_truth_reclaim_expired_creator_rewards)
 -  [Function `migrate_config`](#social_contracts_social_proof_of_truth_migrate_config)
+-  [Function `migrate_claim_registry`](#social_contracts_social_proof_of_truth_migrate_claim_registry)
+-  [Function `migrate_claim`](#social_contracts_social_proof_of_truth_migrate_claim)
 -  [Function `migrate_market`](#social_contracts_social_proof_of_truth_migrate_market)
 -  [Function `migrate_record`](#social_contracts_social_proof_of_truth_migrate_record)
 
@@ -3144,6 +3150,102 @@ Past-claim verdict values (mirror indexer/GraphQL): 1=true, 2=false, 3=unverifia
 
 </details>
 
+<a name="social_contracts_social_proof_of_truth_assert_config_version"></a>
+
+## Function `assert_config_version`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_config_version">assert_config_version</a>(config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_config_version">assert_config_version</a>(config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">SpotConfig</a>) {
+    <b>assert</b>!(config.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EWrongVersion">EWrongVersion</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_of_truth_assert_registry_version"></a>
+
+## Function `assert_registry_version`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_registry_version">assert_registry_version</a>(registry: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaimRegistry">social_contracts::social_proof_of_truth::SpotClaimRegistry</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_registry_version">assert_registry_version</a>(registry: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaimRegistry">SpotClaimRegistry</a>) {
+    <b>assert</b>!(registry.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EWrongVersion">EWrongVersion</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_of_truth_assert_claim_version"></a>
+
+## Function `assert_claim_version`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_claim_version">assert_claim_version</a>(claim: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaim">social_contracts::social_proof_of_truth::SpotClaim</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_claim_version">assert_claim_version</a>(claim: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaim">SpotClaim</a>) {
+    <b>assert</b>!(claim.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EWrongVersion">EWrongVersion</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_of_truth_assert_market_version"></a>
+
+## Function `assert_market_version`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_market_version">assert_market_version</a>(market: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotMarket">social_contracts::social_proof_of_truth::SpotMarket</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_market_version">assert_market_version</a>(market: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotMarket">SpotMarket</a>) {
+    <b>assert</b>!(market.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EWrongVersion">EWrongVersion</a>);
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_social_proof_of_truth_update_spot_config"></a>
 
 ## Function `update_spot_config`
@@ -3185,6 +3287,7 @@ Past-claim verdict values (mirror indexer/GraphQL): 1=true, 2=false, 3=unverifia
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_config_version">assert_config_version</a>(config);
     <b>assert</b>!(confidence_threshold_bps &lt;= 10000, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
     <b>assert</b>!(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_max_claim_per_post">max_claim_per_post</a> &gt;= <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MIN_MAX_CLAIM_PER_POST">MIN_MAX_CLAIM_PER_POST</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
     <b>assert</b>!(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_max_claim_per_post">max_claim_per_post</a> &lt;= <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MAX_MAX_CLAIM_PER_POST">MAX_MAX_CLAIM_PER_POST</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
@@ -3246,6 +3349,7 @@ Past-claim verdict values (mirror indexer/GraphQL): 1=true, 2=false, 3=unverifia
     config: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">SpotConfig</a>,
     epoch_duration_ms: u64,
 ) {
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_config_version">assert_config_version</a>(config);
     <b>assert</b>!(epoch_duration_ms &gt; 0, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
     config.resolution_window_ms = config.resolution_window_ms * epoch_duration_ms;
     config.max_resolution_window_ms = config.max_resolution_window_ms * epoch_duration_ms;
@@ -3321,6 +3425,8 @@ Oracle-only: register a semantic claim (deduped by hash).
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_config_version">assert_config_version</a>(config);
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_registry_version">assert_registry_version</a>(registry);
     <b>assert</b>!(config.truth_enabled, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EDisabled">EDisabled</a>);
     <b>let</b> created_at_ms = clock::timestamp_ms(clock);
     <b>let</b> claim = <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_register_spot_claim">register_spot_claim</a>(registry, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_semantic_claim_hash">semantic_claim_hash</a>, created_at_ms, ctx);
@@ -3413,6 +3519,9 @@ Oracle-only: open a market for an existing claim, linking <code>primary_post</co
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_config_version">assert_config_version</a>(config);
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_registry_version">assert_registry_version</a>(registry);
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_claim_version">assert_claim_version</a>(claim);
     <b>assert</b>!(config.truth_enabled, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EDisabled">EDisabled</a>);
     <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_valid_hash">assert_valid_hash</a>(&<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_market_key_hash">market_key_hash</a>);
     <b>assert</b>!(!table::contains(&registry.markets_by_key_hash, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_market_key_hash">market_key_hash</a>), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EMarketExists">EMarketExists</a>);
@@ -3531,6 +3640,9 @@ Link an additional post as a future-claim referrer into an existing open market
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_config_version">assert_config_version</a>(config);
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_registry_version">assert_registry_version</a>(registry);
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_claim_version">assert_claim_version</a>(claim);
     <b>assert</b>!(config.truth_enabled, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EDisabled">EDisabled</a>);
     <b>let</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_claim_id">claim_id</a> = object::uid_to_address(&claim.id);
     <b>assert</b>!(table::contains(&registry.open_market_by_claim, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_claim_id">claim_id</a>), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ENoOpenMarket">ENoOpenMarket</a>);
@@ -3595,6 +3707,7 @@ manifests, and emits the batch projection (future arrays + parallel past verdict
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_config_version">assert_config_version</a>(config);
     <b>assert</b>!(config.truth_enabled, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EDisabled">EDisabled</a>);
     <b>let</b> past_len = vector::length(&past_claim_indexes);
     <b>assert</b>!(past_len == past_verified_count, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EPastVerdictMismatch">EPastVerdictMismatch</a>);
@@ -3684,6 +3797,8 @@ posts and test setup). Emits <code><a href="../social_contracts/social_proof_of_
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_config_version">assert_config_version</a>(config);
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_registry_version">assert_registry_version</a>(registry);
     <b>assert</b>!(config.truth_enabled, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EDisabled">EDisabled</a>);
     <b>let</b> created_at_ms = clock::timestamp_ms(clock);
     <b>let</b> <b>mut</b> claim = <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_register_spot_claim">register_spot_claim</a>(registry, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_semantic_claim_hash">semantic_claim_hash</a>, created_at_ms, ctx);
@@ -3800,6 +3915,9 @@ Sole public betting entry — registry validates the market is open for this cla
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_config_version">assert_config_version</a>(spot_config);
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_registry_version">assert_registry_version</a>(registry);
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_market_version">assert_market_version</a>(market);
     <b>assert</b>!(spot_config.truth_enabled, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EDisabled">EDisabled</a>);
     <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post_spot_analysis_status">post::spot_analysis_status</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>) == <a href="../social_contracts/post.md#social_contracts_post_spot_status_completed">post::spot_status_completed</a>(), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ENotFinalized">ENotFinalized</a>);
     <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_market_open_for_post">assert_market_open_for_post</a>(registry, market, <a href="../social_contracts/post.md#social_contracts_post">post</a>);
@@ -3945,6 +4063,9 @@ Sole public betting entry — registry validates the market is open for this cla
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_config_version">assert_config_version</a>(spot_config);
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_claim_version">assert_claim_version</a>(claim);
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_market_version">assert_market_version</a>(market);
     <b>assert</b>!(spot_config.truth_enabled, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EDisabled">EDisabled</a>);
     <b>assert</b>!(market.status == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_OPEN">STATUS_OPEN</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EWithdrawalNotAllowed">EWithdrawalNotAllowed</a>);
     <b>let</b> bets_len = vector::length(&market.bets);
@@ -4055,6 +4176,10 @@ Sole public betting entry — registry validates the market is open for this cla
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_config_version">assert_config_version</a>(spot_config);
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_registry_version">assert_registry_version</a>(registry);
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_claim_version">assert_claim_version</a>(claim);
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_market_version">assert_market_version</a>(market);
     <b>assert</b>!(market.status == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_OPEN">STATUS_OPEN</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EWrongStatus">EWrongStatus</a>);
     <b>assert</b>!(option::is_none(&market.outcome), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EAlreadyResolved">EAlreadyResolved</a>);
     <b>let</b> now_ms = clock::timestamp_ms(clock);
@@ -4129,6 +4254,8 @@ Sole public betting entry — registry validates the market is open for this cla
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_config_version">assert_config_version</a>(spot_config);
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_market_version">assert_market_version</a>(market);
     <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_spot_governance_registry">assert_spot_governance_registry</a>(spot_config, registry);
     <b>assert</b>!(market.status == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_DAO_REQUIRED">STATUS_DAO_REQUIRED</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ENotDaoRequired">ENotDaoRequired</a>);
     <b>assert</b>!(option::is_none(&market.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_active_proposal_id">active_proposal_id</a>), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EActiveProposalExists">EActiveProposalExists</a>);
@@ -4189,6 +4316,10 @@ Sole public betting entry — registry validates the market is open for this cla
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_config_version">assert_config_version</a>(spot_config);
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_registry_version">assert_registry_version</a>(spot_registry);
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_claim_version">assert_claim_version</a>(claim);
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_market_version">assert_market_version</a>(market);
     <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_spot_governance_registry">assert_spot_governance_registry</a>(spot_config, registry_gov);
     <b>assert</b>!(market.status == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_DAO_REQUIRED">STATUS_DAO_REQUIRED</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ENotDaoRequired">ENotDaoRequired</a>);
     <b>assert</b>!(option::is_some(&market.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_active_proposal_id">active_proposal_id</a>), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ENoActiveProposal">ENoActiveProposal</a>);
@@ -4272,6 +4403,8 @@ Sole public betting entry — registry validates the market is open for this cla
     market: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotMarket">SpotMarket</a>,
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &Post,
 ) {
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_config_version">assert_config_version</a>(spot_config);
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_market_version">assert_market_version</a>(market);
     <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_spot_governance_registry">assert_spot_governance_registry</a>(spot_config, registry);
     <b>assert</b>!(market.status == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_DAO_REQUIRED">STATUS_DAO_REQUIRED</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ENotDaoRequired">ENotDaoRequired</a>);
     <b>assert</b>!(option::is_some(&market.<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_active_proposal_id">active_proposal_id</a>), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ENoActiveProposal">ENoActiveProposal</a>);
@@ -4321,6 +4454,8 @@ Sole public betting entry — registry validates the market is open for this cla
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_config_version">assert_config_version</a>(spot_config);
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_market_version">assert_market_version</a>(market);
     <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_spot_governance_registry">assert_spot_governance_registry</a>(spot_config, registry);
     <a href="../social_contracts/governance.md#social_contracts_governance_finalize_proposal">governance::finalize_proposal</a>(registry, proposal, ecosystem_treasury, clock, ctx);
     <b>if</b> (<a href="../social_contracts/governance.md#social_contracts_governance_proposal_status">governance::proposal_status</a>(proposal) == <a href="../social_contracts/governance.md#social_contracts_governance_status_rejected_value">governance::status_rejected_value</a>()) {
@@ -4472,7 +4607,9 @@ Sole public betting entry — registry validates the market is open for this cla
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
-    <b>let</b> _ = spot_config;
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_config_version">assert_config_version</a>(spot_config);
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_registry_version">assert_registry_version</a>(registry);
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_market_version">assert_market_version</a>(market);
     <b>assert</b>!(option::is_some(&market.max_resolution_window_ms), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
     <b>let</b> now_ms = clock::timestamp_ms(clock);
     <b>let</b> max_window = *option::borrow(&market.max_resolution_window_ms);
@@ -4990,6 +5127,8 @@ Sole public betting entry — registry validates the market is open for this cla
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_config_version">assert_config_version</a>(spot_config);
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_market_version">assert_market_version</a>(market);
     <b>assert</b>!(spot_config.truth_enabled, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EDisabled">EDisabled</a>);
     <b>assert</b>!(market.status == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_RESOLVED">STATUS_RESOLVED</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EWrongStatus">EWrongStatus</a>);
     <b>assert</b>!(option::is_some(&market.outcome), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ENotOracle">ENotOracle</a>);
@@ -5039,6 +5178,8 @@ Single O(1) creator fee claim by <code>payout_id</code>.
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_config_version">assert_config_version</a>(spot_config);
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_market_version">assert_market_version</a>(market);
     <b>assert</b>!(spot_config.truth_enabled, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EDisabled">EDisabled</a>);
     <b>assert</b>!(market.status == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_RESOLVED">STATUS_RESOLVED</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EWrongStatus">EWrongStatus</a>);
     <b>assert</b>!(table::contains(&market.pending_creator_payouts, payout_id), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EPayoutNotFound">EPayoutNotFound</a>);
@@ -5091,6 +5232,8 @@ Reclaim expired creator rewards to ecosystem (+ platform remainder).
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_config_version">assert_config_version</a>(spot_config);
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_assert_market_version">assert_market_version</a>(market);
     <b>assert</b>!(market.status == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_RESOLVED">STATUS_RESOLVED</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EWrongStatus">EWrongStatus</a>);
     <b>assert</b>!(table::contains(&market.pending_creator_payouts, payout_id), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EPayoutNotFound">EPayoutNotFound</a>);
     <b>let</b> now = clock::timestamp_ms(clock);
@@ -5165,6 +5308,80 @@ Reclaim expired creator rewards to ecosystem (+ platform remainder).
     <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
         object::id(config),
         string::utf8(b"<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">SpotConfig</a>"),
+        old_version,
+        tx_context::sender(ctx),
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_of_truth_migrate_claim_registry"></a>
+
+## Function `migrate_claim_registry`
+
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_migrate_claim_registry">migrate_claim_registry</a>(registry: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaimRegistry">social_contracts::social_proof_of_truth::SpotClaimRegistry</a>, _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_migrate_claim_registry">migrate_claim_registry</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaimRegistry">SpotClaimRegistry</a>,
+    _: &UpgradeAdminCap,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
+    <b>assert</b>!(registry.version &lt; current_version, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EWrongVersion">EWrongVersion</a>);
+    <b>let</b> old_version = registry.version;
+    registry.version = current_version;
+    <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
+        object::id(registry),
+        string::utf8(b"<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaimRegistry">SpotClaimRegistry</a>"),
+        old_version,
+        tx_context::sender(ctx),
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_of_truth_migrate_claim"></a>
+
+## Function `migrate_claim`
+
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_migrate_claim">migrate_claim</a>(claim: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaim">social_contracts::social_proof_of_truth::SpotClaim</a>, _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_migrate_claim">migrate_claim</a>(
+    claim: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaim">SpotClaim</a>,
+    _: &UpgradeAdminCap,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
+    <b>assert</b>!(claim.version &lt; current_version, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EWrongVersion">EWrongVersion</a>);
+    <b>let</b> old_version = claim.version;
+    claim.version = current_version;
+    <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
+        object::id(claim),
+        string::utf8(b"<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotClaim">SpotClaim</a>"),
         old_version,
         tx_context::sender(ctx),
     );

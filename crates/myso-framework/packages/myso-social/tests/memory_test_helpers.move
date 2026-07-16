@@ -35,7 +35,6 @@ module social_contracts::memory_test_helpers {
         let mut memory_account = take_owner_memory_account(sc);
         let clock = test_scenario::take_shared<Clock>(sc);
         let memory_config = test_scenario::take_shared<MemoryConfig>(sc);
-        memory::test_force_account_version(&mut memory_account, 4);
         memory::test_create_agentic_organization(
             &memory_config,
             &mut memory_account,

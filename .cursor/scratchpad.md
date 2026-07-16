@@ -1,3 +1,47 @@
+## Frontend Social Config Version Display (2026-07-16)
+
+### Background and Motivation
+Surface read-only on-chain config `version` in every mysocial-frontend social-contract
+admin dialog. GraphQL already returns `version`; UIs were discarding it.
+
+### Project Status Board
+- [x] scalar-protocol-config-admin: Version row (platform/profile/memory/subscription/messaging)
+- [x] post-admin, social-proof-token-admin, ai-credit-admin (+ catalogVersion)
+- [x] insurance-admin: Router Version from router.version
+- [x] treasury: `/api/ecosystem/treasury/configuration` + Version in treasury-admin
+- [x] Verified Save/PTB builders omit `version` (scalar fields-only; SPT/AI/insurance router/spot/mydata)
+
+### Executor's Feedback
+All frontend plan todos done. Spot/PoC/MyData/insurance pricing already showed Version.
+Manual UI spot-check against local GraphQL (greenfield `0`) recommended when stack is up.
+
+---
+
+## Social Framework Production Upgradability (2026-07-16)
+
+### Background and Motivation
+Make myso-social (framework foundation) upgrade-ready for production: greenfield
+`CURRENT_VERSION = 0`, complete migrate_* surfaces, runtime version guards,
+indexer `contract_version` + GraphQL `contractVersion`, ObjectMigratedEvent fan-out.
+
+### Project Status Board
+- [x] Phase 0: reset version constants to 0 (upgrade, memory, messaging, orderbook, bridge)
+- [x] insurance: remove DEFAULT_VERSION, CoveragePolicy.version, guards, all migrate_*
+- [x] ai_credit: migrate_config + migrate_balance
+- [x] governance UpgradeAdminCap gate; profile migrate_username_marketplace
+- [x] SPoT / PoC / mydata missing migrate_* + runtime asserts
+- [x] memory aligned to social_contracts::upgrade
+- [x] post migrate_post/comment/repost → public entry
+- [x] Move upgrade tests (insurance, ai_credit, upgrade_tests)
+- [x] Indexer: edit existing migrations for contract_version; handler baseline 0; fan-out
+- [x] GraphQL contractVersion fields
+- [x] README production upgrade runbook
+- [x] cargo check indexer/graphql (no clippy)
+
+### Executor's Feedback
+All plan todos completed. Local DB rebuild needed to pick up edited greenfield migrations.
+
+---
 
 ## Spot Config Alignment (2026-07-15)
 
@@ -819,3 +863,30 @@ the blank line landed on the `[y/N]` confirm).
   will be read, or use `SKIP_CONFIRM_RUN=1`/`ASSUME_YES=1` for non-interactive runs.
 - Never print a "completed" summary independent of the executed/aborted status of the call.
 
+
+---
+
+## Chat-App Auth Update (2026-07-16)
+
+### Background and Motivation
+Align `myso-messaging-stack/chat-app` with true refresh-session auth
+(`@socialproof/mysocial-auth@0.12.4`). Chat-app only; no salt-service / auth-frontend / SDK changes.
+
+### Project Status Board
+- [x] Fix testnet env (.env.example, README, SYSTEM_DESIGN.md)
+- [x] Consolidate `readMySocialAuthConfig()` in `src/lib/mysocial-auth-config.ts`
+- [x] Session-revoked UX in MySocialAuthContext
+- [x] Shared `buildSessionFromAuthResult` / `storeBroadcastAuthSession`
+- [x] Rename `refreshSession` → `retryKeypairDerivation`
+- [x] Typecheck (`pnpm exec tsc -b`) — pass
+- [ ] Interactive browser E2E (login / refresh / logout / Safari fallback) — needs local `.env` + credentials
+
+### Key config
+```
+VITE_MYSOCIAL_AUTH_API_BASE_URL=https://salt.testnet.mysocial.network
+VITE_MYSOCIAL_AUTH_ORIGIN=https://auth.testnet.mysocial.network
+VITE_MYSOCIAL_SALT_URL=https://salt.testnet.mysocial.network/salt
+```
+
+### Executor's Feedback
+Automated verification: `tsc -b` clean. Interactive testnet login not run in agent session.

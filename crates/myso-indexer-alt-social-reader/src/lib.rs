@@ -53,10 +53,10 @@ pub use myso_indexer_alt_social_schema::models::{
     DelegateRow, GovernanceRegistryRow, GovernanceStatsRow, InsurancePolicyRow, InsuranceVaultRow,
     MyDataBroadPoolRow, MyDataClaimRow, MyDataDistributionRoundRow, MyDataListingSubPoolRow,
     MyDataMerkleRootRow, MyDataPurchaseRow, MyDataRecordRow, MyDataSnapshotAnchorRow,
-    MyDataSnapshotEscrowRow,
-    MyDataSubPoolRow, PlatformRevenueSummaryRow, PromotedPostRow, PromotionHourlyRow,
-    PromotionStatsRow, PromotionTimeSeriesRow, PromotionViewRow, ProposalRow, SpotBetRow,
-    SpotBetWithdrawalRow, SpotPayoutRow, SpotRecordRow, SpotRefundRow, SpotResolutionRow,
+    MyDataSnapshotEscrowRow, MyDataSubPoolRow, PlatformRevenueSummaryRow, PromotedPostRow,
+    PromotionHourlyRow, PromotionStatsRow, PromotionTimeSeriesRow, PromotionViewRow, ProposalRow,
+    SpotBetRow, SpotBetWithdrawalRow, SpotPayoutRow, SpotRecordRow, SpotRefundRow,
+    SpotResolutionRow,
 };
 pub use myso_indexer_alt_social_schema::models::{
     PocAnalysisResultRow, PocBadgeRow, PocBeneficiaryVaultRow, PocConfigRow,
@@ -66,11 +66,6 @@ pub use myso_indexer_alt_social_schema::models::{
 pub use myso_indexer_alt_social_schema::models::{
     PostDeletionEventRow, PostModerationEventRow, SptHoldingRow, SptPoolRow, SptPriceHistory,
     SptTransaction,
-};
-pub use spot::{
-    SpotClaimEarningsRow, SpotClaimRow, SpotClaimVerdictRow, SpotCreatorStatsRow,
-    SpotMarketEarningsRow, SpotMarketRow, SpotPendingCreatorPayoutRow, SpotPostAnalysisRow,
-    SpotPostEarningsRow, SpotRouteRow,
 };
 pub use org_leaderboard::{
     OrganizationCategoryInfo, OrganizationLeaderboardEntry, OrganizationLeaderboardResult,
@@ -110,6 +105,11 @@ pub use social_graph::{
     MAX_MUTUAL_CONNECTIONS_LIMIT, ProfileSummaryRow, ViewerSocialContext,
     clamp_mutual_connections_limit, get_follow_recommendations_standalone,
 };
+pub use spot::{
+    SpotClaimEarningsRow, SpotClaimRow, SpotClaimVerdictRow, SpotCreatorStatsRow,
+    SpotMarketEarningsRow, SpotMarketRow, SpotPendingCreatorPayoutRow, SpotPostAnalysisRow,
+    SpotPostEarningsRow, SpotRouteRow,
+};
 pub use spt::{
     SptReservationVolumeBucket, SptReservationVolumeInterval, SptSortBy, SptTransactionsWithViewer,
 };
@@ -117,7 +117,9 @@ pub use subscription::{
     ProfileSubscriptionPlanRow, ProfileSubscriptionRow, ProfileSubscriptionServiceRow,
     SubscriptionConfigRow,
 };
-pub use username::{InvalidUsername, UsernameAvailabilityDetail, UsernameRegistryEntry, canonical_username_key};
+pub use username::{
+    InvalidUsername, UsernameAvailabilityDetail, UsernameRegistryEntry, canonical_username_key,
+};
 
 /// Combined username registry + PoC beneficiary availability for REST services.
 pub async fn get_username_availability_for_db(
