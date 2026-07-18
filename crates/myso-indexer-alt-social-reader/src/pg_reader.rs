@@ -77,7 +77,10 @@ use crate::profile::get_profile_badges;
 use crate::profile::get_profile_by_address;
 use crate::profile::get_profile_config;
 use crate::profile::get_profile_or_wallet_by_address;
+use crate::profile::get_profile_summary_enriched;
 use crate::profile::get_profiles;
+use crate::profile::get_profiles_summary_enriched;
+use crate::profile::UniversalUserResult;
 use crate::promotion::{
     get_promotion, get_promotion_by_post_id, get_promotion_hourly, get_promotion_stats,
     get_promotion_time_series, get_promotion_views, get_promotion_views_count, get_spending_trends,
@@ -226,9 +229,18 @@ impl SocialPgReader {
     pub async fn get_profile_summary_enriched(
         &self,
         address: &str,
-    ) -> anyhow::Result<Option<crate::profile::UniversalUserResult>> {
+    ) -> anyhow::Result<Option<UniversalUserResult>> {
         let mut conn = self.connect().await?;
-        crate::profile::get_profile_summary_enriched(&mut conn, address, &self.metrics).await
+        get_profile_summary_enriched(&mut conn, address, &self.metrics).await
+    }
+
+    /// Batch-enrich profile summaries for many addresses (one SQL enrich pass).
+    pub async fn get_profiles_summary_enriched(
+        &self,
+        addresses: &[String],
+    ) -> anyhow::Result<HashMap<String, UniversalUserResult>> {
+        let mut conn = self.connect().await?;
+        get_profiles_summary_enriched(&mut conn, addresses, &self.metrics).await
     }
 
     /// Get profiles with pagination.
@@ -2786,5 +2798,40 @@ impl SocialPgReader {
         let out = get_profile_pnl_for_windows(&mut conn, owner_address, windows).await?;
         self.metrics.requests_succeeded.inc();
         Ok(out)
+    }
+}
+
+/// DataLoader key for batching `get_profiles_summary_enriched` (lowercase owner address).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ProfileSummaryEnrichmentKey(pub String);
+
+impl ProfileSummaryEnrichmentKey {
+    pub fn new(address: &str) -> Self {
+        Self(address.to_lowercase())
+    }
+}
+
+#[async_trait::async_trait]
+impl async_graphql::dataloader::Loader<ProfileSummaryEnrichmentKey> for SocialPgReader {
+    type Value = UniversalUserResult;
+    type Error = Arc<anyhow::Error>;
+
+    async fn load(
+        &self,
+        keys: &[ProfileSummaryEnrichmentKey],
+    ) -> Result<HashMap<ProfileSummaryEnrichmentKey, UniversalUserResult>, Self::Error> {
+        if keys.is_empty() {
+            return Ok(HashMap::new());
+        }
+        let addresses: Vec<String> = keys.iter().map(|k| k.0.clone()).collect();
+        let enriched = self
+            .get_profiles_summary_enriched(&addresses)
+            .await
+            .map_err(Arc::new)?;
+
+        Ok(enriched
+            .into_iter()
+            .map(|(addr, value)| (ProfileSummaryEnrichmentKey(addr), value))
+            .collect())
     }
 }

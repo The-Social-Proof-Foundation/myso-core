@@ -407,6 +407,18 @@ pub(crate) async fn get_profile_summary_enriched(
     Ok(enriched.get(&address.to_lowercase()).cloned())
 }
 
+/// Batch-enrich profile summaries (badge, SPT, reservation %) for many addresses in one SQL pass.
+pub(crate) async fn get_profiles_summary_enriched(
+    conn: &mut Connection<'_>,
+    addresses: &[String],
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<HashMap<String, UniversalUserResult>> {
+    if addresses.is_empty() {
+        return Ok(HashMap::new());
+    }
+    enrich_users_with_universal_data(conn, addresses.to_vec(), metrics).await
+}
+
 pub(crate) async fn get_profile_by_address(
     conn: &mut Connection<'_>,
     address: &str,

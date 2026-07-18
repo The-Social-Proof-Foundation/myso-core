@@ -890,3 +890,20 @@ VITE_MYSOCIAL_SALT_URL=https://salt.testnet.mysocial.network/salt
 
 ### Executor's Feedback
 Automated verification: `tsc -b` clean. Interactive testnet login not run in agent session.
+
+---
+
+## Auth Frontend Env-First Allowlist (2026-07-16)
+
+### Background
+Login on auth.testnet showed generic "An error occurred" after GraphQL platforms query change. ALLOWED_CLIENTS was not short-circuited before GraphQL.
+
+### Done
+- [x] validateAllowedClient: env exact match → ok, no GraphQL
+- [x] Clamp INDEXER_PLATFORMS_PAGE_LIMIT to 100
+- [x] Error page maps unknown_client / redirect_uri_mismatch
+- [x] README + .env.example
+- [x] vitest: 6 tests pass
+
+### Deploy
+Confirm Railway ALLOWED_CLIENTS still has MySocial client_id + redirect_uri pairs.

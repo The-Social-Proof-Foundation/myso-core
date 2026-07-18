@@ -407,7 +407,9 @@ pub async fn start_rpc(
         .data(kv_loader)
         .data(package_store)
         .data(fullnode_client)
-        .data(social_reader);
+        .data(social_reader.clone())
+        // Axum extension so the request handler can build a request-scoped DataLoader.
+        .layer(social_reader);
 
     let s_rpc = rpc.run().await?;
     let s_system_package_task = system_package_task.run();
@@ -424,6 +426,7 @@ async fn graphql(
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Extension(schema): Extension<Schema<Query, Mutation, EmptySubscription>>,
     Extension(watermark): Extension<WatermarksLock>,
+    social_reader: Option<Extension<Arc<Option<SocialPgReader>>>>,
     TypedHeader(content_length): TypedHeader<ContentLength>,
     show_usage: Option<TypedHeader<ShowUsage>>,
     request: GraphQLRequest,
@@ -437,6 +440,13 @@ async fn graphql(
 
     if let Some(TypedHeader(show_usage)) = show_usage {
         request = request.data(show_usage);
+    }
+
+    // Request-scoped social DataLoader batches ProfileSummary SPT/badge enrichment (holdings N+1).
+    if let Some(Extension(reader)) = social_reader {
+        if let Some(social) = reader.as_ref() {
+            request = request.data(Arc::new(social.as_data_loader()));
+        }
     }
 
     schema.execute(request).await.into()

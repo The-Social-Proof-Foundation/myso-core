@@ -2,10 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use std::str::FromStr;
+use std::sync::Arc;
 
 use async_graphql::Context;
 use async_graphql::Object;
+use async_graphql::dataloader::DataLoader;
+use myso_indexer_alt_social_reader::ProfileSummaryEnrichmentKey;
 use myso_indexer_alt_social_reader::ProfileSummaryRow;
+use myso_indexer_alt_social_reader::SocialPgReader;
+use myso_indexer_alt_social_reader::UniversalUserResult;
 
 use crate::api::scalars::myso_address::MySoAddress;
 use crate::api::types::profile::{SelectedBadge, SocialProofToken};
@@ -19,6 +24,26 @@ impl ProfileSummary {
     pub(crate) fn from_row(inner: ProfileSummaryRow) -> Self {
         Self { inner }
     }
+}
+
+async fn load_enriched(
+    ctx: &Context<'_>,
+    address: &str,
+) -> Option<UniversalUserResult> {
+    if let Some(loader) = ctx.data_opt::<Arc<DataLoader<SocialPgReader>>>() {
+        return loader
+            .load_one(ProfileSummaryEnrichmentKey::new(address))
+            .await
+            .ok()
+            .flatten();
+    }
+    let reader_opt = ctx.data_opt::<Arc<Option<SocialPgReader>>>()?;
+    let reader = reader_opt.as_ref().as_ref()?;
+    reader
+        .get_profile_summary_enriched(address)
+        .await
+        .ok()
+        .flatten()
 }
 
 #[Object]
@@ -69,7 +94,7 @@ impl ProfileSummary {
         self.inner.followers_count
     }
 
-    /// Number of accounts this address follows. Present for both profile and wallet-only addresses.
+    /// Number of accounts this profile follows. Present for both profile and wallet-only addresses.
     async fn following_count(&self) -> Option<i32> {
         self.inner.following_count
     }
@@ -128,13 +153,7 @@ impl ProfileSummary {
         if self.inner.selected_badge_id.is_none() {
             return None;
         }
-        let reader_opt = ctx
-            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
-        let reader = reader_opt.as_ref().as_ref()?;
-        let enriched = reader
-            .get_profile_summary_enriched(&self.inner.owner_address)
-            .await
-            .ok()??;
+        let enriched = load_enriched(ctx, &self.inner.owner_address).await?;
         enriched.selected_badge.as_ref().map(SelectedBadge::from)
     }
 
@@ -145,13 +164,7 @@ impl ProfileSummary {
         {
             return None;
         }
-        let reader_opt = ctx
-            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
-        let reader = reader_opt.as_ref().as_ref()?;
-        let enriched = reader
-            .get_profile_summary_enriched(&self.inner.owner_address)
-            .await
-            .ok()??;
+        let enriched = load_enriched(ctx, &self.inner.owner_address).await?;
         enriched
             .social_proof_token
             .as_ref()
@@ -165,13 +178,7 @@ impl ProfileSummary {
         {
             return None;
         }
-        let reader_opt = ctx
-            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
-        let reader = reader_opt.as_ref().as_ref()?;
-        let enriched = reader
-            .get_profile_summary_enriched(&self.inner.owner_address)
-            .await
-            .ok()??;
+        let enriched = load_enriched(ctx, &self.inner.owner_address).await?;
         enriched
             .social_proof_token
             .as_ref()

@@ -73,7 +73,7 @@ pub use org_leaderboard::{
 };
 pub use org_stats::{OrganizationStatistics, OrganizationStatsWindow};
 pub use organization::AgenticOrganizationListResult;
-pub use pg_reader::SocialPgReader;
+pub use pg_reader::{ProfileSummaryEnrichmentKey, SocialPgReader};
 pub use platform::{
     PlatformBlockedProfileRow, PlatformConfigRow, PlatformRow, PlatformUserAccessRow,
 };
