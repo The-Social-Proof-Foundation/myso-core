@@ -569,7 +569,9 @@ pub(crate) async fn get_profile_platform_memberships(
                    AS blocked_profiles_count
         FROM platform_memberships pm
         INNER JOIN platforms p ON pm.platform_id = p.platform_id
-        WHERE pm.wallet_address = $1 AND p.deleted_at IS NULL
+        WHERE pm.wallet_address = $1
+          AND p.deleted_at IS NULL
+          AND (pm.left_at IS NULL OR pm.joined_at > pm.left_at)
         ORDER BY pm.joined_at DESC
         LIMIT $2 OFFSET $3
     ";
@@ -817,15 +819,18 @@ pub(crate) async fn get_following(
         Err(e) => return Err(e.into()),
     };
 
-    let search_filter = query
+    let search_q = query
         .search
         .as_ref()
-        .filter(|t| !t.trim().is_empty())
-        .map(|t| format!("%{}%", t.trim()));
-    let search_suffix = search_filter
-        .as_ref()
-        .map(|_| " AND (p.username ILIKE $3 OR p.display_name ILIKE $3 OR sgr.following_address ILIKE $3)")
-        .unwrap_or("");
+        .map(|t| t.trim().to_string())
+        .filter(|t| !t.is_empty());
+    let search_addr_pattern = search_q.as_ref().map(|t| format!("%{}%", t));
+    // Address substring via ILIKE; profile text via BM25 (score < 0 => term match).
+    let search_suffix = if search_q.is_some() {
+        " AND (sgr.following_address ILIKE $3 OR (p.id IS NOT NULL AND (coalesce(p.username, '') || ' ' || coalesce(p.display_name, '') || ' ' || coalesce(p.bio, '')) <@> $4 < 0))"
+    } else {
+        ""
+    };
     let order_sql = match query.sort.as_ref().map(|s| s.to_lowercase()).as_deref() {
         Some("earliest") => "sgr.created_at ASC",
         Some("alphabetical") => "COALESCE(p.username, sgr.following_address) ASC",
@@ -833,7 +838,7 @@ pub(crate) async fn get_following(
         _ => "sgr.created_at DESC",
     };
 
-    let (data_sql, count_sql) = if search_filter.is_some() {
+    let (data_sql, count_sql) = if search_q.is_some() {
         (
             format!(
                 r#"SELECT p.id, p.profile_id, sgr.following_address AS addr,
@@ -842,7 +847,7 @@ pub(crate) async fn get_following(
                 LEFT JOIN profiles p ON p.owner_address = sgr.following_address
                 WHERE (sgr.follower_address = $1 OR sgr.follower_address = $2){}
                 ORDER BY {}
-                LIMIT $4 OFFSET $5"#,
+                LIMIT $5 OFFSET $6"#,
                 search_suffix, order_sql,
             ),
             format!(
@@ -897,7 +902,9 @@ pub(crate) async fn get_following(
         profile_photo: Option<String>,
     }
 
-    let follows: Vec<FollowRow> = if let Some(ref pat) = search_filter {
+    let follows: Vec<FollowRow> = if let (Some(ref pat), Some(ref bm25_q)) =
+        (search_addr_pattern.as_ref(), search_q.as_ref())
+    {
         diesel::sql_query(&data_sql)
             .bind::<Text, _>(&resolved_owner_address)
             .bind::<Text, _>(
@@ -906,6 +913,7 @@ pub(crate) async fn get_following(
                     .unwrap_or(&resolved_owner_address),
             )
             .bind::<Text, _>(pat)
+            .bind::<Text, _>(bm25_q)
             .bind::<BigInt, _>(limit)
             .bind::<BigInt, _>(offset)
             .load(&mut conn)
@@ -924,7 +932,9 @@ pub(crate) async fn get_following(
             .await?
     };
 
-    let total_count: i64 = if let Some(ref pat) = search_filter {
+    let total_count: i64 = if let (Some(ref pat), Some(ref bm25_q)) =
+        (search_addr_pattern.as_ref(), search_q.as_ref())
+    {
         let row: CountRow = diesel::sql_query(&count_sql)
             .bind::<Text, _>(&resolved_owner_address)
             .bind::<Text, _>(
@@ -933,6 +943,7 @@ pub(crate) async fn get_following(
                     .unwrap_or(&resolved_owner_address),
             )
             .bind::<Text, _>(pat)
+            .bind::<Text, _>(bm25_q)
             .get_result(&mut conn)
             .await?;
         row.cnt
@@ -1119,17 +1130,18 @@ pub(crate) async fn get_followers(
         Err(e) => return Err(e.into()),
     };
 
-    let search_filter = query
+    let search_q = query
         .search
         .as_ref()
-        .filter(|t| !t.trim().is_empty())
-        .map(|t| format!("%{}%", t.trim()));
-    let search_suffix = search_filter
-        .as_ref()
-        .map(|_| {
-            " AND (p.username ILIKE $3 OR p.display_name ILIKE $3 OR sgr.follower_address ILIKE $3)"
-        })
-        .unwrap_or("");
+        .map(|t| t.trim().to_string())
+        .filter(|t| !t.is_empty());
+    let search_addr_pattern = search_q.as_ref().map(|t| format!("%{}%", t));
+    // Address substring via ILIKE; profile text via BM25 (score < 0 => term match).
+    let search_suffix = if search_q.is_some() {
+        " AND (sgr.follower_address ILIKE $3 OR (p.id IS NOT NULL AND (coalesce(p.username, '') || ' ' || coalesce(p.display_name, '') || ' ' || coalesce(p.bio, '')) <@> $4 < 0))"
+    } else {
+        ""
+    };
     let order_sql = match query.sort.as_ref().map(|s| s.to_lowercase()).as_deref() {
         Some("earliest") => "sgr.created_at ASC",
         Some("alphabetical") => "COALESCE(p.username, sgr.follower_address) ASC",
@@ -1137,7 +1149,7 @@ pub(crate) async fn get_followers(
         _ => "sgr.created_at DESC",
     };
 
-    let (data_sql, count_sql) = if search_filter.is_some() {
+    let (data_sql, count_sql) = if search_q.is_some() {
         (
             format!(
                 r#"SELECT p.id, p.profile_id, sgr.follower_address AS addr,
@@ -1146,7 +1158,7 @@ pub(crate) async fn get_followers(
                 LEFT JOIN profiles p ON p.owner_address = sgr.follower_address
                 WHERE (sgr.following_address = $1 OR sgr.following_address = $2){}
                 ORDER BY {}
-                LIMIT $4 OFFSET $5"#,
+                LIMIT $5 OFFSET $6"#,
                 search_suffix, order_sql,
             ),
             format!(
@@ -1201,7 +1213,9 @@ pub(crate) async fn get_followers(
         profile_photo: Option<String>,
     }
 
-    let follows: Vec<FollowerRow> = if let Some(ref pat) = search_filter {
+    let follows: Vec<FollowerRow> = if let (Some(ref pat), Some(ref bm25_q)) =
+        (search_addr_pattern.as_ref(), search_q.as_ref())
+    {
         diesel::sql_query(&data_sql)
             .bind::<Text, _>(&resolved_owner_address)
             .bind::<Text, _>(
@@ -1210,6 +1224,7 @@ pub(crate) async fn get_followers(
                     .unwrap_or(&resolved_owner_address),
             )
             .bind::<Text, _>(pat)
+            .bind::<Text, _>(bm25_q)
             .bind::<BigInt, _>(limit)
             .bind::<BigInt, _>(offset)
             .load(&mut conn)
@@ -1228,7 +1243,9 @@ pub(crate) async fn get_followers(
             .await?
     };
 
-    let total_count: i64 = if let Some(ref pat) = search_filter {
+    let total_count: i64 = if let (Some(ref pat), Some(ref bm25_q)) =
+        (search_addr_pattern.as_ref(), search_q.as_ref())
+    {
         let row: FollowerCountRow = diesel::sql_query(&count_sql)
             .bind::<Text, _>(&resolved_owner_address)
             .bind::<Text, _>(
@@ -1237,6 +1254,7 @@ pub(crate) async fn get_followers(
                     .unwrap_or(&resolved_owner_address),
             )
             .bind::<Text, _>(pat)
+            .bind::<Text, _>(bm25_q)
             .get_result(&mut conn)
             .await?;
         row.cnt

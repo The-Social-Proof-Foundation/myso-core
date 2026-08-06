@@ -87,6 +87,7 @@ Implements features like comments, reposts, and quotes
 -  [Function `get_poc_analyzed_at`](#social_contracts_post_get_poc_analyzed_at)
 -  [Function `get_spt_id`](#social_contracts_post_get_spt_id)
 -  [Function `set_spt_id`](#social_contracts_post_set_spt_id)
+-  [Function `set_enable_spt`](#social_contracts_post_set_enable_spt)
 -  [Function `spot_status_pending`](#social_contracts_post_spot_status_pending)
 -  [Function `spot_status_completed`](#social_contracts_post_spot_status_completed)
 -  [Function `spot_status_completed_no_actionable`](#social_contracts_post_spot_status_completed_no_actionable)
@@ -110,6 +111,8 @@ Implements features like comments, reposts, and quotes
 -  [Function `linked_mydata_from_access`](#social_contracts_post_linked_mydata_from_access)
 -  [Function `assert_profile_subscription_access_service`](#social_contracts_post_assert_profile_subscription_access_service)
 -  [Function `create_post_entry_body`](#social_contracts_post_create_post_entry_body)
+-  [Function `create_post_object_for_spt`](#social_contracts_post_create_post_object_for_spt)
+-  [Function `share_and_emit_spt_post`](#social_contracts_post_share_and_emit_spt_post)
 -  [Function `create_post`](#social_contracts_post_create_post)
 -  [Function `validate_post_mydata_binding`](#social_contracts_post_validate_post_mydata_binding)
 -  [Function `create_public_post`](#social_contracts_post_create_public_post)
@@ -2922,6 +2925,16 @@ Empty batch, length mismatch, or batch larger than <code><a href="../social_cont
 
 
 
+<a name="social_contracts_post_ESptRequiresDedicatedCreate"></a>
+
+<code>enable_spt = <b>true</b></code> on plain <code>create_*</code> is blocked; use <code><a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_create_post_with_reservation_pool">social_proof_tokens::create_post_with_reservation_pool</a></code>.
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_ESptRequiresDedicatedCreate">ESptRequiresDedicatedCreate</a>: u64 = 40;
+</code></pre>
+
+
+
 <a name="social_contracts_post_MAX_CONTENT_LENGTH"></a>
 
 Constants for size limits
@@ -3746,7 +3759,7 @@ Single match site for [<code><a href="../social_contracts/post.md#social_contrac
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_post_access_from_parts">post_access_from_parts</a>(access_kind: u8, subscription_service_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, linked_mydata_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, <a href="../social_contracts/post.md#social_contracts_post_subscription_min_tier_level">subscription_min_tier_level</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;): <a href="../social_contracts/post.md#social_contracts_post_PostAccess">social_contracts::post::PostAccess</a>
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_post_access_from_parts">post_access_from_parts</a>(access_kind: u8, subscription_service_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, linked_mydata_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, <a href="../social_contracts/post.md#social_contracts_post_subscription_min_tier_level">subscription_min_tier_level</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;): <a href="../social_contracts/post.md#social_contracts_post_PostAccess">social_contracts::post::PostAccess</a>
 </code></pre>
 
 
@@ -3755,7 +3768,7 @@ Single match site for [<code><a href="../social_contracts/post.md#social_contrac
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_post_access_from_parts">post_access_from_parts</a>(
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_post_access_from_parts">post_access_from_parts</a>(
     access_kind: u8,
     subscription_service_id: Option&lt;ID&gt;,
     linked_mydata_id: Option&lt;ID&gt;,
@@ -4651,6 +4664,31 @@ Internal function to set SPT pool ID (package visibility only)
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_set_spt_id">set_spt_id</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>, spt_id: <b>address</b>) {
     <a href="../social_contracts/post.md#social_contracts_post">post</a>.spt_id = option::some(spt_id);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_set_enable_spt"></a>
+
+## Function `set_enable_spt`
+
+Package helper to flip the SPT opt-in flag (late-enable / create-with-SPT paths).
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_set_enable_spt">set_enable_spt</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, enabled: bool)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_set_enable_spt">set_enable_spt</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>, enabled: bool) {
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>.enable_spt = enabled;
 }
 </code></pre>
 
@@ -5605,6 +5643,8 @@ Create a new post with interaction permissions.
     } <b>else</b> {
         <b>false</b> // Default to opt-out (user must explicitly opt-in)
     };
+    // SPT opt-in at create must go through <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_create_post_with_reservation_pool">social_proof_tokens::create_post_with_reservation_pool</a>.
+    <b>assert</b>!(!final_enable_spt, <a href="../social_contracts/post.md#social_contracts_post_ESptRequiresDedicatedCreate">ESptRequiresDedicatedCreate</a>);
     // enable_spot retained <b>for</b> <b>entry</b>-signature compatibility; SPoT is always-on.
     <b>let</b> _ = enable_spot;
     // Convert media URLs to strings <b>for</b> event (before moving media_option)
@@ -5629,7 +5669,7 @@ Create a new post with interaction permissions.
         option::none(), // revenue_redirect_percentage
         access,
         option::none(), // promotion_id
-        final_enable_spt,
+        <b>false</b>,
         <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>,
         <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
         <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>,
@@ -5662,7 +5702,7 @@ Create a new post with interaction permissions.
         promotion_id: option::none(),
         revenue_redirect_to: option::none(),
         revenue_redirect_percentage: option::none(),
-        enable_spt: final_enable_spt,
+        enable_spt: <b>false</b>,
         spt_id: option::none(),
         <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>,
         <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
@@ -5670,6 +5710,205 @@ Create a new post with interaction permissions.
         organization_id,
         <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>,
     });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_create_post_object_for_spt"></a>
+
+## Function `create_post_object_for_spt`
+
+Build an unsared standard post with <code>enable_spt = <b>true</b></code> for SPT create-with-reservation.
+Caller bootstraps the reservation pool, sets <code>spt_id</code>, then <code><a href="../social_contracts/post.md#social_contracts_post_share_and_emit_spt_post">share_and_emit_spt_post</a></code>.
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_post_object_for_spt">create_post_object_for_spt</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, access: <a href="../social_contracts/post.md#social_contracts_post_PostAccess">social_contracts::post::PostAccess</a>, mydata_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">social_contracts::mydata::MyDataRegistry</a>, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_post_object_for_spt">create_post_object_for_spt</a>(
+    registry: &UsernameRegistry,
+    platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">platform::PlatformRegistry</a>,
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">platform::Platform</a>,
+    block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">block_list::BlockListRegistry</a>,
+    config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a>,
+    memory_config: &MemoryConfig,
+    content: String,
+    <b>mut</b> media_urls: Option&lt;vector&lt;String&gt;&gt;,
+    mentions: Option&lt;vector&lt;<b>address</b>&gt;&gt;,
+    metadata_json: Option&lt;String&gt;,
+    <a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>: Option&lt;bool&gt;,
+    <a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>: Option&lt;bool&gt;,
+    <a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>: Option&lt;bool&gt;,
+    <a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>: Option&lt;bool&gt;,
+    <a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>: Option&lt;bool&gt;,
+    access: <a href="../social_contracts/post.md#social_contracts_post_PostAccess">PostAccess</a>,
+    mydata_registry: &mydata::MyDataRegistry,
+    memory_account: &MemoryAccount,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+): <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a> {
+    <b>let</b> acting = <a href="../social_contracts/post.md#social_contracts_post_resolve_social_actor">resolve_social_actor</a>(
+        memory_config,
+        registry,
+        <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>,
+        block_list_registry,
+        memory_account,
+        <a href="../social_contracts/memory.md#social_contracts_memory_cap_post_publish">memory::cap_post_publish</a>(),
+        0,
+        clock,
+        ctx,
+    );
+    <b>let</b> owner = <a href="../social_contracts/memory.md#social_contracts_memory_acting_principal_owner">memory::acting_principal_owner</a>(&acting);
+    <b>let</b> profile_id = <a href="../social_contracts/memory.md#social_contracts_memory_acting_profile_id">memory::acting_profile_id</a>(&acting);
+    <b>let</b> <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a> = <a href="../social_contracts/memory.md#social_contracts_memory_acting_actor_address">memory::acting_actor_address</a>(&acting);
+    <b>let</b> <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a> = <a href="../social_contracts/memory.md#social_contracts_memory_acting_sub_agent_id">memory::acting_sub_agent_id</a>(&acting);
+    <b>let</b> organization_id = <a href="../social_contracts/memory.md#social_contracts_memory_acting_organization_id">memory::acting_organization_id</a>(&acting);
+    <b>let</b> <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a> = <a href="../social_contracts/memory.md#social_contracts_memory_acting_identity_class">memory::acting_identity_class</a>(&acting);
+    <a href="../social_contracts/post.md#social_contracts_post_assert_post_access_mydata_binding">assert_post_access_mydata_binding</a>(owner, &access, mydata_registry);
+    <b>let</b> platform_id = object::uid_to_address(<a href="../social_contracts/platform.md#social_contracts_platform_id">platform::id</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>));
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_approved">platform::is_approved</a>(platform_registry, platform_id), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
+    <b>assert</b>!(string::length(&content) &lt;= config.max_content_length, <a href="../social_contracts/post.md#social_contracts_post_EContentTooLarge">EContentTooLarge</a>);
+    <b>if</b> (option::is_some(&metadata_json)) {
+        <b>let</b> metadata_ref = option::borrow(&metadata_json);
+        <b>assert</b>!(string::length(metadata_ref) &lt;= config.max_metadata_size, <a href="../social_contracts/post.md#social_contracts_post_EContentTooLarge">EContentTooLarge</a>);
+    };
+    <b>let</b> media_option = <b>if</b> (option::is_some(&media_urls)) {
+        <b>let</b> url_strings = option::extract(&<b>mut</b> media_urls);
+        <b>assert</b>!(vector::length(&url_strings) &lt;= config.max_media_urls, <a href="../social_contracts/post.md#social_contracts_post_ETooManyMediaUrls">ETooManyMediaUrls</a>);
+        <b>let</b> <b>mut</b> urls = vector::empty&lt;Url&gt;();
+        <b>let</b> <b>mut</b> i = 0;
+        <b>let</b> len = vector::length(&url_strings);
+        <b>while</b> (i &lt; len) {
+            <b>let</b> url_string = vector::borrow(&url_strings, i);
+            <b>let</b> url_bytes = string::as_bytes(url_string);
+            vector::push_back(&<b>mut</b> urls, url::new_unsafe_from_bytes(*url_bytes));
+            i = i + 1;
+        };
+        option::some(urls)
+    } <b>else</b> {
+        option::none&lt;vector&lt;Url&gt;&gt;()
+    };
+    <b>if</b> (option::is_some(&mentions)) {
+        <b>let</b> mentions_ref = option::borrow(&mentions);
+        <b>assert</b>!(vector::length(mentions_ref) &lt;= config.max_mentions, <a href="../social_contracts/post.md#social_contracts_post_EContentTooLarge">EContentTooLarge</a>);
+    };
+    <b>let</b> final_allow_comments = <b>if</b> (option::is_some(&<a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>)) {
+        *option::borrow(&<a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>)
+    } <b>else</b> {
+        <b>true</b>
+    };
+    <b>let</b> final_allow_reactions = <b>if</b> (option::is_some(&<a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>)) {
+        *option::borrow(&<a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>)
+    } <b>else</b> {
+        <b>true</b>
+    };
+    <b>let</b> final_allow_reposts = <b>if</b> (option::is_some(&<a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>)) {
+        *option::borrow(&<a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>)
+    } <b>else</b> {
+        <b>true</b>
+    };
+    <b>let</b> final_allow_quotes = <b>if</b> (option::is_some(&<a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>)) {
+        *option::borrow(&<a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>)
+    } <b>else</b> {
+        <b>true</b>
+    };
+    <b>let</b> final_allow_tips = <b>if</b> (option::is_some(&<a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>)) {
+        *option::borrow(&<a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>)
+    } <b>else</b> {
+        <b>true</b>
+    };
+    <a href="../social_contracts/post.md#social_contracts_post_create_post_internal">create_post_internal</a>(
+        owner,
+        profile_id,
+        platform_id,
+        content,
+        media_option,
+        mentions,
+        metadata_json,
+        string::utf8(<a href="../social_contracts/post.md#social_contracts_post_POST_TYPE_STANDARD">POST_TYPE_STANDARD</a>),
+        option::none(),
+        final_allow_comments,
+        final_allow_reactions,
+        final_allow_reposts,
+        final_allow_quotes,
+        final_allow_tips,
+        option::none(),
+        option::none(),
+        access,
+        option::none(),
+        <b>true</b>, // enable_spt
+        <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_NONE">POC_REDIRECT_NONE</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>,
+        organization_id,
+        <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>,
+        clock,
+        ctx
+    )
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_share_and_emit_spt_post"></a>
+
+## Function `share_and_emit_spt_post`
+
+Set reservation-pool <code>spt_id</code>, share the post, and emit <code><a href="../social_contracts/post.md#social_contracts_post_PostCreatedEvent">PostCreatedEvent</a></code> with SPT fields filled.
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_share_and_emit_spt_post">share_and_emit_spt_post</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, spt_pool_id: <b>address</b>): <b>address</b>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_share_and_emit_spt_post">share_and_emit_spt_post</a>(<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>: <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>, spt_pool_id: <b>address</b>): <b>address</b> {
+    <a href="../social_contracts/post.md#social_contracts_post_set_enable_spt">set_enable_spt</a>(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>, <b>true</b>);
+    <a href="../social_contracts/post.md#social_contracts_post_set_spt_id">set_spt_id</a>(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>, spt_pool_id);
+    <b>let</b> media_urls_for_event = <a href="../social_contracts/post.md#social_contracts_post_convert_urls_to_strings">convert_urls_to_strings</a>(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.media);
+    <b>let</b> attr = <a href="../social_contracts/post.md#social_contracts_post_post_attribution">post_attribution</a>(&<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    <b>let</b> post_id = object::uid_to_address(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id);
+    event::emit(<a href="../social_contracts/post.md#social_contracts_post_PostCreatedEvent">PostCreatedEvent</a> {
+        post_id,
+        owner: <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner,
+        profile_id: <a href="../social_contracts/post.md#social_contracts_post">post</a>.profile_id,
+        platform_id: <a href="../social_contracts/post.md#social_contracts_post">post</a>.platform_id,
+        permissions: <a href="../social_contracts/post.md#social_contracts_post">post</a>.permissions,
+        content: <a href="../social_contracts/post.md#social_contracts_post">post</a>.content,
+        post_type: <a href="../social_contracts/post.md#social_contracts_post">post</a>.post_type,
+        parent_post_id: <a href="../social_contracts/post.md#social_contracts_post">post</a>.parent_post_id,
+        mentions: <a href="../social_contracts/post.md#social_contracts_post">post</a>.mentions,
+        media_urls: media_urls_for_event,
+        metadata_json: <a href="../social_contracts/post.md#social_contracts_post">post</a>.metadata_json,
+        access: <a href="../social_contracts/post.md#social_contracts_post">post</a>.access,
+        promotion_id: <a href="../social_contracts/post.md#social_contracts_post">post</a>.promotion_id,
+        revenue_redirect_to: <a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_to,
+        revenue_redirect_percentage: <a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_percentage,
+        enable_spt: <b>true</b>,
+        spt_id: option::some(spt_pool_id),
+        <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>: <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>: attr.<a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>: attr.<a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>,
+        organization_id: attr.organization_id,
+        <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>: attr.<a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>,
+    });
+    transfer::share_object(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    post_id
 }
 </code></pre>
 
@@ -6467,6 +6706,7 @@ If content is empty/none, it's treated as a standard repost
     } <b>else</b> {
         <b>false</b> // Default to opt-out (user must explicitly opt-in)
     };
+    <b>assert</b>!(!final_enable_spt, <a href="../social_contracts/post.md#social_contracts_post_ESptRequiresDedicatedCreate">ESptRequiresDedicatedCreate</a>);
     // enable_spot retained <b>for</b> <b>entry</b>-signature compatibility; SPoT is always-on.
     <b>let</b> _ = enable_spot;
     // Convert media URLs to strings <b>for</b> event (before moving media_option)
@@ -6491,7 +6731,7 @@ If content is empty/none, it's treated as a standard repost
         option::none(), // revenue_redirect_percentage
         PostAccess::Public,
         option::none(), // promotion_id
-        final_enable_spt,
+        <b>false</b>,
         <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>,
         <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
         <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>,
@@ -6524,7 +6764,7 @@ If content is empty/none, it's treated as a standard repost
         promotion_id: option::none(),
         revenue_redirect_to: option::none(),
         revenue_redirect_percentage: option::none(),
-        enable_spt: final_enable_spt,
+        enable_spt: <b>false</b>,
         spt_id: option::none(),
         <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>,
         <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
@@ -9260,6 +9500,7 @@ Create a promoted post with MYSO tokens for viewer payments
     } <b>else</b> {
         <b>false</b> // Default to opt-out (user must explicitly opt-in)
     };
+    <b>assert</b>!(!final_enable_spt, <a href="../social_contracts/post.md#social_contracts_post_ESptRequiresDedicatedCreate">ESptRequiresDedicatedCreate</a>);
     // enable_spot retained <b>for</b> <b>entry</b>-signature compatibility; SPoT is always-on.
     <b>let</b> _ = enable_spot;
     // Convert media URLs to strings <b>for</b> <a href="../social_contracts/post.md#social_contracts_post_PostCreatedEvent">PostCreatedEvent</a> (before moving media_option)
@@ -9284,7 +9525,7 @@ Create a promoted post with MYSO tokens for viewer payments
         option::none(), // revenue_redirect_percentage
         access,
         option::some(promotion_id),
-        final_enable_spt,
+        <b>false</b>,
         <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>,
         <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
         <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>,
@@ -9311,7 +9552,7 @@ Create a promoted post with MYSO tokens for viewer payments
         promotion_id: option::some(promotion_id),
         revenue_redirect_to: option::none(),
         revenue_redirect_percentage: option::none(),
-        enable_spt: final_enable_spt,
+        enable_spt: <b>false</b>,
         spt_id: option::none(),
         <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>,
         <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,

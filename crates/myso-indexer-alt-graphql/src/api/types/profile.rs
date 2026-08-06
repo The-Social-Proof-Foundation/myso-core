@@ -270,7 +270,7 @@ impl Profile {
         let limit = limit.unwrap_or(20).min(100) as i64;
         let offset = offset.unwrap_or(0) as i64;
         let viewer_s = viewer.map(|a| a.to_string());
-        let rows = reader
+        match reader
             .get_followers(
                 &self.inner.owner_address,
                 limit,
@@ -278,8 +278,17 @@ impl Profile {
                 viewer_s.as_deref(),
             )
             .await
-            .ok()?;
-        Some(rows.into_iter().map(ProfileSummary::from_row).collect())
+        {
+            Ok(rows) => Some(rows.into_iter().map(ProfileSummary::from_row).collect()),
+            Err(e) => {
+                warn!(
+                    owner_address = %self.inner.owner_address,
+                    error = %e,
+                    "followers query failed"
+                );
+                None
+            }
+        }
     }
 
     /// Following (paginated).
@@ -296,7 +305,7 @@ impl Profile {
         let limit = limit.unwrap_or(20).min(100) as i64;
         let offset = offset.unwrap_or(0) as i64;
         let viewer_s = viewer.map(|a| a.to_string());
-        let rows = reader
+        match reader
             .get_following(
                 &self.inner.owner_address,
                 limit,
@@ -304,8 +313,17 @@ impl Profile {
                 viewer_s.as_deref(),
             )
             .await
-            .ok()?;
-        Some(rows.into_iter().map(ProfileSummary::from_row).collect())
+        {
+            Ok(rows) => Some(rows.into_iter().map(ProfileSummary::from_row).collect()),
+            Err(e) => {
+                warn!(
+                    owner_address = %self.inner.owner_address,
+                    error = %e,
+                    "following query failed"
+                );
+                None
+            }
+        }
     }
 
     /// Follow suggestions for the browsing viewer while viewing this profile.

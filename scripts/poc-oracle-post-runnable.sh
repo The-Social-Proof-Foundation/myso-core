@@ -659,9 +659,9 @@ ensure_reservation_pool_for_post() {
         ref_post="$(ptb_shared_ref "$post_id")" || return 1
         ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || return 1
         switch_wallet "$CREATOR_ADDRESS" || return 1
-        log_step "create_reservation_pool_for_post post=$post_id"
+        log_step "enable_spt_for_post post=$post_id"
         out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_as_capture "$CREATOR_ADDRESS" \
-            --move-call "${PKG_SOCIAL}::social_proof_tokens::create_reservation_pool_for_post" \
+            --move-call "${PKG_SOCIAL}::social_proof_tokens::enable_spt_for_post" \
             "$ref_token" "$ref_spt" "$ref_post" "$ref_clk")" || {
             restore_wallet
             return 1
@@ -671,7 +671,7 @@ ensure_reservation_pool_for_post() {
         pool_id="$(extract_reservation_pool_from_digest "$digest" 2>/dev/null)" || pool_id=''
     fi
     [[ -n "$pool_id" ]] || {
-        echo "create_reservation_pool_for_post did not produce a reservation pool for post $post_id" >&2
+        echo "enable_spt_for_post did not produce a reservation pool for post $post_id" >&2
         return 1
     }
     RESERVATION_POOL_ID="$(normalize_hex_id "$pool_id")"
@@ -915,9 +915,9 @@ step_create_poc_post() {
     ref_post="$(ptb_shared_ref "$POST_ID")" || return 1
     ref_clk_pool="$(ptb_shared_ref "$CLOCK_ID")" || return 1
     switch_wallet "$CREATOR_ADDRESS" || return 1
-    log_step "create_reservation_pool_for_post post=$POST_ID"
+    log_step "enable_spt_for_post post=$POST_ID"
     out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_as_capture "$CREATOR_ADDRESS" \
-        --move-call "${PKG_SOCIAL}::social_proof_tokens::create_reservation_pool_for_post" \
+        --move-call "${PKG_SOCIAL}::social_proof_tokens::enable_spt_for_post" \
         "$ref_token" "$ref_spt" "$ref_post" "$ref_clk_pool")" || {
         restore_wallet
         return 1
@@ -928,7 +928,7 @@ step_create_poc_post() {
     assert_poc_scenario_events reservation_pool_created "$digest" || return 1
     pool_id="$(extract_reservation_pool_from_digest "$digest" 2>/dev/null)" || pool_id=''
     [[ -n "$pool_id" ]] || {
-        echo "create_reservation_pool_for_post did not produce ReservationPoolObject" >&2
+        echo "enable_spt_for_post did not produce ReservationPoolObject" >&2
         return 1
     }
     RESERVATION_POOL_ID="$(normalize_hex_id "$pool_id")"

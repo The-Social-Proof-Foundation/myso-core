@@ -562,6 +562,11 @@ pub(crate) async fn get_following(
 ) -> anyhow::Result<Vec<ProfileSummaryRow>> {
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
+
+    let (profile_id, owner_address) = resolve_profile_address(conn, address).await?;
+    let ref1 = &owner_address;
+    let ref2 = profile_id.as_ref().unwrap_or(&owner_address);
+
     #[derive(QueryableByName)]
     struct Row {
         #[diesel(sql_type = Text)]
@@ -588,7 +593,8 @@ pub(crate) async fn get_following(
     let query = "
         SELECT sgr.following_address AS addr, p.username, p.display_name, p.profile_photo,
                p.bio, p.selected_badge_id, p.social_proof_token_address, p.reservation_pool_address,
-               p.post_count, p.blocked_count
+               COALESCE(p.post_count, 0)::bigint AS post_count,
+               COALESCE(p.blocked_count, 0)::bigint AS blocked_count
         FROM social_graph_relationships sgr
         LEFT JOIN LATERAL (
             SELECT username, display_name, profile_photo, bio, selected_badge_id,
@@ -598,12 +604,13 @@ pub(crate) async fn get_following(
             ORDER BY updated_at DESC
             LIMIT 1
         ) p ON true
-        WHERE sgr.follower_address = $1
+        WHERE (sgr.follower_address = $1 OR sgr.follower_address = $2)
         ORDER BY sgr.created_at DESC
-        LIMIT $2 OFFSET $3
+        LIMIT $3 OFFSET $4
     ";
     let rows = diesel::sql_query(query)
-        .bind::<Text, _>(address)
+        .bind::<Text, _>(ref1)
+        .bind::<Text, _>(ref2)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
         .load::<Row>(conn)
@@ -1226,7 +1233,9 @@ pub(crate) async fn count_profile_platform_memberships(
         "SELECT COUNT(*)::bigint AS count
          FROM platform_memberships pm
          INNER JOIN platforms p ON pm.platform_id = p.platform_id
-         WHERE pm.wallet_address = $1 AND p.deleted_at IS NULL",
+         WHERE pm.wallet_address = $1
+           AND p.deleted_at IS NULL
+           AND (pm.left_at IS NULL OR pm.joined_at > pm.left_at)",
     )
     .bind::<Text, _>(address)
     .get_result::<CountRow>(conn)
@@ -1373,7 +1382,9 @@ pub(crate) async fn get_profile_platform_memberships(
                    AS blocked_profiles_count
         FROM platform_memberships pm
         INNER JOIN platforms p ON pm.platform_id = p.platform_id
-        WHERE pm.wallet_address = $1 AND p.deleted_at IS NULL
+        WHERE pm.wallet_address = $1
+          AND p.deleted_at IS NULL
+          AND (pm.left_at IS NULL OR pm.joined_at > pm.left_at)
         ORDER BY pm.joined_at DESC
         LIMIT $2 OFFSET $3
     ";

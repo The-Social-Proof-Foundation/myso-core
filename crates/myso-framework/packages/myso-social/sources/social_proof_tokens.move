@@ -37,11 +37,13 @@ module social_contracts::social_proof_tokens {
     };
     
     use social_contracts::profile::{Self, Profile, UsernameRegistry, EcosystemTreasury};
-    use social_contracts::post::{Self, Post};
+    use social_contracts::post::{Self, Post, PostConfig};
     use social_contracts::poc_vault::{Self as poc_vault, PoCBeneficiaryVault};
     use social_contracts::block_list::{Self, BlockListRegistry};
     use social_contracts::platform::{Self, PlatformRegistry};
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
+    use social_contracts::memory::{MemoryAccount, MemoryConfig};
+    use social_contracts::mydata;
 
     // === Error codes ===
     /// Operation can only be performed by the admin
@@ -106,6 +108,16 @@ module social_contracts::social_proof_tokens {
     const ECannotMerge: u64 = 29;
     /// Post token pools in on-post PoC escrow mode require an entrypoint that supplies `&Post` for PoC-aware fee routing.
     const EPostPoolEscrowTradingBlocked: u64 = 30;
+    /// Cannot swap a pool into itself
+    const ESamePool: u64 = 31;
+    /// Dest fill below `min_dest_amount` slippage bound
+    const ESlippageExceeded: u64 = 32;
+    /// Cannot transfer SPT to the same address
+    const ESelfTransfer: u64 = 33;
+    /// Post already has SPT / reservation pool enabled
+    const ESptAlreadyEnabled: u64 = 34;
+    /// Transfer amount must be positive
+    const EInvalidTransferAmount: u64 = 35;
 
     // === Constants ===
     // Token types
@@ -353,6 +365,39 @@ module social_contracts::social_proof_tokens {
         platform_fee: u64,
         treasury_fee: u64,
         new_price: u64,
+    }
+
+    /// Atomic summary of an SPT→SPT swap (emitted after TokenSoldEvent + TokenBoughtEvent).
+    public struct TokenSwappedEvent has copy, drop {
+        source_pool_id: address,
+        dest_pool_id: address,
+        trader: address,
+        /// Nano-SPT sold from the source pool.
+        sell_amount: u64,
+        /// Nano-SPT bought into the dest pool.
+        dest_amount: u64,
+        sell_myso_gross: u64,
+        buy_myso_gross: u64,
+        sell_fee_amount: u64,
+        buy_fee_amount: u64,
+        sell_creator_fee: u64,
+        sell_platform_fee: u64,
+        sell_treasury_fee: u64,
+        buy_creator_fee: u64,
+        buy_platform_fee: u64,
+        buy_treasury_fee: u64,
+        leftover_myso: u64,
+        source_new_price: u64,
+        dest_new_price: u64,
+    }
+
+    /// P2P SPT transfer that updates the pool `holders` ledger.
+    public struct TokenTransferredEvent has copy, drop {
+        pool_id: address,
+        from: address,
+        to: address,
+        /// Nano-SPT transferred.
+        amount: u64,
     }
 
     /// Event emitted when MYSO is reserved towards a post/profile
@@ -1993,7 +2038,7 @@ module social_contracts::social_proof_tokens {
         });
     }
 
-    /// Shared pool-creation logic for `create_reservation_pool_for_post`.
+    /// Shared pool-creation logic for create-with-SPT and late-enable entries.
     public(package) fun bootstrap_reservation_pool_for_post_id(
         registry: &mut TokenRegistry,
         config: &SocialProofTokensConfig,
@@ -2052,8 +2097,79 @@ module social_contracts::social_proof_tokens {
         pool_object_id
     }
 
-    /// Create a reservation pool for a post (explicit second transaction after post create).
-    public entry fun create_reservation_pool_for_post(
+    /// Create a post and bootstrap its SPT reservation pool in one transaction.
+    public entry fun create_post_with_reservation_pool(
+        token_registry: &mut TokenRegistry,
+        spt_config: &SocialProofTokensConfig,
+        registry: &UsernameRegistry,
+        platform_registry: &PlatformRegistry,
+        platform: &platform::Platform,
+        block_list_registry: &BlockListRegistry,
+        post_config: &PostConfig,
+        memory_config: &MemoryConfig,
+        content: String,
+        media_urls: Option<vector<String>>,
+        mentions: Option<vector<address>>,
+        metadata_json: Option<String>,
+        allow_comments: Option<bool>,
+        allow_reactions: Option<bool>,
+        allow_reposts: Option<bool>,
+        allow_quotes: Option<bool>,
+        allow_tips: Option<bool>,
+        access_kind: u8,
+        subscription_service_id: Option<ID>,
+        linked_mydata_id: Option<ID>,
+        subscription_min_tier_level: Option<u64>,
+        mydata_registry: &mydata::MyDataRegistry,
+        memory_account: &MemoryAccount,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert!(spt_config.trading_enabled, ETradingHalted);
+        let access = post::post_access_from_parts(
+            access_kind,
+            subscription_service_id,
+            linked_mydata_id,
+            subscription_min_tier_level,
+        );
+        let post = post::create_post_object_for_spt(
+            registry,
+            platform_registry,
+            platform,
+            block_list_registry,
+            post_config,
+            memory_config,
+            content,
+            media_urls,
+            mentions,
+            metadata_json,
+            allow_comments,
+            allow_reactions,
+            allow_reposts,
+            allow_quotes,
+            allow_tips,
+            access,
+            mydata_registry,
+            memory_account,
+            clock,
+            ctx,
+        );
+        let associated_id = post::get_id_address(&post);
+        let owner = post::get_post_owner(&post);
+        let pool_object_id = bootstrap_reservation_pool_for_post_id(
+            token_registry,
+            spt_config,
+            associated_id,
+            owner,
+            clock,
+            ctx,
+        );
+        let _post_id = post::share_and_emit_spt_post(post, pool_object_id);
+    }
+
+    /// Late-enable SPT on an existing post that is not already SPT-enabled.
+    /// Replaces the old `create_reservation_pool_for_post` entry.
+    public entry fun enable_spt_for_post(
         registry: &mut TokenRegistry,
         config: &SocialProofTokensConfig,
         post: &mut Post,
@@ -2065,6 +2181,9 @@ module social_contracts::social_proof_tokens {
         let owner = post::get_post_owner(post);
 
         assert!(caller == owner, ENotAuthorized);
+        assert!(option::is_none(post::get_spt_id(post)), ESptAlreadyEnabled);
+        assert!(!table::contains(&registry.reservation_pools, associated_id), ESptAlreadyEnabled);
+        assert!(!table::contains(&registry.tokens, associated_id), ESptAlreadyEnabled);
 
         let pool_object_id = bootstrap_reservation_pool_for_post_id(
             registry,
@@ -2074,6 +2193,7 @@ module social_contracts::social_proof_tokens {
             clock,
             ctx,
         );
+        post::set_enable_spt(post, true);
         post::set_spt_id(post, pool_object_id);
     }
 
@@ -3673,6 +3793,636 @@ module social_contracts::social_proof_tokens {
         });
     }
 
+    /// Transfer a `SocialToken` to another address and update the pool `holders` ledger.
+    /// Split first if only part of a balance should be sent.
+    public entry fun transfer_tokens(
+        pool: &mut TokenPool,
+        config: &SocialProofTokensConfig,
+        token: SocialToken,
+        recipient: address,
+        ctx: &mut TxContext
+    ) {
+        assert!(config.trading_enabled, ETradingHalted);
+        assert!(pool.version == upgrade::current_version(), EWrongVersion);
+
+        let sender = tx_context::sender(ctx);
+        assert!(recipient != sender, ESelfTransfer);
+
+        let pool_id = object::uid_to_address(&pool.id);
+        assert!(token.pool_id == pool_id, EInvalidID);
+
+        let amount = token.amount;
+        assert!(amount > 0, EInvalidTransferAmount);
+
+        assert!(table::contains(&pool.holders, sender), ENoTokensOwned);
+        let sender_balance = table::borrow_mut(&mut pool.holders, sender);
+        assert!(*sender_balance >= amount, EInsufficientLiquidity);
+        if (*sender_balance == amount) {
+            table::remove(&mut pool.holders, sender);
+        } else {
+            *sender_balance = *sender_balance - amount;
+        };
+
+        let recipient_hold = if (table::contains(&pool.holders, recipient)) {
+            *table::borrow(&pool.holders, recipient)
+        } else {
+            0
+        };
+        let supply = pool.info.circulating_supply;
+        assert!(supply == 0 || supply <= MAX_U64 / config.max_hold_percent_bps, EOverflow);
+        let max_hold = (supply * config.max_hold_percent_bps) / BPS_DENOM;
+        assert!(recipient_hold <= MAX_U64 - amount, EOverflow);
+        assert!(recipient_hold + amount <= max_hold, EExceededMaxHold);
+
+        if (table::contains(&pool.holders, recipient)) {
+            let recipient_balance = table::borrow_mut(&mut pool.holders, recipient);
+            *recipient_balance = *recipient_balance + amount;
+        } else {
+            table::add(&mut pool.holders, recipient, amount);
+        };
+
+        event::emit(TokenTransferredEvent {
+            pool_id,
+            from: sender,
+            to: recipient,
+            amount,
+        });
+        transfer::transfer(token, recipient);
+    }
+
+    /// Exact-in SPT→SPT swap for a first dest position (mints a new dest `SocialToken`).
+    /// Non-platform: platform fee legs go to the ecosystem treasury.
+    #[allow(lint(self_transfer))]
+    public fun swap_tokens(
+        _registry: &TokenRegistry,
+        source_pool: &mut TokenPool,
+        dest_pool: &mut TokenPool,
+        config: &SocialProofTokensConfig,
+        treasury: &EcosystemTreasury,
+        profile_registry: &UsernameRegistry,
+        block_list_registry: &BlockListRegistry,
+        source_token: SocialToken,
+        sell_amount: u64,
+        min_dest_amount: u64,
+        ctx: &mut TxContext
+    ) {
+        execute_swap_non_platform(
+            source_pool,
+            dest_pool,
+            config,
+            treasury,
+            profile_registry,
+            block_list_registry,
+            source_token,
+            sell_amount,
+            min_dest_amount,
+            false,
+            ctx
+        );
+    }
+
+    /// Exact-in SPT→SPT swap when the trader already holds dest tokens.
+    #[allow(lint(self_transfer))]
+    public fun swap_more_tokens(
+        _registry: &TokenRegistry,
+        source_pool: &mut TokenPool,
+        dest_pool: &mut TokenPool,
+        config: &SocialProofTokensConfig,
+        treasury: &EcosystemTreasury,
+        profile_registry: &UsernameRegistry,
+        block_list_registry: &BlockListRegistry,
+        source_token: SocialToken,
+        dest_token: &mut SocialToken,
+        sell_amount: u64,
+        min_dest_amount: u64,
+        ctx: &mut TxContext
+    ) {
+        assert!(dest_token.pool_id == object::uid_to_address(&dest_pool.id), EInvalidID);
+        let dest_amount = execute_swap_non_platform(
+            source_pool,
+            dest_pool,
+            config,
+            treasury,
+            profile_registry,
+            block_list_registry,
+            source_token,
+            sell_amount,
+            min_dest_amount,
+            true,
+            ctx
+        );
+        dest_token.amount = dest_token.amount + dest_amount;
+    }
+
+    /// Exact-in SPT→SPT swap (mint dest) with platform fee routing.
+    #[allow(lint(self_transfer))]
+    public fun swap_tokens_with_platform(
+        _registry: &TokenRegistry,
+        source_pool: &mut TokenPool,
+        dest_pool: &mut TokenPool,
+        config: &SocialProofTokensConfig,
+        treasury: &EcosystemTreasury,
+        platform_registry: &PlatformRegistry,
+        profile_registry: &UsernameRegistry,
+        block_list_registry: &BlockListRegistry,
+        platform: &mut social_contracts::platform::Platform,
+        source_token: SocialToken,
+        sell_amount: u64,
+        min_dest_amount: u64,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let trader = tx_context::sender(ctx);
+        let platform_id = object::uid_to_address(platform::id(platform));
+        assert!(platform::is_approved(platform_registry, platform_id), ENotAuthorized);
+        assert!(platform::has_joined_platform(platform, trader), EUserNotJoinedPlatform);
+        assert!(!block_list::is_blocked(block_list_registry, platform_id, trader), EUserBlockedByPlatform);
+
+        execute_swap_with_platform(
+            source_pool,
+            dest_pool,
+            config,
+            treasury,
+            profile_registry,
+            block_list_registry,
+            platform,
+            source_token,
+            sell_amount,
+            min_dest_amount,
+            false,
+            clock,
+            ctx
+        );
+    }
+
+    /// Exact-in SPT→SPT swap (credit dest) with platform fee routing.
+    #[allow(lint(self_transfer))]
+    public fun swap_more_tokens_with_platform(
+        _registry: &TokenRegistry,
+        source_pool: &mut TokenPool,
+        dest_pool: &mut TokenPool,
+        config: &SocialProofTokensConfig,
+        treasury: &EcosystemTreasury,
+        platform_registry: &PlatformRegistry,
+        profile_registry: &UsernameRegistry,
+        block_list_registry: &BlockListRegistry,
+        platform: &mut social_contracts::platform::Platform,
+        source_token: SocialToken,
+        dest_token: &mut SocialToken,
+        sell_amount: u64,
+        min_dest_amount: u64,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert!(dest_token.pool_id == object::uid_to_address(&dest_pool.id), EInvalidID);
+        let trader = tx_context::sender(ctx);
+        let platform_id = object::uid_to_address(platform::id(platform));
+        assert!(platform::is_approved(platform_registry, platform_id), ENotAuthorized);
+        assert!(platform::has_joined_platform(platform, trader), EUserNotJoinedPlatform);
+        assert!(!block_list::is_blocked(block_list_registry, platform_id, trader), EUserBlockedByPlatform);
+
+        let dest_amount = execute_swap_with_platform(
+            source_pool,
+            dest_pool,
+            config,
+            treasury,
+            profile_registry,
+            block_list_registry,
+            platform,
+            source_token,
+            sell_amount,
+            min_dest_amount,
+            true,
+            clock,
+            ctx
+        );
+        dest_token.amount = dest_token.amount + dest_amount;
+    }
+
+    /// Returns dest nano-SPT purchased. When `credit_existing` is false, mints a new SocialToken.
+    /// When true, only updates holders/supply; caller must credit `&mut SocialToken`.
+    #[allow(lint(self_transfer))]
+    fun execute_swap_non_platform(
+        source_pool: &mut TokenPool,
+        dest_pool: &mut TokenPool,
+        config: &SocialProofTokensConfig,
+        treasury: &EcosystemTreasury,
+        profile_registry: &UsernameRegistry,
+        block_list_registry: &BlockListRegistry,
+        source_token: SocialToken,
+        sell_amount: u64,
+        min_dest_amount: u64,
+        credit_existing: bool,
+        ctx: &mut TxContext
+    ): u64 {
+        assert!(source_pool.version == upgrade::current_version(), EWrongVersion);
+        assert!(dest_pool.version == upgrade::current_version(), EWrongVersion);
+        assert!(config.trading_enabled, ETradingHalted);
+
+        let trader = tx_context::sender(ctx);
+        let source_pool_id = object::uid_to_address(&source_pool.id);
+        let dest_pool_id = object::uid_to_address(&dest_pool.id);
+        assert!(source_pool_id != dest_pool_id, ESamePool);
+
+        let profile_id_option = profile::lookup_profile_by_owner(profile_registry, trader);
+        assert!(option::is_some(&profile_id_option), ENotAuthorized);
+        assert!(!block_list::is_blocked(block_list_registry, trader, dest_pool.info.owner), EBlockedUser);
+
+        assert!(source_token.pool_id == source_pool_id, EInvalidID);
+        assert!(sell_amount > 0, EInsufficientFunds);
+        assert!(source_token.amount >= sell_amount, EInsufficientLiquidity);
+
+        validate_trading_fees(config);
+        let total_fee_bps = calculate_total_fee_bps(config);
+
+        let (sell_gross, sell_fee_amount, net_bridge) = calculate_swap_proceeds(
+            source_pool.info.base_price,
+            source_pool.info.quadratic_coefficient,
+            source_pool.info.circulating_supply,
+            sell_amount,
+            total_fee_bps
+        );
+        let sell_creator_fee = calculate_component_fee_safe(sell_fee_amount, config.trading_creator_fee_bps, total_fee_bps);
+        let sell_platform_fee = calculate_component_fee_safe(sell_fee_amount, config.trading_platform_fee_bps, total_fee_bps);
+        let sell_treasury_fee = sell_fee_amount - sell_creator_fee - sell_platform_fee;
+
+        assert!(balance::value(&source_pool.myso_balance) >= sell_gross, EInsufficientLiquidity);
+        assert!(table::contains(&source_pool.holders, trader), ENoTokensOwned);
+
+        let holder_balance = table::borrow_mut(&mut source_pool.holders, trader);
+        if (*holder_balance == sell_amount) {
+            table::remove(&mut source_pool.holders, trader);
+        } else {
+            *holder_balance = *holder_balance - sell_amount;
+        };
+
+        let remainder = source_token.amount - sell_amount;
+        let SocialToken { id, pool_id: token_pool_id, token_type, amount: _ } = source_token;
+        object::delete(id);
+        if (remainder > 0) {
+            transfer::transfer(SocialToken {
+                id: object::new(ctx),
+                pool_id: token_pool_id,
+                token_type,
+                amount: remainder,
+            }, trader);
+        };
+
+        source_pool.info.circulating_supply = source_pool.info.circulating_supply - sell_amount;
+
+        let mut bridge = balance::split(&mut source_pool.myso_balance, net_bridge);
+        if (sell_fee_amount > 0) {
+            if (sell_creator_fee > 0) {
+                distribute_creator_fee_from_pool(source_pool, sell_creator_fee, ctx);
+            };
+            if (sell_platform_fee > 0) {
+                let c = coin::from_balance(balance::split(&mut source_pool.myso_balance, sell_platform_fee), ctx);
+                transfer::public_transfer(c, profile::get_treasury_address(treasury));
+            };
+            if (sell_treasury_fee > 0) {
+                let c = coin::from_balance(balance::split(&mut source_pool.myso_balance, sell_treasury_fee), ctx);
+                transfer::public_transfer(c, profile::get_treasury_address(treasury));
+            };
+        };
+
+        let source_new_price = calculate_token_price(
+            source_pool.info.base_price,
+            source_pool.info.quadratic_coefficient,
+            source_pool.info.circulating_supply
+        );
+        event::emit(TokenSoldEvent {
+            id: source_pool_id,
+            seller: trader,
+            amount: sell_amount,
+            myso_amount: sell_gross,
+            fee_amount: sell_fee_amount,
+            creator_fee: sell_creator_fee,
+            platform_fee: sell_platform_fee,
+            treasury_fee: sell_treasury_fee,
+            new_price: source_new_price,
+        });
+
+        let bridge_value = balance::value(&bridge);
+        let (dest_amount, buy_gross) = calculate_max_buy_amount(
+            dest_pool.info.base_price,
+            dest_pool.info.quadratic_coefficient,
+            dest_pool.info.circulating_supply,
+            bridge_value
+        );
+        assert!(dest_amount >= min_dest_amount, ESlippageExceeded);
+        assert!(dest_amount > 0, EInsufficientFunds);
+        assert!(bridge_value >= buy_gross, EInsufficientFunds);
+
+        let buy_fee_amount = calculate_fee_amount_safe(buy_gross, total_fee_bps);
+        let buy_creator_fee = calculate_component_fee_safe(buy_fee_amount, config.trading_creator_fee_bps, total_fee_bps);
+        let buy_platform_fee = calculate_component_fee_safe(buy_fee_amount, config.trading_platform_fee_bps, total_fee_bps);
+        let buy_treasury_fee = buy_fee_amount - buy_creator_fee - buy_platform_fee;
+        let buy_net = buy_gross - buy_fee_amount;
+
+        let mut payment = coin::from_balance(balance::split(&mut bridge, buy_gross), ctx);
+        if (buy_fee_amount > 0) {
+            if (buy_creator_fee > 0) {
+                distribute_creator_fee(dest_pool, buy_creator_fee, &mut payment, ctx);
+            };
+            if (buy_platform_fee > 0) {
+                let c = coin::split(&mut payment, buy_platform_fee, ctx);
+                transfer::public_transfer(c, profile::get_treasury_address(treasury));
+            };
+            if (buy_treasury_fee > 0) {
+                let c = coin::split(&mut payment, buy_treasury_fee, ctx);
+                transfer::public_transfer(c, profile::get_treasury_address(treasury));
+            };
+        };
+        let pool_payment = coin::split(&mut payment, buy_net, ctx);
+        balance::join(&mut dest_pool.myso_balance, coin::into_balance(pool_payment));
+        coin::destroy_zero(payment);
+
+        let leftover_myso = balance::value(&bridge);
+        if (leftover_myso > 0) {
+            transfer::public_transfer(coin::from_balance(bridge, ctx), trader);
+        } else {
+            balance::destroy_zero(bridge);
+        };
+
+        assert!(dest_pool.info.circulating_supply <= MAX_U64 - dest_amount, EOverflow);
+        let new_supply = dest_pool.info.circulating_supply + dest_amount;
+        assert!(new_supply == 0 || new_supply <= MAX_U64 / config.max_hold_percent_bps, EOverflow);
+        let max_hold = (new_supply * config.max_hold_percent_bps) / BPS_DENOM;
+        let current_hold = if (table::contains(&dest_pool.holders, trader)) {
+            *table::borrow(&dest_pool.holders, trader)
+        } else {
+            0
+        };
+        assert!(current_hold <= MAX_U64 - dest_amount, EOverflow);
+        assert!(current_hold + dest_amount <= max_hold, EExceededMaxHold);
+
+        if (credit_existing) {
+            assert!(current_hold > 0, ENoTokensOwned);
+            *table::borrow_mut(&mut dest_pool.holders, trader) = current_hold + dest_amount;
+        } else {
+            assert!(current_hold == 0, EAlreadyOwnsTokens);
+            table::add(&mut dest_pool.holders, trader, dest_amount);
+            transfer::transfer(SocialToken {
+                id: object::new(ctx),
+                pool_id: dest_pool_id,
+                token_type: dest_pool.info.token_type,
+                amount: dest_amount,
+            }, trader);
+        };
+
+        dest_pool.info.circulating_supply = new_supply;
+        let dest_new_price = calculate_token_price(
+            dest_pool.info.base_price,
+            dest_pool.info.quadratic_coefficient,
+            dest_pool.info.circulating_supply
+        );
+        event::emit(TokenBoughtEvent {
+            id: dest_pool_id,
+            buyer: trader,
+            amount: dest_amount,
+            myso_amount: buy_gross,
+            fee_amount: buy_fee_amount,
+            creator_fee: buy_creator_fee,
+            platform_fee: buy_platform_fee,
+            treasury_fee: buy_treasury_fee,
+            new_price: dest_new_price,
+        });
+        event::emit(TokenSwappedEvent {
+            source_pool_id,
+            dest_pool_id,
+            trader,
+            sell_amount,
+            dest_amount,
+            sell_myso_gross: sell_gross,
+            buy_myso_gross: buy_gross,
+            sell_fee_amount,
+            buy_fee_amount,
+            sell_creator_fee,
+            sell_platform_fee,
+            sell_treasury_fee,
+            buy_creator_fee,
+            buy_platform_fee,
+            buy_treasury_fee,
+            leftover_myso,
+            source_new_price,
+            dest_new_price,
+        });
+        dest_amount
+    }
+
+    #[allow(lint(self_transfer))]
+    fun execute_swap_with_platform(
+        source_pool: &mut TokenPool,
+        dest_pool: &mut TokenPool,
+        config: &SocialProofTokensConfig,
+        treasury: &EcosystemTreasury,
+        profile_registry: &UsernameRegistry,
+        block_list_registry: &BlockListRegistry,
+        platform: &mut social_contracts::platform::Platform,
+        source_token: SocialToken,
+        sell_amount: u64,
+        min_dest_amount: u64,
+        credit_existing: bool,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ): u64 {
+        assert!(source_pool.version == upgrade::current_version(), EWrongVersion);
+        assert!(dest_pool.version == upgrade::current_version(), EWrongVersion);
+        assert!(config.trading_enabled, ETradingHalted);
+
+        let trader = tx_context::sender(ctx);
+        let source_pool_id = object::uid_to_address(&source_pool.id);
+        let dest_pool_id = object::uid_to_address(&dest_pool.id);
+        assert!(source_pool_id != dest_pool_id, ESamePool);
+
+        let profile_id_option = profile::lookup_profile_by_owner(profile_registry, trader);
+        assert!(option::is_some(&profile_id_option), ENotAuthorized);
+        assert!(!block_list::is_blocked(block_list_registry, trader, dest_pool.info.owner), EBlockedUser);
+
+        assert!(source_token.pool_id == source_pool_id, EInvalidID);
+        assert!(sell_amount > 0, EInsufficientFunds);
+        assert!(source_token.amount >= sell_amount, EInsufficientLiquidity);
+
+        validate_trading_fees(config);
+        let total_fee_bps = calculate_total_fee_bps(config);
+
+        let (sell_gross, sell_fee_amount, net_bridge) = calculate_swap_proceeds(
+            source_pool.info.base_price,
+            source_pool.info.quadratic_coefficient,
+            source_pool.info.circulating_supply,
+            sell_amount,
+            total_fee_bps
+        );
+        let sell_creator_fee = calculate_component_fee_safe(sell_fee_amount, config.trading_creator_fee_bps, total_fee_bps);
+        let sell_platform_fee = calculate_component_fee_safe(sell_fee_amount, config.trading_platform_fee_bps, total_fee_bps);
+        let sell_treasury_fee = sell_fee_amount - sell_creator_fee - sell_platform_fee;
+
+        assert!(balance::value(&source_pool.myso_balance) >= sell_gross, EInsufficientLiquidity);
+        assert!(table::contains(&source_pool.holders, trader), ENoTokensOwned);
+
+        let holder_balance = table::borrow_mut(&mut source_pool.holders, trader);
+        if (*holder_balance == sell_amount) {
+            table::remove(&mut source_pool.holders, trader);
+        } else {
+            *holder_balance = *holder_balance - sell_amount;
+        };
+
+        let remainder = source_token.amount - sell_amount;
+        let SocialToken { id, pool_id: token_pool_id, token_type, amount: _ } = source_token;
+        object::delete(id);
+        if (remainder > 0) {
+            transfer::transfer(SocialToken {
+                id: object::new(ctx),
+                pool_id: token_pool_id,
+                token_type,
+                amount: remainder,
+            }, trader);
+        };
+
+        source_pool.info.circulating_supply = source_pool.info.circulating_supply - sell_amount;
+
+        let mut bridge = balance::split(&mut source_pool.myso_balance, net_bridge);
+        if (sell_fee_amount > 0) {
+            if (sell_creator_fee > 0) {
+                distribute_creator_fee_from_pool(source_pool, sell_creator_fee, ctx);
+            };
+            if (sell_platform_fee > 0) {
+                let mut c = coin::from_balance(balance::split(&mut source_pool.myso_balance, sell_platform_fee), ctx);
+                social_contracts::platform::add_to_treasury(platform, &mut c, sell_platform_fee, clock, ctx);
+                coin::destroy_zero(c);
+            };
+            if (sell_treasury_fee > 0) {
+                let c = coin::from_balance(balance::split(&mut source_pool.myso_balance, sell_treasury_fee), ctx);
+                transfer::public_transfer(c, profile::get_treasury_address(treasury));
+            };
+        };
+
+        let source_new_price = calculate_token_price(
+            source_pool.info.base_price,
+            source_pool.info.quadratic_coefficient,
+            source_pool.info.circulating_supply
+        );
+        event::emit(TokenSoldEvent {
+            id: source_pool_id,
+            seller: trader,
+            amount: sell_amount,
+            myso_amount: sell_gross,
+            fee_amount: sell_fee_amount,
+            creator_fee: sell_creator_fee,
+            platform_fee: sell_platform_fee,
+            treasury_fee: sell_treasury_fee,
+            new_price: source_new_price,
+        });
+
+        let bridge_value = balance::value(&bridge);
+        let (dest_amount, buy_gross) = calculate_max_buy_amount(
+            dest_pool.info.base_price,
+            dest_pool.info.quadratic_coefficient,
+            dest_pool.info.circulating_supply,
+            bridge_value
+        );
+        assert!(dest_amount >= min_dest_amount, ESlippageExceeded);
+        assert!(dest_amount > 0, EInsufficientFunds);
+        assert!(bridge_value >= buy_gross, EInsufficientFunds);
+
+        let buy_fee_amount = calculate_fee_amount_safe(buy_gross, total_fee_bps);
+        let buy_creator_fee = calculate_component_fee_safe(buy_fee_amount, config.trading_creator_fee_bps, total_fee_bps);
+        let buy_platform_fee = calculate_component_fee_safe(buy_fee_amount, config.trading_platform_fee_bps, total_fee_bps);
+        let buy_treasury_fee = buy_fee_amount - buy_creator_fee - buy_platform_fee;
+        let buy_net = buy_gross - buy_fee_amount;
+
+        let mut payment = coin::from_balance(balance::split(&mut bridge, buy_gross), ctx);
+        if (buy_fee_amount > 0) {
+            if (buy_creator_fee > 0) {
+                distribute_creator_fee(dest_pool, buy_creator_fee, &mut payment, ctx);
+            };
+            if (buy_platform_fee > 0) {
+                let mut c = coin::split(&mut payment, buy_platform_fee, ctx);
+                social_contracts::platform::add_to_treasury(platform, &mut c, buy_platform_fee, clock, ctx);
+                coin::destroy_zero(c);
+            };
+            if (buy_treasury_fee > 0) {
+                let c = coin::split(&mut payment, buy_treasury_fee, ctx);
+                transfer::public_transfer(c, profile::get_treasury_address(treasury));
+            };
+        };
+        let pool_payment = coin::split(&mut payment, buy_net, ctx);
+        balance::join(&mut dest_pool.myso_balance, coin::into_balance(pool_payment));
+        coin::destroy_zero(payment);
+
+        let leftover_myso = balance::value(&bridge);
+        if (leftover_myso > 0) {
+            transfer::public_transfer(coin::from_balance(bridge, ctx), trader);
+        } else {
+            balance::destroy_zero(bridge);
+        };
+
+        assert!(dest_pool.info.circulating_supply <= MAX_U64 - dest_amount, EOverflow);
+        let new_supply = dest_pool.info.circulating_supply + dest_amount;
+        assert!(new_supply == 0 || new_supply <= MAX_U64 / config.max_hold_percent_bps, EOverflow);
+        let max_hold = (new_supply * config.max_hold_percent_bps) / BPS_DENOM;
+        let current_hold = if (table::contains(&dest_pool.holders, trader)) {
+            *table::borrow(&dest_pool.holders, trader)
+        } else {
+            0
+        };
+        assert!(current_hold <= MAX_U64 - dest_amount, EOverflow);
+        assert!(current_hold + dest_amount <= max_hold, EExceededMaxHold);
+
+        if (credit_existing) {
+            assert!(current_hold > 0, ENoTokensOwned);
+            *table::borrow_mut(&mut dest_pool.holders, trader) = current_hold + dest_amount;
+        } else {
+            assert!(current_hold == 0, EAlreadyOwnsTokens);
+            table::add(&mut dest_pool.holders, trader, dest_amount);
+            transfer::transfer(SocialToken {
+                id: object::new(ctx),
+                pool_id: dest_pool_id,
+                token_type: dest_pool.info.token_type,
+                amount: dest_amount,
+            }, trader);
+        };
+
+        dest_pool.info.circulating_supply = new_supply;
+        let dest_new_price = calculate_token_price(
+            dest_pool.info.base_price,
+            dest_pool.info.quadratic_coefficient,
+            dest_pool.info.circulating_supply
+        );
+        event::emit(TokenBoughtEvent {
+            id: dest_pool_id,
+            buyer: trader,
+            amount: dest_amount,
+            myso_amount: buy_gross,
+            fee_amount: buy_fee_amount,
+            creator_fee: buy_creator_fee,
+            platform_fee: buy_platform_fee,
+            treasury_fee: buy_treasury_fee,
+            new_price: dest_new_price,
+        });
+        event::emit(TokenSwappedEvent {
+            source_pool_id,
+            dest_pool_id,
+            trader,
+            sell_amount,
+            dest_amount,
+            sell_myso_gross: sell_gross,
+            buy_myso_gross: buy_gross,
+            sell_fee_amount,
+            buy_fee_amount,
+            sell_creator_fee,
+            sell_platform_fee,
+            sell_treasury_fee,
+            buy_creator_fee,
+            buy_platform_fee,
+            buy_treasury_fee,
+            leftover_myso,
+            source_new_price,
+            dest_new_price,
+        });
+        dest_amount
+    }
+
     // --- Wide `u256` AMM math (`u256::max_value!()` in stdlib); avoids overflowing `coeff * cube_diff` ---
 
     fun unwrap_u256_opt(o: Option<u256>): u256 {
@@ -3905,6 +4655,119 @@ module social_contracts::social_proof_tokens {
         let total_u64 = mist_amount_u256_to_u64(total);
         let avg_u64 = mist_amount_u256_to_u64(total / a);
         (total_u64, avg_u64)
+    }
+
+    /// Gross MYSO proceeds, sell fee, and net MYSO after selling `sell_amount` nano-SPT.
+    public fun calculate_swap_proceeds(
+        base_price: u64,
+        quadratic_coefficient: u64,
+        current_supply_nano: u64,
+        sell_amount: u64,
+        total_fee_bps: u64
+    ): (u64, u64, u64) {
+        let (sell_gross, _) = calculate_sell_price(
+            base_price,
+            quadratic_coefficient,
+            current_supply_nano,
+            sell_amount
+        );
+        let sell_fee = calculate_fee_amount_safe(sell_gross, total_fee_bps);
+        assert!(sell_gross >= sell_fee, EOverflow);
+        (sell_gross, sell_fee, sell_gross - sell_fee)
+    }
+
+    /// Largest nano-SPT buy whose gross MYSO cost is `<= myso_budget` (binary search).
+    /// Returns `(dest_amount, buy_gross)`.
+    public fun calculate_max_buy_amount(
+        base_price: u64,
+        quadratic_coefficient: u64,
+        current_supply_nano: u64,
+        myso_budget: u64
+    ): (u64, u64) {
+        if (myso_budget == 0) {
+            return (0, 0)
+        };
+
+        let (cost1, _) = calculate_buy_price(
+            base_price,
+            quadratic_coefficient,
+            current_supply_nano,
+            1
+        );
+        if (cost1 > myso_budget) {
+            return (0, 0)
+        };
+
+        // Expand upper bound until cost exceeds budget.
+        let mut lo: u64 = 1;
+        let mut lo_cost: u64 = cost1;
+        let mut hi: u64 = 2;
+        let mut guard = 0u64;
+        while (guard < 63) {
+            let (cost, _) = calculate_buy_price(
+                base_price,
+                quadratic_coefficient,
+                current_supply_nano,
+                hi
+            );
+            if (cost > myso_budget) {
+                break
+            };
+            lo = hi;
+            lo_cost = cost;
+            if (hi > MAX_U64 / 2) {
+                return (lo, lo_cost)
+            };
+            hi = hi * 2;
+            guard = guard + 1;
+        };
+
+        // Binary search in (lo, hi)
+        while (lo + 1 < hi) {
+            let mid = lo + (hi - lo) / 2;
+            let (cost, _) = calculate_buy_price(
+                base_price,
+                quadratic_coefficient,
+                current_supply_nano,
+                mid
+            );
+            if (cost <= myso_budget) {
+                lo = mid;
+                lo_cost = cost;
+            } else {
+                hi = mid;
+            };
+        };
+        (lo, lo_cost)
+    }
+
+    /// Quote an exact-in swap: sell `sell_amount` from source curve into dest curve.
+    /// Returns `(dest_amount, sell_gross, buy_gross, net_bridge, leftover_myso)`.
+    public fun calculate_swap_quote(
+        source_base_price: u64,
+        source_quadratic_coefficient: u64,
+        source_supply_nano: u64,
+        dest_base_price: u64,
+        dest_quadratic_coefficient: u64,
+        dest_supply_nano: u64,
+        sell_amount: u64,
+        total_fee_bps: u64
+    ): (u64, u64, u64, u64, u64) {
+        let (sell_gross, _sell_fee, net_bridge) = calculate_swap_proceeds(
+            source_base_price,
+            source_quadratic_coefficient,
+            source_supply_nano,
+            sell_amount,
+            total_fee_bps
+        );
+        let (dest_amount, buy_gross) = calculate_max_buy_amount(
+            dest_base_price,
+            dest_quadratic_coefficient,
+            dest_supply_nano,
+            net_bridge
+        );
+        assert!(net_bridge >= buy_gross, EOverflow);
+        (dest_amount, sell_gross, buy_gross, net_bridge, net_bridge - buy_gross)
     }
 
     /// `10^9` nano-SPT per 1.0 display token (for clients / indexers).
@@ -4168,6 +5031,37 @@ module social_contracts::social_proof_tokens {
             poc_redirection_kind: 0,
             version: upgrade::current_version(),
         }
+    }
+
+    /// Fund a mock pool's MYSO liquidity for sell/swap integration tests.
+    #[test_only]
+    public fun fund_token_pool_for_testing(pool: &mut TokenPool, payment: Coin<MYSO>) {
+        balance::join(&mut pool.myso_balance, coin::into_balance(payment));
+    }
+
+    /// Seed a holder balance (nano-SPT) without going through buy entrypoints.
+    #[test_only]
+    public fun seed_pool_holder_for_testing(pool: &mut TokenPool, holder: address, amount: u64) {
+        if (table::contains(&pool.holders, holder)) {
+            let bal = table::borrow_mut(&mut pool.holders, holder);
+            *bal = *bal + amount;
+        } else {
+            table::add(&mut pool.holders, holder, amount);
+        };
+        assert!(pool.info.circulating_supply <= MAX_U64 - amount, EOverflow);
+        pool.info.circulating_supply = pool.info.circulating_supply + amount;
+    }
+
+    /// Pool object id for tests.
+    #[test_only]
+    public fun pool_id_for_testing(pool: &TokenPool): address {
+        object::uid_to_address(&pool.id)
+    }
+
+    /// Exposes the same-pool swap guard for unit tests (Move cannot mutably borrow one pool twice).
+    #[test_only]
+    public fun assert_distinct_swap_pools_for_testing(source_pool_id: address, dest_pool_id: address) {
+        assert!(source_pool_id != dest_pool_id, ESamePool);
     }
 
     /// Share a TokenPool for test cleanup (TokenPool is not transferable)

@@ -207,6 +207,7 @@ struct ModeratorPermissionsRevokedEvent {
     _moderators_group_id: Option<String>,
     member: String,
     permissions: Vec<String>,
+    #[serde(rename = "revoked_by")]
     _revoked_by: String,
 }
 
@@ -216,6 +217,7 @@ struct ModeratorRemovedEvent {
     #[serde(default, rename = "moderators_group_id")]
     _moderators_group_id: Option<String>,
     member: String,
+    #[serde(rename = "removed_by")]
     _removed_by: String,
 }
 
@@ -230,6 +232,7 @@ struct PlatformBlockedProfileEvent {
 struct PlatformUnblockedProfileEvent {
     platform_id: String,
     profile_id: String,
+    #[serde(rename = "unblocked_by")]
     _unblocked_by: String,
 }
 
@@ -246,7 +249,7 @@ struct UserLeftPlatformEvent {
     wallet_address: String,
     platform_id: String,
     #[serde(deserialize_with = "de_u64")]
-    _timestamp: u64,
+    timestamp: u64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -837,11 +840,14 @@ fn process_user_joined_platform_event(
         "platform UserJoinedPlatformEvent JSON did not match UserJoinedPlatformEvent",
     )?;
     let joined_at = ms_to_naive(ev.timestamp, checkpoint_timestamp_ms);
+    let platform_id = common::normalize_hex_address(&ev.platform_id);
+    let wallet_address = common::normalize_hex_address(&ev.wallet_address);
 
     let membership = NewPlatformMembership {
-        platform_id: ev.platform_id.clone(),
-        wallet_address: ev.wallet_address,
+        platform_id: platform_id.clone(),
+        wallet_address,
         joined_at,
+        left_at: None,
     };
 
     let now = common::chain_time_from_ms(common::chain_timestamp_ms(
@@ -851,7 +857,7 @@ fn process_user_joined_platform_event(
     .naive_utc();
     let platform_event = NewPlatformEvent {
         event_type: "UserJoinedPlatform".to_string(),
-        platform_id: ev.platform_id,
+        platform_id,
         event_data: data.clone(),
         event_id: Some(event_id.to_string()),
         created_at: now,
@@ -876,25 +882,31 @@ fn process_user_left_platform_event(
         data,
         "platform UserLeftPlatformEvent JSON did not match UserLeftPlatformEvent",
     )?;
+    let platform_id = common::normalize_hex_address(&ev.platform_id);
+    let wallet_address = common::normalize_hex_address(&ev.wallet_address);
+    let left_at = ms_to_naive(ev.timestamp, checkpoint_timestamp_ms);
     let now = common::chain_time_from_ms(common::chain_timestamp_ms(
-        common::json_field_as_i64(data.get("timestamp")),
+        Some(ev.timestamp as i64),
         checkpoint_timestamp_ms,
     ))
     .naive_utc();
     let platform_event = NewPlatformEvent {
         event_type: "UserLeftPlatform".to_string(),
-        platform_id: ev.platform_id.clone(),
+        platform_id: platform_id.clone(),
         event_data: data.clone(),
         event_id: Some(event_id.to_string()),
         created_at: now,
         reasoning: None,
     };
+    // Stamp left_at before audit event so leave persists even if a later statement
+    // in the non-transactional commit batch is flaky.
     Some(vec![
-        SocialEventRow::PlatformEvent(platform_event),
-        SocialEventRow::PlatformMembershipRemove {
-            platform_id: ev.platform_id,
-            wallet_address: ev.wallet_address,
+        SocialEventRow::PlatformMembershipLeave {
+            platform_id,
+            wallet_address,
+            left_at,
         },
+        SocialEventRow::PlatformEvent(platform_event),
     ])
 }
 
@@ -1173,5 +1185,212 @@ mod platform_deleted_tests {
         };
         assert_eq!(ev.event_type, "PlatformTreasuryWithdrawal");
         assert_eq!(ev.event_id.as_deref(), Some(event_id));
+    }
+
+    #[test]
+    fn user_left_platform_event_json_through_handler() {
+        let ts_ms = 1_735_891_200_000u64;
+        let platform_id = "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
+        let wallet_address =
+            "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+        // Shape matches BCS → JSON in events.rs (`timestamp`, not `_timestamp`).
+        let json = serde_json::json!({
+            "wallet_address": wallet_address,
+            "platform_id": platform_id,
+            "timestamp": ts_ms,
+        });
+        let event_id = "digest:leave";
+        let rows = handle_platform_event("UserLeftPlatformEvent", &json, event_id, CK_MS)
+            .expect("handler should recognize UserLeftPlatformEvent");
+        assert_eq!(rows.len(), 2);
+
+        let SocialEventRow::PlatformMembershipLeave {
+            platform_id: leave_platform_id,
+            wallet_address: leave_wallet,
+            left_at,
+        } = &rows[0]
+        else {
+            panic!(
+                "expected PlatformMembershipLeave row first, got {:?}",
+                rows[0]
+            );
+        };
+        assert_eq!(leave_platform_id.as_str(), platform_id);
+        assert_eq!(leave_wallet.as_str(), wallet_address);
+        assert_eq!(*left_at, naive_from_chain_ms(ts_ms));
+
+        let SocialEventRow::PlatformEvent(ev) = &rows[1] else {
+            panic!("expected PlatformEvent row second, got {:?}", rows[1]);
+        };
+        assert_eq!(ev.event_type, "UserLeftPlatform");
+        assert_eq!(ev.event_id.as_deref(), Some(event_id));
+        assert_eq!(ev.platform_id.as_str(), platform_id);
+        assert_eq!(&ev.event_data, &json);
+    }
+
+    #[test]
+    fn user_joined_platform_event_json_through_handler() {
+        let ts_ms = 1_735_891_200_000u64;
+        let platform_id = "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
+        let wallet_address =
+            "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+        let json = serde_json::json!({
+            "wallet_address": wallet_address,
+            "platform_id": platform_id,
+            "timestamp": ts_ms,
+        });
+        let event_id = "digest:join";
+        let rows = handle_platform_event("UserJoinedPlatformEvent", &json, event_id, CK_MS)
+            .expect("handler should recognize UserJoinedPlatformEvent");
+        assert_eq!(rows.len(), 2);
+
+        let SocialEventRow::PlatformMembership(m) = &rows[0] else {
+            panic!("expected PlatformMembership row first, got {:?}", rows[0]);
+        };
+        assert_eq!(m.platform_id.as_str(), platform_id);
+        assert_eq!(m.wallet_address.as_str(), wallet_address);
+        assert_eq!(m.joined_at, naive_from_chain_ms(ts_ms));
+        assert!(m.left_at.is_none());
+
+        let SocialEventRow::PlatformEvent(ev) = &rows[1] else {
+            panic!("expected PlatformEvent row second, got {:?}", rows[1]);
+        };
+        assert_eq!(ev.event_type, "UserJoinedPlatform");
+        assert_eq!(ev.event_id.as_deref(), Some(event_id));
+    }
+
+    #[test]
+    fn moderator_permissions_revoked_event_json_through_handler() {
+        let platform_id = "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
+        let member = "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
+        let revoked_by = "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";
+        let permission = "PlatformBlockAdmin";
+        // Shape matches BCS → JSON in events.rs (`revoked_by`, not `_revoked_by`).
+        let json = serde_json::json!({
+            "platform_id": platform_id,
+            "moderators_group_id": "0x1111111111111111111111111111111111111111111111111111111111111111",
+            "member": member,
+            "permissions": [permission],
+            "revoked_by": revoked_by,
+        });
+        let event_id = "digest:mod-revoke";
+        let rows =
+            handle_platform_event("ModeratorPermissionsRevokedEvent", &json, event_id, CK_MS)
+                .expect("handler should recognize ModeratorPermissionsRevokedEvent");
+        assert_eq!(rows.len(), 2);
+
+        let SocialEventRow::PlatformModeratorPermissionRevoke {
+            platform_id: revoke_platform_id,
+            moderator_address,
+            permission_type,
+            ..
+        } = &rows[0]
+        else {
+            panic!(
+                "expected PlatformModeratorPermissionRevoke row first, got {:?}",
+                rows[0]
+            );
+        };
+        assert_eq!(revoke_platform_id.as_str(), platform_id);
+        assert_eq!(moderator_address.as_str(), member);
+        assert_eq!(permission_type.as_str(), permission);
+
+        let SocialEventRow::PlatformEvent(ev) = &rows[1] else {
+            panic!("expected PlatformEvent row second, got {:?}", rows[1]);
+        };
+        assert_eq!(ev.event_type, "ModeratorPermissionsRevoked");
+        assert_eq!(ev.event_id.as_deref(), Some(event_id));
+        assert_eq!(ev.platform_id.as_str(), platform_id);
+    }
+
+    #[test]
+    fn moderator_removed_event_json_through_handler() {
+        let platform_id = "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
+        let member = "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
+        let removed_by = "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";
+        // Shape matches BCS → JSON in events.rs (`removed_by`, not `_removed_by`).
+        let json = serde_json::json!({
+            "platform_id": platform_id,
+            "moderators_group_id": "0x1111111111111111111111111111111111111111111111111111111111111111",
+            "member": member,
+            "removed_by": removed_by,
+        });
+        let event_id = "digest:mod-remove";
+        let rows = handle_platform_event("ModeratorRemovedEvent", &json, event_id, CK_MS)
+            .expect("handler should recognize ModeratorRemovedEvent");
+        assert_eq!(rows.len(), 3);
+
+        let SocialEventRow::PlatformModeratorPermissionRevokeAll {
+            platform_id: revoke_platform_id,
+            moderator_address: revoke_mod,
+            ..
+        } = &rows[0]
+        else {
+            panic!(
+                "expected PlatformModeratorPermissionRevokeAll row first, got {:?}",
+                rows[0]
+            );
+        };
+        assert_eq!(revoke_platform_id.as_str(), platform_id);
+        assert_eq!(revoke_mod.as_str(), member);
+
+        let SocialEventRow::PlatformModeratorRemove {
+            platform_id: remove_platform_id,
+            moderator_address: remove_mod,
+        } = &rows[1]
+        else {
+            panic!(
+                "expected PlatformModeratorRemove row second, got {:?}",
+                rows[1]
+            );
+        };
+        assert_eq!(remove_platform_id.as_str(), platform_id);
+        assert_eq!(remove_mod.as_str(), member);
+
+        let SocialEventRow::PlatformEvent(ev) = &rows[2] else {
+            panic!("expected PlatformEvent row third, got {:?}", rows[2]);
+        };
+        assert_eq!(ev.event_type, "ModeratorRemoved");
+        assert_eq!(ev.event_id.as_deref(), Some(event_id));
+        assert_eq!(ev.platform_id.as_str(), platform_id);
+    }
+
+    #[test]
+    fn platform_unblocked_profile_event_json_through_handler() {
+        let platform_id = "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
+        let profile_id = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+        let unblocked_by =
+            "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";
+        // Shape uses `unblocked_by` (not `_unblocked_by`) so the orphaned path cannot regress.
+        let json = serde_json::json!({
+            "platform_id": platform_id,
+            "profile_id": profile_id,
+            "unblocked_by": unblocked_by,
+        });
+        let event_id = "digest:platform-unblock";
+        let rows =
+            handle_platform_event("PlatformUnblockedProfileEvent", &json, event_id, CK_MS)
+                .expect("handler should recognize PlatformUnblockedProfileEvent");
+        assert_eq!(rows.len(), 2);
+
+        let SocialEventRow::PlatformEvent(ev) = &rows[0] else {
+            panic!("expected PlatformEvent row first, got {:?}", rows[0]);
+        };
+        assert_eq!(ev.event_type, "PlatformUnblockedProfile");
+        assert_eq!(ev.event_id.as_deref(), Some(event_id));
+        assert_eq!(ev.platform_id.as_str(), platform_id);
+
+        let SocialEventRow::PlatformBlockedProfileRemove {
+            platform_id: remove_platform_id,
+            wallet_address,
+        } = &rows[1]
+        else {
+            panic!(
+                "expected PlatformBlockedProfileRemove row second, got {:?}",
+                rows[1]
+            );
+        };
+        assert_eq!(remove_platform_id.as_str(), platform_id);
+        assert_eq!(wallet_address.as_str(), profile_id);
     }
 }

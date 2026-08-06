@@ -236,7 +236,13 @@ After `delete_post` / `delete_comment` and indexer catch-up, confirm rows in `po
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/search` | Search (profiles, posts, etc.) |
+| GET | `/search` | BM25-ranked search across profiles, posts, and platforms (`?q=` required, `?limit=` optional) |
+
+Search uses Postgres `pg_textsearch` BM25 (`<@>`). Exact profile matches (wallet address / username) are returned first, then BM25-ranked free-text hits. Post results keep the latest version per `post_id`.
+
+Following / followers list filters (`?search=`) match wallet addresses with `ILIKE` and profile username/display_name/bio with BM25.
+
+Requires the social indexer Postgres image (`Dockerfile.postgres`), which installs `pg_textsearch` and preloads it alongside TimescaleDB. The schema migration `20260803140000_pg_textsearch_bm25` enables the extension and creates BM25 indexes.
 
 ---
 
@@ -295,6 +301,8 @@ After `delete_post` / `delete_comment` and indexer catch-up, confirm rows in `po
 | GET | `/spt/pools/:id` | Get SPT pool |
 | GET | `/spt/pools/by-associated-id/:id` | Get SPT pool by associated ID |
 | GET | `/spt/pools/:id/transactions` | Get pool transactions |
+| GET | `/spt/pools/:id/swaps` | Get SPT→SPT swaps involving this pool |
+| GET | `/spt/pools/:id/transfers` | Get P2P SPT transfers for this pool |
 | GET | `/spt/pools/:id/holdings` | Get pool holdings |
 | GET | `/spt/pools/:id/price-history` | Get pool price history |
 | GET | `/spt/pools/:id/revenue` | Get pool revenue |

@@ -927,6 +927,8 @@ fn make_router(state: Arc<AppState>) -> Router {
             "/spt/pools/:id/transactions",
             get(get_spt_pool_transactions),
         )
+        .route("/spt/pools/:id/swaps", get(get_spt_pool_swaps))
+        .route("/spt/pools/:id/transfers", get(get_spt_pool_transfers))
         .route("/spt/pools/:id/holdings", get(get_spt_pool_holdings))
         .route(
             "/spt/pools/:id/price-history",

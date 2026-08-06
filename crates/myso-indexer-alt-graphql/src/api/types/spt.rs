@@ -9,7 +9,8 @@ use async_graphql::Object;
 use myso_indexer_alt_social_reader::{
     SptHoldingRow, SptPoolRow, SptPriceHistory as SptPriceHistoryRow,
     SptReservationVolumeBucket as SptReservationVolumeBucketRow, SptSortBy as SptSortByReader,
-    SptTransaction as SptTransactionRow, ViewerSocialContext,
+    SptSwap as SptSwapRow, SptTransfer as SptTransferRow, SptTransaction as SptTransactionRow,
+    ViewerSocialContext,
 };
 use myso_indexer_alt_social_schema::models::{SptReservationHoldingRow, TOKEN_TYPE_POST};
 
@@ -294,6 +295,44 @@ impl SptPool {
         )
     }
 
+    /// Atomic SPT→SPT swaps where this pool is the source or destination.
+    async fn swaps(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<SptSwap>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .get_spt_swaps_for_pool(&self.inner.pool_id, limit, offset)
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(SptSwap::from_row).collect())
+    }
+
+    /// P2P SPT transfers for this pool.
+    async fn transfers(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<SptTransfer>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .get_spt_transfers_for_pool(&self.inner.pool_id, limit, offset)
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(SptTransfer::from_row).collect())
+    }
+
     /// Price history for this pool.
     async fn price_history(
         &self,
@@ -468,6 +507,16 @@ impl SptTransaction {
         to_iso8601_utc(self.inner.time)
     }
 
+    /// `true` when this BUY/SELL row is one leg of an atomic SPT→SPT swap.
+    async fn is_swap_leg(&self) -> bool {
+        self.inner.is_swap_leg
+    }
+
+    /// Opposite pool ID when this row is one leg of an SPT→SPT swap; null otherwise.
+    async fn counterparty_pool_id(&self) -> Option<&str> {
+        self.inner.counterparty_pool_id.as_deref()
+    }
+
     /// Viewer follows the trade sender (requires `viewer` on [`SptPool.transactions`]).
     async fn viewer_is_following(&self) -> Option<bool> {
         self.viewer_ctx.map(|c| c.is_following)
@@ -486,6 +535,170 @@ impl SptTransaction {
     /// Sender blocked the viewer.
     async fn blocked_by_subject(&self) -> Option<bool> {
         self.viewer_ctx.map(|c| c.blocked_by_subject)
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct SptSwap {
+    inner: SptSwapRow,
+}
+
+impl SptSwap {
+    pub(crate) fn from_row(inner: SptSwapRow) -> Self {
+        Self { inner }
+    }
+}
+
+/// Atomic SPT→SPT swap summary. SUMMARY ONLY: the per-pool balance/price/fee effects are
+/// reflected by the underlying BUY/SELL [`SptTransaction`] legs (see `isSwapLeg`).
+#[Object]
+impl SptSwap {
+    /// Transaction digest shared by both swap legs.
+    async fn transaction_id(&self) -> &str {
+        &self.inner.transaction_id
+    }
+
+    /// Trader wallet address.
+    async fn trader(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.trader)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    /// Source pool the trader sold from.
+    async fn source_pool_id(&self) -> &str {
+        &self.inner.source_pool_id
+    }
+
+    /// Destination pool the trader bought into.
+    async fn dest_pool_id(&self) -> &str {
+        &self.inner.dest_pool_id
+    }
+
+    /// Nano-SPT sold from the source pool.
+    async fn sell_amount(&self) -> BigInt {
+        BigInt::from(self.inner.sell_amount)
+    }
+
+    /// Nano-SPT bought into the destination pool.
+    async fn dest_amount(&self) -> BigInt {
+        BigInt::from(self.inner.dest_amount)
+    }
+
+    /// Gross MYSO realized from the sell leg.
+    async fn sell_myso_gross(&self) -> BigInt {
+        BigInt::from(self.inner.sell_myso_gross)
+    }
+
+    /// Gross MYSO spent on the buy leg.
+    async fn buy_myso_gross(&self) -> BigInt {
+        BigInt::from(self.inner.buy_myso_gross)
+    }
+
+    /// Total fees on the sell leg.
+    async fn sell_fee_amount(&self) -> BigInt {
+        BigInt::from(self.inner.sell_fee_amount)
+    }
+
+    /// Total fees on the buy leg.
+    async fn buy_fee_amount(&self) -> BigInt {
+        BigInt::from(self.inner.buy_fee_amount)
+    }
+
+    /// Creator fee on the sell leg.
+    async fn sell_creator_fee(&self) -> BigInt {
+        BigInt::from(self.inner.sell_creator_fee)
+    }
+
+    /// Platform fee on the sell leg.
+    async fn sell_platform_fee(&self) -> BigInt {
+        BigInt::from(self.inner.sell_platform_fee)
+    }
+
+    /// Treasury fee on the sell leg.
+    async fn sell_treasury_fee(&self) -> BigInt {
+        BigInt::from(self.inner.sell_treasury_fee)
+    }
+
+    /// Creator fee on the buy leg.
+    async fn buy_creator_fee(&self) -> BigInt {
+        BigInt::from(self.inner.buy_creator_fee)
+    }
+
+    /// Platform fee on the buy leg.
+    async fn buy_platform_fee(&self) -> BigInt {
+        BigInt::from(self.inner.buy_platform_fee)
+    }
+
+    /// Treasury fee on the buy leg.
+    async fn buy_treasury_fee(&self) -> BigInt {
+        BigInt::from(self.inner.buy_treasury_fee)
+    }
+
+    /// MYSO returned to the trader after the buy leg (unspent proceeds).
+    async fn leftover_myso(&self) -> BigInt {
+        BigInt::from(self.inner.leftover_myso)
+    }
+
+    /// Source pool price after the swap (smallest units).
+    async fn source_new_price(&self) -> i64 {
+        self.inner.source_new_price
+    }
+
+    /// Destination pool price after the swap (smallest units).
+    async fn dest_new_price(&self) -> i64 {
+        self.inner.dest_new_price
+    }
+
+    /// Swap timestamp (ISO 8601).
+    async fn timestamp(&self) -> String {
+        to_iso8601_utc(self.inner.time)
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct SptTransfer {
+    inner: SptTransferRow,
+}
+
+impl SptTransfer {
+    pub(crate) fn from_row(inner: SptTransferRow) -> Self {
+        Self { inner }
+    }
+}
+
+/// P2P SPT transfer summary. Holdings are updated via delta rows; supply/price unchanged.
+#[Object]
+impl SptTransfer {
+    /// Transaction digest.
+    async fn transaction_id(&self) -> &str {
+        &self.inner.transaction_id
+    }
+
+    /// Pool ID.
+    async fn pool_id(&self) -> &str {
+        &self.inner.pool_id
+    }
+
+    /// Sender wallet.
+    async fn from(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.from_address)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    /// Recipient wallet.
+    async fn to(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.to_address)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    /// Nano-SPT transferred.
+    async fn amount(&self) -> BigInt {
+        BigInt::from(self.inner.amount)
+    }
+
+    /// Transfer timestamp (ISO 8601).
+    async fn timestamp(&self) -> String {
+        to_iso8601_utc(self.inner.time)
     }
 }
 

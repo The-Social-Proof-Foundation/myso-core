@@ -9,6 +9,8 @@
 //! - **Not** mark-to-market or FIFO realized P&L; this is **wallet cash-flow** over a time window.
 //! - **Swaps** ([`spt_transactions`](myso_indexer_alt_social_schema::schema::spt_transactions)):
 //!   net MYSO for the trader is `SUM(-myso_amount)` (buys store positive `myso_amount`, sells negative).
+//!   Atomic SPT→SPT swaps emit BUY+SELL legs here; [`spt_swaps`](myso_indexer_alt_social_schema::schema::spt_swaps)
+//!   is summary-only and must **not** be double-counted in this aggregate.
 //! - **Reservations** ([`spt_reservations`](myso_indexer_alt_social_schema::schema::spt_reservations)):
 //!   net MYSO for the reserver is `SUM(-amount)` (deposits positive, withdrawals negative).
 //! - **Unified revenue** ([`unified_revenue`](myso_indexer_alt_social_schema::schema::unified_revenue)):

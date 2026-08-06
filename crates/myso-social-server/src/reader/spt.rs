@@ -67,7 +67,8 @@ pub(crate) async fn get_spt_transactions(
     let mut conn = db.connect().await?;
     let query = "
         SELECT pool_id, transaction_type, sender, amount, myso_amount, fee_amount,
-               creator_fee, platform_fee, treasury_fee, price, created_at, time, transaction_id
+               creator_fee, platform_fee, treasury_fee, price, created_at, time, transaction_id,
+               counterparty_pool_id, is_swap_leg
         FROM spt_transactions
         WHERE pool_id = $1
         ORDER BY time DESC
@@ -78,6 +79,58 @@ pub(crate) async fn get_spt_transactions(
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
         .load::<SptTransactionRow>(&mut conn)
+        .await?;
+    Ok(results)
+}
+
+/// Swaps where `pool_id` is either the source or destination pool, newest first.
+pub(crate) async fn get_spt_swaps(
+    db: &Db,
+    pool_id: &str,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<SptSwapRow>, SocialError> {
+    let mut conn = db.connect().await?;
+    let query = "
+        SELECT transaction_id, trader, source_pool_id, dest_pool_id, sell_amount, dest_amount,
+               sell_myso_gross, buy_myso_gross, sell_fee_amount, buy_fee_amount,
+               sell_creator_fee, sell_platform_fee, sell_treasury_fee,
+               buy_creator_fee, buy_platform_fee, buy_treasury_fee, leftover_myso,
+               source_new_price, dest_new_price, created_at, time
+        FROM spt_swaps
+        WHERE source_pool_id = $1 OR dest_pool_id = $1
+        ORDER BY time DESC
+        LIMIT $2 OFFSET $3
+    ";
+    let results = diesel::sql_query(query)
+        .bind::<Text, _>(pool_id)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<SptSwapRow>(&mut conn)
+        .await?;
+    Ok(results)
+}
+
+/// P2P SPT transfers for a pool, newest first.
+pub(crate) async fn get_spt_transfers(
+    db: &Db,
+    pool_id: &str,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<SptTransferRow>, SocialError> {
+    let mut conn = db.connect().await?;
+    let query = "
+        SELECT transaction_id, pool_id, from_address, to_address, amount, created_at, time
+        FROM spt_transfers
+        WHERE pool_id = $1
+        ORDER BY time DESC
+        LIMIT $2 OFFSET $3
+    ";
+    let results = diesel::sql_query(query)
+        .bind::<Text, _>(pool_id)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<SptTransferRow>(&mut conn)
         .await?;
     Ok(results)
 }
@@ -1107,6 +1160,37 @@ struct UserHoldingRow {
     token_type: i16,
     #[diesel(sql_type = Text)]
     associated_id: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    profile_address: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    username: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    display_name: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    profile_photo: Option<String>,
+}
+
+/// Normalize `profile_…` / bare associated ids for profile-row joins.
+fn profile_assoc_sql(associated_col: &str) -> String {
+    format!(
+        r#"CASE
+            WHEN {associated_col} LIKE 'profile_%' THEN SUBSTRING({associated_col} FROM 9)
+            ELSE {associated_col}
+        END"#
+    )
+}
+
+/// Filled + remaining mint progress from pool totals (same formula as social_graph).
+fn reservation_progress(total_reserved: i64, required_threshold: i64) -> (f64, f64) {
+    let filled = if required_threshold > 0 {
+        (total_reserved as f64 / required_threshold as f64 * 100.0)
+            .min(100.0)
+            .max(0.0)
+    } else {
+        0.0
+    };
+    let remaining = (100.0 - filled).max(0.0);
+    (filled, remaining)
 }
 
 pub(crate) async fn get_spt_user_holdings(
@@ -1116,10 +1200,16 @@ pub(crate) async fn get_spt_user_holdings(
     offset: i64,
 ) -> Result<Vec<crate::reader::SptUserHoldingItem>, SocialError> {
     let mut conn = db.connect().await?;
-    let query = r#"
+    let assoc = profile_assoc_sql("p.associated_id");
+    let query = format!(
+        r#"
         SELECT h.pool_id, h.amount, h.acquired_at,
                COALESCE(p.token_type, 0::smallint) AS token_type,
-               COALESCE(p.associated_id, ''::text) AS associated_id
+               COALESCE(p.associated_id, ''::text) AS associated_id,
+               COALESCE(pr.owner_address, p.owner) AS profile_address,
+               pr.username AS username,
+               pr.display_name AS display_name,
+               pr.profile_photo AS profile_photo
         FROM (
             SELECT pool_id, SUM(amount)::bigint AS amount, MAX(acquired_at)::bigint AS acquired_at
             FROM spt_holdings
@@ -1128,15 +1218,29 @@ pub(crate) async fn get_spt_user_holdings(
             HAVING SUM(amount) != 0
         ) h
         LEFT JOIN LATERAL (
-            SELECT token_type, associated_id
+            SELECT token_type, associated_id, owner
             FROM spt_pools
             WHERE pool_id = h.pool_id
             ORDER BY time DESC
             LIMIT 1
         ) p ON true
+        LEFT JOIN LATERAL (
+            SELECT owner_address, username, display_name, profile_photo
+            FROM profiles
+            WHERE LOWER(TRIM(owner_address)) = LOWER(TRIM(p.owner))
+               OR (
+                    p.token_type = 1
+                    AND profile_id IS NOT NULL
+                    AND profile_id = ({assoc})
+               )
+            ORDER BY updated_at DESC
+            LIMIT 1
+        ) pr ON true
         ORDER BY h.acquired_at DESC NULLS LAST
         LIMIT $2 OFFSET $3
-    "#;
+    "#,
+        assoc = assoc
+    );
     let rows: Vec<UserHoldingRow> = diesel::sql_query(query)
         .bind::<Text, _>(address)
         .bind::<BigInt, _>(limit)
@@ -1152,6 +1256,16 @@ pub(crate) async fn get_spt_user_holdings(
             source: "holding".to_string(),
             token_type: r.token_type,
             associated_id: r.associated_id,
+            profile_address: r.profile_address,
+            username: r.username,
+            display_name: r.display_name,
+            profile_photo: r.profile_photo,
+            total_reserved: None,
+            required_threshold: None,
+            reservation_percentage: None,
+            remaining_percentage: None,
+            threshold_met: None,
+            pool_status: None,
         })
         .collect())
 }
@@ -1168,6 +1282,22 @@ struct UserReservationRow {
     token_type: i16,
     #[diesel(sql_type = Text)]
     associated_id: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    profile_address: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    username: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    display_name: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    profile_photo: Option<String>,
+    #[diesel(sql_type = BigInt)]
+    total_reserved: i64,
+    #[diesel(sql_type = BigInt)]
+    required_threshold: i64,
+    #[diesel(sql_type = Bool)]
+    threshold_met: bool,
+    #[diesel(sql_type = Text)]
+    pool_status: String,
 }
 
 pub(crate) async fn get_spt_user_reservations(
@@ -1177,13 +1307,37 @@ pub(crate) async fn get_spt_user_reservations(
     offset: i64,
 ) -> Result<Vec<crate::reader::SptUserHoldingItem>, SocialError> {
     let mut conn = db.connect().await?;
-    let query = r#"
-        SELECT pool_id, amount, reserved_at, token_type, associated_id
-        FROM spt_reservation_holdings
-        WHERE LOWER(TRIM(reserver_address)) = LOWER(TRIM($1::text))
-        ORDER BY reserved_at DESC NULLS LAST
+    let assoc = profile_assoc_sql("urh.associated_id");
+    let query = format!(
+        r#"
+        SELECT urh.pool_id, urh.amount, urh.reserved_at, urh.token_type, urh.associated_id,
+               COALESCE(pr.owner_address, urh.owner) AS profile_address,
+               pr.username AS username,
+               pr.display_name AS display_name,
+               pr.profile_photo AS profile_photo,
+               urh.total_reserved,
+               urh.required_threshold,
+               urh.threshold_met,
+               urh.pool_status
+        FROM spt_reservation_holdings urh
+        LEFT JOIN LATERAL (
+            SELECT owner_address, username, display_name, profile_photo
+            FROM profiles
+            WHERE LOWER(TRIM(owner_address)) = LOWER(TRIM(urh.owner))
+               OR (
+                    urh.token_type = 1
+                    AND profile_id IS NOT NULL
+                    AND profile_id = ({assoc})
+               )
+            ORDER BY updated_at DESC
+            LIMIT 1
+        ) pr ON true
+        WHERE LOWER(TRIM(urh.reserver_address)) = LOWER(TRIM($1::text))
+        ORDER BY urh.reserved_at DESC NULLS LAST
         LIMIT $2 OFFSET $3
-    "#;
+    "#,
+        assoc = assoc
+    );
     let rows: Vec<UserReservationRow> = diesel::sql_query(query)
         .bind::<Text, _>(address)
         .bind::<BigInt, _>(limit)
@@ -1192,13 +1346,27 @@ pub(crate) async fn get_spt_user_reservations(
         .await?;
     Ok(rows
         .into_iter()
-        .map(|r| crate::reader::SptUserHoldingItem {
-            pool_id: r.pool_id,
-            amount: r.amount,
-            acquired_at: r.reserved_at,
-            source: "reservation".to_string(),
-            token_type: r.token_type,
-            associated_id: r.associated_id,
+        .map(|r| {
+            let (filled, remaining) =
+                reservation_progress(r.total_reserved, r.required_threshold);
+            crate::reader::SptUserHoldingItem {
+                pool_id: r.pool_id,
+                amount: r.amount,
+                acquired_at: r.reserved_at,
+                source: "reservation".to_string(),
+                token_type: r.token_type,
+                associated_id: r.associated_id,
+                profile_address: r.profile_address,
+                username: r.username,
+                display_name: r.display_name,
+                profile_photo: r.profile_photo,
+                total_reserved: Some(r.total_reserved),
+                required_threshold: Some(r.required_threshold),
+                reservation_percentage: Some(filled),
+                remaining_percentage: Some(remaining),
+                threshold_met: Some(r.threshold_met),
+                pool_status: Some(r.pool_status),
+            }
         })
         .collect())
 }

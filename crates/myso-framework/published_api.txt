@@ -10496,7 +10496,7 @@ post_access_kind
 	public fun
 	0x50c1::post
 post_access_from_parts
-	fun
+	public(package) fun
 	0x50c1::post
 allow_comments
 	public fun
@@ -10594,6 +10594,9 @@ get_spt_id
 set_spt_id
 	public(package) fun
 	0x50c1::post
+set_enable_spt
+	public(package) fun
+	0x50c1::post
 spot_status_pending
 	public fun
 	0x50c1::post
@@ -10662,6 +10665,12 @@ assert_profile_subscription_access_service
 	0x50c1::post
 create_post_entry_body
 	fun
+	0x50c1::post
+create_post_object_for_spt
+	public(package) fun
+	0x50c1::post
+share_and_emit_spt_post
+	public(package) fun
 	0x50c1::post
 create_post
 	public entry fun
@@ -10909,6 +10918,12 @@ TokenBoughtEvent
 TokenSoldEvent
 	public struct
 	0x50c1::social_proof_tokens
+TokenSwappedEvent
+	public struct
+	0x50c1::social_proof_tokens
+TokenTransferredEvent
+	public struct
+	0x50c1::social_proof_tokens
 ReservationCreatedEvent
 	public struct
 	0x50c1::social_proof_tokens
@@ -11020,7 +11035,10 @@ withdraw_reservation_with_platform_for_profile
 bootstrap_reservation_pool_for_post_id
 	public(package) fun
 	0x50c1::social_proof_tokens
-create_reservation_pool_for_post
+create_post_with_reservation_pool
+	public entry fun
+	0x50c1::social_proof_tokens
+enable_spt_for_post
 	public entry fun
 	0x50c1::social_proof_tokens
 create_reservation_pool_for_profile
@@ -11095,6 +11113,27 @@ sell_tokens
 sell_tokens_with_platform
 	public fun
 	0x50c1::social_proof_tokens
+transfer_tokens
+	public entry fun
+	0x50c1::social_proof_tokens
+swap_tokens
+	public fun
+	0x50c1::social_proof_tokens
+swap_more_tokens
+	public fun
+	0x50c1::social_proof_tokens
+swap_tokens_with_platform
+	public fun
+	0x50c1::social_proof_tokens
+swap_more_tokens_with_platform
+	public fun
+	0x50c1::social_proof_tokens
+execute_swap_non_platform
+	fun
+	0x50c1::social_proof_tokens
+execute_swap_with_platform
+	fun
+	0x50c1::social_proof_tokens
 unwrap_u256_opt
 	fun
 	0x50c1::social_proof_tokens
@@ -11138,6 +11177,15 @@ calculate_buy_price
 	public fun
 	0x50c1::social_proof_tokens
 calculate_sell_price
+	public fun
+	0x50c1::social_proof_tokens
+calculate_swap_proceeds
+	public fun
+	0x50c1::social_proof_tokens
+calculate_max_buy_amount
+	public fun
+	0x50c1::social_proof_tokens
+calculate_swap_quote
 	public fun
 	0x50c1::social_proof_tokens
 spt_amount_scale

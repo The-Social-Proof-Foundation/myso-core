@@ -62,6 +62,95 @@ pub struct SptTransactionRow {
     pub time: chrono::DateTime<chrono::Utc>,
     #[diesel(sql_type = Text)]
     pub transaction_id: String,
+    /// Opposite pool when this row is one leg of an SPT→SPT swap.
+    #[diesel(sql_type = Nullable<Text>)]
+    pub counterparty_pool_id: Option<String>,
+    /// `true` when this BUY/SELL row is one leg of an SPT→SPT swap.
+    #[diesel(sql_type = Bool)]
+    pub is_swap_leg: bool,
+}
+
+/// One atomic SPT→SPT swap summary (`spt_swaps`).
+#[derive(Debug, Serialize, QueryableByName)]
+pub struct SptSwapRow {
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+    #[diesel(sql_type = Text)]
+    pub trader: String,
+    #[diesel(sql_type = Text)]
+    pub source_pool_id: String,
+    #[diesel(sql_type = Text)]
+    pub dest_pool_id: String,
+    /// Nano-SPT sold from the source pool.
+    #[serde(serialize_with = "json_string_i64::serialize")]
+    #[diesel(sql_type = BigInt)]
+    pub sell_amount: i64,
+    /// Nano-SPT bought into the dest pool.
+    #[serde(serialize_with = "json_string_i64::serialize")]
+    #[diesel(sql_type = BigInt)]
+    pub dest_amount: i64,
+    #[serde(serialize_with = "json_string_i64::serialize")]
+    #[diesel(sql_type = BigInt)]
+    pub sell_myso_gross: i64,
+    #[serde(serialize_with = "json_string_i64::serialize")]
+    #[diesel(sql_type = BigInt)]
+    pub buy_myso_gross: i64,
+    #[serde(serialize_with = "json_string_i64::serialize")]
+    #[diesel(sql_type = BigInt)]
+    pub sell_fee_amount: i64,
+    #[serde(serialize_with = "json_string_i64::serialize")]
+    #[diesel(sql_type = BigInt)]
+    pub buy_fee_amount: i64,
+    #[serde(serialize_with = "json_string_i64::serialize")]
+    #[diesel(sql_type = BigInt)]
+    pub sell_creator_fee: i64,
+    #[serde(serialize_with = "json_string_i64::serialize")]
+    #[diesel(sql_type = BigInt)]
+    pub sell_platform_fee: i64,
+    #[serde(serialize_with = "json_string_i64::serialize")]
+    #[diesel(sql_type = BigInt)]
+    pub sell_treasury_fee: i64,
+    #[serde(serialize_with = "json_string_i64::serialize")]
+    #[diesel(sql_type = BigInt)]
+    pub buy_creator_fee: i64,
+    #[serde(serialize_with = "json_string_i64::serialize")]
+    #[diesel(sql_type = BigInt)]
+    pub buy_platform_fee: i64,
+    #[serde(serialize_with = "json_string_i64::serialize")]
+    #[diesel(sql_type = BigInt)]
+    pub buy_treasury_fee: i64,
+    #[serde(serialize_with = "json_string_i64::serialize")]
+    #[diesel(sql_type = BigInt)]
+    pub leftover_myso: i64,
+    #[diesel(sql_type = BigInt)]
+    pub source_new_price: i64,
+    #[diesel(sql_type = BigInt)]
+    pub dest_new_price: i64,
+    #[diesel(sql_type = BigInt)]
+    pub created_at: i64,
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+}
+
+/// One P2P SPT transfer (`spt_transfers`).
+#[derive(Debug, Serialize, QueryableByName)]
+pub struct SptTransferRow {
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+    #[diesel(sql_type = Text)]
+    pub pool_id: String,
+    #[diesel(sql_type = Text)]
+    pub from_address: String,
+    #[diesel(sql_type = Text)]
+    pub to_address: String,
+    /// Nano-SPT transferred.
+    #[serde(serialize_with = "json_string_i64::serialize")]
+    #[diesel(sql_type = BigInt)]
+    pub amount: i64,
+    #[diesel(sql_type = BigInt)]
+    pub created_at: i64,
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
 }
 
 #[derive(Debug, Serialize, QueryableByName)]
@@ -214,6 +303,37 @@ pub struct SptUserHoldingItem {
     pub token_type: i16,
     /// Profile or post object id for this pool (subject of the token).
     pub associated_id: String,
+    /// Pool owner wallet (profile subject), when known.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub profile_address: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub username: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub display_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub profile_photo: Option<String>,
+    /// Pool-level nano-MYSO reserved (reservation rows only).
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "json_string_opt_i64::serialize"
+    )]
+    pub total_reserved: Option<i64>,
+    /// Pool-level nano-MYSO threshold to mint (reservation rows only).
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "json_string_opt_i64::serialize"
+    )]
+    pub required_threshold: Option<i64>,
+    /// Filled progress 0…100: `total_reserved / required_threshold * 100`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reservation_percentage: Option<f64>,
+    /// Remaining until mintable: `max(0, 100 - reservation_percentage)`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub remaining_percentage: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub threshold_met: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pool_status: Option<String>,
 }
 
 #[derive(Debug, Serialize, QueryableByName)]

@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS spt_transfers CASCADE;

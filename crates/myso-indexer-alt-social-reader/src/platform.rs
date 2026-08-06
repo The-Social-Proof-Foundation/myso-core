@@ -367,6 +367,7 @@ pub(crate) async fn get_platform_members(
         SELECT wallet_address, joined_at
         FROM platform_memberships
         WHERE platform_id = $1
+          AND (left_at IS NULL OR joined_at > left_at)
         ORDER BY joined_at DESC
         LIMIT $2 OFFSET $3
     ";
@@ -498,6 +499,7 @@ pub(crate) async fn get_platform_user_access(
             EXISTS(
                 SELECT 1 FROM platform_memberships
                 WHERE platform_id = $1 AND wallet_address = $2
+                  AND (left_at IS NULL OR joined_at > left_at)
             ) AS is_member,
             EXISTS(
                 SELECT 1 FROM platform_blocked_profiles

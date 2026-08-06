@@ -65,7 +65,7 @@ pub use myso_indexer_alt_social_schema::models::{
 };
 pub use myso_indexer_alt_social_schema::models::{
     PostDeletionEventRow, PostModerationEventRow, SptHoldingRow, SptPoolRow, SptPriceHistory,
-    SptTransaction,
+    SptSwap, SptTransfer, SptTransaction,
 };
 pub use org_leaderboard::{
     OrganizationCategoryInfo, OrganizationLeaderboardEntry, OrganizationLeaderboardResult,

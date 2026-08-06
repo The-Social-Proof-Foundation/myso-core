@@ -2415,6 +2415,10 @@ type InsurancePolicy {
 	"""
 	basePremium: Int!
 	"""
+	On-chain contract version for this policy object.
+	"""
+	contractVersion: Int!
+	"""
 	Coverage in basis points.
 	"""
 	coverageBps: Int!
@@ -2474,10 +2478,6 @@ type InsurancePolicy {
 	Combined risk multiplier in basis points (post caps; premium ≈ base × this / 10_000 before floor).
 	"""
 	riskMultiplierBps: Int!
-	"""
-	On-chain contract version for this policy object.
-	"""
-	contractVersion: Int!
 	"""
 	Aggregated route object id when this policy was bought via `route_buy_coverage_4`.
 	"""
@@ -5555,13 +5555,13 @@ type PocConfig {
 	"""
 	updatedBy: String!
 	"""
-	Configuration version.
-	"""
-	version: Int!
-	"""
 	One-time join-referral fee (bps) on first username-beneficiary vault claim.
 	"""
 	usernameBeneficiaryJoinReferralBps: Int!
+	"""
+	Configuration version.
+	"""
+	version: Int!
 	"""
 	Max redirect ceiling (bps) when only embedded audio matches on a VIDEO post (on-chain delta ramp applies).
 	"""
@@ -5804,13 +5804,13 @@ type Post implements Node {
 	"""
 	content: String!
 	"""
-	When the post was created (Unix timestamp in milliseconds).
-	"""
-	createdAt: Int!
-	"""
 	On-chain contract version for this post object.
 	"""
 	contractVersion: Int!
+	"""
+	When the post was created (Unix timestamp in milliseconds).
+	"""
+	createdAt: Int!
 	"""
 	Deletion events for this post (paginated, newest first).
 	"""
@@ -6295,6 +6295,10 @@ type Profile implements Node {
 	"""
 	blockedProfiles(limit: Int, offset: Int): [BlockedProfileSummary!]
 	"""
+	On-chain contract version for this profile object.
+	"""
+	contractVersion: Int!
+	"""
 	URL to the cover photo.
 	"""
 	coverPhoto: String
@@ -6302,10 +6306,6 @@ type Profile implements Node {
 	When the profile was created (Unix ms from chain Clock at 0x6).
 	"""
 	createdAt: Int
-	"""
-	On-chain contract version for this profile object.
-	"""
-	contractVersion: Int!
 	"""
 	The profile's display name.
 	"""
@@ -6659,7 +6659,7 @@ type ProfileSummary {
 	"""
 	followersCount: Int
 	"""
-	Number of accounts this address follows. Present for both profile and wallet-only addresses.
+	Number of accounts this profile follows. Present for both profile and wallet-only addresses.
 	"""
 	followingCount: Int
 	"""
@@ -8805,6 +8805,10 @@ type SptPool {
 	"""
 	reservationHolders(viewer: MySoAddress, prioritizeFollowed: Boolean, limit: Int, offset: Int): [SptReservationHolding!]
 	"""
+	Atomic SPT→SPT swaps where this pool is the source or destination.
+	"""
+	swaps(limit: Int, offset: Int): [SptSwap!]
+	"""
 	Token type (1=profile, 2=post).
 	"""
 	tokenType: Int!
@@ -8816,6 +8820,10 @@ type SptPool {
 	Recent transactions for this pool.
 	"""
 	transactions(viewer: MySoAddress, prioritizeFollowed: Boolean, limit: Int, offset: Int): [SptTransaction!]
+	"""
+	P2P SPT transfers for this pool.
+	"""
+	transfers(limit: Int, offset: Int): [SptTransfer!]
 	"""
 	24-hour trading volume (MYSO).
 	"""
@@ -8956,6 +8964,93 @@ enum SptSortBy {
 	CREATED_AT
 }
 
+"""
+Atomic SPT→SPT swap summary. SUMMARY ONLY: the per-pool balance/price/fee effects are
+reflected by the underlying BUY/SELL [`SptTransaction`] legs (see `isSwapLeg`).
+"""
+type SptSwap {
+	"""
+	Creator fee on the buy leg.
+	"""
+	buyCreatorFee: BigInt!
+	"""
+	Total fees on the buy leg.
+	"""
+	buyFeeAmount: BigInt!
+	"""
+	Gross MYSO spent on the buy leg.
+	"""
+	buyMysoGross: BigInt!
+	"""
+	Platform fee on the buy leg.
+	"""
+	buyPlatformFee: BigInt!
+	"""
+	Treasury fee on the buy leg.
+	"""
+	buyTreasuryFee: BigInt!
+	"""
+	Nano-SPT bought into the destination pool.
+	"""
+	destAmount: BigInt!
+	"""
+	Destination pool price after the swap (smallest units).
+	"""
+	destNewPrice: Int!
+	"""
+	Destination pool the trader bought into.
+	"""
+	destPoolId: String!
+	"""
+	MYSO returned to the trader after the buy leg (unspent proceeds).
+	"""
+	leftoverMyso: BigInt!
+	"""
+	Nano-SPT sold from the source pool.
+	"""
+	sellAmount: BigInt!
+	"""
+	Creator fee on the sell leg.
+	"""
+	sellCreatorFee: BigInt!
+	"""
+	Total fees on the sell leg.
+	"""
+	sellFeeAmount: BigInt!
+	"""
+	Gross MYSO realized from the sell leg.
+	"""
+	sellMysoGross: BigInt!
+	"""
+	Platform fee on the sell leg.
+	"""
+	sellPlatformFee: BigInt!
+	"""
+	Treasury fee on the sell leg.
+	"""
+	sellTreasuryFee: BigInt!
+	"""
+	Source pool price after the swap (smallest units).
+	"""
+	sourceNewPrice: Int!
+	"""
+	Source pool the trader sold from.
+	"""
+	sourcePoolId: String!
+	"""
+	Swap timestamp (ISO 8601).
+	"""
+	timestamp: String!
+	"""
+	Trader wallet address.
+	"""
+	trader: MySoAddress!
+	"""
+	Transaction digest shared by both swap legs.
+	"""
+	transactionId: String!
+}
+
 type SptTransaction {
 	"""
 	Token amount (nano-SPT).
@@ -8970,9 +9065,17 @@ type SptTransaction {
 	"""
 	blockedByViewer: Boolean
 	"""
+	Opposite pool ID when this row is one leg of an SPT→SPT swap; null otherwise.
+	"""
+	counterpartyPoolId: String
+	"""
 	Sender address.
 	"""
 	from: MySoAddress!
+	"""
+	`true` when this BUY/SELL row is one leg of an atomic SPT→SPT swap.
+	"""
+	isSwapLeg: Boolean!
 	"""
 	Transaction timestamp (ISO 8601).
 	"""
@@ -8993,6 +9096,36 @@ type SptTransaction {
 	Viewer follows the trade sender (requires `viewer` on [`SptPool.transactions`]).
 	"""
 	viewerIsFollowing: Boolean
+}
+
+"""
+P2P SPT transfer summary. Holdings are updated via delta rows; supply/price unchanged.
+"""
+type SptTransfer {
+	"""
+	Nano-SPT transferred.
+	"""
+	amount: BigInt!
+	"""
+	Sender wallet.
+	"""
+	from: MySoAddress!
+	"""
+	Pool ID.
+	"""
+	poolId: String!
+	"""
+	Transfer timestamp (ISO 8601).
+	"""
+	timestamp: String!
+	"""
+	Recipient wallet.
+	"""
+	to: MySoAddress!
+	"""
+	Transaction digest.
+	"""
+	transactionId: String!
 }
 
 """

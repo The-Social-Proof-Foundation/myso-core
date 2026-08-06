@@ -724,6 +724,24 @@ impl Reader {
         spt::get_spt_transactions(&self.db, pool_id, limit, offset).await
     }
 
+    pub async fn get_spt_swaps(
+        &self,
+        pool_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<SptSwapRow>, crate::error::SocialError> {
+        spt::get_spt_swaps(&self.db, pool_id, limit, offset).await
+    }
+
+    pub async fn get_spt_transfers(
+        &self,
+        pool_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<SptTransferRow>, crate::error::SocialError> {
+        spt::get_spt_transfers(&self.db, pool_id, limit, offset).await
+    }
+
     pub async fn get_spt_holdings(
         &self,
         pool_id: &str,

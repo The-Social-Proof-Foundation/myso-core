@@ -639,7 +639,7 @@ CREATOR,
             let config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
             let mut post_obj = test_scenario::take_shared<Post>(&scenario);
             assert!(post::get_id_address(&post_obj) == post_id, 0);
-            social_proof_tokens::create_reservation_pool_for_post(
+            social_proof_tokens::enable_spt_for_post(
                 &mut registry,
                 &config,
                 &mut post_obj,
@@ -1752,7 +1752,7 @@ CREATOR,
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
             let mut post_obj = test_scenario::take_shared<Post>(&scenario);
             assert!(post::get_id_address(&post_obj) == post_id, 0);
-            social_proof_tokens::create_reservation_pool_for_post(
+            social_proof_tokens::enable_spt_for_post(
                 &mut registry,
                 &config,
                 &mut post_obj,
@@ -2090,7 +2090,7 @@ CREATOR,
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
             let mut post_a =
                 test_scenario::take_shared_by_id<Post>(&scenario, object::id_from_address(_post_id_a));
-            social_proof_tokens::create_reservation_pool_for_post(
+            social_proof_tokens::enable_spt_for_post(
                 &mut registry,
                 &config,
                 &mut post_a,
@@ -2408,7 +2408,7 @@ CREATOR,
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
             let mut post_obj =
                 test_scenario::take_shared_by_id<Post>(&scenario, object::id_from_address(post_id_only));
-            social_proof_tokens::create_reservation_pool_for_post(
+            social_proof_tokens::enable_spt_for_post(
                 &mut registry,
                 &config,
                 &mut post_obj,
@@ -2710,7 +2710,7 @@ CREATOR,
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
             let mut post_obj = test_scenario::take_shared<Post>(&scenario);
             assert!(post::get_id_address(&post_obj) == post_id, 0);
-            social_proof_tokens::create_reservation_pool_for_post(
+            social_proof_tokens::enable_spt_for_post(
                 &mut registry,
                 &config,
                 &mut post_obj,
@@ -2897,7 +2897,7 @@ CREATOR,
             let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
             let mut post_obj = test_scenario::take_shared<Post>(&scenario);
             assert!(post::get_id_address(&post_obj) == post_id, 0);
-            social_proof_tokens::create_reservation_pool_for_post(
+            social_proof_tokens::enable_spt_for_post(
                 &mut registry,
                 &config,
                 &mut post_obj,
@@ -3948,6 +3948,800 @@ CREATOR,
         // Passing this token to buy_more_tokens would abort with ENoTokensOwned (code 6)
         // because the production function asserts amount > 0.
         social_proof_tokens::destroy_social_token_for_testing(zero_token);
+        test_scenario::end(scenario);
+    }
+
+    // === SPT cross-pool swap tests ===
+
+    #[test]
+    fun test_calculate_swap_quote_matches_manual_legs() {
+        let base = 100_000_000u64;
+        let coeff = 100_000u64;
+        let scale = social_proof_tokens::spt_amount_scale();
+        let source_supply = 50 * scale;
+        let dest_supply = 10 * scale;
+        let sell_amount = 2 * scale;
+        let total_fee_bps = 150u64; // 100 + 25 + 25
+
+        let (sell_gross, sell_fee, net_bridge) = social_proof_tokens::calculate_swap_proceeds(
+            base, coeff, source_supply, sell_amount, total_fee_bps
+        );
+        let (manual_sell, _) = social_proof_tokens::calculate_sell_price(base, coeff, source_supply, sell_amount);
+        assert!(sell_gross == manual_sell, 0);
+        assert!(sell_fee == (sell_gross * total_fee_bps) / 10000, 1);
+        assert!(net_bridge == sell_gross - sell_fee, 2);
+
+        let (dest_amount, buy_gross) = social_proof_tokens::calculate_max_buy_amount(
+            base, coeff, dest_supply, net_bridge
+        );
+        assert!(dest_amount > 0, 3);
+        let (cost_check, _) = social_proof_tokens::calculate_buy_price(base, coeff, dest_supply, dest_amount);
+        assert!(cost_check == buy_gross, 4);
+        assert!(buy_gross <= net_bridge, 5);
+
+        let (q_dest, q_sell, q_buy, q_bridge, leftover) = social_proof_tokens::calculate_swap_quote(
+            base, coeff, source_supply, base, coeff, dest_supply, sell_amount, total_fee_bps
+        );
+        assert!(q_dest == dest_amount, 6);
+        assert!(q_sell == sell_gross, 7);
+        assert!(q_buy == buy_gross, 8);
+        assert!(q_bridge == net_bridge, 9);
+        assert!(leftover == net_bridge - buy_gross, 10);
+    }
+
+    #[test]
+    fun test_calculate_max_buy_amount_zero_budget() {
+        let (amt, cost) = social_proof_tokens::calculate_max_buy_amount(100_000_000, 100_000, 0, 0);
+        assert!(amt == 0, 0);
+        assert!(cost == 0, 1);
+    }
+
+    #[test]
+    fun test_swap_tokens_happy_path() {
+        let mut scenario = setup_test_scenario();
+        init_block_list_for_spt_tests(&mut scenario);
+
+        // Raise max hold to 100% so first dest mint is not blocked by 5% rule.
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let admin_cap = test_scenario::take_from_sender<social_proof_tokens::SocialProofTokensAdminCap>(&scenario);
+            let mut config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
+            social_proof_tokens::update_social_proof_tokens_config(
+                &admin_cap,
+                &mut config,
+                100, 25, 25, 100, 25, 25,
+                100_000_000,
+                100_000,
+                10000, // max_hold_percent_bps = 100%
+                1000_000_000,
+                10000_000_000,
+                2000,
+                1000,
+                5000,
+                5000,
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_to_sender(&scenario, admin_cap);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(clock);
+        };
+
+        // USER1 needs a profile for trading auth.
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut username_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
+            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            profile::create_profile(
+                &mut username_registry,
+                &profile_config,
+                &mut memory_registry,
+                &mut ai_credit_config,
+                string::utf8(b"Swap Trader"),
+                string::utf8(b"swap_trader"),
+                string::utf8(b""),
+                b"",
+                b"",
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(ai_credit_config);
+            test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(profile_config);
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(username_registry);
+        };
+
+        let scale = social_proof_tokens::spt_amount_scale();
+        let sell_amount = 2 * scale;
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let registry = test_scenario::take_shared<social_proof_tokens::TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
+            let profile_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let block_list_registry = test_scenario::take_shared<BlockListRegistry>(&scenario);
+
+            let source_info = social_proof_tokens::create_mock_token_info(
+                @0xB0B,
+                TOKEN_TYPE_PROFILE,
+                CREATOR,
+                CREATOR,
+                0,
+                100_000_000,
+                100_000,
+                0
+            );
+            let mut source_pool = social_proof_tokens::create_mock_token_pool(
+                source_info,
+                test_scenario::ctx(&mut scenario)
+            );
+            let dest_info = social_proof_tokens::create_mock_token_info(
+                @0xA1E1,
+                TOKEN_TYPE_PROFILE,
+                USER2,
+                USER2,
+                0,
+                100_000_000,
+                100_000,
+                0
+            );
+            let mut dest_pool = social_proof_tokens::create_mock_token_pool(
+                dest_info,
+                test_scenario::ctx(&mut scenario)
+            );
+
+            social_proof_tokens::seed_pool_holder_for_testing(&mut source_pool, USER1, 10 * scale);
+            social_proof_tokens::fund_token_pool_for_testing(
+                &mut source_pool,
+                coin::mint_for_testing<MYSO>(500 * MYSO_SCALING, test_scenario::ctx(&mut scenario))
+            );
+
+            let source_pool_id = social_proof_tokens::pool_id_for_testing(&source_pool);
+            let source_token = create_social_token(
+                source_pool_id,
+                TOKEN_TYPE_PROFILE,
+                10 * scale,
+                &mut scenario
+            );
+
+            let (quote_dest, _, _, _, _) = social_proof_tokens::calculate_swap_quote(
+                100_000_000, 100_000, 10 * scale,
+                100_000_000, 100_000, 0,
+                sell_amount,
+                150
+            );
+            assert!(quote_dest > 0, 0);
+
+            social_proof_tokens::swap_tokens(
+                &registry,
+                &mut source_pool,
+                &mut dest_pool,
+                &config,
+                &treasury,
+                &profile_registry,
+                &block_list_registry,
+                source_token,
+                sell_amount,
+                1, // min_dest_amount
+                test_scenario::ctx(&mut scenario)
+            );
+
+            assert!(social_proof_tokens::get_user_balance(&source_pool, USER1) == 8 * scale, 1);
+            assert!(social_proof_tokens::get_user_balance(&dest_pool, USER1) == quote_dest, 2);
+
+            social_proof_tokens::share_token_pool_for_testing(source_pool);
+            social_proof_tokens::share_token_pool_for_testing(dest_pool);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(treasury);
+            test_scenario::return_shared(profile_registry);
+            test_scenario::return_shared(block_list_registry);
+        };
+
+        // Dest SocialToken minted to USER1
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let dest_token = test_scenario::take_from_sender<SocialToken>(&scenario);
+            assert!(social_proof_tokens::amount(&dest_token) > 0, 3);
+            test_scenario::return_to_sender(&scenario, dest_token);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    fun raise_max_hold_to_100_percent(scenario: &mut Scenario) {
+        test_scenario::next_tx(scenario, ADMIN);
+        {
+            let clock = test_scenario::take_shared<Clock>(scenario);
+            let admin_cap = test_scenario::take_from_sender<social_proof_tokens::SocialProofTokensAdminCap>(scenario);
+            let mut config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(scenario);
+            social_proof_tokens::update_social_proof_tokens_config(
+                &admin_cap,
+                &mut config,
+                100, 25, 25, 100, 25, 25,
+                100_000_000,
+                100_000,
+                10000, // max_hold_percent_bps = 100%
+                1000_000_000,
+                10000_000_000,
+                2000,
+                1000,
+                5000,
+                5000,
+                &clock,
+                test_scenario::ctx(scenario)
+            );
+            test_scenario::return_to_sender(scenario, admin_cap);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(clock);
+        };
+    }
+
+    fun create_trader_profile(scenario: &mut Scenario, owner: address, display: vector<u8>, username: vector<u8>) {
+        test_scenario::next_tx(scenario, owner);
+        {
+            let mut username_registry = test_scenario::take_shared<UsernameRegistry>(scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(scenario);
+            let profile_config = test_scenario::take_shared<ProfileConfig>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+            profile::create_profile(
+                &mut username_registry,
+                &profile_config,
+                &mut memory_registry,
+                &mut ai_credit_config,
+                string::utf8(display),
+                string::utf8(username),
+                string::utf8(b""),
+                b"",
+                b"",
+                &clock,
+                test_scenario::ctx(scenario)
+            );
+            test_scenario::return_shared(ai_credit_config);
+            test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(profile_config);
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(username_registry);
+        };
+    }
+
+    // === Transfer tests ===
+
+    #[test]
+    fun test_transfer_tokens_happy_path_and_recipient_can_sell() {
+        let mut scenario = setup_test_scenario();
+        init_block_list_for_spt_tests(&mut scenario);
+        raise_max_hold_to_100_percent(&mut scenario);
+        create_trader_profile(&mut scenario, USER1, b"Xfer From", b"xfer_from");
+        create_trader_profile(&mut scenario, USER2, b"Xfer To", b"xfer_to");
+
+        let scale = social_proof_tokens::spt_amount_scale();
+        let hold = 10 * scale;
+        let transfer_amount = 4 * scale;
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
+            let info = social_proof_tokens::create_mock_token_info(
+                @0xB0B, TOKEN_TYPE_PROFILE, CREATOR, CREATOR, 0, 100_000_000, 100_000, 0
+            );
+            let mut pool = social_proof_tokens::create_mock_token_pool(info, test_scenario::ctx(&mut scenario));
+            social_proof_tokens::seed_pool_holder_for_testing(&mut pool, USER1, hold);
+            social_proof_tokens::fund_token_pool_for_testing(
+                &mut pool,
+                coin::mint_for_testing<MYSO>(500 * MYSO_SCALING, test_scenario::ctx(&mut scenario))
+            );
+            let pool_id = social_proof_tokens::pool_id_for_testing(&pool);
+            let mut token = create_social_token(pool_id, TOKEN_TYPE_PROFILE, hold, &mut scenario);
+            let send_piece = social_proof_tokens::split_social_token(
+                &mut token,
+                transfer_amount,
+                test_scenario::ctx(&mut scenario)
+            );
+            // Remainder stays with sender object; transferred piece goes to USER2.
+            social_proof_tokens::transfer_tokens(
+                &mut pool,
+                &config,
+                send_piece,
+                USER2,
+                test_scenario::ctx(&mut scenario)
+            );
+            assert!(social_proof_tokens::get_user_balance(&pool, USER1) == hold - transfer_amount, 0);
+            assert!(social_proof_tokens::get_user_balance(&pool, USER2) == transfer_amount, 1);
+            social_proof_tokens::share_token_pool_for_testing(pool);
+            social_proof_tokens::transfer_social_token_for_testing(token, USER1);
+            test_scenario::return_shared(config);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER2);
+        {
+            let registry = test_scenario::take_shared<social_proof_tokens::TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
+            let profile_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let block_list_registry = test_scenario::take_shared<BlockListRegistry>(&scenario);
+            let mut pool = test_scenario::take_shared<TokenPool>(&scenario);
+            let token = test_scenario::take_from_sender<SocialToken>(&scenario);
+            let sell_amount = transfer_amount / 2;
+            social_proof_tokens::sell_tokens(
+                &registry,
+                &mut pool,
+                &config,
+                &treasury,
+                &profile_registry,
+                &block_list_registry,
+                token,
+                sell_amount,
+                test_scenario::ctx(&mut scenario)
+            );
+            assert!(social_proof_tokens::get_user_balance(&pool, USER2) == transfer_amount - sell_amount, 2);
+            test_scenario::return_shared(pool);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(treasury);
+            test_scenario::return_shared(profile_registry);
+            test_scenario::return_shared(block_list_registry);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 33, location = social_contracts::social_proof_tokens)]
+    fun test_transfer_tokens_self_transfer_aborts() {
+        let mut scenario = setup_test_scenario();
+        raise_max_hold_to_100_percent(&mut scenario);
+        let scale = social_proof_tokens::spt_amount_scale();
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
+            let info = social_proof_tokens::create_mock_token_info(
+                @0xB0B, TOKEN_TYPE_PROFILE, CREATOR, CREATOR, 0, 100_000_000, 100_000, 0
+            );
+            let mut pool = social_proof_tokens::create_mock_token_pool(info, test_scenario::ctx(&mut scenario));
+            social_proof_tokens::seed_pool_holder_for_testing(&mut pool, USER1, 10 * scale);
+            let pool_id = social_proof_tokens::pool_id_for_testing(&pool);
+            let token = create_social_token(pool_id, TOKEN_TYPE_PROFILE, 10 * scale, &mut scenario);
+            social_proof_tokens::transfer_tokens(
+                &mut pool,
+                &config,
+                token,
+                USER1,
+                test_scenario::ctx(&mut scenario)
+            );
+            social_proof_tokens::share_token_pool_for_testing(pool);
+            test_scenario::return_shared(config);
+        };
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 7, location = social_contracts::social_proof_tokens)]
+    fun test_transfer_tokens_wrong_pool_aborts() {
+        let mut scenario = setup_test_scenario();
+        raise_max_hold_to_100_percent(&mut scenario);
+        let scale = social_proof_tokens::spt_amount_scale();
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
+            let info_a = social_proof_tokens::create_mock_token_info(
+                @0xA1, TOKEN_TYPE_PROFILE, CREATOR, CREATOR, 0, 100_000_000, 100_000, 0
+            );
+            let mut pool_a = social_proof_tokens::create_mock_token_pool(info_a, test_scenario::ctx(&mut scenario));
+            let info_b = social_proof_tokens::create_mock_token_info(
+                @0xB1, TOKEN_TYPE_PROFILE, CREATOR, CREATOR, 0, 100_000_000, 100_000, 0
+            );
+            let pool_b = social_proof_tokens::create_mock_token_pool(info_b, test_scenario::ctx(&mut scenario));
+            social_proof_tokens::seed_pool_holder_for_testing(&mut pool_a, USER1, 10 * scale);
+            let pool_b_id = social_proof_tokens::pool_id_for_testing(&pool_b);
+            // Token belongs to pool B but we call transfer against pool A.
+            let token = create_social_token(pool_b_id, TOKEN_TYPE_PROFILE, 10 * scale, &mut scenario);
+            social_proof_tokens::transfer_tokens(
+                &mut pool_a,
+                &config,
+                token,
+                USER2,
+                test_scenario::ctx(&mut scenario)
+            );
+            social_proof_tokens::share_token_pool_for_testing(pool_a);
+            social_proof_tokens::share_token_pool_for_testing(pool_b);
+            test_scenario::return_shared(config);
+        };
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 4, location = social_contracts::social_proof_tokens)]
+    fun test_transfer_tokens_max_hold_aborts() {
+        let mut scenario = setup_test_scenario();
+        // Default max hold is 5%. Seed 100 tokens so transferring 10 exceeds the cap.
+        let scale = social_proof_tokens::spt_amount_scale();
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
+            let info = social_proof_tokens::create_mock_token_info(
+                @0xB0B, TOKEN_TYPE_PROFILE, CREATOR, CREATOR, 0, 100_000_000, 100_000, 0
+            );
+            let mut pool = social_proof_tokens::create_mock_token_pool(info, test_scenario::ctx(&mut scenario));
+            social_proof_tokens::seed_pool_holder_for_testing(&mut pool, USER1, 100 * scale);
+            let pool_id = social_proof_tokens::pool_id_for_testing(&pool);
+            let token = create_social_token(pool_id, TOKEN_TYPE_PROFILE, 10 * scale, &mut scenario);
+            social_proof_tokens::transfer_tokens(
+                &mut pool,
+                &config,
+                token,
+                USER2,
+                test_scenario::ctx(&mut scenario)
+            );
+            social_proof_tokens::share_token_pool_for_testing(pool);
+            test_scenario::return_shared(config);
+        };
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 34, location = social_contracts::social_proof_tokens)]
+    fun test_enable_spt_for_post_already_enabled_aborts() {
+        let mut scenario = setup_test_scenario();
+
+        let profile_id = {
+            test_scenario::next_tx(&mut scenario, CREATOR);
+            let mut username_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            profile::create_profile(
+                &mut username_registry,
+                &profile_config,
+                &mut memory_registry,
+                &mut ai_credit_config,
+                string::utf8(b"Late Enable Owner"),
+                string::utf8(b"late_enable"),
+                string::utf8(b""),
+                b"",
+                b"",
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+            let mut p = profile::lookup_profile_by_owner(&username_registry, CREATOR);
+            let pid = option::extract(&mut p);
+            test_scenario::return_shared(ai_credit_config);
+            test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(username_registry);
+            test_scenario::return_shared(profile_config);
+            pid
+        };
+
+        let platform_id = {
+            test_scenario::next_tx(&mut scenario, ADMIN);
+            let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
+            let mut opt = platform::get_platform_by_name(&registry, string::utf8(b"Test Platform"));
+            let pid = option::extract(&mut opt);
+            test_scenario::return_shared(registry);
+            pid
+        };
+
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let _ = post::test_create_post(
+                CREATOR,
+                profile_id,
+                platform_id,
+                string::utf8(b"already spt post"),
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let mut registry = test_scenario::take_shared<social_proof_tokens::TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
+            let mut post_obj = test_scenario::take_shared<Post>(&scenario);
+            social_proof_tokens::enable_spt_for_post(
+                &mut registry,
+                &config,
+                &mut post_obj,
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+            // Second enable must abort with ESptAlreadyEnabled.
+            social_proof_tokens::enable_spt_for_post(
+                &mut registry,
+                &config,
+                &mut post_obj,
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(post_obj);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    // === Additional swap edge tests ===
+
+    #[test]
+    fun test_swap_more_tokens_happy_path() {
+        let mut scenario = setup_test_scenario();
+        init_block_list_for_spt_tests(&mut scenario);
+        raise_max_hold_to_100_percent(&mut scenario);
+        create_trader_profile(&mut scenario, USER1, b"Swap More", b"swap_more");
+
+        let scale = social_proof_tokens::spt_amount_scale();
+        let sell_amount = 2 * scale;
+
+        let (source_obj_id, dest_obj_id) = {
+            test_scenario::next_tx(&mut scenario, USER1);
+            let registry = test_scenario::take_shared<social_proof_tokens::TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
+            let profile_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let block_list_registry = test_scenario::take_shared<BlockListRegistry>(&scenario);
+
+            let source_info = social_proof_tokens::create_mock_token_info(
+                @0xB0B, TOKEN_TYPE_PROFILE, CREATOR, CREATOR, 0, 100_000_000, 100_000, 0
+            );
+            let mut source_pool = social_proof_tokens::create_mock_token_pool(
+                source_info, test_scenario::ctx(&mut scenario)
+            );
+            let dest_info = social_proof_tokens::create_mock_token_info(
+                @0xA1E1, TOKEN_TYPE_PROFILE, USER2, USER2, 0, 100_000_000, 100_000, 0
+            );
+            let mut dest_pool = social_proof_tokens::create_mock_token_pool(
+                dest_info, test_scenario::ctx(&mut scenario)
+            );
+            social_proof_tokens::seed_pool_holder_for_testing(&mut source_pool, USER1, 10 * scale);
+            social_proof_tokens::fund_token_pool_for_testing(
+                &mut source_pool,
+                coin::mint_for_testing<MYSO>(500 * MYSO_SCALING, test_scenario::ctx(&mut scenario))
+            );
+            let source_pool_id = social_proof_tokens::pool_id_for_testing(&source_pool);
+            let dest_pool_id = social_proof_tokens::pool_id_for_testing(&dest_pool);
+            let source_obj_id = object::id_from_address(source_pool_id);
+            let dest_obj_id = object::id_from_address(dest_pool_id);
+            let source_token = create_social_token(
+                source_pool_id, TOKEN_TYPE_PROFILE, 10 * scale, &mut scenario
+            );
+
+            social_proof_tokens::swap_tokens(
+                &registry,
+                &mut source_pool,
+                &mut dest_pool,
+                &config,
+                &treasury,
+                &profile_registry,
+                &block_list_registry,
+                source_token,
+                sell_amount,
+                1,
+                test_scenario::ctx(&mut scenario)
+            );
+            social_proof_tokens::share_token_pool_for_testing(source_pool);
+            social_proof_tokens::share_token_pool_for_testing(dest_pool);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(treasury);
+            test_scenario::return_shared(profile_registry);
+            test_scenario::return_shared(block_list_registry);
+            (source_obj_id, dest_obj_id)
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let registry = test_scenario::take_shared<social_proof_tokens::TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
+            let profile_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let block_list_registry = test_scenario::take_shared<BlockListRegistry>(&scenario);
+            let mut source_pool = test_scenario::take_shared_by_id<TokenPool>(&scenario, source_obj_id);
+            let mut dest_pool = test_scenario::take_shared_by_id<TokenPool>(&scenario, dest_obj_id);
+            let tok_a = test_scenario::take_from_sender<SocialToken>(&scenario);
+            let tok_b = test_scenario::take_from_sender<SocialToken>(&scenario);
+            let source_pool_id = social_proof_tokens::pool_id_for_testing(&source_pool);
+            let dest_pool_id = social_proof_tokens::pool_id_for_testing(&dest_pool);
+            let (source_token, mut dest_token) = if (social_proof_tokens::pool_id(&tok_a) == source_pool_id) {
+                (tok_a, tok_b)
+            } else {
+                (tok_b, tok_a)
+            };
+            assert!(social_proof_tokens::pool_id(&source_token) == source_pool_id, 0);
+            assert!(social_proof_tokens::pool_id(&dest_token) == dest_pool_id, 1);
+            let dest_before = social_proof_tokens::amount(&dest_token);
+            social_proof_tokens::swap_more_tokens(
+                &registry,
+                &mut source_pool,
+                &mut dest_pool,
+                &config,
+                &treasury,
+                &profile_registry,
+                &block_list_registry,
+                source_token,
+                &mut dest_token,
+                sell_amount,
+                1,
+                test_scenario::ctx(&mut scenario)
+            );
+            assert!(social_proof_tokens::amount(&dest_token) > dest_before, 2);
+            test_scenario::return_to_sender(&scenario, dest_token);
+            test_scenario::return_shared(source_pool);
+            test_scenario::return_shared(dest_pool);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(treasury);
+            test_scenario::return_shared(profile_registry);
+            test_scenario::return_shared(block_list_registry);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 32, location = social_contracts::social_proof_tokens)]
+    fun test_swap_tokens_slippage_aborts() {
+        let mut scenario = setup_test_scenario();
+        init_block_list_for_spt_tests(&mut scenario);
+        raise_max_hold_to_100_percent(&mut scenario);
+        create_trader_profile(&mut scenario, USER1, b"Slip Trader", b"slip_trader");
+
+        let scale = social_proof_tokens::spt_amount_scale();
+        let sell_amount = 2 * scale;
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let registry = test_scenario::take_shared<social_proof_tokens::TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
+            let profile_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let block_list_registry = test_scenario::take_shared<BlockListRegistry>(&scenario);
+
+            let source_info = social_proof_tokens::create_mock_token_info(
+                @0xB0B, TOKEN_TYPE_PROFILE, CREATOR, CREATOR, 0, 100_000_000, 100_000, 0
+            );
+            let mut source_pool = social_proof_tokens::create_mock_token_pool(
+                source_info, test_scenario::ctx(&mut scenario)
+            );
+            let dest_info = social_proof_tokens::create_mock_token_info(
+                @0xA1E1, TOKEN_TYPE_PROFILE, USER2, USER2, 0, 100_000_000, 100_000, 0
+            );
+            let mut dest_pool = social_proof_tokens::create_mock_token_pool(
+                dest_info, test_scenario::ctx(&mut scenario)
+            );
+            social_proof_tokens::seed_pool_holder_for_testing(&mut source_pool, USER1, 10 * scale);
+            social_proof_tokens::fund_token_pool_for_testing(
+                &mut source_pool,
+                coin::mint_for_testing<MYSO>(500 * MYSO_SCALING, test_scenario::ctx(&mut scenario))
+            );
+            let source_pool_id = social_proof_tokens::pool_id_for_testing(&source_pool);
+            let source_token = create_social_token(
+                source_pool_id, TOKEN_TYPE_PROFILE, 10 * scale, &mut scenario
+            );
+            social_proof_tokens::swap_tokens(
+                &registry,
+                &mut source_pool,
+                &mut dest_pool,
+                &config,
+                &treasury,
+                &profile_registry,
+                &block_list_registry,
+                source_token,
+                sell_amount,
+                1_000_000 * scale, // impossible min_dest_amount
+                test_scenario::ctx(&mut scenario)
+            );
+            social_proof_tokens::share_token_pool_for_testing(source_pool);
+            social_proof_tokens::share_token_pool_for_testing(dest_pool);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(treasury);
+            test_scenario::return_shared(profile_registry);
+            test_scenario::return_shared(block_list_registry);
+        };
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 31, location = social_contracts::social_proof_tokens)]
+    fun test_swap_tokens_same_pool_aborts() {
+        // Move cannot mutably borrow one pool twice at a call site; exercise the guard directly.
+        social_proof_tokens::assert_distinct_swap_pools_for_testing(@0xSAME, @0xSAME);
+    }
+
+    #[test]
+    fun test_swap_tokens_with_platform_smoke() {
+        let mut scenario = setup_test_scenario();
+        init_block_list_for_spt_tests(&mut scenario);
+        raise_max_hold_to_100_percent(&mut scenario);
+        approve_test_platform(&mut scenario);
+        create_trader_profile(&mut scenario, USER1, b"Plat Swap", b"plat_swap");
+        join_user_to_test_platform(&mut scenario, USER1);
+
+        let scale = social_proof_tokens::spt_amount_scale();
+        let sell_amount = 2 * scale;
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let registry = test_scenario::take_shared<social_proof_tokens::TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
+            let platform_registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
+            let profile_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let block_list_registry = test_scenario::take_shared<BlockListRegistry>(&scenario);
+            let mut platform = test_scenario::take_shared<Platform>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+
+            let source_info = social_proof_tokens::create_mock_token_info(
+                @0xB0B, TOKEN_TYPE_PROFILE, CREATOR, CREATOR, 0, 100_000_000, 100_000, 0
+            );
+            let mut source_pool = social_proof_tokens::create_mock_token_pool(
+                source_info, test_scenario::ctx(&mut scenario)
+            );
+            let dest_info = social_proof_tokens::create_mock_token_info(
+                @0xA1E1, TOKEN_TYPE_PROFILE, USER2, USER2, 0, 100_000_000, 100_000, 0
+            );
+            let mut dest_pool = social_proof_tokens::create_mock_token_pool(
+                dest_info, test_scenario::ctx(&mut scenario)
+            );
+            social_proof_tokens::seed_pool_holder_for_testing(&mut source_pool, USER1, 10 * scale);
+            social_proof_tokens::fund_token_pool_for_testing(
+                &mut source_pool,
+                coin::mint_for_testing<MYSO>(500 * MYSO_SCALING, test_scenario::ctx(&mut scenario))
+            );
+            let source_pool_id = social_proof_tokens::pool_id_for_testing(&source_pool);
+            let source_token = create_social_token(
+                source_pool_id, TOKEN_TYPE_PROFILE, 10 * scale, &mut scenario
+            );
+
+            social_proof_tokens::swap_tokens_with_platform(
+                &registry,
+                &mut source_pool,
+                &mut dest_pool,
+                &config,
+                &treasury,
+                &platform_registry,
+                &profile_registry,
+                &block_list_registry,
+                &mut platform,
+                source_token,
+                sell_amount,
+                1,
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+
+            assert!(social_proof_tokens::get_user_balance(&source_pool, USER1) == 8 * scale, 0);
+            assert!(social_proof_tokens::get_user_balance(&dest_pool, USER1) > 0, 1);
+
+            social_proof_tokens::share_token_pool_for_testing(source_pool);
+            social_proof_tokens::share_token_pool_for_testing(dest_pool);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(treasury);
+            test_scenario::return_shared(platform_registry);
+            test_scenario::return_shared(profile_registry);
+            test_scenario::return_shared(block_list_registry);
+            test_scenario::return_shared(platform);
+            test_scenario::return_shared(clock);
+        };
+
         test_scenario::end(scenario);
     }
 }

@@ -110,7 +110,8 @@ use crate::spt::{
     get_spt_exchange_config, get_spt_holdings_by_holder, get_spt_holdings_by_pool, get_spt_pool,
     get_spt_pool_id_for_profile, get_spt_price_history,
     get_spt_reservation_holdings_for_reserver as fetch_spt_reservation_holdings_for_reserver,
-    get_spt_reservation_volume_history, get_spt_transactions, list_spt_pools,
+    get_spt_reservation_volume_history, get_spt_swaps_for_pool, get_spt_swaps_for_trader,
+    get_spt_transfers_for_pool, get_spt_transactions, list_spt_pools,
 };
 use crate::subscription::get_subscription_config;
 use crate::vesting::{get_vesting_leaderboard, get_vesting_wallet, list_vesting_wallets};
@@ -1367,6 +1368,39 @@ impl SocialPgReader {
             &self.metrics,
         )
         .await
+    }
+
+    /// SPT→SPT swaps where the pool is either the source or destination pool.
+    pub async fn get_spt_swaps_for_pool(
+        &self,
+        pool_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::SptSwap>> {
+        let mut conn = self.connect().await?;
+        get_spt_swaps_for_pool(&mut conn, pool_id, limit, offset, &self.metrics).await
+    }
+
+    /// SPT→SPT swaps executed by a given trader.
+    pub async fn get_spt_swaps_for_trader(
+        &self,
+        trader: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::SptSwap>> {
+        let mut conn = self.connect().await?;
+        get_spt_swaps_for_trader(&mut conn, trader, limit, offset, &self.metrics).await
+    }
+
+    /// P2P SPT transfers for a pool.
+    pub async fn get_spt_transfers_for_pool(
+        &self,
+        pool_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::SptTransfer>> {
+        let mut conn = self.connect().await?;
+        get_spt_transfers_for_pool(&mut conn, pool_id, limit, offset, &self.metrics).await
     }
 
     /// Reservation holdings for a reserver address (from `spt_reservation_holdings`).

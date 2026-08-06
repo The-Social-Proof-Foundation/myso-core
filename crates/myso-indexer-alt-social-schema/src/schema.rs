@@ -719,6 +719,7 @@ diesel::table! {
         platform_id -> Text,
         wallet_address -> Text,
         joined_at -> Timestamp,
+        left_at -> Nullable<Timestamp>,
     }
 }
 
@@ -2462,6 +2463,48 @@ diesel::table! {
 }
 
 diesel::table! {
+    spt_swaps (id, time) {
+        id -> Int8,
+        transaction_id -> Text,
+        trader -> Text,
+        source_pool_id -> Text,
+        dest_pool_id -> Text,
+        sell_amount -> Int8,
+        dest_amount -> Int8,
+        sell_myso_gross -> Int8,
+        buy_myso_gross -> Int8,
+        sell_fee_amount -> Int8,
+        buy_fee_amount -> Int8,
+        sell_creator_fee -> Int8,
+        sell_platform_fee -> Int8,
+        sell_treasury_fee -> Int8,
+        buy_creator_fee -> Int8,
+        buy_platform_fee -> Int8,
+        buy_treasury_fee -> Int8,
+        leftover_myso -> Int8,
+        source_new_price -> Int8,
+        dest_new_price -> Int8,
+        organization_id -> Nullable<Text>,
+        created_at -> Int8,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    spt_transfers (id, time) {
+        id -> Int8,
+        transaction_id -> Text,
+        pool_id -> Text,
+        from_address -> Text,
+        to_address -> Text,
+        amount -> Int8,
+        organization_id -> Nullable<Text>,
+        created_at -> Int8,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
     spt_transactions (id, time) {
         id -> Int4,
         pool_id -> Text,
@@ -2478,6 +2521,8 @@ diesel::table! {
         time -> Timestamptz,
         transaction_id -> Text,
         organization_id -> Nullable<Text>,
+        counterparty_pool_id -> Nullable<Text>,
+        is_swap_leg -> Bool,
     }
 }
 
@@ -2950,6 +2995,8 @@ diesel::allow_tables_to_appear_in_same_query!(
     spt_reservation_pools,
     spt_reservations,
     spt_revenue,
+    spt_swaps,
+    spt_transfers,
     spt_transactions,
     subscription_access_logs,
     subscription_events,

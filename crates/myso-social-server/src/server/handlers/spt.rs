@@ -113,6 +113,28 @@ pub async fn get_spt_pool_transactions(
     Ok(Json(data))
 }
 
+pub async fn get_spt_pool_swaps(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+    Query(params): Query<PageParams>,
+) -> Result<Json<Vec<crate::reader::SptSwapRow>>, SocialError> {
+    let limit = params.limit();
+    let offset = params.offset();
+    let data = state.reader.get_spt_swaps(&id, limit, offset).await?;
+    Ok(Json(data))
+}
+
+pub async fn get_spt_pool_transfers(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+    Query(params): Query<PageParams>,
+) -> Result<Json<Vec<crate::reader::SptTransferRow>>, SocialError> {
+    let limit = params.limit();
+    let offset = params.offset();
+    let data = state.reader.get_spt_transfers(&id, limit, offset).await?;
+    Ok(Json(data))
+}
+
 pub async fn get_spt_pool_holdings(
     State(state): State<Arc<AppState>>,
     Path(id): Path<String>,

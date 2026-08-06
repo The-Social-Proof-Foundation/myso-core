@@ -10,10 +10,14 @@ use diesel::QueryableByName;
 use diesel::SelectableHelper;
 use diesel::sql_types::{Array, BigInt, Bool, Integer, Nullable, Text, Timestamptz};
 use diesel_async::RunQueryDsl;
+use diesel::BoolExpressionMethods;
 use myso_indexer_alt_social_schema::models::{
-    SptHoldingRow, SptPoolRow, SptPriceHistory, SptReservationHoldingRow, SptTransaction,
+    SptHoldingRow, SptPoolRow, SptPriceHistory, SptReservationHoldingRow, SptSwap, SptTransfer,
+    SptTransaction,
 };
-use myso_indexer_alt_social_schema::schema::{spt_price_history, spt_transactions};
+use myso_indexer_alt_social_schema::schema::{
+    spt_price_history, spt_swaps, spt_transfers, spt_transactions,
+};
 
 use myso_pg_db::Connection;
 
@@ -213,7 +217,7 @@ pub(crate) async fn get_spt_holdings_by_holder(
             SELECT DISTINCT ON (owner_address) owner_address, username, display_name, profile_photo,
                    bio, selected_badge_id, social_proof_token_address, reservation_pool_address
             FROM profiles
-            WHERE owner_address IN (SELECT owner FROM latest_pools)
+            WHERE LOWER(TRIM(owner_address)) IN (SELECT LOWER(TRIM(owner)) FROM latest_pools)
             ORDER BY owner_address, updated_at DESC
         )
         SELECT h.holder_address, h.pool_id, h.balance, p.token_type, p.associated_id, p.owner as profile_owner_address,
@@ -225,7 +229,7 @@ pub(crate) async fn get_spt_holdings_by_holder(
                {nulls}
         FROM holdings h
         JOIN latest_pools p ON h.pool_id = p.pool_id
-        LEFT JOIN latest_profiles pr ON p.owner = pr.owner_address
+        LEFT JOIN latest_profiles pr ON LOWER(TRIM(p.owner)) = LOWER(TRIM(pr.owner_address))
         ORDER BY h.balance DESC
         LIMIT $2 OFFSET $3
     "#,
@@ -273,7 +277,7 @@ pub(crate) async fn get_spt_holdings_by_pool(
             SELECT DISTINCT ON (owner_address) owner_address, username, display_name, profile_photo,
                    bio, selected_badge_id, social_proof_token_address, reservation_pool_address
             FROM profiles
-            WHERE owner_address IN (SELECT owner FROM latest_pools)
+            WHERE LOWER(TRIM(owner_address)) IN (SELECT LOWER(TRIM(owner)) FROM latest_pools)
             ORDER BY owner_address, updated_at DESC
         )
         SELECT h.holder_address, h.pool_id, h.balance, p.token_type, p.associated_id, p.owner as profile_owner_address,
@@ -291,7 +295,7 @@ pub(crate) async fn get_spt_holdings_by_pool(
             r#"{} {nulls}
         FROM holdings h
         JOIN latest_pools p ON h.pool_id = p.pool_id
-        LEFT JOIN latest_profiles pr ON p.owner = pr.owner_address
+        LEFT JOIN latest_profiles pr ON LOWER(TRIM(p.owner)) = LOWER(TRIM(pr.owner_address))
         ORDER BY (
             EXISTS (
                 SELECT 1 FROM social_graph_relationships sgr
@@ -316,7 +320,7 @@ pub(crate) async fn get_spt_holdings_by_pool(
             r#"{} {nulls}
         FROM holdings h
         JOIN latest_pools p ON h.pool_id = p.pool_id
-        LEFT JOIN latest_profiles pr ON p.owner = pr.owner_address
+        LEFT JOIN latest_profiles pr ON LOWER(TRIM(p.owner)) = LOWER(TRIM(pr.owner_address))
         ORDER BY h.balance DESC
         LIMIT $2 OFFSET $3
     "#,
@@ -440,6 +444,10 @@ struct SptTransactionSqlRow {
     time: chrono::DateTime<chrono::Utc>,
     #[diesel(sql_type = Text)]
     transaction_id: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    counterparty_pool_id: Option<String>,
+    #[diesel(sql_type = Bool)]
+    is_swap_leg: bool,
 }
 
 fn spt_transaction_from_sql(r: SptTransactionSqlRow) -> SptTransaction {
@@ -458,6 +466,8 @@ fn spt_transaction_from_sql(r: SptTransactionSqlRow) -> SptTransaction {
         created_at: r.created_at,
         time: r.time,
         transaction_id: r.transaction_id,
+        counterparty_pool_id: r.counterparty_pool_id,
+        is_swap_leg: r.is_swap_leg,
     }
 }
 
@@ -478,7 +488,8 @@ pub(crate) async fn get_spt_transactions(
         let refs = viewer_ref_strings(&v_owner, &v_pid);
         let q = r#"
             SELECT id, pool_id, transaction_type, sender, amount, myso_amount, fee_amount,
-                   creator_fee, platform_fee, treasury_fee, price, created_at, time, transaction_id
+                   creator_fee, platform_fee, treasury_fee, price, created_at, time, transaction_id,
+                   counterparty_pool_id, is_swap_leg
             FROM spt_transactions
             WHERE pool_id = $1
             ORDER BY (
@@ -522,6 +533,82 @@ pub(crate) async fn get_spt_transactions(
         transactions,
         viewer_by_sender,
     })
+}
+
+/// Swaps where `pool_id` is either the source or destination pool, newest first.
+pub(crate) async fn get_spt_swaps_for_pool(
+    conn: &mut Connection<'_>,
+    pool_id: &str,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<SptSwap>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+
+    let results = spt_swaps::table
+        .filter(
+            spt_swaps::source_pool_id
+                .eq(pool_id)
+                .or(spt_swaps::dest_pool_id.eq(pool_id)),
+        )
+        .order(spt_swaps::time.desc())
+        .limit(limit)
+        .offset(offset)
+        .select(SptSwap::as_select())
+        .load::<SptSwap>(conn)
+        .await?;
+
+    metrics.requests_succeeded.inc();
+    Ok(results)
+}
+
+/// Swaps executed by a given trader, newest first.
+pub(crate) async fn get_spt_swaps_for_trader(
+    conn: &mut Connection<'_>,
+    trader: &str,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<SptSwap>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+
+    let results = spt_swaps::table
+        .filter(spt_swaps::trader.eq(trader))
+        .order(spt_swaps::time.desc())
+        .limit(limit)
+        .offset(offset)
+        .select(SptSwap::as_select())
+        .load::<SptSwap>(conn)
+        .await?;
+
+    metrics.requests_succeeded.inc();
+    Ok(results)
+}
+
+/// P2P SPT transfers for a pool, newest first.
+pub(crate) async fn get_spt_transfers_for_pool(
+    conn: &mut Connection<'_>,
+    pool_id: &str,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<SptTransfer>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+
+    let results = spt_transfers::table
+        .filter(spt_transfers::pool_id.eq(pool_id))
+        .order(spt_transfers::time.desc())
+        .limit(limit)
+        .offset(offset)
+        .select(SptTransfer::as_select())
+        .load::<SptTransfer>(conn)
+        .await?;
+
+    metrics.requests_succeeded.inc();
+    Ok(results)
 }
 
 pub(crate) async fn get_spt_price_history(
@@ -720,7 +807,7 @@ pub(crate) async fn get_spt_reservation_holdings_for_reserver(
         LEFT JOIN LATERAL (
             SELECT username, display_name, profile_photo, social_proof_token_address, reservation_pool_address
             FROM profiles
-            WHERE owner_address = urh.owner
+            WHERE LOWER(TRIM(owner_address)) = LOWER(TRIM(urh.owner))
             ORDER BY updated_at DESC
             LIMIT 1
         ) p ON true
@@ -774,7 +861,7 @@ pub(crate) async fn get_reservation_holdings_for_pool(
         LEFT JOIN LATERAL (
             SELECT username, display_name, profile_photo, social_proof_token_address, reservation_pool_address
             FROM profiles
-            WHERE owner_address = urh.owner
+            WHERE LOWER(TRIM(owner_address)) = LOWER(TRIM(urh.owner))
             ORDER BY updated_at DESC
             LIMIT 1
         ) p ON true
@@ -805,7 +892,7 @@ pub(crate) async fn get_reservation_holdings_for_pool(
         LEFT JOIN LATERAL (
             SELECT username, display_name, profile_photo, social_proof_token_address, reservation_pool_address
             FROM profiles
-            WHERE owner_address = urh.owner
+            WHERE LOWER(TRIM(owner_address)) = LOWER(TRIM(urh.owner))
             ORDER BY updated_at DESC
             LIMIT 1
         ) p ON true
@@ -879,7 +966,7 @@ pub(crate) async fn get_former_reservation_holdings_for_pool(
         LEFT JOIN LATERAL (
             SELECT username, display_name, profile_photo, social_proof_token_address, reservation_pool_address
             FROM profiles
-            WHERE owner_address = sp.owner
+            WHERE LOWER(TRIM(owner_address)) = LOWER(TRIM(sp.owner))
             ORDER BY updated_at DESC
             LIMIT 1
         ) po ON true

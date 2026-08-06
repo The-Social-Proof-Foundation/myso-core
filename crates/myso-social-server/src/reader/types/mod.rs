@@ -80,7 +80,7 @@ pub use spot::{
 pub use spt::{
     SptExchangeConfigRow, SptHoldingRow, SptPoolRow, SptPriceHistoryRow, SptReservationPoolRow,
     SptReservationPoolWithDisplayRow, SptReservationRow, SptReservationVolumeBucketRow,
-    SptRevenueRow, SptTransactionRow, SptUserHoldingItem,
+    SptRevenueRow, SptSwapRow, SptTransferRow, SptTransactionRow, SptUserHoldingItem,
 };
 pub use subscription::{
     ProfileSubscriptionInfo, ProfileSubscriptionPlanInfo, ProfileSubscriptionRevenueRow,

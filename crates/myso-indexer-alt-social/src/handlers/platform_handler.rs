@@ -84,9 +84,10 @@ pub enum PlatformRow {
         wallet_address: String,
     },
     PlatformMembership(NewPlatformMembership),
-    PlatformMembershipRemove {
+    PlatformMembershipLeave {
         platform_id: String,
         wallet_address: String,
+        left_at: chrono::NaiveDateTime,
     },
     PlatformTreasuryWithdrawal(NewPlatformTreasuryWithdrawal),
     PlatformTreasuryBalanceUpsert {
@@ -211,12 +212,14 @@ impl PlatformRow {
             crate::handlers::SocialEventRow::PlatformMembership(m) => {
                 Some(PlatformRow::PlatformMembership(m))
             }
-            crate::handlers::SocialEventRow::PlatformMembershipRemove {
+            crate::handlers::SocialEventRow::PlatformMembershipLeave {
                 platform_id,
                 wallet_address,
-            } => Some(PlatformRow::PlatformMembershipRemove {
+                left_at,
+            } => Some(PlatformRow::PlatformMembershipLeave {
                 platform_id,
                 wallet_address,
+                left_at,
             }),
             crate::handlers::SocialEventRow::PlatformTreasuryWithdrawal(a) => {
                 Some(PlatformRow::PlatformTreasuryWithdrawal(a))
@@ -416,11 +419,19 @@ impl Handler for PlatformHandler {
                     platform_id,
                     moderator_address,
                 } => {
-                    let _ = diesel::delete(platform_moderators::table)
+                    let affected = diesel::delete(platform_moderators::table)
                         .filter(platform_moderators::platform_id.eq(platform_id))
                         .filter(platform_moderators::moderator_address.eq(moderator_address))
                         .execute(conn)
-                        .await;
+                        .await?;
+                    if affected == 0 {
+                        tracing::warn!(
+                            platform_id = %platform_id,
+                            moderator_address = %moderator_address,
+                            "ModeratorRemoved indexed but no platform_moderators row matched (already removed or id mismatch)"
+                        );
+                    }
+                    total += affected;
                 }
                 PlatformRow::PlatformModeratorPermissionGrant(p) => {
                     total += diesel::insert_into(platform_moderator_permissions::table)
@@ -454,7 +465,7 @@ impl Handler for PlatformHandler {
                     permission_type,
                     revoked_at,
                 } => {
-                    let _ = diesel::update(platform_moderator_permissions::table)
+                    let affected = diesel::update(platform_moderator_permissions::table)
                         .filter(platform_moderator_permissions::platform_id.eq(platform_id))
                         .filter(
                             platform_moderator_permissions::moderator_address.eq(moderator_address),
@@ -463,14 +474,23 @@ impl Handler for PlatformHandler {
                         .filter(platform_moderator_permissions::revoked_at.is_null())
                         .set(platform_moderator_permissions::revoked_at.eq(revoked_at))
                         .execute(conn)
-                        .await;
+                        .await?;
+                    if affected == 0 {
+                        tracing::warn!(
+                            platform_id = %platform_id,
+                            moderator_address = %moderator_address,
+                            permission_type = %permission_type,
+                            "ModeratorPermissionsRevoked indexed but no active permission row matched (already revoked or id mismatch)"
+                        );
+                    }
+                    total += affected;
                 }
                 PlatformRow::PlatformModeratorPermissionRevokeAll {
                     platform_id,
                     moderator_address,
                     revoked_at,
                 } => {
-                    let _ = diesel::update(platform_moderator_permissions::table)
+                    let affected = diesel::update(platform_moderator_permissions::table)
                         .filter(platform_moderator_permissions::platform_id.eq(platform_id))
                         .filter(
                             platform_moderator_permissions::moderator_address.eq(moderator_address),
@@ -478,7 +498,15 @@ impl Handler for PlatformHandler {
                         .filter(platform_moderator_permissions::revoked_at.is_null())
                         .set(platform_moderator_permissions::revoked_at.eq(revoked_at))
                         .execute(conn)
-                        .await;
+                        .await?;
+                    if affected == 0 {
+                        tracing::warn!(
+                            platform_id = %platform_id,
+                            moderator_address = %moderator_address,
+                            "ModeratorRemoved permission revoke-all indexed but no active permission rows matched (already revoked or id mismatch)"
+                        );
+                    }
+                    total += affected;
                 }
                 PlatformRow::PlatformBlockedProfile(b) => {
                     total += diesel::insert_into(platform_blocked_profiles::table)
@@ -502,25 +530,41 @@ impl Handler for PlatformHandler {
                         .await;
                 }
                 PlatformRow::PlatformMembership(m) => {
+                    // Rejoin refreshes joined_at; prior left_at is kept so joined_at > left_at.
                     total += diesel::insert_into(platform_memberships::table)
                         .values(m)
                         .on_conflict((
                             platform_memberships::platform_id,
                             platform_memberships::wallet_address,
                         ))
-                        .do_nothing()
+                        .do_update()
+                        .set(platform_memberships::joined_at.eq(diesel::upsert::excluded(
+                            platform_memberships::joined_at,
+                        )))
                         .execute(conn)
                         .await?;
                 }
-                PlatformRow::PlatformMembershipRemove {
+                PlatformRow::PlatformMembershipLeave {
                     platform_id,
                     wallet_address,
+                    left_at,
                 } => {
-                    let _ = diesel::delete(platform_memberships::table)
+                    let affected = diesel::update(platform_memberships::table)
                         .filter(platform_memberships::platform_id.eq(platform_id))
                         .filter(platform_memberships::wallet_address.eq(wallet_address))
+                        .set(platform_memberships::left_at.eq(Some(*left_at)))
                         .execute(conn)
-                        .await;
+                        .await?;
+                    if affected == 0 {
+                        crate::metrics::SocialMetrics::record_platform_membership_leave_unmatched();
+                        tracing::warn!(
+                            platform_id = %platform_id,
+                            wallet_address = %wallet_address,
+                            left_at = %left_at,
+                            "UserLeftPlatform indexed but no platform_memberships row matched (never joined or id mismatch)"
+                        );
+                    }
+                    total += affected;
                 }
                 PlatformRow::PlatformTreasuryWithdrawal(a) => {
                     total += diesel::insert_into(platform_treasury_withdrawals::table)

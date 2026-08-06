@@ -78,6 +78,8 @@ module social_contracts::post {
     const ETipPostRequiresBeneficiaryVault: u64 = 38;
     /// Empty batch, length mismatch, or batch larger than `MAX_PROMOTION_VIEW_BATCH`
     const EInvalidBatch: u64 = 39;
+    /// `enable_spt = true` on plain `create_*` is blocked; use `social_proof_tokens::create_post_with_reservation_pool`.
+    const ESptRequiresDedicatedCreate: u64 = 40;
 
     /// Constants for size limits
     const MAX_CONTENT_LENGTH: u64 = 5000; // 5000 chars max for content
@@ -358,7 +360,7 @@ module social_contracts::post {
         kind
     }
 
-    fun post_access_from_parts(
+    public(package) fun post_access_from_parts(
         access_kind: u8,
         subscription_service_id: Option<ID>,
         linked_mydata_id: Option<ID>,
@@ -614,6 +616,11 @@ module social_contracts::post {
     /// Internal function to set SPT pool ID (package visibility only)
     public(package) fun set_spt_id(post: &mut Post, spt_id: address) {
         post.spt_id = option::some(spt_id);
+    }
+
+    /// Package helper to flip the SPT opt-in flag (late-enable / create-with-SPT paths).
+    public(package) fun set_enable_spt(post: &mut Post, enabled: bool) {
+        post.enable_spt = enabled;
     }
 
     // --- Multi-claim SPoT analysis (dynamic-field attached) ---
@@ -1520,6 +1527,8 @@ module social_contracts::post {
         } else {
             false // Default to opt-out (user must explicitly opt-in)
         };
+        // SPT opt-in at create must go through social_proof_tokens::create_post_with_reservation_pool.
+        assert!(!final_enable_spt, ESptRequiresDedicatedCreate);
         // enable_spot retained for entry-signature compatibility; SPoT is always-on.
         let _ = enable_spot;
 
@@ -1547,7 +1556,7 @@ module social_contracts::post {
             option::none(), // revenue_redirect_percentage
             access,
             option::none(), // promotion_id
-            final_enable_spt,
+            false,
             poc_redirection_kind,
             actor_address,
             sub_agent_id,
@@ -1583,7 +1592,7 @@ module social_contracts::post {
             promotion_id: option::none(),
             revenue_redirect_to: option::none(),
             revenue_redirect_percentage: option::none(),
-            enable_spt: final_enable_spt,
+            enable_spt: false,
             spt_id: option::none(),
             poc_redirection_kind,
             actor_address,
@@ -1591,6 +1600,171 @@ module social_contracts::post {
             organization_id,
             action_identity_class,
         });
+    }
+
+    /// Build an unsared standard post with `enable_spt = true` for SPT create-with-reservation.
+    /// Caller bootstraps the reservation pool, sets `spt_id`, then `share_and_emit_spt_post`.
+    public(package) fun create_post_object_for_spt(
+        registry: &UsernameRegistry,
+        platform_registry: &platform::PlatformRegistry,
+        platform: &platform::Platform,
+        block_list_registry: &block_list::BlockListRegistry,
+        config: &PostConfig,
+        memory_config: &MemoryConfig,
+        content: String,
+        mut media_urls: Option<vector<String>>,
+        mentions: Option<vector<address>>,
+        metadata_json: Option<String>,
+        allow_comments: Option<bool>,
+        allow_reactions: Option<bool>,
+        allow_reposts: Option<bool>,
+        allow_quotes: Option<bool>,
+        allow_tips: Option<bool>,
+        access: PostAccess,
+        mydata_registry: &mydata::MyDataRegistry,
+        memory_account: &MemoryAccount,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ): Post {
+        let acting = resolve_social_actor(
+            memory_config,
+            registry,
+            platform,
+            block_list_registry,
+            memory_account,
+            memory::cap_post_publish(),
+            0,
+            clock,
+            ctx,
+        );
+        let owner = memory::acting_principal_owner(&acting);
+        let profile_id = memory::acting_profile_id(&acting);
+        let actor_address = memory::acting_actor_address(&acting);
+        let sub_agent_id = memory::acting_sub_agent_id(&acting);
+        let organization_id = memory::acting_organization_id(&acting);
+        let action_identity_class = memory::acting_identity_class(&acting);
+
+        assert_post_access_mydata_binding(owner, &access, mydata_registry);
+
+        let platform_id = object::uid_to_address(platform::id(platform));
+        assert!(platform::is_approved(platform_registry, platform_id), EUnauthorized);
+        assert!(string::length(&content) <= config.max_content_length, EContentTooLarge);
+        if (option::is_some(&metadata_json)) {
+            let metadata_ref = option::borrow(&metadata_json);
+            assert!(string::length(metadata_ref) <= config.max_metadata_size, EContentTooLarge);
+        };
+
+        let media_option = if (option::is_some(&media_urls)) {
+            let url_strings = option::extract(&mut media_urls);
+            assert!(vector::length(&url_strings) <= config.max_media_urls, ETooManyMediaUrls);
+            let mut urls = vector::empty<Url>();
+            let mut i = 0;
+            let len = vector::length(&url_strings);
+            while (i < len) {
+                let url_string = vector::borrow(&url_strings, i);
+                let url_bytes = string::as_bytes(url_string);
+                vector::push_back(&mut urls, url::new_unsafe_from_bytes(*url_bytes));
+                i = i + 1;
+            };
+            option::some(urls)
+        } else {
+            option::none<vector<Url>>()
+        };
+
+        if (option::is_some(&mentions)) {
+            let mentions_ref = option::borrow(&mentions);
+            assert!(vector::length(mentions_ref) <= config.max_mentions, EContentTooLarge);
+        };
+
+        let final_allow_comments = if (option::is_some(&allow_comments)) {
+            *option::borrow(&allow_comments)
+        } else {
+            true
+        };
+        let final_allow_reactions = if (option::is_some(&allow_reactions)) {
+            *option::borrow(&allow_reactions)
+        } else {
+            true
+        };
+        let final_allow_reposts = if (option::is_some(&allow_reposts)) {
+            *option::borrow(&allow_reposts)
+        } else {
+            true
+        };
+        let final_allow_quotes = if (option::is_some(&allow_quotes)) {
+            *option::borrow(&allow_quotes)
+        } else {
+            true
+        };
+        let final_allow_tips = if (option::is_some(&allow_tips)) {
+            *option::borrow(&allow_tips)
+        } else {
+            true
+        };
+
+        create_post_internal(
+            owner,
+            profile_id,
+            platform_id,
+            content,
+            media_option,
+            mentions,
+            metadata_json,
+            string::utf8(POST_TYPE_STANDARD),
+            option::none(),
+            final_allow_comments,
+            final_allow_reactions,
+            final_allow_reposts,
+            final_allow_quotes,
+            final_allow_tips,
+            option::none(),
+            option::none(),
+            access,
+            option::none(),
+            true, // enable_spt
+            POC_REDIRECT_NONE,
+            actor_address,
+            sub_agent_id,
+            organization_id,
+            action_identity_class,
+            clock,
+            ctx
+        )
+    }
+
+    /// Set reservation-pool `spt_id`, share the post, and emit `PostCreatedEvent` with SPT fields filled.
+    public(package) fun share_and_emit_spt_post(mut post: Post, spt_pool_id: address): address {
+        set_enable_spt(&mut post, true);
+        set_spt_id(&mut post, spt_pool_id);
+        let media_urls_for_event = convert_urls_to_strings(&post.media);
+        let attr = post_attribution(&post);
+        let post_id = object::uid_to_address(&post.id);
+        event::emit(PostCreatedEvent {
+            post_id,
+            owner: post.owner,
+            profile_id: post.profile_id,
+            platform_id: post.platform_id,
+            permissions: post.permissions,
+            content: post.content,
+            post_type: post.post_type,
+            parent_post_id: post.parent_post_id,
+            mentions: post.mentions,
+            media_urls: media_urls_for_event,
+            metadata_json: post.metadata_json,
+            access: post.access,
+            promotion_id: post.promotion_id,
+            revenue_redirect_to: post.revenue_redirect_to,
+            revenue_redirect_percentage: post.revenue_redirect_percentage,
+            enable_spt: true,
+            spt_id: option::some(spt_pool_id),
+            poc_redirection_kind: post.poc_redirection_kind,
+            actor_address: attr.actor_address,
+            sub_agent_id: attr.sub_agent_id,
+            organization_id: attr.organization_id,
+            action_identity_class: attr.action_identity_class,
+        });
+        transfer::share_object(post);
+        post_id
     }
 
     /// Create a new post; caller supplies access via kind + optional service/mydata ids.
@@ -2263,6 +2437,7 @@ module social_contracts::post {
         } else {
             false // Default to opt-out (user must explicitly opt-in)
         };
+        assert!(!final_enable_spt, ESptRequiresDedicatedCreate);
         // enable_spot retained for entry-signature compatibility; SPoT is always-on.
         let _ = enable_spot;
 
@@ -2290,7 +2465,7 @@ module social_contracts::post {
             option::none(), // revenue_redirect_percentage
             PostAccess::Public,
             option::none(), // promotion_id
-            final_enable_spt,
+            false,
             poc_redirection_kind,
             actor_address,
             sub_agent_id,
@@ -2326,7 +2501,7 @@ module social_contracts::post {
             promotion_id: option::none(),
             revenue_redirect_to: option::none(),
             revenue_redirect_percentage: option::none(),
-            enable_spt: final_enable_spt,
+            enable_spt: false,
             spt_id: option::none(),
             poc_redirection_kind,
             actor_address,
@@ -4540,6 +4715,7 @@ module social_contracts::post {
         } else {
             false // Default to opt-out (user must explicitly opt-in)
         };
+        assert!(!final_enable_spt, ESptRequiresDedicatedCreate);
         // enable_spot retained for entry-signature compatibility; SPoT is always-on.
         let _ = enable_spot;
         // Convert media URLs to strings for PostCreatedEvent (before moving media_option)
@@ -4566,7 +4742,7 @@ module social_contracts::post {
             option::none(), // revenue_redirect_percentage
             access,
             option::some(promotion_id),
-            final_enable_spt,
+            false,
             poc_redirection_kind,
             actor_address,
             sub_agent_id,
@@ -4595,7 +4771,7 @@ module social_contracts::post {
             promotion_id: option::some(promotion_id),
             revenue_redirect_to: option::none(),
             revenue_redirect_percentage: option::none(),
-            enable_spt: final_enable_spt,
+            enable_spt: false,
             spt_id: option::none(),
             poc_redirection_kind,
             actor_address,

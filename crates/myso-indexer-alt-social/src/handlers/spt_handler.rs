@@ -23,14 +23,16 @@ use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
     default_spt_config, merge_spt_config, InsertSptConfig, NewSocialProofTokensEvent,
     NewSptConfigEvent, NewSptHolding, NewSptPool, NewSptPriceHistory, NewSptReservation,
-    NewSptReservationPool, NewSptRevenue, NewSptTransaction, NewUnifiedRevenue, ProfileUpdateSet,
-    RESERVATION_POOL_STATUS_ACTIVE, RESERVATION_POOL_STATUS_THRESHOLD_MET,
+    NewSptReservationPool, NewSptRevenue, NewSptSwap, NewSptTransfer, NewSptTransaction,
+    NewUnifiedRevenue,
+    ProfileUpdateSet, RESERVATION_POOL_STATUS_ACTIVE, RESERVATION_POOL_STATUS_THRESHOLD_MET,
     REVENUE_TYPE_SPT_CREATOR_FEE, REVENUE_TYPE_SPT_PLATFORM_FEE, REVENUE_TYPE_SPT_TREASURY_FEE,
-    TOKEN_TYPE_POST, TOKEN_TYPE_PROFILE, TRANSACTION_TYPE_BUY,
+    TOKEN_TYPE_POST, TOKEN_TYPE_PROFILE, TRANSACTION_TYPE_BUY, TRANSACTION_TYPE_SELL,
 };
 use myso_indexer_alt_social_schema::schema::{
     ecosystem_treasury, posts, profiles, spt_config, spt_events, spt_holdings, spt_pools,
-    spt_reservation_pools, spt_reservations, spt_revenue, spt_transactions, unified_revenue,
+    spt_reservation_pools, spt_reservations, spt_revenue, spt_swaps, spt_transfers,
+    spt_transactions, unified_revenue,
 };
 
 use super::common;
@@ -223,6 +225,11 @@ pub(crate) struct SptReserverAggRow {
 pub enum SptRow {
     SptPool(NewSptPool),
     SptTransaction(NewSptTransaction),
+    /// Atomic SPT→SPT swap summary. SUMMARY ONLY: inserts one `spt_swaps` row and flags its
+    /// two `spt_transactions` legs; never mutates holdings/supply/price/revenue.
+    SptSwap(NewSptSwap),
+    /// P2P SPT transfer summary. Holdings deltas arrive as separate `SptHolding` rows.
+    SptTransfer(NewSptTransfer),
     SptHolding(NewSptHolding),
     SptPoolSupplyUpdate {
         pool_id: String,
@@ -286,6 +293,8 @@ impl SptRow {
         match row {
             crate::handlers::SocialEventRow::SptPool(p) => Some(SptRow::SptPool(p)),
             crate::handlers::SocialEventRow::SptTransaction(t) => Some(SptRow::SptTransaction(t)),
+            crate::handlers::SocialEventRow::SptSwap(s) => Some(SptRow::SptSwap(s)),
+            crate::handlers::SocialEventRow::SptTransfer(t) => Some(SptRow::SptTransfer(t)),
             crate::handlers::SocialEventRow::SptHolding(h) => Some(SptRow::SptHolding(h)),
             crate::handlers::SocialEventRow::SptPoolSupplyUpdate { pool_id, delta } => {
                 Some(SptRow::SptPoolSupplyUpdate { pool_id, delta })
@@ -394,7 +403,9 @@ impl SptRow {
 }
 
 impl FieldCount for SptRow {
-    const FIELD_COUNT: usize = 17;
+    // Widest insert row is `NewSptSwap` (22 columns); keep this at least that large so the
+    // framework's batch sizing never exceeds PostgreSQL's bind-parameter limit.
+    const FIELD_COUNT: usize = 22;
 }
 
 /// SPT rows: live pools use `spt_holdings`; reservation phase uses `spt_reservations` (+ view
@@ -646,6 +657,54 @@ impl Handler for SptHandler {
                         )
                         .await?;
                     }
+                }
+                SptRow::SptSwap(s) => {
+                    // SUMMARY ONLY: insert the swap summary and flag its two legs. Never mutate
+                    // holdings/supply/price/revenue — those come from the sold/bought legs.
+                    let mut swap = s.clone();
+                    if swap.organization_id.is_none() {
+                        swap.organization_id =
+                            resolve_organization_id_for_derived_address(conn, &swap.trader).await?;
+                    }
+                    total += diesel::insert_into(spt_swaps::table)
+                        .values(&swap)
+                        .execute(conn)
+                        .await?;
+
+                    // Mark the SELL leg (source pool) and BUY leg (dest pool) of this swap so
+                    // clients can distinguish swap legs from standalone trades. The SELL leg's
+                    // counterparty is the dest pool; the BUY leg's counterparty is the source pool.
+                    const MARK_SWAP_LEG_SQL: &str =
+                        "UPDATE spt_transactions SET is_swap_leg = TRUE, counterparty_pool_id = $1 \
+                         WHERE transaction_id = $2 AND pool_id = $3 AND transaction_type = $4";
+                    total += diesel::sql_query(MARK_SWAP_LEG_SQL)
+                        .bind::<Text, _>(&swap.dest_pool_id)
+                        .bind::<Text, _>(&swap.transaction_id)
+                        .bind::<Text, _>(&swap.source_pool_id)
+                        .bind::<Text, _>(TRANSACTION_TYPE_SELL)
+                        .execute(conn)
+                        .await?;
+                    total += diesel::sql_query(MARK_SWAP_LEG_SQL)
+                        .bind::<Text, _>(&swap.source_pool_id)
+                        .bind::<Text, _>(&swap.transaction_id)
+                        .bind::<Text, _>(&swap.dest_pool_id)
+                        .bind::<Text, _>(TRANSACTION_TYPE_BUY)
+                        .execute(conn)
+                        .await?;
+                }
+                SptRow::SptTransfer(t) => {
+                    let mut xfer = t.clone();
+                    if xfer.organization_id.is_none() {
+                        xfer.organization_id = resolve_organization_id_for_derived_address(
+                            conn,
+                            &xfer.from_address,
+                        )
+                        .await?;
+                    }
+                    total += diesel::insert_into(spt_transfers::table)
+                        .values(&xfer)
+                        .execute(conn)
+                        .await?;
                 }
                 SptRow::SptHolding(h) => {
                     total += diesel::insert_into(spt_holdings::table)

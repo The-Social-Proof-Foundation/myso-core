@@ -2663,6 +2663,39 @@ pub struct BcsTokenSoldEvent {
     new_price: u64,
 }
 
+/// Atomic summary of an SPT→SPT swap (emitted after `TokenSoldEvent` + `TokenBoughtEvent`).
+/// Fields are in the exact Move struct order for BCS deserialization.
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsTokenSwappedEvent {
+    source_pool_id: AccountAddress,
+    dest_pool_id: AccountAddress,
+    trader: AccountAddress,
+    sell_amount: u64,
+    dest_amount: u64,
+    sell_myso_gross: u64,
+    buy_myso_gross: u64,
+    sell_fee_amount: u64,
+    buy_fee_amount: u64,
+    sell_creator_fee: u64,
+    sell_platform_fee: u64,
+    sell_treasury_fee: u64,
+    buy_creator_fee: u64,
+    buy_platform_fee: u64,
+    buy_treasury_fee: u64,
+    leftover_myso: u64,
+    source_new_price: u64,
+    dest_new_price: u64,
+}
+
+/// P2P SPT transfer (`TokenTransferredEvent`). Move field order for BCS.
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsTokenTransferredEvent {
+    pool_id: AccountAddress,
+    from: AccountAddress,
+    to: AccountAddress,
+    amount: u64,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct BcsReservationCreatedEvent {
     associated_id: AccountAddress,
@@ -2967,14 +3000,14 @@ pub struct BcsPlatformDeletedEvent {
     reasoning: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsUserJoinedPlatformEvent {
     wallet_address: AccountAddress,
     platform_id: AccountAddress,
     timestamp: u64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsUserLeftPlatformEvent {
     wallet_address: AccountAddress,
     platform_id: AccountAddress,
@@ -5923,6 +5956,40 @@ fn parse_spt_event(
                 "new_price": ev.new_price,
             })))
         }
+        "TokenSwappedEvent" | "SwapEvent" => {
+            let ev = bcs::from_bytes::<BcsTokenSwappedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "source_pool_id": addr_to_string(&ev.source_pool_id),
+                "dest_pool_id": addr_to_string(&ev.dest_pool_id),
+                "trader": addr_to_string(&ev.trader),
+                "sell_amount": ev.sell_amount,
+                "dest_amount": ev.dest_amount,
+                "sell_myso_gross": ev.sell_myso_gross,
+                "buy_myso_gross": ev.buy_myso_gross,
+                "sell_fee_amount": ev.sell_fee_amount,
+                "buy_fee_amount": ev.buy_fee_amount,
+                "sell_creator_fee": ev.sell_creator_fee,
+                "sell_platform_fee": ev.sell_platform_fee,
+                "sell_treasury_fee": ev.sell_treasury_fee,
+                "buy_creator_fee": ev.buy_creator_fee,
+                "buy_platform_fee": ev.buy_platform_fee,
+                "buy_treasury_fee": ev.buy_treasury_fee,
+                "leftover_myso": ev.leftover_myso,
+                "source_new_price": ev.source_new_price,
+                "dest_new_price": ev.dest_new_price,
+            })))
+        }
+        "TokenTransferredEvent" | "TransferEvent" => {
+            let ev = bcs::from_bytes::<BcsTokenTransferredEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "pool_id": addr_to_string(&ev.pool_id),
+                "from": addr_to_string(&ev.from),
+                "to": addr_to_string(&ev.to),
+                "amount": ev.amount,
+            })))
+        }
         "ReservationCreatedEvent" => {
             let ev = bcs::from_bytes::<BcsReservationCreatedEvent>(contents)
                 .map_err(|e| bcs_parse_err(e, contents))?;
@@ -6738,6 +6805,107 @@ mod tests {
             platform_row.redirect_uri.as_deref(),
             Some("https://example.com/oauth/callback")
         );
+    }
+
+    /// BCS → JSON → handler for join: membership upsert + audit event.
+    #[test]
+    fn user_joined_platform_event_bcs_parse_then_handler_row_shape() {
+        use crate::handlers::platform::handle_platform_event;
+        use crate::handlers::SocialEventRow;
+
+        let wallet = AccountAddress::from_hex_literal(
+            "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        )
+        .unwrap();
+        let pid = AccountAddress::from_hex_literal(
+            "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+        )
+        .unwrap();
+        let timestamp_ms = 1_735_891_200_000u64;
+        let ev = BcsUserJoinedPlatformEvent {
+            wallet_address: wallet,
+            platform_id: pid,
+            timestamp: timestamp_ms,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("serialize UserJoinedPlatformEvent BCS fixture");
+        let json = parse_event_contents("platform", "UserJoinedPlatformEvent", &bytes)
+            .expect("parse_event_contents should succeed for UserJoinedPlatformEvent BCS");
+        let event_id = "digest:join-bcs";
+        let rows = handle_platform_event("UserJoinedPlatformEvent", &json, event_id, timestamp_ms)
+            .expect("handler should deserialize JSON from BCS path");
+        assert_eq!(rows.len(), 2);
+        match &rows[0] {
+            SocialEventRow::PlatformMembership(m) => {
+                assert_eq!(m.platform_id, addr_to_string(&pid));
+                assert_eq!(m.wallet_address, addr_to_string(&wallet));
+                assert!(m.left_at.is_none());
+            }
+            other => panic!("expected PlatformMembership, got {:?}", other),
+        }
+        match &rows[1] {
+            SocialEventRow::PlatformEvent(row) => {
+                assert_eq!(row.event_type, "UserJoinedPlatform");
+                assert_eq!(row.event_id.as_deref(), Some(event_id));
+            }
+            other => panic!("expected PlatformEvent, got {:?}", other),
+        }
+    }
+
+    /// BCS → JSON → handler for leave: soft left_at stamp + audit event (no delete).
+    #[test]
+    fn user_left_platform_event_bcs_parse_then_handler_row_shape() {
+        use crate::handlers::platform::handle_platform_event;
+        use crate::handlers::SocialEventRow;
+        use chrono::{TimeZone, Utc};
+
+        let wallet = AccountAddress::from_hex_literal(
+            "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        )
+        .unwrap();
+        let pid = AccountAddress::from_hex_literal(
+            "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+        )
+        .unwrap();
+        let timestamp_ms = 1_735_891_200_000u64;
+        let ev = BcsUserLeftPlatformEvent {
+            wallet_address: wallet,
+            platform_id: pid,
+            timestamp: timestamp_ms,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("serialize UserLeftPlatformEvent BCS fixture");
+        let json = parse_event_contents("platform", "UserLeftPlatformEvent", &bytes)
+            .expect("parse_event_contents should succeed for UserLeftPlatformEvent BCS");
+        let event_id = "digest:leave-bcs";
+        let rows = handle_platform_event("UserLeftPlatformEvent", &json, event_id, timestamp_ms)
+            .expect("handler should deserialize JSON from BCS path");
+        assert_eq!(rows.len(), 2);
+        match &rows[0] {
+            SocialEventRow::PlatformMembershipLeave {
+                platform_id,
+                wallet_address,
+                left_at,
+            } => {
+                assert_eq!(platform_id, &addr_to_string(&pid));
+                assert_eq!(wallet_address, &addr_to_string(&wallet));
+                let expected_left_at = {
+                    let secs = (timestamp_ms / 1000) as i64;
+                    let nsecs = ((timestamp_ms % 1000) * 1_000_000) as u32;
+                    Utc.timestamp_opt(secs, nsecs)
+                        .single()
+                        .expect("fixture timestamp fits")
+                        .naive_utc()
+                };
+                assert_eq!(*left_at, expected_left_at);
+            }
+            other => panic!("expected PlatformMembershipLeave, got {:?}", other),
+        }
+        match &rows[1] {
+            SocialEventRow::PlatformEvent(row) => {
+                assert_eq!(row.event_type, "UserLeftPlatform");
+                assert_eq!(row.event_id.as_deref(), Some(event_id));
+            }
+            other => panic!("expected PlatformEvent, got {:?}", other),
+        }
     }
 
     /// BCS serialization matches Move `platform::PlatformDeletedEvent`; handlers produce delete + audit rows.
@@ -8248,5 +8416,70 @@ mod tests {
         assert_eq!(json["base_price"], 100_000_000);
         assert_eq!(json["trading_enabled"], true);
         assert_eq!(json["timestamp"].as_u64(), Some(1_700_000_000_000));
+    }
+
+    #[test]
+    fn token_swapped_event_bcs_roundtrip() {
+        let source = AccountAddress::from_hex_literal("0x11").unwrap();
+        let dest = AccountAddress::from_hex_literal("0x22").unwrap();
+        let trader = AccountAddress::from_hex_literal("0x33").unwrap();
+        let ev = BcsTokenSwappedEvent {
+            source_pool_id: source,
+            dest_pool_id: dest,
+            trader,
+            sell_amount: 1_000,
+            dest_amount: 2_000,
+            sell_myso_gross: 300,
+            buy_myso_gross: 280,
+            sell_fee_amount: 15,
+            buy_fee_amount: 14,
+            sell_creator_fee: 10,
+            sell_platform_fee: 3,
+            sell_treasury_fee: 2,
+            buy_creator_fee: 9,
+            buy_platform_fee: 3,
+            buy_treasury_fee: 2,
+            leftover_myso: 6,
+            source_new_price: 100_000,
+            dest_new_price: 200_000,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("serialize TokenSwappedEvent");
+        let json = parse_event_contents("social_proof_tokens", "TokenSwappedEvent", &bytes)
+            .expect("parse TokenSwappedEvent");
+        assert_eq!(json["sell_amount"], 1_000);
+        assert_eq!(json["dest_amount"], 2_000);
+        assert_eq!(json["leftover_myso"], 6);
+        assert_eq!(json["source_new_price"], 100_000);
+        assert_eq!(json["dest_new_price"], 200_000);
+        assert!(json["source_pool_id"].as_str().unwrap().contains("11"));
+        assert!(json["dest_pool_id"].as_str().unwrap().contains("22"));
+
+        let alias = parse_event_contents("social_proof_tokens", "SwapEvent", &bytes)
+            .expect("parse SwapEvent alias");
+        assert_eq!(alias["sell_amount"], 1_000);
+    }
+
+    #[test]
+    fn token_transferred_event_bcs_roundtrip() {
+        let pool = AccountAddress::from_hex_literal("0xaa").unwrap();
+        let from = AccountAddress::from_hex_literal("0xbb").unwrap();
+        let to = AccountAddress::from_hex_literal("0xcc").unwrap();
+        let ev = BcsTokenTransferredEvent {
+            pool_id: pool,
+            from,
+            to,
+            amount: 42_000,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("serialize TokenTransferredEvent");
+        let json = parse_event_contents("social_proof_tokens", "TokenTransferredEvent", &bytes)
+            .expect("parse TokenTransferredEvent");
+        assert_eq!(json["amount"], 42_000);
+        assert!(json["pool_id"].as_str().unwrap().contains("aa"));
+        assert!(json["from"].as_str().unwrap().contains("bb"));
+        assert!(json["to"].as_str().unwrap().contains("cc"));
+
+        let alias = parse_event_contents("social_proof_tokens", "TransferEvent", &bytes)
+            .expect("parse TransferEvent alias");
+        assert_eq!(alias["amount"], 42_000);
     }
 }

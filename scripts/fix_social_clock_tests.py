@@ -49,7 +49,7 @@ NEEDS_CLOCK = (
     "platform::update_platform",
     "platform::leave_platform",
     "social_proof_tokens::update_social_proof_tokens_config",
-    "social_proof_tokens::create_reservation_pool_for_post",
+    "social_proof_tokens::enable_spt_for_post",
     "social_proof_tokens::create_reservation_pool_for_profile",
     "social_proof_tokens::reserve_towards_post",
     "social_proof_tokens::reserve_towards_profile",

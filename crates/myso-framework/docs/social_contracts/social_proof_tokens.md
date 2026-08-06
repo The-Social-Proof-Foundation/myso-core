@@ -29,6 +29,8 @@ plus optional sub-token nano remainder into the <code>u64</code> nano-SPT values
 -  [Struct `TokenPoolCreatedEvent`](#social_contracts_social_proof_tokens_TokenPoolCreatedEvent)
 -  [Struct `TokenBoughtEvent`](#social_contracts_social_proof_tokens_TokenBoughtEvent)
 -  [Struct `TokenSoldEvent`](#social_contracts_social_proof_tokens_TokenSoldEvent)
+-  [Struct `TokenSwappedEvent`](#social_contracts_social_proof_tokens_TokenSwappedEvent)
+-  [Struct `TokenTransferredEvent`](#social_contracts_social_proof_tokens_TokenTransferredEvent)
 -  [Struct `ReservationCreatedEvent`](#social_contracts_social_proof_tokens_ReservationCreatedEvent)
 -  [Struct `ReservationWithdrawnEvent`](#social_contracts_social_proof_tokens_ReservationWithdrawnEvent)
 -  [Struct `ThresholdMetEvent`](#social_contracts_social_proof_tokens_ThresholdMetEvent)
@@ -67,7 +69,8 @@ plus optional sub-token nano remainder into the <code>u64</code> nano-SPT values
 -  [Function `withdraw_reservation_with_platform_for_post`](#social_contracts_social_proof_tokens_withdraw_reservation_with_platform_for_post)
 -  [Function `withdraw_reservation_with_platform_for_profile`](#social_contracts_social_proof_tokens_withdraw_reservation_with_platform_for_profile)
 -  [Function `bootstrap_reservation_pool_for_post_id`](#social_contracts_social_proof_tokens_bootstrap_reservation_pool_for_post_id)
--  [Function `create_reservation_pool_for_post`](#social_contracts_social_proof_tokens_create_reservation_pool_for_post)
+-  [Function `create_post_with_reservation_pool`](#social_contracts_social_proof_tokens_create_post_with_reservation_pool)
+-  [Function `enable_spt_for_post`](#social_contracts_social_proof_tokens_enable_spt_for_post)
 -  [Function `create_reservation_pool_for_profile`](#social_contracts_social_proof_tokens_create_reservation_pool_for_profile)
 -  [Function `can_create_auction`](#social_contracts_social_proof_tokens_can_create_auction)
 -  [Function `create_social_proof_token`](#social_contracts_social_proof_tokens_create_social_proof_token)
@@ -92,6 +95,13 @@ plus optional sub-token nano remainder into the <code>u64</code> nano-SPT values
 -  [Function `buy_more_tokens_with_platform`](#social_contracts_social_proof_tokens_buy_more_tokens_with_platform)
 -  [Function `sell_tokens`](#social_contracts_social_proof_tokens_sell_tokens)
 -  [Function `sell_tokens_with_platform`](#social_contracts_social_proof_tokens_sell_tokens_with_platform)
+-  [Function `transfer_tokens`](#social_contracts_social_proof_tokens_transfer_tokens)
+-  [Function `swap_tokens`](#social_contracts_social_proof_tokens_swap_tokens)
+-  [Function `swap_more_tokens`](#social_contracts_social_proof_tokens_swap_more_tokens)
+-  [Function `swap_tokens_with_platform`](#social_contracts_social_proof_tokens_swap_tokens_with_platform)
+-  [Function `swap_more_tokens_with_platform`](#social_contracts_social_proof_tokens_swap_more_tokens_with_platform)
+-  [Function `execute_swap_non_platform`](#social_contracts_social_proof_tokens_execute_swap_non_platform)
+-  [Function `execute_swap_with_platform`](#social_contracts_social_proof_tokens_execute_swap_with_platform)
 -  [Function `unwrap_u256_opt`](#social_contracts_social_proof_tokens_unwrap_u256_opt)
 -  [Function `u256_add_with_carry`](#social_contracts_social_proof_tokens_u256_add_with_carry)
 -  [Function `u256_mul_widen`](#social_contracts_social_proof_tokens_u256_mul_widen)
@@ -107,6 +117,9 @@ plus optional sub-token nano remainder into the <code>u64</code> nano-SPT values
 -  [Function `calculate_token_price`](#social_contracts_social_proof_tokens_calculate_token_price)
 -  [Function `calculate_buy_price`](#social_contracts_social_proof_tokens_calculate_buy_price)
 -  [Function `calculate_sell_price`](#social_contracts_social_proof_tokens_calculate_sell_price)
+-  [Function `calculate_swap_proceeds`](#social_contracts_social_proof_tokens_calculate_swap_proceeds)
+-  [Function `calculate_max_buy_amount`](#social_contracts_social_proof_tokens_calculate_max_buy_amount)
+-  [Function `calculate_swap_quote`](#social_contracts_social_proof_tokens_calculate_swap_quote)
 -  [Function `spt_amount_scale`](#social_contracts_social_proof_tokens_spt_amount_scale)
 -  [Function `spt_amount_decimals`](#social_contracts_social_proof_tokens_spt_amount_decimals)
 -  [Function `nano_spt_from_whole_tokens`](#social_contracts_social_proof_tokens_nano_spt_from_whole_tokens)
@@ -913,6 +926,163 @@ Event emitted when tokens are sold
 <code>new_price: u64</code>
 </dt>
 <dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_TokenSwappedEvent"></a>
+
+## Struct `TokenSwappedEvent`
+
+Atomic summary of an SPT→SPT swap (emitted after TokenSoldEvent + TokenBoughtEvent).
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenSwappedEvent">TokenSwappedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>source_pool_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>dest_pool_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>trader: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>sell_amount: u64</code>
+</dt>
+<dd>
+ Nano-SPT sold from the source pool.
+</dd>
+<dt>
+<code>dest_amount: u64</code>
+</dt>
+<dd>
+ Nano-SPT bought into the dest pool.
+</dd>
+<dt>
+<code>sell_myso_gross: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>buy_myso_gross: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>sell_fee_amount: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>buy_fee_amount: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>sell_creator_fee: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>sell_platform_fee: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>sell_treasury_fee: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>buy_creator_fee: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>buy_platform_fee: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>buy_treasury_fee: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>leftover_myso: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>source_new_price: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>dest_new_price: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_TokenTransferredEvent"></a>
+
+## Struct `TokenTransferredEvent`
+
+P2P SPT transfer that updates the pool <code>holders</code> ledger.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenTransferredEvent">TokenTransferredEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>pool_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>from: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>to: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>amount: u64</code>
+</dt>
+<dd>
+ Nano-SPT transferred.
 </dd>
 </dl>
 
@@ -1763,6 +1933,56 @@ Post token pools in on-post PoC escrow mode require an entrypoint that supplies 
 
 
 <pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EPostPoolEscrowTradingBlocked">EPostPoolEscrowTradingBlocked</a>: u64 = 30;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_tokens_ESamePool"></a>
+
+Cannot swap a pool into itself
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ESamePool">ESamePool</a>: u64 = 31;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_tokens_ESlippageExceeded"></a>
+
+Dest fill below <code>min_dest_amount</code> slippage bound
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ESlippageExceeded">ESlippageExceeded</a>: u64 = 32;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_tokens_ESelfTransfer"></a>
+
+Cannot transfer SPT to the same address
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ESelfTransfer">ESelfTransfer</a>: u64 = 33;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_tokens_ESptAlreadyEnabled"></a>
+
+Post already has SPT / reservation pool enabled
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ESptAlreadyEnabled">ESptAlreadyEnabled</a>: u64 = 34;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_tokens_EInvalidTransferAmount"></a>
+
+Transfer amount must be positive
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidTransferAmount">EInvalidTransferAmount</a>: u64 = 35;
 </code></pre>
 
 
@@ -3880,7 +4100,7 @@ Withdraw from a **profile** reservation pool via an approved platform.
 
 ## Function `bootstrap_reservation_pool_for_post_id`
 
-Shared pool-creation logic for <code><a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_create_reservation_pool_for_post">create_reservation_pool_for_post</a></code>.
+Shared pool-creation logic for create-with-SPT and late-enable entries.
 
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_bootstrap_reservation_pool_for_post_id">bootstrap_reservation_pool_for_post_id</a>(registry: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>, config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, associated_id: <b>address</b>, owner: <b>address</b>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <b>address</b>
@@ -3948,14 +4168,14 @@ Shared pool-creation logic for <code><a href="../social_contracts/social_proof_t
 
 </details>
 
-<a name="social_contracts_social_proof_tokens_create_reservation_pool_for_post"></a>
+<a name="social_contracts_social_proof_tokens_create_post_with_reservation_pool"></a>
 
-## Function `create_reservation_pool_for_post`
+## Function `create_post_with_reservation_pool`
 
-Create a reservation pool for a post (explicit second transaction after post create).
+Create a post and bootstrap its SPT reservation pool in one transaction.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_create_reservation_pool_for_post">create_reservation_pool_for_post</a>(registry: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>, config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_create_post_with_reservation_pool">create_post_with_reservation_pool</a>(token_registry: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>, spt_config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, post_config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, allow_comments: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, allow_reactions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, allow_reposts: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, allow_quotes: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, allow_tips: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, access_kind: u8, subscription_service_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, linked_mydata_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, subscription_min_tier_level: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, mydata_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">social_contracts::mydata::MyDataRegistry</a>, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3964,7 +4184,98 @@ Create a reservation pool for a post (explicit second transaction after post cre
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_create_reservation_pool_for_post">create_reservation_pool_for_post</a>(
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_create_post_with_reservation_pool">create_post_with_reservation_pool</a>(
+    token_registry: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">TokenRegistry</a>,
+    spt_config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a>,
+    registry: &UsernameRegistry,
+    platform_registry: &PlatformRegistry,
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">platform::Platform</a>,
+    block_list_registry: &BlockListRegistry,
+    post_config: &PostConfig,
+    memory_config: &MemoryConfig,
+    content: String,
+    media_urls: Option&lt;vector&lt;String&gt;&gt;,
+    mentions: Option&lt;vector&lt;<b>address</b>&gt;&gt;,
+    metadata_json: Option&lt;String&gt;,
+    allow_comments: Option&lt;bool&gt;,
+    allow_reactions: Option&lt;bool&gt;,
+    allow_reposts: Option&lt;bool&gt;,
+    allow_quotes: Option&lt;bool&gt;,
+    allow_tips: Option&lt;bool&gt;,
+    access_kind: u8,
+    subscription_service_id: Option&lt;ID&gt;,
+    linked_mydata_id: Option&lt;ID&gt;,
+    subscription_min_tier_level: Option&lt;u64&gt;,
+    mydata_registry: &mydata::MyDataRegistry,
+    memory_account: &MemoryAccount,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>assert</b>!(spt_config.trading_enabled, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ETradingHalted">ETradingHalted</a>);
+    <b>let</b> access = <a href="../social_contracts/post.md#social_contracts_post_post_access_from_parts">post::post_access_from_parts</a>(
+        access_kind,
+        subscription_service_id,
+        linked_mydata_id,
+        subscription_min_tier_level,
+    );
+    <b>let</b> <a href="../social_contracts/post.md#social_contracts_post">post</a> = <a href="../social_contracts/post.md#social_contracts_post_create_post_object_for_spt">post::create_post_object_for_spt</a>(
+        registry,
+        platform_registry,
+        <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>,
+        block_list_registry,
+        post_config,
+        memory_config,
+        content,
+        media_urls,
+        mentions,
+        metadata_json,
+        allow_comments,
+        allow_reactions,
+        allow_reposts,
+        allow_quotes,
+        allow_tips,
+        access,
+        mydata_registry,
+        memory_account,
+        clock,
+        ctx,
+    );
+    <b>let</b> associated_id = <a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(&<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    <b>let</b> owner = <a href="../social_contracts/post.md#social_contracts_post_get_post_owner">post::get_post_owner</a>(&<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    <b>let</b> pool_object_id = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_bootstrap_reservation_pool_for_post_id">bootstrap_reservation_pool_for_post_id</a>(
+        token_registry,
+        spt_config,
+        associated_id,
+        owner,
+        clock,
+        ctx,
+    );
+    <b>let</b> _post_id = <a href="../social_contracts/post.md#social_contracts_post_share_and_emit_spt_post">post::share_and_emit_spt_post</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, pool_object_id);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_enable_spt_for_post"></a>
+
+## Function `enable_spt_for_post`
+
+Late-enable SPT on an existing post that is not already SPT-enabled.
+Replaces the old <code>create_reservation_pool_for_post</code> entry.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_enable_spt_for_post">enable_spt_for_post</a>(registry: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>, config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_enable_spt_for_post">enable_spt_for_post</a>(
     registry: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">TokenRegistry</a>,
     config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a>,
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> Post,
@@ -3975,6 +4286,9 @@ Create a reservation pool for a post (explicit second transaction after post cre
     <b>let</b> associated_id = <a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
     <b>let</b> owner = <a href="../social_contracts/post.md#social_contracts_post_get_post_owner">post::get_post_owner</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
     <b>assert</b>!(caller == owner, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ENotAuthorized">ENotAuthorized</a>);
+    <b>assert</b>!(option::is_none(<a href="../social_contracts/post.md#social_contracts_post_get_spt_id">post::get_spt_id</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>)), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ESptAlreadyEnabled">ESptAlreadyEnabled</a>);
+    <b>assert</b>!(!table::contains(&registry.reservation_pools, associated_id), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ESptAlreadyEnabled">ESptAlreadyEnabled</a>);
+    <b>assert</b>!(!table::contains(&registry.tokens, associated_id), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ESptAlreadyEnabled">ESptAlreadyEnabled</a>);
     <b>let</b> pool_object_id = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_bootstrap_reservation_pool_for_post_id">bootstrap_reservation_pool_for_post_id</a>(
         registry,
         config,
@@ -3983,6 +4297,7 @@ Create a reservation pool for a post (explicit second transaction after post cre
         clock,
         ctx,
     );
+    <a href="../social_contracts/post.md#social_contracts_post_set_enable_spt">post::set_enable_spt</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, <b>true</b>);
     <a href="../social_contracts/post.md#social_contracts_post_set_spt_id">post::set_spt_id</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, pool_object_id);
 }
 </code></pre>
@@ -5855,6 +6170,725 @@ transferred back to the seller; on a full sell the object is deleted — no zomb
 
 </details>
 
+<a name="social_contracts_social_proof_tokens_transfer_tokens"></a>
+
+## Function `transfer_tokens`
+
+Transfer a <code><a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">SocialToken</a></code> to another address and update the pool <code>holders</code> ledger.
+Split first if only part of a balance should be sent.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_transfer_tokens">transfer_tokens</a>(pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">social_contracts::social_proof_tokens::TokenPool</a>, config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, token: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">social_contracts::social_proof_tokens::SocialToken</a>, recipient: <b>address</b>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_transfer_tokens">transfer_tokens</a>(
+    pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">TokenPool</a>,
+    config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a>,
+    token: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">SocialToken</a>,
+    recipient: <b>address</b>,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>assert</b>!(config.trading_enabled, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ETradingHalted">ETradingHalted</a>);
+    <b>assert</b>!(pool.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EWrongVersion">EWrongVersion</a>);
+    <b>let</b> sender = tx_context::sender(ctx);
+    <b>assert</b>!(recipient != sender, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ESelfTransfer">ESelfTransfer</a>);
+    <b>let</b> pool_id = object::uid_to_address(&pool.id);
+    <b>assert</b>!(token.pool_id == pool_id, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidID">EInvalidID</a>);
+    <b>let</b> amount = token.amount;
+    <b>assert</b>!(amount &gt; 0, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidTransferAmount">EInvalidTransferAmount</a>);
+    <b>assert</b>!(table::contains(&pool.holders, sender), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ENoTokensOwned">ENoTokensOwned</a>);
+    <b>let</b> sender_balance = table::borrow_mut(&<b>mut</b> pool.holders, sender);
+    <b>assert</b>!(*sender_balance &gt;= amount, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInsufficientLiquidity">EInsufficientLiquidity</a>);
+    <b>if</b> (*sender_balance == amount) {
+        table::remove(&<b>mut</b> pool.holders, sender);
+    } <b>else</b> {
+        *sender_balance = *sender_balance - amount;
+    };
+    <b>let</b> recipient_hold = <b>if</b> (table::contains(&pool.holders, recipient)) {
+        *table::borrow(&pool.holders, recipient)
+    } <b>else</b> {
+        0
+    };
+    <b>let</b> supply = pool.info.circulating_supply;
+    <b>assert</b>!(supply == 0 || supply &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> / config.max_hold_percent_bps, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
+    <b>let</b> max_hold = (supply * config.max_hold_percent_bps) / <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>;
+    <b>assert</b>!(recipient_hold &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> - amount, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
+    <b>assert</b>!(recipient_hold + amount &lt;= max_hold, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EExceededMaxHold">EExceededMaxHold</a>);
+    <b>if</b> (table::contains(&pool.holders, recipient)) {
+        <b>let</b> recipient_balance = table::borrow_mut(&<b>mut</b> pool.holders, recipient);
+        *recipient_balance = *recipient_balance + amount;
+    } <b>else</b> {
+        table::add(&<b>mut</b> pool.holders, recipient, amount);
+    };
+    event::emit(<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenTransferredEvent">TokenTransferredEvent</a> {
+        pool_id,
+        from: sender,
+        to: recipient,
+        amount,
+    });
+    transfer::transfer(token, recipient);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_swap_tokens"></a>
+
+## Function `swap_tokens`
+
+Exact-in SPT→SPT swap for a first dest position (mints a new dest <code><a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">SocialToken</a></code>).
+Non-platform: platform fee legs go to the ecosystem treasury.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_swap_tokens">swap_tokens</a>(_registry: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>, source_pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">social_contracts::social_proof_tokens::TokenPool</a>, dest_pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">social_contracts::social_proof_tokens::TokenPool</a>, config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, profile_registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, source_token: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">social_contracts::social_proof_tokens::SocialToken</a>, sell_amount: u64, min_dest_amount: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_swap_tokens">swap_tokens</a>(
+    _registry: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">TokenRegistry</a>,
+    source_pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">TokenPool</a>,
+    dest_pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">TokenPool</a>,
+    config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a>,
+    treasury: &EcosystemTreasury,
+    profile_registry: &UsernameRegistry,
+    block_list_registry: &BlockListRegistry,
+    source_token: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">SocialToken</a>,
+    sell_amount: u64,
+    min_dest_amount: u64,
+    ctx: &<b>mut</b> TxContext
+) {
+    <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_execute_swap_non_platform">execute_swap_non_platform</a>(
+        source_pool,
+        dest_pool,
+        config,
+        treasury,
+        profile_registry,
+        block_list_registry,
+        source_token,
+        sell_amount,
+        min_dest_amount,
+        <b>false</b>,
+        ctx
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_swap_more_tokens"></a>
+
+## Function `swap_more_tokens`
+
+Exact-in SPT→SPT swap when the trader already holds dest tokens.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_swap_more_tokens">swap_more_tokens</a>(_registry: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>, source_pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">social_contracts::social_proof_tokens::TokenPool</a>, dest_pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">social_contracts::social_proof_tokens::TokenPool</a>, config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, profile_registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, source_token: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">social_contracts::social_proof_tokens::SocialToken</a>, dest_token: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">social_contracts::social_proof_tokens::SocialToken</a>, sell_amount: u64, min_dest_amount: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_swap_more_tokens">swap_more_tokens</a>(
+    _registry: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">TokenRegistry</a>,
+    source_pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">TokenPool</a>,
+    dest_pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">TokenPool</a>,
+    config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a>,
+    treasury: &EcosystemTreasury,
+    profile_registry: &UsernameRegistry,
+    block_list_registry: &BlockListRegistry,
+    source_token: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">SocialToken</a>,
+    dest_token: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">SocialToken</a>,
+    sell_amount: u64,
+    min_dest_amount: u64,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>assert</b>!(dest_token.pool_id == object::uid_to_address(&dest_pool.id), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidID">EInvalidID</a>);
+    <b>let</b> dest_amount = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_execute_swap_non_platform">execute_swap_non_platform</a>(
+        source_pool,
+        dest_pool,
+        config,
+        treasury,
+        profile_registry,
+        block_list_registry,
+        source_token,
+        sell_amount,
+        min_dest_amount,
+        <b>true</b>,
+        ctx
+    );
+    dest_token.amount = dest_token.amount + dest_amount;
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_swap_tokens_with_platform"></a>
+
+## Function `swap_tokens_with_platform`
+
+Exact-in SPT→SPT swap (mint dest) with platform fee routing.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_swap_tokens_with_platform">swap_tokens_with_platform</a>(_registry: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>, source_pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">social_contracts::social_proof_tokens::TokenPool</a>, dest_pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">social_contracts::social_proof_tokens::TokenPool</a>, config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, profile_registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, source_token: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">social_contracts::social_proof_tokens::SocialToken</a>, sell_amount: u64, min_dest_amount: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_swap_tokens_with_platform">swap_tokens_with_platform</a>(
+    _registry: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">TokenRegistry</a>,
+    source_pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">TokenPool</a>,
+    dest_pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">TokenPool</a>,
+    config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a>,
+    treasury: &EcosystemTreasury,
+    platform_registry: &PlatformRegistry,
+    profile_registry: &UsernameRegistry,
+    block_list_registry: &BlockListRegistry,
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>,
+    source_token: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">SocialToken</a>,
+    sell_amount: u64,
+    min_dest_amount: u64,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> trader = tx_context::sender(ctx);
+    <b>let</b> platform_id = object::uid_to_address(<a href="../social_contracts/platform.md#social_contracts_platform_id">platform::id</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>));
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_approved">platform::is_approved</a>(platform_registry, platform_id), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ENotAuthorized">ENotAuthorized</a>);
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_has_joined_platform">platform::has_joined_platform</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, trader), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EUserNotJoinedPlatform">EUserNotJoinedPlatform</a>);
+    <b>assert</b>!(!<a href="../social_contracts/block_list.md#social_contracts_block_list_is_blocked">block_list::is_blocked</a>(block_list_registry, platform_id, trader), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EUserBlockedByPlatform">EUserBlockedByPlatform</a>);
+    <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_execute_swap_with_platform">execute_swap_with_platform</a>(
+        source_pool,
+        dest_pool,
+        config,
+        treasury,
+        profile_registry,
+        block_list_registry,
+        <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>,
+        source_token,
+        sell_amount,
+        min_dest_amount,
+        <b>false</b>,
+        clock,
+        ctx
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_swap_more_tokens_with_platform"></a>
+
+## Function `swap_more_tokens_with_platform`
+
+Exact-in SPT→SPT swap (credit dest) with platform fee routing.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_swap_more_tokens_with_platform">swap_more_tokens_with_platform</a>(_registry: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>, source_pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">social_contracts::social_proof_tokens::TokenPool</a>, dest_pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">social_contracts::social_proof_tokens::TokenPool</a>, config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, profile_registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, source_token: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">social_contracts::social_proof_tokens::SocialToken</a>, dest_token: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">social_contracts::social_proof_tokens::SocialToken</a>, sell_amount: u64, min_dest_amount: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_swap_more_tokens_with_platform">swap_more_tokens_with_platform</a>(
+    _registry: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">TokenRegistry</a>,
+    source_pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">TokenPool</a>,
+    dest_pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">TokenPool</a>,
+    config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a>,
+    treasury: &EcosystemTreasury,
+    platform_registry: &PlatformRegistry,
+    profile_registry: &UsernameRegistry,
+    block_list_registry: &BlockListRegistry,
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>,
+    source_token: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">SocialToken</a>,
+    dest_token: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">SocialToken</a>,
+    sell_amount: u64,
+    min_dest_amount: u64,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>assert</b>!(dest_token.pool_id == object::uid_to_address(&dest_pool.id), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidID">EInvalidID</a>);
+    <b>let</b> trader = tx_context::sender(ctx);
+    <b>let</b> platform_id = object::uid_to_address(<a href="../social_contracts/platform.md#social_contracts_platform_id">platform::id</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>));
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_approved">platform::is_approved</a>(platform_registry, platform_id), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ENotAuthorized">ENotAuthorized</a>);
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_has_joined_platform">platform::has_joined_platform</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, trader), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EUserNotJoinedPlatform">EUserNotJoinedPlatform</a>);
+    <b>assert</b>!(!<a href="../social_contracts/block_list.md#social_contracts_block_list_is_blocked">block_list::is_blocked</a>(block_list_registry, platform_id, trader), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EUserBlockedByPlatform">EUserBlockedByPlatform</a>);
+    <b>let</b> dest_amount = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_execute_swap_with_platform">execute_swap_with_platform</a>(
+        source_pool,
+        dest_pool,
+        config,
+        treasury,
+        profile_registry,
+        block_list_registry,
+        <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>,
+        source_token,
+        sell_amount,
+        min_dest_amount,
+        <b>true</b>,
+        clock,
+        ctx
+    );
+    dest_token.amount = dest_token.amount + dest_amount;
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_execute_swap_non_platform"></a>
+
+## Function `execute_swap_non_platform`
+
+Returns dest nano-SPT purchased. When <code>credit_existing</code> is false, mints a new SocialToken.
+When true, only updates holders/supply; caller must credit <code>&<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">SocialToken</a></code>.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_execute_swap_non_platform">execute_swap_non_platform</a>(source_pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">social_contracts::social_proof_tokens::TokenPool</a>, dest_pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">social_contracts::social_proof_tokens::TokenPool</a>, config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, profile_registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, source_token: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">social_contracts::social_proof_tokens::SocialToken</a>, sell_amount: u64, min_dest_amount: u64, credit_existing: bool, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_execute_swap_non_platform">execute_swap_non_platform</a>(
+    source_pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">TokenPool</a>,
+    dest_pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">TokenPool</a>,
+    config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a>,
+    treasury: &EcosystemTreasury,
+    profile_registry: &UsernameRegistry,
+    block_list_registry: &BlockListRegistry,
+    source_token: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">SocialToken</a>,
+    sell_amount: u64,
+    min_dest_amount: u64,
+    credit_existing: bool,
+    ctx: &<b>mut</b> TxContext
+): u64 {
+    <b>assert</b>!(source_pool.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EWrongVersion">EWrongVersion</a>);
+    <b>assert</b>!(dest_pool.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EWrongVersion">EWrongVersion</a>);
+    <b>assert</b>!(config.trading_enabled, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ETradingHalted">ETradingHalted</a>);
+    <b>let</b> trader = tx_context::sender(ctx);
+    <b>let</b> source_pool_id = object::uid_to_address(&source_pool.id);
+    <b>let</b> dest_pool_id = object::uid_to_address(&dest_pool.id);
+    <b>assert</b>!(source_pool_id != dest_pool_id, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ESamePool">ESamePool</a>);
+    <b>let</b> profile_id_option = <a href="../social_contracts/profile.md#social_contracts_profile_lookup_profile_by_owner">profile::lookup_profile_by_owner</a>(profile_registry, trader);
+    <b>assert</b>!(option::is_some(&profile_id_option), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ENotAuthorized">ENotAuthorized</a>);
+    <b>assert</b>!(!<a href="../social_contracts/block_list.md#social_contracts_block_list_is_blocked">block_list::is_blocked</a>(block_list_registry, trader, dest_pool.info.owner), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EBlockedUser">EBlockedUser</a>);
+    <b>assert</b>!(source_token.pool_id == source_pool_id, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidID">EInvalidID</a>);
+    <b>assert</b>!(sell_amount &gt; 0, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInsufficientFunds">EInsufficientFunds</a>);
+    <b>assert</b>!(source_token.amount &gt;= sell_amount, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInsufficientLiquidity">EInsufficientLiquidity</a>);
+    <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_validate_trading_fees">validate_trading_fees</a>(config);
+    <b>let</b> total_fee_bps = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_total_fee_bps">calculate_total_fee_bps</a>(config);
+    <b>let</b> (sell_gross, sell_fee_amount, net_bridge) = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_swap_proceeds">calculate_swap_proceeds</a>(
+        source_pool.info.base_price,
+        source_pool.info.quadratic_coefficient,
+        source_pool.info.circulating_supply,
+        sell_amount,
+        total_fee_bps
+    );
+    <b>let</b> sell_creator_fee = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_component_fee_safe">calculate_component_fee_safe</a>(sell_fee_amount, config.trading_creator_fee_bps, total_fee_bps);
+    <b>let</b> sell_platform_fee = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_component_fee_safe">calculate_component_fee_safe</a>(sell_fee_amount, config.trading_platform_fee_bps, total_fee_bps);
+    <b>let</b> sell_treasury_fee = sell_fee_amount - sell_creator_fee - sell_platform_fee;
+    <b>assert</b>!(balance::value(&source_pool.myso_balance) &gt;= sell_gross, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInsufficientLiquidity">EInsufficientLiquidity</a>);
+    <b>assert</b>!(table::contains(&source_pool.holders, trader), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ENoTokensOwned">ENoTokensOwned</a>);
+    <b>let</b> holder_balance = table::borrow_mut(&<b>mut</b> source_pool.holders, trader);
+    <b>if</b> (*holder_balance == sell_amount) {
+        table::remove(&<b>mut</b> source_pool.holders, trader);
+    } <b>else</b> {
+        *holder_balance = *holder_balance - sell_amount;
+    };
+    <b>let</b> remainder = source_token.amount - sell_amount;
+    <b>let</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">SocialToken</a> { id, pool_id: token_pool_id, token_type, amount: _ } = source_token;
+    object::delete(id);
+    <b>if</b> (remainder &gt; 0) {
+        transfer::transfer(<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">SocialToken</a> {
+            id: object::new(ctx),
+            pool_id: token_pool_id,
+            token_type,
+            amount: remainder,
+        }, trader);
+    };
+    source_pool.info.circulating_supply = source_pool.info.circulating_supply - sell_amount;
+    <b>let</b> <b>mut</b> bridge = balance::split(&<b>mut</b> source_pool.myso_balance, net_bridge);
+    <b>if</b> (sell_fee_amount &gt; 0) {
+        <b>if</b> (sell_creator_fee &gt; 0) {
+            <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_creator_fee_from_pool">distribute_creator_fee_from_pool</a>(source_pool, sell_creator_fee, ctx);
+        };
+        <b>if</b> (sell_platform_fee &gt; 0) {
+            <b>let</b> c = coin::from_balance(balance::split(&<b>mut</b> source_pool.myso_balance, sell_platform_fee), ctx);
+            transfer::public_transfer(c, <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">profile::get_treasury_address</a>(treasury));
+        };
+        <b>if</b> (sell_treasury_fee &gt; 0) {
+            <b>let</b> c = coin::from_balance(balance::split(&<b>mut</b> source_pool.myso_balance, sell_treasury_fee), ctx);
+            transfer::public_transfer(c, <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">profile::get_treasury_address</a>(treasury));
+        };
+    };
+    <b>let</b> source_new_price = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_token_price">calculate_token_price</a>(
+        source_pool.info.base_price,
+        source_pool.info.quadratic_coefficient,
+        source_pool.info.circulating_supply
+    );
+    event::emit(<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenSoldEvent">TokenSoldEvent</a> {
+        id: source_pool_id,
+        seller: trader,
+        amount: sell_amount,
+        myso_amount: sell_gross,
+        fee_amount: sell_fee_amount,
+        creator_fee: sell_creator_fee,
+        platform_fee: sell_platform_fee,
+        treasury_fee: sell_treasury_fee,
+        new_price: source_new_price,
+    });
+    <b>let</b> bridge_value = balance::value(&bridge);
+    <b>let</b> (dest_amount, buy_gross) = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_max_buy_amount">calculate_max_buy_amount</a>(
+        dest_pool.info.base_price,
+        dest_pool.info.quadratic_coefficient,
+        dest_pool.info.circulating_supply,
+        bridge_value
+    );
+    <b>assert</b>!(dest_amount &gt;= min_dest_amount, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ESlippageExceeded">ESlippageExceeded</a>);
+    <b>assert</b>!(dest_amount &gt; 0, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInsufficientFunds">EInsufficientFunds</a>);
+    <b>assert</b>!(bridge_value &gt;= buy_gross, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInsufficientFunds">EInsufficientFunds</a>);
+    <b>let</b> buy_fee_amount = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_fee_amount_safe">calculate_fee_amount_safe</a>(buy_gross, total_fee_bps);
+    <b>let</b> buy_creator_fee = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_component_fee_safe">calculate_component_fee_safe</a>(buy_fee_amount, config.trading_creator_fee_bps, total_fee_bps);
+    <b>let</b> buy_platform_fee = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_component_fee_safe">calculate_component_fee_safe</a>(buy_fee_amount, config.trading_platform_fee_bps, total_fee_bps);
+    <b>let</b> buy_treasury_fee = buy_fee_amount - buy_creator_fee - buy_platform_fee;
+    <b>let</b> buy_net = buy_gross - buy_fee_amount;
+    <b>let</b> <b>mut</b> payment = coin::from_balance(balance::split(&<b>mut</b> bridge, buy_gross), ctx);
+    <b>if</b> (buy_fee_amount &gt; 0) {
+        <b>if</b> (buy_creator_fee &gt; 0) {
+            <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_creator_fee">distribute_creator_fee</a>(dest_pool, buy_creator_fee, &<b>mut</b> payment, ctx);
+        };
+        <b>if</b> (buy_platform_fee &gt; 0) {
+            <b>let</b> c = coin::split(&<b>mut</b> payment, buy_platform_fee, ctx);
+            transfer::public_transfer(c, <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">profile::get_treasury_address</a>(treasury));
+        };
+        <b>if</b> (buy_treasury_fee &gt; 0) {
+            <b>let</b> c = coin::split(&<b>mut</b> payment, buy_treasury_fee, ctx);
+            transfer::public_transfer(c, <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">profile::get_treasury_address</a>(treasury));
+        };
+    };
+    <b>let</b> pool_payment = coin::split(&<b>mut</b> payment, buy_net, ctx);
+    balance::join(&<b>mut</b> dest_pool.myso_balance, coin::into_balance(pool_payment));
+    coin::destroy_zero(payment);
+    <b>let</b> leftover_myso = balance::value(&bridge);
+    <b>if</b> (leftover_myso &gt; 0) {
+        transfer::public_transfer(coin::from_balance(bridge, ctx), trader);
+    } <b>else</b> {
+        balance::destroy_zero(bridge);
+    };
+    <b>assert</b>!(dest_pool.info.circulating_supply &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> - dest_amount, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
+    <b>let</b> new_supply = dest_pool.info.circulating_supply + dest_amount;
+    <b>assert</b>!(new_supply == 0 || new_supply &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> / config.max_hold_percent_bps, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
+    <b>let</b> max_hold = (new_supply * config.max_hold_percent_bps) / <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>;
+    <b>let</b> current_hold = <b>if</b> (table::contains(&dest_pool.holders, trader)) {
+        *table::borrow(&dest_pool.holders, trader)
+    } <b>else</b> {
+        0
+    };
+    <b>assert</b>!(current_hold &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> - dest_amount, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
+    <b>assert</b>!(current_hold + dest_amount &lt;= max_hold, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EExceededMaxHold">EExceededMaxHold</a>);
+    <b>if</b> (credit_existing) {
+        <b>assert</b>!(current_hold &gt; 0, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ENoTokensOwned">ENoTokensOwned</a>);
+        *table::borrow_mut(&<b>mut</b> dest_pool.holders, trader) = current_hold + dest_amount;
+    } <b>else</b> {
+        <b>assert</b>!(current_hold == 0, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EAlreadyOwnsTokens">EAlreadyOwnsTokens</a>);
+        table::add(&<b>mut</b> dest_pool.holders, trader, dest_amount);
+        transfer::transfer(<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">SocialToken</a> {
+            id: object::new(ctx),
+            pool_id: dest_pool_id,
+            token_type: dest_pool.info.token_type,
+            amount: dest_amount,
+        }, trader);
+    };
+    dest_pool.info.circulating_supply = new_supply;
+    <b>let</b> dest_new_price = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_token_price">calculate_token_price</a>(
+        dest_pool.info.base_price,
+        dest_pool.info.quadratic_coefficient,
+        dest_pool.info.circulating_supply
+    );
+    event::emit(<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenBoughtEvent">TokenBoughtEvent</a> {
+        id: dest_pool_id,
+        buyer: trader,
+        amount: dest_amount,
+        myso_amount: buy_gross,
+        fee_amount: buy_fee_amount,
+        creator_fee: buy_creator_fee,
+        platform_fee: buy_platform_fee,
+        treasury_fee: buy_treasury_fee,
+        new_price: dest_new_price,
+    });
+    event::emit(<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenSwappedEvent">TokenSwappedEvent</a> {
+        source_pool_id,
+        dest_pool_id,
+        trader,
+        sell_amount,
+        dest_amount,
+        sell_myso_gross: sell_gross,
+        buy_myso_gross: buy_gross,
+        sell_fee_amount,
+        buy_fee_amount,
+        sell_creator_fee,
+        sell_platform_fee,
+        sell_treasury_fee,
+        buy_creator_fee,
+        buy_platform_fee,
+        buy_treasury_fee,
+        leftover_myso,
+        source_new_price,
+        dest_new_price,
+    });
+    dest_amount
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_execute_swap_with_platform"></a>
+
+## Function `execute_swap_with_platform`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_execute_swap_with_platform">execute_swap_with_platform</a>(source_pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">social_contracts::social_proof_tokens::TokenPool</a>, dest_pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">social_contracts::social_proof_tokens::TokenPool</a>, config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, profile_registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, source_token: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">social_contracts::social_proof_tokens::SocialToken</a>, sell_amount: u64, min_dest_amount: u64, credit_existing: bool, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_execute_swap_with_platform">execute_swap_with_platform</a>(
+    source_pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">TokenPool</a>,
+    dest_pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">TokenPool</a>,
+    config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a>,
+    treasury: &EcosystemTreasury,
+    profile_registry: &UsernameRegistry,
+    block_list_registry: &BlockListRegistry,
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>,
+    source_token: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">SocialToken</a>,
+    sell_amount: u64,
+    min_dest_amount: u64,
+    credit_existing: bool,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+): u64 {
+    <b>assert</b>!(source_pool.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EWrongVersion">EWrongVersion</a>);
+    <b>assert</b>!(dest_pool.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EWrongVersion">EWrongVersion</a>);
+    <b>assert</b>!(config.trading_enabled, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ETradingHalted">ETradingHalted</a>);
+    <b>let</b> trader = tx_context::sender(ctx);
+    <b>let</b> source_pool_id = object::uid_to_address(&source_pool.id);
+    <b>let</b> dest_pool_id = object::uid_to_address(&dest_pool.id);
+    <b>assert</b>!(source_pool_id != dest_pool_id, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ESamePool">ESamePool</a>);
+    <b>let</b> profile_id_option = <a href="../social_contracts/profile.md#social_contracts_profile_lookup_profile_by_owner">profile::lookup_profile_by_owner</a>(profile_registry, trader);
+    <b>assert</b>!(option::is_some(&profile_id_option), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ENotAuthorized">ENotAuthorized</a>);
+    <b>assert</b>!(!<a href="../social_contracts/block_list.md#social_contracts_block_list_is_blocked">block_list::is_blocked</a>(block_list_registry, trader, dest_pool.info.owner), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EBlockedUser">EBlockedUser</a>);
+    <b>assert</b>!(source_token.pool_id == source_pool_id, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidID">EInvalidID</a>);
+    <b>assert</b>!(sell_amount &gt; 0, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInsufficientFunds">EInsufficientFunds</a>);
+    <b>assert</b>!(source_token.amount &gt;= sell_amount, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInsufficientLiquidity">EInsufficientLiquidity</a>);
+    <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_validate_trading_fees">validate_trading_fees</a>(config);
+    <b>let</b> total_fee_bps = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_total_fee_bps">calculate_total_fee_bps</a>(config);
+    <b>let</b> (sell_gross, sell_fee_amount, net_bridge) = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_swap_proceeds">calculate_swap_proceeds</a>(
+        source_pool.info.base_price,
+        source_pool.info.quadratic_coefficient,
+        source_pool.info.circulating_supply,
+        sell_amount,
+        total_fee_bps
+    );
+    <b>let</b> sell_creator_fee = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_component_fee_safe">calculate_component_fee_safe</a>(sell_fee_amount, config.trading_creator_fee_bps, total_fee_bps);
+    <b>let</b> sell_platform_fee = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_component_fee_safe">calculate_component_fee_safe</a>(sell_fee_amount, config.trading_platform_fee_bps, total_fee_bps);
+    <b>let</b> sell_treasury_fee = sell_fee_amount - sell_creator_fee - sell_platform_fee;
+    <b>assert</b>!(balance::value(&source_pool.myso_balance) &gt;= sell_gross, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInsufficientLiquidity">EInsufficientLiquidity</a>);
+    <b>assert</b>!(table::contains(&source_pool.holders, trader), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ENoTokensOwned">ENoTokensOwned</a>);
+    <b>let</b> holder_balance = table::borrow_mut(&<b>mut</b> source_pool.holders, trader);
+    <b>if</b> (*holder_balance == sell_amount) {
+        table::remove(&<b>mut</b> source_pool.holders, trader);
+    } <b>else</b> {
+        *holder_balance = *holder_balance - sell_amount;
+    };
+    <b>let</b> remainder = source_token.amount - sell_amount;
+    <b>let</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">SocialToken</a> { id, pool_id: token_pool_id, token_type, amount: _ } = source_token;
+    object::delete(id);
+    <b>if</b> (remainder &gt; 0) {
+        transfer::transfer(<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">SocialToken</a> {
+            id: object::new(ctx),
+            pool_id: token_pool_id,
+            token_type,
+            amount: remainder,
+        }, trader);
+    };
+    source_pool.info.circulating_supply = source_pool.info.circulating_supply - sell_amount;
+    <b>let</b> <b>mut</b> bridge = balance::split(&<b>mut</b> source_pool.myso_balance, net_bridge);
+    <b>if</b> (sell_fee_amount &gt; 0) {
+        <b>if</b> (sell_creator_fee &gt; 0) {
+            <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_creator_fee_from_pool">distribute_creator_fee_from_pool</a>(source_pool, sell_creator_fee, ctx);
+        };
+        <b>if</b> (sell_platform_fee &gt; 0) {
+            <b>let</b> <b>mut</b> c = coin::from_balance(balance::split(&<b>mut</b> source_pool.myso_balance, sell_platform_fee), ctx);
+            <a href="../social_contracts/platform.md#social_contracts_platform_add_to_treasury">social_contracts::platform::add_to_treasury</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, &<b>mut</b> c, sell_platform_fee, clock, ctx);
+            coin::destroy_zero(c);
+        };
+        <b>if</b> (sell_treasury_fee &gt; 0) {
+            <b>let</b> c = coin::from_balance(balance::split(&<b>mut</b> source_pool.myso_balance, sell_treasury_fee), ctx);
+            transfer::public_transfer(c, <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">profile::get_treasury_address</a>(treasury));
+        };
+    };
+    <b>let</b> source_new_price = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_token_price">calculate_token_price</a>(
+        source_pool.info.base_price,
+        source_pool.info.quadratic_coefficient,
+        source_pool.info.circulating_supply
+    );
+    event::emit(<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenSoldEvent">TokenSoldEvent</a> {
+        id: source_pool_id,
+        seller: trader,
+        amount: sell_amount,
+        myso_amount: sell_gross,
+        fee_amount: sell_fee_amount,
+        creator_fee: sell_creator_fee,
+        platform_fee: sell_platform_fee,
+        treasury_fee: sell_treasury_fee,
+        new_price: source_new_price,
+    });
+    <b>let</b> bridge_value = balance::value(&bridge);
+    <b>let</b> (dest_amount, buy_gross) = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_max_buy_amount">calculate_max_buy_amount</a>(
+        dest_pool.info.base_price,
+        dest_pool.info.quadratic_coefficient,
+        dest_pool.info.circulating_supply,
+        bridge_value
+    );
+    <b>assert</b>!(dest_amount &gt;= min_dest_amount, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ESlippageExceeded">ESlippageExceeded</a>);
+    <b>assert</b>!(dest_amount &gt; 0, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInsufficientFunds">EInsufficientFunds</a>);
+    <b>assert</b>!(bridge_value &gt;= buy_gross, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInsufficientFunds">EInsufficientFunds</a>);
+    <b>let</b> buy_fee_amount = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_fee_amount_safe">calculate_fee_amount_safe</a>(buy_gross, total_fee_bps);
+    <b>let</b> buy_creator_fee = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_component_fee_safe">calculate_component_fee_safe</a>(buy_fee_amount, config.trading_creator_fee_bps, total_fee_bps);
+    <b>let</b> buy_platform_fee = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_component_fee_safe">calculate_component_fee_safe</a>(buy_fee_amount, config.trading_platform_fee_bps, total_fee_bps);
+    <b>let</b> buy_treasury_fee = buy_fee_amount - buy_creator_fee - buy_platform_fee;
+    <b>let</b> buy_net = buy_gross - buy_fee_amount;
+    <b>let</b> <b>mut</b> payment = coin::from_balance(balance::split(&<b>mut</b> bridge, buy_gross), ctx);
+    <b>if</b> (buy_fee_amount &gt; 0) {
+        <b>if</b> (buy_creator_fee &gt; 0) {
+            <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_creator_fee">distribute_creator_fee</a>(dest_pool, buy_creator_fee, &<b>mut</b> payment, ctx);
+        };
+        <b>if</b> (buy_platform_fee &gt; 0) {
+            <b>let</b> <b>mut</b> c = coin::split(&<b>mut</b> payment, buy_platform_fee, ctx);
+            <a href="../social_contracts/platform.md#social_contracts_platform_add_to_treasury">social_contracts::platform::add_to_treasury</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, &<b>mut</b> c, buy_platform_fee, clock, ctx);
+            coin::destroy_zero(c);
+        };
+        <b>if</b> (buy_treasury_fee &gt; 0) {
+            <b>let</b> c = coin::split(&<b>mut</b> payment, buy_treasury_fee, ctx);
+            transfer::public_transfer(c, <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">profile::get_treasury_address</a>(treasury));
+        };
+    };
+    <b>let</b> pool_payment = coin::split(&<b>mut</b> payment, buy_net, ctx);
+    balance::join(&<b>mut</b> dest_pool.myso_balance, coin::into_balance(pool_payment));
+    coin::destroy_zero(payment);
+    <b>let</b> leftover_myso = balance::value(&bridge);
+    <b>if</b> (leftover_myso &gt; 0) {
+        transfer::public_transfer(coin::from_balance(bridge, ctx), trader);
+    } <b>else</b> {
+        balance::destroy_zero(bridge);
+    };
+    <b>assert</b>!(dest_pool.info.circulating_supply &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> - dest_amount, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
+    <b>let</b> new_supply = dest_pool.info.circulating_supply + dest_amount;
+    <b>assert</b>!(new_supply == 0 || new_supply &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> / config.max_hold_percent_bps, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
+    <b>let</b> max_hold = (new_supply * config.max_hold_percent_bps) / <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>;
+    <b>let</b> current_hold = <b>if</b> (table::contains(&dest_pool.holders, trader)) {
+        *table::borrow(&dest_pool.holders, trader)
+    } <b>else</b> {
+        0
+    };
+    <b>assert</b>!(current_hold &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> - dest_amount, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
+    <b>assert</b>!(current_hold + dest_amount &lt;= max_hold, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EExceededMaxHold">EExceededMaxHold</a>);
+    <b>if</b> (credit_existing) {
+        <b>assert</b>!(current_hold &gt; 0, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ENoTokensOwned">ENoTokensOwned</a>);
+        *table::borrow_mut(&<b>mut</b> dest_pool.holders, trader) = current_hold + dest_amount;
+    } <b>else</b> {
+        <b>assert</b>!(current_hold == 0, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EAlreadyOwnsTokens">EAlreadyOwnsTokens</a>);
+        table::add(&<b>mut</b> dest_pool.holders, trader, dest_amount);
+        transfer::transfer(<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">SocialToken</a> {
+            id: object::new(ctx),
+            pool_id: dest_pool_id,
+            token_type: dest_pool.info.token_type,
+            amount: dest_amount,
+        }, trader);
+    };
+    dest_pool.info.circulating_supply = new_supply;
+    <b>let</b> dest_new_price = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_token_price">calculate_token_price</a>(
+        dest_pool.info.base_price,
+        dest_pool.info.quadratic_coefficient,
+        dest_pool.info.circulating_supply
+    );
+    event::emit(<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenBoughtEvent">TokenBoughtEvent</a> {
+        id: dest_pool_id,
+        buyer: trader,
+        amount: dest_amount,
+        myso_amount: buy_gross,
+        fee_amount: buy_fee_amount,
+        creator_fee: buy_creator_fee,
+        platform_fee: buy_platform_fee,
+        treasury_fee: buy_treasury_fee,
+        new_price: dest_new_price,
+    });
+    event::emit(<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenSwappedEvent">TokenSwappedEvent</a> {
+        source_pool_id,
+        dest_pool_id,
+        trader,
+        sell_amount,
+        dest_amount,
+        sell_myso_gross: sell_gross,
+        buy_myso_gross: buy_gross,
+        sell_fee_amount,
+        buy_fee_amount,
+        sell_creator_fee,
+        sell_platform_fee,
+        sell_treasury_fee,
+        buy_creator_fee,
+        buy_platform_fee,
+        buy_treasury_fee,
+        leftover_myso,
+        source_new_price,
+        dest_new_price,
+    });
+    dest_amount
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_social_proof_tokens_unwrap_u256_opt"></a>
 
 ## Function `unwrap_u256_opt`
@@ -6371,6 +7405,176 @@ Returns <code>(total_refund_mysos, avg_mysos_per_nano_unit)</code>.
     <b>let</b> total_u64 = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_mist_amount_u256_to_u64">mist_amount_u256_to_u64</a>(total);
     <b>let</b> avg_u64 = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_mist_amount_u256_to_u64">mist_amount_u256_to_u64</a>(total / a);
     (total_u64, avg_u64)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_calculate_swap_proceeds"></a>
+
+## Function `calculate_swap_proceeds`
+
+Gross MYSO proceeds, sell fee, and net MYSO after selling <code>sell_amount</code> nano-SPT.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_swap_proceeds">calculate_swap_proceeds</a>(base_price: u64, quadratic_coefficient: u64, current_supply_nano: u64, sell_amount: u64, total_fee_bps: u64): (u64, u64, u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_swap_proceeds">calculate_swap_proceeds</a>(
+    base_price: u64,
+    quadratic_coefficient: u64,
+    current_supply_nano: u64,
+    sell_amount: u64,
+    total_fee_bps: u64
+): (u64, u64, u64) {
+    <b>let</b> (sell_gross, _) = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_sell_price">calculate_sell_price</a>(
+        base_price,
+        quadratic_coefficient,
+        current_supply_nano,
+        sell_amount
+    );
+    <b>let</b> sell_fee = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_fee_amount_safe">calculate_fee_amount_safe</a>(sell_gross, total_fee_bps);
+    <b>assert</b>!(sell_gross &gt;= sell_fee, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
+    (sell_gross, sell_fee, sell_gross - sell_fee)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_calculate_max_buy_amount"></a>
+
+## Function `calculate_max_buy_amount`
+
+Largest nano-SPT buy whose gross MYSO cost is <code>&lt;= myso_budget</code> (binary search).
+Returns <code>(dest_amount, buy_gross)</code>.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_max_buy_amount">calculate_max_buy_amount</a>(base_price: u64, quadratic_coefficient: u64, current_supply_nano: u64, myso_budget: u64): (u64, u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_max_buy_amount">calculate_max_buy_amount</a>(
+    base_price: u64,
+    quadratic_coefficient: u64,
+    current_supply_nano: u64,
+    myso_budget: u64
+): (u64, u64) {
+    <b>if</b> (myso_budget == 0) {
+        <b>return</b> (0, 0)
+    };
+    <b>let</b> (cost1, _) = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_buy_price">calculate_buy_price</a>(
+        base_price,
+        quadratic_coefficient,
+        current_supply_nano,
+        1
+    );
+    <b>if</b> (cost1 &gt; myso_budget) {
+        <b>return</b> (0, 0)
+    };
+    // Expand upper bound until cost exceeds budget.
+    <b>let</b> <b>mut</b> lo: u64 = 1;
+    <b>let</b> <b>mut</b> lo_cost: u64 = cost1;
+    <b>let</b> <b>mut</b> hi: u64 = 2;
+    <b>let</b> <b>mut</b> guard = 0u64;
+    <b>while</b> (guard &lt; 63) {
+        <b>let</b> (cost, _) = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_buy_price">calculate_buy_price</a>(
+            base_price,
+            quadratic_coefficient,
+            current_supply_nano,
+            hi
+        );
+        <b>if</b> (cost &gt; myso_budget) {
+            <b>break</b>
+        };
+        lo = hi;
+        lo_cost = cost;
+        <b>if</b> (hi &gt; <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> / 2) {
+            <b>return</b> (lo, lo_cost)
+        };
+        hi = hi * 2;
+        guard = guard + 1;
+    };
+    // Binary search in (lo, hi)
+    <b>while</b> (lo + 1 &lt; hi) {
+        <b>let</b> mid = lo + (hi - lo) / 2;
+        <b>let</b> (cost, _) = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_buy_price">calculate_buy_price</a>(
+            base_price,
+            quadratic_coefficient,
+            current_supply_nano,
+            mid
+        );
+        <b>if</b> (cost &lt;= myso_budget) {
+            lo = mid;
+            lo_cost = cost;
+        } <b>else</b> {
+            hi = mid;
+        };
+    };
+    (lo, lo_cost)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_calculate_swap_quote"></a>
+
+## Function `calculate_swap_quote`
+
+Quote an exact-in swap: sell <code>sell_amount</code> from source curve into dest curve.
+Returns <code>(dest_amount, sell_gross, buy_gross, net_bridge, leftover_myso)</code>.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_swap_quote">calculate_swap_quote</a>(source_base_price: u64, source_quadratic_coefficient: u64, source_supply_nano: u64, dest_base_price: u64, dest_quadratic_coefficient: u64, dest_supply_nano: u64, sell_amount: u64, total_fee_bps: u64): (u64, u64, u64, u64, u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_swap_quote">calculate_swap_quote</a>(
+    source_base_price: u64,
+    source_quadratic_coefficient: u64,
+    source_supply_nano: u64,
+    dest_base_price: u64,
+    dest_quadratic_coefficient: u64,
+    dest_supply_nano: u64,
+    sell_amount: u64,
+    total_fee_bps: u64
+): (u64, u64, u64, u64, u64) {
+    <b>let</b> (sell_gross, _sell_fee, net_bridge) = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_swap_proceeds">calculate_swap_proceeds</a>(
+        source_base_price,
+        source_quadratic_coefficient,
+        source_supply_nano,
+        sell_amount,
+        total_fee_bps
+    );
+    <b>let</b> (dest_amount, buy_gross) = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_max_buy_amount">calculate_max_buy_amount</a>(
+        dest_base_price,
+        dest_quadratic_coefficient,
+        dest_supply_nano,
+        net_bridge
+    );
+    <b>assert</b>!(net_bridge &gt;= buy_gross, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
+    (dest_amount, sell_gross, buy_gross, net_bridge, net_bridge - buy_gross)
 }
 </code></pre>
 

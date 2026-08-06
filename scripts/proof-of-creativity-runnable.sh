@@ -2249,7 +2249,7 @@ create_post_poc_enabled() {
         "$ref_mr" "$ref_mem" "$ref_clk"
 }
 
-create_reservation_pool_for_post_call() {
+enable_spt_for_post_call() {
     local post_id="$1"
     local ref_token ref_spt ref_post ref_clk out digest pool_id
     require_session_fields TOKEN_REGISTRY_ID SOCIAL_PROOF_TOKENS_CONFIG_ID CLOCK_ID || return 1
@@ -2258,15 +2258,15 @@ create_reservation_pool_for_post_call() {
     ref_spt="$(ptb_shared_ref "$SOCIAL_PROOF_TOKENS_CONFIG_ID")" || return 1
     ref_post="$(ptb_shared_ref "$post_id")" || return 1
     ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || return 1
-    log_step "create_reservation_pool_for_post post=$post_id"
+    log_step "enable_spt_for_post post=$post_id"
     out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_capture \
-        --move-call "${PKG_SOCIAL}::social_proof_tokens::create_reservation_pool_for_post" \
+        --move-call "${PKG_SOCIAL}::social_proof_tokens::enable_spt_for_post" \
         "$ref_token" "$ref_spt" "$ref_post" "$ref_clk")" || return 1
     digest="$(extract_tx_digest "$out")"
     pool_id="$(extract_created_object_by_type "$digest" "ReservationPoolObject")"
     [[ -n "$pool_id" ]] || pool_id="$(extract_created_object_by_type "$digest" "ReservationPool")"
     [[ -n "$pool_id" ]] || {
-        echo "create_reservation_pool_for_post did not produce ReservationPoolObject" >&2
+        echo "enable_spt_for_post did not produce ReservationPoolObject" >&2
         return 1
     }
     normalize_hex_id "$pool_id"
@@ -2703,7 +2703,7 @@ run_spt_sync_flow() {
     digest="$(extract_tx_digest "$out")"
     post_id="$(extract_created_object_by_type "$digest" "post::Post")"
     [[ -n "$post_id" ]] || post_id="$(extract_created_object_by_type "$digest" "Post")"
-    pool_id="$(create_reservation_pool_for_post_call "$post_id")" || return 1
+    pool_id="$(enable_spt_for_post_call "$post_id")" || return 1
 
     SKIP_CONFIRM_RUN=1 run_myso_call social_proof_tokens create_social_proof_token \
         --args "@${TOKEN_REGISTRY_ID}" "@${SOCIAL_PROOF_TOKENS_CONFIG_ID}" "@${pool_id}"
@@ -2826,7 +2826,7 @@ run_post_reservation_poc_flow() {
         return 1
     }
 
-    pool_id="$(create_reservation_pool_for_post_call "$post_id")" || return 1
+    pool_id="$(enable_spt_for_post_call "$post_id")" || return 1
 
     ensure_tipper_memory_account || return 1
     local ref_token ref_spt ref_pool ref_treasury ref_post ref_vault ref_clk

@@ -212,6 +212,7 @@ pub(crate) async fn get_platform_user_access(
             EXISTS(
                 SELECT 1 FROM platform_memberships
                 WHERE platform_id = $1 AND wallet_address = $2
+                  AND (left_at IS NULL OR joined_at > left_at)
             ) AS is_member,
             EXISTS(
                 SELECT 1 FROM platform_blocked_profiles
@@ -322,26 +323,35 @@ pub(crate) async fn get_platform_members(
     limit: i64,
     offset: i64,
 ) -> Result<Vec<PlatformMemberRow>, SocialError> {
-    use diesel::ExpressionMethods;
-    use diesel::QueryDsl;
+    use diesel::sql_types::{BigInt, Text, Timestamp};
+    use diesel::{QueryableByName, sql_query};
     require_active_platform(db, platform_id).await?;
     let mut conn = db.connect().await?;
-    let results = platform_memberships::table
-        .filter(platform_memberships::platform_id.eq(platform_id))
-        .order_by(platform_memberships::joined_at.desc())
-        .limit(limit)
-        .offset(offset)
-        .select((
-            platform_memberships::wallet_address,
-            platform_memberships::joined_at,
-        ))
-        .load::<(String, chrono::NaiveDateTime)>(&mut conn)
-        .await?;
+    #[derive(QueryableByName)]
+    struct Row {
+        #[diesel(sql_type = Text)]
+        wallet_address: String,
+        #[diesel(sql_type = Timestamp)]
+        joined_at: chrono::NaiveDateTime,
+    }
+    let results = sql_query(
+        "SELECT wallet_address, joined_at
+         FROM platform_memberships
+         WHERE platform_id = $1
+           AND (left_at IS NULL OR joined_at > left_at)
+         ORDER BY joined_at DESC
+         LIMIT $2 OFFSET $3",
+    )
+    .bind::<Text, _>(platform_id)
+    .bind::<BigInt, _>(limit)
+    .bind::<BigInt, _>(offset)
+    .load::<Row>(&mut conn)
+    .await?;
     Ok(results
         .into_iter()
-        .map(|(wallet_address, joined_at)| PlatformMemberRow {
-            wallet_address,
-            joined_at,
+        .map(|r| PlatformMemberRow {
+            wallet_address: r.wallet_address,
+            joined_at: r.joined_at,
         })
         .collect())
 }
@@ -351,16 +361,27 @@ pub(crate) async fn check_platform_membership(
     platform_id: &str,
     profile_address: &str,
 ) -> Result<bool, SocialError> {
-    use diesel::ExpressionMethods;
-    use diesel::QueryDsl;
+    use diesel::sql_types::{BigInt, Text};
+    use diesel::{QueryableByName, sql_query};
     require_active_platform(db, platform_id).await?;
     let mut conn = db.connect().await?;
-    let count: i64 = platform_memberships::table
-        .filter(platform_memberships::platform_id.eq(platform_id))
-        .filter(platform_memberships::wallet_address.eq(profile_address))
-        .count()
-        .get_result(&mut conn)
-        .await?;
+    #[derive(QueryableByName)]
+    struct CountRow {
+        #[diesel(sql_type = BigInt)]
+        count: i64,
+    }
+    let count = sql_query(
+        "SELECT COUNT(*)::bigint AS count
+         FROM platform_memberships
+         WHERE platform_id = $1
+           AND wallet_address = $2
+           AND (left_at IS NULL OR joined_at > left_at)",
+    )
+    .bind::<Text, _>(platform_id)
+    .bind::<Text, _>(profile_address)
+    .get_result::<CountRow>(&mut conn)
+    .await?
+    .count;
     Ok(count > 0)
 }
 

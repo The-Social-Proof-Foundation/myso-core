@@ -76,7 +76,8 @@ use myso_indexer_alt_social_schema::models::{
     NewSpotConfig, NewSpotCreatorPayout, NewSpotEventLog, NewSpotMarket, NewSpotPayout,
     NewSpotPostLink, NewSpotRecord, NewSpotRefund, NewSpotResolution, NewSptConfigEvent,
     NewSptHolding, NewSptPool, NewSptPriceHistory, NewSptReservation, NewSptReservationPool,
-    NewSptTransaction, NewSubAgentEvent, NewSubscriptionAccessLog, NewSubscriptionConfig,
+    NewSptSwap, NewSptTransfer, NewSptTransaction, NewSubAgentEvent, NewSubscriptionAccessLog,
+    NewSubscriptionConfig,
     NewSubscriptionEvent, NewTip, NewUnifiedRevenue, NewUpgradeEvent, NewUsernameListing,
     NewUsernameOffer, NewUsernameRegistry, NewUsernameReservation, NewUsernameSaleFee,
     NewVestingEvent, NewVestingWallet, NewVoteDecryptionFailure, ProposalUpdateSet,
@@ -368,9 +369,11 @@ pub enum SocialEventRow {
         wallet_address: String,
     },
     PlatformMembership(NewPlatformMembership),
-    PlatformMembershipRemove {
+    /// Soft leave: stamp `left_at` on the membership row (row is retained).
+    PlatformMembershipLeave {
         platform_id: String,
         wallet_address: String,
+        left_at: chrono::NaiveDateTime,
     },
     PlatformTreasuryWithdrawal(NewPlatformTreasuryWithdrawal),
     PlatformTreasuryBalanceUpsert {
@@ -696,6 +699,11 @@ pub enum SocialEventRow {
     },
     SptPool(NewSptPool),
     SptTransaction(NewSptTransaction),
+    /// Atomic SPT→SPT swap summary. SUMMARY ONLY: inserts one `spt_swaps` row and marks
+    /// its two `spt_transactions` legs; never mutates holdings/supply/price/revenue.
+    SptSwap(NewSptSwap),
+    /// P2P SPT transfer summary (`spt_transfers`). Holdings deltas are separate `SptHolding` rows.
+    SptTransfer(NewSptTransfer),
     SptHolding(NewSptHolding),
     SptPoolSupplyUpdate {
         pool_id: String,

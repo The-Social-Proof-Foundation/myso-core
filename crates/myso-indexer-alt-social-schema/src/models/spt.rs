@@ -14,7 +14,8 @@ use super::revenue::{
 };
 use crate::schema::{
     ecosystem_treasury, spt_config, spt_events, spt_holdings, spt_pools, spt_price_history,
-    spt_reservation_pools, spt_reservations, spt_revenue, spt_transactions, unified_revenue,
+    spt_reservation_pools, spt_reservations, spt_revenue, spt_swaps, spt_transfers,
+    spt_transactions, unified_revenue,
 };
 
 pub const TOKEN_TYPE_PROFILE: i16 = 1;
@@ -217,6 +218,10 @@ pub struct SptTransaction {
     pub created_at: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
+    /// Populated on rows that are one leg of an SPT→SPT swap (the opposite pool).
+    pub counterparty_pool_id: Option<String>,
+    /// `true` when this BUY/SELL row is one leg of an SPT→SPT swap.
+    pub is_swap_leg: bool,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -268,6 +273,99 @@ impl NewSptTransaction {
             organization_id: reservation.organization_id.clone(),
         }
     }
+}
+
+/// Insert row for an atomic SPT→SPT swap summary (`spt_swaps`).
+///
+/// SUMMARY ONLY: this row never mutates holdings/supply/price/revenue — those are
+/// derived from the underlying `TokenSoldEvent` + `TokenBoughtEvent` legs.
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = spt_swaps)]
+pub struct NewSptSwap {
+    pub transaction_id: String,
+    pub trader: String,
+    pub source_pool_id: String,
+    pub dest_pool_id: String,
+    /// nano-SPT sold from the source pool.
+    pub sell_amount: i64,
+    /// nano-SPT bought into the dest pool.
+    pub dest_amount: i64,
+    pub sell_myso_gross: i64,
+    pub buy_myso_gross: i64,
+    pub sell_fee_amount: i64,
+    pub buy_fee_amount: i64,
+    pub sell_creator_fee: i64,
+    pub sell_platform_fee: i64,
+    pub sell_treasury_fee: i64,
+    pub buy_creator_fee: i64,
+    pub buy_platform_fee: i64,
+    pub buy_treasury_fee: i64,
+    pub leftover_myso: i64,
+    pub source_new_price: i64,
+    pub dest_new_price: i64,
+    pub organization_id: Option<String>,
+    pub created_at: i64,
+    pub time: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = spt_swaps)]
+pub struct SptSwap {
+    pub id: i64,
+    pub transaction_id: String,
+    pub trader: String,
+    pub source_pool_id: String,
+    pub dest_pool_id: String,
+    pub sell_amount: i64,
+    pub dest_amount: i64,
+    pub sell_myso_gross: i64,
+    pub buy_myso_gross: i64,
+    pub sell_fee_amount: i64,
+    pub buy_fee_amount: i64,
+    pub sell_creator_fee: i64,
+    pub sell_platform_fee: i64,
+    pub sell_treasury_fee: i64,
+    pub buy_creator_fee: i64,
+    pub buy_platform_fee: i64,
+    pub buy_treasury_fee: i64,
+    pub leftover_myso: i64,
+    pub source_new_price: i64,
+    pub dest_new_price: i64,
+    pub organization_id: Option<String>,
+    pub created_at: i64,
+    pub time: chrono::DateTime<chrono::Utc>,
+}
+
+/// Insert row for a P2P SPT transfer (`spt_transfers`).
+///
+/// Holdings are updated via separate `spt_holdings` deltas (from− / to+).
+/// Supply, price, and revenue are intentionally untouched.
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = spt_transfers)]
+pub struct NewSptTransfer {
+    pub transaction_id: String,
+    pub pool_id: String,
+    pub from_address: String,
+    pub to_address: String,
+    /// nano-SPT transferred.
+    pub amount: i64,
+    pub organization_id: Option<String>,
+    pub created_at: i64,
+    pub time: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = spt_transfers)]
+pub struct SptTransfer {
+    pub id: i64,
+    pub transaction_id: String,
+    pub pool_id: String,
+    pub from_address: String,
+    pub to_address: String,
+    pub amount: i64,
+    pub organization_id: Option<String>,
+    pub created_at: i64,
+    pub time: chrono::DateTime<chrono::Utc>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]

@@ -6,9 +6,9 @@ use crate::handlers::common;
 use crate::metrics::SocialMetrics;
 use myso_indexer_alt_social_schema::models::{
     NewSocialProofTokensEvent, NewSptConfigEvent, NewSptHolding, NewSptPool, NewSptPriceHistory,
-    NewSptReservation, NewSptReservationPool, NewSptTransaction, RESERVATION_POOL_STATUS_ACTIVE,
-    RESERVATION_POOL_STATUS_THRESHOLD_MET, TOKEN_TYPE_POST, TOKEN_TYPE_PROFILE,
-    TRANSACTION_TYPE_BUY, TRANSACTION_TYPE_SELL,
+    NewSptReservation, NewSptReservationPool, NewSptSwap, NewSptTransfer, NewSptTransaction,
+    RESERVATION_POOL_STATUS_ACTIVE, RESERVATION_POOL_STATUS_THRESHOLD_MET, TOKEN_TYPE_POST,
+    TOKEN_TYPE_PROFILE, TRANSACTION_TYPE_BUY, TRANSACTION_TYPE_SELL,
 };
 
 fn transaction_id_from_event_id(event_id: &str) -> String {
@@ -123,6 +123,12 @@ pub fn handle_spt_event(
             process_token_bought_event(data, &transaction_id, ts, now)
         }
         "TokenSoldEvent" | "SellEvent" => process_token_sold_event(data, &transaction_id, ts, now),
+        "TokenSwappedEvent" | "SwapEvent" => {
+            process_token_swapped_event(data, &transaction_id, ts, now)
+        }
+        "TokenTransferredEvent" | "TransferEvent" => {
+            process_token_transferred_event(data, &transaction_id, ts, now)
+        }
         "ReservationPoolCreatedEvent" => {
             process_reservation_pool_created_event(data, &transaction_id, ts, now)
         }
@@ -402,6 +408,119 @@ fn process_token_sold_event(
     }
 
     Some(rows)
+}
+
+/// Processes `TokenSwappedEvent` — the atomic summary emitted after an SPT→SPT swap's
+/// `TokenSoldEvent` + `TokenBoughtEvent` legs.
+///
+/// SUMMARY ONLY: this emits a single `SptSwap` row. It intentionally does NOT touch
+/// holdings, circulating supply, price history, or revenue — those are already handled
+/// by the underlying sold/bought legs. The commit path additionally flags the two
+/// `spt_transactions` legs (`is_swap_leg` + `counterparty_pool_id`).
+fn process_token_swapped_event(
+    data: &serde_json::Value,
+    transaction_id: &str,
+    ts: i64,
+    now: chrono::DateTime<chrono::Utc>,
+) -> Option<Vec<SocialEventRow>> {
+    let source_pool_id = json_str(data.get("source_pool_id")?)?;
+    let dest_pool_id = json_str(data.get("dest_pool_id")?)?;
+    let trader = json_str(data.get("trader")?)?;
+    let sell_amount =
+        require_chain_u64_as_i64(data.get("sell_amount"), "sell_amount", "TokenSwappedEvent")?;
+    let dest_amount =
+        require_chain_u64_as_i64(data.get("dest_amount"), "dest_amount", "TokenSwappedEvent")?;
+    let sell_myso_gross = json_to_i64(data.get("sell_myso_gross")?);
+    let buy_myso_gross = json_to_i64(data.get("buy_myso_gross")?);
+    let sell_fee_amount = json_to_i64(data.get("sell_fee_amount")?);
+    let buy_fee_amount = json_to_i64(data.get("buy_fee_amount")?);
+    let sell_creator_fee = json_to_i64(data.get("sell_creator_fee")?);
+    let sell_platform_fee = json_to_i64(data.get("sell_platform_fee")?);
+    let sell_treasury_fee = json_to_i64(data.get("sell_treasury_fee")?);
+    let buy_creator_fee = json_to_i64(data.get("buy_creator_fee")?);
+    let buy_platform_fee = json_to_i64(data.get("buy_platform_fee")?);
+    let buy_treasury_fee = json_to_i64(data.get("buy_treasury_fee")?);
+    let leftover_myso = json_to_i64(data.get("leftover_myso")?);
+    let source_new_price = json_to_i64(data.get("source_new_price")?);
+    let dest_new_price = json_to_i64(data.get("dest_new_price")?);
+
+    let swap = NewSptSwap {
+        transaction_id: transaction_id.to_string(),
+        trader,
+        source_pool_id,
+        dest_pool_id,
+        sell_amount,
+        dest_amount,
+        sell_myso_gross,
+        buy_myso_gross,
+        sell_fee_amount,
+        buy_fee_amount,
+        sell_creator_fee,
+        sell_platform_fee,
+        sell_treasury_fee,
+        buy_creator_fee,
+        buy_platform_fee,
+        buy_treasury_fee,
+        leftover_myso,
+        source_new_price,
+        dest_new_price,
+        organization_id: None,
+        created_at: ts,
+        time: now,
+    };
+
+    Some(vec![SocialEventRow::SptSwap(swap)])
+}
+
+/// Processes `TokenTransferredEvent` — P2P SPT transfer.
+///
+/// Inserts one `spt_transfers` summary row and two `spt_holdings` deltas
+/// (`from` → −amount, `to` → +amount). Does NOT touch supply, price, or revenue.
+fn process_token_transferred_event(
+    data: &serde_json::Value,
+    transaction_id: &str,
+    ts: i64,
+    now: chrono::DateTime<chrono::Utc>,
+) -> Option<Vec<SocialEventRow>> {
+    let pool_id = json_str(data.get("pool_id")?)?;
+    let from = json_str(data.get("from")?)?;
+    let to = json_str(data.get("to")?)?;
+    let amount =
+        require_chain_u64_as_i64(data.get("amount"), "amount", "TokenTransferredEvent")?;
+
+    let transfer = NewSptTransfer {
+        transaction_id: transaction_id.to_string(),
+        pool_id: pool_id.clone(),
+        from_address: from.clone(),
+        to_address: to.clone(),
+        amount,
+        organization_id: None,
+        created_at: ts,
+        time: now,
+    };
+
+    let from_holding = NewSptHolding {
+        pool_id: pool_id.clone(),
+        holder_address: from,
+        amount: -amount,
+        acquired_at: ts,
+        time: now,
+        transaction_id: transaction_id.to_string(),
+    };
+    let to_holding = NewSptHolding {
+        pool_id,
+        holder_address: to,
+        amount,
+        acquired_at: ts,
+        time: now,
+        transaction_id: transaction_id.to_string(),
+    };
+
+    Some(vec![
+        SocialEventRow::SptTransfer(transfer),
+        SocialEventRow::SptHolding(from_holding),
+        SocialEventRow::SptHolding(to_holding),
+    ])
 }
 
 fn process_tokens_added_event(
@@ -1386,5 +1505,147 @@ mod tests {
             holding.amount, NANO_AMOUNT,
             "nano-SPT amount must be stored byte-for-byte with no rounding"
         );
+    }
+
+    fn sample_swap_event() -> serde_json::Value {
+        json!({
+            "source_pool_id": "0xsource",
+            "dest_pool_id": "0xdest",
+            "trader": "0xtrader",
+            "sell_amount": 1_000u64,
+            "dest_amount": 2_000u64,
+            "sell_myso_gross": 500u64,
+            "buy_myso_gross": 480u64,
+            "sell_fee_amount": 15u64,
+            "buy_fee_amount": 14u64,
+            "sell_creator_fee": 10u64,
+            "sell_platform_fee": 3u64,
+            "sell_treasury_fee": 2u64,
+            "buy_creator_fee": 9u64,
+            "buy_platform_fee": 3u64,
+            "buy_treasury_fee": 2u64,
+            "leftover_myso": 6u64,
+            "source_new_price": 100_000i64,
+            "dest_new_price": 200_000i64,
+        })
+    }
+
+    #[test]
+    fn token_swapped_event_produces_single_summary_row_only() {
+        let data = sample_swap_event();
+        let rows = handle_spt_event("TokenSwappedEvent", &data, "tx_swap:0", 0, 1_700_000_000_000)
+            .expect("TokenSwappedEvent must produce a swap row");
+
+        // SUMMARY ONLY: exactly one SptSwap row and nothing that mutates
+        // holdings/supply/price/revenue.
+        assert_eq!(rows.len(), 1, "swap event must produce exactly one row");
+        let swap = match &rows[0] {
+            SocialEventRow::SptSwap(s) => s,
+            other => panic!("expected SptSwap row, got {other:?}"),
+        };
+        assert_eq!(swap.source_pool_id, "0xsource");
+        assert_eq!(swap.dest_pool_id, "0xdest");
+        assert_eq!(swap.trader, "0xtrader");
+        assert_eq!(swap.sell_amount, 1_000);
+        assert_eq!(swap.dest_amount, 2_000);
+        assert_eq!(swap.leftover_myso, 6);
+        assert_eq!(swap.source_new_price, 100_000);
+        assert_eq!(swap.dest_new_price, 200_000);
+        assert_eq!(swap.transaction_id, "tx_swap");
+
+        assert!(
+            !rows.iter().any(|r| matches!(
+                r,
+                SocialEventRow::SptHolding(_)
+                    | SocialEventRow::SptPoolSupplyUpdate { .. }
+                    | SocialEventRow::SptPriceHistory(_)
+                    | SocialEventRow::SptBuySellRevenueData { .. }
+                    | SocialEventRow::SptTransaction(_)
+            )),
+            "swap summary must not mutate holdings/supply/price/revenue/transactions"
+        );
+    }
+
+    #[test]
+    fn token_swapped_event_alias_matches() {
+        let data = sample_swap_event();
+        let rows = handle_spt_event("SwapEvent", &data, "tx_swap_alias:0", 0, 1_700_000_000_000)
+            .expect("SwapEvent alias must produce a swap row");
+        assert_eq!(rows.len(), 1);
+        assert!(matches!(rows[0], SocialEventRow::SptSwap(_)));
+    }
+
+    #[test]
+    fn token_swapped_skips_batch_when_amount_exceeds_i64() {
+        let too_large = (i64::MAX as u64).saturating_add(1);
+        let mut data = sample_swap_event();
+        data["sell_amount"] = json!(too_large);
+        assert!(
+            handle_spt_event("TokenSwappedEvent", &data, "tx_swap:0", 0, 0).is_none(),
+            "swap sell_amount must fit PostgreSQL BIGINT / Rust i64"
+        );
+    }
+
+    fn sample_transfer_event() -> serde_json::Value {
+        json!({
+            "pool_id": "0xpool",
+            "from": "0xfrom",
+            "to": "0xto",
+            "amount": 7_500u64,
+        })
+    }
+
+    #[test]
+    fn token_transferred_event_produces_summary_and_two_holdings() {
+        let data = sample_transfer_event();
+        let rows =
+            handle_spt_event("TokenTransferredEvent", &data, "tx_xfer:0", 0, 1_700_000_000_000)
+                .expect("TokenTransferredEvent must produce rows");
+
+        assert_eq!(rows.len(), 3, "transfer must produce summary + two holdings");
+        let transfer = match &rows[0] {
+            SocialEventRow::SptTransfer(t) => t,
+            other => panic!("expected SptTransfer row first, got {other:?}"),
+        };
+        assert_eq!(transfer.pool_id, "0xpool");
+        assert_eq!(transfer.from_address, "0xfrom");
+        assert_eq!(transfer.to_address, "0xto");
+        assert_eq!(transfer.amount, 7_500);
+        assert_eq!(transfer.transaction_id, "tx_xfer");
+
+        let from_h = match &rows[1] {
+            SocialEventRow::SptHolding(h) => h,
+            other => panic!("expected from holding, got {other:?}"),
+        };
+        let to_h = match &rows[2] {
+            SocialEventRow::SptHolding(h) => h,
+            other => panic!("expected to holding, got {other:?}"),
+        };
+        assert_eq!(from_h.holder_address, "0xfrom");
+        assert_eq!(from_h.amount, -7_500);
+        assert_eq!(to_h.holder_address, "0xto");
+        assert_eq!(to_h.amount, 7_500);
+
+        assert!(
+            !rows.iter().any(|r| matches!(
+                r,
+                SocialEventRow::SptPoolSupplyUpdate { .. }
+                    | SocialEventRow::SptPriceHistory(_)
+                    | SocialEventRow::SptBuySellRevenueData { .. }
+                    | SocialEventRow::SptTransaction(_)
+                    | SocialEventRow::SptSwap(_)
+            )),
+            "transfer must not touch supply/price/revenue/transactions/swaps"
+        );
+    }
+
+    #[test]
+    fn token_transferred_event_alias_matches() {
+        let data = sample_transfer_event();
+        let rows =
+            handle_spt_event("TransferEvent", &data, "tx_xfer_alias:0", 0, 1_700_000_000_000)
+                .expect("TransferEvent alias must produce rows");
+        assert_eq!(rows.len(), 3);
+        assert!(matches!(rows[0], SocialEventRow::SptTransfer(_)));
     }
 }

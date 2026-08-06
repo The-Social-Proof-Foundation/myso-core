@@ -32,6 +32,9 @@ pub struct SocialMetrics {
     pub spt_launch_denominator_ledger_fallback: Counter,
     /// SPT event numeric field exceeded `i64::MAX` and could not be stored in PostgreSQL `BIGINT`.
     pub spt_u64_amount_exceeds_i64: CounterVec,
+
+    /// UserLeftPlatform commit updated 0 membership rows (never joined or id mismatch).
+    pub platform_membership_leave_unmatched: Counter,
 }
 
 impl SocialMetrics {
@@ -121,6 +124,12 @@ impl SocialMetrics {
             registry
         )?;
 
+        let platform_membership_leave_unmatched = register_counter_with_registry!(
+            "myso_social_platform_membership_leave_unmatched_total",
+            "UserLeftPlatform commit matched no platform_memberships row",
+            registry
+        )?;
+
         Ok(Self {
             events_processed,
             events_bcs_parse_failed,
@@ -135,6 +144,7 @@ impl SocialMetrics {
             spt_pool_zero_supply_with_reservations,
             spt_launch_denominator_ledger_fallback,
             spt_u64_amount_exceeds_i64,
+            platform_membership_leave_unmatched,
         })
     }
 
@@ -234,6 +244,12 @@ impl SocialMetrics {
                 .spt_u64_amount_exceeds_i64
                 .with_label_values(&[field])
                 .inc();
+        }
+    }
+
+    pub fn record_platform_membership_leave_unmatched() {
+        if let Some(metrics) = Self::get() {
+            metrics.platform_membership_leave_unmatched.inc();
         }
     }
 

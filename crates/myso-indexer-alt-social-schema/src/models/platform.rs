@@ -286,6 +286,7 @@ pub struct PlatformMembership {
     pub platform_id: String,
     pub wallet_address: String,
     pub joined_at: NaiveDateTime,
+    pub left_at: Option<NaiveDateTime>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -294,6 +295,7 @@ pub struct NewPlatformMembership {
     pub platform_id: String,
     pub wallet_address: String,
     pub joined_at: NaiveDateTime,
+    pub left_at: Option<NaiveDateTime>,
 }
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]

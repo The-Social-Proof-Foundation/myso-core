@@ -1,9 +1,11 @@
--- Revert the changes by adding back the role and left_at columns
+-- Revert: drop left_at and restore role (prior hard-delete membership model).
 
--- Add back the removed columns
-ALTER TABLE platform_memberships 
-    ADD COLUMN role TEXT NOT NULL DEFAULT 'member',
-    ADD COLUMN left_at TIMESTAMP NULL;
+DROP INDEX IF EXISTS idx_platform_memberships_left_at;
 
--- Remove the comment
-COMMENT ON TABLE platform_memberships IS NULL; 
+ALTER TABLE platform_memberships DROP COLUMN IF EXISTS left_at;
+
+ALTER TABLE platform_memberships
+    ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'member';
+
+COMMENT ON TABLE platform_memberships IS
+    'Records of profiles joined to platforms. Records are deleted when a user leaves a platform.';

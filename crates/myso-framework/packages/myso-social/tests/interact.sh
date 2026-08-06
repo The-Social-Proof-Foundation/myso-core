@@ -1436,14 +1436,17 @@ gov_finalize() {
 
 token_exchange_menu() {
     print_header "Social proof tokens"
-    echo "1. create_reservation_pool_for_post"
+    echo "1. enable_spt_for_post (late-enable on existing post)"
     echo "2. create_reservation_pool_for_profile"
     echo "3. create_social_proof_token"
     echo "4. split_social_token_entry"
     echo "5. merge_social_tokens_entry"
-    echo "6. Back to Main Menu"
+    echo "6. transfer_tokens"
+    echo "7. Back to Main Menu"
     echo ""
-    read -r -p "Select an option [1-6]: " choice
+    echo "Note: create-time SPT uses social_proof_tokens::create_post_with_reservation_pool (PTB; many args)."
+    echo ""
+    read -r -p "Select an option [1-7]: " choice
 
     case $choice in
         1) spt_res_post ;;
@@ -1451,19 +1454,20 @@ token_exchange_menu() {
         3) spt_create_token ;;
         4) spt_split ;;
         5) spt_merge ;;
-        6) show_menu ;;
+        6) spt_transfer ;;
+        7) show_menu ;;
         *) echo "Invalid option" && token_exchange_menu ;;
     esac
 }
 
 spt_res_post() {
-    print_header "social_proof_tokens::create_reservation_pool_for_post"
+    print_header "social_proof_tokens::enable_spt_for_post"
     read -r -p "TokenRegistry (mutable) [${TOKEN_REGISTRY_ID:-}]: " tr
     tr="${tr:-$TOKEN_REGISTRY_ID}"
     read -r -p "SocialProofTokensConfig shared object [${SOCIAL_PROOF_TOKENS_CONFIG_ID:-}]: " cfg
     cfg="${cfg:-$SOCIAL_PROOF_TOKENS_CONFIG_ID}"
     read -r -p "Post shared object ID: " post_id
-    myso client call --package "$PACKAGE_ID" --module social_proof_tokens --function create_reservation_pool_for_post \
+    myso client call --package "$PACKAGE_ID" --module social_proof_tokens --function enable_spt_for_post \
         --args "@${tr}" "@${cfg}" "@${post_id}" \
         --gas-budget "$GAS_BUDGET"
     print_success "Submitted."
@@ -1495,6 +1499,21 @@ spt_create_token() {
     read -r -p "ReservationPoolObject mutable shared ID: " pool_id
     myso client call --package "$PACKAGE_ID" --module social_proof_tokens --function create_social_proof_token \
         --args "@${tr}" "@${cfg}" "@${pool_id}" \
+        --gas-budget "$GAS_BUDGET"
+    print_success "Submitted."
+    press_enter
+    token_exchange_menu
+}
+
+spt_transfer() {
+    print_header "social_proof_tokens::transfer_tokens"
+    read -r -p "TokenPool mutable shared ID: " pool
+    read -r -p "SocialProofTokensConfig shared object [${SOCIAL_PROOF_TOKENS_CONFIG_ID:-}]: " cfg
+    cfg="${cfg:-$SOCIAL_PROOF_TOKENS_CONFIG_ID}"
+    read -r -p "SocialToken object ID to transfer (full object): " tok
+    read -r -p "Recipient address: " recipient
+    myso client call --package "$PACKAGE_ID" --module social_proof_tokens --function transfer_tokens \
+        --args "@${pool}" "@${cfg}" "@${tok}" "$recipient" \
         --gas-budget "$GAS_BUDGET"
     print_success "Submitted."
     press_enter
