@@ -64,7 +64,7 @@ VALUES (
 "#;
 
 /// Platform object id for revenue attribution (treasury container), plus optional linked platform id.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct ResolvedSptPlatform {
     platform_id: String,
     linked_platform_id: Option<String>,
@@ -76,18 +76,58 @@ struct CreatorPlatformIdRow {
     platform_id: String,
 }
 
-async fn resolve_spt_platform_for_creator<'a>(
-    conn: &mut Connection<'a>,
-    creator_address: &str,
-) -> Result<ResolvedSptPlatform, diesel::result::Error> {
-    if creator_address.trim().is_empty() {
-        return Ok(ResolvedSptPlatform {
-            platform_id: String::new(),
-            linked_platform_id: None,
-        });
-    }
+#[derive(QueryableByName)]
+struct PostPlatformIdRow {
+    #[diesel(sql_type = Nullable<Text>)]
+    platform_id: Option<String>,
+}
 
-    let linked_platform_id: Option<String> = diesel::sql_query(
+/// Pure priority picker for SPT platform attribution (testable without DB).
+/// Order: post platform_id → selected badge → any active badge.
+fn pick_resolved_spt_platform(
+    post_platform_id: Option<String>,
+    selected_badge_platform_id: Option<String>,
+    any_badge_platform_id: Option<String>,
+) -> ResolvedSptPlatform {
+    let linked = post_platform_id
+        .filter(|s| !s.trim().is_empty())
+        .or_else(|| selected_badge_platform_id.filter(|s| !s.trim().is_empty()))
+        .or_else(|| any_badge_platform_id.filter(|s| !s.trim().is_empty()));
+    ResolvedSptPlatform {
+        platform_id: linked.clone().unwrap_or_default(),
+        linked_platform_id: linked,
+    }
+}
+
+async fn lookup_post_platform_id(
+    conn: &mut Connection<'_>,
+    associated_id: &str,
+) -> Result<Option<String>, diesel::result::Error> {
+    if associated_id.trim().is_empty() {
+        return Ok(None);
+    }
+    Ok(diesel::sql_query(
+        r#"SELECT platform_id
+           FROM posts
+           WHERE post_id = $1
+             AND platform_id IS NOT NULL
+             AND TRIM(platform_id) <> ''
+           ORDER BY time DESC
+           LIMIT 1"#,
+    )
+    .bind::<Text, _>(associated_id)
+    .get_result::<PostPlatformIdRow>(conn)
+    .await
+    .optional()?
+    .and_then(|row| row.platform_id)
+    .filter(|s| !s.is_empty()))
+}
+
+async fn lookup_selected_badge_platform_id(
+    conn: &mut Connection<'_>,
+    creator_address: &str,
+) -> Result<Option<String>, diesel::result::Error> {
+    Ok(diesel::sql_query(
         r#"SELECT pb.platform_id AS platform_id
            FROM profiles p
            INNER JOIN profile_badges pb ON pb.profile_id = p.profile_id
@@ -104,14 +144,67 @@ async fn resolve_spt_platform_for_creator<'a>(
     .await
     .optional()?
     .map(|row| row.platform_id)
-    .filter(|s| !s.is_empty());
+    .filter(|s| !s.is_empty()))
+}
 
-    let platform_id: String = linked_platform_id.clone().unwrap_or_default();
+async fn lookup_any_badge_platform_id(
+    conn: &mut Connection<'_>,
+    creator_address: &str,
+) -> Result<Option<String>, diesel::result::Error> {
+    Ok(diesel::sql_query(
+        r#"SELECT pb.platform_id AS platform_id
+           FROM profiles p
+           INNER JOIN profile_badges pb ON pb.profile_id = p.profile_id
+           WHERE LOWER(TRIM(p.owner_address)) = LOWER(TRIM($1))
+             AND p.profile_id IS NOT NULL
+             AND (pb.revoked IS NULL OR pb.revoked = false)
+             AND pb.platform_id IS NOT NULL
+             AND TRIM(pb.platform_id) <> ''
+           ORDER BY pb.time DESC
+           LIMIT 1"#,
+    )
+    .bind::<Text, _>(creator_address)
+    .get_result::<CreatorPlatformIdRow>(conn)
+    .await
+    .optional()?
+    .map(|row| row.platform_id)
+    .filter(|s| !s.is_empty()))
+}
 
-    Ok(ResolvedSptPlatform {
-        platform_id,
-        linked_platform_id,
-    })
+/// Resolve platform for SPT revenue: post `platform_id` first, then creator badges.
+async fn resolve_spt_platform(
+    conn: &mut Connection<'_>,
+    creator_address: &str,
+    associated_id: &str,
+    token_type: i16,
+) -> Result<ResolvedSptPlatform, diesel::result::Error> {
+    let post_platform_id = if token_type == TOKEN_TYPE_POST {
+        lookup_post_platform_id(conn, associated_id).await?
+    } else {
+        None
+    };
+
+    let creator = creator_address.trim();
+    let (selected_badge, any_badge) = if creator.is_empty() {
+        (None, None)
+    } else if post_platform_id.is_some() {
+        // Post platform already wins; skip badge queries.
+        (None, None)
+    } else {
+        let selected = lookup_selected_badge_platform_id(conn, creator).await?;
+        let any = if selected.is_some() {
+            None
+        } else {
+            lookup_any_badge_platform_id(conn, creator).await?
+        };
+        (selected, any)
+    };
+
+    Ok(pick_resolved_spt_platform(
+        post_platform_id,
+        selected_badge,
+        any_badge,
+    ))
 }
 
 #[derive(QueryableByName)]
@@ -1001,9 +1094,13 @@ impl Handler for SptHandler {
                                 .ok()
                                 .unwrap_or_default();
 
-                            let resolved =
-                                resolve_spt_platform_for_creator(conn, creator_address.as_str())
-                                    .await?;
+                            let resolved = resolve_spt_platform(
+                                conn,
+                                creator_address.as_str(),
+                                associated_id.as_str(),
+                                *token_type,
+                            )
+                            .await?;
                             let linked_platform_id = resolved.linked_platform_id.clone();
                             let platform_fee_recipient = resolved.platform_id.clone();
 
@@ -1232,24 +1329,32 @@ impl Handler for SptHandler {
                         .await
                         .ok();
 
-                    let (creator_address, treasury_address): (String, String) =
-                        if let Some((owner, _associated_id, _token_type)) = pool_row {
-                            let treasury = ecosystem_treasury::table
-                                .order(ecosystem_treasury::time.desc())
-                                .select(ecosystem_treasury::treasury_address)
-                                .first::<String>(conn)
-                                .await
-                                .ok()
-                                .unwrap_or_default();
-                            (owner, treasury)
-                        } else {
-                            (String::new(), String::new())
-                        };
+                    let (creator_address, associated_id, token_type, treasury_address): (
+                        String,
+                        String,
+                        i16,
+                        String,
+                    ) = if let Some((owner, associated_id, token_type)) = pool_row {
+                        let treasury = ecosystem_treasury::table
+                            .order(ecosystem_treasury::time.desc())
+                            .select(ecosystem_treasury::treasury_address)
+                            .first::<String>(conn)
+                            .await
+                            .ok()
+                            .unwrap_or_default();
+                        (owner, associated_id, token_type, treasury)
+                    } else {
+                        (String::new(), String::new(), 0, String::new())
+                    };
 
                     if *creator_fee != 0 || *platform_fee != 0 || *treasury_fee != 0 {
-                        let resolved =
-                            resolve_spt_platform_for_creator(conn, creator_address.as_str())
-                                .await?;
+                        let resolved = resolve_spt_platform(
+                            conn,
+                            creator_address.as_str(),
+                            associated_id.as_str(),
+                            token_type,
+                        )
+                        .await?;
                         let platform_address = resolved.platform_id;
                         let platform_scope_for_fees: Option<String> =
                             Some(resolved.linked_platform_id.clone().unwrap_or_default());
@@ -1428,6 +1533,69 @@ mod reservation_owner_fallback_tests {
             .filter(|s| !s.is_empty())
             .map(str::to_string);
         assert_eq!(owner.as_deref(), Some("0xabc123"));
+    }
+}
+
+#[cfg(test)]
+mod spt_platform_resolution_tests {
+    use super::{pick_resolved_spt_platform, ResolvedSptPlatform};
+
+    #[test]
+    fn post_platform_wins_over_badges() {
+        let r = pick_resolved_spt_platform(
+            Some("0xpost_platform".to_string()),
+            Some("0xselected".to_string()),
+            Some("0xany".to_string()),
+        );
+        assert_eq!(
+            r,
+            ResolvedSptPlatform {
+                platform_id: "0xpost_platform".to_string(),
+                linked_platform_id: Some("0xpost_platform".to_string()),
+            }
+        );
+    }
+
+    #[test]
+    fn selected_badge_wins_over_any_badge() {
+        let r = pick_resolved_spt_platform(
+            None,
+            Some("0xselected".to_string()),
+            Some("0xany".to_string()),
+        );
+        assert_eq!(r.platform_id, "0xselected");
+        assert_eq!(r.linked_platform_id.as_deref(), Some("0xselected"));
+    }
+
+    #[test]
+    fn any_badge_used_when_selected_missing() {
+        let r = pick_resolved_spt_platform(None, None, Some("0xany".to_string()));
+        assert_eq!(r.platform_id, "0xany");
+        assert_eq!(r.linked_platform_id.as_deref(), Some("0xany"));
+    }
+
+    #[test]
+    fn empty_creator_with_post_platform_still_resolves() {
+        let r = pick_resolved_spt_platform(Some("0xpost".to_string()), None, None);
+        assert_eq!(r.platform_id, "0xpost");
+        assert_eq!(r.linked_platform_id.as_deref(), Some("0xpost"));
+    }
+
+    #[test]
+    fn blank_strings_treated_as_missing() {
+        let r = pick_resolved_spt_platform(
+            Some("  ".to_string()),
+            Some("".to_string()),
+            Some("0xfallback".to_string()),
+        );
+        assert_eq!(r.platform_id, "0xfallback");
+    }
+
+    #[test]
+    fn all_missing_yields_empty() {
+        let r = pick_resolved_spt_platform(None, None, None);
+        assert_eq!(r.platform_id, "");
+        assert!(r.linked_platform_id.is_none());
     }
 }
 

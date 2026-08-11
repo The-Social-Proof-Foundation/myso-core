@@ -135,6 +135,7 @@ Implements features like comments, reposts, and quotes
 -  [Function `deposit_coin_to_beneficiary_vault`](#social_contracts_post_deposit_coin_to_beneficiary_vault)
 -  [Function `tip_repost`](#social_contracts_post_tip_repost)
 -  [Function `tip_comment`](#social_contracts_post_tip_comment)
+-  [Function `tip_comment_simple`](#social_contracts_post_tip_comment_simple)
 -  [Function `transfer_post_ownership`](#social_contracts_post_transfer_post_ownership)
 -  [Function `admin_transfer_post_ownership`](#social_contracts_post_admin_transfer_post_ownership)
 -  [Function `moderate_post`](#social_contracts_post_moderate_post)
@@ -158,6 +159,7 @@ Implements features like comments, reposts, and quotes
 -  [Function `get_id_address`](#social_contracts_post_get_id_address)
 -  [Function `get_reaction_count`](#social_contracts_post_get_reaction_count)
 -  [Function `get_tips_received`](#social_contracts_post_get_tips_received)
+-  [Function `get_comment_tips_received`](#social_contracts_post_get_comment_tips_received)
 -  [Function `get_platform_id`](#social_contracts_post_get_platform_id)
 -  [Function `get_revenue_redirect_to`](#social_contracts_post_get_revenue_redirect_to)
 -  [Function `get_revenue_redirect_percentage`](#social_contracts_post_get_revenue_redirect_percentage)
@@ -2907,7 +2909,8 @@ Escrow/vault redirect slice must use the <code>PoCBeneficiaryVault</code> whose 
 
 <a name="social_contracts_post_ETipPostRequiresBeneficiaryVault"></a>
 
-[<code><a href="../social_contracts/post.md#social_contracts_post_tip_post_simple">tip_post_simple</a></code>] cannot deposit into an escrow vault; use [<code><a href="../social_contracts/post.md#social_contracts_post_tip_post">tip_post</a></code>] with the vault for <code>revenue_redirect_to</code>.
+[<code><a href="../social_contracts/post.md#social_contracts_post_tip_post_simple">tip_post_simple</a></code>] / [<code><a href="../social_contracts/post.md#social_contracts_post_tip_comment_simple">tip_comment_simple</a></code>] cannot deposit into an escrow vault; use [<code><a href="../social_contracts/post.md#social_contracts_post_tip_post">tip_post</a></code>] /
+[<code><a href="../social_contracts/post.md#social_contracts_post_tip_comment">tip_comment</a></code>] with the vault for <code>revenue_redirect_to</code>.
 
 
 <pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_ETipPostRequiresBeneficiaryVault">ETipPostRequiresBeneficiaryVault</a>: u64 = 38;
@@ -7785,6 +7788,89 @@ Tip a comment; split per <code><a href="../social_contracts/post.md#social_contr
 
 </details>
 
+<a name="social_contracts_post_tip_comment_simple"></a>
+
+## Function `tip_comment_simple`
+
+Like [<code><a href="../social_contracts/post.md#social_contracts_post_tip_comment">tip_comment</a></code>] but without a <code>PoCBeneficiaryVault</code> / Clock / min vault deposit.
+Only for posts where [<code><a href="../social_contracts/post.md#social_contracts_post_tip_post_requires_beneficiary_vault_for_amount">tip_post_requires_beneficiary_vault_for_amount</a></code>] is false for the
+**post-owner slice** of this tip. If an escrow deposit is required, aborts with
+[<code><a href="../social_contracts/post.md#social_contracts_post_ETipPostRequiresBeneficiaryVault">ETipPostRequiresBeneficiaryVault</a></code>].
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_comment_simple">tip_comment_simple</a>&lt;T&gt;(comment: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Comment">social_contracts::post::Comment</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, coin: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, amount: u64, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_comment_simple">tip_comment_simple</a>&lt;T&gt;(
+    comment: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Comment">Comment</a>,
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
+    config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a>,
+    coin: &<b>mut</b> Coin&lt;T&gt;,
+    amount: u64,
+    memory_account: &MemoryAccount,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> tipper = tx_context::sender(ctx);
+    <b>assert</b>!(amount &gt; 0 && coin::value(coin) &gt;= amount, <a href="../social_contracts/post.md#social_contracts_post_EInvalidTipAmount">EInvalidTipAmount</a>);
+    <a href="../social_contracts/post.md#social_contracts_post_assert_tip_spend_limit">assert_tip_spend_limit</a>(memory_account, amount, ctx);
+    <b>assert</b>!(tipper != comment.owner, <a href="../social_contracts/post.md#social_contracts_post_ESelfTipping">ESelfTipping</a>);
+    <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>), <a href="../social_contracts/post.md#social_contracts_post_ETipsNotAllowed">ETipsNotAllowed</a>);
+    <b>let</b> commenter_amount = (amount * config.commenter_tip_percentage) / 100;
+    <b>let</b> post_owner_amount = amount - commenter_amount;
+    <b>assert</b>!(
+        !<a href="../social_contracts/post.md#social_contracts_post_tip_post_requires_beneficiary_vault_for_amount">tip_post_requires_beneficiary_vault_for_amount</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, post_owner_amount),
+        <a href="../social_contracts/post.md#social_contracts_post_ETipPostRequiresBeneficiaryVault">ETipPostRequiresBeneficiaryVault</a>
+    );
+    <b>let</b> commenter_tip = coin::split(coin, commenter_amount, ctx);
+    transfer::public_transfer(commenter_tip, comment.owner);
+    <b>let</b> po = <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner;
+    <b>let</b> poid = object::uid_to_address(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id);
+    <b>let</b> ct = type_name::with_defining_ids&lt;T&gt;();
+    <b>let</b> post_owner_actual_received = <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_coin_without_beneficiary_vault">apply_poc_redirection_coin_without_beneficiary_vault</a>&lt;T&gt;(
+        <a href="../social_contracts/post.md#social_contracts_post">post</a>,
+        po,
+        post_owner_amount,
+        coin,
+        tipper,
+        poid,
+        <b>true</b>,
+        ctx
+    );
+    <b>assert</b>!(comment.tips_received &lt;= <a href="../social_contracts/post.md#social_contracts_post_MAX_U64">MAX_U64</a> - commenter_amount, <a href="../social_contracts/post.md#social_contracts_post_EOverflow">EOverflow</a>);
+    comment.tips_received = comment.tips_received + commenter_amount;
+    <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post">post</a>.tips_received &lt;= <a href="../social_contracts/post.md#social_contracts_post_MAX_U64">MAX_U64</a> - post_owner_actual_received, <a href="../social_contracts/post.md#social_contracts_post_EOverflow">EOverflow</a>);
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>.tips_received = <a href="../social_contracts/post.md#social_contracts_post">post</a>.tips_received + post_owner_actual_received;
+    event::emit(<a href="../social_contracts/post.md#social_contracts_post_TipEvent">TipEvent</a> {
+        object_id: object::uid_to_address(&comment.id),
+        from: tipper,
+        to: comment.owner,
+        amount: commenter_amount,
+        coin_type: ct,
+        is_post: <b>false</b>,
+    });
+    <b>if</b> (post_owner_actual_received &gt; 0) {
+        event::emit(<a href="../social_contracts/post.md#social_contracts_post_TipEvent">TipEvent</a> {
+            object_id: poid,
+            from: tipper,
+            to: po,
+            amount: post_owner_actual_received,
+            coin_type: ct,
+            is_post: <b>true</b>,
+        });
+    };
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_post_transfer_post_ownership"></a>
 
 ## Function `transfer_post_ownership`
@@ -8879,6 +8965,31 @@ Get the tips received for a post
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_tips_received">get_tips_received</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): u64 {
     <a href="../social_contracts/post.md#social_contracts_post">post</a>.tips_received
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_get_comment_tips_received"></a>
+
+## Function `get_comment_tips_received`
+
+Get the tips received for a comment (commenter share of tip_comment / tip_comment_simple).
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_comment_tips_received">get_comment_tips_received</a>(comment: &<a href="../social_contracts/post.md#social_contracts_post_Comment">social_contracts::post::Comment</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_comment_tips_received">get_comment_tips_received</a>(comment: &<a href="../social_contracts/post.md#social_contracts_post_Comment">Comment</a>): u64 {
+    comment.tips_received
 }
 </code></pre>
 

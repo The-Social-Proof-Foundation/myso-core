@@ -232,6 +232,15 @@ print("vector[" + ",".join(f"{b}u8" for b in data) + "]")
 PY
 }
 
+# UTF-8 string → PTB vector<u8> literal (profile avatar/cover URLs).
+literal_move_vector_u8_from_utf8() {
+    python3 - "$1" <<'PY'
+import sys
+data = sys.argv[1].encode("utf-8")
+print("vector[" + ",".join(f"{b}u8" for b in data) + "]")
+PY
+}
+
 literal_move_option_string() {
     local s="$1"
     if [[ -z "$s" ]]; then
@@ -239,6 +248,25 @@ literal_move_option_string() {
         return 0
     fi
     printf 'some(%s)' "$(literal_move_string "$s")"
+}
+
+literal_move_option_u64() {
+    local v="$1"
+    if [[ -z "$v" ]]; then
+        printf 'none'
+        return 0
+    fi
+    printf 'some(%s)' "$v"
+}
+
+# Option<vector<String>> from comma-separated URLs; empty → none.
+literal_move_option_vector_string_from_csv() {
+    local csv="$1"
+    if [[ -z "$csv" ]]; then
+        printf 'none'
+        return 0
+    fi
+    printf 'some(%s)' "$(literal_move_vector_from_csv "$csv")"
 }
 
 extra_gas_budget() {
@@ -618,6 +646,7 @@ social_refresh_session_from_graphql() {
     local old_session preserved_keys=(
         SELLER_ADDRESS BUYER_ADDRESS SELLER_PROFILE_ID BUYER_PROFILE_ID
         LISTING_USERNAME REPLACEMENT_USERNAME SELLER_MEMORY_ACCOUNT_ID PAY_COIN_ID
+        ADMIN_PROFILE_ID DRIPDROP_PLATFORM_ID SOFISWAP_PLATFORM_ID CHATR_PLATFORM_ID
     )
     local key old_session_file=""
     if [[ -f "$SOCIAL_SESSION_SAVE_PATH" ]]; then
@@ -1325,21 +1354,45 @@ wait_for_rest_offer_field() {
 
 create_profile_for_address() {
     local sender="$1" display_name="$2" username="$3"
-    local out digest profile_id mem
+    create_profile_with_media_for_address "$sender" "$display_name" "$username" '' '' ''
+}
+
+# PTB create_profile with optional bio + avatar/cover URL bytes (UTF-8).
+# Prints: profile_id\nmemory_account_id
+create_profile_with_media_for_address() {
+    local sender="$1" display_name="$2" username="$3"
+    local bio="${4:-}" avatar_url="${5:-}" cover_url="${6:-}"
+    local out digest profile_id mem avatar_arg cover_arg
     [[ -n "$sender" && -n "$username" ]] || return 1
     require_session_fields USERNAME_REGISTRY_ID PROFILE_CONFIG_ID MEMORY_REGISTRY_ID \
         AI_CREDIT_CONFIG_ID CLOCK_ID || return 1
     require_hex_ids USERNAME_REGISTRY_ID PROFILE_CONFIG_ID MEMORY_REGISTRY_ID \
         AI_CREDIT_CONFIG_ID CLOCK_ID || return 1
 
+    if [[ -n "$avatar_url" ]]; then
+        avatar_arg="$(literal_move_vector_u8_from_utf8 "$avatar_url")"
+    else
+        avatar_arg='vector[]'
+    fi
+    if [[ -n "$cover_url" ]]; then
+        cover_arg="$(literal_move_vector_u8_from_utf8 "$cover_url")"
+    else
+        cover_arg='vector[]'
+    fi
+
     log_step "Creating profile for $sender username=$username"
-    out="$(SKIP_CONFIRM_RUN=1 run_myso_call_as_capture "$sender" profile create_profile \
-        "@${USERNAME_REGISTRY_ID}" "@${PROFILE_CONFIG_ID}" "@${MEMORY_REGISTRY_ID}" \
-        "@${AI_CREDIT_CONFIG_ID}" \
+    out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_as_capture "$sender" \
+        --move-call "${PKG_SOCIAL}::profile::create_profile" \
+        "$(ptb_shared_ref "$USERNAME_REGISTRY_ID")" \
+        "$(ptb_shared_ref "$PROFILE_CONFIG_ID")" \
+        "$(ptb_shared_ref "$MEMORY_REGISTRY_ID")" \
+        "$(ptb_shared_ref "$AI_CREDIT_CONFIG_ID")" \
         "$(literal_move_string "${display_name:-Social E2E}")" \
         "$(literal_move_string "$username")" \
-        '""' 'vector[]' 'vector[]' \
-        "@${CLOCK_ID}")" || return 1
+        "$(literal_move_string "$bio")" \
+        "$avatar_arg" \
+        "$cover_arg" \
+        "$(ptb_shared_ref "$CLOCK_ID")")" || return 1
 
     digest="$(extract_tx_digest "$out")"
     [[ -n "$digest" ]] || digest="$(echo "$out" | grep -Eo '[A-Za-z0-9+/]{43,44}=' | tail -n1)"
@@ -1383,8 +1436,25 @@ ensure_joined_platform() {
     return 1
 }
 
-create_test_platform() {
+# Create a platform then toggle approval. Prints platform object id on stdout.
+# Empty secondary_category / media_previews_csv / dao u64 fields → none.
+# DAO Option arg order matches platform::create_platform:
+#   delegate_count, delegate_term_epochs, proposal_submission_cost, max_votes_per_user,
+#   quadratic_base_cost, voting_period_epochs, quorum_votes
+create_and_approve_platform() {
+    local name="$1" tagline="$2" description="$3"
+    local logo="$4" cover="$5" media_previews_csv="$6"
+    local terms="$7" privacy="$8"
+    local platforms_csv="$9" links_csv="${10}"
+    local primary_category="${11}" secondary_category="${12}"
+    local status="${13}" release_date="${14}" wants_dao="${15}"
+    local delegate_count="${16}" delegate_term_epochs="${17}"
+    local proposal_submission_cost="${18}" max_votes_per_user="${19}"
+    local quadratic_base_cost="${20}" voting_period_epochs="${21}" quorum_votes="${22}"
     local out digest platform_id ref_preg ref_pcfg ref_clk ref_cap
+    local dao_flag secondary_arg media_arg
+
+    [[ -n "$name" && -n "$primary_category" && -n "$status" && -n "$release_date" ]] || return 1
     require_session_fields PLATFORM_REGISTRY_ID PLATFORM_CONFIG_ID PLATFORM_ADMIN_CAP_ID CLOCK_ID || return 1
     require_hex_ids PLATFORM_REGISTRY_ID PLATFORM_CONFIG_ID PLATFORM_ADMIN_CAP_ID CLOCK_ID || return 1
 
@@ -1393,25 +1463,49 @@ create_test_platform() {
     ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || return 1
     ref_cap="$(ptb_shared_ref "$PLATFORM_ADMIN_CAP_ID")" || return 1
 
-    log_step "Creating test platform (promo${SOCIAL_RUN_ID})"
+    if [[ "$wants_dao" == "true" || "$wants_dao" == "1" ]]; then
+        dao_flag=true
+    else
+        dao_flag=false
+        delegate_count=''
+        delegate_term_epochs=''
+        proposal_submission_cost=''
+        max_votes_per_user=''
+        quadratic_base_cost=''
+        voting_period_epochs=''
+        quorum_votes=''
+    fi
+    secondary_arg="$(literal_move_option_string "$secondary_category")"
+    media_arg="$(literal_move_option_vector_string_from_csv "$media_previews_csv")"
+
+    log_step "Creating platform name=$name wants_dao=$dao_flag"
     out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_capture \
         --move-call "${PKG_SOCIAL}::platform::create_platform" \
         "$ref_preg" \
         "$ref_pcfg" \
-        "$(literal_move_string "Promo Platform ${SOCIAL_RUN_ID}")" \
-        "$(literal_move_string 'Post promotion E2E')" \
-        "$(literal_move_string 'Test platform for promoted post flows')" \
-        "$(literal_move_string "$SOCIAL_DEFAULT_PLATFORM_LOGO_URL")" \
-        "$(literal_move_string 'https://example.com/terms')" \
-        "$(literal_move_string 'https://example.com/privacy')" \
-        "$(literal_move_vector_empty)" \
-        "$(literal_move_vector_from_csv 'https://example.com')" \
-        "$(literal_move_string 'Social Network')" \
-        none 2 \
-        "$(literal_move_string '2023-01-01')" \
-        false \
-        none none none none none none none \
-        "$(literal_move_option_string "$SOCIAL_DEFAULT_PLATFORM_COVER_PHOTO_URL")" none none \
+        "$(literal_move_string "$name")" \
+        "$(literal_move_string "$tagline")" \
+        "$(literal_move_string "$description")" \
+        "$(literal_move_string "$logo")" \
+        "$(literal_move_string "$terms")" \
+        "$(literal_move_string "$privacy")" \
+        "$(literal_move_vector_from_csv "$platforms_csv")" \
+        "$(literal_move_vector_from_csv "$links_csv")" \
+        "$(literal_move_string "$primary_category")" \
+        "$secondary_arg" \
+        "$status" \
+        "$(literal_move_string "$release_date")" \
+        "$dao_flag" \
+        "$(literal_move_option_u64 "$delegate_count")" \
+        "$(literal_move_option_u64 "$delegate_term_epochs")" \
+        "$(literal_move_option_u64 "$proposal_submission_cost")" \
+        "$(literal_move_option_u64 "$max_votes_per_user")" \
+        "$(literal_move_option_u64 "$quadratic_base_cost")" \
+        "$(literal_move_option_u64 "$voting_period_epochs")" \
+        "$(literal_move_option_u64 "$quorum_votes")" \
+        "$(literal_move_option_string "$cover")" \
+        "$media_arg" \
+        none \
         "$ref_clk")" || return 1
 
     digest="$(extract_tx_digest "$out")"
@@ -1429,6 +1523,31 @@ create_test_platform() {
         "$ref_cap" \
         none || return 1
 
+    PLATFORM_OBJECT_ID="$platform_id"
+    log_session_use "PLATFORM_OBJECT_ID" "$PLATFORM_OBJECT_ID"
+    printf '%s\n' "$PLATFORM_OBJECT_ID"
+}
+
+create_test_platform() {
+    local platform_id
+    # Defaults match prior promo E2E behavior (no DAO).
+    platform_id="$(create_and_approve_platform \
+        "Promo Platform ${SOCIAL_RUN_ID}" \
+        'Post promotion E2E' \
+        'Test platform for promoted post flows' \
+        "$SOCIAL_DEFAULT_PLATFORM_LOGO_URL" \
+        "$SOCIAL_DEFAULT_PLATFORM_COVER_PHOTO_URL" \
+        '' \
+        'https://example.com/terms' \
+        'https://example.com/privacy' \
+        '' \
+        'https://example.com' \
+        'Social Network' \
+        '' \
+        2 \
+        '2023-01-01' \
+        false \
+        '' '' '' '' '' '' '')" || return 1
     PLATFORM_OBJECT_ID="$(normalize_hex_id "$platform_id")"
     log_session_use "PLATFORM_OBJECT_ID" "$PLATFORM_OBJECT_ID"
 }

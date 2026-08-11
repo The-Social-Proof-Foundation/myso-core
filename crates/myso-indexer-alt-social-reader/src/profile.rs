@@ -144,7 +144,7 @@ async fn enrich_users_with_universal_data(
             spt.created_at as spt_created_at,
             spt.token_type as spt_token_type,
             ph.price as current_price,
-            ph24.price as price_24h_ago,
+            COALESCE(ph24.price, fp.price) as price_24h_ago,
             (COALESCE(vol24.vol, 0) + COALESCE(res_vol24.vol, 0))::bigint as volume_24h,
             COALESCE(rev.creator_earnings, 0)::bigint as creator_earnings,
             COALESCE(rev.platform_earnings, 0)::bigint as platform_earnings,
@@ -176,6 +176,11 @@ async fn enrich_users_with_universal_data(
             WHERE pool_id = spt.pool_id AND time <= NOW() - INTERVAL '24 hours'
             ORDER BY time DESC LIMIT 1
         ) ph24 ON spt.pool_id IS NOT NULL
+        LEFT JOIN LATERAL (
+            SELECT price FROM spt_price_history
+            WHERE pool_id = spt.pool_id
+            ORDER BY time ASC LIMIT 1
+        ) fp ON spt.pool_id IS NOT NULL
         LEFT JOIN LATERAL (
             SELECT COALESCE(SUM(myso_amount), 0)::bigint as vol FROM spt_transactions
             WHERE pool_id = spt.pool_id AND time >= NOW() - INTERVAL '24 hours'

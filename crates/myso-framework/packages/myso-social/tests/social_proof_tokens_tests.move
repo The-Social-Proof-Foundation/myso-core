@@ -4662,7 +4662,7 @@ CREATOR,
     #[expected_failure(abort_code = 31, location = social_contracts::social_proof_tokens)]
     fun test_swap_tokens_same_pool_aborts() {
         // Move cannot mutably borrow one pool twice at a call site; exercise the guard directly.
-        social_proof_tokens::assert_distinct_swap_pools_for_testing(@0xSAME, @0xSAME);
+        social_proof_tokens::assert_distinct_swap_pools_for_testing(@0xab, @0xab);
     }
 
     #[test]

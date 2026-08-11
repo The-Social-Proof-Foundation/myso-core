@@ -10738,6 +10738,9 @@ tip_repost
 tip_comment
 	public fun
 	0x50c1::post
+tip_comment_simple
+	public fun
+	0x50c1::post
 transfer_post_ownership
 	public fun
 	0x50c1::post
@@ -10805,6 +10808,9 @@ get_reaction_count
 	public fun
 	0x50c1::post
 get_tips_received
+	public fun
+	0x50c1::post
+get_comment_tips_received
 	public fun
 	0x50c1::post
 get_platform_id

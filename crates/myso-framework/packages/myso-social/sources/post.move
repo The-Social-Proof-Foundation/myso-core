@@ -74,7 +74,8 @@ module social_contracts::post {
     const EDisputeCapReached: u64 = 36;
     /// Escrow/vault redirect slice must use the `PoCBeneficiaryVault` whose beneficiary matches `revenue_redirect_to`.
     const EWrongBeneficiaryVault: u64 = 37;
-    /// [`tip_post_simple`] cannot deposit into an escrow vault; use [`tip_post`] with the vault for `revenue_redirect_to`.
+    /// [`tip_post_simple`] / [`tip_comment_simple`] cannot deposit into an escrow vault; use [`tip_post`] /
+    /// [`tip_comment`] with the vault for `revenue_redirect_to`.
     const ETipPostRequiresBeneficiaryVault: u64 = 38;
     /// Empty batch, length mismatch, or batch larger than `MAX_PROMOTION_VIEW_BATCH`
     const EInvalidBatch: u64 = 39;
@@ -3278,6 +3279,69 @@ module social_contracts::post {
         };
     }
 
+    /// Like [`tip_comment`] but without a `PoCBeneficiaryVault` / Clock / min vault deposit.
+    /// Only for posts where [`tip_post_requires_beneficiary_vault_for_amount`] is false for the
+    /// **post-owner slice** of this tip. If an escrow deposit is required, aborts with
+    /// [`ETipPostRequiresBeneficiaryVault`].
+    public fun tip_comment_simple<T>(
+        comment: &mut Comment,
+        post: &mut Post,
+        config: &PostConfig,
+        coin: &mut Coin<T>,
+        amount: u64,
+        memory_account: &MemoryAccount,
+        ctx: &mut TxContext
+    ) {
+        let tipper = tx_context::sender(ctx);
+        assert!(amount > 0 && coin::value(coin) >= amount, EInvalidTipAmount);
+        assert_tip_spend_limit(memory_account, amount, ctx);
+        assert!(tipper != comment.owner, ESelfTipping);
+        assert!(allow_tips(post), ETipsNotAllowed);
+        let commenter_amount = (amount * config.commenter_tip_percentage) / 100;
+        let post_owner_amount = amount - commenter_amount;
+        assert!(
+            !tip_post_requires_beneficiary_vault_for_amount(post, post_owner_amount),
+            ETipPostRequiresBeneficiaryVault
+        );
+        let commenter_tip = coin::split(coin, commenter_amount, ctx);
+        transfer::public_transfer(commenter_tip, comment.owner);
+        let po = post.owner;
+        let poid = object::uid_to_address(&post.id);
+        let ct = type_name::with_defining_ids<T>();
+        let post_owner_actual_received = apply_poc_redirection_coin_without_beneficiary_vault<T>(
+            post,
+            po,
+            post_owner_amount,
+            coin,
+            tipper,
+            poid,
+            true,
+            ctx
+        );
+        assert!(comment.tips_received <= MAX_U64 - commenter_amount, EOverflow);
+        comment.tips_received = comment.tips_received + commenter_amount;
+        assert!(post.tips_received <= MAX_U64 - post_owner_actual_received, EOverflow);
+        post.tips_received = post.tips_received + post_owner_actual_received;
+        event::emit(TipEvent {
+            object_id: object::uid_to_address(&comment.id),
+            from: tipper,
+            to: comment.owner,
+            amount: commenter_amount,
+            coin_type: ct,
+            is_post: false,
+        });
+        if (post_owner_actual_received > 0) {
+            event::emit(TipEvent {
+                object_id: poid,
+                from: tipper,
+                to: po,
+                amount: post_owner_actual_received,
+                coin_type: ct,
+                is_post: true,
+            });
+        };
+    }
+
     /// Transfer post ownership to another user (by post owner)
     public fun transfer_post_ownership(
         post: &mut Post,
@@ -3965,6 +4029,11 @@ module social_contracts::post {
     /// Get the tips received for a post
     public fun get_tips_received(post: &Post): u64 {
         post.tips_received
+    }
+
+    /// Get the tips received for a comment (commenter share of tip_comment / tip_comment_simple).
+    public fun get_comment_tips_received(comment: &Comment): u64 {
+        comment.tips_received
     }
 
     /// Get the platform ID for a post

@@ -14,11 +14,6 @@ use crate::error::SocialError;
 use crate::reader::types::PostBasicRow;
 use myso_pg_db::Db;
 
-const PROFILE_SEARCH_EXPR: &str =
-    "(coalesce(username, '') || ' ' || coalesce(display_name, '') || ' ' || coalesce(bio, ''))";
-const PLATFORM_SEARCH_EXPR: &str =
-    "(name || ' ' || coalesce(tagline, '') || ' ' || coalesce(description, ''))";
-
 #[derive(QueryableByName)]
 struct IdRow {
     #[diesel(sql_type = Integer)]
@@ -31,13 +26,23 @@ struct CountRow {
     cnt: i64,
 }
 
+/// Escape `%` / `_` and wrap as contains pattern `%q%`. Empty after trim → `None`.
+fn like_contains_pattern(q: &str) -> Option<String> {
+    let trimmed = q.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    let escaped = trimmed.replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_");
+    Some(format!("%{escaped}%"))
+}
+
 pub(crate) async fn search(db: &Db, q: &str, limit: i64) -> Result<serde_json::Value, SocialError> {
     let mut conn = db.connect().await?;
 
     let profiles_result = search_profiles_with_conn(&mut conn, q, limit).await?;
     let posts_result = search_posts_with_conn(&mut conn, q, limit).await?;
     let platforms_result = search_platforms_with_conn(&mut conn, q, limit).await?;
-    let platforms_count = count_platforms_bm25(&mut conn, q).await?;
+    let platforms_count = count_platforms_like(&mut conn, q).await?;
 
     Ok(serde_json::json!({
         "profiles": profiles_result,
@@ -52,37 +57,48 @@ async fn search_platforms_with_conn(
     q: &str,
     limit: i64,
 ) -> Result<Vec<Platform>, SocialError> {
-    let sql = format!(
-        r#"
+    let Some(pat) = like_contains_pattern(q) else {
+        return Ok(vec![]);
+    };
+    let sql = r#"
         SELECT id
         FROM platforms
         WHERE deleted_at IS NULL
-        ORDER BY {PLATFORM_SEARCH_EXPR} <@> $1
+          AND (
+            name ILIKE $1 ESCAPE '\'
+            OR coalesce(tagline, '') ILIKE $1 ESCAPE '\'
+            OR coalesce(description, '') ILIKE $1 ESCAPE '\'
+          )
+        ORDER BY name ASC
         LIMIT $2
-        "#
-    );
+    "#;
     let ids: Vec<IdRow> = diesel::sql_query(sql)
-        .bind::<Text, _>(q)
+        .bind::<Text, _>(&pat)
         .bind::<BigInt, _>(limit)
         .load(conn)
         .await?;
     load_platforms_ordered(conn, ids.into_iter().map(|r| r.id).collect()).await
 }
 
-async fn count_platforms_bm25(
+async fn count_platforms_like(
     conn: &mut diesel_async::AsyncPgConnection,
     q: &str,
 ) -> Result<i64, SocialError> {
-    let sql = format!(
-        r#"
+    let Some(pat) = like_contains_pattern(q) else {
+        return Ok(0);
+    };
+    let sql = r#"
         SELECT COUNT(*)::bigint AS cnt
         FROM platforms
         WHERE deleted_at IS NULL
-          AND {PLATFORM_SEARCH_EXPR} <@> $1 < 0
-        "#
-    );
+          AND (
+            name ILIKE $1 ESCAPE '\'
+            OR coalesce(tagline, '') ILIKE $1 ESCAPE '\'
+            OR coalesce(description, '') ILIKE $1 ESCAPE '\'
+          )
+    "#;
     let row: CountRow = diesel::sql_query(sql)
-        .bind::<Text, _>(q)
+        .bind::<Text, _>(&pat)
         .get_result(conn)
         .await?;
     Ok(row.cnt)
@@ -102,6 +118,7 @@ async fn search_profiles_with_conn(
     q: &str,
     limit: i64,
 ) -> Result<Vec<Profile>, SocialError> {
+    // 1) Exact: full wallet or full username
     let exact_sql = r#"
         SELECT id
         FROM profiles
@@ -113,40 +130,44 @@ async fn search_profiles_with_conn(
         .bind::<BigInt, _>(limit)
         .load(conn)
         .await?;
-    let mut exact =
-        load_profiles_ordered(conn, exact_ids.into_iter().map(|r| r.id).collect()).await?;
+    let mut out = load_profiles_ordered(conn, exact_ids.into_iter().map(|r| r.id).collect()).await?;
 
-    let exact_id_set: std::collections::HashSet<i32> = exact.iter().map(|p| p.id).collect();
-    let remaining = limit - exact.len() as i64;
+    let seen: std::collections::HashSet<i32> = out.iter().map(|p| p.id).collect();
+    let remaining = limit - out.len() as i64;
     if remaining <= 0 {
-        return Ok(exact.into_iter().take(limit as usize).collect());
+        return Ok(out.into_iter().take(limit as usize).collect());
     }
 
-    let overfetch = remaining + exact_id_set.len() as i64;
-    let bm25_sql = format!(
-        r#"
+    // 2) Substring ILIKE on address / username / display_name / bio
+    let Some(pat) = like_contains_pattern(q) else {
+        return Ok(out);
+    };
+    let overfetch = remaining + seen.len() as i64;
+    let like_sql = r#"
         SELECT id
         FROM profiles
-        ORDER BY {PROFILE_SEARCH_EXPR} <@> $1
+        WHERE owner_address ILIKE $1 ESCAPE '\'
+           OR coalesce(username, '') ILIKE $1 ESCAPE '\'
+           OR coalesce(display_name, '') ILIKE $1 ESCAPE '\'
+           OR coalesce(bio, '') ILIKE $1 ESCAPE '\'
+        ORDER BY username ASC NULLS LAST
         LIMIT $2
-        "#
-    );
-    let bm25_ids: Vec<IdRow> = diesel::sql_query(bm25_sql)
-        .bind::<Text, _>(q)
+    "#;
+    let like_ids: Vec<IdRow> = diesel::sql_query(like_sql)
+        .bind::<Text, _>(&pat)
         .bind::<BigInt, _>(overfetch)
         .load(conn)
         .await?;
-
-    let bm25_ids: Vec<i32> = bm25_ids
+    let like_ids: Vec<i32> = like_ids
         .into_iter()
         .map(|r| r.id)
-        .filter(|id| !exact_id_set.contains(id))
+        .filter(|id| !seen.contains(id))
         .take(remaining as usize)
         .collect();
 
-    let mut bm25_profiles = load_profiles_ordered(conn, bm25_ids).await?;
-    exact.append(&mut bm25_profiles);
-    Ok(exact)
+    let mut like_profiles = load_profiles_ordered(conn, like_ids).await?;
+    out.append(&mut like_profiles);
+    Ok(out)
 }
 
 async fn load_profiles_ordered(
@@ -203,8 +224,11 @@ async fn search_posts_with_conn(
     q: &str,
     limit: i64,
 ) -> Result<Vec<PostBasicRow>, SocialError> {
+    let Some(pat) = like_contains_pattern(q) else {
+        return Ok(vec![]);
+    };
     let candidate_limit = limit.saturating_mul(10).max(limit);
-    // Overfetch BM25 hits, keep latest version per post_id, re-rank by BM25 score.
+    // Overfetch LIKE hits, keep latest version per post_id.
     let query = r#"
         WITH candidates AS (
             SELECT post_id, owner, profile_id, content, post_type, created_at, deleted_at,
@@ -217,14 +241,18 @@ async fn search_posts_with_conn(
                    poc_oracle_address, poc_analyzed_at,
                    poc_outcome, poc_redirection_kind, poc_disputes_submitted,
                    NULL::text AS actor_address, sub_agent_id, action_identity_class,
-                   content <@> $1 AS bm25_score,
                    time,
                    ROW_NUMBER() OVER (PARTITION BY post_id ORDER BY time DESC) AS rn
             FROM (
                 SELECT *
                 FROM posts
                 WHERE deleted_at IS NULL
-                ORDER BY content <@> $1
+                  AND (
+                    coalesce(content, '') ILIKE $1 ESCAPE '\'
+                    OR coalesce(post_id, '') ILIKE $1 ESCAPE '\'
+                    OR coalesce(owner, '') ILIKE $1 ESCAPE '\'
+                  )
+                ORDER BY time DESC
                 LIMIT $2
             ) ranked_hits
         )
@@ -237,16 +265,40 @@ async fn search_posts_with_conn(
                actor_address, sub_agent_id, action_identity_class
         FROM candidates
         WHERE rn = 1
-        ORDER BY bm25_score
+        ORDER BY time DESC
         LIMIT $3
     "#;
 
     let results = diesel::sql_query(query)
-        .bind::<Text, _>(q)
+        .bind::<Text, _>(&pat)
         .bind::<BigInt, _>(candidate_limit)
         .bind::<BigInt, _>(limit)
         .load::<PostBasicRow>(conn)
         .await?;
 
     Ok(results)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::like_contains_pattern;
+
+    #[test]
+    fn contains_pattern_wraps_percent() {
+        assert_eq!(like_contains_pattern("bran").as_deref(), Some("%bran%"));
+    }
+
+    #[test]
+    fn contains_pattern_escapes_like_metachars() {
+        assert_eq!(
+            like_contains_pattern("br%an_").as_deref(),
+            Some("%br\\%an\\_%")
+        );
+    }
+
+    #[test]
+    fn contains_pattern_empty() {
+        assert_eq!(like_contains_pattern("   "), None);
+        assert_eq!(like_contains_pattern(""), None);
+    }
 }

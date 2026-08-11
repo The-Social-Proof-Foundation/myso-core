@@ -443,11 +443,18 @@ pub(crate) async fn get_spt_analytics_top_performers(
             FROM spt_price_history
             ORDER BY pool_id, time DESC
         ),
+        -- Baseline: true 24h-ago price, else first indexed price (since-open for young pools).
         previous_prices AS (
-            SELECT DISTINCT ON (pool_id) pool_id, price as previous_price
-            FROM spt_price_history
-            WHERE time < NOW() - INTERVAL '24 hours'
-            ORDER BY pool_id, time DESC
+            SELECT p.pool_id,
+                COALESCE(
+                    (SELECT price FROM spt_price_history h
+                     WHERE h.pool_id = p.pool_id AND h.time < NOW() - INTERVAL '24 hours'
+                     ORDER BY h.time DESC LIMIT 1),
+                    (SELECT price FROM spt_price_history h
+                     WHERE h.pool_id = p.pool_id
+                     ORDER BY h.time ASC LIMIT 1)
+                ) AS previous_price
+            FROM (SELECT DISTINCT pool_id FROM spt_pools) p
         ),
         current_volume AS (
             SELECT pool_id, COALESCE(SUM(myso_amount), 0) as vol

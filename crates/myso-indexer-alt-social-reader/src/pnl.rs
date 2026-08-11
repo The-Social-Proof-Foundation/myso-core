@@ -59,7 +59,7 @@ pub struct ProfilePnLWindowResult {
     pub reservation_net_myso: i64,
     /// SPT creator fee share credited in unified revenue (`revenue_source = spt`, `revenue_type = creator_fee`).
     pub spt_creator_fees_myso: i64,
-    /// Tips (`revenue_source = tips`).
+    /// Tips (`revenue_source = tips`), including `post_tip` and `comment_tip` revenue types.
     pub tips_myso: i64,
     /// Subscriptions (`revenue_source = subscription`).
     pub subscriptions_myso: i64,

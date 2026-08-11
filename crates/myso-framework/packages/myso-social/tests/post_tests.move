@@ -1555,4 +1555,215 @@ module social_contracts::post_tests {
         };
         test_scenario::end(scenario);
     }
+
+    #[test]
+    fun test_tip_comment_simple_no_redirect() {
+        let mut scenario = test_scenario::begin(USER1);
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            post::test_init(test_scenario::ctx(&mut scenario));
+        };
+        init_tip_test_profile(&mut scenario);
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            post::test_create_post(
+                USER1,
+                USER1,
+                TEST_PLATFORM_ID,
+                string::utf8(TEST_CONTENT),
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(clock);
+        };
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let post_obj = test_scenario::take_shared<Post>(&scenario);
+            let _ = post::test_create_comment(
+                USER3,
+                USER3,
+                object::uid_to_address(post::get_post_id(&post_obj)),
+                string::utf8(b"tip me"),
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(post_obj);
+            test_scenario::return_shared(clock);
+        };
+        test_scenario::next_tx(&mut scenario, USER2);
+        {
+            let mut post_obj = test_scenario::take_shared<Post>(&scenario);
+            let mut comment = test_scenario::take_shared<Comment>(&scenario);
+            let config = test_scenario::take_shared<PostConfig>(&scenario);
+            let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
+            let mut tip_coin = coin::mint_for_testing<MYSO>(100, test_scenario::ctx(&mut scenario));
+            // 80% commenter / 20% post owner; post-owner slice does not need vault
+            assert!(!post::tip_post_requires_beneficiary_vault_for_amount(&post_obj, 20), 0);
+            post::tip_comment_simple<MYSO>(
+                &mut comment,
+                &mut post_obj,
+                &config,
+                &mut tip_coin,
+                100,
+                &memory_account,
+                test_scenario::ctx(&mut scenario)
+            );
+            assert!(post::get_comment_tips_received(&comment) == 80, 1);
+            assert!(post::get_tips_received(&post_obj) == 20, 2);
+            test_scenario::return_shared(comment);
+            test_scenario::return_shared(post_obj);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(memory_account);
+            transfer::public_transfer(tip_coin, USER2);
+        };
+        test_scenario::next_tx(&mut scenario, USER3);
+        {
+            let c = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
+            assert!(coin::value(&c) == 80, 3);
+            test_scenario::return_to_sender(&scenario, c);
+        };
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_tip_comment_simple_wallet_redirect() {
+        let mut scenario = test_scenario::begin(USER1);
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            post::test_init(test_scenario::ctx(&mut scenario));
+        };
+        init_tip_test_profile(&mut scenario);
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            // Redirect post-owner tip slice to USER3 at 50%
+            post::test_create_post_with_revenue_redirect(
+                USER1,
+                USER1,
+                TEST_PLATFORM_ID,
+                string::utf8(TEST_CONTENT),
+                USER3,
+                50,
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(clock);
+        };
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let post_obj = test_scenario::take_shared<Post>(&scenario);
+            let _ = post::test_create_comment(
+                REGULAR_USER,
+                REGULAR_USER,
+                object::uid_to_address(post::get_post_id(&post_obj)),
+                string::utf8(b"tip me"),
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(post_obj);
+            test_scenario::return_shared(clock);
+        };
+        test_scenario::next_tx(&mut scenario, USER2);
+        {
+            let mut post_obj = test_scenario::take_shared<Post>(&scenario);
+            let mut comment = test_scenario::take_shared<Comment>(&scenario);
+            let config = test_scenario::take_shared<PostConfig>(&scenario);
+            let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
+            let mut tip_coin = coin::mint_for_testing<MYSO>(100, test_scenario::ctx(&mut scenario));
+            // post_owner_amount = 20; 50% wallet redirect → 10 remaining on post
+            assert!(!post::tip_post_requires_beneficiary_vault_for_amount(&post_obj, 20), 0);
+            post::tip_comment_simple<MYSO>(
+                &mut comment,
+                &mut post_obj,
+                &config,
+                &mut tip_coin,
+                100,
+                &memory_account,
+                test_scenario::ctx(&mut scenario)
+            );
+            assert!(post::get_comment_tips_received(&comment) == 80, 1);
+            assert!(post::get_tips_received(&post_obj) == 10, 2);
+            test_scenario::return_shared(comment);
+            test_scenario::return_shared(post_obj);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(memory_account);
+            transfer::public_transfer(tip_coin, USER2);
+        };
+        test_scenario::next_tx(&mut scenario, USER3);
+        {
+            let c = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
+            assert!(coin::value(&c) == 10, 3);
+            test_scenario::return_to_sender(&scenario, c);
+        };
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 38, location = social_contracts::post)]
+    fun test_tip_comment_simple_escrow_requires_vault() {
+        let mut scenario = test_scenario::begin(USER1);
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            post::test_init(test_scenario::ctx(&mut scenario));
+        };
+        init_tip_test_profile(&mut scenario);
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            post::test_create_post_with_escrow_redirect(
+                USER1,
+                USER1,
+                TEST_PLATFORM_ID,
+                string::utf8(TEST_CONTENT),
+                USER3,
+                50,
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(clock);
+        };
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let post_obj = test_scenario::take_shared<Post>(&scenario);
+            let _ = post::test_create_comment(
+                USER3,
+                USER3,
+                object::uid_to_address(post::get_post_id(&post_obj)),
+                string::utf8(b"tip me"),
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(post_obj);
+            test_scenario::return_shared(clock);
+        };
+        test_scenario::next_tx(&mut scenario, USER2);
+        {
+            let mut post_obj = test_scenario::take_shared<Post>(&scenario);
+            let mut comment = test_scenario::take_shared<Comment>(&scenario);
+            let config = test_scenario::take_shared<PostConfig>(&scenario);
+            let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
+            let mut tip_coin = coin::mint_for_testing<MYSO>(100, test_scenario::ctx(&mut scenario));
+            // post_owner_amount = 20 with 50% escrow → redirected 10 > 0
+            assert!(post::tip_post_requires_beneficiary_vault_for_amount(&post_obj, 20), 0);
+            post::tip_comment_simple<MYSO>(
+                &mut comment,
+                &mut post_obj,
+                &config,
+                &mut tip_coin,
+                100,
+                &memory_account,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(comment);
+            test_scenario::return_shared(post_obj);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(memory_account);
+            transfer::public_transfer(tip_coin, USER2);
+        };
+        test_scenario::end(scenario);
+    }
 }

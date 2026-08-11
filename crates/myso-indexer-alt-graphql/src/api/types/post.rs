@@ -792,6 +792,11 @@ impl CommentSummary {
         self.inner.comment_count
     }
 
+    /// Commenter tip earnings credited on-chain (`Comment.tips_received`).
+    async fn tips_received(&self) -> i64 {
+        self.inner.tips_received
+    }
+
     async fn attribution(&self) -> SocialAttribution {
         SocialAttribution::from_comment(&self.inner)
     }

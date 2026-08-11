@@ -236,13 +236,11 @@ After `delete_post` / `delete_comment` and indexer catch-up, confirm rows in `po
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/search` | BM25-ranked search across profiles, posts, and platforms (`?q=` required, `?limit=` optional) |
+| GET | `/search` | Substring (`ILIKE`) search across profiles, posts, and platforms (`?q=` required, `?limit=` optional) |
 
-Search uses Postgres `pg_textsearch` BM25 (`<@>`). Exact profile matches (wallet address / username) are returned first, then BM25-ranked free-text hits. Post results keep the latest version per `post_id`.
+Search uses Postgres `ILIKE` contains matching (`%q%`, with `%` / `_` escaped). Exact profile matches (wallet address / username) are returned first, then substring hits on username / display_name / bio (profiles), content / owner / post_id (posts), and name / tagline / description (platforms). Post results keep the latest version per `post_id`.
 
-Following / followers list filters (`?search=`) match wallet addresses with `ILIKE` and profile username/display_name/bio with BM25.
-
-Requires the social indexer Postgres image (`Dockerfile.postgres`), which installs `pg_textsearch` and preloads it alongside TimescaleDB. The schema migration `20260803140000_pg_textsearch_bm25` enables the extension and creates BM25 indexes.
+Following / followers list filters (`?search=`) match wallet addresses and profile username / display_name / bio with the same `ILIKE` substring pattern.
 
 ---
 

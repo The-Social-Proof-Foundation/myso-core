@@ -372,6 +372,13 @@ pub(crate) async fn get_spt_pool(
             ORDER BY time DESC
             LIMIT 1
         ),
+        -- Since-open fallback when no sample exists at/before now-24h (young pools).
+        first_price AS (
+            SELECT price FROM spt_price_history
+            WHERE pool_id = $1
+            ORDER BY time ASC
+            LIMIT 1
+        ),
         vol_24h AS (
             SELECT COALESCE(SUM(myso_amount), 0)::bigint as vol
             FROM spt_transactions
@@ -392,7 +399,7 @@ pub(crate) async fn get_spt_pool(
         SELECT p.pool_id, p.token_type, p.owner, p.associated_id,
                p.circulating_supply, p.base_price, p.quadratic_coefficient, p.created_at,
                p.time, p.transaction_id, COALESCE(lp.price, 0)::bigint as price,
-               ph24.price as price_24h_ago,
+               COALESCE(ph24.price, fp.price) as price_24h_ago,
                v.vol as volume_24h,
                r.creator_earnings,
                r.platform_earnings,
@@ -400,6 +407,7 @@ pub(crate) async fn get_spt_pool(
         FROM latest_pool p
         LEFT JOIN latest_price lp ON true
         LEFT JOIN price_24h ph24 ON true
+        LEFT JOIN first_price fp ON true
         LEFT JOIN vol_24h v ON true
         LEFT JOIN rev r ON true
     "#;
@@ -675,14 +683,16 @@ pub(crate) async fn list_spt_pools(
                 p.time,
                 p.transaction_id,
                 COALESCE(ph.price, 0)::bigint as price,
-                ph24.price as price_24h_ago,
+                COALESCE(ph24.price, fp.price) as price_24h_ago,
                 COALESCE(v.vol, 0)::bigint as volume_24h,
                 COALESCE(r.creator_earnings, 0)::bigint as creator_earnings,
                 COALESCE(r.platform_earnings, 0)::bigint as platform_earnings,
                 COALESCE(r.ecosystem_earnings, 0)::bigint as ecosystem_earnings,
                 (COALESCE(ph.price, 0)::numeric * p.circulating_supply::numeric) as market_cap,
-                CASE WHEN ph24.price IS NOT NULL AND ph24.price > 0
-                    THEN ((COALESCE(ph.price, 0) - ph24.price)::float / ph24.price * 100)
+                CASE WHEN COALESCE(ph24.price, fp.price) IS NOT NULL
+                          AND COALESCE(ph24.price, fp.price) > 0
+                    THEN ((COALESCE(ph.price, 0) - COALESCE(ph24.price, fp.price))::float
+                          / COALESCE(ph24.price, fp.price) * 100)
                     ELSE NULL
                 END as price_change_24h,
                 (COALESCE(r.creator_earnings, 0) + COALESCE(r.platform_earnings, 0) + COALESCE(r.ecosystem_earnings, 0))::bigint as total_earnings
@@ -696,6 +706,10 @@ pub(crate) async fn list_spt_pools(
                 WHERE pool_id = p.pool_id AND time <= NOW() - INTERVAL '24 hours'
                 ORDER BY time DESC LIMIT 1
             ) ph24 ON true
+            LEFT JOIN LATERAL (
+                SELECT price FROM spt_price_history
+                WHERE pool_id = p.pool_id ORDER BY time ASC LIMIT 1
+            ) fp ON true
             LEFT JOIN LATERAL (
                 SELECT COALESCE(SUM(myso_amount), 0)::bigint as vol
                 FROM spt_transactions

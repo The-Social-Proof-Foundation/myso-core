@@ -223,7 +223,7 @@ impl SptPool {
         BigInt::from(p * s)
     }
 
-    /// 24-hour price change (percentage).
+    /// Price change percentage vs ~24h ago, or vs first indexed price when the pool is younger than 24h.
     async fn price_change_24h(&self) -> Option<f64> {
         self.inner.price_24h_ago.and_then(|prev| {
             if prev > 0 {

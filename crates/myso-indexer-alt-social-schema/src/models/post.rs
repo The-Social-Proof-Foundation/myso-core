@@ -302,6 +302,7 @@ pub struct CommentRow {
     pub created_at: i64,
     pub reaction_count: i64,
     pub comment_count: i64,
+    pub tips_received: i64,
     pub actor_address: Option<String>,
     pub sub_agent_id: Option<String>,
     pub action_identity_class: Option<i16>,

@@ -257,6 +257,8 @@ pub(crate) async fn get_comment_by_id(
         reaction_count: Option<i64>,
         #[diesel(sql_type = Nullable<BigInt>)]
         comment_count: Option<i64>,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        tips_received: Option<i64>,
         #[diesel(sql_type = Nullable<Text>)]
         actor_address: Option<String>,
         #[diesel(sql_type = Nullable<Text>)]
@@ -268,8 +270,8 @@ pub(crate) async fn get_comment_by_id(
     }
     let query = "
         SELECT comment_id, post_id, parent_comment_id, owner, profile_id, content, created_at,
-               reaction_count, comment_count, actor_address, sub_agent_id, action_identity_class,
-               organization_id
+               reaction_count, comment_count, tips_received, actor_address, sub_agent_id,
+               action_identity_class, organization_id
         FROM comments
         WHERE (comment_id = $1 OR id = $1) AND deleted_at IS NULL
         ORDER BY created_at DESC
@@ -291,6 +293,7 @@ pub(crate) async fn get_comment_by_id(
         created_at: r.created_at,
         reaction_count: r.reaction_count.unwrap_or(0),
         comment_count: r.comment_count.unwrap_or(0),
+        tips_received: r.tips_received.unwrap_or(0),
         actor_address: r.actor_address,
         sub_agent_id: r.sub_agent_id,
         action_identity_class: r.action_identity_class,
@@ -501,6 +504,8 @@ pub(crate) async fn get_post_comments(
         reaction_count: Option<i64>,
         #[diesel(sql_type = Nullable<BigInt>)]
         comment_count: Option<i64>,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        tips_received: Option<i64>,
         #[diesel(sql_type = Nullable<Text>)]
         actor_address: Option<String>,
         #[diesel(sql_type = Nullable<Text>)]
@@ -512,8 +517,8 @@ pub(crate) async fn get_post_comments(
     }
     let query = "
         SELECT comment_id, post_id, parent_comment_id, owner, profile_id, content, created_at,
-               reaction_count, comment_count, actor_address, sub_agent_id, action_identity_class,
-               organization_id
+               reaction_count, comment_count, tips_received, actor_address, sub_agent_id,
+               action_identity_class, organization_id
         FROM comments
         WHERE post_id = $1 AND deleted_at IS NULL
         ORDER BY created_at DESC
@@ -538,6 +543,7 @@ pub(crate) async fn get_post_comments(
             created_at: r.created_at,
             reaction_count: r.reaction_count.unwrap_or(0),
             comment_count: r.comment_count.unwrap_or(0),
+            tips_received: r.tips_received.unwrap_or(0),
             actor_address: r.actor_address,
             sub_agent_id: r.sub_agent_id,
             action_identity_class: r.action_identity_class,

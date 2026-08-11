@@ -931,6 +931,7 @@ impl SocialProofToken {
             .and_then(|s| BigInt::from_str(s).ok())
     }
 
+    /// Price change percentage vs ~24h ago, or vs first indexed price when the pool is younger than 24h.
     async fn price_change_24h(&self) -> Option<f64> {
         self.inner.price_change_24h
     }

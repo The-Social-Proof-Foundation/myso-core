@@ -1789,31 +1789,113 @@ mod tests {
 
     #[test]
     fn tip_event_comment_uses_recipient_for_owner_match() {
+        let commenter = "0x8a8d7490ab0dee5e6a0092a463ade496a1352d89b5091e96e3d356d4f8577f72";
+        let comment_id = "0xccc00000000000000000000000000000000000000000000000000000cccc";
         let data = serde_json::json!({
-            "object_id": "0xccc00000000000000000000000000000000000000000000000000000cccc",
+            "object_id": comment_id,
             "from": "0x2458950181e415250823d6ce1d55f2b3427826a111939e0d6d38e9a1397411d8",
-            "to": "0x8a8d7490ab0dee5e6a0092a463ade496a1352d89b5091e96e3d356d4f8577f72",
+            "to": commenter,
             "amount": 800_u64,
             "is_post": false,
             "tip_time": 0u64,
         });
         let rows =
             handle_post_event("TipEvent", &data, "tx:tip2", &HashMap::new(), CK_MS).expect("rows");
+        assert_eq!(rows.len(), 3);
         let SocialEventRow::Tip(tip_row) = &rows[0] else {
             panic!("expected Tip");
         };
         assert_eq!(tip_row.coin_type, CURRENCY_MYSO);
+        assert!(!tip_row.is_post);
+        assert_eq!(tip_row.amount, 800);
         let SocialEventRow::PostTipsReceivedIncrement {
-            recipient, is_post, ..
+            recipient, is_post, amount, ..
         } = &rows[1]
         else {
             panic!("expected PostTipsReceivedIncrement");
         };
         assert!(!*is_post);
-        assert_eq!(
-            recipient,
-            "0x8a8d7490ab0dee5e6a0092a463ade496a1352d89b5091e96e3d356d4f8577f72"
-        );
+        assert_eq!(*amount, 800);
+        assert_eq!(recipient, commenter);
+        let SocialEventRow::UnifiedRevenue(rev) = &rows[2] else {
+            panic!("expected UnifiedRevenue");
+        };
+        assert_eq!(rev.revenue_source, "tips");
+        assert_eq!(rev.revenue_type, REVENUE_TYPE_TIPS_COMMENT);
+        assert_eq!(rev.content_type.as_deref(), Some(CONTENT_TYPE_COMMENT));
+        assert_eq!(rev.recipient_address, commenter);
+        assert_eq!(rev.content_id.as_deref(), Some(comment_id));
+        assert_eq!(rev.amount, 800);
+    }
+
+    /// `tip_comment` / `tip_comment_simple` emit two TipEvents; both must land in unified_revenue
+    /// so Profile PnL `tips_myso` (revenue_source = tips) credits commenter and post owner.
+    #[test]
+    fn tip_comment_dual_legs_yield_comment_tip_and_post_tip_revenue() {
+        let tipper = "0x2458950181e415250823d6ce1d55f2b3427826a111939e0d6d38e9a1397411d8";
+        let commenter = "0x8a8d7490ab0dee5e6a0092a463ade496a1352d89b5091e96e3d356d4f8577f72";
+        let post_owner = "0x1111111111111111111111111111111111111111111111111111111111111111";
+        let comment_id = "0xccc00000000000000000000000000000000000000000000000000000cccc";
+        let post_id = "0xa7953fb1af6d0495b3da10d4d25888158e8dc451fa5354a9723dc70676d38f3d";
+
+        let comment_leg = serde_json::json!({
+            "object_id": comment_id,
+            "from": tipper,
+            "to": commenter,
+            "amount": 80_u64,
+            "is_post": false,
+            "tip_time": 0u64,
+        });
+        let post_leg = serde_json::json!({
+            "object_id": post_id,
+            "from": tipper,
+            "to": post_owner,
+            "amount": 20_u64,
+            "is_post": true,
+            "tip_time": 0u64,
+        });
+
+        let comment_rows =
+            handle_post_event("TipEvent", &comment_leg, "tx:cmt:0", &HashMap::new(), CK_MS)
+                .expect("comment tip rows");
+        let post_rows =
+            handle_post_event("TipEvent", &post_leg, "tx:cmt:1", &HashMap::new(), CK_MS)
+                .expect("post tip rows");
+
+        let SocialEventRow::UnifiedRevenue(comment_rev) = &comment_rows[2] else {
+            panic!("expected comment UnifiedRevenue");
+        };
+        assert_eq!(comment_rev.revenue_source, "tips");
+        assert_eq!(comment_rev.revenue_type, REVENUE_TYPE_TIPS_COMMENT);
+        assert_eq!(comment_rev.content_type.as_deref(), Some(CONTENT_TYPE_COMMENT));
+        assert_eq!(comment_rev.recipient_address, commenter);
+        assert_eq!(comment_rev.amount, 80);
+
+        let SocialEventRow::UnifiedRevenue(post_rev) = &post_rows[2] else {
+            panic!("expected post UnifiedRevenue");
+        };
+        assert_eq!(post_rev.revenue_source, "tips");
+        assert_eq!(post_rev.revenue_type, REVENUE_TYPE_TIPS_POST);
+        assert_eq!(post_rev.content_type.as_deref(), Some(CONTENT_TYPE_POST));
+        assert_eq!(post_rev.recipient_address, post_owner);
+        assert_eq!(post_rev.amount, 20);
+
+        let SocialEventRow::PostTipsReceivedIncrement {
+            is_post: comment_is_post,
+            ..
+        } = &comment_rows[1]
+        else {
+            panic!("expected comment tips_received increment");
+        };
+        let SocialEventRow::PostTipsReceivedIncrement {
+            is_post: post_is_post,
+            ..
+        } = &post_rows[1]
+        else {
+            panic!("expected post tips_received increment");
+        };
+        assert!(!*comment_is_post);
+        assert!(*post_is_post);
     }
 
     #[test]
@@ -1866,6 +1948,13 @@ mod tests {
             object_id,
             "0xa7953fb1af6d0495b3da10d4d25888158e8dc451fa5354a9723dc70676d38f3d"
         );
+        let SocialEventRow::UnifiedRevenue(rev) = &rows[2] else {
+            panic!("expected UnifiedRevenue");
+        };
+        assert_eq!(rev.revenue_source, "tips");
+        assert_eq!(rev.revenue_type, REVENUE_TYPE_TIPS_POST);
+        assert_eq!(rev.content_type.as_deref(), Some(CONTENT_TYPE_POST));
+        assert_eq!(rev.amount, 5_000_000_000);
     }
 
     #[test]
