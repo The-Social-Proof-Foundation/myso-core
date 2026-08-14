@@ -361,8 +361,15 @@ module social_contracts::media_asset {
         linked_existing: bool,
         content_commitment: vector<u8>,
         media_type: u8,
+        asset_kind: u8,
+        registered_by: address,
         originality_status: u8,
         lineage_parent_id: Option<ID>,
+        /// False for dedup links because finalization does not borrow the existing object.
+        rights_snapshot_available: bool,
+        usage_grants: vector<UsageGrant>,
+        creators: vector<address>,
+        controllers: vector<address>,
         oracle_address: address,
         timestamp: u64,
     }
@@ -385,6 +392,9 @@ module social_contracts::media_asset {
     public struct MediaAssetRightsUpdatedEvent has copy, drop {
         media_asset_id: ID,
         rights_version: u64,
+        usage_grants: vector<UsageGrant>,
+        creators: vector<address>,
+        controllers: vector<address>,
         timestamp: u64,
     }
 
@@ -733,6 +743,20 @@ module social_contracts::media_asset {
         interests
     }
 
+    fun controller_addresses(interests: &vector<RightsInterest>): vector<address> {
+        let mut controllers = vector[];
+        let len = vector::length(interests);
+        let mut i = 0;
+        while (i < len) {
+            let controller = vector::borrow(interests, i).controller;
+            if (!vector::contains(&controllers, &controller)) {
+                vector::push_back(&mut controllers, controller);
+            };
+            i = i + 1;
+        };
+        controllers
+    }
+
     fun resolve_beneficiaries_from_claims(claims: &vector<Claim>): vector<address> {
         let mut beneficiaries = vector[];
         let len = vector::length(claims);
@@ -1007,8 +1031,14 @@ module social_contracts::media_asset {
                 linked_existing: true,
                 content_commitment,
                 media_type,
+                asset_kind,
+                registered_by: submitter,
                 originality_status,
                 lineage_parent_id,
+                rights_snapshot_available: false,
+                usage_grants: vector[],
+                creators: vector[],
+                controllers: vector[],
                 oracle_address: oracle,
                 timestamp: now,
             });
@@ -1056,8 +1086,14 @@ module social_contracts::media_asset {
                 linked_existing: false,
                 content_commitment: asset.content_commitment,
                 media_type: asset.media_type,
+                asset_kind: asset.asset_kind,
+                registered_by: asset.registered_by,
                 originality_status,
                 lineage_parent_id,
+                rights_snapshot_available: true,
+                usage_grants: asset.usage_grants,
+                creators: asset.creators,
+                controllers: controller_addresses(&asset.rights_interests),
                 oracle_address: oracle,
                 timestamp: now,
             });
@@ -1083,6 +1119,9 @@ module social_contracts::media_asset {
         event::emit(MediaAssetRightsUpdatedEvent {
             media_asset_id: object::id(asset),
             rights_version: asset.rights_version,
+            usage_grants: asset.usage_grants,
+            creators: asset.creators,
+            controllers: controller_addresses(&asset.rights_interests),
             timestamp: now,
         });
     }
@@ -1120,6 +1159,9 @@ module social_contracts::media_asset {
         event::emit(MediaAssetRightsUpdatedEvent {
             media_asset_id: asset_id,
             rights_version: asset.rights_version,
+            usage_grants: asset.usage_grants,
+            creators: asset.creators,
+            controllers: controller_addresses(&asset.rights_interests),
             timestamp: now,
         });
     }
@@ -1707,6 +1749,9 @@ module social_contracts::media_asset {
         event::emit(MediaAssetRightsUpdatedEvent {
             media_asset_id: child_id,
             rights_version: child.rights_version,
+            usage_grants: child.usage_grants,
+            creators: child.creators,
+            controllers: controller_addresses(&child.rights_interests),
             timestamp: clock::timestamp_ms(clock),
         });
     }
@@ -1734,6 +1779,9 @@ module social_contracts::media_asset {
         event::emit(MediaAssetRightsUpdatedEvent {
             media_asset_id: object::id(asset),
             rights_version: asset.rights_version,
+            usage_grants: asset.usage_grants,
+            creators: asset.creators,
+            controllers: controller_addresses(&asset.rights_interests),
             timestamp: clock::timestamp_ms(clock),
         });
     }

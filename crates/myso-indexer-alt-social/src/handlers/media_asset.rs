@@ -42,6 +42,10 @@ struct MediaAssetResolvedEvent {
     content_commitment: serde_json::Value,
     media_type: u8,
     #[serde(default)]
+    asset_kind: u8,
+    #[serde(default)]
+    registered_by: Option<String>,
+    #[serde(default)]
     originality_status: u8,
     lineage_parent_id: Option<String>,
     #[serde(default)]
@@ -137,7 +141,9 @@ fn process_media_asset_resolved_event(
     }
     let content_commitment = bytes_from_json(&ev.content_commitment)?;
     let registered_by = ev
-        .oracle_address
+        .registered_by
+        .filter(|s| !s.is_empty())
+        .or(ev.oracle_address)
         .filter(|s| !s.is_empty())
         .or_else(|| tx_sender.filter(|s| !s.is_empty()).map(str::to_string))
         .unwrap_or_else(|| "unknown".to_string());
@@ -146,7 +152,7 @@ fn process_media_asset_resolved_event(
         media_asset_id: ev.media_asset_id,
         content_commitment,
         media_type: i16::from(ev.media_type),
-        asset_kind: 0,
+        asset_kind: i16::from(ev.asset_kind),
         originality_status: i16::from(ev.originality_status),
         provenance_status: 0,
         lineage_parent_id: ev.lineage_parent_id,

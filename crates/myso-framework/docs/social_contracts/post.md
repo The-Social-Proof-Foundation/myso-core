@@ -148,8 +148,6 @@ Implements features like comments, reposts, and quotes
 -  [Function `apply_denials_to_snapshot`](#social_contracts_post_apply_denials_to_snapshot)
 -  [Function `evaluate_binding_policy`](#social_contracts_post_evaluate_binding_policy)
 -  [Function `refresh_composition_status_from_decisions`](#social_contracts_post_refresh_composition_status_from_decisions)
--  [Function `decision_for_binding`](#social_contracts_post_decision_for_binding)
--  [Function `usage_is_payout_permitted_for_asset`](#social_contracts_post_usage_is_payout_permitted_for_asset)
 -  [Function `validate_binding`](#social_contracts_post_validate_binding)
 -  [Function `write_usage_decision_for_binding`](#social_contracts_post_write_usage_decision_for_binding)
 -  [Function `record_embedded_bindings`](#social_contracts_post_record_embedded_bindings)
@@ -618,17 +616,7 @@ Phase 4 — embedded asset binding on a post container.
 <dd>
 </dd>
 <dt>
-<code>policy_payout_permitted: bool</code>
-</dt>
-<dd>
-</dd>
-<dt>
 <code>playback_permitted: bool</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>payout_permitted: bool</code>
 </dt>
 <dd>
 </dd>
@@ -746,17 +734,7 @@ Phase 4 — embedded asset binding on a post container.
 <dd>
 </dd>
 <dt>
-<code>policy_payout_permitted: bool</code>
-</dt>
-<dd>
-</dd>
-<dt>
 <code>playback_permitted: bool</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>payout_permitted: bool</code>
 </dt>
 <dd>
 </dd>
@@ -3766,15 +3744,6 @@ Application enforcement — policy reason codes for usage decision snapshots.
 
 
 <pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_DENIAL_SCOPE_PLAYBACK">DENIAL_SCOPE_PLAYBACK</a>: u8 = 1;
-</code></pre>
-
-
-
-<a name="social_contracts_post_DENIAL_SCOPE_PAYOUT"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_DENIAL_SCOPE_PAYOUT">DENIAL_SCOPE_PAYOUT</a>: u8 = 2;
 </code></pre>
 
 
@@ -7597,39 +7566,31 @@ Manifest-based revenue split for tips and fees on the creator-attributable pool.
         <b>let</b> e = vector::borrow(entries, i);
         <b>let</b> slice = (amount * <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_share_bps">media_asset::manifest_entry_share_bps</a>(e)) / bps_total;
         <b>if</b> (slice &gt; 0) {
-            <b>let</b> source_opt = <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_source_asset_id">media_asset::manifest_entry_source_asset_id</a>(e);
-            <b>let</b> skip_payout = <b>if</b> (option::is_some(&source_opt)) {
-                !<a href="../social_contracts/post.md#social_contracts_post_usage_is_payout_permitted_for_asset">usage_is_payout_permitted_for_asset</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, *option::borrow(&source_opt))
+            <b>let</b> pay_coins = coin::split(&<b>mut</b> tip_coins, slice, ctx);
+            <b>if</b> (<a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_payout_mode">media_asset::manifest_entry_payout_mode</a>(e) == <a href="../social_contracts/media_asset.md#social_contracts_media_asset_payout_escrow">media_asset::payout_escrow</a>()) {
+                <b>assert</b>!(<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_beneficiary_address">poc_vault::beneficiary_address</a>(beneficiary_vault) == <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_beneficiary">media_asset::manifest_entry_beneficiary</a>(e), <a href="../social_contracts/post.md#social_contracts_post_EWrongBeneficiaryVault">EWrongBeneficiaryVault</a>);
+                <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_deposit_coin">poc_vault::deposit_coin</a>&lt;T&gt;(
+                    beneficiary_vault,
+                    <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_beneficiary">media_asset::manifest_entry_beneficiary</a>(e),
+                    pay_coins,
+                    option::some(object_id),
+                    min_vault_deposit_amount,
+                    clock,
+                    ctx
+                );
             } <b>else</b> {
-                <b>false</b>
+                transfer::public_transfer(pay_coins, <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_beneficiary">media_asset::manifest_entry_beneficiary</a>(e));
+                event::emit(<a href="../social_contracts/post.md#social_contracts_post_TipEvent">TipEvent</a> {
+                    object_id,
+                    from: tipper,
+                    to: <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_beneficiary">media_asset::manifest_entry_beneficiary</a>(e),
+                    amount: slice,
+                    coin_type,
+                    is_post: is_post_event,
+                });
             };
-            <b>if</b> (!skip_payout) {
-                <b>let</b> pay_coins = coin::split(&<b>mut</b> tip_coins, slice, ctx);
-                <b>if</b> (<a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_payout_mode">media_asset::manifest_entry_payout_mode</a>(e) == <a href="../social_contracts/media_asset.md#social_contracts_media_asset_payout_escrow">media_asset::payout_escrow</a>()) {
-                    <b>assert</b>!(<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_beneficiary_address">poc_vault::beneficiary_address</a>(beneficiary_vault) == <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_beneficiary">media_asset::manifest_entry_beneficiary</a>(e), <a href="../social_contracts/post.md#social_contracts_post_EWrongBeneficiaryVault">EWrongBeneficiaryVault</a>);
-                    <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_deposit_coin">poc_vault::deposit_coin</a>&lt;T&gt;(
-                        beneficiary_vault,
-                        <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_beneficiary">media_asset::manifest_entry_beneficiary</a>(e),
-                        pay_coins,
-                        option::some(object_id),
-                        min_vault_deposit_amount,
-                        clock,
-                        ctx
-                    );
-                } <b>else</b> {
-                    transfer::public_transfer(pay_coins, <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_beneficiary">media_asset::manifest_entry_beneficiary</a>(e));
-                    event::emit(<a href="../social_contracts/post.md#social_contracts_post_TipEvent">TipEvent</a> {
-                        object_id,
-                        from: tipper,
-                        to: <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_beneficiary">media_asset::manifest_entry_beneficiary</a>(e),
-                        amount: slice,
-                        coin_type,
-                        is_post: is_post_event,
-                    });
-                };
-                <b>if</b> (<a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_beneficiary">media_asset::manifest_entry_beneficiary</a>(e) == intended_recipient) {
-                    owner_received = owner_received + slice;
-                };
+            <b>if</b> (<a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_beneficiary">media_asset::manifest_entry_beneficiary</a>(e) == intended_recipient) {
+                owner_received = owner_received + slice;
             };
         };
         i = i + 1;
@@ -7703,29 +7664,21 @@ Same as [<code><a href="../social_contracts/post.md#social_contracts_post_apply_
         <b>let</b> e = vector::borrow(entries, i);
         <b>let</b> slice = (amount * <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_share_bps">media_asset::manifest_entry_share_bps</a>(e)) / bps_total;
         <b>if</b> (slice &gt; 0) {
-            <b>let</b> source_opt = <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_source_asset_id">media_asset::manifest_entry_source_asset_id</a>(e);
-            <b>let</b> skip_payout = <b>if</b> (option::is_some(&source_opt)) {
-                !<a href="../social_contracts/post.md#social_contracts_post_usage_is_payout_permitted_for_asset">usage_is_payout_permitted_for_asset</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, *option::borrow(&source_opt))
-            } <b>else</b> {
-                <b>false</b>
+            <b>if</b> (<a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_payout_mode">media_asset::manifest_entry_payout_mode</a>(e) == <a href="../social_contracts/media_asset.md#social_contracts_media_asset_payout_escrow">media_asset::payout_escrow</a>()) {
+                <b>abort</b> <a href="../social_contracts/post.md#social_contracts_post_ETipPostRequiresBeneficiaryVault">ETipPostRequiresBeneficiaryVault</a>
             };
-            <b>if</b> (!skip_payout) {
-                <b>if</b> (<a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_payout_mode">media_asset::manifest_entry_payout_mode</a>(e) == <a href="../social_contracts/media_asset.md#social_contracts_media_asset_payout_escrow">media_asset::payout_escrow</a>()) {
-                    <b>abort</b> <a href="../social_contracts/post.md#social_contracts_post_ETipPostRequiresBeneficiaryVault">ETipPostRequiresBeneficiaryVault</a>
-                };
-                <b>let</b> pay_coins = coin::split(&<b>mut</b> tip_coins, slice, ctx);
-                transfer::public_transfer(pay_coins, <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_beneficiary">media_asset::manifest_entry_beneficiary</a>(e));
-                event::emit(<a href="../social_contracts/post.md#social_contracts_post_TipEvent">TipEvent</a> {
-                    object_id,
-                    from: tipper,
-                    to: <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_beneficiary">media_asset::manifest_entry_beneficiary</a>(e),
-                    amount: slice,
-                    coin_type,
-                    is_post: is_post_event,
-                });
-                <b>if</b> (<a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_beneficiary">media_asset::manifest_entry_beneficiary</a>(e) == intended_recipient) {
-                    owner_received = owner_received + slice;
-                };
+            <b>let</b> pay_coins = coin::split(&<b>mut</b> tip_coins, slice, ctx);
+            transfer::public_transfer(pay_coins, <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_beneficiary">media_asset::manifest_entry_beneficiary</a>(e));
+            event::emit(<a href="../social_contracts/post.md#social_contracts_post_TipEvent">TipEvent</a> {
+                object_id,
+                from: tipper,
+                to: <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_beneficiary">media_asset::manifest_entry_beneficiary</a>(e),
+                amount: slice,
+                coin_type,
+                is_post: is_post_event,
+            });
+            <b>if</b> (<a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_beneficiary">media_asset::manifest_entry_beneficiary</a>(e) == intended_recipient) {
+                owner_received = owner_received + slice;
             };
         };
         i = i + 1;
@@ -8119,7 +8072,7 @@ Same as [<code><a href="../social_contracts/post.md#social_contracts_post_apply_
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_apply_denials_to_snapshot">apply_denials_to_snapshot</a>(policy_playback: bool, policy_payout: bool, denials: &vector&lt;<a href="../social_contracts/post.md#social_contracts_post_ContainerUsageDenial">social_contracts::post::ContainerUsageDenial</a>&gt;, binding_id: u64): (bool, bool)
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_apply_denials_to_snapshot">apply_denials_to_snapshot</a>(policy_playback: bool, denials: &vector&lt;<a href="../social_contracts/post.md#social_contracts_post_ContainerUsageDenial">social_contracts::post::ContainerUsageDenial</a>&gt;, binding_id: u64): bool
 </code></pre>
 
 
@@ -8130,27 +8083,20 @@ Same as [<code><a href="../social_contracts/post.md#social_contracts_post_apply_
 
 <pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_apply_denials_to_snapshot">apply_denials_to_snapshot</a>(
     policy_playback: bool,
-    policy_payout: bool,
     denials: &vector&lt;<a href="../social_contracts/post.md#social_contracts_post_ContainerUsageDenial">ContainerUsageDenial</a>&gt;,
     binding_id: u64,
-): (bool, bool) {
+): bool {
     <b>let</b> <b>mut</b> playback = policy_playback;
-    <b>let</b> <b>mut</b> payout = policy_payout;
     <b>let</b> len = vector::length(denials);
     <b>let</b> <b>mut</b> i = 0;
     <b>while</b> (i &lt; len) {
         <b>let</b> d = vector::borrow(denials, i);
-        <b>if</b> (d.binding_id == binding_id) {
-            <b>if</b> (d.denial_scope == <a href="../social_contracts/post.md#social_contracts_post_DENIAL_SCOPE_PLAYBACK">DENIAL_SCOPE_PLAYBACK</a>) {
-                playback = <b>false</b>;
-            };
-            <b>if</b> (d.denial_scope == <a href="../social_contracts/post.md#social_contracts_post_DENIAL_SCOPE_PAYOUT">DENIAL_SCOPE_PAYOUT</a>) {
-                payout = <b>false</b>;
-            };
+        <b>if</b> (d.binding_id == binding_id && d.denial_scope == <a href="../social_contracts/post.md#social_contracts_post_DENIAL_SCOPE_PLAYBACK">DENIAL_SCOPE_PLAYBACK</a>) {
+            playback = <b>false</b>;
         };
         i = i + 1;
     };
-    (playback, payout)
+    playback
 }
 </code></pre>
 
@@ -8164,7 +8110,7 @@ Same as [<code><a href="../social_contracts/post.md#social_contracts_post_apply_
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_evaluate_binding_policy">evaluate_binding_policy</a>(asset: &<a href="../social_contracts/media_asset.md#social_contracts_media_asset_MediaAsset">social_contracts::media_asset::MediaAsset</a>, usage_class: u8, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>): (bool, bool, u8, u64)
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_evaluate_binding_policy">evaluate_binding_policy</a>(asset: &<a href="../social_contracts/media_asset.md#social_contracts_media_asset_MediaAsset">social_contracts::media_asset::MediaAsset</a>, usage_class: u8, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>): (bool, u8, u64)
 </code></pre>
 
 
@@ -8177,7 +8123,7 @@ Same as [<code><a href="../social_contracts/post.md#social_contracts_post_apply_
     asset: &MediaAsset,
     usage_class: u8,
     clock: &Clock,
-): (bool, bool, u8, u64) {
+): (bool, u8, u64) {
     <b>let</b> <a href="../social_contracts/post.md#social_contracts_post_version">version</a> = <b>if</b> (option::is_some(&<a href="../social_contracts/media_asset.md#social_contracts_media_asset_resolved_policy_version">media_asset::resolved_policy_version</a>(asset))) {
         *option::borrow(&<a href="../social_contracts/media_asset.md#social_contracts_media_asset_resolved_policy_version">media_asset::resolved_policy_version</a>(asset))
     } <b>else</b> {
@@ -8185,13 +8131,12 @@ Same as [<code><a href="../social_contracts/post.md#social_contracts_post_apply_
     };
     <b>let</b> grant_playback = <a href="../social_contracts/media_asset.md#social_contracts_media_asset_rights_permits_usage">media_asset::rights_permits_usage</a>(asset, usage_class, clock);
     <b>if</b> (!grant_playback) {
-        <b>return</b> (<b>false</b>, <b>false</b>, <a href="../social_contracts/post.md#social_contracts_post_REASON_NO_GRANT">REASON_NO_GRANT</a>, <a href="../social_contracts/post.md#social_contracts_post_version">version</a>)
+        <b>return</b> (<b>false</b>, <a href="../social_contracts/post.md#social_contracts_post_REASON_NO_GRANT">REASON_NO_GRANT</a>, <a href="../social_contracts/post.md#social_contracts_post_version">version</a>)
     };
     <b>if</b> (!<a href="../social_contracts/media_asset.md#social_contracts_media_asset_resolved_policy_permits_usage">media_asset::resolved_policy_permits_usage</a>(asset, usage_class)) {
-        <b>return</b> (<b>false</b>, <b>false</b>, <a href="../social_contracts/post.md#social_contracts_post_REASON_RESOLVED_POLICY">REASON_RESOLVED_POLICY</a>, <a href="../social_contracts/post.md#social_contracts_post_version">version</a>)
+        <b>return</b> (<b>false</b>, <a href="../social_contracts/post.md#social_contracts_post_REASON_RESOLVED_POLICY">REASON_RESOLVED_POLICY</a>, <a href="../social_contracts/post.md#social_contracts_post_version">version</a>)
     };
-    <b>let</b> grant_payout = <a href="../social_contracts/media_asset.md#social_contracts_media_asset_usage_allows_paid_exploitation">media_asset::usage_allows_paid_exploitation</a>(asset, usage_class, clock);
-    (<b>true</b>, grant_payout, <a href="../social_contracts/post.md#social_contracts_post_REASON_ALLOWED">REASON_ALLOWED</a>, <a href="../social_contracts/post.md#social_contracts_post_version">version</a>)
+    (<b>true</b>, <a href="../social_contracts/post.md#social_contracts_post_REASON_ALLOWED">REASON_ALLOWED</a>, <a href="../social_contracts/post.md#social_contracts_post_version">version</a>)
 }
 </code></pre>
 
@@ -8225,7 +8170,7 @@ Same as [<code><a href="../social_contracts/post.md#social_contracts_post_apply_
     <b>let</b> <b>mut</b> i = 0;
     <b>while</b> (i &lt; len) {
         <b>let</b> d = vector::borrow(&decisions, i);
-        <b>let</b> restricted = !d.playback_permitted || !d.payout_permitted;
+        <b>let</b> restricted = !d.playback_permitted;
         <b>if</b> (restricted) {
             any_restricted = <b>true</b>;
         } <b>else</b> {
@@ -8238,79 +8183,6 @@ Same as [<code><a href="../social_contracts/post.md#social_contracts_post_apply_
     } <b>else</b> <b>if</b> (any_restricted) {
         <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_composition_status">composition_status</a> = <a href="../social_contracts/media_asset.md#social_contracts_media_asset_composition_partially_restricted">media_asset::composition_partially_restricted</a>();
     };
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_post_decision_for_binding"></a>
-
-## Function `decision_for_binding`
-
-
-
-<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_decision_for_binding">decision_for_binding</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, binding_id: u64): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../social_contracts/post.md#social_contracts_post_UsageDecisionSnapshot">social_contracts::post::UsageDecisionSnapshot</a>&gt;
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_decision_for_binding">decision_for_binding</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>, binding_id: u64): Option&lt;<a href="../social_contracts/post.md#social_contracts_post_UsageDecisionSnapshot">UsageDecisionSnapshot</a>&gt; {
-    <b>let</b> decisions = <a href="../social_contracts/post.md#social_contracts_post_usage_decisions">usage_decisions</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
-    <b>let</b> len = vector::length(&decisions);
-    <b>let</b> <b>mut</b> i = 0;
-    <b>while</b> (i &lt; len) {
-        <b>let</b> d = vector::borrow(&decisions, i);
-        <b>if</b> (d.binding_id == binding_id) {
-            <b>return</b> option::some(*d)
-        };
-        i = i + 1;
-    };
-    option::none()
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_post_usage_is_payout_permitted_for_asset"></a>
-
-## Function `usage_is_payout_permitted_for_asset`
-
-Fail-closed payout check for manifest routing by source asset id.
-
-
-<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_usage_is_payout_permitted_for_asset">usage_is_payout_permitted_for_asset</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, source_asset_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>): bool
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_usage_is_payout_permitted_for_asset">usage_is_payout_permitted_for_asset</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>, source_asset_id: ID): bool {
-    <b>let</b> bindings = <a href="../social_contracts/post.md#social_contracts_post_embedded_bindings">embedded_bindings</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
-    <b>let</b> len = vector::length(&bindings);
-    <b>let</b> <b>mut</b> i = 0;
-    <b>while</b> (i &lt; len) {
-        <b>let</b> b = vector::borrow(&bindings, i);
-        <b>if</b> (b.source_asset_id == source_asset_id) {
-            <b>let</b> decision_opt = <a href="../social_contracts/post.md#social_contracts_post_decision_for_binding">decision_for_binding</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, b.binding_id);
-            <b>if</b> (option::is_none(&decision_opt)) {
-                <b>return</b> <b>false</b>
-            };
-            <b>return</b> option::borrow(&decision_opt).payout_permitted
-        };
-        i = i + 1;
-    };
-    <b>true</b>
 }
 </code></pre>
 
@@ -8373,12 +8245,11 @@ Fail-closed payout check for manifest routing by source asset id.
     <b>assert</b>!(option::is_some(&<a href="../social_contracts/post.md#social_contracts_post_find_binding_index">find_binding_index</a>(&bindings, binding_id)), <a href="../social_contracts/post.md#social_contracts_post_EBindingNotFound">EBindingNotFound</a>);
     <b>let</b> binding = <a href="../social_contracts/post.md#social_contracts_post_borrow_binding">borrow_binding</a>(&bindings, binding_id);
     <b>assert</b>!(binding.source_asset_id == object::id(asset), <a href="../social_contracts/post.md#social_contracts_post_EBindingAssetMismatch">EBindingAssetMismatch</a>);
-    <b>let</b> (policy_playback, policy_payout, reason_code, policy_version) =
+    <b>let</b> (policy_playback, reason_code, policy_version) =
         <a href="../social_contracts/post.md#social_contracts_post_evaluate_binding_policy">evaluate_binding_policy</a>(asset, binding.usage_class, clock);
     <b>let</b> denials = <a href="../social_contracts/post.md#social_contracts_post_usage_denials">usage_denials</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
-    <b>let</b> (playback, payout) =
-        <a href="../social_contracts/post.md#social_contracts_post_apply_denials_to_snapshot">apply_denials_to_snapshot</a>(policy_playback, policy_payout, &denials, binding_id);
-    <b>let</b> reason = <b>if</b> (playback != policy_playback || payout != policy_payout) {
+    <b>let</b> playback = <a href="../social_contracts/post.md#social_contracts_post_apply_denials_to_snapshot">apply_denials_to_snapshot</a>(policy_playback, &denials, binding_id);
+    <b>let</b> reason = <b>if</b> (playback != policy_playback) {
         <a href="../social_contracts/post.md#social_contracts_post_REASON_DENIAL">REASON_DENIAL</a>
     } <b>else</b> {
         reason_code
@@ -8386,9 +8257,7 @@ Fail-closed payout check for manifest routing by source asset id.
     <b>let</b> snapshot = <a href="../social_contracts/post.md#social_contracts_post_UsageDecisionSnapshot">UsageDecisionSnapshot</a> {
         binding_id,
         policy_playback_permitted: policy_playback,
-        policy_payout_permitted: policy_payout,
         playback_permitted: playback,
-        payout_permitted: payout,
         policy_reason_code: reason,
         policy_version_at_decision: policy_version,
     };
@@ -8400,9 +8269,7 @@ Fail-closed payout check for manifest routing by source asset id.
         post_id: <a href="../social_contracts/post.md#social_contracts_post_get_id_address">get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>),
         binding_id,
         policy_playback_permitted: policy_playback,
-        policy_payout_permitted: policy_payout,
         playback_permitted: playback,
-        payout_permitted: payout,
         policy_reason_code: reason,
         policy_version_at_decision: policy_version,
         timestamp,
@@ -8567,10 +8434,7 @@ Rights holder denies container-scoped usage on this post for one binding.
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
-    <b>assert</b>!(
-        denial_scope == <a href="../social_contracts/post.md#social_contracts_post_DENIAL_SCOPE_PLAYBACK">DENIAL_SCOPE_PLAYBACK</a> || denial_scope == <a href="../social_contracts/post.md#social_contracts_post_DENIAL_SCOPE_PAYOUT">DENIAL_SCOPE_PAYOUT</a>,
-        <a href="../social_contracts/post.md#social_contracts_post_EInvalidDenialScope">EInvalidDenialScope</a>,
-    );
+    <b>assert</b>!(denial_scope == <a href="../social_contracts/post.md#social_contracts_post_DENIAL_SCOPE_PLAYBACK">DENIAL_SCOPE_PLAYBACK</a>, <a href="../social_contracts/post.md#social_contracts_post_EInvalidDenialScope">EInvalidDenialScope</a>);
     <b>let</b> sender = tx_context::sender(ctx);
     <b>assert</b>!(<a href="../social_contracts/media_asset.md#social_contracts_media_asset_can_update_rights">media_asset::can_update_rights</a>(asset, sender), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
     <b>let</b> bindings = <a href="../social_contracts/post.md#social_contracts_post_embedded_bindings">embedded_bindings</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
@@ -8619,10 +8483,7 @@ Rights holder lifts a container-scoped denial for one binding and scope.
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
-    <b>assert</b>!(
-        denial_scope == <a href="../social_contracts/post.md#social_contracts_post_DENIAL_SCOPE_PLAYBACK">DENIAL_SCOPE_PLAYBACK</a> || denial_scope == <a href="../social_contracts/post.md#social_contracts_post_DENIAL_SCOPE_PAYOUT">DENIAL_SCOPE_PAYOUT</a>,
-        <a href="../social_contracts/post.md#social_contracts_post_EInvalidDenialScope">EInvalidDenialScope</a>,
-    );
+    <b>assert</b>!(denial_scope == <a href="../social_contracts/post.md#social_contracts_post_DENIAL_SCOPE_PLAYBACK">DENIAL_SCOPE_PLAYBACK</a>, <a href="../social_contracts/post.md#social_contracts_post_EInvalidDenialScope">EInvalidDenialScope</a>);
     <b>let</b> sender = tx_context::sender(ctx);
     <b>assert</b>!(<a href="../social_contracts/media_asset.md#social_contracts_media_asset_can_update_rights">media_asset::can_update_rights</a>(asset, sender), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
     <b>let</b> bindings = <a href="../social_contracts/post.md#social_contracts_post_embedded_bindings">embedded_bindings</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);

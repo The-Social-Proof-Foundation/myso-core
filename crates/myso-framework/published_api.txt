@@ -9055,6 +9055,9 @@ resolve_creators_from_claims
 resolve_rights_interests_from_claims
 	fun
 	0x50c1::media_asset
+controller_addresses
+	fun
+	0x50c1::media_asset
 resolve_beneficiaries_from_claims
 	fun
 	0x50c1::media_asset
@@ -9149,6 +9152,12 @@ assert_usage_permitted
 	public(package) fun
 	0x50c1::media_asset
 validate_revenue_manifest
+	public(package) fun
+	0x50c1::media_asset
+clamp_manifest_embedded_redirect_cap
+	public(package) fun
+	0x50c1::media_asset
+derive_monetization_status_from_manifest
 	public(package) fun
 	0x50c1::media_asset
 composition_analysis_matches_assets
@@ -11650,12 +11659,6 @@ evaluate_binding_policy
 refresh_composition_status_from_decisions
 	fun
 	0x50c1::post
-decision_for_binding
-	fun
-	0x50c1::post
-usage_is_payout_permitted_for_asset
-	fun
-	0x50c1::post
 validate_binding
 	fun
 	0x50c1::post
@@ -12813,6 +12816,9 @@ bootstrap_init
 	0x50c1::proof_of_creativity
 update_poc_config
 	public entry fun
+	0x50c1::proof_of_creativity
+max_embedded_asset_redirect_bps
+	public fun
 	0x50c1::proof_of_creativity
 media_asset_dispute_cost
 	public fun
