@@ -1307,10 +1307,10 @@ CREATOR,
             let redirect_to = social_proof_tokens::get_poc_redirect_to(&token_pool);
             let redirect_percentage = social_proof_tokens::get_poc_redirect_percentage(&token_pool);
             
-            assert!(option::is_some(redirect_to), 1);
-            assert!(option::is_some(redirect_percentage), 2);
-            assert!(*option::borrow(redirect_to) == USER3, 3);
-            assert!(*option::borrow(redirect_percentage) == 75, 4);
+            assert!(option::is_some(&redirect_to), 1);
+            assert!(option::is_some(&redirect_percentage), 2);
+            assert!(*option::borrow(&redirect_to) == USER3, 3);
+            assert!(*option::borrow(&redirect_percentage) == 75, 4);
             
             // Clean up: share to scenario (TokenPool is not transferable)
             social_proof_tokens::share_token_pool_for_testing(token_pool);
@@ -1348,8 +1348,8 @@ CREATOR,
             let redirect_to = social_proof_tokens::get_poc_redirect_to(&token_pool);
             let redirect_percentage = social_proof_tokens::get_poc_redirect_percentage(&token_pool);
             
-            assert!(option::is_none(redirect_to), 2);
-            assert!(option::is_none(redirect_percentage), 3);
+            assert!(option::is_none(&redirect_to), 2);
+            assert!(option::is_none(&redirect_percentage), 3);
             
             // Clean up: share to scenario (TokenPool is not transferable)
             social_proof_tokens::share_token_pool_for_testing(token_pool);
@@ -1436,8 +1436,8 @@ CREATOR,
             let redirect_to = social_proof_tokens::get_poc_redirect_to(&token_pool);
             let redirect_percentage = social_proof_tokens::get_poc_redirect_percentage(&token_pool);
             
-            assert!(option::is_none(redirect_to), 2);
-            assert!(option::is_none(redirect_percentage), 3);
+            assert!(option::is_none(&redirect_to), 2);
+            assert!(option::is_none(&redirect_percentage), 3);
             
             // Clean up: share to scenario (TokenPool is not transferable)
             social_proof_tokens::share_token_pool_for_testing(token_pool);
@@ -3274,8 +3274,8 @@ CREATOR,
                 test_scenario::ctx(&mut scenario)
             );
             assert!(social_proof_tokens::has_poc_redirection(&pool), 1);
-            assert!(*option::borrow(social_proof_tokens::get_poc_redirect_to(&pool)) == USER3, 2);
-            assert!(*option::borrow(social_proof_tokens::get_poc_redirect_percentage(&pool)) == 75, 3);
+            assert!(*option::borrow(&social_proof_tokens::get_poc_redirect_to(&pool)) == USER3, 2);
+            assert!(*option::borrow(&social_proof_tokens::get_poc_redirect_percentage(&pool)) == 75, 3);
             assert!(social_proof_tokens::poc_redirection_kind_for_testing(&pool) == 1, 4);
             test_scenario::return_shared(registry);
             test_scenario::return_shared(post_obj);
@@ -3337,8 +3337,8 @@ CREATOR,
                 test_scenario::ctx(&mut scenario)
             );
             assert!(social_proof_tokens::poc_redirection_kind_for_testing(&pool) == 2, 1);
-            assert!(*option::borrow(social_proof_tokens::get_poc_redirect_to(&pool)) == USER2, 2);
-            assert!(*option::borrow(social_proof_tokens::get_poc_redirect_percentage(&pool)) == 60, 3);
+            assert!(*option::borrow(&social_proof_tokens::get_poc_redirect_to(&pool)) == USER2, 2);
+            assert!(*option::borrow(&social_proof_tokens::get_poc_redirect_percentage(&pool)) == 60, 3);
             test_scenario::return_shared(registry);
             test_scenario::return_shared(post_obj);
             social_proof_tokens::share_token_pool_for_testing(pool);

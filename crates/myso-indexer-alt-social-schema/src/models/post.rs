@@ -93,6 +93,9 @@ pub struct NewPost {
     pub action_identity_class: Option<i16>,
     pub organization_id: Option<String>,
     pub contract_version: i64,
+    pub composition_status: Option<i16>,
+    pub monetization_status: Option<i16>,
+    pub media_asset_ids: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]

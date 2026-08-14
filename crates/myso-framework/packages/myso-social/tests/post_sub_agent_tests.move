@@ -245,6 +245,7 @@ module social_contracts::post_sub_agent_tests {
                 &config,
                 &memory_config,
                 string::utf8(b"hello sub-agent world"),
+                vector[],
                 option::none(),
                 option::none(),
                 option::none(),

@@ -240,6 +240,7 @@ async fn search_posts_with_conn(
                    poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type,
                    poc_oracle_address, poc_analyzed_at,
                    poc_outcome, poc_redirection_kind, poc_disputes_submitted,
+                   composition_status, monetization_status, media_asset_ids,
                    NULL::text AS actor_address, sub_agent_id, action_identity_class,
                    time,
                    ROW_NUMBER() OVER (PARTITION BY post_id ORDER BY time DESC) AS rn
@@ -262,6 +263,7 @@ async fn search_posts_with_conn(
                poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type,
                poc_oracle_address, poc_analyzed_at,
                poc_outcome, poc_redirection_kind, poc_disputes_submitted,
+               composition_status, monetization_status, media_asset_ids,
                actor_address, sub_agent_id, action_identity_class
         FROM candidates
         WHERE rn = 1

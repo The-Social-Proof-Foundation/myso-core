@@ -4,6 +4,13 @@
 /// Proof of Creativity module for the MySocial network
 /// Manages content originality verification through oracle analysis,
 /// PoC badge issuance, revenue redirection, and community dispute voting
+///
+/// **Revenue hierarchy (tips vs fee-split flows):**
+/// - Tips enter the post pool with no platform/ecosystem skim; manifest splits only.
+/// - SPT/trading flows take platform + ecosystem fees off gross, then manifest splits the post pool.
+/// - `max_embedded_asset_redirect_bps` (PoC admin config) caps any one embedded source asset's share.
+/// - Rights holders set `compensation_bps` on licenses in `0..max`; on-chain clamp wins at composition.
+/// - Container denials restrict playback only — tips are never gated by media rights.
 
 #[allow(duplicate_alias, unused_use, unused_const, unused_variable, lint(public_entry))]
 module social_contracts::proof_of_creativity {
@@ -32,6 +39,21 @@ module social_contracts::proof_of_creativity {
         PoCUsernameBeneficiaryDirectory,
         PoCUsernameBeneficiaryShard,
     };
+    use social_contracts::media_asset::{
+        Self as media_asset,
+        BeneficiarySplit,
+        Claim,
+        CompositionAnalysis,
+        MediaResolutionRequest,
+        RevenueManifest,
+        UsageGrant,
+        MediaAsset,
+        PendingDerivativeAsset,
+    };
+    use social_contracts::license_template::{Self as license_template, LicenseInstance, LicenseTemplateVersion};
+    use social_contracts::derivative_graph;
+    use social_contracts::governance::{Self, GovernanceDAO, Proposal};
+    use std::hash;
 
     /// Error codes
     const EUnauthorized: u64 = 0;
@@ -41,6 +63,9 @@ module social_contracts::proof_of_creativity {
     const EInsufficientFunds: u64 = 9;
     const EWrongVersion: u64 = 11;
     const ENotOracle: u64 = 12;
+    const EInvalidProposalStatus: u64 = 200;
+    const EProposalUnauthorized: u64 = 201;
+    const EInvalidSimilarityBps: u64 = 202;
     const EInvalidStakeAmount: u64 = 14;
     const EVotingNotActive: u64 = 15;
     const EVotingEnded: u64 = 16;
@@ -53,6 +78,21 @@ module social_contracts::proof_of_creativity {
     const EDuplicateVoteRewardClaim: u64 = 23;
     const ENoTokenPoolForPost: u64 = 24;
     const EDisputeCapReached: u64 = 25;
+    const EActiveProposalExists: u64 = 26;
+    const ENoActiveProposal: u64 = 27;
+    const EWrongProposal: u64 = 28;
+    const EClaimsCommitmentMismatch: u64 = 29;
+    const EInvalidClaimsCommitment: u64 = 30;
+    const EInvalidGovernanceRegistry: u64 = 31;
+    const EProposalNotApproved: u64 = 32;
+
+    /// PoC governance proposal kinds (metadata `poc_proposal_kind`).
+    const POC_PROPOSAL_KIND_GENERAL: u8 = 0;
+    const POC_PROPOSAL_KIND_MEDIA_ASSET_RIGHTS: u8 = 1;
+
+    /// Governance link cleared outcomes.
+    const GOV_CLEAR_OUTCOME_IMPLEMENTED: u8 = 1;
+    const GOV_CLEAR_OUTCOME_REJECTED: u8 = 2;
 
     /// `derivative_redirection_target` in analyze_and_update_post (similarity path only)
     const DERIVATIVE_TARGET_WALLET: u8 = 0;
@@ -87,6 +127,7 @@ module social_contracts::proof_of_creativity {
     const DEFAULT_REVENUE_REDIRECT_PERCENTAGE: u64 = 100; // 100%
     /// Single dispute submission fee (previously split across dispute_cost + protocol fee).
     const DEFAULT_DISPUTE_COST: u64 = 5_000_000_000; // 5 MYSO
+    const DEFAULT_MEDIA_ASSET_DISPUTE_COST: u64 = 10_000_000_000; // 10 MYSO
     const DEFAULT_MIN_VOTE_STAKE: u64 = 1_000_000_000; // 1 MYSO minimum to vote
     const DEFAULT_MAX_VOTE_STAKE: u64 = 100_000_000_000; // 100 MYSO maximum per vote
     const DEFAULT_VOTING_DURATION_MS: u64 = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -107,7 +148,10 @@ module social_contracts::proof_of_creativity {
     /// Default one-time join-referral fee on first username-beneficiary vault claim (5%).
     const DEFAULT_USERNAME_BENEFICIARY_JOIN_REFERRAL_BPS: u64 = 500;
     const DEFAULT_MAX_POC_DISPUTES_PER_POST: u8 = 2;
+    const DEFAULT_MAX_DISPUTES_PER_MEDIA_ASSET: u8 = 2;
     const DEFAULT_MIN_VAULT_DEPOSIT_AMOUNT: u64 = 1;
+    const DEFAULT_MAX_EMBEDDED_ASSET_REDIRECT_BPS: u64 = 5000;
+    const CLAIMS_COMMITMENT_BYTES: u64 = 32;
     const DISPUTE_ROUND_FIRST: u8 = 1;
     const DISPUTE_ROUND_SECOND: u8 = 2;
     /// Validation constants
@@ -164,6 +208,12 @@ module social_contracts::proof_of_creativity {
         max_disputes_per_post: u8,
         /// Minimum amount (per asset) accepted into a beneficiary vault deposit.
         min_vault_deposit_amount: u64,
+        /// Treasury fee for submitting a media-asset rights governance dispute.
+        media_asset_dispute_cost: u64,
+        /// Lifetime cap on media-asset rights governance disputes per asset.
+        max_disputes_per_media_asset: u8,
+        /// Max bps any single embedded source asset may redirect from a post revenue pool (0-10000).
+        max_embedded_asset_redirect_bps: u64,
         /// Version for upgrades
         version: u64,
     }
@@ -237,48 +287,6 @@ module social_contracts::proof_of_creativity {
     }
 
     // === Events ===
-
-    /// Emitted when oracle applies an explicit or similarity-based PoC outcome (for indexers).
-    public struct PoCResultAppliedEvent has copy, drop {
-        post_id: address,
-        poc_outcome: u8,
-        poc_redirection_kind: u8,
-        similarity_detected: bool,
-        timestamp: u64,
-    }
-
-    /// Event emitted when oracle submits analysis results
-    public struct AnalysisSubmittedEvent has copy, drop {
-        post_id: address,
-        media_type: u8,
-        similarity_detected: bool,
-        highest_similarity_score: u64,
-        oracle_address: address,
-        timestamp: u64,
-        reasoning: Option<String>, // Optional reasoning from oracle
-        evidence_urls: Option<vector<String>>, // Optional array of evidence URLs
-    }
-
-    /// Event emitted when a PoC badge is issued
-    public struct PoCBadgeIssuedEvent has copy, drop {
-        badge_id: address,
-        post_id: address,
-        media_type: u8,
-        issued_by: address,
-        beneficiary_address: Option<address>,
-        matched_anchor_id: Option<address>,
-        media_index: u8,
-        timestamp: u64,
-    }
-
-    public struct RevenueRedirectionActivatedEvent has copy, drop {
-        redirection_id: address,
-        accused_post_id: address,
-        original_post_id: address,
-        redirect_percentage: u64,
-        similarity_score: u64,
-        timestamp: u64,
-    }
 
     /// Event emitted when a PoC dispute is submitted
     public struct PoCDisputeSubmittedEvent has copy, drop {
@@ -360,6 +368,30 @@ module social_contracts::proof_of_creativity {
         username_beneficiary_join_referral_bps: u64,
         max_disputes_per_post: u8,
         min_vault_deposit_amount: u64,
+        media_asset_dispute_cost: u64,
+        max_disputes_per_media_asset: u8,
+        max_embedded_asset_redirect_bps: u64,
+        timestamp: u64,
+    }
+
+    public struct MediaAssetRightsDisputeProposedEvent has copy, drop {
+        media_asset_id: ID,
+        proposal_id: ID,
+        submitter: address,
+        claims_commitment: vector<u8>,
+        timestamp: u64,
+    }
+
+    public struct MediaAssetGovernanceProposalLinkedEvent has copy, drop {
+        media_asset_id: ID,
+        proposal_id: ID,
+        timestamp: u64,
+    }
+
+    public struct MediaAssetGovernanceProposalClearedEvent has copy, drop {
+        media_asset_id: ID,
+        proposal_id: ID,
+        outcome: u8,
         timestamp: u64,
     }
 
@@ -407,6 +439,9 @@ module social_contracts::proof_of_creativity {
             username_beneficiary_join_referral_bps: DEFAULT_USERNAME_BENEFICIARY_JOIN_REFERRAL_BPS,
             max_disputes_per_post: DEFAULT_MAX_POC_DISPUTES_PER_POST,
             min_vault_deposit_amount: DEFAULT_MIN_VAULT_DEPOSIT_AMOUNT,
+            media_asset_dispute_cost: DEFAULT_MEDIA_ASSET_DISPUTE_COST,
+            max_disputes_per_media_asset: DEFAULT_MAX_DISPUTES_PER_MEDIA_ASSET,
+            max_embedded_asset_redirect_bps: DEFAULT_MAX_EMBEDDED_ASSET_REDIRECT_BPS,
             version: upgrade::current_version(),
         };
 
@@ -435,6 +470,9 @@ module social_contracts::proof_of_creativity {
             username_beneficiary_join_referral_bps: DEFAULT_USERNAME_BENEFICIARY_JOIN_REFERRAL_BPS,
             max_disputes_per_post: DEFAULT_MAX_POC_DISPUTES_PER_POST,
             min_vault_deposit_amount: DEFAULT_MIN_VAULT_DEPOSIT_AMOUNT,
+            media_asset_dispute_cost: DEFAULT_MEDIA_ASSET_DISPUTE_COST,
+            max_disputes_per_media_asset: DEFAULT_MAX_DISPUTES_PER_MEDIA_ASSET,
+            max_embedded_asset_redirect_bps: DEFAULT_MAX_EMBEDDED_ASSET_REDIRECT_BPS,
             timestamp: clock::timestamp_ms(clock),
         });
 
@@ -481,6 +519,9 @@ module social_contracts::proof_of_creativity {
         username_beneficiary_join_referral_bps: u64,
         max_disputes_per_post: u8,
         min_vault_deposit_amount: u64,
+        media_asset_dispute_cost: u64,
+        max_disputes_per_media_asset: u8,
+        max_embedded_asset_redirect_bps: u64,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
@@ -496,7 +537,8 @@ module social_contracts::proof_of_creativity {
             claim_treasury_fee_bps <= 10000 &&
                 max_referral_bps <= 10000 &&
                 video_embedded_audio_redirect_bps <= 10000 &&
-                username_beneficiary_join_referral_bps <= 10000,
+                username_beneficiary_join_referral_bps <= 10000 &&
+                max_embedded_asset_redirect_bps <= 10000,
             EInvalidThreshold
         );
 
@@ -511,6 +553,8 @@ module social_contracts::proof_of_creativity {
         assert!(dispute_second_round_fee_multiplier_bps >= 10000, EInvalidThreshold);
         assert!(dispute_second_round_quorum_multiplier_bps >= 10000, EInvalidThreshold);
         assert!(max_disputes_per_post > 0, EInvalidThreshold);
+        assert!(max_disputes_per_media_asset > 0, EInvalidThreshold);
+        assert!(media_asset_dispute_cost > 0, EInvalidThreshold);
         assert!(min_vault_deposit_amount > 0, EInvalidThreshold);
 
         // Update configuration
@@ -535,6 +579,9 @@ module social_contracts::proof_of_creativity {
         config.username_beneficiary_join_referral_bps = username_beneficiary_join_referral_bps;
         config.max_disputes_per_post = max_disputes_per_post;
         config.min_vault_deposit_amount = min_vault_deposit_amount;
+        config.media_asset_dispute_cost = media_asset_dispute_cost;
+        config.max_disputes_per_media_asset = max_disputes_per_media_asset;
+        config.max_embedded_asset_redirect_bps = max_embedded_asset_redirect_bps;
 
         // Emit configuration update event
         event::emit(PoCConfigUpdatedEvent {
@@ -561,8 +608,27 @@ module social_contracts::proof_of_creativity {
             username_beneficiary_join_referral_bps,
             max_disputes_per_post,
             min_vault_deposit_amount,
+            media_asset_dispute_cost,
+            max_disputes_per_media_asset,
+            max_embedded_asset_redirect_bps,
             timestamp: clock::timestamp_ms(clock),
         });
+    }
+
+    public fun max_embedded_asset_redirect_bps(config: &PoCConfig): u64 {
+        config.max_embedded_asset_redirect_bps
+    }
+
+    public fun media_asset_dispute_cost(config: &PoCConfig): u64 {
+        config.media_asset_dispute_cost
+    }
+
+    public fun max_disputes_per_media_asset(config: &PoCConfig): u8 {
+        config.max_disputes_per_media_asset
+    }
+
+    public(package) fun max_disputes_per_media_asset_package(config: &PoCConfig): u8 {
+        config.max_disputes_per_media_asset
     }
 
     public(package) fun max_disputes_per_post(config: &PoCConfig): u8 {
@@ -722,6 +788,7 @@ module social_contracts::proof_of_creativity {
     }
 
     /// Poster reusing their own corpus match is not a derivative; skip redirect/vault paths.
+    #[test_only]
     fun clear_self_match_original_creator(
         post_owner: address,
         mut original_creator: Option<address>,
@@ -735,358 +802,438 @@ module social_contracts::proof_of_creativity {
         original_creator
     }
 
-    fun mint_shared_poc_badge_object(
-        post_id: address,
-        beneficiary_address: Option<address>,
-        matched_anchor_id: Option<address>,
-        similarity_score: u64,
-        media_type: u8,
-        oracle_address: address,
-        analyzed_at: u64,
-        ctx: &mut TxContext
-    ): ID {
-        let badge = poc_vault::new_poc_badge_object(
-            post_id,
-            beneficiary_address,
-            matched_anchor_id,
-            poc_vault::media_index_unspecified(),
-            option::none(),
-            option::none(),
-            option::some(similarity_score),
-            option::some(media_type),
-            option::some(oracle_address),
-            option::some(analyzed_at),
-            ctx
-        );
-        let badge_id = object::id(&badge);
-        poc_vault::share_po_badge_object(badge);
-        badge_id
-    }
-
-    /// Oracle analyzes content and updates post PoC status. Does not require a social token pool.
-    /// `derivative_redirection_target`: wallet (0) or beneficiary vault (1) when similarity is detected.
-    /// `embedded_audio_only_derivative`: VIDEO only — oracle detected match on embedded audio track; uses `audio_threshold` and `video_embedded_audio_redirect_bps` ceiling with the same delta ramp.
-    /// `apply_explicit_outcome` + `explicit_poc_outcome == 4`: royalty-free — accumulation via beneficiary vault (same as escrow redirect mode).
-    fun run_analyze_and_update_post(
+    /// Oracle validates post composition, pins asset versions, and stores creator-attributable manifest.
+    fun run_analyze_post_composition(
         config: &PoCConfig,
         registry: &mut PoCRegistry,
         vault_directory: &mut PoCVaultDirectory,
         post: &mut social_contracts::post::Post,
-        media_type: u8,
-        highest_similarity_score: u64,
-        mut original_creator: Option<address>,
-        derivative_redirection_target: u8,
-        embedded_audio_only_derivative: bool,
-        apply_explicit_outcome: bool,
-        explicit_poc_outcome: u8,
+        composition_status: u8,
+        _monetization_status: u8,
+        analysis: CompositionAnalysis,
+        mut manifest: Option<RevenueManifest>,
         reasoning: Option<String>,
         evidence_urls: Option<vector<String>>,
+        contains_derivatives: bool,
+        contains_unresolved_assets: bool,
         clock: &Clock,
-        ctx: &mut TxContext
+        ctx: &mut TxContext,
     ) {
         assert_poc_config_version(config);
         assert_poc_registry_version(registry);
         poc_vault::assert_vault_directory_version(vault_directory);
         let caller = tx_context::sender(ctx);
+        assert!(caller == config.oracle_address, ENotOracle);
         let timestamp = clock::timestamp_ms(clock);
         let post_id = social_contracts::post::get_id_address(post);
-        
-        // Verify caller is authorized oracle
-        assert!(caller == config.oracle_address, ENotOracle);
-        
-        // Verify media type is valid
-        assert!(
-            media_type == MEDIA_TYPE_IMAGE || 
-            media_type == MEDIA_TYPE_VIDEO || 
-            media_type == MEDIA_TYPE_AUDIO,
-            EInvalidMediaType
-        );
 
-        assert!(
-            derivative_redirection_target == DERIVATIVE_TARGET_WALLET ||
-            derivative_redirection_target == DERIVATIVE_TARGET_ESCROW,
-            EInvalidMediaType
-        );
-        assert_embed_audio_derivative_media_type(embedded_audio_only_derivative, media_type);
-        
-        // Validate reasoning if provided
         if (option::is_some(&reasoning)) {
             let reasoning_val = option::borrow(&reasoning);
-            let reasoning_len = string::length(reasoning_val);
-            assert!(reasoning_len <= config.max_reasoning_length, EInvalidReasoning);
+            assert!(string::length(reasoning_val) <= config.max_reasoning_length, EInvalidReasoning);
         };
-        
-        // Validate evidence URLs array if provided
         if (option::is_some(&evidence_urls)) {
             let urls = option::borrow(&evidence_urls);
             assert!(vector::length(urls) <= config.max_evidence_urls, EInvalidEvidenceUrls);
         };
 
-        let mut similarity_detected = false;
+        assert!(
+            media_asset::composition_analysis_matches_assets(
+                &analysis,
+                social_contracts::post::media_asset_ids(post),
+            ),
+            EPostNotFound,
+        );
 
-        if (apply_explicit_outcome) {
-            assert!(explicit_poc_outcome == OUTCOME_ROYALTY_FREE, EInvalidMediaType);
-            let beneficiary = social_contracts::post::get_post_owner(post);
-            social_contracts::post::update_poc_result(
-                post,
-                2,
-                OUTCOME_ROYALTY_FREE,
-                REDIRECT_ESCROW,
-                option::some(beneficiary),
-                option::some(100),
-                reasoning,
-                evidence_urls,
-                highest_similarity_score,
-                media_type,
-                caller,
-                timestamp,
+        if (option::is_some(&manifest)) {
+            let unwrapped = option::extract(&mut manifest);
+            let clamped = media_asset::clamp_manifest_embedded_redirect_cap(
+                unwrapped,
+                config.max_embedded_asset_redirect_bps,
             );
-            let badge_object_id = mint_shared_poc_badge_object(
-                post_id,
-                option::some(beneficiary),
-                option::none(),
-                highest_similarity_score,
-                media_type,
-                caller,
-                timestamp,
-                ctx,
-            );
-            social_contracts::post::set_poc_badge_object_id(post, badge_object_id);
-            let _ = poc_vault::ensure_beneficiary_vault(vault_directory, beneficiary, ctx);
-            registry.total_redirections_created = registry.total_redirections_created + 1;
-            event::emit(RevenueRedirectionActivatedEvent {
-                redirection_id: post_id,
-                accused_post_id: post_id,
-                original_post_id: beneficiary,
-                redirect_percentage: 100,
-                similarity_score: highest_similarity_score,
-                timestamp,
-            });
-            event::emit(PoCResultAppliedEvent {
-                post_id,
-                poc_outcome: OUTCOME_ROYALTY_FREE,
-                poc_redirection_kind: REDIRECT_ESCROW,
-                similarity_detected: false,
-                timestamp,
-            });
-        } else {
-            let threshold = if (embedded_audio_only_derivative) {
-                config.audio_threshold
-            } else {
-                get_threshold_for_media_type(config, media_type)
-            };
-            original_creator = clear_self_match_original_creator(
-                social_contracts::post::get_post_owner(post),
-                original_creator,
-            );
-            similarity_detected = highest_similarity_score >= threshold && option::is_some(&original_creator);
-            
-            if (similarity_detected) {
-                let original_creator_address = option::extract(&mut original_creator);
-                let redirect_ceiling = if (embedded_audio_only_derivative) {
-                    bps_to_redirect_percent(config.video_embedded_audio_redirect_bps)
-                } else {
-                    config.revenue_redirect_percentage
+            media_asset::validate_revenue_manifest(&clamped);
+            manifest = option::some(clamped);
+            let entries = media_asset::manifest_entries(option::borrow(&manifest));
+            let len = vector::length(entries);
+            let mut i = 0;
+            while (i < len) {
+                let e = vector::borrow(entries, i);
+                if (media_asset::manifest_entry_payout_mode(e) == media_asset::payout_escrow()) {
+                    let _ = poc_vault::ensure_beneficiary_vault(
+                        vault_directory,
+                        media_asset::manifest_entry_beneficiary(e),
+                        ctx,
+                    );
                 };
-                let redirect_percentage = similarity_redirect_percentage(
-                    threshold,
-                    highest_similarity_score,
-                    redirect_ceiling,
-                );
-
-                let poc_outcome = if (derivative_redirection_target == DERIVATIVE_TARGET_ESCROW) {
-                    OUTCOME_DERIVATIVE_ESCROW
-                } else {
-                    OUTCOME_DERIVATIVE_WALLET
-                };
-                let redirect_kind = if (derivative_redirection_target == DERIVATIVE_TARGET_WALLET) {
-                    REDIRECT_WALLET
-                } else {
-                    REDIRECT_ESCROW
-                };
-                let redirect_to_opt = option::some(original_creator_address);
-
-                social_contracts::post::update_poc_result(
-                    post,
-                    2,
-                    poc_outcome,
-                    redirect_kind,
-                    redirect_to_opt,
-                    option::some(redirect_percentage),
-                    reasoning,
-                    evidence_urls,
-                    highest_similarity_score,
-                    media_type,
-                    caller,
-                    timestamp,
-                );
-                let badge_object_id = mint_shared_poc_badge_object(
-                    post_id,
-                    option::some(original_creator_address),
-                    option::none(),
-                    highest_similarity_score,
-                    media_type,
-                    caller,
-                    timestamp,
-                    ctx,
-                );
-                social_contracts::post::set_poc_badge_object_id(post, badge_object_id);
-                if (redirect_kind == REDIRECT_ESCROW) {
-                    let _ = poc_vault::ensure_beneficiary_vault(vault_directory, original_creator_address, ctx);
-                };
-                registry.total_redirections_created = registry.total_redirections_created + 1;
-
-                let emit_original = *option::borrow(&redirect_to_opt);
-                event::emit(RevenueRedirectionActivatedEvent {
-                    redirection_id: post_id,
-                    accused_post_id: post_id,
-                    original_post_id: emit_original,
-                    redirect_percentage,
-                    similarity_score: highest_similarity_score,
-                    timestamp,
-                });
-                event::emit(PoCResultAppliedEvent {
-                    post_id,
-                    poc_outcome,
-                    poc_redirection_kind: redirect_kind,
-                    similarity_detected: true,
-                    timestamp,
-                });
-            } else {
-                social_contracts::post::update_poc_result(
-                    post,
-                    1,
-                    OUTCOME_ORIGINAL,
-                    social_contracts::post::poc_redirection_none(),
-                    option::none(),
-                    option::none(),
-                    reasoning,
-                    evidence_urls,
-                    highest_similarity_score,
-                    media_type,
-                    caller,
-                    timestamp,
-                );
-                let post_owner_addr = social_contracts::post::get_post_owner(post);
-                let badge_object_id = mint_shared_poc_badge_object(
-                    post_id,
-                    option::some(post_owner_addr),
-                    option::none(),
-                    highest_similarity_score,
-                    media_type,
-                    caller,
-                    timestamp,
-                    ctx,
-                );
-                social_contracts::post::set_poc_badge_object_id(post, badge_object_id);
-                registry.total_badges_issued = registry.total_badges_issued + 1;
-                event::emit(PoCBadgeIssuedEvent {
-                    badge_id: object::id_to_address(&badge_object_id),
-                    post_id,
-                    media_type,
-                    issued_by: caller,
-                    beneficiary_address: option::some(post_owner_addr),
-                    matched_anchor_id: option::none(),
-                    media_index: poc_vault::media_index_unspecified(),
-                    timestamp,
-                });
-                event::emit(PoCResultAppliedEvent {
-                    post_id,
-                    poc_outcome: OUTCOME_ORIGINAL,
-                    poc_redirection_kind: social_contracts::post::poc_redirection_none(),
-                    similarity_detected: false,
-                    timestamp,
-                });
+                i = i + 1;
             };
         };
 
-        let analysis_similarity = if (apply_explicit_outcome) {
-            false
-        } else {
-            similarity_detected
-        };
-        event::emit(AnalysisSubmittedEvent {
-            post_id,
-            media_type,
-            similarity_detected: analysis_similarity,
-            highest_similarity_score,
-            oracle_address: caller,
+        let derived_monetization =
+            media_asset::derive_monetization_status_from_manifest(&manifest);
+
+        let badge = media_asset::new_composition_badge_snapshot(
             timestamp,
+            caller,
             reasoning,
             evidence_urls,
+            contains_derivatives,
+            contains_unresolved_assets,
+        );
+
+        social_contracts::post::set_composition_result(
+            post,
+            composition_status,
+            derived_monetization,
+            badge,
+            analysis,
+            manifest,
+        );
+
+        if (derived_monetization == media_asset::monetization_enabled()) {
+            registry.total_redirections_created = registry.total_redirections_created + 1;
+        } else if (composition_status == media_asset::composition_verified()) {
+            registry.total_badges_issued = registry.total_badges_issued + 1;
+        };
+
+        media_asset::emit_post_composition_analyzed(
+            post_id,
+            composition_status,
+            derived_monetization,
+            timestamp,
+        );
+    }
+
+    /// Public wrapper: oracle mints or links a canonical MediaAsset after resolution.
+    public fun finalize_media_asset(
+        config: &PoCConfig,
+        request: MediaResolutionRequest,
+        link_to_existing_id: Option<ID>,
+        originality_status: u8,
+        lineage_parent_id: Option<ID>,
+        asset_kind: u8,
+        related_work_id: Option<ID>,
+        claims: vector<Claim>,
+        usage_grants: vector<UsageGrant>,
+        beneficiary_splits: vector<BeneficiarySplit>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        media_asset::finalize_media_asset(
+            config.oracle_address,
+            request,
+            link_to_existing_id,
+            originality_status,
+            lineage_parent_id,
+            asset_kind,
+            related_work_id,
+            claims,
+            usage_grants,
+            beneficiary_splits,
+            config.max_embedded_asset_redirect_bps,
+            clock,
+            ctx,
+        );
+    }
+
+    /// Public wrapper: oracle replaces verified claims on an existing asset (dispute/provenance).
+    public fun oracle_update_media_asset_claims(
+        config: &PoCConfig,
+        asset: &mut media_asset::MediaAsset,
+        claims: vector<Claim>,
+        usage_grants: vector<UsageGrant>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        media_asset::oracle_update_media_asset_claims(
+            config.oracle_address,
+            asset,
+            claims,
+            usage_grants,
+            config.max_embedded_asset_redirect_bps,
+            clock,
+            ctx,
+        );
+    }
+
+    fun assert_poc_governance_registry(config: &PoCConfig, registry: &GovernanceDAO) {
+        assert!(
+            governance::registry_type(registry) == governance::proposal_type_proof_of_creativity_value(),
+            EInvalidGovernanceRegistry,
+        );
+        assert!(
+            object::id(registry) == config.dispute_governance_registry_id,
+            EInvalidGovernanceRegistry,
+        );
+    }
+
+    fun assert_valid_claims_commitment(claims_commitment: &vector<u8>) {
+        assert!(vector::length(claims_commitment) == CLAIMS_COMMITMENT_BYTES, EInvalidClaimsCommitment);
+    }
+
+    /// Submit a media-asset rights dispute to the PoC GovernanceDAO.
+    public entry fun submit_media_asset_rights_dispute_proposal(
+        config: &PoCConfig,
+        registry: &mut GovernanceDAO,
+        treasury: &EcosystemTreasury,
+        asset: &mut MediaAsset,
+        title: String,
+        description: String,
+        claims_commitment: vector<u8>,
+        evidence_urls: Option<vector<String>>,
+        _related_post_id: Option<address>,
+        metadata_json: Option<String>,
+        payment: &mut Coin<MYSO>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert_poc_config_version(config);
+        assert_poc_governance_registry(config, registry);
+        assert_valid_claims_commitment(&claims_commitment);
+        media_asset::assert_registered_asset(asset);
+
+        let total_fee = config.media_asset_dispute_cost + governance::proposal_submission_cost(registry);
+        assert!(coin::value(payment) >= total_fee, EInsufficientFunds);
+
+        if (option::is_some(&evidence_urls)) {
+            assert!(
+                vector::length(option::borrow(&evidence_urls)) <= config.max_evidence_urls,
+                EInvalidEvidenceUrls,
+            );
+        };
+
+        let dispute_fee = coin::split(payment, config.media_asset_dispute_cost, ctx);
+        transfer::public_transfer(dispute_fee, profile::get_treasury_address(treasury));
+
+        let asset_id = object::id(asset);
+        let submitter = tx_context::sender(ctx);
+        let proposal_id = governance::submit_poc_proposal_and_return_id(
+            registry,
+            title,
+            description,
+            asset_id,
+            metadata_json,
+            payment,
+            clock,
+            ctx,
+        );
+
+        media_asset::link_rights_proposal(
+            asset,
+            proposal_id,
+            claims_commitment,
+            config.max_disputes_per_media_asset,
+        );
+
+        let now = clock::timestamp_ms(clock);
+        event::emit(MediaAssetRightsDisputeProposedEvent {
+            media_asset_id: asset_id,
+            proposal_id,
+            submitter,
+            claims_commitment,
+            timestamp: now,
+        });
+        event::emit(MediaAssetGovernanceProposalLinkedEvent {
+            media_asset_id: asset_id,
+            proposal_id,
+            timestamp: now,
         });
     }
 
-    public entry fun analyze_and_update_post(
+    public entry fun clear_media_asset_rights_proposal_on_reject(
         config: &PoCConfig,
-        registry: &mut PoCRegistry,
-        vault_directory: &mut PoCVaultDirectory,
-        post: &mut social_contracts::post::Post,
-        media_type: u8,
-        highest_similarity_score: u64,
-        original_creator: Option<address>,
-        derivative_redirection_target: u8,
-        embedded_audio_only_derivative: bool,
-        apply_explicit_outcome: bool,
-        explicit_poc_outcome: u8,
-        reasoning: Option<String>,
+        registry: &GovernanceDAO,
+        proposal: &Proposal,
+        asset: &mut MediaAsset,
+    ) {
+        assert_poc_config_version(config);
+        assert_poc_governance_registry(config, registry);
+        assert!(
+            governance::proposal_status(proposal) == governance::status_rejected_value(),
+            EProposalNotApproved,
+        );
+        let proposal_id = object::id(proposal);
+        media_asset::clear_rights_proposal_on_reject(asset, proposal_id);
+    }
+
+    public entry fun finalize_media_asset_rights_governance_proposal(
+        config: &PoCConfig,
+        registry: &mut GovernanceDAO,
+        proposal: &mut Proposal,
+        asset: &mut MediaAsset,
+        ecosystem_treasury: &EcosystemTreasury,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert_poc_config_version(config);
+        assert_poc_governance_registry(config, registry);
+        governance::finalize_proposal(registry, proposal, ecosystem_treasury, clock, ctx);
+        if (governance::proposal_status(proposal) == governance::status_rejected_value()) {
+            clear_media_asset_rights_proposal_on_reject(config, registry, proposal, asset);
+            let now = clock::timestamp_ms(clock);
+            event::emit(MediaAssetGovernanceProposalClearedEvent {
+                media_asset_id: object::id(asset),
+                proposal_id: object::id(proposal),
+                outcome: GOV_CLEAR_OUTCOME_REJECTED,
+                timestamp: now,
+            });
+        };
+    }
+
+    public fun implement_media_asset_rights_from_governance(
+        config: &PoCConfig,
+        registry_gov: &mut GovernanceDAO,
+        proposal: &mut Proposal,
+        asset: &mut MediaAsset,
+        _treasury: &EcosystemTreasury,
+        claims: vector<Claim>,
+        usage_grants: vector<UsageGrant>,
+        reasoning: String,
         evidence_urls: Option<vector<String>>,
         clock: &Clock,
-        ctx: &mut TxContext
+        ctx: &mut TxContext,
     ) {
-        run_analyze_and_update_post(
+        assert_poc_config_version(config);
+        assert_poc_governance_registry(config, registry_gov);
+        assert!(
+            governance::proposal_status(proposal) == governance::status_approved_value(),
+            EProposalNotApproved,
+        );
+
+        let proposal_id = object::id(proposal);
+        let pending = media_asset::pending_claims_commitment(asset);
+        let computed = media_asset::compute_claims_bundle_commitment(&claims, &usage_grants);
+        assert!(pending == computed, EClaimsCommitmentMismatch);
+
+        let reasoning_len = string::length(&reasoning);
+        assert!(reasoning_len <= config.max_reasoning_length, EInvalidReasoning);
+
+        oracle_update_media_asset_claims(config, asset, claims, usage_grants, clock, ctx);
+
+        let submitter = governance::proposal_submitter(proposal);
+        let bal = governance::mark_proposal_implemented_take_pool_poc_oracle(
+            registry_gov,
+            proposal,
+            config.oracle_address,
+            option::some(reasoning),
+            clock,
+            ctx,
+        );
+        let amount = balance::value(&bal);
+        if (amount > 0) {
+            transfer::public_transfer(coin::from_balance(bal, ctx), submitter);
+        } else {
+            balance::destroy_zero(bal);
+        };
+
+        media_asset::clear_rights_proposal_on_implement(asset, proposal_id);
+        let now = clock::timestamp_ms(clock);
+        event::emit(MediaAssetGovernanceProposalClearedEvent {
+            media_asset_id: object::id(asset),
+            proposal_id,
+            outcome: GOV_CLEAR_OUTCOME_IMPLEMENTED,
+            timestamp: now,
+        });
+    }
+
+    public fun finalize_media_asset_rights_via_dao(
+        config: &PoCConfig,
+        registry_gov: &mut GovernanceDAO,
+        proposal: &mut Proposal,
+        asset: &mut MediaAsset,
+        treasury: &EcosystemTreasury,
+        claims: vector<Claim>,
+        usage_grants: vector<UsageGrant>,
+        mut reasoning: Option<String>,
+        evidence_urls: Option<vector<String>>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        let final_reasoning = if (option::is_some(&reasoning)) {
+            option::extract(&mut reasoning)
+        } else {
+            string::utf8(b"DAO resolution of media asset rights dispute")
+        };
+        implement_media_asset_rights_from_governance(
             config,
-            registry,
-            vault_directory,
-            post,
-            media_type,
-            highest_similarity_score,
-            original_creator,
-            derivative_redirection_target,
-            embedded_audio_only_derivative,
-            apply_explicit_outcome,
-            explicit_poc_outcome,
-            reasoning,
+            registry_gov,
+            proposal,
+            asset,
+            treasury,
+            claims,
+            usage_grants,
+            final_reasoning,
             evidence_urls,
             clock,
             ctx,
         );
     }
 
-    /// Same as `analyze_and_update_post`, then mirrors PoC redirect fields onto `TokenPool` when the post has an SPT registry entry.
-    public entry fun analyze_and_update_post_sync_token_pool(
+    public fun analyze_post_composition(
+        config: &PoCConfig,
+        registry: &mut PoCRegistry,
+        vault_directory: &mut PoCVaultDirectory,
+        post: &mut social_contracts::post::Post,
+        composition_status: u8,
+        monetization_status: u8,
+        analysis: CompositionAnalysis,
+        manifest: Option<RevenueManifest>,
+        reasoning: Option<String>,
+        evidence_urls: Option<vector<String>>,
+        contains_derivatives: bool,
+        contains_unresolved_assets: bool,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        run_analyze_post_composition(
+            config,
+            registry,
+            vault_directory,
+            post,
+            composition_status,
+            monetization_status,
+            analysis,
+            manifest,
+            reasoning,
+            evidence_urls,
+            contains_derivatives,
+            contains_unresolved_assets,
+            clock,
+            ctx,
+        );
+    }
+
+    /// Same as `analyze_post_composition`, then mirrors revenue manifest onto `TokenPool` when present.
+    public fun analyze_post_composition_sync_token_pool(
         config: &PoCConfig,
         registry: &mut PoCRegistry,
         token_registry: &social_contracts::social_proof_tokens::TokenRegistry,
         vault_directory: &mut PoCVaultDirectory,
         post: &mut social_contracts::post::Post,
         pool: &mut social_contracts::social_proof_tokens::TokenPool,
-        media_type: u8,
-        highest_similarity_score: u64,
-        original_creator: Option<address>,
-        derivative_redirection_target: u8,
-        embedded_audio_only_derivative: bool,
-        apply_explicit_outcome: bool,
-        explicit_poc_outcome: u8,
+        composition_status: u8,
+        monetization_status: u8,
+        analysis: CompositionAnalysis,
+        manifest: Option<RevenueManifest>,
         reasoning: Option<String>,
         evidence_urls: Option<vector<String>>,
+        contains_derivatives: bool,
+        contains_unresolved_assets: bool,
         clock: &Clock,
-        ctx: &mut TxContext
+        ctx: &mut TxContext,
     ) {
-        run_analyze_and_update_post(
+        run_analyze_post_composition(
             config,
             registry,
             vault_directory,
             post,
-            media_type,
-            highest_similarity_score,
-            original_creator,
-            derivative_redirection_target,
-            embedded_audio_only_derivative,
-            apply_explicit_outcome,
-            explicit_poc_outcome,
+            composition_status,
+            monetization_status,
+            analysis,
+            manifest,
             reasoning,
             evidence_urls,
+            contains_derivatives,
+            contains_unresolved_assets,
             clock,
             ctx,
         );
@@ -1096,7 +1243,7 @@ module social_contracts::proof_of_creativity {
             social_contracts::social_proof_tokens::token_exists(token_registry, post_id),
             ENoTokenPoolForPost,
         );
-        social_contracts::social_proof_tokens::sync_token_pool_poc_from_post(
+        social_contracts::social_proof_tokens::sync_token_pool_manifest_from_post(
             token_registry,
             pool,
             post,
@@ -1179,8 +1326,7 @@ module social_contracts::proof_of_creativity {
         assert!(disputer == social_contracts::post::get_post_owner(post), EUnauthorized);
 
         // Verify the post has PoC data to dispute (badge / redirection metadata)
-        let has_poc_data = option::is_some(social_contracts::post::get_revenue_redirect_to(post)) ||
-                            social_contracts::post::has_poc_badge(post);
+        let has_poc_data = has_composition_data(post);
         assert!(has_poc_data, EPostNotFound);
 
         // Extract dispute fee and send to ecosystem treasury
@@ -1520,6 +1666,7 @@ module social_contracts::proof_of_creativity {
 
     // === Helper Functions ===
 
+    #[test_only]
     fun assert_embed_audio_derivative_media_type(embedded_audio_only_derivative: bool, media_type: u8) {
         assert!(
             !embedded_audio_only_derivative || media_type == MEDIA_TYPE_VIDEO,
@@ -1527,6 +1674,7 @@ module social_contracts::proof_of_creativity {
         );
     }
 
+    #[test_only]
     fun similarity_redirect_percentage(
         threshold: u64,
         highest_similarity_score: u64,
@@ -1543,6 +1691,7 @@ module social_contracts::proof_of_creativity {
     }
 
     /// Converts basis points (0-10000) to redirect percent 0-100 for `post::revenue_redirect_percentage` (nearest integer percent).
+    #[test_only]
     fun bps_to_redirect_percent(bps: u64): u64 {
         let capped = if (bps > 10000) {
             10000
@@ -1557,17 +1706,222 @@ module social_contracts::proof_of_creativity {
         }
     }
 
-    /// Get similarity threshold for a media type
-    fun get_threshold_for_media_type(config: &PoCConfig, media_type: u8): u64 {
-        if (media_type == MEDIA_TYPE_IMAGE) {
-            config.image_threshold
-        } else if (media_type == MEDIA_TYPE_VIDEO) {
-            config.video_threshold
-        } else if (media_type == MEDIA_TYPE_AUDIO) {
-            config.audio_threshold
+    // === Phase 5 — Detected derivative relationship discovery ===
+
+    const DETECTED_STATUS_PROPOSED: u8 = 0;
+    const DETECTED_STATUS_ACCEPTED: u8 = 1;
+    const DETECTED_STATUS_REJECTED: u8 = 2;
+    const DETECTED_STATUS_FINALIZED: u8 = 3;
+
+    const MAX_SIMILARITY_BPS: u64 = 10_000;
+
+    public struct DetectedAssetRelationship has key, store {
+        id: UID,
+        accused_pending_id: ID,
+        original_asset_id: ID,
+        similarity_bps: u64,
+        evidence_commitment: Option<vector<u8>>,
+        detected_by: address,
+        detected_at: u64,
+        status: u8,
+    }
+
+    public struct DetectedRelationshipProposedEvent has copy, drop {
+        proposal_id: ID,
+        accused_pending_id: ID,
+        original_asset_id: ID,
+        similarity_bps: u64,
+        evidence_commitment: Option<vector<u8>>,
+        detected_by: address,
+        timestamp: u64,
+    }
+
+    public struct DetectedRelationshipAcceptedEvent has copy, drop {
+        proposal_id: ID,
+        accused_pending_id: ID,
+        original_asset_id: ID,
+        similarity_bps: u64,
+        evidence_commitment: Option<vector<u8>>,
+        detected_by: address,
+        timestamp: u64,
+    }
+
+    public struct DetectedRelationshipRejectedEvent has copy, drop {
+        proposal_id: ID,
+        accused_pending_id: ID,
+        original_asset_id: ID,
+        similarity_bps: u64,
+        evidence_commitment: Option<vector<u8>>,
+        detected_by: address,
+        timestamp: u64,
+    }
+
+    public struct RelationshipFinalizedEvent has copy, drop {
+        proposal_id: ID,
+        accused_pending_id: ID,
+        child_asset_id: ID,
+        parent_asset_id: ID,
+        original_asset_id: ID,
+        similarity_bps: u64,
+        detected_by: address,
+        timestamp: u64,
+    }
+
+    fun clamp_similarity_bps(similarity_bps: u64): u64 {
+        if (similarity_bps > MAX_SIMILARITY_BPS) {
+            MAX_SIMILARITY_BPS
         } else {
-            abort EInvalidMediaType
+            similarity_bps
         }
+    }
+
+    fun can_accept_or_reject_proposal(
+        proposal: &DetectedAssetRelationship,
+        pending: &PendingDerivativeAsset,
+        original: &MediaAsset,
+        sender: address,
+    ): bool {
+        sender == media_asset::pending_derivative_creator(pending) ||
+            media_asset::can_update_rights(original, sender) ||
+            sender == proposal.detected_by
+    }
+
+    /// Oracle proposes that a pending upload may derive from an existing canonical asset.
+    public fun propose_detected_relationship(
+        config: &PoCConfig,
+        accused_pending: &PendingDerivativeAsset,
+        original: &MediaAsset,
+        similarity_bps: u64,
+        evidence_commitment: Option<vector<u8>>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert_oracle(config, ctx);
+        let similarity = clamp_similarity_bps(similarity_bps);
+        let accused_pending_id = media_asset::pending_derivative_id(accused_pending);
+        let original_asset_id = media_asset::media_asset_id(original);
+        let detected_by = tx_context::sender(ctx);
+        let timestamp = clock::timestamp_ms(clock);
+        let evidence = evidence_commitment;
+        let proposal = DetectedAssetRelationship {
+            id: object::new(ctx),
+            accused_pending_id,
+            original_asset_id,
+            similarity_bps: similarity,
+            evidence_commitment: evidence,
+            detected_by,
+            detected_at: timestamp,
+            status: DETECTED_STATUS_PROPOSED,
+        };
+        let proposal_id = object::id(&proposal);
+        event::emit(DetectedRelationshipProposedEvent {
+            proposal_id,
+            accused_pending_id,
+            original_asset_id,
+            similarity_bps: similarity,
+            evidence_commitment: evidence,
+            detected_by,
+            timestamp,
+        });
+        transfer::share_object(proposal);
+    }
+
+    public fun accept_detected_relationship(
+        config: &PoCConfig,
+        proposal: &mut DetectedAssetRelationship,
+        accused_pending: &PendingDerivativeAsset,
+        original: &MediaAsset,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        let _ = config;
+        assert!(proposal.status == DETECTED_STATUS_PROPOSED, EInvalidProposalStatus);
+        assert!(
+            can_accept_or_reject_proposal(proposal, accused_pending, original, tx_context::sender(ctx)),
+            EProposalUnauthorized,
+        );
+        assert!(proposal.accused_pending_id == media_asset::pending_derivative_id(accused_pending), EInvalidProposalStatus);
+        assert!(proposal.original_asset_id == media_asset::media_asset_id(original), EInvalidProposalStatus);
+        proposal.status = DETECTED_STATUS_ACCEPTED;
+        let timestamp = clock::timestamp_ms(clock);
+        event::emit(DetectedRelationshipAcceptedEvent {
+            proposal_id: object::id(proposal),
+            accused_pending_id: proposal.accused_pending_id,
+            original_asset_id: proposal.original_asset_id,
+            similarity_bps: proposal.similarity_bps,
+            evidence_commitment: proposal.evidence_commitment,
+            detected_by: proposal.detected_by,
+            timestamp,
+        });
+    }
+
+    public fun reject_detected_relationship(
+        config: &PoCConfig,
+        proposal: &mut DetectedAssetRelationship,
+        accused_pending: &PendingDerivativeAsset,
+        original: &MediaAsset,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        let _ = config;
+        assert!(proposal.status == DETECTED_STATUS_PROPOSED, EInvalidProposalStatus);
+        assert!(
+            can_accept_or_reject_proposal(proposal, accused_pending, original, tx_context::sender(ctx)),
+            EProposalUnauthorized,
+        );
+        proposal.status = DETECTED_STATUS_REJECTED;
+        let timestamp = clock::timestamp_ms(clock);
+        event::emit(DetectedRelationshipRejectedEvent {
+            proposal_id: object::id(proposal),
+            accused_pending_id: proposal.accused_pending_id,
+            original_asset_id: proposal.original_asset_id,
+            similarity_bps: proposal.similarity_bps,
+            evidence_commitment: proposal.evidence_commitment,
+            detected_by: proposal.detected_by,
+            timestamp,
+        });
+    }
+
+    /// Oracle finalizes accepted discovery: parent edge + derivative mint + lineage event.
+    public fun finalize_detected_lineage(
+        config: &PoCConfig,
+        proposal: &mut DetectedAssetRelationship,
+        mut pending: PendingDerivativeAsset,
+        original: &MediaAsset,
+        license_instance: &LicenseInstance,
+        template_version: &LicenseTemplateVersion,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert_oracle(config, ctx);
+        assert!(proposal.status == DETECTED_STATUS_ACCEPTED, EInvalidProposalStatus);
+        assert!(proposal.accused_pending_id == media_asset::pending_derivative_id(&pending), EInvalidProposalStatus);
+        assert!(proposal.original_asset_id == media_asset::media_asset_id(original), EInvalidProposalStatus);
+        let oracle = config.oracle_address;
+        media_asset::add_derivative_parent_edge_to_pending_oracle(
+            &mut pending,
+            original,
+            license_instance,
+            template_version,
+            derivative_graph::relationship_remix(),
+            proposal.evidence_commitment,
+            oracle,
+            clock,
+            ctx,
+        );
+        let child_asset_id = media_asset::finalize_derivative_asset_inner(pending, clock, ctx);
+        proposal.status = DETECTED_STATUS_FINALIZED;
+        let timestamp = clock::timestamp_ms(clock);
+        event::emit(RelationshipFinalizedEvent {
+            proposal_id: object::id(proposal),
+            accused_pending_id: proposal.accused_pending_id,
+            child_asset_id,
+            parent_asset_id: proposal.original_asset_id,
+            original_asset_id: proposal.original_asset_id,
+            similarity_bps: proposal.similarity_bps,
+            detected_by: proposal.detected_by,
+            timestamp,
+        });
     }
 
     // === Public Getter Functions ===
@@ -1575,6 +1929,11 @@ module social_contracts::proof_of_creativity {
     /// Check if an address is the authorized oracle
     public fun is_authorized_oracle(config: &PoCConfig, caller: address): bool {
         caller == config.oracle_address
+    }
+
+    /// Oracle authorization gate for sibling modules (e.g. media_asset).
+    public(package) fun assert_oracle(config: &PoCConfig, ctx: &TxContext) {
+        assert!(is_authorized_oracle(config, tx_context::sender(ctx)), ENotOracle);
     }
 
     /// Get registry statistics
@@ -1587,10 +1946,10 @@ module social_contracts::proof_of_creativity {
         )
     }
 
-    /// Check if a post has PoC data that can be disputed
-    public fun has_poc_data(post: &social_contracts::post::Post): bool {
-        option::is_some(social_contracts::post::get_revenue_redirect_to(post)) ||
-        social_contracts::post::has_poc_badge(post)
+    /// Check if a post has composition data that can be disputed
+    public fun has_composition_data(post: &social_contracts::post::Post): bool {
+        social_contracts::post::has_composition_monetization(post) ||
+            social_contracts::post::composition_status(post) == social_contracts::media_asset::composition_verified()
     }
 
     /// Get dispute voting status; `current_time_ms` should be `clock::timestamp_ms(clock)`.
@@ -1757,6 +2116,20 @@ module social_contracts::proof_of_creativity {
     public fun test_mul_div_u64_loose(a: u64, b: u64, divisor: u64): u64 {
         mul_div_u64_loose(a, b, divisor)
     }
+
+    #[test_only]
+    public fun test_proposal_status(proposal: &DetectedAssetRelationship): u8 {
+        proposal.status
+    }
+
+    #[test_only]
+    public fun test_detected_status_proposed(): u8 { DETECTED_STATUS_PROPOSED }
+
+    #[test_only]
+    public fun test_detected_status_accepted(): u8 { DETECTED_STATUS_ACCEPTED }
+
+    #[test_only]
+    public fun test_detected_status_rejected(): u8 { DETECTED_STATUS_REJECTED }
 
     #[test_only]
     /// Initialize the PoC system for testing

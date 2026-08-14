@@ -8440,6 +8440,855 @@ borrow_registry_version_mut
 migrate_block_list_registry
 	public entry fun
 	0x50c1::block_list
+LicenseTemplateVersion
+	public struct
+	0x50c1::license_template
+AssetLicense
+	public struct
+	0x50c1::license_template
+LicenseInstance
+	public struct
+	0x50c1::license_template
+DirectUsageGrant
+	public struct
+	0x50c1::license_template
+LicenseTemplatePublishedEvent
+	public struct
+	0x50c1::license_template
+LicenseInstanceAcceptedEvent
+	public struct
+	0x50c1::license_template
+LicenseInstanceRevokedEvent
+	public struct
+	0x50c1::license_template
+license_instance_active
+	public fun
+	0x50c1::license_template
+license_instance_expired
+	public fun
+	0x50c1::license_template
+license_instance_revoked
+	public fun
+	0x50c1::license_template
+template_version_id
+	public fun
+	0x50c1::license_template
+license_instance_id
+	public fun
+	0x50c1::license_template
+instance_template_version_id
+	public fun
+	0x50c1::license_template
+instance_status
+	public fun
+	0x50c1::license_template
+instance_licensee
+	public fun
+	0x50c1::license_template
+instance_licensor_asset_id
+	public fun
+	0x50c1::license_template
+template_allow_derivatives
+	public fun
+	0x50c1::license_template
+template_granted_rights
+	public fun
+	0x50c1::license_template
+template_attribution_required
+	public fun
+	0x50c1::license_template
+instance_is_active
+	public fun
+	0x50c1::license_template
+assert_instance_matches_template
+	public fun
+	0x50c1::license_template
+assert_instance_active
+	public fun
+	0x50c1::license_template
+derive_parent_share_bps
+	public fun
+	0x50c1::license_template
+asset_license_template_id
+	public(package) fun
+	0x50c1::license_template
+asset_license_usage_class
+	public(package) fun
+	0x50c1::license_template
+set_asset_license_enabled
+	public(package) fun
+	0x50c1::license_template
+disable_matching_asset_license
+	public(package) fun
+	0x50c1::license_template
+publish_license_template_version
+	public fun
+	0x50c1::license_template
+accept_license_instance
+	public fun
+	0x50c1::license_template
+revoke_license_instance
+	public fun
+	0x50c1::license_template
+new_asset_license
+	public(package) fun
+	0x50c1::license_template
+assert_asset_license_enabled
+	public(package) fun
+	0x50c1::license_template
+new_direct_usage_grant
+	public(package) fun
+	0x50c1::license_template
+AncestryMetadata
+	public struct
+	0x50c1::derivative_graph
+DerivativeRelationship
+	public struct
+	0x50c1::derivative_graph
+ResolvedRoyaltyObligation
+	public struct
+	0x50c1::derivative_graph
+PendingComposeAccumulator
+	public struct
+	0x50c1::derivative_graph
+max_ancestors
+	public fun
+	0x50c1::derivative_graph
+relationship_remix
+	public fun
+	0x50c1::derivative_graph
+relationship_sample
+	public fun
+	0x50c1::derivative_graph
+relationship_cover
+	public fun
+	0x50c1::derivative_graph
+relationship_mashup
+	public fun
+	0x50c1::derivative_graph
+obligation_kind_edge
+	public fun
+	0x50c1::derivative_graph
+obligation_kind_inherited
+	public fun
+	0x50c1::derivative_graph
+obligation_kind_template
+	public fun
+	0x50c1::derivative_graph
+empty_compose_accumulator
+	public(package) fun
+	0x50c1::derivative_graph
+compose_total_edge_share_bps
+	public(package) fun
+	0x50c1::derivative_graph
+compose_accumulated_obligations
+	public(package) fun
+	0x50c1::derivative_graph
+compose_parent_asset_ids
+	public(package) fun
+	0x50c1::derivative_graph
+compose_license_instance_ids
+	public(package) fun
+	0x50c1::derivative_graph
+compose_template_version_ids
+	public(package) fun
+	0x50c1::derivative_graph
+compose_parent_policy_versions
+	public(package) fun
+	0x50c1::derivative_graph
+compose_effective_rights
+	public(package) fun
+	0x50c1::derivative_graph
+compose_derivatives_allowed
+	public(package) fun
+	0x50c1::derivative_graph
+compose_commercial_allowed
+	public(package) fun
+	0x50c1::derivative_graph
+compose_attribution_required
+	public(package) fun
+	0x50c1::derivative_graph
+find_parent_index
+	fun
+	0x50c1::derivative_graph
+insert_parent_into_lineage_vectors
+	public(package) fun
+	0x50c1::derivative_graph
+merge_compose_accumulator
+	public(package) fun
+	0x50c1::derivative_graph
+find_edge_by_relationship_id
+	public(package) fun
+	0x50c1::derivative_graph
+set_child_asset_id_on_edges
+	public(package) fun
+	0x50c1::derivative_graph
+empty_ancestry
+	public(package) fun
+	0x50c1::derivative_graph
+ancestry_version
+	public(package) fun
+	0x50c1::derivative_graph
+ancestor_ids
+	public(package) fun
+	0x50c1::derivative_graph
+new_derivative_relationship
+	public(package) fun
+	0x50c1::derivative_graph
+edge_parent_asset_id
+	public(package) fun
+	0x50c1::derivative_graph
+edge_relationship_id
+	public(package) fun
+	0x50c1::derivative_graph
+edge_license_instance_id
+	public(package) fun
+	0x50c1::derivative_graph
+edge_template_version_id
+	public(package) fun
+	0x50c1::derivative_graph
+edge_parent_share_bps
+	public(package) fun
+	0x50c1::derivative_graph
+new_resolved_royalty_obligation
+	public(package) fun
+	0x50c1::derivative_graph
+obligation_beneficiary_asset_id
+	public(package) fun
+	0x50c1::derivative_graph
+obligation_beneficiary_address
+	public(package) fun
+	0x50c1::derivative_graph
+obligation_share_bps
+	public(package) fun
+	0x50c1::derivative_graph
+obligation_source_relationship_id
+	public(package) fun
+	0x50c1::derivative_graph
+obligation_source_license_instance_id
+	public(package) fun
+	0x50c1::derivative_graph
+obligation_obligation_kind
+	public(package) fun
+	0x50c1::derivative_graph
+id_vector_contains
+	public(package) fun
+	0x50c1::derivative_graph
+id_less_than
+	fun
+	0x50c1::derivative_graph
+sort_ids_ascending
+	fun
+	0x50c1::derivative_graph
+push_id_if_absent
+	fun
+	0x50c1::derivative_graph
+canonical_union
+	public(package) fun
+	0x50c1::derivative_graph
+assert_valid_parent_child_edge
+	public(package) fun
+	0x50c1::derivative_graph
+merge_ancestry_for_edge
+	public(package) fun
+	0x50c1::derivative_graph
+assert_relationship_unique
+	public(package) fun
+	0x50c1::derivative_graph
+LineageCommitment
+	public struct
+	0x50c1::media_asset
+ResolvedRightsPolicy
+	public struct
+	0x50c1::media_asset
+MediaAssetIdentity
+	public struct
+	0x50c1::media_asset
+Claim
+	public struct
+	0x50c1::media_asset
+RightsInterest
+	public struct
+	0x50c1::media_asset
+UsageGrant
+	public struct
+	0x50c1::media_asset
+BeneficiarySplit
+	public struct
+	0x50c1::media_asset
+MediaAsset
+	public struct
+	0x50c1::media_asset
+AssetVersionCommitment
+	public struct
+	0x50c1::media_asset
+CompositionAnalysis
+	public struct
+	0x50c1::media_asset
+CompositionBadgeSnapshot
+	public struct
+	0x50c1::media_asset
+ManifestEntry
+	public struct
+	0x50c1::media_asset
+RevenueManifest
+	public struct
+	0x50c1::media_asset
+MediaResolutionRequestedEvent
+	public struct
+	0x50c1::media_asset
+MediaAssetResolvedEvent
+	public struct
+	0x50c1::media_asset
+FingerprintLinkedEvent
+	public struct
+	0x50c1::media_asset
+MediaAssetUsedEvent
+	public struct
+	0x50c1::media_asset
+MediaAssetRightsUpdatedEvent
+	public struct
+	0x50c1::media_asset
+MediaAssetRightsDisputeState
+	public struct
+	0x50c1::media_asset
+ClaimsBundle
+	public struct
+	0x50c1::media_asset
+MediaAssetEconomicsUpdatedEvent
+	public struct
+	0x50c1::media_asset
+PostCompositionAnalyzedEvent
+	public struct
+	0x50c1::media_asset
+MediaResolutionRequest
+	public struct
+	0x50c1::media_asset
+MediaAssetLicenseOfferDisabledEvent
+	public struct
+	0x50c1::media_asset
+PendingDerivativeAsset
+	public struct
+	0x50c1::media_asset
+PendingPolicyRefresh
+	public struct
+	0x50c1::media_asset
+DerivativeRelationshipAddedEvent
+	public struct
+	0x50c1::media_asset
+AncestryUpdatedEvent
+	public struct
+	0x50c1::media_asset
+DerivativeAssetFinalizedEvent
+	public struct
+	0x50c1::media_asset
+OriginalAssetFinalizedEvent
+	public struct
+	0x50c1::media_asset
+ResolvedPolicyUpdatedEvent
+	public struct
+	0x50c1::media_asset
+ResolvedObligationRecordedEvent
+	public struct
+	0x50c1::media_asset
+media_type_image
+	public fun
+	0x50c1::media_asset
+media_type_video
+	public fun
+	0x50c1::media_asset
+media_type_audio
+	public fun
+	0x50c1::media_asset
+usage_social_post
+	public fun
+	0x50c1::media_asset
+usage_profile_picture
+	public fun
+	0x50c1::media_asset
+usage_cover_photo
+	public fun
+	0x50c1::media_asset
+usage_article_embed
+	public fun
+	0x50c1::media_asset
+usage_music_soundtrack
+	public fun
+	0x50c1::media_asset
+usage_advertisement
+	public fun
+	0x50c1::media_asset
+usage_remix
+	public fun
+	0x50c1::media_asset
+usage_download
+	public fun
+	0x50c1::media_asset
+usage_stream
+	public fun
+	0x50c1::media_asset
+container_post
+	public fun
+	0x50c1::media_asset
+container_profile
+	public fun
+	0x50c1::media_asset
+container_article
+	public fun
+	0x50c1::media_asset
+right_reproduction
+	public fun
+	0x50c1::media_asset
+right_derivative_work
+	public fun
+	0x50c1::media_asset
+right_distribution
+	public fun
+	0x50c1::media_asset
+right_public_performance
+	public fun
+	0x50c1::media_asset
+right_public_display
+	public fun
+	0x50c1::media_asset
+right_digital_audio_transmission
+	public fun
+	0x50c1::media_asset
+all_statutory_rights
+	public fun
+	0x50c1::media_asset
+license_non_exclusive
+	public fun
+	0x50c1::media_asset
+license_exclusive
+	public fun
+	0x50c1::media_asset
+license_royalty_free
+	public fun
+	0x50c1::media_asset
+license_synchronization
+	public fun
+	0x50c1::media_asset
+license_master_use
+	public fun
+	0x50c1::media_asset
+compensation_none
+	public fun
+	0x50c1::media_asset
+compensation_royalty_bearing
+	public fun
+	0x50c1::media_asset
+compensation_revenue_share
+	public fun
+	0x50c1::media_asset
+compensation_flat_fee
+	public fun
+	0x50c1::media_asset
+claim_type_authorship
+	public fun
+	0x50c1::media_asset
+claim_type_copyright_ownership
+	public fun
+	0x50c1::media_asset
+claim_type_rights_control
+	public fun
+	0x50c1::media_asset
+claim_type_license_authority
+	public fun
+	0x50c1::media_asset
+claim_type_beneficiary
+	public fun
+	0x50c1::media_asset
+claim_unverified
+	public fun
+	0x50c1::media_asset
+claim_asserted
+	public fun
+	0x50c1::media_asset
+claim_oracle_verified
+	public fun
+	0x50c1::media_asset
+claim_disputed
+	public fun
+	0x50c1::media_asset
+asset_kind_unspecified
+	public fun
+	0x50c1::media_asset
+asset_kind_visual_work
+	public fun
+	0x50c1::media_asset
+asset_kind_musical_composition
+	public fun
+	0x50c1::media_asset
+asset_kind_sound_recording
+	public fun
+	0x50c1::media_asset
+originality_unresolved
+	public fun
+	0x50c1::media_asset
+originality_original
+	public fun
+	0x50c1::media_asset
+originality_derivative
+	public fun
+	0x50c1::media_asset
+provenance_unverified
+	public fun
+	0x50c1::media_asset
+provenance_verified
+	public fun
+	0x50c1::media_asset
+composition_none
+	public fun
+	0x50c1::media_asset
+composition_pending
+	public fun
+	0x50c1::media_asset
+composition_verified
+	public fun
+	0x50c1::media_asset
+composition_invalid
+	public fun
+	0x50c1::media_asset
+composition_partially_restricted
+	public fun
+	0x50c1::media_asset
+monetization_none
+	public fun
+	0x50c1::media_asset
+monetization_pending
+	public fun
+	0x50c1::media_asset
+monetization_enabled
+	public fun
+	0x50c1::media_asset
+monetization_restricted
+	public fun
+	0x50c1::media_asset
+payout_wallet
+	public fun
+	0x50c1::media_asset
+payout_escrow
+	public fun
+	0x50c1::media_asset
+assert_media_asset_version
+	public(package) fun
+	0x50c1::media_asset
+media_asset_id
+	public(package) fun
+	0x50c1::media_asset
+rights_version
+	public(package) fun
+	0x50c1::media_asset
+economics_version
+	public(package) fun
+	0x50c1::media_asset
+assert_valid_usage_class
+	public(package) fun
+	0x50c1::media_asset
+required_rights_for_usage
+	public(package) fun
+	0x50c1::media_asset
+usage_requires_derivatives_flag
+	fun
+	0x50c1::media_asset
+usage_requires_commercial_flag
+	fun
+	0x50c1::media_asset
+grant_is_effective
+	fun
+	0x50c1::media_asset
+grant_covers_usage
+	fun
+	0x50c1::media_asset
+find_usage_grant
+	fun
+	0x50c1::media_asset
+rights_permits_usage
+	public(package) fun
+	0x50c1::media_asset
+usage_requires_attribution
+	public(package) fun
+	0x50c1::media_asset
+usage_compensation_type
+	public(package) fun
+	0x50c1::media_asset
+usage_compensation_bps
+	public(package) fun
+	0x50c1::media_asset
+usage_allows_paid_exploitation
+	public(package) fun
+	0x50c1::media_asset
+assert_valid_media_type
+	fun
+	0x50c1::media_asset
+assert_valid_commitment
+	fun
+	0x50c1::media_asset
+assert_valid_optional_evidence_commitment
+	public(package) fun
+	0x50c1::media_asset
+assert_beneficiary_splits_sum_to_total
+	fun
+	0x50c1::media_asset
+assert_valid_asset_kind
+	fun
+	0x50c1::media_asset
+claim_is_verified
+	fun
+	0x50c1::media_asset
+assert_valid_claim
+	fun
+	0x50c1::media_asset
+assert_valid_claims
+	fun
+	0x50c1::media_asset
+assert_all_claims_oracle_verified
+	fun
+	0x50c1::media_asset
+assert_valid_claims_for_oracle
+	fun
+	0x50c1::media_asset
+resolve_creators_from_claims
+	fun
+	0x50c1::media_asset
+resolve_rights_interests_from_claims
+	fun
+	0x50c1::media_asset
+resolve_beneficiaries_from_claims
+	fun
+	0x50c1::media_asset
+beneficiaries_from_splits
+	fun
+	0x50c1::media_asset
+stamp_claim_asset_ids
+	fun
+	0x50c1::media_asset
+assert_valid_usage_grants
+	fun
+	0x50c1::media_asset
+assert_valid_rights_interests
+	fun
+	0x50c1::media_asset
+default_usage_grant
+	fun
+	0x50c1::media_asset
+default_usage_grants
+	fun
+	0x50c1::media_asset
+default_beneficiary_splits
+	fun
+	0x50c1::media_asset
+is_rights_controller
+	fun
+	0x50c1::media_asset
+has_license_authority
+	fun
+	0x50c1::media_asset
+has_verified_beneficiary_claim
+	fun
+	0x50c1::media_asset
+can_update_economics
+	fun
+	0x50c1::media_asset
+can_update_rights
+	public(package) fun
+	0x50c1::media_asset
+submit_media_resolution
+	public entry fun
+	0x50c1::media_asset
+finalize_media_asset
+	public(package) fun
+	0x50c1::media_asset
+update_media_asset_usage_grants
+	public fun
+	0x50c1::media_asset
+oracle_update_media_asset_claims
+	public(package) fun
+	0x50c1::media_asset
+mark_claims_disputed
+	fun
+	0x50c1::media_asset
+borrow_rights_dispute_state
+	public(package) fun
+	0x50c1::media_asset
+borrow_rights_dispute_state_mut
+	public(package) fun
+	0x50c1::media_asset
+rights_disputes_submitted
+	public(package) fun
+	0x50c1::media_asset
+assert_no_active_rights_proposal
+	public(package) fun
+	0x50c1::media_asset
+link_rights_proposal
+	public(package) fun
+	0x50c1::media_asset
+clear_rights_proposal_on_reject
+	public(package) fun
+	0x50c1::media_asset
+clear_rights_proposal_on_implement
+	public(package) fun
+	0x50c1::media_asset
+pending_claims_commitment
+	public(package) fun
+	0x50c1::media_asset
+assert_registered_asset
+	public(package) fun
+	0x50c1::media_asset
+compute_claims_bundle_commitment
+	public(package) fun
+	0x50c1::media_asset
+update_media_asset_economics
+	public fun
+	0x50c1::media_asset
+emit_media_asset_used
+	public(package) fun
+	0x50c1::media_asset
+assert_usage_permitted
+	public(package) fun
+	0x50c1::media_asset
+validate_revenue_manifest
+	public(package) fun
+	0x50c1::media_asset
+composition_analysis_matches_assets
+	public(package) fun
+	0x50c1::media_asset
+composition_analysis_is_current
+	public(package) fun
+	0x50c1::media_asset
+manifest_bps_total
+	public(package) fun
+	0x50c1::media_asset
+manifest_entries
+	public(package) fun
+	0x50c1::media_asset
+manifest_entry_beneficiary
+	public(package) fun
+	0x50c1::media_asset
+manifest_entry_share_bps
+	public(package) fun
+	0x50c1::media_asset
+manifest_entry_payout_mode
+	public(package) fun
+	0x50c1::media_asset
+manifest_entry_source_asset_id
+	public(package) fun
+	0x50c1::media_asset
+resolved_policy_permits_usage
+	public(package) fun
+	0x50c1::media_asset
+new_manifest_entry
+	public(package) fun
+	0x50c1::media_asset
+new_revenue_manifest
+	public(package) fun
+	0x50c1::media_asset
+manifest_has_escrow_payout
+	public(package) fun
+	0x50c1::media_asset
+manifest_uses_escrow_redirect
+	public(package) fun
+	0x50c1::media_asset
+manifest_redirect_beneficiary
+	public(package) fun
+	0x50c1::media_asset
+manifest_redirect_percentage
+	public(package) fun
+	0x50c1::media_asset
+new_composition_badge_snapshot
+	public(package) fun
+	0x50c1::media_asset
+emit_post_composition_analyzed
+	public(package) fun
+	0x50c1::media_asset
+assert_oracle
+	fun
+	0x50c1::media_asset
+max_composition_assets
+	public(package) fun
+	0x50c1::media_asset
+default_compose_policy_fields
+	fun
+	0x50c1::media_asset
+default_graph_fields
+	fun
+	0x50c1::media_asset
+create_derivative_asset
+	public entry fun
+	0x50c1::media_asset
+add_derivative_parent_edge
+	public entry fun
+	0x50c1::media_asset
+update_asset_licenses
+	public(package) fun
+	0x50c1::media_asset
+disable_asset_license
+	public(package) fun
+	0x50c1::media_asset
+ancestry_hash_from_ids
+	fun
+	0x50c1::media_asset
+media_asset_identity_from_pending
+	fun
+	0x50c1::media_asset
+bootstrap_parent_policy_snapshot
+	fun
+	0x50c1::media_asset
+edge_obligation
+	fun
+	0x50c1::media_asset
+build_lineage_commitment
+	fun
+	0x50c1::media_asset
+materialize_resolved_policy_from_accumulator
+	fun
+	0x50c1::media_asset
+mint_shared_media_asset_from_pending
+	fun
+	0x50c1::media_asset
+create_pending_derivative_asset
+	public entry fun
+	0x50c1::media_asset
+add_derivative_parent_edge_to_pending
+	public entry fun
+	0x50c1::media_asset
+add_derivative_parent_edge_to_pending_inner
+	fun
+	0x50c1::media_asset
+finalize_derivative_asset
+	public entry fun
+	0x50c1::media_asset
+finalize_derivative_asset_inner
+	public(package) fun
+	0x50c1::media_asset
+pending_derivative_creator
+	public(package) fun
+	0x50c1::media_asset
+pending_derivative_id
+	public(package) fun
+	0x50c1::media_asset
+add_derivative_parent_edge_to_pending_oracle
+	public(package) fun
+	0x50c1::media_asset
+finalize_pending_as_original
+	public entry fun
+	0x50c1::media_asset
+materialize_initial_resolved_policy
+	public entry fun
+	0x50c1::media_asset
+begin_policy_refresh
+	public fun
+	0x50c1::media_asset
+merge_parent_into_policy_refresh
+	public entry fun
+	0x50c1::media_asset
+finalize_policy_refresh
+	public entry fun
+	0x50c1::media_asset
+resolved_policy_version
+	public(package) fun
+	0x50c1::media_asset
 ProfileAdminCap
 	public struct
 	0x50c1::profile
@@ -8501,6 +9350,9 @@ EcosystemBadgeSelectionClearedEvent
 	public struct
 	0x50c1::profile
 BadgeRemovedEvent
+	public struct
+	0x50c1::profile
+ProfileMediaAssetUpdatedEvent
 	public struct
 	0x50c1::profile
 ProfileCreatedEvent
@@ -8655,6 +9507,18 @@ ensure_memory_account
 	0x50c1::profile
 update_profile
 	public entry fun
+	0x50c1::profile
+update_profile_picture_asset
+	public entry fun
+	0x50c1::profile
+update_cover_photo_asset
+	public entry fun
+	0x50c1::profile
+profile_picture_asset_id
+	public fun
+	0x50c1::profile
+cover_photo_asset_id
+	public fun
 	0x50c1::profile
 display_name
 	public fun
@@ -9109,6 +9973,9 @@ submit_spot_resolution_proposal
 submit_spot_proposal_and_return_id
 	public(package) fun
 	0x50c1::governance
+submit_poc_proposal_and_return_id
+	public(package) fun
+	0x50c1::governance
 submit_proposal_internal
 	fun
 	0x50c1::governance
@@ -9196,6 +10063,9 @@ finalize_proposal_anonymous
 mark_proposal_implemented_take_pool
 	public(package) fun
 	0x50c1::governance
+mark_proposal_implemented_take_pool_poc_oracle
+	public(package) fun
+	0x50c1::governance
 mark_proposal_implemented_to_ecosystem_treasury
 	public entry fun
 	0x50c1::governance
@@ -9239,6 +10109,9 @@ get_delegate_info
 	public fun
 	0x50c1::governance
 get_proposal_info
+	public fun
+	0x50c1::governance
+proposal_submission_cost
 	public fun
 	0x50c1::governance
 proposal_submitter
@@ -10357,9 +11230,6 @@ migrate_claim_vault
 migrate_distribution_registry
 	public entry fun
 	0x50c1::mydata
-PoCBadgeSnapshot
-	public struct
-	0x50c1::post
 Post
 	public struct
 	0x50c1::post
@@ -10367,6 +11237,30 @@ PostAttribution
 	public struct
 	0x50c1::post
 CommentAttribution
+	public struct
+	0x50c1::post
+EmbeddedAssetBinding
+	public struct
+	0x50c1::post
+UsageDecisionSnapshot
+	public struct
+	0x50c1::post
+ContainerUsageDenial
+	public struct
+	0x50c1::post
+EmbeddedBindingRecordedEvent
+	public struct
+	0x50c1::post
+UsageDecisionRefreshedEvent
+	public struct
+	0x50c1::post
+ContainerUsageDeniedEvent
+	public struct
+	0x50c1::post
+ContainerUsageDenialLiftedEvent
+	public struct
+	0x50c1::post
+CandidateManifestSubmittedEvent
 	public struct
 	0x50c1::post
 PostSpotAnalysis
@@ -10516,13 +11410,37 @@ allow_tips
 is_spt_enabled
 	public fun
 	0x50c1::post
-poc_outcome
+composition_status
 	public fun
 	0x50c1::post
-poc_redirection_kind
+monetization_status
+	public fun
+	0x50c1::post
+media_asset_ids
+	public fun
+	0x50c1::post
+composition_badge
+	public fun
+	0x50c1::post
+composition_analysis
+	public fun
+	0x50c1::post
+revenue_manifest
+	public fun
+	0x50c1::post
+composition_disputes_submitted
+	public fun
+	0x50c1::post
+monetization_enabled
 	public fun
 	0x50c1::post
 poc_disputes_submitted
+	public fun
+	0x50c1::post
+has_composition_monetization
+	public fun
+	0x50c1::post
+tip_post_requires_beneficiary_vault_for_amount
 	public fun
 	0x50c1::post
 actor_address
@@ -10554,39 +11472,6 @@ comment_attribution
 	0x50c1::post
 attach_comment_attribution
 	fun
-	0x50c1::post
-tip_post_requires_beneficiary_vault_for_amount
-	public fun
-	0x50c1::post
-poc_redirection_none
-	public fun
-	0x50c1::post
-get_poc_badge
-	public fun
-	0x50c1::post
-get_poc_badge_object_id
-	public fun
-	0x50c1::post
-has_poc_badge
-	public fun
-	0x50c1::post
-get_poc_reasoning
-	public fun
-	0x50c1::post
-get_poc_evidence_urls
-	public fun
-	0x50c1::post
-get_poc_similarity_score
-	public fun
-	0x50c1::post
-get_poc_media_type
-	public fun
-	0x50c1::post
-get_poc_oracle_address
-	public fun
-	0x50c1::post
-get_poc_analyzed_at
-	public fun
 	0x50c1::post
 get_spt_id
 	public fun
@@ -10646,6 +11531,9 @@ assert_tip_spend_limit
 	fun
 	0x50c1::post
 create_post_internal
+	fun
+	0x50c1::post
+emit_post_media_asset_usages
 	fun
 	0x50c1::post
 share_post
@@ -10711,19 +11599,94 @@ tip_post
 tip_post_simple
 	public fun
 	0x50c1::post
-apply_poc_redirection_coin
+apply_revenue_manifest_coin
 	fun
 	0x50c1::post
-apply_poc_redirection_coin_without_beneficiary_vault
+apply_revenue_manifest_coin_without_beneficiary_vault
 	fun
 	0x50c1::post
-update_poc_result
+embedded_bindings
+	fun
+	0x50c1::post
+usage_decisions
+	fun
+	0x50c1::post
+usage_denials
+	fun
+	0x50c1::post
+set_embedded_bindings
+	fun
+	0x50c1::post
+set_usage_decisions
+	fun
+	0x50c1::post
+set_usage_denials
+	fun
+	0x50c1::post
+find_binding_index
+	fun
+	0x50c1::post
+borrow_binding
+	fun
+	0x50c1::post
+upsert_binding
+	fun
+	0x50c1::post
+upsert_decision
+	fun
+	0x50c1::post
+upsert_denial
+	fun
+	0x50c1::post
+remove_denial
+	fun
+	0x50c1::post
+apply_denials_to_snapshot
+	fun
+	0x50c1::post
+evaluate_binding_policy
+	fun
+	0x50c1::post
+refresh_composition_status_from_decisions
+	fun
+	0x50c1::post
+decision_for_binding
+	fun
+	0x50c1::post
+usage_is_payout_permitted_for_asset
+	fun
+	0x50c1::post
+validate_binding
+	fun
+	0x50c1::post
+write_usage_decision_for_binding
+	fun
+	0x50c1::post
+record_embedded_bindings
+	public fun
+	0x50c1::post
+refresh_post_asset_usage_decision
+	public fun
+	0x50c1::post
+submit_candidate_revenue_manifest
+	public fun
+	0x50c1::post
+deny_container_usage
+	public entry fun
+	0x50c1::post
+lift_container_usage_denial
+	public entry fun
+	0x50c1::post
+set_composition_result
 	public(package) fun
 	0x50c1::post
-set_poc_badge_object_id
+clear_composition_data
 	public(package) fun
 	0x50c1::post
 clear_poc_data
+	public(package) fun
+	0x50c1::post
+increment_composition_disputes_submitted
 	public(package) fun
 	0x50c1::post
 increment_poc_disputes_submitted
@@ -10820,6 +11783,12 @@ get_revenue_redirect_to
 	public fun
 	0x50c1::post
 get_revenue_redirect_percentage
+	public fun
+	0x50c1::post
+poc_redirection_kind
+	public fun
+	0x50c1::post
+poc_redirection_none
 	public fun
 	0x50c1::post
 version
@@ -11056,16 +12025,25 @@ can_create_auction
 create_social_proof_token
 	public entry fun
 	0x50c1::social_proof_tokens
+sync_token_pool_manifest_from_post
+	public(package) fun
+	0x50c1::social_proof_tokens
 sync_token_pool_poc_from_post
 	public(package) fun
 	0x50c1::social_proof_tokens
 update_token_poc_data
 	public entry fun
 	0x50c1::social_proof_tokens
-calculate_poc_split
+pool_manifest_has_escrow_payout
 	fun
 	0x50c1::social_proof_tokens
-apply_token_poc_redirection
+should_apply_pool_revenue_manifest
+	fun
+	0x50c1::social_proof_tokens
+apply_pool_revenue_manifest_coin
+	fun
+	0x50c1::social_proof_tokens
+apply_post_revenue_manifest_coin
 	fun
 	0x50c1::social_proof_tokens
 distribute_creator_fee
@@ -11224,17 +12202,23 @@ get_pool_price
 get_user_balance
 	public fun
 	0x50c1::social_proof_tokens
+get_revenue_manifest
+	public fun
+	0x50c1::social_proof_tokens
+has_poc_redirection
+	public fun
+	0x50c1::social_proof_tokens
 get_poc_redirect_to
 	public fun
 	0x50c1::social_proof_tokens
 get_poc_redirect_percentage
 	public fun
 	0x50c1::social_proof_tokens
-has_poc_redirection
-	public fun
-	0x50c1::social_proof_tokens
 get_pool_associated_id
 	public fun
+	0x50c1::social_proof_tokens
+set_revenue_manifest
+	public(package) fun
 	0x50c1::social_proof_tokens
 set_poc_redirection
 	public(package) fun
@@ -11779,18 +12763,6 @@ PoCDispute
 PoCRegistry
 	public struct
 	0x50c1::proof_of_creativity
-PoCResultAppliedEvent
-	public struct
-	0x50c1::proof_of_creativity
-AnalysisSubmittedEvent
-	public struct
-	0x50c1::proof_of_creativity
-PoCBadgeIssuedEvent
-	public struct
-	0x50c1::proof_of_creativity
-RevenueRedirectionActivatedEvent
-	public struct
-	0x50c1::proof_of_creativity
 PoCDisputeSubmittedEvent
 	public struct
 	0x50c1::proof_of_creativity
@@ -11806,6 +12778,30 @@ VotingRewardClaimedEvent
 PoCConfigUpdatedEvent
 	public struct
 	0x50c1::proof_of_creativity
+MediaAssetRightsDisputeProposedEvent
+	public struct
+	0x50c1::proof_of_creativity
+MediaAssetGovernanceProposalLinkedEvent
+	public struct
+	0x50c1::proof_of_creativity
+MediaAssetGovernanceProposalClearedEvent
+	public struct
+	0x50c1::proof_of_creativity
+DetectedAssetRelationship
+	public struct
+	0x50c1::proof_of_creativity
+DetectedRelationshipProposedEvent
+	public struct
+	0x50c1::proof_of_creativity
+DetectedRelationshipAcceptedEvent
+	public struct
+	0x50c1::proof_of_creativity
+DetectedRelationshipRejectedEvent
+	public struct
+	0x50c1::proof_of_creativity
+RelationshipFinalizedEvent
+	public struct
+	0x50c1::proof_of_creativity
 create_poc_beneficiary_admin_cap
 	public(package) fun
 	0x50c1::proof_of_creativity
@@ -11817,6 +12813,15 @@ bootstrap_init
 	0x50c1::proof_of_creativity
 update_poc_config
 	public entry fun
+	0x50c1::proof_of_creativity
+media_asset_dispute_cost
+	public fun
+	0x50c1::proof_of_creativity
+max_disputes_per_media_asset
+	public fun
+	0x50c1::proof_of_creativity
+max_disputes_per_media_asset_package
+	public(package) fun
 	0x50c1::proof_of_creativity
 max_disputes_per_post
 	public(package) fun
@@ -11848,20 +12853,41 @@ claim_username_beneficiary
 claim_username_beneficiary_vault_balance
 	public entry fun
 	0x50c1::proof_of_creativity
-clear_self_match_original_creator
+run_analyze_post_composition
 	fun
 	0x50c1::proof_of_creativity
-mint_shared_poc_badge_object
+finalize_media_asset
+	public fun
+	0x50c1::proof_of_creativity
+oracle_update_media_asset_claims
+	public fun
+	0x50c1::proof_of_creativity
+assert_poc_governance_registry
 	fun
 	0x50c1::proof_of_creativity
-run_analyze_and_update_post
+assert_valid_claims_commitment
 	fun
 	0x50c1::proof_of_creativity
-analyze_and_update_post
+submit_media_asset_rights_dispute_proposal
 	public entry fun
 	0x50c1::proof_of_creativity
-analyze_and_update_post_sync_token_pool
+clear_media_asset_rights_proposal_on_reject
 	public entry fun
+	0x50c1::proof_of_creativity
+finalize_media_asset_rights_governance_proposal
+	public entry fun
+	0x50c1::proof_of_creativity
+implement_media_asset_rights_from_governance
+	public fun
+	0x50c1::proof_of_creativity
+finalize_media_asset_rights_via_dao
+	public fun
+	0x50c1::proof_of_creativity
+analyze_post_composition
+	public fun
+	0x50c1::proof_of_creativity
+analyze_post_composition_sync_token_pool
+	public fun
 	0x50c1::proof_of_creativity
 claim_beneficiary_vault_balance
 	public entry fun
@@ -11884,25 +12910,34 @@ resolve_dispute_voting_sync_token_pool
 claim_voting_reward
 	public entry fun
 	0x50c1::proof_of_creativity
-assert_embed_audio_derivative_media_type
+clamp_similarity_bps
 	fun
 	0x50c1::proof_of_creativity
-similarity_redirect_percentage
+can_accept_or_reject_proposal
 	fun
 	0x50c1::proof_of_creativity
-bps_to_redirect_percent
-	fun
+propose_detected_relationship
+	public fun
 	0x50c1::proof_of_creativity
-get_threshold_for_media_type
-	fun
+accept_detected_relationship
+	public fun
+	0x50c1::proof_of_creativity
+reject_detected_relationship
+	public fun
+	0x50c1::proof_of_creativity
+finalize_detected_lineage
+	public fun
 	0x50c1::proof_of_creativity
 is_authorized_oracle
 	public fun
 	0x50c1::proof_of_creativity
+assert_oracle
+	public(package) fun
+	0x50c1::proof_of_creativity
 get_registry_stats
 	public fun
 	0x50c1::proof_of_creativity
-has_poc_data
+has_composition_data
 	public fun
 	0x50c1::proof_of_creativity
 get_dispute_voting_status

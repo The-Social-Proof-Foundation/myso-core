@@ -121,6 +121,18 @@ pub struct PostRow {
     pub post_access_kind: Option<String>,
     #[diesel(sql_type = BigInt)]
     pub contract_version: i64,
+    #[diesel(sql_type = Nullable<SmallInt>)]
+    pub composition_status: Option<i16>,
+    #[diesel(sql_type = Nullable<SmallInt>)]
+    pub monetization_status: Option<i16>,
+    #[diesel(sql_type = Nullable<diesel::sql_types::Jsonb>)]
+    pub media_asset_ids: Option<JsonValue>,
+    #[diesel(sql_type = Nullable<diesel::sql_types::Jsonb>)]
+    pub embedded_bindings: Option<JsonValue>,
+    #[diesel(sql_type = Nullable<diesel::sql_types::Jsonb>)]
+    pub usage_decisions: Option<JsonValue>,
+    #[diesel(sql_type = Nullable<diesel::sql_types::Jsonb>)]
+    pub usage_denials: Option<JsonValue>,
 }
 
 #[derive(Debug, Clone)]
@@ -215,7 +227,9 @@ pub(crate) async fn get_post_by_id(
                 p.encrypted_content_hash, p.removed_from_platform, p.removed_by, p.metadata_json, p.promotion_id,
                 p.platform_id, p.permissions, COALESCE(sa.derived_address, p.owner) AS actor_address,
                 p.sub_agent_id, p.action_identity_class,
-                p.organization_id, p.post_access_kind, p.contract_version
+                p.organization_id, p.post_access_kind, p.contract_version,
+                p.composition_status, p.monetization_status, p.media_asset_ids,
+                p.embedded_bindings, p.usage_decisions, p.usage_denials
          FROM posts p
          LEFT JOIN sub_agents sa ON sa.agent_object_id = p.sub_agent_id
          WHERE p.post_id = $1 AND p.deleted_at IS NULL
@@ -326,7 +340,9 @@ pub(crate) async fn list_posts(
                p.encrypted_content_hash, p.removed_from_platform, p.removed_by, p.metadata_json, p.promotion_id,
                p.platform_id, p.permissions, COALESCE(sa.derived_address, p.owner) AS actor_address,
                p.sub_agent_id, p.action_identity_class,
-               p.organization_id, p.post_access_kind, p.contract_version
+               p.organization_id, p.post_access_kind, p.contract_version,
+               p.composition_status, p.monetization_status, p.media_asset_ids,
+               p.embedded_bindings, p.usage_decisions, p.usage_denials
         FROM posts p
         LEFT JOIN sub_agents sa ON sa.agent_object_id = p.sub_agent_id
         WHERE p.deleted_at IS NULL

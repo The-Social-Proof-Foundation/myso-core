@@ -64,6 +64,16 @@ use crate::platform::{
     list_platform_treasury_withdrawals,
 };
 use crate::pnl::{ProfilePnLWindow, ProfilePnLWindowResult, get_profile_pnl_for_windows};
+use crate::media_asset::{
+    get_composition_analysis_for_post, get_media_asset_by_id, get_revenue_manifest_for_post,
+    list_media_asset_governance_links, list_media_asset_rights_updates, list_media_asset_usages,
+    count_rights_disputes_submitted, get_active_rights_proposal_id_for_asset,
+    get_media_asset_id_for_rights_proposal,
+};
+use crate::media_asset_graph::{
+    get_ancestry_snapshot, get_resolved_policy, list_derivative_edges_for_child,
+    list_derivative_edges_for_parent, list_detected_relationships, list_resolved_obligations,
+};
 use crate::poc::{
     get_poc_analysis_for_post, get_poc_badges_for_post,
     get_poc_beneficiary_vault_by_beneficiary_address, get_poc_beneficiary_vault_by_vault_id,
@@ -1503,6 +1513,173 @@ impl SocialPgReader {
     ) -> anyhow::Result<Option<crate::PocAnalysisResultRow>> {
         let mut conn = self.connect().await?;
         get_poc_analysis_for_post(&mut conn, post_id, &self.metrics).await
+    }
+
+    /// Get a registered MediaAsset by object id.
+    pub async fn get_media_asset_by_id(
+        &self,
+        media_asset_id: &str,
+    ) -> anyhow::Result<Option<crate::MediaAssetRow>> {
+        let mut conn = self.connect().await?;
+        get_media_asset_by_id(&mut conn, media_asset_id, &self.metrics).await
+    }
+
+    pub async fn get_active_rights_proposal_for_asset(
+        &self,
+        media_asset_id: &str,
+    ) -> anyhow::Result<Option<String>> {
+        let mut conn = self.connect().await?;
+        get_active_rights_proposal_id_for_asset(&mut conn, media_asset_id, &self.metrics).await
+    }
+
+    pub async fn get_media_asset_id_for_rights_proposal(
+        &self,
+        proposal_id: &str,
+    ) -> anyhow::Result<Option<String>> {
+        let mut conn = self.connect().await?;
+        get_media_asset_id_for_rights_proposal(&mut conn, proposal_id, &self.metrics).await
+    }
+
+    pub async fn count_media_asset_rights_disputes_submitted(
+        &self,
+        media_asset_id: &str,
+    ) -> anyhow::Result<i64> {
+        let mut conn = self.connect().await?;
+        count_rights_disputes_submitted(&mut conn, media_asset_id, &self.metrics).await
+    }
+
+    pub async fn list_media_asset_rights_proposals(
+        &self,
+        media_asset_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::MediaAssetGovernanceLinkRow>>
+    {
+        let mut conn = self.connect().await?;
+        list_media_asset_governance_links(&mut conn, media_asset_id, limit, offset, &self.metrics)
+            .await
+    }
+
+    pub async fn list_media_asset_rights_updates(
+        &self,
+        media_asset_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::MediaAssetRightsUpdateRow>>
+    {
+        let mut conn = self.connect().await?;
+        list_media_asset_rights_updates(&mut conn, media_asset_id, limit, offset, &self.metrics)
+            .await
+    }
+
+    /// Parent edges for a derivative asset (child → parents).
+    pub async fn list_derivative_edges_for_child(
+        &self,
+        child_asset_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::DerivativeEdgeRow>> {
+        let mut conn = self.connect().await?;
+        list_derivative_edges_for_child(
+            &mut conn,
+            child_asset_id,
+            limit,
+            offset,
+            &self.metrics,
+        )
+        .await
+    }
+
+    /// Child edges referencing a parent asset.
+    pub async fn list_derivative_edges_for_parent(
+        &self,
+        parent_asset_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::DerivativeEdgeRow>> {
+        let mut conn = self.connect().await?;
+        list_derivative_edges_for_parent(
+            &mut conn,
+            parent_asset_id,
+            limit,
+            offset,
+            &self.metrics,
+        )
+        .await
+    }
+
+    /// Latest ancestry snapshot for an asset.
+    pub async fn get_ancestry_snapshot(
+        &self,
+        media_asset_id: &str,
+    ) -> anyhow::Result<Option<crate::AncestrySnapshotRow>> {
+        let mut conn = self.connect().await?;
+        get_ancestry_snapshot(&mut conn, media_asset_id, &self.metrics).await
+    }
+
+    /// Latest resolved rights policy for an asset.
+    pub async fn get_resolved_policy(
+        &self,
+        media_asset_id: &str,
+    ) -> anyhow::Result<Option<crate::ResolvedPolicyRow>> {
+        let mut conn = self.connect().await?;
+        get_resolved_policy(&mut conn, media_asset_id, &self.metrics).await
+    }
+
+    /// Obligations for a specific policy version.
+    pub async fn list_resolved_obligations(
+        &self,
+        media_asset_id: &str,
+        policy_version: i64,
+    ) -> anyhow::Result<Vec<crate::ResolvedObligationRow>> {
+        let mut conn = self.connect().await?;
+        list_resolved_obligations(
+            &mut conn,
+            media_asset_id,
+            policy_version,
+            &self.metrics,
+        )
+        .await
+    }
+
+    /// Detected remix relationships involving an asset or pending id.
+    pub async fn list_detected_relationships(
+        &self,
+        asset_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::DetectedRelationshipRow>> {
+        let mut conn = self.connect().await?;
+        list_detected_relationships(&mut conn, asset_id, limit, offset, &self.metrics).await
+    }
+
+    /// List indexed usages of a MediaAsset (posts, profiles, etc.).
+    pub async fn list_media_asset_usages(
+        &self,
+        asset_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::MediaAssetUsageRow>> {
+        let mut conn = self.connect().await?;
+        list_media_asset_usages(&mut conn, asset_id, limit, offset, &self.metrics).await
+    }
+
+    /// Latest composition analysis record for a post.
+    pub async fn get_composition_analysis_for_post(
+        &self,
+        post_id: &str,
+    ) -> anyhow::Result<Option<crate::CompositionAnalysisRow>> {
+        let mut conn = self.connect().await?;
+        get_composition_analysis_for_post(&mut conn, post_id, &self.metrics).await
+    }
+
+    /// Latest revenue manifest indexed for a post.
+    pub async fn get_revenue_manifest_for_post(
+        &self,
+        post_id: &str,
+    ) -> anyhow::Result<Option<crate::RevenueManifestRow>> {
+        let mut conn = self.connect().await?;
+        get_revenue_manifest_for_post(&mut conn, post_id, &self.metrics).await
     }
 
     /// Get POC badges for a post (non-revoked only).

@@ -55,6 +55,12 @@ pub struct PostBasicRow {
     pub poc_redirection_kind: Option<i16>,
     #[diesel(sql_type = SmallInt)]
     pub poc_disputes_submitted: i16,
+    #[diesel(sql_type = Nullable<SmallInt>)]
+    pub composition_status: Option<i16>,
+    #[diesel(sql_type = Nullable<SmallInt>)]
+    pub monetization_status: Option<i16>,
+    #[diesel(sql_type = Nullable<Jsonb>)]
+    pub media_asset_ids: Option<serde_json::Value>,
     #[diesel(sql_type = Nullable<Text>)]
     pub actor_address: Option<String>,
     #[diesel(sql_type = Nullable<Text>)]

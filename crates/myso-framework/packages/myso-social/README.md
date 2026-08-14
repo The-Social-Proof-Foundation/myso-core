@@ -52,10 +52,11 @@ MySocial is a feature-rich decentralized social platform that combines tradition
 ### 2. **Content Creation** (`post.move`)
 - **Post Types**: Standard posts, comments, reposts, quote reposts, predictions
 - **Rich Media**: Support for multiple media URLs, mentions, metadata
+- **MediaAsset composition**: Posts reference canonical `media_asset_ids`; PoC validates composition separately from delivery URLs
 - **Interaction Controls**: Granular permissions for comments, reactions, reposts, quotes, tips
 - **Prediction Markets**: Create prediction posts with betting and resolution
 - **Content Moderation**: Platform-level content flagging and removal
-- **Proof of Creativity Integration**: Automatic revenue redirection for derivative content
+- **Proof of Creativity Integration**: Composition analysis and creator-attributable revenue manifests (see `media_asset.move`)
 - **MyData linking**: `create_post` and `create_promoted_post` accept an optional MyData object id plus a shared `MyDataRegistry` reference. The id must already be registered in that registry and owned by the sender. Pass `none` for the id to create a post without a MyData attachment.
 
 **Advanced Features:**
@@ -64,19 +65,43 @@ MySocial is a feature-rich decentralized social platform that combines tradition
 - Prediction betting with automatic payouts
 - Revenue splitting for reposts and comments
 
-### 3. **Proof of Creativity** (`proof_of_creativity.move`)
-- **Content Analysis**: Oracle-based similarity detection for originality verification
-- **PoC Badges**: Issue badges for original content
-- **Revenue Redirection**: Automatic revenue routing from derivative to original creators
-- **Community Disputes**: Vote-based system to challenge PoC decisions
-- **Cross-Module Integration**: Seamless integration with posts and token trading
+### 3. **Proof of Creativity** (`proof_of_creativity.move`, `media_asset.move`)
+
+MediaAsset-centric PoC (V1 clean break):
+
+```text
+Claims → verified RightsInterest[] → UsageGrant licenses → container usage
+       → CompositionAnalysis → RevenueManifest (attributable pool only)
+```
+
+- **`MediaAsset.id`** is the canonical creative identity; `content_commitment` is registration evidence only
+- **`Claim`** — authorship, copyright ownership, rights control, license authority, beneficiary (asserted/verified protocol state, not legal adjudication)
+- **`RightsInterest[]`** — resolved from verified ownership/control claims
+- **`UsageGrant`** — per-usage-class license terms (compensation, expiry, revocability); no global monetization flag
+- **`asset_kind`** — `MUSICAL_COMPOSITION` vs `SOUND_RECORDING` linked via `related_work_id`
+- **Asset resolution:** `submit_media_resolution` → oracle `finalize_media_asset(claims, usage_grants, …)`
+- **Composition:** posts reference `media_asset_ids`; `analyze_post_composition` sets dual status fields
+- **`monetization_status`** — derived execution state: grants permit payout AND compensation resolved
+- **`MediaAssetUsedEvent`** records usage graph (posts, profiles)
 
 **Workflow:**
-1. Oracle analyzes content for originality
-2. Original content receives PoC badge
-3. Derivative content gets revenue redirection rules
-4. All tips/trading fees automatically split according to PoC analysis
-5. Community can dispute decisions through voting
+
+1. Upload → resolve representation → canonical `MediaAsset.id`
+2. Create post/profile with asset IDs → usage events emitted
+3. Oracle validates usage grants + composition → manifest when derivatives detected
+4. Tips/SPT route through layered fees → manifest split on attributable pool
+
+Post-level `revenue_redirect_*` and `poc_outcome` are legacy indexer fields; new posts use composition + monetization status.
+
+**V1 invariant (prospective rights):** `update_media_asset_usage_grants`, `oracle_update_media_asset_claims`, and `update_media_asset_economics` bump version counters and apply to **future** usage and revenue only. Historical payouts are never clawed back. Stale asset versions in a composition restrict future monetization (`monetization_status = RESTRICTED`) without altering past settlements.
+
+**Access control:**
+- `submit_media_resolution` — anyone (starts oracle pipeline)
+- `proof_of_creativity::finalize_media_asset` — oracle only; all claims must be oracle-verified
+- `update_media_asset_usage_grants` — rights controller or license authority (grants only)
+- `proof_of_creativity::oracle_update_media_asset_claims` — oracle only (claims + grants)
+- `update_media_asset_economics` — rights controller, license authority, verified beneficiary, or creator
+- Internal validation/helpers — `public(package)`; not callable from other packages
 
 ### 4. **Token Exchange** (`token_exchange.move`)
 - **Dual Token System**: Profile tokens and post tokens with different economics
@@ -273,6 +298,40 @@ myso client call --package 0x...d880 \
   --gas-budget 1000000000
 ```
 Rejected proposals clear `active_proposal_id` on the record so a new outcome can be proposed. Bets are frozen while status is `DAO_REQUIRED`.
+
+### Media asset rights governance (PoC)
+
+Rights disputes on registered `MediaAsset` objects use the PoC `GovernanceDAO` (`registry_type=1`) with a separate fee (`media_asset_dispute_cost`, default 10 MYSO). Post-level stake-voting PoC disputes are unchanged.
+
+1) Prepare claims bundle off-chain (PoC API computes SHA3-256 commitment), then submit on-chain:
+
+```bash
+myso client call --package 0x...d880 \
+  --module proof_of_creativity --function submit_media_asset_rights_dispute_proposal \
+  --args [POC_CONFIG_ID] [POC_GOV_REGISTRY_ID] [ECOSYSTEM_TREASURY_ID] [MEDIA_ASSET_ID] \
+        "Dispute title" "Description" [CLAIMS_COMMITMENT_HEX] [EVIDENCE_URLS_OPTION] \
+        [RELATED_POST_OPTION] [METADATA_JSON_OPTION] [PAYMENT_COIN] [CLOCK_ID] \
+  --gas-budget 1000000000
+```
+
+2) After delegate review and community vote approve the proposal, the PoC oracle worker implements (or call manually):
+
+```bash
+myso client call --package 0x...d880 \
+  --module proof_of_creativity --function finalize_media_asset_rights_governance_proposal \
+  --args [POC_CONFIG_ID] [POC_GOV_REGISTRY_ID] [PROPOSAL_ID] [MEDIA_ASSET_ID] \
+        [ECOSYSTEM_TREASURY_ID] [CLOCK_ID] \
+  --gas-budget 100000000
+
+myso client call --package 0x...d880 \
+  --module proof_of_creativity --function finalize_media_asset_rights_via_dao \
+  --args [POC_CONFIG_ID] [POC_GOV_REGISTRY_ID] [PROPOSAL_ID] [MEDIA_ASSET_ID] \
+        [ECOSYSTEM_TREASURY_ID] [CLAIMS_VEC] [USAGE_GRANTS_VEC] \
+        "Implementation reasoning" [EVIDENCE_URLS_OPTION] [CLOCK_ID] \
+  --gas-budget 100000000
+```
+
+Rejected proposals clear the asset's active rights proposal link without mutating claims. See `proof-of-creativity/docs/oracle-runbook.md` for the automated worker flow.
 
 Notes:
 - Auto‑init requires `social_proof_tokens` config `allow_auto_pool_init = true` and post not opted‑out.

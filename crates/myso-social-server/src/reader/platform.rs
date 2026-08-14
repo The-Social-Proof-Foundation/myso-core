@@ -4,7 +4,7 @@
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::Platform;
 use myso_indexer_alt_social_schema::schema::{
-    platform_blocked_profiles, platform_events, platform_memberships, platforms,
+    platform_blocked_profiles, platform_events, platforms,
 };
 use serde_json::Value as JsonValue;
 

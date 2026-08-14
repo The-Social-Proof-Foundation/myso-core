@@ -204,6 +204,8 @@ pub(crate) async fn get_poc_configuration(
                dispute_second_round_quorum_multiplier_bps,
                username_beneficiary_join_referral_bps,
                max_disputes_per_post, min_vault_deposit_amount,
+               media_asset_dispute_cost, max_disputes_per_media_asset,
+               max_embedded_asset_redirect_bps,
                dispute_governance_registry_id,
                updated_by, updated_at, transaction_id, version, time
         FROM poc_config

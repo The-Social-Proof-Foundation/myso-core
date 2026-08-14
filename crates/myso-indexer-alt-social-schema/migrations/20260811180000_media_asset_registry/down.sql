@@ -1,0 +1,11 @@
+DROP INDEX IF EXISTS idx_posts_composition_status;
+ALTER TABLE posts DROP COLUMN IF EXISTS media_asset_ids;
+ALTER TABLE posts DROP COLUMN IF EXISTS monetization_status;
+ALTER TABLE posts DROP COLUMN IF EXISTS composition_status;
+DROP TABLE IF EXISTS revenue_manifests;
+DROP TABLE IF EXISTS composition_analysis_records;
+DROP TABLE IF EXISTS media_asset_usages;
+DROP INDEX IF EXISTS idx_fingerprint_observations_asset;
+DROP TABLE IF EXISTS fingerprint_observations;
+DROP INDEX IF EXISTS idx_media_assets_time;
+DROP TABLE IF EXISTS media_assets;

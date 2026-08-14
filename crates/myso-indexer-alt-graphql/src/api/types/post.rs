@@ -17,6 +17,12 @@ use crate::api::scalars::json::Json;
 use crate::api::scalars::myso_address::MySoAddress;
 use crate::api::types::access::PostAccess;
 use crate::api::types::memory::SocialAttribution;
+use crate::api::types::media_asset::{CompositionAnalysis, MediaAsset, RevenueManifest};
+use crate::api::types::media_asset_enums::{PostCompositionStatus, PostMonetizationStatus};
+use crate::api::types::post_enforcement::{
+    derive_playback_policy, parse_embedded_bindings, parse_usage_decisions, parse_usage_denials,
+    ContainerUsageDenial, EmbeddedAssetBinding, PlaybackPolicy, UsageDecisionSnapshot,
+};
 use crate::api::types::mydata::MyDataRecord;
 use crate::api::types::poc::{PocAnalysisResult, PocBadge, PocDispute, PocRevenueRedirection};
 use crate::api::types::profile_summary::ProfileSummary;
@@ -196,9 +202,105 @@ impl Post {
         self.inner.poc_similarity_score
     }
 
-    /// PoC outcome code from chain.
+    /// PoC outcome code from chain (legacy post-level PoC; deprecated for MediaAsset-centric posts).
     async fn poc_outcome(&self) -> Option<i32> {
         self.inner.poc_outcome.map(i32::from)
+    }
+
+    /// Composition verification status (0=none, 1=pending, 2=verified, 3=invalid, 4=partially_restricted).
+    async fn composition_status(&self) -> Option<PostCompositionStatus> {
+        self.inner
+            .composition_status
+            .map(|v| PostCompositionStatus::from(v))
+    }
+
+    /// Monetization eligibility status (0=none, 1=pending, 2=enabled, 3=restricted).
+    async fn monetization_status(&self) -> Option<PostMonetizationStatus> {
+        self.inner
+            .monetization_status
+            .map(|v| PostMonetizationStatus::from(v))
+    }
+
+    /// Canonical MediaAsset object ids referenced by this post.
+    async fn media_asset_ids(&self) -> Option<Json> {
+        self.inner
+            .media_asset_ids
+            .as_ref()
+            .and_then(|v| Json::try_from(v.clone()).ok())
+    }
+
+    /// Resolved MediaAsset records for ids indexed on this post.
+    async fn media_assets(&self, ctx: &Context<'_>) -> Option<Vec<MediaAsset>> {
+        let ids = self.inner.media_asset_ids.as_ref()?;
+        let arr = ids.as_array()?;
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let mut out = Vec::new();
+        for id in arr {
+            let Some(id_str) = id.as_str() else {
+                continue;
+            };
+            if let Ok(Some(row)) = reader.get_media_asset_by_id(id_str).await {
+                out.push(MediaAsset::from_row(row));
+            }
+        }
+        Some(out)
+    }
+
+    /// Latest composition analysis sidecar for this post.
+    async fn composition_analysis(&self, ctx: &Context<'_>) -> Option<CompositionAnalysis> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        reader
+            .get_composition_analysis_for_post(&self.inner.post_id)
+            .await
+            .ok()
+            .flatten()
+            .map(CompositionAnalysis::from_row)
+    }
+
+    /// Latest revenue manifest indexed for creator-attributable tip splits on this post.
+    async fn revenue_manifest(&self, ctx: &Context<'_>) -> Option<RevenueManifest> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        reader
+            .get_revenue_manifest_for_post(&self.inner.post_id)
+            .await
+            .ok()
+            .flatten()
+            .map(RevenueManifest::from_row)
+    }
+
+    /// Embedded media asset bindings detected in this post's composition.
+    async fn embedded_bindings(&self) -> Option<Vec<EmbeddedAssetBinding>> {
+        self.inner
+            .embedded_bindings
+            .as_ref()
+            .map(parse_embedded_bindings)
+    }
+
+    /// Effective usage decision snapshots per embedded binding.
+    async fn usage_decisions(&self) -> Option<Vec<UsageDecisionSnapshot>> {
+        self.inner
+            .usage_decisions
+            .as_ref()
+            .map(parse_usage_decisions)
+    }
+
+    /// Active container usage denials scoped to bindings on this post.
+    async fn usage_denials(&self) -> Option<Vec<ContainerUsageDenial>> {
+        self.inner.usage_denials.as_ref().map(parse_usage_denials)
+    }
+
+    /// Derived playback/monetization restrictions from bindings and decision snapshots.
+    async fn playback_policy(&self) -> PlaybackPolicy {
+        derive_playback_policy(
+            self.inner.embedded_bindings.as_ref(),
+            self.inner.usage_decisions.as_ref(),
+        )
     }
 
     /// Revenue redirect mode (none, wallet, escrow, treasury).

@@ -33,7 +33,7 @@ use myso_json_rpc_types::{
     MySoTransactionBlockEvents, MySoTransactionBlockResponse, MySoTransactionBlockResponseOptions,
     MySoTransactionBlockResponseQuery, ObjectChange, ObjectValueKind::ByImmutableReference,
     ObjectValueKind::ByMutableReference, ObjectValueKind::ByValue, ObjectsPage, OwnedObjectRef,
-    Page, ProtocolConfigResponse, RPCTransactionRequestParams, Stake, StakeStatus,
+    ProtocolConfigResponse, RPCTransactionRequestParams, Stake, StakeStatus,
     TransactionBlockBytes, TransactionBlocksPage, TransactionFilter, TransferObjectParams,
 };
 use myso_json_rpc_types::{MySoTypeTag, ValidatorApy, ValidatorApys};

@@ -19,6 +19,9 @@ mod insurance;
 mod insurance_handler;
 mod memory;
 mod memory_handler;
+mod media_asset;
+mod media_asset_graph;
+mod media_asset_rights;
 mod messaging;
 mod messaging_handler;
 mod mydata;
@@ -31,6 +34,7 @@ mod platform_handler;
 mod poc;
 mod post;
 mod post_mydata;
+mod post_enforcement;
 mod posts_handler;
 mod profile;
 mod profiles_handler;
@@ -69,6 +73,10 @@ use myso_indexer_alt_social_schema::models::{
     NewPocAnalysisResult, NewPocBadge, NewPocConfiguration, NewPocCreatorIdentityLink,
     NewPocDispute, NewPocDisputeVote, NewPocRevenueRedirection, NewPocUsernameBeneficiary,
     NewPocUsernameBeneficiaryEvent, NewPost, NewPostTransfer, NewProfile, NewProfileBadge,
+    NewCompositionAnalysisRecord, NewDetectedAssetRelationship, NewFingerprintObservation,
+    NewLicenseInstance, NewLicenseTemplateVersion, NewMediaAsset, NewMediaAssetAncestrySnapshot,
+    NewMediaAssetDerivativeEdge, NewMediaAssetGovernanceLink, NewMediaAssetResolvedObligation,
+    NewMediaAssetResolvedPolicy, NewMediaAssetRightsUpdate, NewMediaAssetUsage, NewPostUsageDecisionEvent, NewRevenueManifestRecord,
     NewProfileConfig, NewProfileEvent, NewProfileSubscription, NewProfileSubscriptionPlan,
     NewProfileSubscriptionService, NewProposal, NewReaction, NewReport, NewRepost,
     NewRewardDistribution, NewSocialGraphEvent, NewSocialGraphRelationship,
@@ -422,6 +430,44 @@ pub enum SocialEventRow {
     PostPocBadgePointer {
         post_id: String,
         poc_badge_object_id: String,
+    },
+    MediaAsset(NewMediaAsset),
+    FingerprintObservation(NewFingerprintObservation),
+    MediaAssetUsage(NewMediaAssetUsage),
+    CompositionAnalysisRecord(NewCompositionAnalysisRecord),
+    RevenueManifestRecord(NewRevenueManifestRecord),
+    MediaAssetDerivativeEdge(NewMediaAssetDerivativeEdge),
+    MediaAssetAncestrySnapshot(NewMediaAssetAncestrySnapshot),
+    LicenseTemplateVersion(NewLicenseTemplateVersion),
+    LicenseInstance(NewLicenseInstance),
+    MediaAssetResolvedPolicy(NewMediaAssetResolvedPolicy),
+    MediaAssetResolvedObligation(NewMediaAssetResolvedObligation),
+    PostUsageDecisionEvent(NewPostUsageDecisionEvent),
+    PostEnforcementUpdate {
+        post_id: String,
+        embedded_bindings: Option<serde_json::Value>,
+        usage_decisions: Option<serde_json::Value>,
+        usage_denials: Option<serde_json::Value>,
+    },
+    PostEnforcementUpdateDenialLift {
+        post_id: String,
+        binding_id: i64,
+    },
+    DetectedAssetRelationship(NewDetectedAssetRelationship),
+    MediaAssetGovernanceLink(NewMediaAssetGovernanceLink),
+    MediaAssetGovernanceLinkStatusUpdate {
+        media_asset_id: String,
+        proposal_id: String,
+        status: i16,
+        transaction_id: String,
+        time: chrono::DateTime<chrono::Utc>,
+    },
+    MediaAssetRightsUpdate(NewMediaAssetRightsUpdate),
+    PostCompositionUpdate {
+        post_id: String,
+        composition_status: i16,
+        monetization_status: i16,
+        analyzed_at: i64,
     },
     PocBeneficiaryVaultDeposit {
         vault_id: String,
@@ -1124,7 +1170,7 @@ pub struct ProfileUpdate {
 }
 
 impl FieldCount for SocialEventRow {
-    const FIELD_COUNT: usize = 162;
+    const FIELD_COUNT: usize = 164;
 }
 
 // SocialEvents pipeline removed: profile and post events now handled by ProfilesHandler and PostsHandler.

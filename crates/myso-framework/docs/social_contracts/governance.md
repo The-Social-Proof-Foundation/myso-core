@@ -63,6 +63,7 @@ strict wall-clock guarantee when governance is idle.
 -  [Function `submit_proof_of_creativity_proposal`](#social_contracts_governance_submit_proof_of_creativity_proposal)
 -  [Function `submit_spot_resolution_proposal`](#social_contracts_governance_submit_spot_resolution_proposal)
 -  [Function `submit_spot_proposal_and_return_id`](#social_contracts_governance_submit_spot_proposal_and_return_id)
+-  [Function `submit_poc_proposal_and_return_id`](#social_contracts_governance_submit_poc_proposal_and_return_id)
 -  [Function `submit_proposal_internal`](#social_contracts_governance_submit_proposal_internal)
 -  [Function `rescind_proposal`](#social_contracts_governance_rescind_proposal)
 -  [Function `move_to_community_voting`](#social_contracts_governance_move_to_community_voting)
@@ -92,6 +93,7 @@ strict wall-clock guarantee when governance is idle.
 -  [Function `anonymous_tally_votes_and_finalize_community_internals`](#social_contracts_governance_anonymous_tally_votes_and_finalize_community_internals)
 -  [Function `finalize_proposal_anonymous`](#social_contracts_governance_finalize_proposal_anonymous)
 -  [Function `mark_proposal_implemented_take_pool`](#social_contracts_governance_mark_proposal_implemented_take_pool)
+-  [Function `mark_proposal_implemented_take_pool_poc_oracle`](#social_contracts_governance_mark_proposal_implemented_take_pool_poc_oracle)
 -  [Function `mark_proposal_implemented_to_ecosystem_treasury`](#social_contracts_governance_mark_proposal_implemented_to_ecosystem_treasury)
 -  [Function `mark_proposal_implemented_platform_to_ecosystem_treasury`](#social_contracts_governance_mark_proposal_implemented_platform_to_ecosystem_treasury)
 -  [Function `proposal_type_platform_value`](#social_contracts_governance_proposal_type_platform_value)
@@ -107,6 +109,7 @@ strict wall-clock guarantee when governance is idle.
 -  [Function `registry_type`](#social_contracts_governance_registry_type)
 -  [Function `get_delegate_info`](#social_contracts_governance_get_delegate_info)
 -  [Function `get_proposal_info`](#social_contracts_governance_get_proposal_info)
+-  [Function `proposal_submission_cost`](#social_contracts_governance_proposal_submission_cost)
 -  [Function `proposal_submitter`](#social_contracts_governance_proposal_submitter)
 -  [Function `treasury_balance`](#social_contracts_governance_treasury_balance)
 -  [Function `calculate_vote_cost`](#social_contracts_governance_calculate_vote_cost)
@@ -166,6 +169,9 @@ strict wall-clock guarantee when governance is idle.
 <b>use</b> <a href="../myso/vec_map.md#myso_vec_map">myso::vec_map</a>;
 <b>use</b> <a href="../myso/vec_set.md#myso_vec_set">myso::vec_set</a>;
 <b>use</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit">social_contracts::ai_credit</a>;
+<b>use</b> <a href="../social_contracts/media_asset.md#social_contracts_derivative_graph">social_contracts::derivative_graph</a>;
+<b>use</b> <a href="../social_contracts/media_asset.md#social_contracts_license_template">social_contracts::license_template</a>;
+<b>use</b> <a href="../social_contracts/media_asset.md#social_contracts_media_asset">social_contracts::media_asset</a>;
 <b>use</b> <a href="../social_contracts/memory.md#social_contracts_memory">social_contracts::memory</a>;
 <b>use</b> <a href="../social_contracts/profile.md#social_contracts_profile">social_contracts::profile</a>;
 <b>use</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade">social_contracts::upgrade</a>;
@@ -250,7 +256,7 @@ Governance registry that keeps track of all delegates and proposals
 <dd>
 </dd>
 <dt>
-<code>proposal_submission_cost: u64</code>
+<code><a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a>: u64</code>
 </dt>
 <dd>
 </dd>
@@ -1392,7 +1398,7 @@ Event emitted when governance parameters are updated
 <dd>
 </dd>
 <dt>
-<code>proposal_submission_cost: u64</code>
+<code><a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a>: u64</code>
 </dt>
 <dd>
 </dd>
@@ -1465,7 +1471,7 @@ This event matches the GovernanceRegistryEvent structure expected by the indexer
 <dd>
 </dd>
 <dt>
-<code>proposal_submission_cost: u64</code>
+<code><a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a>: u64</code>
 </dt>
 <dd>
 </dd>
@@ -2103,7 +2109,7 @@ Returns PoC and SPoT registry IDs for wiring into [<code><a href="../social_cont
         // Configuration parameters specific to ecosystem <a href="../social_contracts/governance.md#social_contracts_governance">governance</a>
         delegate_count: 3, // Larger council <b>for</b> ecosystem decisions
         delegate_term_epochs: 90, // 3 months <b>for</b> ecosystem delegates
-        proposal_submission_cost: 100_000_000_000, // 100 MYSO <b>for</b> ecosystem proposals
+        <a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a>: 100_000_000_000, // 100 MYSO <b>for</b> ecosystem proposals
         max_votes_per_user: 10, // Up to 10 votes per user
         quadratic_base_cost: 10_000_000_000, // 10 MYSO per additional vote
         voting_period_ms: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds <b>for</b> ecosystem votes
@@ -2131,7 +2137,7 @@ Returns PoC and SPoT registry IDs for wiring into [<code><a href="../social_cont
         <a href="../social_contracts/governance.md#social_contracts_governance_registry_type">registry_type</a>: <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_ECOSYSTEM">PROPOSAL_TYPE_ECOSYSTEM</a>,
         delegate_count: ecosystem_registry.delegate_count,
         delegate_term_epochs: ecosystem_registry.delegate_term_epochs,
-        proposal_submission_cost: ecosystem_registry.proposal_submission_cost,
+        <a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a>: ecosystem_registry.<a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a>,
         max_votes_per_user: ecosystem_registry.max_votes_per_user,
         quadratic_base_cost: ecosystem_registry.quadratic_base_cost,
         voting_period_ms: ecosystem_registry.voting_period_ms,
@@ -2148,7 +2154,7 @@ Returns PoC and SPoT registry IDs for wiring into [<code><a href="../social_cont
         // Configuration parameters specific to proof of creativity <a href="../social_contracts/governance.md#social_contracts_governance">governance</a>
         delegate_count: 2, // Smaller council <b>for</b> proof of creativity
         delegate_term_epochs: 180, // 3 months <b>for</b> proof of creativity delegates
-        proposal_submission_cost: 25_000_000_000, // 25 MYSO <b>for</b> proof of creativity
+        <a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a>: 25_000_000_000, // 25 MYSO <b>for</b> proof of creativity
         max_votes_per_user: 3, // Up to 3 votes per user
         quadratic_base_cost: 2_500_000_000, // 2.5 MYSO per additional vote
         voting_period_ms: 24 * 60 * 60 * 1000, // 1 day in milliseconds <b>for</b> proof of creativity votes
@@ -2176,7 +2182,7 @@ Returns PoC and SPoT registry IDs for wiring into [<code><a href="../social_cont
         <a href="../social_contracts/governance.md#social_contracts_governance_registry_type">registry_type</a>: <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_PROOF_OF_CREATIVITY">PROPOSAL_TYPE_PROOF_OF_CREATIVITY</a>,
         delegate_count: proof_of_creativity_registry.delegate_count,
         delegate_term_epochs: proof_of_creativity_registry.delegate_term_epochs,
-        proposal_submission_cost: proof_of_creativity_registry.proposal_submission_cost,
+        <a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a>: proof_of_creativity_registry.<a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a>,
         max_votes_per_user: proof_of_creativity_registry.max_votes_per_user,
         quadratic_base_cost: proof_of_creativity_registry.quadratic_base_cost,
         voting_period_ms: proof_of_creativity_registry.voting_period_ms,
@@ -2192,7 +2198,7 @@ Returns PoC and SPoT registry IDs for wiring into [<code><a href="../social_cont
         <a href="../social_contracts/governance.md#social_contracts_governance_registry_type">registry_type</a>: <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_SPOT">PROPOSAL_TYPE_SPOT</a>,
         delegate_count: 3,
         delegate_term_epochs: 90,
-        proposal_submission_cost: 10_000_000_000,
+        <a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a>: 10_000_000_000,
         max_votes_per_user: 5,
         quadratic_base_cost: 1_000_000_000,
         voting_period_ms: 3 * 24 * 60 * 60 * 1000,
@@ -2216,7 +2222,7 @@ Returns PoC and SPoT registry IDs for wiring into [<code><a href="../social_cont
         <a href="../social_contracts/governance.md#social_contracts_governance_registry_type">registry_type</a>: <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_SPOT">PROPOSAL_TYPE_SPOT</a>,
         delegate_count: spot_registry.delegate_count,
         delegate_term_epochs: spot_registry.delegate_term_epochs,
-        proposal_submission_cost: spot_registry.proposal_submission_cost,
+        <a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a>: spot_registry.<a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a>,
         max_votes_per_user: spot_registry.max_votes_per_user,
         quadratic_base_cost: spot_registry.quadratic_base_cost,
         voting_period_ms: spot_registry.voting_period_ms,
@@ -2323,7 +2329,7 @@ Update governance parameters (internal function)
 This function does not perform authorization checks - callers must verify permissions
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_update_governance_parameters_internal">update_governance_parameters_internal</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, delegate_count: u64, delegate_term_epochs: u64, proposal_submission_cost: u64, max_votes_per_user: u64, quadratic_base_cost: u64, voting_period_ms: u64, quorum_votes: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, _ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_update_governance_parameters_internal">update_governance_parameters_internal</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, delegate_count: u64, delegate_term_epochs: u64, <a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a>: u64, max_votes_per_user: u64, quadratic_base_cost: u64, voting_period_ms: u64, quorum_votes: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, _ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2336,7 +2342,7 @@ This function does not perform authorization checks - callers must verify permis
     registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
     delegate_count: u64,
     delegate_term_epochs: u64,
-    proposal_submission_cost: u64,
+    <a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a>: u64,
     max_votes_per_user: u64,
     quadratic_base_cost: u64,
     voting_period_ms: u64,
@@ -2349,7 +2355,7 @@ This function does not perform authorization checks - callers must verify permis
     // Ensure parameters are sensible
     <b>assert</b>!(delegate_count &gt; 1, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidParameter">EInvalidParameter</a>);
     <b>assert</b>!(delegate_term_epochs &gt; 0, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidParameter">EInvalidParameter</a>);
-    // proposal_submission_cost can be 0
+    // <a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a> can be 0
     <b>assert</b>!(max_votes_per_user &gt; 0, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidParameter">EInvalidParameter</a>);
     // quadratic_base_cost can be 0 (<b>if</b> voting is free)
     <b>assert</b>!(voting_period_ms &gt; 0, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidParameter">EInvalidParameter</a>);
@@ -2357,7 +2363,7 @@ This function does not perform authorization checks - callers must verify permis
     // Update parameters
     registry.delegate_count = delegate_count;
     registry.delegate_term_epochs = delegate_term_epochs;
-    registry.proposal_submission_cost = proposal_submission_cost;
+    registry.<a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a> = <a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a>;
     registry.max_votes_per_user = max_votes_per_user;
     registry.quadratic_base_cost = quadratic_base_cost;
     registry.voting_period_ms = voting_period_ms;
@@ -2368,7 +2374,7 @@ This function does not perform authorization checks - callers must verify permis
         updated_by: tx_context::sender(_ctx),
         delegate_count,
         delegate_term_epochs,
-        proposal_submission_cost,
+        <a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a>,
         max_votes_per_user,
         quadratic_base_cost,
         voting_period_ms,
@@ -2391,7 +2397,7 @@ Can only be called by the platform module (which verifies platform ownership)
 This function is package-private to prevent direct calls that bypass platform ownership verification
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_update_platform_governance_parameters">update_platform_governance_parameters</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, platform_developer: <b>address</b>, delegate_count: u64, delegate_term_epochs: u64, proposal_submission_cost: u64, max_votes_per_user: u64, quadratic_base_cost: u64, voting_period_ms: u64, quorum_votes: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_update_platform_governance_parameters">update_platform_governance_parameters</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, platform_developer: <b>address</b>, delegate_count: u64, delegate_term_epochs: u64, <a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a>: u64, max_votes_per_user: u64, quadratic_base_cost: u64, voting_period_ms: u64, quorum_votes: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2405,7 +2411,7 @@ This function is package-private to prevent direct calls that bypass platform ow
     platform_developer: <b>address</b>,
     delegate_count: u64,
     delegate_term_epochs: u64,
-    proposal_submission_cost: u64,
+    <a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a>: u64,
     max_votes_per_user: u64,
     quadratic_base_cost: u64,
     voting_period_ms: u64,
@@ -2423,7 +2429,7 @@ This function is package-private to prevent direct calls that bypass platform ow
         registry,
         delegate_count,
         delegate_term_epochs,
-        proposal_submission_cost,
+        <a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a>,
         max_votes_per_user,
         quadratic_base_cost,
         voting_period_ms,
@@ -2446,7 +2452,7 @@ Update governance parameters for ecosystem/proof-of-creativity registries
 Can only be called by governance admin
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_update_governance_parameters">update_governance_parameters</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, _: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceAdminCap">social_contracts::governance::GovernanceAdminCap</a>, delegate_count: u64, delegate_term_epochs: u64, proposal_submission_cost: u64, max_votes_per_user: u64, quadratic_base_cost: u64, voting_period_ms: u64, quorum_votes: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, _ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_update_governance_parameters">update_governance_parameters</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, _: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceAdminCap">social_contracts::governance::GovernanceAdminCap</a>, delegate_count: u64, delegate_term_epochs: u64, <a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a>: u64, max_votes_per_user: u64, quadratic_base_cost: u64, voting_period_ms: u64, quorum_votes: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, _ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2460,7 +2466,7 @@ Can only be called by governance admin
     _: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceAdminCap">GovernanceAdminCap</a>,
     delegate_count: u64,
     delegate_term_epochs: u64,
-    proposal_submission_cost: u64,
+    <a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a>: u64,
     max_votes_per_user: u64,
     quadratic_base_cost: u64,
     voting_period_ms: u64,
@@ -2475,7 +2481,7 @@ Can only be called by governance admin
         registry,
         delegate_count,
         delegate_term_epochs,
-        proposal_submission_cost,
+        <a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a>,
         max_votes_per_user,
         quadratic_base_cost,
         voting_period_ms,
@@ -3299,6 +3305,51 @@ Package helper: submit a SPoT resolution proposal and return its ID.
 
 </details>
 
+<a name="social_contracts_governance_submit_poc_proposal_and_return_id"></a>
+
+## Function `submit_poc_proposal_and_return_id`
+
+Package helper: submit a PoC governance proposal and return its ID.
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_submit_poc_proposal_and_return_id">submit_poc_proposal_and_return_id</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, title: <a href="../std/string.md#std_string_String">std::string::String</a>, description: <a href="../std/string.md#std_string_String">std::string::String</a>, reference_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, coin: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_submit_poc_proposal_and_return_id">submit_poc_proposal_and_return_id</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
+    title: String,
+    description: String,
+    reference_id: ID,
+    metadata_json: Option&lt;String&gt;,
+    coin: &<b>mut</b> Coin&lt;MYSO&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+): ID {
+    <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_registry_type">registry_type</a> == <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_PROOF_OF_CREATIVITY">PROPOSAL_TYPE_PROOF_OF_CREATIVITY</a>, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidRegistry">EInvalidRegistry</a>);
+    <a href="../social_contracts/governance.md#social_contracts_governance_submit_proposal_internal">submit_proposal_internal</a>(
+        registry,
+        title,
+        description,
+        <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_PROOF_OF_CREATIVITY">PROPOSAL_TYPE_PROOF_OF_CREATIVITY</a>,
+        option::some(reference_id),
+        metadata_json,
+        coin,
+        clock,
+        ctx,
+    )
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_governance_submit_proposal_internal"></a>
 
 ## Function `submit_proposal_internal`
@@ -3329,7 +3380,7 @@ Internal function for submitting proposals
     <b>let</b> caller = tx_context::sender(ctx);
     <b>let</b> current_time = clock::timestamp_ms(clock);
     // Check stake amount
-    <b>assert</b>!(coin::value(coin) &gt;= registry.proposal_submission_cost, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidAmount">EInvalidAmount</a>);
+    <b>assert</b>!(coin::value(coin) &gt;= registry.<a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a>, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidAmount">EInvalidAmount</a>);
     // Create proposal
     <b>let</b> proposal_id = object::new(ctx);
     <b>let</b> <b>mut</b> proposal = <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a> {
@@ -3351,7 +3402,7 @@ Internal function for submitting proposals
         reward_pool: balance::zero(),
     };
     // Split coin and add to proposal's reward pool
-    <b>let</b> proposal_coin = coin::split(coin, registry.proposal_submission_cost, ctx);
+    <b>let</b> proposal_coin = coin::split(coin, registry.<a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a>, ctx);
     balance::join(&<b>mut</b> proposal.reward_pool, coin::into_balance(proposal_coin));
     // Initialize dynamic fields <b>for</b> vote tracking
     <b>let</b> delegate_votes = table::new&lt;<b>address</b>, bool&gt;(ctx);
@@ -3380,7 +3431,7 @@ Internal function for submitting proposals
         reference_id: reference_id,
         metadata_json: metadata_json,
         submitter: caller,
-        reward_amount: registry.proposal_submission_cost,
+        reward_amount: registry.<a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a>,
         submission_time: current_time,
     });
     <a href="../social_contracts/governance.md#social_contracts_governance_try_update_delegate_panel_if_due">try_update_delegate_panel_if_due</a>(registry, ctx);
@@ -4737,6 +4788,63 @@ Shared implementation transition + drains <code>reward_pool</code> for routing b
 
 </details>
 
+<a name="social_contracts_governance_mark_proposal_implemented_take_pool_poc_oracle"></a>
+
+## Function `mark_proposal_implemented_take_pool_poc_oracle`
+
+PoC oracle may implement approved media-asset rights proposals (same package only).
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_mark_proposal_implemented_take_pool_poc_oracle">mark_proposal_implemented_take_pool_poc_oracle</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, authorized_oracle: <b>address</b>, description: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_mark_proposal_implemented_take_pool_poc_oracle">mark_proposal_implemented_take_pool_poc_oracle</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
+    proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>,
+    authorized_oracle: <b>address</b>,
+    description: Option&lt;String&gt;,
+    clock: &Clock,
+    ctx: &TxContext,
+): Balance&lt;MYSO&gt; {
+    <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
+    <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_registry_type">registry_type</a> == <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_PROOF_OF_CREATIVITY">PROPOSAL_TYPE_PROOF_OF_CREATIVITY</a>, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidRegistry">EInvalidRegistry</a>);
+    <b>assert</b>!(tx_context::sender(ctx) == authorized_oracle, <a href="../social_contracts/governance.md#social_contracts_governance_EUnauthorized">EUnauthorized</a>);
+    <b>let</b> current_time = clock::timestamp_ms(clock);
+    <b>let</b> proposal_id = object::id(proposal);
+    <b>assert</b>!(table::contains(&registry.proposals, proposal_id), <a href="../social_contracts/governance.md#social_contracts_governance_EProposalNotFound">EProposalNotFound</a>);
+    <b>assert</b>!(proposal.status == <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_APPROVED">STATUS_APPROVED</a>, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidProposalStatus">EInvalidProposalStatus</a>);
+    proposal.status = <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_IMPLEMENTED">STATUS_IMPLEMENTED</a>;
+    <b>let</b> from_status = table::borrow_mut(&<b>mut</b> registry.proposals_by_status, <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_APPROVED">STATUS_APPROVED</a>);
+    <b>let</b> <b>mut</b> index = 0;
+    <b>let</b> len = vector::length(from_status);
+    <b>while</b> (index &lt; len) {
+        <b>if</b> (*vector::borrow(from_status, index) == proposal_id) {
+            vector::remove(from_status, index);
+            <b>break</b>
+        };
+        index = index + 1;
+    };
+    <b>let</b> to_status = table::borrow_mut(&<b>mut</b> registry.proposals_by_status, <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_IMPLEMENTED">STATUS_IMPLEMENTED</a>);
+    vector::push_back(to_status, proposal_id);
+    event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_ProposalImplementedEvent">ProposalImplementedEvent</a> {
+        proposal_id,
+        implementation_time: current_time,
+        description,
+    });
+    balance::withdraw_all(&<b>mut</b> proposal.reward_pool)
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_governance_mark_proposal_implemented_to_ecosystem_treasury"></a>
 
 ## Function `mark_proposal_implemented_to_ecosystem_treasury`
@@ -5209,6 +5317,30 @@ Get proposal information
 
 </details>
 
+<a name="social_contracts_governance_proposal_submission_cost"></a>
+
+## Function `proposal_submission_cost`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a>(registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a>(registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>): u64 {
+    registry.<a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a>
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_governance_proposal_submitter"></a>
 
 ## Function `proposal_submitter`
@@ -5370,7 +5502,7 @@ Get governance parameters
     (
         registry.delegate_count,
         registry.delegate_term_epochs,
-        registry.proposal_submission_cost,
+        registry.<a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a>,
         registry.max_votes_per_user,
         registry.quadratic_base_cost,
         registry.voting_period_ms,
@@ -5437,7 +5569,7 @@ This function can only be called by the platform toggle_platform_approval functi
 The transaction sender is seeded as the founding delegate (same pattern as <code><a href="../social_contracts/governance.md#social_contracts_governance_bootstrap_init">bootstrap_init</a></code>).
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_create_platform_governance">create_platform_governance</a>(delegate_count: u64, delegate_term_epochs: u64, proposal_submission_cost: u64, max_votes_per_user: u64, quadratic_base_cost: u64, voting_period_ms: u64, quorum_votes: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_create_platform_governance">create_platform_governance</a>(delegate_count: u64, delegate_term_epochs: u64, <a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a>: u64, max_votes_per_user: u64, quadratic_base_cost: u64, voting_period_ms: u64, quorum_votes: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>
 </code></pre>
 
 
@@ -5449,7 +5581,7 @@ The transaction sender is seeded as the founding delegate (same pattern as <code
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_create_platform_governance">create_platform_governance</a>(
     delegate_count: u64,
     delegate_term_epochs: u64,
-    proposal_submission_cost: u64,
+    <a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a>: u64,
     max_votes_per_user: u64,
     quadratic_base_cost: u64,
     voting_period_ms: u64,
@@ -5466,7 +5598,7 @@ The transaction sender is seeded as the founding delegate (same pattern as <code
         // Configuration parameters specific to <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> <a href="../social_contracts/governance.md#social_contracts_governance">governance</a>
         delegate_count,
         delegate_term_epochs,
-        proposal_submission_cost,
+        <a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a>,
         max_votes_per_user,
         quadratic_base_cost,
         voting_period_ms,
@@ -5495,7 +5627,7 @@ The transaction sender is seeded as the founding delegate (same pattern as <code
         <a href="../social_contracts/governance.md#social_contracts_governance_registry_type">registry_type</a>: <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_PLATFORM">PROPOSAL_TYPE_PLATFORM</a>,
         delegate_count: platform_registry.delegate_count,
         delegate_term_epochs: platform_registry.delegate_term_epochs,
-        proposal_submission_cost: platform_registry.proposal_submission_cost,
+        <a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a>: platform_registry.<a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a>,
         max_votes_per_user: platform_registry.max_votes_per_user,
         quadratic_base_cost: platform_registry.quadratic_base_cost,
         voting_period_ms: platform_registry.voting_period_ms,
@@ -5656,7 +5788,7 @@ One-time admin path for existing networks that bootstrapped before the SPoT regi
         <a href="../social_contracts/governance.md#social_contracts_governance_registry_type">registry_type</a>: <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_SPOT">PROPOSAL_TYPE_SPOT</a>,
         delegate_count: 3,
         delegate_term_epochs: 90,
-        proposal_submission_cost: 10_000_000_000,
+        <a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a>: 10_000_000_000,
         max_votes_per_user: 5,
         quadratic_base_cost: 1_000_000_000,
         voting_period_ms: 3 * 24 * 60 * 60 * 1000,
@@ -5680,7 +5812,7 @@ One-time admin path for existing networks that bootstrapped before the SPoT regi
         <a href="../social_contracts/governance.md#social_contracts_governance_registry_type">registry_type</a>: <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_SPOT">PROPOSAL_TYPE_SPOT</a>,
         delegate_count: spot_registry.delegate_count,
         delegate_term_epochs: spot_registry.delegate_term_epochs,
-        proposal_submission_cost: spot_registry.proposal_submission_cost,
+        <a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a>: spot_registry.<a href="../social_contracts/governance.md#social_contracts_governance_proposal_submission_cost">proposal_submission_cost</a>,
         max_votes_per_user: spot_registry.max_votes_per_user,
         quadratic_base_cost: spot_registry.quadratic_base_cost,
         voting_period_ms: spot_registry.voting_period_ms,

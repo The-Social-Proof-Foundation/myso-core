@@ -67,6 +67,9 @@ pub(crate) async fn list_posts(
             posts::poc_outcome,
             posts::poc_redirection_kind,
             posts::poc_disputes_submitted,
+            posts::composition_status,
+            posts::monetization_status,
+            posts::media_asset_ids,
             posts::sub_agent_id,
             posts::action_identity_class,
         ))
@@ -95,6 +98,9 @@ pub(crate) async fn list_posts(
             Option<i16>,
             Option<i16>,
             i16,
+            Option<i16>,
+            Option<i16>,
+            Option<serde_json::Value>,
             Option<String>,
             Option<i16>,
         )>(&mut conn)
@@ -127,6 +133,9 @@ pub(crate) async fn list_posts(
                 poc_outcome,
                 poc_redirection_kind,
                 poc_disputes_submitted,
+                composition_status,
+                monetization_status,
+                media_asset_ids,
                 sub_agent_id,
                 action_identity_class,
             )| PostBasicRow {
@@ -154,6 +163,9 @@ pub(crate) async fn list_posts(
                 poc_outcome,
                 poc_redirection_kind,
                 poc_disputes_submitted,
+                composition_status,
+                monetization_status,
+                media_asset_ids,
                 actor_address: Some(owner),
                 sub_agent_id,
                 action_identity_class,
@@ -193,7 +205,9 @@ pub(crate) async fn get_trending_posts(
                poc_id, revenue_redirect_to, revenue_redirect_percentage,
                poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type,
                poc_oracle_address, poc_analyzed_at,
-               poc_outcome, poc_redirection_kind, poc_disputes_submitted
+               poc_outcome, poc_redirection_kind, poc_disputes_submitted,
+               composition_status, monetization_status, media_asset_ids,
+               NULL::text AS actor_address, NULL::text AS sub_agent_id, NULL::smallint AS action_identity_class
         FROM posts
         WHERE deleted_at IS NULL
         ORDER BY (reaction_count + comment_count + repost_count) DESC, created_at DESC
@@ -218,7 +232,9 @@ pub(crate) async fn get_post_by_id(
                poc_id, revenue_redirect_to, revenue_redirect_percentage,
                poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type,
                poc_oracle_address, poc_analyzed_at,
-               poc_outcome, poc_redirection_kind, poc_disputes_submitted
+               poc_outcome, poc_redirection_kind, poc_disputes_submitted,
+               composition_status, monetization_status, media_asset_ids,
+               NULL::text AS actor_address, NULL::text AS sub_agent_id, NULL::smallint AS action_identity_class
         FROM posts
         WHERE (post_id = $1 OR id = $1) AND deleted_at IS NULL
         ORDER BY created_at DESC

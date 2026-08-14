@@ -150,6 +150,14 @@ fn chain_post_times(
     (ms, common::chain_time_from_ms(ms))
 }
 
+fn media_asset_ids_to_json(ids: &[String]) -> Option<serde_json::Value> {
+    if ids.is_empty() {
+        None
+    } else {
+        Some(serde_json::to_value(ids).unwrap_or(serde_json::Value::Null))
+    }
+}
+
 #[derive(Debug, Deserialize)]
 struct PostCreatedEvent {
     post_id: String,
@@ -163,10 +171,13 @@ struct PostCreatedEvent {
     post_type: String,
     parent_post_id: Option<String>,
     mentions: Option<serde_json::Value>,
+    #[serde(default)]
+    media_asset_ids: Vec<String>,
     media_urls: Option<serde_json::Value>,
     metadata_json: Option<String>,
     mydata_id: Option<String>,
     promotion_id: Option<String>,
+    #[serde(default)]
     revenue_redirect_to: Option<String>,
     #[serde(default, deserialize_with = "de_opt_u64")]
     revenue_redirect_percentage: Option<u64>,
@@ -175,14 +186,18 @@ struct PostCreatedEvent {
     spt_id: Option<String>,
     #[serde(default, deserialize_with = "de_u8")]
     poc_redirection_kind: u8,
+    #[serde(default, deserialize_with = "de_u8")]
+    composition_status: u8,
+    #[serde(default, deserialize_with = "de_u8")]
+    monetization_status: u8,
     #[serde(default)]
     sub_agent_id: Option<String>,
     #[serde(default)]
     organization_id: Option<String>,
     #[serde(default, deserialize_with = "de_opt_u8")]
     action_identity_class: Option<u8>,
-    #[serde(default, deserialize_with = "de_u64")]
-    created_at: u64,
+    #[serde(default, deserialize_with = "de_opt_u64")]
+    created_at: Option<u64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -482,7 +497,7 @@ pub fn handle_post_event(
         "PostSubscriptionAccessEvent" => {
             process_post_subscription_access_event(data, event_id, checkpoint_timestamp_ms)
         }
-        _ => None,
+        other => super::post_enforcement::handle_post_enforcement_event(other, data, event_id),
     }
 }
 
@@ -541,7 +556,7 @@ fn process_post_created_event(
     } else {
         None
     };
-    let event_ms = common::json_field_as_i64(data.get("created_at")).or(Some(ev.created_at as i64));
+    let event_ms = common::json_field_as_i64(data.get("created_at")).or(ev.created_at.map(|t| t as i64));
     let (created_at, now) = chain_post_times(event_ms, checkpoint_timestamp_ms);
     let (_actor_address, sub_agent_id, organization_id, action_identity_class) =
         attribution_fields(data, &ev.owner);
@@ -606,6 +621,9 @@ fn process_post_created_event(
             .or(action_identity_class),
         organization_id: ev.organization_id.or(organization_id),
         contract_version: 0,
+        composition_status: Some(i16::from(ev.composition_status)),
+        monetization_status: Some(i16::from(ev.monetization_status)),
+        media_asset_ids: media_asset_ids_to_json(&ev.media_asset_ids),
     };
     if let Some(mydata_id) = post.mydata_id.clone() {
         post_mydata::enrich_post_from_mydata_id(&mut post, &mydata_id, mydata_snapshots);

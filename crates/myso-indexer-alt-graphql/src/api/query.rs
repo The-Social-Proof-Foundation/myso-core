@@ -74,6 +74,7 @@ use crate::api::types::organization::{
 use crate::api::types::platform::{Platform, PlatformUserAccess};
 use crate::api::types::poc::PocBeneficiaryVault;
 use crate::api::types::poc_username_beneficiary::PocUsernameBeneficiary;
+use crate::api::types::media_asset::MediaAsset;
 use crate::api::types::post::{CommentSummary, Post, ReactionSummary, RepostSummary, TipSummary};
 use crate::api::types::profile::Profile;
 use crate::api::types::profile_subscription::{
@@ -336,6 +337,57 @@ impl Query {
                 .map_err(Into::into)
                 .map(|opt| opt.map(Post::from_db)),
         )
+    }
+
+    /// Fetch a registered media asset by object id.
+    async fn media_asset(
+        &self,
+        ctx: &Context<'_>,
+        id: async_graphql::ID,
+    ) -> Option<Result<Option<MediaAsset>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_media_asset_by_id(id.as_str())
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(MediaAsset::from_row)),
+        )
+    }
+
+    /// List governance proposals linked to a media asset rights dispute.
+    async fn media_asset_rights_proposals(
+        &self,
+        ctx: &Context<'_>,
+        media_asset_id: async_graphql::ID,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<crate::api::types::governance::Proposal>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let links = match reader
+            .list_media_asset_rights_proposals(media_asset_id.as_str(), limit, offset)
+            .await
+        {
+            Ok(rows) => rows,
+            Err(e) => return Some(Err(e.into())),
+        };
+        let mut proposals = Vec::with_capacity(links.len());
+        for link in links {
+            match reader.get_proposal_by_id(&link.proposal_id).await {
+                Ok(Some(row)) => {
+                    proposals.push(crate::api::types::governance::Proposal::from_row(row));
+                }
+                Ok(None) => {}
+                Err(e) => return Some(Err(e.into())),
+            }
+        }
+        Some(Ok(proposals))
     }
 
     /// List posts with optional filters. Returns empty when social DB not configured.

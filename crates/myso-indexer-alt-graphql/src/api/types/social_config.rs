@@ -388,6 +388,21 @@ impl PocConfig {
         self.inner.min_vault_deposit_amount
     }
 
+    /// Treasury fee for initiating a media-asset rights governance dispute (MYSO base units).
+    async fn media_asset_dispute_cost(&self) -> i64 {
+        self.inner.media_asset_dispute_cost
+    }
+
+    /// Lifetime cap on rights governance disputes per media asset.
+    async fn max_disputes_per_media_asset(&self) -> i64 {
+        self.inner.max_disputes_per_media_asset.into()
+    }
+
+    /// Max bps any embedded source asset may redirect from a post revenue pool (0-10000).
+    async fn max_embedded_asset_redirect_bps(&self) -> i64 {
+        self.inner.max_embedded_asset_redirect_bps
+    }
+
     /// Shared PoC GovernanceDAO object ID (registry_type = 1).
     async fn dispute_governance_registry_id(&self) -> Option<&str> {
         self.inner.dispute_governance_registry_id.as_deref()

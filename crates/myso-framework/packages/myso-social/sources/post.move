@@ -33,6 +33,7 @@ module social_contracts::post {
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
     use social_contracts::profile::{Self, EcosystemTreasury};
     use social_contracts::poc_vault::{Self as poc_vault, PoCBeneficiaryVault};
+    use social_contracts::media_asset::{Self as media_asset, CompositionAnalysis, CompositionBadgeSnapshot, RevenueManifest, ManifestEntry, MediaAsset};
     use social_contracts::memory::{Self, MemoryAccount, MemoryConfig, ActingContext};
 
     /// Error codes
@@ -70,17 +71,19 @@ module social_contracts::post {
     const EOverflow: u64 = 31;
     const EMyDataNotRegistered: u64 = 32;
     const EMyDataOwnerMismatch: u64 = 33;
-    const EInvalidPocOutcomeFields: u64 = 35;
     const EDisputeCapReached: u64 = 36;
-    /// Escrow/vault redirect slice must use the `PoCBeneficiaryVault` whose beneficiary matches `revenue_redirect_to`.
     const EWrongBeneficiaryVault: u64 = 37;
-    /// [`tip_post_simple`] / [`tip_comment_simple`] cannot deposit into an escrow vault; use [`tip_post`] /
-    /// [`tip_comment`] with the vault for `revenue_redirect_to`.
     const ETipPostRequiresBeneficiaryVault: u64 = 38;
-    /// Empty batch, length mismatch, or batch larger than `MAX_PROMOTION_VIEW_BATCH`
     const EInvalidBatch: u64 = 39;
-    /// `enable_spt = true` on plain `create_*` is blocked; use `social_proof_tokens::create_post_with_reservation_pool`.
     const ESptRequiresDedicatedCreate: u64 = 40;
+    const EInvalidMediaAsset: u64 = 41;
+    const EMonetizationNotEnabled: u64 = 42;
+    const EInvalidManifest: u64 = 43;
+    const ECompositionNotVerified: u64 = 44;
+    const EBindingNotFound: u64 = 95;
+    const EInvalidDenialScope: u64 = 96;
+    const EBindingAssetMismatch: u64 = 97;
+    const EInvalidBinding: u64 = 98;
 
     /// Constants for size limits
     const MAX_CONTENT_LENGTH: u64 = 5000; // 5000 chars max for content
@@ -128,29 +131,6 @@ module social_contracts::post {
     const PERMISSION_ALLOW_QUOTES: u8 = 8;          // bit 3
     const PERMISSION_ALLOW_TIPS: u8 = 16;          // bit 4
 
-    /// PoC analysis outcome (stored on Post)
-    const POC_OUTCOME_NONE: u8 = 0;
-    const POC_OUTCOME_ORIGINAL: u8 = 1;
-    const POC_OUTCOME_DERIVATIVE_WALLET: u8 = 2;
-    const POC_OUTCOME_DERIVATIVE_ESCROW: u8 = 3;
-    const POC_OUTCOME_ROYALTY_FREE: u8 = 4;
-
-    /// How PoC derivative redirect routes redirected tips / MYSO creator fees
-    const POC_REDIRECT_NONE: u8 = 0;
-    const POC_REDIRECT_WALLET: u8 = 1;
-    /// Redirected MYSO accumulates in the beneficiary's shared `PoCBeneficiaryVault` (not on-post balance).
-    const POC_REDIRECT_ESCROW: u8 = 2;
-
-    /// Denormalized PoC badge fields cached on `Post` for cheap reads; authoritative record is `PoCBadgeObject`.
-    public struct PoCBadgeSnapshot has store, copy, drop {
-        reasoning: Option<String>,
-        evidence_urls: Option<vector<String>>,
-        similarity_score: Option<u64>,
-        media_type: Option<u8>,
-        oracle_address: Option<address>,
-        analyzed_at: Option<u64>,
-    }
-
     /// Event/indexer tags for [`PostAccess`] (1=public, 2=profile_sub, 3=marketplace_one_time).
     const POST_ACCESS_PUBLIC: u8 = 1;
     const POST_ACCESS_PROFILE_SUBSCRIPTION: u8 = 2;
@@ -166,63 +146,36 @@ module social_contracts::post {
     /// Post object that contains content information
     public struct Post has key {
         id: UID,
-        /// Owner's wallet address (the true owner)
         owner: address,
-        /// Author's profile ID (reference only, not ownership)
         profile_id: address,
-        /// Platform ID where this post was created
         platform_id: address,
-        /// Post content
         content: String,
-        /// Optional media URLs (multiple supported)
+        /// Canonical composition: ordered MediaAsset IDs (max 10).
+        media_asset_ids: vector<ID>,
+        /// Display/cache URLs — not authoritative for PoC.
         media: Option<vector<Url>>,
-        /// Optional mentioned users (profile IDs)
         mentions: Option<vector<address>>,
-        /// Optional metadata in JSON format
         metadata_json: Option<String>,
-        /// Post type (standard, comment, repost, quote_repost)
         post_type: String,
-        /// Optional parent post ID for replies or quote reposts
         parent_post_id: Option<address>,
-        /// Creation timestamp
         created_at: u64,
-        /// Total number of reactions
         reaction_count: u64,
-        /// Number of comments
         comment_count: u64,
-        /// Number of reposts
         repost_count: u64,
-        /// Total tips received in MYSO (tracking only, not actual balance)
         tips_received: u64,
-        /// Whether the post has been removed from its platform
         removed_from_platform: bool,
-        /// Table of user wallet addresses to their reactions (emoji or text)
         user_reactions: Table<address, String>,
-        /// Table to count reactions by type
         reaction_counts: Table<String, u64>,
-        /// Permission flags bitfield: allow_comments (bit 0), allow_reactions (bit 1), allow_reposts (bit 2), allow_quotes (bit 3), allow_tips (bit 4)
         permissions: u8,
-        /// Optional revenue redirection to original creator (for derivative content)
-        revenue_redirect_to: Option<address>,
-        /// Optional revenue redirection percentage (0-100)
-        revenue_redirect_percentage: Option<u64>,
-        /// Cached PoC badge snapshot (authoritative object id below).
-        poc_badge_snapshot: Option<PoCBadgeSnapshot>,
-        /// Address of the shared `PoCBadgeObject` when issued (authoritative PoC record).
-        poc_badge_object_id: Option<ID>,
-        /// Content access model (public, profile subscription, or marketplace one-time).
+        /// Composition resolution status (display/use).
+        composition_status: u8,
+        /// Revenue eligibility status (separate from display).
+        monetization_status: u8,
+        composition_badge: Option<CompositionBadgeSnapshot>,
         access: PostAccess,
-        /// Optional promotion data ID for promoted posts
         promotion_id: Option<address>,
-        /// Opt-in for Social Proof Tokens (reservation pool created at post creation when true)
         enable_spt: bool,
-        /// Optional Social Proof Token pool ID (address of TokenPool object)
         spt_id: Option<address>,
-        /// Last applied PoC outcome (`POC_OUTCOME_*`); 0 if never analyzed or cleared
-        poc_outcome: u8,
-        /// Where derivative redirect slices go for this post (`POC_REDIRECT_*`)
-        poc_redirection_kind: u8,
-        /// Version for upgrades
         version: u64,
     }
 
@@ -243,9 +196,83 @@ module social_contracts::post {
 
     const POST_ATTRIBUTION_DF_KEY: vector<u8> = b"post_attribution";
     const COMMENT_ATTRIBUTION_DF_KEY: vector<u8> = b"comment_attribution";
-    const POC_DISPUTES_SUBMITTED_DF_KEY: vector<u8> = b"poc_disputes_submitted";
-    /// Multi-claim Social Proof of Truth analysis (Post is at the VM field-count limit).
+    const COMPOSITION_ANALYSIS_DF_KEY: vector<u8> = b"composition_analysis";
+    const REVENUE_MANIFEST_DF_KEY: vector<u8> = b"revenue_manifest";
+    const COMPOSITION_DISPUTES_DF_KEY: vector<u8> = b"composition_disputes_submitted";
     const SPOT_ANALYSIS_DF_KEY: vector<u8> = b"spot_analysis";
+    const EMBEDDED_BINDINGS_DF_KEY: vector<u8> = b"embedded_bindings";
+    const USAGE_DECISIONS_DF_KEY: vector<u8> = b"usage_decisions";
+    const USAGE_DENIALS_DF_KEY: vector<u8> = b"usage_denials";
+    const CANDIDATE_MANIFEST_DF_KEY: vector<u8> = b"candidate_revenue_manifest";
+
+    /// Application enforcement — policy reason codes for usage decision snapshots.
+    const REASON_ALLOWED: u8 = 0;
+    const REASON_NO_GRANT: u8 = 1;
+    const REASON_RESOLVED_POLICY: u8 = 2;
+    const REASON_DENIAL: u8 = 3;
+
+    const DENIAL_SCOPE_PLAYBACK: u8 = 1;
+
+    /// Phase 4 — embedded asset binding on a post container.
+    public struct EmbeddedAssetBinding has store, copy, drop {
+        binding_id: u64,
+        source_asset_id: ID,
+        usage_class: u8,
+        stem: u8,
+        media_component: u8,
+        evidence_commitment: Option<vector<u8>>,
+    }
+
+    public struct UsageDecisionSnapshot has store, copy, drop {
+        binding_id: u64,
+        policy_playback_permitted: bool,
+        playback_permitted: bool,
+        policy_reason_code: u8,
+        policy_version_at_decision: u64,
+    }
+
+    public struct ContainerUsageDenial has store, copy, drop {
+        binding_id: u64,
+        denial_scope: u8,
+    }
+
+    public struct EmbeddedBindingRecordedEvent has copy, drop {
+        post_id: address,
+        bindings: vector<EmbeddedAssetBinding>,
+        timestamp: u64,
+    }
+
+    public struct UsageDecisionRefreshedEvent has copy, drop {
+        post_id: address,
+        binding_id: u64,
+        policy_playback_permitted: bool,
+        playback_permitted: bool,
+        policy_reason_code: u8,
+        policy_version_at_decision: u64,
+        timestamp: u64,
+    }
+
+    public struct ContainerUsageDeniedEvent has copy, drop {
+        post_id: address,
+        binding_id: u64,
+        denial_scope: u8,
+        timestamp: u64,
+    }
+
+    public struct ContainerUsageDenialLiftedEvent has copy, drop {
+        post_id: address,
+        binding_id: u64,
+        timestamp: u64,
+    }
+
+    public struct CandidateManifestSubmittedEvent has copy, drop {
+        post_id: address,
+        manifest_version: u64,
+        entries_json: vector<ManifestEntry>,
+        timestamp: u64,
+    }
+
+    /// Multi-claim Social Proof of Truth analysis (Post is at the VM field-count limit).
 
     /// SPoT multi-claim analysis lifecycle status (interpreted by `social_proof_of_truth`).
     const SPOT_STATUS_PENDING: u8 = 0;
@@ -416,23 +443,83 @@ module social_contracts::post {
         post.enable_spt
     }
 
-    /// Expose on-post PoC outcome for other modules (e.g. social_proof_tokens).
-    public fun poc_outcome(post: &Post): u8 {
-        post.poc_outcome
+    public fun composition_status(post: &Post): u8 {
+        post.composition_status
     }
 
-    /// How derivative redirect is routed for this post (`POC_REDIRECT_*`).
-    public fun poc_redirection_kind(post: &Post): u8 {
-        post.poc_redirection_kind
+    public fun monetization_status(post: &Post): u8 {
+        post.monetization_status
     }
 
-    /// Lifetime count of successful PoC dispute submissions (capped at 2 on-chain).
-    public fun poc_disputes_submitted(post: &Post): u8 {
-        if (df::exists_with_type<vector<u8>, u8>(&post.id, POC_DISPUTES_SUBMITTED_DF_KEY)) {
-            *df::borrow(&post.id, POC_DISPUTES_SUBMITTED_DF_KEY)
+    public fun media_asset_ids(post: &Post): &vector<ID> {
+        &post.media_asset_ids
+    }
+
+    public fun composition_badge(post: &Post): &Option<CompositionBadgeSnapshot> {
+        &post.composition_badge
+    }
+
+    public fun composition_analysis(post: &Post): Option<CompositionAnalysis> {
+        if (df::exists_with_type<vector<u8>, CompositionAnalysis>(&post.id, COMPOSITION_ANALYSIS_DF_KEY)) {
+            option::some(*df::borrow(&post.id, COMPOSITION_ANALYSIS_DF_KEY))
+        } else {
+            option::none()
+        }
+    }
+
+    public fun revenue_manifest(post: &Post): Option<RevenueManifest> {
+        if (df::exists_with_type<vector<u8>, RevenueManifest>(&post.id, REVENUE_MANIFEST_DF_KEY)) {
+            option::some(*df::borrow(&post.id, REVENUE_MANIFEST_DF_KEY))
+        } else {
+            option::none()
+        }
+    }
+
+    public fun composition_disputes_submitted(post: &Post): u8 {
+        if (df::exists_with_type<vector<u8>, u8>(&post.id, COMPOSITION_DISPUTES_DF_KEY)) {
+            *df::borrow(&post.id, COMPOSITION_DISPUTES_DF_KEY)
         } else {
             0
         }
+    }
+
+    public fun monetization_enabled(post: &Post): bool {
+        post.monetization_status == media_asset::monetization_enabled()
+    }
+
+    /// Legacy alias used by dispute paths during migration.
+    public fun poc_disputes_submitted(post: &Post): u8 {
+        composition_disputes_submitted(post)
+    }
+
+    /// Returns true when manifest-based revenue routing is active.
+    public fun has_composition_monetization(post: &Post): bool {
+        monetization_enabled(post) && option::is_some(&revenue_manifest(post))
+    }
+
+    public fun tip_post_requires_beneficiary_vault_for_amount(post: &Post, tip_amount: u64): bool {
+        if (tip_amount == 0 || !monetization_enabled(post)) {
+            return false
+        };
+        let manifest_opt = revenue_manifest(post);
+        if (option::is_none(&manifest_opt)) {
+            return false
+        };
+        let manifest = option::borrow(&manifest_opt);
+        let entries = media_asset::manifest_entries(manifest);
+        let len = vector::length(entries);
+        let mut i = 0;
+        while (i < len) {
+            let e = vector::borrow(entries, i);
+            if (media_asset::manifest_entry_payout_mode(e) == media_asset::payout_escrow()) {
+                let slice = (tip_amount * media_asset::manifest_entry_share_bps(e)) / media_asset::manifest_bps_total();
+                if (slice > 0) {
+                    return true
+                };
+            };
+            i = i + 1;
+        };
+        false
     }
 
     public fun actor_address(post: &Post): address {
@@ -503,110 +590,6 @@ module social_contracts::post {
                 action_identity_class,
             },
         );
-    }
-
-    /// Returns true when [`tip_post`] must receive a [`PoCBeneficiaryVault`] whose beneficiary is `revenue_redirect_to`
-    /// for this tip amount (escrow-mode redirect with a non-zero redirected slice of `tip_amount`).
-    public fun tip_post_requires_beneficiary_vault_for_amount(post: &Post, tip_amount: u64): bool {
-        if (tip_amount == 0) {
-            return false
-        };
-        let has_derivative_redirect = option::is_some(&post.revenue_redirect_percentage) &&
-            post.poc_redirection_kind != POC_REDIRECT_NONE &&
-            (post.poc_redirection_kind == POC_REDIRECT_ESCROW ||
-                option::is_some(&post.revenue_redirect_to));
-        if (!has_derivative_redirect) {
-            return false
-        };
-        let redirect_percentage = *option::borrow(&post.revenue_redirect_percentage);
-        if (redirect_percentage == 0) {
-            return false
-        };
-        let redirected_amount = (tip_amount * redirect_percentage) / 100;
-        if (redirected_amount == 0) {
-            return false
-        };
-        post.poc_redirection_kind == POC_REDIRECT_ESCROW
-    }
-
-    /// Sentinel: no derivative redirect kind (original badge path).
-    public fun poc_redirection_none(): u8 {
-        POC_REDIRECT_NONE
-    }
-
-    /// Get PoC badge snapshot (returns reference to Option).
-    public fun get_poc_badge(post: &Post): &Option<PoCBadgeSnapshot> {
-        &post.poc_badge_snapshot
-    }
-
-    /// Shared `PoCBadgeObject` id when issued.
-    public fun get_poc_badge_object_id(post: &Post): Option<ID> {
-        post.poc_badge_object_id
-    }
-
-    /// Check if post has PoC badge snapshot or linked badge object
-    public fun has_poc_badge(post: &Post): bool {
-        option::is_some(&post.poc_badge_snapshot) || option::is_some(&post.poc_badge_object_id)
-    }
-
-    /// Get PoC reasoning (immutable query function)
-    public fun get_poc_reasoning(post: &Post): Option<String> {
-        if (option::is_some(&post.poc_badge_snapshot)) {
-            let badge_ref = option::borrow(&post.poc_badge_snapshot);
-            badge_ref.reasoning
-        } else {
-            option::none()
-        }
-    }
-
-    /// Get PoC evidence URLs (immutable query function)
-    public fun get_poc_evidence_urls(post: &Post): Option<vector<String>> {
-        if (option::is_some(&post.poc_badge_snapshot)) {
-            let badge_ref = option::borrow(&post.poc_badge_snapshot);
-            badge_ref.evidence_urls
-        } else {
-            option::none()
-        }
-    }
-
-    /// Get PoC similarity score (immutable query function)
-    public fun get_poc_similarity_score(post: &Post): Option<u64> {
-        if (option::is_some(&post.poc_badge_snapshot)) {
-            let badge_ref = option::borrow(&post.poc_badge_snapshot);
-            badge_ref.similarity_score
-        } else {
-            option::none()
-        }
-    }
-
-    /// Get PoC media type (immutable query function)
-    public fun get_poc_media_type(post: &Post): Option<u8> {
-        if (option::is_some(&post.poc_badge_snapshot)) {
-            let badge_ref = option::borrow(&post.poc_badge_snapshot);
-            badge_ref.media_type
-        } else {
-            option::none()
-        }
-    }
-
-    /// Get PoC oracle address (immutable query function)
-    public fun get_poc_oracle_address(post: &Post): Option<address> {
-        if (option::is_some(&post.poc_badge_snapshot)) {
-            let badge_ref = option::borrow(&post.poc_badge_snapshot);
-            badge_ref.oracle_address
-        } else {
-            option::none()
-        }
-    }
-
-    /// Get PoC analysis timestamp (immutable query function)
-    public fun get_poc_analyzed_at(post: &Post): Option<u64> {
-        if (option::is_some(&post.poc_badge_snapshot)) {
-            let badge_ref = option::borrow(&post.poc_badge_snapshot);
-            badge_ref.analyzed_at
-        } else {
-            option::none()
-        }
     }
 
     /// Get the SPT pool ID for a post
@@ -921,16 +904,15 @@ module social_contracts::post {
         post_type: String,
         parent_post_id: Option<address>,
         mentions: Option<vector<address>>,
+        media_asset_ids: vector<ID>,
         media_urls: Option<vector<String>>,
         metadata_json: Option<String>,
         access: PostAccess,
         promotion_id: Option<address>,
-        revenue_redirect_to: Option<address>,
-        revenue_redirect_percentage: Option<u64>,
+        composition_status: u8,
+        monetization_status: u8,
         enable_spt: bool,
         spt_id: Option<address>,
-        /// Matches `Post.poc_redirection_kind` at creation (`POC_REDIRECT_*`).
-        poc_redirection_kind: u8,
         actor_address: address,
         sub_agent_id: Option<ID>,
         organization_id: Option<ID>,
@@ -1269,6 +1251,7 @@ module social_contracts::post {
         profile_id: address,
         platform_id: address,
         content: String,
+        media_asset_ids: vector<ID>,
         media_option: Option<vector<Url>>,
         mentions: Option<vector<address>>,
         metadata_json: Option<String>,
@@ -1279,12 +1262,9 @@ module social_contracts::post {
         allow_reposts: bool,
         allow_quotes: bool,
         allow_tips: bool,
-        revenue_redirect_to: Option<address>,
-        revenue_redirect_percentage: Option<u64>,
         access: PostAccess,
         promotion_id: Option<address>,
         enable_spt: bool,
-        poc_redirection_kind: u8,
         actor_address: address,
         sub_agent_id: Option<ID>,
         organization_id: Option<ID>,
@@ -1292,6 +1272,9 @@ module social_contracts::post {
         clock: &Clock,
         ctx: &mut TxContext
     ): Post {
+        let asset_len = vector::length(&media_asset_ids);
+        assert!(asset_len <= MAX_MEDIA_URLS, ETooManyMediaUrls);
+
         // Build permissions bitfield
         let mut permissions: u8 = 0;
         if (allow_comments) { permissions = permissions | PERMISSION_ALLOW_COMMENTS };
@@ -1306,6 +1289,7 @@ module social_contracts::post {
             profile_id,
             platform_id,
             content,
+            media_asset_ids,
             media: media_option,
             mentions,
             metadata_json,
@@ -1320,16 +1304,13 @@ module social_contracts::post {
             user_reactions: table::new(ctx),
             reaction_counts: table::new(ctx),
             permissions,
-            revenue_redirect_to,
-            revenue_redirect_percentage,
-            poc_badge_snapshot: option::none(),
-            poc_badge_object_id: option::none(),
+            composition_status: media_asset::composition_none(),
+            monetization_status: media_asset::monetization_none(),
+            composition_badge: option::none(),
             access,
             promotion_id,
             enable_spt,
-            spt_id: option::none(), // Will be set when SPT pool is created
-            poc_outcome: POC_OUTCOME_NONE,
-            poc_redirection_kind,
+            spt_id: option::none(),
             version: upgrade::current_version(),
         };
 
@@ -1342,6 +1323,25 @@ module social_contracts::post {
         );
 
         post
+    }
+
+    fun emit_post_media_asset_usages(post: &Post, clock: &Clock) {
+        let post_id = object::uid_to_address(&post.id);
+        let assets = &post.media_asset_ids;
+        let len = vector::length(assets);
+        let mut i = 0;
+        while (i < len) {
+            let asset_id = *vector::borrow(assets, i);
+            media_asset::emit_media_asset_used(
+                post_id,
+                media_asset::container_post(),
+                asset_id,
+                media_asset::usage_social_post(),
+                (i as u8),
+                clock,
+            );
+            i = i + 1;
+        };
     }
 
     public(package) fun share_post(post: Post): address {
@@ -1418,6 +1418,7 @@ module social_contracts::post {
         config: &PostConfig,
         memory_config: &MemoryConfig,
         content: String,
+        media_asset_ids: vector<ID>,
         mut media_urls: Option<vector<String>>,
         mentions: Option<vector<address>>,
         metadata_json: Option<String>,
@@ -1535,14 +1536,14 @@ module social_contracts::post {
 
         // Convert media URLs to strings for event (before moving media_option)
         let media_urls_for_event = convert_urls_to_strings(&media_option);
+        let media_asset_ids_for_event = media_asset_ids;
 
-        let poc_redirection_kind = POC_REDIRECT_NONE;
-        
         let post = create_post_internal(
             owner,
             profile_id,
             platform_id,
             content,
+            media_asset_ids,
             media_option,
             mentions,
             metadata_json,
@@ -1553,12 +1554,9 @@ module social_contracts::post {
             final_allow_reposts,
             final_allow_quotes,
             final_allow_tips,
-            option::none(), // revenue_redirect_to
-            option::none(), // revenue_redirect_percentage
             access,
             option::none(), // promotion_id
             false,
-            poc_redirection_kind,
             actor_address,
             sub_agent_id,
             organization_id,
@@ -1567,6 +1565,7 @@ module social_contracts::post {
             ctx
         );
 
+        emit_post_media_asset_usages(&post, clock);
         let post_id = share_post(post);
 
         let permissions_for_event = permissions_bitfield(
@@ -1587,15 +1586,15 @@ module social_contracts::post {
             post_type: string::utf8(POST_TYPE_STANDARD),
             parent_post_id: option::none(),
             mentions,
+            media_asset_ids: media_asset_ids_for_event,
             media_urls: media_urls_for_event,
             metadata_json,
             access,
             promotion_id: option::none(),
-            revenue_redirect_to: option::none(),
-            revenue_redirect_percentage: option::none(),
+            composition_status: media_asset::composition_none(),
+            monetization_status: media_asset::monetization_none(),
             enable_spt: false,
             spt_id: option::none(),
-            poc_redirection_kind,
             actor_address,
             sub_agent_id,
             organization_id,
@@ -1613,6 +1612,7 @@ module social_contracts::post {
         config: &PostConfig,
         memory_config: &MemoryConfig,
         content: String,
+        media_asset_ids: vector<ID>,
         mut media_urls: Option<vector<String>>,
         mentions: Option<vector<address>>,
         metadata_json: Option<String>,
@@ -1708,6 +1708,7 @@ module social_contracts::post {
             profile_id,
             platform_id,
             content,
+            media_asset_ids,
             media_option,
             mentions,
             metadata_json,
@@ -1718,12 +1719,9 @@ module social_contracts::post {
             final_allow_reposts,
             final_allow_quotes,
             final_allow_tips,
-            option::none(),
-            option::none(),
             access,
             option::none(),
             true, // enable_spt
-            POC_REDIRECT_NONE,
             actor_address,
             sub_agent_id,
             organization_id,
@@ -1734,10 +1732,12 @@ module social_contracts::post {
     }
 
     /// Set reservation-pool `spt_id`, share the post, and emit `PostCreatedEvent` with SPT fields filled.
-    public(package) fun share_and_emit_spt_post(mut post: Post, spt_pool_id: address): address {
+    public(package) fun share_and_emit_spt_post(mut post: Post, spt_pool_id: address, clock: &Clock): address {
         set_enable_spt(&mut post, true);
         set_spt_id(&mut post, spt_pool_id);
+        emit_post_media_asset_usages(&post, clock);
         let media_urls_for_event = convert_urls_to_strings(&post.media);
+        let media_asset_ids_for_event = post.media_asset_ids;
         let attr = post_attribution(&post);
         let post_id = object::uid_to_address(&post.id);
         event::emit(PostCreatedEvent {
@@ -1750,15 +1750,15 @@ module social_contracts::post {
             post_type: post.post_type,
             parent_post_id: post.parent_post_id,
             mentions: post.mentions,
+            media_asset_ids: media_asset_ids_for_event,
             media_urls: media_urls_for_event,
             metadata_json: post.metadata_json,
             access: post.access,
             promotion_id: post.promotion_id,
-            revenue_redirect_to: post.revenue_redirect_to,
-            revenue_redirect_percentage: post.revenue_redirect_percentage,
+            composition_status: post.composition_status,
+            monetization_status: post.monetization_status,
             enable_spt: true,
             spt_id: option::some(spt_pool_id),
-            poc_redirection_kind: post.poc_redirection_kind,
             actor_address: attr.actor_address,
             sub_agent_id: attr.sub_agent_id,
             organization_id: attr.organization_id,
@@ -1777,6 +1777,7 @@ module social_contracts::post {
         config: &PostConfig,
         memory_config: &MemoryConfig,
         content: String,
+        media_asset_ids: vector<ID>,
         media_urls: Option<vector<String>>,
         mentions: Option<vector<address>>,
         metadata_json: Option<String>,
@@ -1810,6 +1811,7 @@ module social_contracts::post {
             config,
             memory_config,
             content,
+            media_asset_ids,
             media_urls,
             mentions,
             metadata_json,
@@ -1854,6 +1856,7 @@ module social_contracts::post {
         config: &PostConfig,
         memory_config: &MemoryConfig,
         content: String,
+        media_asset_ids: vector<ID>,
         media_urls: Option<vector<String>>,
         mentions: Option<vector<address>>,
         metadata_json: Option<String>,
@@ -1877,6 +1880,7 @@ module social_contracts::post {
             config,
             memory_config,
             content,
+            media_asset_ids,
             media_urls,
             mentions,
             metadata_json,
@@ -1904,6 +1908,7 @@ module social_contracts::post {
         config: &PostConfig,
         memory_config: &MemoryConfig,
         content: String,
+        media_asset_ids: vector<ID>,
         media_urls: Option<vector<String>>,
         mentions: Option<vector<address>>,
         metadata_json: Option<String>,
@@ -1948,6 +1953,7 @@ module social_contracts::post {
             config,
             memory_config,
             content,
+            media_asset_ids,
             media_urls,
             mentions,
             metadata_json,
@@ -1975,6 +1981,7 @@ module social_contracts::post {
         config: &PostConfig,
         memory_config: &MemoryConfig,
         content: String,
+        media_asset_ids: vector<ID>,
         media_urls: Option<vector<String>>,
         mentions: Option<vector<address>>,
         metadata_json: Option<String>,
@@ -2021,6 +2028,7 @@ module social_contracts::post {
             config,
             memory_config,
             content,
+            media_asset_ids,
             media_urls,
             mentions,
             metadata_json,
@@ -2048,6 +2056,7 @@ module social_contracts::post {
         config: &PostConfig,
         memory_config: &MemoryConfig,
         content: String,
+        media_asset_ids: vector<ID>,
         media_urls: Option<vector<String>>,
         mentions: Option<vector<address>>,
         metadata_json: Option<String>,
@@ -2087,6 +2096,7 @@ module social_contracts::post {
             config,
             memory_config,
             content,
+            media_asset_ids,
             media_urls,
             mentions,
             metadata_json,
@@ -2266,6 +2276,7 @@ module social_contracts::post {
         memory_config: &MemoryConfig,
         original_post: &mut Post,
         mut content: Option<String>,
+        media_asset_ids: vector<ID>,
         mut media_urls: Option<vector<String>>,
         mentions: Option<vector<address>>,
         metadata_json: Option<String>,
@@ -2444,14 +2455,14 @@ module social_contracts::post {
 
         // Convert media URLs to strings for event (before moving media_option)
         let media_urls_for_event = convert_urls_to_strings(&media_option);
+        let media_asset_ids_for_event = media_asset_ids;
 
-        let poc_redirection_kind = POC_REDIRECT_NONE;
-        
         let post = create_post_internal(
             owner,
             profile_id,
             platform_id,
             content_string,
+            media_asset_ids,
             media_option,
             mentions,
             metadata_json,
@@ -2462,12 +2473,9 @@ module social_contracts::post {
             final_allow_reposts,
             final_allow_quotes,
             final_allow_tips,
-            option::none(), // revenue_redirect_to
-            option::none(), // revenue_redirect_percentage
             PostAccess::Public,
             option::none(), // promotion_id
             false,
-            poc_redirection_kind,
             actor_address,
             sub_agent_id,
             organization_id,
@@ -2484,6 +2492,7 @@ module social_contracts::post {
             final_allow_tips,
         );
 
+        emit_post_media_asset_usages(&post, clock);
         let post_id = share_post(post);
 
         event::emit(PostCreatedEvent {
@@ -2496,15 +2505,15 @@ module social_contracts::post {
             post_type,
             parent_post_id: option::some(original_post_id),
             mentions,
+            media_asset_ids: media_asset_ids_for_event,
             media_urls: media_urls_for_event,
             metadata_json,
             access: PostAccess::Public,
             promotion_id: option::none(),
-            revenue_redirect_to: option::none(),
-            revenue_redirect_percentage: option::none(),
+            composition_status: media_asset::composition_none(),
+            monetization_status: media_asset::monetization_none(),
             enable_spt: false,
             spt_id: option::none(),
-            poc_redirection_kind,
             actor_address,
             sub_agent_id,
             organization_id,
@@ -2538,6 +2547,7 @@ module social_contracts::post {
             profile_id: _,
             platform_id: _,
             content: _,
+            media_asset_ids: _,
             media: _,
             mentions: _,
             metadata_json: _,
@@ -2552,16 +2562,13 @@ module social_contracts::post {
             user_reactions,
             reaction_counts,
             permissions: _,
-            revenue_redirect_to: _,
-            revenue_redirect_percentage: _,
-            poc_badge_snapshot: _,
-            poc_badge_object_id: _,
+            composition_status: _,
+            monetization_status: _,
+            composition_badge: _,
             access: _,
             promotion_id: _,
             enable_spt: _,
             spt_id: _,
-            poc_outcome: _,
-            poc_redirection_kind: _,
             version: _,
         } = post;
         
@@ -2753,10 +2760,8 @@ module social_contracts::post {
         });
     }
 
-    /// Tip a post creator with coin type `T`. When this post uses vault-mode PoC redirect (`POC_REDIRECT_ESCROW`)
-    /// with a non-zero redirected slice for the given `amount`, `beneficiary_vault` must be the shared vault whose
-    /// beneficiary is `post.revenue_redirect_to` (use an indexer query such as `pocBeneficiaryVaultByBeneficiary`, not
-    /// necessarily the post owner’s vault).
+    /// Tip a post creator with coin type `T`. When manifest entries use escrow payout mode for this
+    /// `amount`, `beneficiary_vault` must match the beneficiary's shared vault.
     public fun tip_post<T>(
         post: &mut Post,
         beneficiary_vault: &mut PoCBeneficiaryVault,
@@ -2779,7 +2784,7 @@ module social_contracts::post {
         assert!(allow_tips(post), ETipsNotAllowed);
         let post_owner_addr = post.owner;
         let post_oid = object::uid_to_address(&post.id);
-        let actual_received = apply_poc_redirection_coin<T>(
+        let actual_received = apply_revenue_manifest_coin<T>(
             post,
             beneficiary_vault,
             post_owner_addr,
@@ -2807,8 +2812,7 @@ module social_contracts::post {
     }
 
     /// Like [`tip_post`] but without a `PoCBeneficiaryVault` argument. Only for posts where
-    /// [`tip_post_requires_beneficiary_vault_for_amount`] is false for this `amount` (e.g. no redirect,
-    /// wallet redirect, zero redirect %, or escrow with a zero redirected slice from rounding).
+    /// [`tip_post_requires_beneficiary_vault_for_amount`] is false for this `amount`.
     /// If an escrow deposit is required, aborts with [`ETipPostRequiresBeneficiaryVault`].
     public fun tip_post_simple<T>(
         post: &mut Post,
@@ -2833,7 +2837,7 @@ module social_contracts::post {
         assert!(allow_tips(post), ETipsNotAllowed);
         let post_owner_addr = post.owner;
         let post_oid = object::uid_to_address(&post.id);
-        let actual_received = apply_poc_redirection_coin_without_beneficiary_vault<T>(
+        let actual_received = apply_revenue_manifest_coin_without_beneficiary_vault<T>(
             post,
             post_owner_addr,
             amount,
@@ -2857,8 +2861,8 @@ module social_contracts::post {
         };
     }
 
-    /// PoC derivative redirect for tips and fees: escrow deposits into `PoCBeneficiaryVault` or wallet redirect.
-    fun apply_poc_redirection_coin<T>(
+    /// Manifest-based revenue split for tips and fees on the creator-attributable pool.
+    fun apply_revenue_manifest_coin<T>(
         post: &Post,
         beneficiary_vault: &mut PoCBeneficiaryVault,
         intended_recipient: address,
@@ -2877,68 +2881,74 @@ module social_contracts::post {
             return amount
         };
 
-        let has_derivative_redirect = option::is_some(&post.revenue_redirect_percentage) &&
-            post.poc_redirection_kind != POC_REDIRECT_NONE &&
-            (post.poc_redirection_kind == POC_REDIRECT_ESCROW ||
-                option::is_some(&post.revenue_redirect_to));
-
-        if (!has_derivative_redirect) {
+        if (!monetization_enabled(post)) {
             let tip_coins = coin::split(coins, amount, ctx);
             transfer::public_transfer(tip_coins, intended_recipient);
             return amount
         };
 
-        let redirect_percentage = *option::borrow(&post.revenue_redirect_percentage);
-        if (redirect_percentage == 0) {
+        let manifest_opt = revenue_manifest(post);
+        if (option::is_none(&manifest_opt)) {
             let tip_coins = coin::split(coins, amount, ctx);
             transfer::public_transfer(tip_coins, intended_recipient);
             return amount
         };
 
-        let redirected_amount = (amount * redirect_percentage) / 100;
-        let remaining_amount = amount - redirected_amount;
-
+        let manifest = option::borrow(&manifest_opt);
+        let entries = media_asset::manifest_entries(manifest);
+        let len = vector::length(entries);
+        let bps_total = media_asset::manifest_bps_total();
         let coin_type = type_name::with_defining_ids<T>();
 
         let mut tip_coins = coin::split(coins, amount, ctx);
-        if (redirected_amount > 0) {
-            let redirected_coins = coin::split(&mut tip_coins, redirected_amount, ctx);
-            if (post.poc_redirection_kind == POC_REDIRECT_ESCROW) {
-                let ben = *option::borrow(&post.revenue_redirect_to);
-                assert!(poc_vault::beneficiary_address(beneficiary_vault) == ben, EWrongBeneficiaryVault);
-                poc_vault::deposit_coin<T>(
-                    beneficiary_vault,
-                    ben,
-                    redirected_coins,
-                    option::some(object_id),
-                    min_vault_deposit_amount,
-                    clock,
-                    ctx
-                );
-            } else {
-                let pay_to = *option::borrow(&post.revenue_redirect_to);
-                transfer::public_transfer(redirected_coins, pay_to);
-                event::emit(TipEvent {
-                    object_id,
-                    from: tipper,
-                    to: pay_to,
-                    amount: redirected_amount,
-                    coin_type,
-                    is_post: is_post_event,
-                });
+        let mut owner_received = 0u64;
+        let mut i = 0;
+        while (i < len) {
+            let e = vector::borrow(entries, i);
+            let slice = (amount * media_asset::manifest_entry_share_bps(e)) / bps_total;
+            if (slice > 0) {
+                let pay_coins = coin::split(&mut tip_coins, slice, ctx);
+                if (media_asset::manifest_entry_payout_mode(e) == media_asset::payout_escrow()) {
+                    assert!(poc_vault::beneficiary_address(beneficiary_vault) == media_asset::manifest_entry_beneficiary(e), EWrongBeneficiaryVault);
+                    poc_vault::deposit_coin<T>(
+                        beneficiary_vault,
+                        media_asset::manifest_entry_beneficiary(e),
+                        pay_coins,
+                        option::some(object_id),
+                        min_vault_deposit_amount,
+                        clock,
+                        ctx
+                    );
+                } else {
+                    transfer::public_transfer(pay_coins, media_asset::manifest_entry_beneficiary(e));
+                    event::emit(TipEvent {
+                        object_id,
+                        from: tipper,
+                        to: media_asset::manifest_entry_beneficiary(e),
+                        amount: slice,
+                        coin_type,
+                        is_post: is_post_event,
+                    });
+                };
+                if (media_asset::manifest_entry_beneficiary(e) == intended_recipient) {
+                    owner_received = owner_received + slice;
+                };
             };
+            i = i + 1;
         };
 
-        if (remaining_amount > 0) {
+        let remainder = coin::value(&tip_coins);
+        if (remainder > 0) {
             transfer::public_transfer(tip_coins, intended_recipient);
+            owner_received = owner_received + remainder;
         } else {
             coin::destroy_zero(tip_coins);
         };
-        remaining_amount
+        owner_received
     }
 
-    /// Same as [`apply_poc_redirection_coin`] for tip paths that never deposit into an escrow vault for this `amount`.
-    fun apply_poc_redirection_coin_without_beneficiary_vault<T>(
+    /// Same as [`apply_revenue_manifest_coin`] for tip paths that never deposit into escrow for this `amount`.
+    fun apply_revenue_manifest_coin_without_beneficiary_vault<T>(
         post: &Post,
         intended_recipient: address,
         amount: u64,
@@ -2954,126 +2964,516 @@ module social_contracts::post {
             return amount
         };
 
-        let has_derivative_redirect = option::is_some(&post.revenue_redirect_percentage) &&
-            post.poc_redirection_kind != POC_REDIRECT_NONE &&
-            (post.poc_redirection_kind == POC_REDIRECT_ESCROW ||
-                option::is_some(&post.revenue_redirect_to));
-
-        if (!has_derivative_redirect) {
+        if (!monetization_enabled(post)) {
             let tip_coins = coin::split(coins, amount, ctx);
             transfer::public_transfer(tip_coins, intended_recipient);
             return amount
         };
 
-        let redirect_percentage = *option::borrow(&post.revenue_redirect_percentage);
-        if (redirect_percentage == 0) {
+        let manifest_opt = revenue_manifest(post);
+        if (option::is_none(&manifest_opt)) {
             let tip_coins = coin::split(coins, amount, ctx);
             transfer::public_transfer(tip_coins, intended_recipient);
             return amount
         };
 
-        let redirected_amount = (amount * redirect_percentage) / 100;
-        let remaining_amount = amount - redirected_amount;
-
+        let manifest = option::borrow(&manifest_opt);
+        let entries = media_asset::manifest_entries(manifest);
+        let len = vector::length(entries);
+        let bps_total = media_asset::manifest_bps_total();
         let coin_type = type_name::with_defining_ids<T>();
 
         let mut tip_coins = coin::split(coins, amount, ctx);
-        if (redirected_amount > 0) {
-            let redirected_coins = coin::split(&mut tip_coins, redirected_amount, ctx);
-            if (post.poc_redirection_kind == POC_REDIRECT_ESCROW) {
-                abort ETipPostRequiresBeneficiaryVault
-            } else {
-                let pay_to = *option::borrow(&post.revenue_redirect_to);
-                transfer::public_transfer(redirected_coins, pay_to);
+        let mut owner_received = 0u64;
+        let mut i = 0;
+        while (i < len) {
+            let e = vector::borrow(entries, i);
+            let slice = (amount * media_asset::manifest_entry_share_bps(e)) / bps_total;
+            if (slice > 0) {
+                if (media_asset::manifest_entry_payout_mode(e) == media_asset::payout_escrow()) {
+                    abort ETipPostRequiresBeneficiaryVault
+                };
+                let pay_coins = coin::split(&mut tip_coins, slice, ctx);
+                transfer::public_transfer(pay_coins, media_asset::manifest_entry_beneficiary(e));
                 event::emit(TipEvent {
                     object_id,
                     from: tipper,
-                    to: pay_to,
-                    amount: redirected_amount,
+                    to: media_asset::manifest_entry_beneficiary(e),
+                    amount: slice,
                     coin_type,
                     is_post: is_post_event,
                 });
+                if (media_asset::manifest_entry_beneficiary(e) == intended_recipient) {
+                    owner_received = owner_received + slice;
+                };
             };
+            i = i + 1;
         };
 
-        if (remaining_amount > 0) {
+        let remainder = coin::value(&tip_coins);
+        if (remainder > 0) {
             transfer::public_transfer(tip_coins, intended_recipient);
+            owner_received = owner_received + remainder;
         } else {
             coin::destroy_zero(tip_coins);
         };
-        remaining_amount
+        owner_received
     }
 
-    /// Internal function to update PoC result (called only from proof_of_creativity module)
-    public(package) fun update_poc_result(
+    // === Phase 4 — Application enforcement (bindings, decisions, denials) ===
+
+    fun embedded_bindings(post: &Post): vector<EmbeddedAssetBinding> {
+        if (df::exists_with_type<vector<u8>, vector<EmbeddedAssetBinding>>(&post.id, EMBEDDED_BINDINGS_DF_KEY)) {
+            *df::borrow(&post.id, EMBEDDED_BINDINGS_DF_KEY)
+        } else {
+            vector[]
+        }
+    }
+
+    fun usage_decisions(post: &Post): vector<UsageDecisionSnapshot> {
+        if (df::exists_with_type<vector<u8>, vector<UsageDecisionSnapshot>>(&post.id, USAGE_DECISIONS_DF_KEY)) {
+            *df::borrow(&post.id, USAGE_DECISIONS_DF_KEY)
+        } else {
+            vector[]
+        }
+    }
+
+    fun usage_denials(post: &Post): vector<ContainerUsageDenial> {
+        if (df::exists_with_type<vector<u8>, vector<ContainerUsageDenial>>(&post.id, USAGE_DENIALS_DF_KEY)) {
+            *df::borrow(&post.id, USAGE_DENIALS_DF_KEY)
+        } else {
+            vector[]
+        }
+    }
+
+    fun set_embedded_bindings(post: &mut Post, bindings: vector<EmbeddedAssetBinding>) {
+        if (df::exists_with_type<vector<u8>, vector<EmbeddedAssetBinding>>(&post.id, EMBEDDED_BINDINGS_DF_KEY)) {
+            let stored = df::borrow_mut(&mut post.id, EMBEDDED_BINDINGS_DF_KEY);
+            *stored = bindings;
+        } else {
+            df::add(&mut post.id, EMBEDDED_BINDINGS_DF_KEY, bindings);
+        };
+    }
+
+    fun set_usage_decisions(post: &mut Post, decisions: vector<UsageDecisionSnapshot>) {
+        if (df::exists_with_type<vector<u8>, vector<UsageDecisionSnapshot>>(&post.id, USAGE_DECISIONS_DF_KEY)) {
+            let stored = df::borrow_mut(&mut post.id, USAGE_DECISIONS_DF_KEY);
+            *stored = decisions;
+        } else {
+            df::add(&mut post.id, USAGE_DECISIONS_DF_KEY, decisions);
+        };
+    }
+
+    fun set_usage_denials(post: &mut Post, denials: vector<ContainerUsageDenial>) {
+        if (df::exists_with_type<vector<u8>, vector<ContainerUsageDenial>>(&post.id, USAGE_DENIALS_DF_KEY)) {
+            let stored = df::borrow_mut(&mut post.id, USAGE_DENIALS_DF_KEY);
+            *stored = denials;
+        } else {
+            df::add(&mut post.id, USAGE_DENIALS_DF_KEY, denials);
+        };
+    }
+
+    fun find_binding_index(bindings: &vector<EmbeddedAssetBinding>, binding_id: u64): Option<u64> {
+        let len = vector::length(bindings);
+        let mut i = 0;
+        while (i < len) {
+            if (vector::borrow(bindings, i).binding_id == binding_id) {
+                return option::some(i)
+            };
+            i = i + 1;
+        };
+        option::none()
+    }
+
+    fun borrow_binding(bindings: &vector<EmbeddedAssetBinding>, binding_id: u64): &EmbeddedAssetBinding {
+        let idx = option::borrow(&find_binding_index(bindings, binding_id));
+        vector::borrow(bindings, *idx)
+    }
+
+    fun upsert_binding(bindings: &mut vector<EmbeddedAssetBinding>, binding: EmbeddedAssetBinding) {
+        let binding_id = binding.binding_id;
+        if (option::is_some(&find_binding_index(bindings, binding_id))) {
+            let idx = *option::borrow(&find_binding_index(bindings, binding_id));
+            *vector::borrow_mut(bindings, idx) = binding;
+        } else {
+            vector::push_back(bindings, binding);
+        };
+    }
+
+    fun upsert_decision(decisions: &mut vector<UsageDecisionSnapshot>, snapshot: UsageDecisionSnapshot) {
+        let binding_id = snapshot.binding_id;
+        let len = vector::length(decisions);
+        let mut i = 0;
+        let mut found = false;
+        while (i < len) {
+            if (vector::borrow(decisions, i).binding_id == binding_id) {
+                *vector::borrow_mut(decisions, i) = snapshot;
+                found = true;
+                break
+            };
+            i = i + 1;
+        };
+        if (!found) {
+            vector::push_back(decisions, snapshot);
+        };
+    }
+
+    fun upsert_denial(denials: &mut vector<ContainerUsageDenial>, denial: ContainerUsageDenial) {
+        let binding_id = denial.binding_id;
+        let len = vector::length(denials);
+        let mut i = 0;
+        let mut found = false;
+        while (i < len) {
+            if (vector::borrow(denials, i).binding_id == binding_id) {
+                *vector::borrow_mut(denials, i) = denial;
+                found = true;
+                break
+            };
+            i = i + 1;
+        };
+        if (!found) {
+            vector::push_back(denials, denial);
+        };
+    }
+
+    fun remove_denial(denials: &mut vector<ContainerUsageDenial>, binding_id: u64, denial_scope: u8) {
+        let mut out = vector[];
+        let len = vector::length(denials);
+        let mut i = 0;
+        while (i < len) {
+            let d = vector::borrow(denials, i);
+            if (!(d.binding_id == binding_id && d.denial_scope == denial_scope)) {
+                vector::push_back(&mut out, *d);
+            };
+            i = i + 1;
+        };
+        *denials = out;
+    }
+
+    fun apply_denials_to_snapshot(
+        policy_playback: bool,
+        denials: &vector<ContainerUsageDenial>,
+        binding_id: u64,
+    ): bool {
+        let mut playback = policy_playback;
+        let len = vector::length(denials);
+        let mut i = 0;
+        while (i < len) {
+            let d = vector::borrow(denials, i);
+            if (d.binding_id == binding_id && d.denial_scope == DENIAL_SCOPE_PLAYBACK) {
+                playback = false;
+            };
+            i = i + 1;
+        };
+        playback
+    }
+
+    fun evaluate_binding_policy(
+        asset: &MediaAsset,
+        usage_class: u8,
+        clock: &Clock,
+    ): (bool, u8, u64) {
+        let version = if (option::is_some(&media_asset::resolved_policy_version(asset))) {
+            *option::borrow(&media_asset::resolved_policy_version(asset))
+        } else {
+            0
+        };
+        let grant_playback = media_asset::rights_permits_usage(asset, usage_class, clock);
+        if (!grant_playback) {
+            return (false, REASON_NO_GRANT, version)
+        };
+        if (!media_asset::resolved_policy_permits_usage(asset, usage_class)) {
+            return (false, REASON_RESOLVED_POLICY, version)
+        };
+        (true, REASON_ALLOWED, version)
+    }
+
+    fun refresh_composition_status_from_decisions(post: &mut Post) {
+        let decisions = usage_decisions(post);
+        let len = vector::length(&decisions);
+        if (len == 0) {
+            return
+        };
+        let mut any_restricted = false;
+        let mut all_restricted = true;
+        let mut i = 0;
+        while (i < len) {
+            let d = vector::borrow(&decisions, i);
+            let restricted = !d.playback_permitted;
+            if (restricted) {
+                any_restricted = true;
+            } else {
+                all_restricted = false;
+            };
+            i = i + 1;
+        };
+        if (all_restricted) {
+            post.composition_status = media_asset::composition_invalid();
+        } else if (any_restricted) {
+            post.composition_status = media_asset::composition_partially_restricted();
+        };
+    }
+
+    fun validate_binding(binding: &EmbeddedAssetBinding) {
+        assert!(binding.binding_id > 0, EInvalidBinding);
+        media_asset::assert_valid_usage_class(binding.usage_class);
+        // Oracle slot indices — must be readable at validation time for event/indexer ABI parity.
+        assert!(binding.stem <= 255, EInvalidBinding);
+        assert!(binding.media_component <= 255, EInvalidBinding);
+        media_asset::assert_valid_optional_evidence_commitment(&binding.evidence_commitment);
+    }
+
+    fun write_usage_decision_for_binding(
         post: &mut Post,
-        result_type: u8, // 1 = badge issued, 2 = redirection applied
-        poc_outcome: u8,
-        poc_redirection_kind: u8,
-        redirect_to: Option<address>,
-        redirect_percentage: Option<u64>,
-        reasoning: Option<String>,
-        evidence_urls: Option<vector<String>>,
-        similarity_score: u64,
-        media_type: u8,
-        oracle_address: address,
-        analyzed_at: u64
+        asset: &MediaAsset,
+        binding_id: u64,
+        clock: &Clock,
+        timestamp: u64,
+    ): UsageDecisionSnapshot {
+        let bindings = embedded_bindings(post);
+        assert!(option::is_some(&find_binding_index(&bindings, binding_id)), EBindingNotFound);
+        let binding = borrow_binding(&bindings, binding_id);
+        assert!(binding.source_asset_id == object::id(asset), EBindingAssetMismatch);
+        let (policy_playback, reason_code, policy_version) =
+            evaluate_binding_policy(asset, binding.usage_class, clock);
+        let denials = usage_denials(post);
+        let playback = apply_denials_to_snapshot(policy_playback, &denials, binding_id);
+        let reason = if (playback != policy_playback) {
+            REASON_DENIAL
+        } else {
+            reason_code
+        };
+        let snapshot = UsageDecisionSnapshot {
+            binding_id,
+            policy_playback_permitted: policy_playback,
+            playback_permitted: playback,
+            policy_reason_code: reason,
+            policy_version_at_decision: policy_version,
+        };
+        let mut decisions = usage_decisions(post);
+        upsert_decision(&mut decisions, snapshot);
+        set_usage_decisions(post, decisions);
+        refresh_composition_status_from_decisions(post);
+        event::emit(UsageDecisionRefreshedEvent {
+            post_id: get_id_address(post),
+            binding_id,
+            policy_playback_permitted: policy_playback,
+            playback_permitted: playback,
+            policy_reason_code: reason,
+            policy_version_at_decision: policy_version,
+            timestamp,
+        });
+        snapshot
+    }
+
+    /// Oracle records embedded asset bindings detected during composition analysis.
+    public fun record_embedded_bindings(
+        oracle: address,
+        post: &mut Post,
+        bindings: vector<EmbeddedAssetBinding>,
+        clock: &Clock,
+        ctx: &mut TxContext,
     ) {
-        // Store PoC badge snapshot (same for both badge and redirection)
-        let poc_badge = PoCBadgeSnapshot {
-            reasoning,
-            evidence_urls,
-            similarity_score: option::some(similarity_score),
-            media_type: option::some(media_type),
-            oracle_address: option::some(oracle_address),
-            analyzed_at: option::some(analyzed_at),
+        assert!(tx_context::sender(ctx) == oracle, EUnauthorized);
+        let timestamp = clock::timestamp_ms(clock);
+        let mut stored = embedded_bindings(post);
+        let len = vector::length(&bindings);
+        let mut i = 0;
+        while (i < len) {
+            let b = vector::borrow(&bindings, i);
+            validate_binding(b);
+            upsert_binding(&mut stored, *b);
+            i = i + 1;
         };
-        post.poc_badge_snapshot = option::some(poc_badge);
-        post.poc_outcome = poc_outcome;
-        post.poc_redirection_kind = poc_redirection_kind;
+        set_embedded_bindings(post, stored);
+        event::emit(EmbeddedBindingRecordedEvent {
+            post_id: get_id_address(post),
+            bindings: embedded_bindings(post),
+            timestamp,
+        });
+    }
 
-        if (result_type == 1) {
-            // PoC badge issued - content is original
-            post.revenue_redirect_to = option::none();
-            post.revenue_redirect_percentage = option::none();
-            assert!(poc_outcome == POC_OUTCOME_ORIGINAL, EInvalidPocOutcomeFields);
-            assert!(poc_redirection_kind == POC_REDIRECT_NONE, EInvalidPocOutcomeFields);
-        } else if (result_type == 2) {
-            // Revenue redirection applied - content is derivative
-            post.revenue_redirect_to = redirect_to;
-            post.revenue_redirect_percentage = redirect_percentage;
+    /// Oracle refreshes a usage decision snapshot for one binding (requires live `MediaAsset`).
+    public fun refresh_post_asset_usage_decision(
+        oracle: address,
+        post: &mut Post,
+        asset: &MediaAsset,
+        binding_id: u64,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(tx_context::sender(ctx) == oracle, EUnauthorized);
+        let timestamp = clock::timestamp_ms(clock);
+        let _ = write_usage_decision_for_binding(post, asset, binding_id, clock, timestamp);
+    }
+
+    /// Oracle submits a candidate revenue manifest for indexer materialization.
+    public fun submit_candidate_revenue_manifest(
+        oracle: address,
+        post: &mut Post,
+        manifest: RevenueManifest,
+        manifest_version: u64,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(tx_context::sender(ctx) == oracle, EUnauthorized);
+        media_asset::validate_revenue_manifest(&manifest);
+        let timestamp = clock::timestamp_ms(clock);
+        let entries = *media_asset::manifest_entries(&manifest);
+        if (df::exists_with_type<vector<u8>, RevenueManifest>(&post.id, CANDIDATE_MANIFEST_DF_KEY)) {
+            let stored = df::borrow_mut(&mut post.id, CANDIDATE_MANIFEST_DF_KEY);
+            *stored = manifest;
+        } else {
+            df::add(&mut post.id, CANDIDATE_MANIFEST_DF_KEY, manifest);
+        };
+        event::emit(CandidateManifestSubmittedEvent {
+            post_id: get_id_address(post),
+            manifest_version,
+            entries_json: entries,
+            timestamp,
+        });
+    }
+
+    /// Rights holder denies container-scoped usage on this post for one binding.
+    public entry fun deny_container_usage(
+        post: &mut Post,
+        asset: &MediaAsset,
+        binding_id: u64,
+        denial_scope: u8,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(denial_scope == DENIAL_SCOPE_PLAYBACK, EInvalidDenialScope);
+        let sender = tx_context::sender(ctx);
+        assert!(media_asset::can_update_rights(asset, sender), EUnauthorized);
+        let bindings = embedded_bindings(post);
+        assert!(option::is_some(&find_binding_index(&bindings, binding_id)), EBindingNotFound);
+        let binding = borrow_binding(&bindings, binding_id);
+        assert!(binding.source_asset_id == object::id(asset), EBindingAssetMismatch);
+        let timestamp = clock::timestamp_ms(clock);
+        let mut denials = usage_denials(post);
+        upsert_denial(&mut denials, ContainerUsageDenial { binding_id, denial_scope });
+        set_usage_denials(post, denials);
+        let _ = write_usage_decision_for_binding(post, asset, binding_id, clock, timestamp);
+        event::emit(ContainerUsageDeniedEvent {
+            post_id: get_id_address(post),
+            binding_id,
+            denial_scope,
+            timestamp,
+        });
+    }
+
+    /// Rights holder lifts a container-scoped denial for one binding and scope.
+    public entry fun lift_container_usage_denial(
+        post: &mut Post,
+        asset: &MediaAsset,
+        binding_id: u64,
+        denial_scope: u8,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(denial_scope == DENIAL_SCOPE_PLAYBACK, EInvalidDenialScope);
+        let sender = tx_context::sender(ctx);
+        assert!(media_asset::can_update_rights(asset, sender), EUnauthorized);
+        let bindings = embedded_bindings(post);
+        assert!(option::is_some(&find_binding_index(&bindings, binding_id)), EBindingNotFound);
+        let binding = borrow_binding(&bindings, binding_id);
+        assert!(binding.source_asset_id == object::id(asset), EBindingAssetMismatch);
+        let timestamp = clock::timestamp_ms(clock);
+        let mut denials = usage_denials(post);
+        remove_denial(&mut denials, binding_id, denial_scope);
+        set_usage_denials(post, denials);
+        let _ = write_usage_decision_for_binding(post, asset, binding_id, clock, timestamp);
+        event::emit(ContainerUsageDenialLiftedEvent {
+            post_id: get_id_address(post),
+            binding_id,
+            timestamp,
+        });
+    }
+
+    /// Internal function to store composition analysis + optional revenue manifest (oracle-only).
+    public(package) fun set_composition_result(
+        post: &mut Post,
+        composition_status: u8,
+        monetization_status: u8,
+        badge: CompositionBadgeSnapshot,
+        analysis: CompositionAnalysis,
+        manifest: Option<RevenueManifest>,
+    ) {
+        post.composition_status = composition_status;
+        post.monetization_status = monetization_status;
+        post.composition_badge = option::some(badge);
+
+        if (df::exists_with_type<vector<u8>, CompositionAnalysis>(&post.id, COMPOSITION_ANALYSIS_DF_KEY)) {
+            let stored = df::borrow_mut(&mut post.id, COMPOSITION_ANALYSIS_DF_KEY);
+            *stored = analysis;
+        } else {
+            df::add(&mut post.id, COMPOSITION_ANALYSIS_DF_KEY, analysis);
+        };
+
+        if (option::is_some(&manifest)) {
+            let m = *option::borrow(&manifest);
+            media_asset::validate_revenue_manifest(&m);
+            if (df::exists_with_type<vector<u8>, RevenueManifest>(&post.id, REVENUE_MANIFEST_DF_KEY)) {
+                let stored = df::borrow_mut(&mut post.id, REVENUE_MANIFEST_DF_KEY);
+                *stored = m;
+            } else {
+                df::add(&mut post.id, REVENUE_MANIFEST_DF_KEY, m);
+            };
+        } else if (df::exists_with_type<vector<u8>, RevenueManifest>(&post.id, REVENUE_MANIFEST_DF_KEY)) {
+            df::remove<vector<u8>, RevenueManifest>(&mut post.id, REVENUE_MANIFEST_DF_KEY);
         };
     }
 
-    /// Links the post to the authoritative shared `PoCBadgeObject` (after mint + share).
-    public(package) fun set_poc_badge_object_id(post: &mut Post, badge_object_id: ID) {
-        post.poc_badge_object_id = option::some(badge_object_id);
+    /// Clears composition routing data on the post after dispute resolution (vault balances are unaffected).
+    public(package) fun clear_composition_data(post: &mut Post) {
+        post.composition_status = media_asset::composition_none();
+        post.monetization_status = media_asset::monetization_none();
+        post.composition_badge = option::none();
+        if (df::exists_with_type<vector<u8>, CompositionAnalysis>(&post.id, COMPOSITION_ANALYSIS_DF_KEY)) {
+            df::remove<vector<u8>, CompositionAnalysis>(&mut post.id, COMPOSITION_ANALYSIS_DF_KEY);
+        };
+        if (df::exists_with_type<vector<u8>, RevenueManifest>(&post.id, REVENUE_MANIFEST_DF_KEY)) {
+            df::remove<vector<u8>, RevenueManifest>(&mut post.id, REVENUE_MANIFEST_DF_KEY);
+        };
+        if (df::exists_with_type<vector<u8>, vector<EmbeddedAssetBinding>>(&post.id, EMBEDDED_BINDINGS_DF_KEY)) {
+            df::remove<vector<u8>, vector<EmbeddedAssetBinding>>(&mut post.id, EMBEDDED_BINDINGS_DF_KEY);
+        };
+        if (df::exists_with_type<vector<u8>, vector<UsageDecisionSnapshot>>(&post.id, USAGE_DECISIONS_DF_KEY)) {
+            df::remove<vector<u8>, vector<UsageDecisionSnapshot>>(&mut post.id, USAGE_DECISIONS_DF_KEY);
+        };
+        if (df::exists_with_type<vector<u8>, vector<ContainerUsageDenial>>(&post.id, USAGE_DENIALS_DF_KEY)) {
+            df::remove<vector<u8>, vector<ContainerUsageDenial>>(&mut post.id, USAGE_DENIALS_DF_KEY);
+        };
+        if (df::exists_with_type<vector<u8>, RevenueManifest>(&post.id, CANDIDATE_MANIFEST_DF_KEY)) {
+            df::remove<vector<u8>, RevenueManifest>(&mut post.id, CANDIDATE_MANIFEST_DF_KEY);
+        };
     }
 
-    /// Clears PoC redirect + badge pointers on the post after dispute resolution (vault balances are unaffected).
+    /// Legacy alias for dispute paths during migration.
     public(package) fun clear_poc_data(post: &mut Post) {
-        post.revenue_redirect_to = option::none();
-        post.revenue_redirect_percentage = option::none();
-        post.poc_badge_snapshot = option::none();
-        post.poc_badge_object_id = option::none();
-        post.poc_outcome = POC_OUTCOME_NONE;
-        post.poc_redirection_kind = POC_REDIRECT_NONE;
+        clear_composition_data(post);
     }
 
-    /// Increment after each successful `submit_poc_dispute`.
-    public(package) fun increment_poc_disputes_submitted(post: &mut Post, max_disputes: u8) {
-        let submitted = poc_disputes_submitted(post);
+    /// Increment after each successful composition dispute submission.
+    public(package) fun increment_composition_disputes_submitted(post: &mut Post, max_disputes: u8) {
+        let submitted = composition_disputes_submitted(post);
         assert!(submitted < max_disputes, EDisputeCapReached);
         let next = submitted + 1;
-        if (df::exists_with_type<vector<u8>, u8>(&post.id, POC_DISPUTES_SUBMITTED_DF_KEY)) {
-            let count = df::borrow_mut(&mut post.id, POC_DISPUTES_SUBMITTED_DF_KEY);
+        if (df::exists_with_type<vector<u8>, u8>(&post.id, COMPOSITION_DISPUTES_DF_KEY)) {
+            let count = df::borrow_mut(&mut post.id, COMPOSITION_DISPUTES_DF_KEY);
             *count = next;
         } else {
-            df::add(&mut post.id, POC_DISPUTES_SUBMITTED_DF_KEY, next);
+            df::add(&mut post.id, COMPOSITION_DISPUTES_DF_KEY, next);
         };
     }
 
-    /// Deposit redirected reservation/trading fees into the beneficiary vault when the post uses vault-mode redirect.
+    /// Legacy alias for dispute paths during migration.
+    public(package) fun increment_poc_disputes_submitted(post: &mut Post, max_disputes: u8) {
+        increment_composition_disputes_submitted(post, max_disputes);
+    }
+
+    /// Deposit manifest-routed fees into the beneficiary vault when the post uses escrow payout mode.
     public(package) fun deposit_coin_to_beneficiary_vault<T>(
         post: &Post,
         beneficiary_vault: &mut PoCBeneficiaryVault,
@@ -3082,12 +3482,25 @@ module social_contracts::post {
         clock: &Clock,
         ctx: &TxContext
     ) {
-        assert!(
-            post.poc_redirection_kind == POC_REDIRECT_ESCROW && option::is_some(&post.revenue_redirect_to),
-            EInvalidPocOutcomeFields
-        );
-        let ben = *option::borrow(&post.revenue_redirect_to);
-        assert!(poc_vault::beneficiary_address(beneficiary_vault) == ben, EWrongBeneficiaryVault);
+        assert!(monetization_enabled(post), EMonetizationNotEnabled);
+        let manifest_opt = revenue_manifest(post);
+        assert!(option::is_some(&manifest_opt), EInvalidManifest);
+        let manifest = option::borrow(&manifest_opt);
+        let ben = poc_vault::beneficiary_address(beneficiary_vault);
+        let entries = media_asset::manifest_entries(manifest);
+        let len = vector::length(entries);
+        let mut i = 0;
+        let mut found_escrow = false;
+        while (i < len) {
+            let e = vector::borrow(entries, i);
+            if (media_asset::manifest_entry_payout_mode(e) == media_asset::payout_escrow()
+                && media_asset::manifest_entry_beneficiary(e) == ben) {
+                found_escrow = true;
+                break
+            };
+            i = i + 1;
+        };
+        assert!(found_escrow, EInvalidManifest);
         poc_vault::deposit_coin<T>(
             beneficiary_vault,
             ben,
@@ -3100,7 +3513,7 @@ module social_contracts::post {
     }
 
     /// Tip a repost or quote repost; splits per `PostConfig` between repost owner and original author.
-    /// Pass the shared `PoCBeneficiaryVault` for each post when that post uses `POC_REDIRECT_ESCROW`.
+    /// Pass the shared `PoCBeneficiaryVault` for each post when manifest entries use escrow payout mode.
     public fun tip_repost<T>(
         post: &mut Post,
         original_post: &mut Post,
@@ -3132,7 +3545,7 @@ module social_contracts::post {
         if (post.owner == original_post.owner) {
             let po = post.owner;
             let poid = object::uid_to_address(&post.id);
-            let actual_received = apply_poc_redirection_coin<T>(
+            let actual_received = apply_revenue_manifest_coin<T>(
                 post,
                 vault_for_post,
                 po,
@@ -3164,7 +3577,7 @@ module social_contracts::post {
             let poid = object::uid_to_address(&post.id);
             let opo = original_post.owner;
             let opoid = object::uid_to_address(&original_post.id);
-            let repost_actual_received = apply_poc_redirection_coin<T>(
+            let repost_actual_received = apply_revenue_manifest_coin<T>(
                 post,
                 vault_for_post,
                 po,
@@ -3177,7 +3590,7 @@ module social_contracts::post {
                 clock,
                 ctx
             );
-            let original_actual_received = apply_poc_redirection_coin<T>(
+            let original_actual_received = apply_revenue_manifest_coin<T>(
                 original_post,
                 vault_for_original,
                 opo,
@@ -3217,7 +3630,7 @@ module social_contracts::post {
         }
     }
 
-    /// Tip a comment; split per `PostConfig` with PoC redirection on the post owner's share (vault when escrow).
+    /// Tip a comment; split per `PostConfig` with manifest-based routing on the post owner's share.
     public fun tip_comment<T>(
         comment: &mut Comment,
         post: &mut Post,
@@ -3242,7 +3655,7 @@ module social_contracts::post {
         let po = post.owner;
         let poid = object::uid_to_address(&post.id);
         let ct = type_name::with_defining_ids<T>();
-        let post_owner_actual_received = apply_poc_redirection_coin<T>(
+        let post_owner_actual_received = apply_revenue_manifest_coin<T>(
             post,
             beneficiary_vault,
             po,
@@ -3308,7 +3721,7 @@ module social_contracts::post {
         let po = post.owner;
         let poid = object::uid_to_address(&post.id);
         let ct = type_name::with_defining_ids<T>();
-        let post_owner_actual_received = apply_poc_redirection_coin_without_beneficiary_vault<T>(
+        let post_owner_actual_received = apply_revenue_manifest_coin_without_beneficiary_vault<T>(
             post,
             po,
             post_owner_amount,
@@ -4041,15 +4454,32 @@ module social_contracts::post {
         post.platform_id
     }
 
-    /// Get the revenue redirect address for a post
-    public fun get_revenue_redirect_to(post: &Post): &Option<address> {
-        &post.revenue_redirect_to
+    /// Get the revenue redirect address for a post (legacy compat stub — always none).
+    public fun get_revenue_redirect_to(_post: &Post): Option<address> {
+        option::none()
     }
 
-    /// Get the revenue redirect percentage for a post
-    public fun get_revenue_redirect_percentage(post: &Post): &Option<u64> {
-        &post.revenue_redirect_percentage
+    /// Get the revenue redirect percentage for a post (legacy compat stub — always none).
+    public fun get_revenue_redirect_percentage(_post: &Post): Option<u64> {
+        option::none()
     }
+
+    /// Legacy compat — derived from cached revenue manifest payout modes.
+    public fun poc_redirection_kind(post: &Post): u8 {
+        let manifest_opt = revenue_manifest(post);
+        if (option::is_none(&manifest_opt)) {
+            return 0
+        };
+        let manifest = option::borrow(&manifest_opt);
+        if (media_asset::manifest_uses_escrow_redirect(manifest)) {
+            2
+        } else {
+            1
+        }
+    }
+
+    /// Legacy compat stub for fee-routing callers during migration.
+    public fun poc_redirection_none(): u8 { 0 }
 
     #[test_only]
     public fun test_assert_post_access_mydata_binding(
@@ -4139,6 +4569,7 @@ module social_contracts::post {
             profile_id,
             platform_id,
             content,
+            vector[],
             option::none(), // No media
             option::none(), // No mentions
             option::none(), // No metadata
@@ -4149,12 +4580,9 @@ module social_contracts::post {
             true, // allow_reposts
             true, // allow_quotes
             true, // allow_tips
-            option::none(), // revenue_redirect_to
-            option::none(), // revenue_redirect_percentage
             PostAccess::Public,
             option::none(), // promotion_id
             false, // enable_spt - default to opt-out
-            POC_REDIRECT_NONE,
             owner,
             option::none(),
             option::none(),
@@ -4164,7 +4592,125 @@ module social_contracts::post {
         ))
     }
 
-    /// Test-only: post with PoC revenue redirect fields set (for fee routing tests).
+    /// Test-only: post with revenue manifest set (for fee routing tests).
+    #[test_only]
+    public fun test_create_post_with_revenue_manifest(
+        owner: address,
+        profile_id: address,
+        platform_id: address,
+        content: String,
+        manifest: RevenueManifest,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ): address {
+        let mut post = create_post_internal(
+            owner,
+            profile_id,
+            platform_id,
+            content,
+            vector[],
+            option::none(),
+            option::none(),
+            option::none(),
+            string::utf8(POST_TYPE_STANDARD),
+            option::none(),
+            true,
+            true,
+            true,
+            true,
+            true,
+            PostAccess::Public,
+            option::none(),
+            false,
+            owner,
+            option::none(),
+            option::none(),
+            memory::class_human(),
+            clock,
+            ctx
+        );
+        let badge = media_asset::new_composition_badge_snapshot(
+            clock::timestamp_ms(clock),
+            owner,
+            option::none(),
+            option::none(),
+            true,
+            false,
+        );
+        let analysis = media_asset::test_composition_analysis(
+            clock::timestamp_ms(clock),
+            media_asset::usage_social_post(),
+        );
+        set_composition_result(
+            &mut post,
+            media_asset::composition_verified(),
+            media_asset::monetization_enabled(),
+            badge,
+            analysis,
+            option::some(manifest),
+        );
+        share_post(post)
+    }
+
+    #[test_only]
+    public fun test_create_post_with_escrow_manifest(
+        owner: address,
+        profile_id: address,
+        platform_id: address,
+        content: String,
+        beneficiary: address,
+        share_bps: u64,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ): address {
+        let manifest = media_asset::test_revenue_manifest(vector[
+            media_asset::test_manifest_entry(
+                beneficiary,
+                share_bps,
+                media_asset::payout_escrow(),
+            ),
+        ]);
+        test_create_post_with_revenue_manifest(
+            owner,
+            profile_id,
+            platform_id,
+            content,
+            manifest,
+            clock,
+            ctx,
+        )
+    }
+
+    #[test_only]
+    public fun test_create_post_with_wallet_manifest(
+        owner: address,
+        profile_id: address,
+        platform_id: address,
+        content: String,
+        beneficiary: address,
+        share_bps: u64,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ): address {
+        let manifest = media_asset::test_revenue_manifest(vector[
+            media_asset::test_manifest_entry(
+                beneficiary,
+                share_bps,
+                media_asset::payout_wallet(),
+            ),
+        ]);
+        test_create_post_with_revenue_manifest(
+            owner,
+            profile_id,
+            platform_id,
+            content,
+            manifest,
+            clock,
+            ctx,
+        )
+    }
+
+    /// Legacy test helper: maps redirect percentage (0-100) to a wallet manifest split.
     #[test_only]
     public fun test_create_post_with_revenue_redirect(
         owner: address,
@@ -4176,34 +4722,38 @@ module social_contracts::post {
         clock: &Clock,
         ctx: &mut TxContext
     ): address {
-        share_post(create_post_internal(
+        let redirect_bps = redirect_percentage * 100;
+        let owner_bps = media_asset::manifest_bps_total() - redirect_bps;
+        let mut entries = vector[];
+        if (redirect_bps > 0) {
+            vector::push_back(
+                &mut entries,
+                media_asset::test_manifest_entry(
+                    redirect_to,
+                    redirect_bps,
+                    media_asset::payout_wallet(),
+                ),
+            );
+        };
+        if (owner_bps > 0) {
+            vector::push_back(
+                &mut entries,
+                media_asset::test_manifest_entry(
+                    owner,
+                    owner_bps,
+                    media_asset::payout_wallet(),
+                ),
+            );
+        };
+        test_create_post_with_revenue_manifest(
             owner,
             profile_id,
             platform_id,
             content,
-            option::none(),
-            option::none(),
-            option::none(),
-            string::utf8(POST_TYPE_STANDARD),
-            option::none(),
-            true,
-            true,
-            true,
-            true,
-            true,
-            option::some(redirect_to),
-            option::some(redirect_percentage),
-            PostAccess::Public,
-            option::none(),
-            false,
-            POC_REDIRECT_WALLET,
-            owner,
-            option::none(),
-            option::none(),
-            memory::class_human(),
+            media_asset::test_revenue_manifest(entries),
             clock,
-            ctx
-        ))
+            ctx,
+        )
     }
 
     #[test_only]
@@ -4217,34 +4767,38 @@ module social_contracts::post {
         clock: &Clock,
         ctx: &mut TxContext
     ): address {
-        share_post(create_post_internal(
+        let redirect_bps = redirect_percentage * 100;
+        let owner_bps = media_asset::manifest_bps_total() - redirect_bps;
+        let mut entries = vector[];
+        if (redirect_bps > 0) {
+            vector::push_back(
+                &mut entries,
+                media_asset::test_manifest_entry(
+                    redirect_to,
+                    redirect_bps,
+                    media_asset::payout_escrow(),
+                ),
+            );
+        };
+        if (owner_bps > 0) {
+            vector::push_back(
+                &mut entries,
+                media_asset::test_manifest_entry(
+                    owner,
+                    owner_bps,
+                    media_asset::payout_wallet(),
+                ),
+            );
+        };
+        test_create_post_with_revenue_manifest(
             owner,
             profile_id,
             platform_id,
             content,
-            option::none(),
-            option::none(),
-            option::none(),
-            string::utf8(POST_TYPE_STANDARD),
-            option::none(),
-            true,
-            true,
-            true,
-            true,
-            true,
-            option::some(redirect_to),
-            option::some(redirect_percentage),
-            PostAccess::Public,
-            option::none(),
-            false,
-            POC_REDIRECT_ESCROW,
-            owner,
-            option::none(),
-            option::none(),
-            memory::class_human(),
+            media_asset::test_revenue_manifest(entries),
             clock,
-            ctx
-        ))
+            ctx,
+        )
     }
 
     /// Test helper to create a post with SPoT enabled
@@ -4262,6 +4816,7 @@ module social_contracts::post {
             profile_id,
             platform_id,
             content,
+            vector[],
             option::none(), // No media
             option::none(), // No mentions
             option::none(), // No metadata
@@ -4272,12 +4827,9 @@ module social_contracts::post {
             true, // allow_reposts
             true, // allow_quotes
             true, // allow_tips
-            option::none(), // revenue_redirect_to
-            option::none(), // revenue_redirect_percentage
             PostAccess::Public,
             option::none(), // promotion_id
             false, // enable_spt - default to opt-out
-            POC_REDIRECT_NONE,
             owner,
             option::none(),
             option::none(),
@@ -4315,12 +4867,13 @@ module social_contracts::post {
         
         let media_option = option::none<vector<Url>>();
         let media_urls_for_event = convert_urls_to_strings(&media_option);
-        let poc_redirection_kind = POC_REDIRECT_NONE;
+        let media_asset_ids_for_event = vector[];
         let post = create_post_internal(
             owner,
             profile_id,
             platform_id,
             content,
+            vector[],
             media_option,
             option::none(), // No mentions
             option::none(), // No metadata
@@ -4331,12 +4884,9 @@ module social_contracts::post {
             true, // allow_reposts
             true, // allow_quotes
             true, // allow_tips
-            option::none(), // revenue_redirect_to
-            option::none(), // revenue_redirect_percentage
             PostAccess::Public,
             option::some(promotion_id), // promotion_id
             false, // enable_spt - default to opt-out
-            poc_redirection_kind,
             owner,
             option::none(),
             option::none(),
@@ -4345,6 +4895,7 @@ module social_contracts::post {
             ctx
         );
 
+        emit_post_media_asset_usages(&post, clock);
         let post_id = share_post(post);
 
         event::emit(PostCreatedEvent {
@@ -4357,15 +4908,15 @@ module social_contracts::post {
             post_type: string::utf8(POST_TYPE_STANDARD),
             parent_post_id: option::none(),
             mentions: option::none(),
+            media_asset_ids: media_asset_ids_for_event,
             media_urls: media_urls_for_event,
             metadata_json: option::none(),
             access: PostAccess::Public,
             promotion_id: option::some(promotion_id),
-            revenue_redirect_to: option::none(),
-            revenue_redirect_percentage: option::none(),
+            composition_status: media_asset::composition_none(),
+            monetization_status: media_asset::monetization_none(),
             enable_spt: false,
             spt_id: option::none(),
-            poc_redirection_kind,
             actor_address: owner,
             sub_agent_id: option::none(),
             organization_id: option::none(),
@@ -4495,8 +5046,9 @@ module social_contracts::post {
         // Remember old version and update to new version
         let old_version = post.version;
         if (old_version < 2) {
-            post.poc_outcome = POC_OUTCOME_NONE;
-            post.poc_redirection_kind = POC_REDIRECT_NONE;
+            post.composition_status = media_asset::composition_none();
+            post.monetization_status = media_asset::monetization_none();
+            post.composition_badge = option::none();
         };
         if (old_version < 3) {
             if (!df::exists_with_type<vector<u8>, PostAttribution>(&post.id, POST_ATTRIBUTION_DF_KEY)) {
@@ -4688,6 +5240,7 @@ module social_contracts::post {
         config: &PostConfig,
         memory_config: &MemoryConfig,
         content: String,
+        media_asset_ids: vector<ID>,
         mut media_urls: Option<vector<String>>,
         mentions: Option<vector<address>>,
         metadata_json: Option<String>,
@@ -4789,14 +5342,14 @@ module social_contracts::post {
         let _ = enable_spot;
         // Convert media URLs to strings for PostCreatedEvent (before moving media_option)
         let media_urls_for_event = convert_urls_to_strings(&media_option);
+        let media_asset_ids_for_event = media_asset_ids;
 
-        let poc_redirection_kind = POC_REDIRECT_NONE;
-        
         let post = create_post_internal(
             owner,
             profile_id,
             platform_id,
             content,
+            media_asset_ids,
             media_option,
             mentions,
             metadata_json,
@@ -4807,12 +5360,9 @@ module social_contracts::post {
             true, // allow_reposts
             true, // allow_quotes
             true, // allow_tips
-            option::none(), // revenue_redirect_to
-            option::none(), // revenue_redirect_percentage
             access,
             option::some(promotion_id),
             false,
-            poc_redirection_kind,
             actor_address,
             sub_agent_id,
             organization_id,
@@ -4822,6 +5372,7 @@ module social_contracts::post {
         );
         
         // Indexers read PostCreatedEvent to upsert `posts` with promotion_id before PromotedPostCreatedEvent
+        emit_post_media_asset_usages(&post, clock);
         let post_id = share_post(post);
 
         event::emit(PostCreatedEvent {
@@ -4834,15 +5385,15 @@ module social_contracts::post {
             post_type: string::utf8(POST_TYPE_STANDARD),
             parent_post_id: option::none(),
             mentions,
+            media_asset_ids: media_asset_ids_for_event,
             media_urls: media_urls_for_event,
             metadata_json,
             access,
             promotion_id: option::some(promotion_id),
-            revenue_redirect_to: option::none(),
-            revenue_redirect_percentage: option::none(),
+            composition_status: media_asset::composition_none(),
+            monetization_status: media_asset::monetization_none(),
             enable_spt: false,
             spt_id: option::none(),
-            poc_redirection_kind,
             actor_address,
             sub_agent_id,
             organization_id,
@@ -5245,6 +5796,7 @@ module social_contracts::post {
             owner,
             owner,
             string::utf8(b"premium post"),
+            vector[],
             option::none(),
             option::none(),
             option::none(),
@@ -5255,8 +5807,6 @@ module social_contracts::post {
             true,
             true,
             true,
-            option::none(),
-            option::none(),
             PostAccess::ProfileSubscription {
                 service_id,
                 mydata_id: option::none(),
@@ -5264,7 +5814,6 @@ module social_contracts::post {
             },
             option::none(),
             false,
-            POC_REDIRECT_NONE,
             owner,
             option::none(),
             option::none(),
@@ -5286,6 +5835,7 @@ module social_contracts::post {
             owner,
             owner,
             string::utf8(b"premium post"),
+            vector[],
             option::none(),
             option::none(),
             option::none(),
@@ -5296,8 +5846,6 @@ module social_contracts::post {
             true,
             true,
             true,
-            option::none(),
-            option::none(),
             PostAccess::ProfileSubscription {
                 service_id,
                 mydata_id: option::none(),
@@ -5305,7 +5853,6 @@ module social_contracts::post {
             },
             option::none(),
             false,
-            POC_REDIRECT_NONE,
             owner,
             option::none(),
             option::none(),
@@ -5347,6 +5894,45 @@ module social_contracts::post {
         config.ecosystem_fee_bps
     }
     
+    #[test_only]
+    public fun test_denial_scope_playback(): u8 { DENIAL_SCOPE_PLAYBACK }
+
+    #[test_only]
+    public fun test_embedded_binding(
+        binding_id: u64,
+        source_asset_id: ID,
+        usage_class: u8,
+    ): EmbeddedAssetBinding {
+        EmbeddedAssetBinding {
+            binding_id,
+            source_asset_id,
+            usage_class,
+            stem: 0,
+            media_component: 0,
+            evidence_commitment: option::none(),
+        }
+    }
+
+    #[test_only]
+    public fun test_decision_playback_permitted(post: &Post, binding_id: u64): bool {
+        let decisions = usage_decisions(post);
+        let len = vector::length(&decisions);
+        let mut i = 0;
+        while (i < len) {
+            let d = vector::borrow(&decisions, i);
+            if (d.binding_id == binding_id) {
+                return d.playback_permitted
+            };
+            i = i + 1;
+        };
+        false
+    }
+
+    #[test_only]
+    public fun test_composition_status(post: &Post): u8 {
+        post.composition_status
+    }
+
     #[test_only]
     /// Initialize the post module for testing
     /// In testing, we create admin caps directly for convenience

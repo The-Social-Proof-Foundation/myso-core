@@ -873,7 +873,34 @@ diesel::table! {
         username_beneficiary_join_referral_bps -> Int8,
         max_disputes_per_post -> Int2,
         min_vault_deposit_amount -> Int8,
+        media_asset_dispute_cost -> Int8,
+        max_disputes_per_media_asset -> Int2,
+        max_embedded_asset_redirect_bps -> Int8,
         version -> Int8,
+    }
+}
+
+diesel::table! {
+    media_asset_governance_links (media_asset_id, proposal_id, time) {
+        media_asset_id -> Text,
+        proposal_id -> Text,
+        submitter -> Text,
+        claims_commitment -> Bytea,
+        status -> Int2,
+        related_post_id -> Nullable<Text>,
+        rights_disputes_submitted -> Int2,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    media_asset_rights_updates (media_asset_id, rights_version, time) {
+        media_asset_id -> Text,
+        rights_version -> Int8,
+        proposal_id -> Nullable<Text>,
+        transaction_id -> Text,
+        time -> Timestamptz,
     }
 }
 
@@ -1128,6 +1155,191 @@ diesel::table! {
         action_identity_class -> Nullable<Int2>,
         organization_id -> Nullable<Text>,
         contract_version -> Int8,
+        composition_status -> Nullable<Int2>,
+        monetization_status -> Nullable<Int2>,
+        media_asset_ids -> Nullable<Jsonb>,
+        embedded_bindings -> Nullable<Jsonb>,
+        usage_decisions -> Nullable<Jsonb>,
+        usage_denials -> Nullable<Jsonb>,
+    }
+}
+
+diesel::table! {
+    media_assets (media_asset_id, time) {
+        media_asset_id -> Text,
+        content_commitment -> Bytea,
+        media_type -> Int2,
+        asset_kind -> Int2,
+        originality_status -> Int2,
+        provenance_status -> Int2,
+        lineage_parent_id -> Nullable<Text>,
+        rights_version -> Int8,
+        economics_version -> Int8,
+        registered_by -> Text,
+        registered_at -> Int8,
+        verified_at -> Nullable<Int8>,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    fingerprint_observations (fingerprint_commitment, media_asset_id, time) {
+        fingerprint_commitment -> Bytea,
+        media_asset_id -> Text,
+        linked_at -> Int8,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    media_asset_usages (container_id, asset_id, usage_class, position, time) {
+        container_id -> Text,
+        container_type -> Int2,
+        asset_id -> Text,
+        usage_class -> Int2,
+        position -> Int2,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    composition_analysis_records (post_id, analyzed_at, time) {
+        post_id -> Text,
+        analyzed_at -> Int8,
+        usage_context -> Int2,
+        composition_status -> Int2,
+        monetization_status -> Int2,
+        analysis_json -> Jsonb,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    revenue_manifests (post_id, manifest_version, time) {
+        post_id -> Text,
+        manifest_version -> Int8,
+        entries_json -> Jsonb,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    media_asset_derivative_edges (child_asset_id, parent_asset_id, relationship_id, time) {
+        child_asset_id -> Text,
+        parent_asset_id -> Text,
+        relationship_id -> Int8,
+        relationship_type -> Int2,
+        license_instance_id -> Text,
+        template_version_id -> Text,
+        parent_share_bps -> Int8,
+        ancestry_version -> Int8,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    media_asset_ancestry_snapshots (media_asset_id, ancestry_version, time) {
+        media_asset_id -> Text,
+        ancestry_version -> Int8,
+        ancestor_ids -> Jsonb,
+        ancestry_hash -> Nullable<Text>,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    license_template_versions (template_version_id, time) {
+        template_version_id -> Text,
+        family_id -> Text,
+        version -> Int8,
+        creator -> Text,
+        granted_rights -> Int8,
+        allow_derivatives -> Bool,
+        attribution_required -> Bool,
+        royalty_bps -> Int8,
+        derivative_royalty_bps -> Int8,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    license_instances (license_instance_id, time) {
+        license_instance_id -> Text,
+        template_version_id -> Text,
+        licensor_asset_id -> Text,
+        licensee -> Text,
+        status -> Int2,
+        accepted_at -> Int8,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    media_asset_resolved_policies (media_asset_id, policy_version, time) {
+        media_asset_id -> Text,
+        policy_version -> Int8,
+        effective_rights -> Int8,
+        derivatives_allowed -> Bool,
+        attribution_required -> Bool,
+        commercial_allowed -> Bool,
+        lineage_json -> Jsonb,
+        lineage_hash -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    media_asset_resolved_obligations (media_asset_id, policy_version, obligation_index, time) {
+        media_asset_id -> Text,
+        policy_version -> Int8,
+        obligation_index -> Int4,
+        beneficiary_asset_id -> Nullable<Text>,
+        beneficiary_address -> Text,
+        share_bps -> Int8,
+        source_relationship_id -> Nullable<Int8>,
+        source_license_instance_id -> Nullable<Text>,
+        obligation_kind -> Int2,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    post_usage_decision_events (post_id, binding_id, time) {
+        post_id -> Text,
+        binding_id -> Int8,
+        playback_permitted -> Bool,
+        payout_permitted -> Bool,
+        policy_reason_code -> Int2,
+        policy_version -> Int8,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    detected_asset_relationships (proposal_id, time) {
+        proposal_id -> Text,
+        accused_pending_id -> Text,
+        accused_asset_id -> Nullable<Text>,
+        original_asset_id -> Text,
+        similarity_bps -> Int8,
+        evidence_commitment -> Nullable<Bytea>,
+        detected_by -> Text,
+        detected_at -> Int8,
+        status -> Int2,
+        transaction_id -> Text,
+        time -> Timestamptz,
     }
 }
 
@@ -3018,6 +3230,21 @@ diesel::allow_tables_to_appear_in_same_query!(
     message_digests,
     messaging_agent_groups,
     memory_config,
+    media_assets,
+    media_asset_governance_links,
+    media_asset_rights_updates,
+    fingerprint_observations,
+    media_asset_usages,
+    composition_analysis_records,
+    revenue_manifests,
+    media_asset_derivative_edges,
+    media_asset_ancestry_snapshots,
+    license_template_versions,
+    license_instances,
+    media_asset_resolved_policies,
+    media_asset_resolved_obligations,
+    post_usage_decision_events,
+    detected_asset_relationships,
     platform_config,
     profile_config,
     subscription_config,

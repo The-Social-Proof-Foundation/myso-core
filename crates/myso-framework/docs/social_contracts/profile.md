@@ -27,6 +27,7 @@ Handles user identity, profile creation, management, and username registration
 -  [Struct `BadgeSelectedEvent`](#social_contracts_profile_BadgeSelectedEvent)
 -  [Struct `EcosystemBadgeSelectionClearedEvent`](#social_contracts_profile_EcosystemBadgeSelectionClearedEvent)
 -  [Struct `BadgeRemovedEvent`](#social_contracts_profile_BadgeRemovedEvent)
+-  [Struct `ProfileMediaAssetUpdatedEvent`](#social_contracts_profile_ProfileMediaAssetUpdatedEvent)
 -  [Struct `ProfileCreatedEvent`](#social_contracts_profile_ProfileCreatedEvent)
 -  [Struct `ProfileUpdatedEvent`](#social_contracts_profile_ProfileUpdatedEvent)
 -  [Struct `UsernameClaimedEvent`](#social_contracts_profile_UsernameClaimedEvent)
@@ -79,6 +80,10 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `create_profile_from_beneficiary_claim`](#social_contracts_profile_create_profile_from_beneficiary_claim)
 -  [Function `ensure_memory_account`](#social_contracts_profile_ensure_memory_account)
 -  [Function `update_profile`](#social_contracts_profile_update_profile)
+-  [Function `update_profile_picture_asset`](#social_contracts_profile_update_profile_picture_asset)
+-  [Function `update_cover_photo_asset`](#social_contracts_profile_update_cover_photo_asset)
+-  [Function `profile_picture_asset_id`](#social_contracts_profile_profile_picture_asset_id)
+-  [Function `cover_photo_asset_id`](#social_contracts_profile_cover_photo_asset_id)
 -  [Function `display_name`](#social_contracts_profile_display_name)
 -  [Function `bio`](#social_contracts_profile_bio)
 -  [Function `profile_picture`](#social_contracts_profile_profile_picture)
@@ -222,11 +227,15 @@ Handles user identity, profile creation, management, and username registration
 <b>use</b> <a href="../myso/vec_map.md#myso_vec_map">myso::vec_map</a>;
 <b>use</b> <a href="../myso/vec_set.md#myso_vec_set">myso::vec_set</a>;
 <b>use</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit">social_contracts::ai_credit</a>;
+<b>use</b> <a href="../social_contracts/media_asset.md#social_contracts_derivative_graph">social_contracts::derivative_graph</a>;
+<b>use</b> <a href="../social_contracts/media_asset.md#social_contracts_license_template">social_contracts::license_template</a>;
+<b>use</b> <a href="../social_contracts/media_asset.md#social_contracts_media_asset">social_contracts::media_asset</a>;
 <b>use</b> <a href="../social_contracts/memory.md#social_contracts_memory">social_contracts::memory</a>;
 <b>use</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade">social_contracts::upgrade</a>;
 <b>use</b> <a href="../std/address.md#std_address">std::address</a>;
 <b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
 <b>use</b> <a href="../std/bcs.md#std_bcs">std::bcs</a>;
+<b>use</b> <a href="../std/hash.md#std_hash">std::hash</a>;
 <b>use</b> <a href="../std/internal.md#std_internal">std::internal</a>;
 <b>use</b> <a href="../std/option.md#std_option">std::option</a>;
 <b>use</b> <a href="../std/string.md#std_string">std::string</a>;
@@ -763,13 +772,25 @@ Profile object that contains user information
 <code><a href="../social_contracts/profile.md#social_contracts_profile_profile_picture">profile_picture</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/url.md#myso_url_Url">myso::url::Url</a>&gt;</code>
 </dt>
 <dd>
- Profile picture URL
+ Profile picture URL (display cache)
 </dd>
 <dt>
 <code><a href="../social_contracts/profile.md#social_contracts_profile_cover_photo">cover_photo</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/url.md#myso_url_Url">myso::url::Url</a>&gt;</code>
 </dt>
 <dd>
- Cover photo URL
+ Cover photo URL (display cache)
+</dd>
+<dt>
+<code><a href="../social_contracts/profile.md#social_contracts_profile_profile_picture_asset_id">profile_picture_asset_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+ Canonical MediaAsset for profile picture (PoC-resolved)
+</dd>
+<dt>
+<code><a href="../social_contracts/profile.md#social_contracts_profile_cover_photo_asset_id">cover_photo_asset_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+ Canonical MediaAsset for cover photo (PoC-resolved)
 </dd>
 <dt>
 <code>created_at: u64</code>
@@ -1379,11 +1400,52 @@ Event emitted when a profile owner removes their own badge
 
 </details>
 
+<a name="social_contracts_profile_ProfileMediaAssetUpdatedEvent"></a>
+
+## Struct `ProfileMediaAssetUpdatedEvent`
+
+Emitted when profile media references a MediaAsset (usage graph).
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_ProfileMediaAssetUpdatedEvent">ProfileMediaAssetUpdatedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>profile_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>field: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>media_asset_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="social_contracts_profile_ProfileCreatedEvent"></a>
 
 ## Struct `ProfileCreatedEvent`
 
-Profile created event (username is emitted via [<code><a href="../social_contracts/profile.md#social_contracts_profile_UsernameClaimedEvent">UsernameClaimedEvent</a></code>])
 
 
 <pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_ProfileCreatedEvent">ProfileCreatedEvent</a> <b>has</b> <b>copy</b>, drop
@@ -2871,6 +2933,24 @@ Reserved usernames that cannot be registered
 
 
 
+<a name="social_contracts_profile_PROFILE_MEDIA_FIELD_PICTURE"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_PROFILE_MEDIA_FIELD_PICTURE">PROFILE_MEDIA_FIELD_PICTURE</a>: u8 = 1;
+</code></pre>
+
+
+
+<a name="social_contracts_profile_PROFILE_MEDIA_FIELD_COVER"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_PROFILE_MEDIA_FIELD_COVER">PROFILE_MEDIA_FIELD_COVER</a>: u8 = 2;
+</code></pre>
+
+
+
 <a name="social_contracts_profile_bootstrap_init"></a>
 
 ## Function `bootstrap_init`
@@ -3881,6 +3961,8 @@ Main entry: also creates a linked [<code><a href="../social_contracts/memory.md#
         <a href="../social_contracts/profile.md#social_contracts_profile_bio">bio</a>,
         <a href="../social_contracts/profile.md#social_contracts_profile_profile_picture">profile_picture</a>,
         <a href="../social_contracts/profile.md#social_contracts_profile_cover_photo">cover_photo</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_profile_picture_asset_id">profile_picture_asset_id</a>: option::none(),
+        <a href="../social_contracts/profile.md#social_contracts_profile_cover_photo_asset_id">cover_photo_asset_id</a>: option::none(),
         created_at: now,
         <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>,
         <a href="../social_contracts/profile.md#social_contracts_profile_x_username">x_username</a>: option::none(),
@@ -3998,6 +4080,8 @@ Create a profile from an oracle-verified PoC username beneficiary claim.
         <a href="../social_contracts/profile.md#social_contracts_profile_bio">bio</a>: bio_str,
         <a href="../social_contracts/profile.md#social_contracts_profile_profile_picture">profile_picture</a>,
         <a href="../social_contracts/profile.md#social_contracts_profile_cover_photo">cover_photo</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_profile_picture_asset_id">profile_picture_asset_id</a>: option::none(),
+        <a href="../social_contracts/profile.md#social_contracts_profile_cover_photo_asset_id">cover_photo_asset_id</a>: option::none(),
         created_at: now,
         <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>,
         <a href="../social_contracts/profile.md#social_contracts_profile_x_username">x_username</a>: option::none(),
@@ -4136,6 +4220,160 @@ Only the profile owner can update profile information
     <a href="../social_contracts/profile.md#social_contracts_profile_apply_optional_string_update">apply_optional_string_update</a>(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_birthdate">birthdate</a>, new_birthdate);
     <a href="../social_contracts/profile.md#social_contracts_profile_apply_optional_string_update">apply_optional_string_update</a>(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_location">location</a>, new_location);
     <a href="../social_contracts/profile.md#social_contracts_profile_emit_profile_updated_event">emit_profile_updated_event</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, clock, ctx);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_update_profile_picture_asset"></a>
+
+## Function `update_profile_picture_asset`
+
+Set profile picture from a PoC-resolved MediaAsset (usage class must permit PROFILE_PICTURE).
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_update_profile_picture_asset">update_profile_picture_asset</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, asset: &<a href="../social_contracts/media_asset.md#social_contracts_media_asset_MediaAsset">social_contracts::media_asset::MediaAsset</a>, display_url: vector&lt;u8&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_update_profile_picture_asset">update_profile_picture_asset</a>(
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
+    asset: &MediaAsset,
+    display_url: vector&lt;u8&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == tx_context::sender(ctx), <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
+    <a href="../social_contracts/media_asset.md#social_contracts_media_asset_assert_media_asset_version">media_asset::assert_media_asset_version</a>(asset);
+    <a href="../social_contracts/media_asset.md#social_contracts_media_asset_assert_usage_permitted">media_asset::assert_usage_permitted</a>(asset, <a href="../social_contracts/media_asset.md#social_contracts_media_asset_usage_profile_picture">media_asset::usage_profile_picture</a>(), clock);
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_profile_picture_asset_id">profile_picture_asset_id</a> = option::some(<a href="../social_contracts/media_asset.md#social_contracts_media_asset_media_asset_id">media_asset::media_asset_id</a>(asset));
+    <b>if</b> (vector::length(&display_url) &gt; 0) {
+        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_profile_picture">profile_picture</a> = option::some(url::new_unsafe_from_bytes(display_url));
+    };
+    <b>let</b> profile_id = object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
+    <a href="../social_contracts/media_asset.md#social_contracts_media_asset_emit_media_asset_used">media_asset::emit_media_asset_used</a>(
+        profile_id,
+        <a href="../social_contracts/media_asset.md#social_contracts_media_asset_container_profile">media_asset::container_profile</a>(),
+        <a href="../social_contracts/media_asset.md#social_contracts_media_asset_media_asset_id">media_asset::media_asset_id</a>(asset),
+        <a href="../social_contracts/media_asset.md#social_contracts_media_asset_usage_profile_picture">media_asset::usage_profile_picture</a>(),
+        0,
+        clock,
+    );
+    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_ProfileMediaAssetUpdatedEvent">ProfileMediaAssetUpdatedEvent</a> {
+        profile_id,
+        field: <a href="../social_contracts/profile.md#social_contracts_profile_PROFILE_MEDIA_FIELD_PICTURE">PROFILE_MEDIA_FIELD_PICTURE</a>,
+        media_asset_id: <a href="../social_contracts/media_asset.md#social_contracts_media_asset_media_asset_id">media_asset::media_asset_id</a>(asset),
+        timestamp: clock::timestamp_ms(clock),
+    });
+    <a href="../social_contracts/profile.md#social_contracts_profile_emit_profile_updated_event">emit_profile_updated_event</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, clock, ctx);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_update_cover_photo_asset"></a>
+
+## Function `update_cover_photo_asset`
+
+Set cover photo from a PoC-resolved MediaAsset (usage class must permit COVER_PHOTO).
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_update_cover_photo_asset">update_cover_photo_asset</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, asset: &<a href="../social_contracts/media_asset.md#social_contracts_media_asset_MediaAsset">social_contracts::media_asset::MediaAsset</a>, display_url: vector&lt;u8&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_update_cover_photo_asset">update_cover_photo_asset</a>(
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
+    asset: &MediaAsset,
+    display_url: vector&lt;u8&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == tx_context::sender(ctx), <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
+    <a href="../social_contracts/media_asset.md#social_contracts_media_asset_assert_media_asset_version">media_asset::assert_media_asset_version</a>(asset);
+    <a href="../social_contracts/media_asset.md#social_contracts_media_asset_assert_usage_permitted">media_asset::assert_usage_permitted</a>(asset, <a href="../social_contracts/media_asset.md#social_contracts_media_asset_usage_cover_photo">media_asset::usage_cover_photo</a>(), clock);
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_cover_photo_asset_id">cover_photo_asset_id</a> = option::some(<a href="../social_contracts/media_asset.md#social_contracts_media_asset_media_asset_id">media_asset::media_asset_id</a>(asset));
+    <b>if</b> (vector::length(&display_url) &gt; 0) {
+        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_cover_photo">cover_photo</a> = option::some(url::new_unsafe_from_bytes(display_url));
+    };
+    <b>let</b> profile_id = object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
+    <a href="../social_contracts/media_asset.md#social_contracts_media_asset_emit_media_asset_used">media_asset::emit_media_asset_used</a>(
+        profile_id,
+        <a href="../social_contracts/media_asset.md#social_contracts_media_asset_container_profile">media_asset::container_profile</a>(),
+        <a href="../social_contracts/media_asset.md#social_contracts_media_asset_media_asset_id">media_asset::media_asset_id</a>(asset),
+        <a href="../social_contracts/media_asset.md#social_contracts_media_asset_usage_cover_photo">media_asset::usage_cover_photo</a>(),
+        0,
+        clock,
+    );
+    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_ProfileMediaAssetUpdatedEvent">ProfileMediaAssetUpdatedEvent</a> {
+        profile_id,
+        field: <a href="../social_contracts/profile.md#social_contracts_profile_PROFILE_MEDIA_FIELD_COVER">PROFILE_MEDIA_FIELD_COVER</a>,
+        media_asset_id: <a href="../social_contracts/media_asset.md#social_contracts_media_asset_media_asset_id">media_asset::media_asset_id</a>(asset),
+        timestamp: clock::timestamp_ms(clock),
+    });
+    <a href="../social_contracts/profile.md#social_contracts_profile_emit_profile_updated_event">emit_profile_updated_event</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, clock, ctx);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_profile_picture_asset_id"></a>
+
+## Function `profile_picture_asset_id`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_profile_picture_asset_id">profile_picture_asset_id</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_profile_picture_asset_id">profile_picture_asset_id</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): Option&lt;ID&gt; {
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_profile_picture_asset_id">profile_picture_asset_id</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_cover_photo_asset_id"></a>
+
+## Function `cover_photo_asset_id`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_cover_photo_asset_id">cover_photo_asset_id</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_cover_photo_asset_id">cover_photo_asset_id</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): Option&lt;ID&gt; {
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_cover_photo_asset_id">cover_photo_asset_id</a>
 }
 </code></pre>
 
@@ -5559,6 +5797,8 @@ Migration function for Profile — initializes on-chain website/birthdate/locati
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_website">website</a> = option::none();
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_birthdate">birthdate</a> = option::none();
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_location">location</a> = option::none();
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_profile_picture_asset_id">profile_picture_asset_id</a> = option::none();
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_cover_photo_asset_id">cover_photo_asset_id</a> = option::none();
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> = current_version;
     <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
         object::id(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>),

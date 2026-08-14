@@ -17,13 +17,15 @@ use myso_indexer_alt_social_schema::models::{
     DelegateRatingRow, DelegateVoteRow, GovernanceEventRow, NominatedDelegateRow,
     RewardDistributionRow, VoteDecryptionFailureRow,
 };
-use myso_indexer_alt_social_schema::{PROPOSAL_TYPE_PLATFORM, PROPOSAL_TYPE_SPOT};
+use myso_indexer_alt_social_schema::{PROPOSAL_TYPE_PLATFORM, PROPOSAL_TYPE_PROOF_OF_CREATIVITY, PROPOSAL_TYPE_SPOT};
 
 use crate::api::resolve_profile::resolve_profile_summary;
 use crate::api::scalars::json::Json;
 use crate::api::scalars::myso_address::MySoAddress;
 use crate::api::types::platform::{Platform, resolve_platform_by_id};
 use crate::api::types::profile_summary::ProfileSummary;
+use crate::api::types::media_asset::MediaAsset;
+use crate::api::types::media_asset_enums::GovernanceProposalStatus;
 use crate::api::types::spot::SpotRecord;
 
 #[derive(Enum, Copy, Clone, Eq, PartialEq)]
@@ -93,8 +95,8 @@ impl Proposal {
     }
 
     /// Proposal lifecycle status (0=submitted, 1=delegate_review, 2=community_voting, 3=approved, 4=rejected, 5=implemented, 6=rescinded). New proposals created on chain enter delegate review (1); `0` is not used for newly submitted work.
-    async fn status(&self) -> i16 {
-        self.inner.status
+    async fn status(&self) -> GovernanceProposalStatus {
+        GovernanceProposalStatus::from(self.inner.status)
     }
 
     /// Vote counts (delegate and community).
@@ -172,6 +174,29 @@ impl Proposal {
             .await
             .ok()?
             .map(SpotRecord::from_row)
+    }
+
+    /// Linked media asset for PoC media-asset rights governance proposals (registry_type=1).
+    async fn media_asset(&self, ctx: &Context<'_>) -> Option<MediaAsset> {
+        if self.inner.proposal_type != PROPOSAL_TYPE_PROOF_OF_CREATIVITY {
+            return None;
+        }
+        let reader_opt = ctx.data_opt::<Arc<Option<SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        if let Ok(Some(asset_id)) = reader
+            .get_media_asset_id_for_rights_proposal(&self.inner.id)
+            .await
+        {
+            if let Ok(Some(row)) = reader.get_media_asset_by_id(&asset_id).await {
+                return Some(MediaAsset::from_row(row));
+            }
+        }
+        let reference_id = self.inner.reference_id.as_deref()?;
+        reader
+            .get_media_asset_by_id(reference_id)
+            .await
+            .ok()?
+            .map(MediaAsset::from_row)
     }
 
     /// Implemented description (when status=implemented).

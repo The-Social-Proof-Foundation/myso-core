@@ -1378,6 +1378,31 @@ module social_contracts::governance {
         )
     }
 
+    /// Package helper: submit a PoC governance proposal and return its ID.
+    public(package) fun submit_poc_proposal_and_return_id(
+        registry: &mut GovernanceDAO,
+        title: String,
+        description: String,
+        reference_id: ID,
+        metadata_json: Option<String>,
+        coin: &mut Coin<MYSO>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ): ID {
+        assert!(registry.registry_type == PROPOSAL_TYPE_PROOF_OF_CREATIVITY, EInvalidRegistry);
+        submit_proposal_internal(
+            registry,
+            title,
+            description,
+            PROPOSAL_TYPE_PROOF_OF_CREATIVITY,
+            option::some(reference_id),
+            metadata_json,
+            coin,
+            clock,
+            ctx,
+        )
+    }
+
     /// Internal function for submitting proposals
     fun submit_proposal_internal(
         registry: &mut GovernanceDAO,
@@ -2299,6 +2324,50 @@ module social_contracts::governance {
         balance::withdraw_all(&mut proposal.reward_pool)
     }
 
+    /// PoC oracle may implement approved media-asset rights proposals (same package only).
+    public(package) fun mark_proposal_implemented_take_pool_poc_oracle(
+        registry: &mut GovernanceDAO,
+        proposal: &mut Proposal,
+        authorized_oracle: address,
+        description: Option<String>,
+        clock: &Clock,
+        ctx: &TxContext,
+    ): Balance<MYSO> {
+        assert!(registry.version == upgrade::current_version(), EWrongVersion);
+        assert!(registry.registry_type == PROPOSAL_TYPE_PROOF_OF_CREATIVITY, EInvalidRegistry);
+        assert!(tx_context::sender(ctx) == authorized_oracle, EUnauthorized);
+
+        let current_time = clock::timestamp_ms(clock);
+        let proposal_id = object::id(proposal);
+
+        assert!(table::contains(&registry.proposals, proposal_id), EProposalNotFound);
+        assert!(proposal.status == STATUS_APPROVED, EInvalidProposalStatus);
+
+        proposal.status = STATUS_IMPLEMENTED;
+
+        let from_status = table::borrow_mut(&mut registry.proposals_by_status, STATUS_APPROVED);
+        let mut index = 0;
+        let len = vector::length(from_status);
+        while (index < len) {
+            if (*vector::borrow(from_status, index) == proposal_id) {
+                vector::remove(from_status, index);
+                break
+            };
+            index = index + 1;
+        };
+
+        let to_status = table::borrow_mut(&mut registry.proposals_by_status, STATUS_IMPLEMENTED);
+        vector::push_back(to_status, proposal_id);
+
+        event::emit(ProposalImplementedEvent {
+            proposal_id,
+            implementation_time: current_time,
+            description,
+        });
+
+        balance::withdraw_all(&mut proposal.reward_pool)
+    }
+
     /// Mark implemented: reward the submitter with the implementation pool (ecosystem or proof-of-creativity registry).
     public entry fun mark_proposal_implemented_to_ecosystem_treasury(
         registry: &mut GovernanceDAO,
@@ -2473,6 +2542,10 @@ module social_contracts::governance {
             proposal.community_votes_for,
             proposal.community_votes_against
         )
+    }
+
+    public fun proposal_submission_cost(registry: &GovernanceDAO): u64 {
+        registry.proposal_submission_cost
     }
 
     public fun proposal_submitter(proposal: &Proposal): address {

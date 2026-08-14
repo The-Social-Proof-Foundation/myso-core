@@ -59,6 +59,9 @@ module social_contracts::proof_of_creativity_tests {
                 500,   // username_beneficiary_join_referral_bps (5%)
                 3,     // max_disputes_per_post
                 1,     // min_vault_deposit_amount
+                10_000_000_000, // media_asset_dispute_cost
+                2,     // max_disputes_per_media_asset
+                5000,  // max_embedded_asset_redirect_bps
                 &clock,
                 test_scenario::ctx(&mut scen)
             );

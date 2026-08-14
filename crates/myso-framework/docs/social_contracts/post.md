@@ -7,10 +7,17 @@ Handles creation and management of posts and comments
 Implements features like comments, reposts, and quotes
 
 
--  [Struct `PoCBadgeSnapshot`](#social_contracts_post_PoCBadgeSnapshot)
 -  [Struct `Post`](#social_contracts_post_Post)
 -  [Struct `PostAttribution`](#social_contracts_post_PostAttribution)
 -  [Struct `CommentAttribution`](#social_contracts_post_CommentAttribution)
+-  [Struct `EmbeddedAssetBinding`](#social_contracts_post_EmbeddedAssetBinding)
+-  [Struct `UsageDecisionSnapshot`](#social_contracts_post_UsageDecisionSnapshot)
+-  [Struct `ContainerUsageDenial`](#social_contracts_post_ContainerUsageDenial)
+-  [Struct `EmbeddedBindingRecordedEvent`](#social_contracts_post_EmbeddedBindingRecordedEvent)
+-  [Struct `UsageDecisionRefreshedEvent`](#social_contracts_post_UsageDecisionRefreshedEvent)
+-  [Struct `ContainerUsageDeniedEvent`](#social_contracts_post_ContainerUsageDeniedEvent)
+-  [Struct `ContainerUsageDenialLiftedEvent`](#social_contracts_post_ContainerUsageDenialLiftedEvent)
+-  [Struct `CandidateManifestSubmittedEvent`](#social_contracts_post_CandidateManifestSubmittedEvent)
 -  [Struct `PostSpotAnalysis`](#social_contracts_post_PostSpotAnalysis)
 -  [Struct `Comment`](#social_contracts_post_Comment)
 -  [Struct `Repost`](#social_contracts_post_Repost)
@@ -61,9 +68,17 @@ Implements features like comments, reposts, and quotes
 -  [Function `allow_quotes`](#social_contracts_post_allow_quotes)
 -  [Function `allow_tips`](#social_contracts_post_allow_tips)
 -  [Function `is_spt_enabled`](#social_contracts_post_is_spt_enabled)
--  [Function `poc_outcome`](#social_contracts_post_poc_outcome)
--  [Function `poc_redirection_kind`](#social_contracts_post_poc_redirection_kind)
+-  [Function `composition_status`](#social_contracts_post_composition_status)
+-  [Function `monetization_status`](#social_contracts_post_monetization_status)
+-  [Function `media_asset_ids`](#social_contracts_post_media_asset_ids)
+-  [Function `composition_badge`](#social_contracts_post_composition_badge)
+-  [Function `composition_analysis`](#social_contracts_post_composition_analysis)
+-  [Function `revenue_manifest`](#social_contracts_post_revenue_manifest)
+-  [Function `composition_disputes_submitted`](#social_contracts_post_composition_disputes_submitted)
+-  [Function `monetization_enabled`](#social_contracts_post_monetization_enabled)
 -  [Function `poc_disputes_submitted`](#social_contracts_post_poc_disputes_submitted)
+-  [Function `has_composition_monetization`](#social_contracts_post_has_composition_monetization)
+-  [Function `tip_post_requires_beneficiary_vault_for_amount`](#social_contracts_post_tip_post_requires_beneficiary_vault_for_amount)
 -  [Function `actor_address`](#social_contracts_post_actor_address)
 -  [Function `sub_agent_id`](#social_contracts_post_sub_agent_id)
 -  [Function `action_identity_class`](#social_contracts_post_action_identity_class)
@@ -74,17 +89,6 @@ Implements features like comments, reposts, and quotes
 -  [Function `attach_post_attribution`](#social_contracts_post_attach_post_attribution)
 -  [Function `comment_attribution`](#social_contracts_post_comment_attribution)
 -  [Function `attach_comment_attribution`](#social_contracts_post_attach_comment_attribution)
--  [Function `tip_post_requires_beneficiary_vault_for_amount`](#social_contracts_post_tip_post_requires_beneficiary_vault_for_amount)
--  [Function `poc_redirection_none`](#social_contracts_post_poc_redirection_none)
--  [Function `get_poc_badge`](#social_contracts_post_get_poc_badge)
--  [Function `get_poc_badge_object_id`](#social_contracts_post_get_poc_badge_object_id)
--  [Function `has_poc_badge`](#social_contracts_post_has_poc_badge)
--  [Function `get_poc_reasoning`](#social_contracts_post_get_poc_reasoning)
--  [Function `get_poc_evidence_urls`](#social_contracts_post_get_poc_evidence_urls)
--  [Function `get_poc_similarity_score`](#social_contracts_post_get_poc_similarity_score)
--  [Function `get_poc_media_type`](#social_contracts_post_get_poc_media_type)
--  [Function `get_poc_oracle_address`](#social_contracts_post_get_poc_oracle_address)
--  [Function `get_poc_analyzed_at`](#social_contracts_post_get_poc_analyzed_at)
 -  [Function `get_spt_id`](#social_contracts_post_get_spt_id)
 -  [Function `set_spt_id`](#social_contracts_post_set_spt_id)
 -  [Function `set_enable_spt`](#social_contracts_post_set_enable_spt)
@@ -105,6 +109,7 @@ Implements features like comments, reposts, and quotes
 -  [Function `resolve_social_actor`](#social_contracts_post_resolve_social_actor)
 -  [Function `assert_tip_spend_limit`](#social_contracts_post_assert_tip_spend_limit)
 -  [Function `create_post_internal`](#social_contracts_post_create_post_internal)
+-  [Function `emit_post_media_asset_usages`](#social_contracts_post_emit_post_media_asset_usages)
 -  [Function `share_post`](#social_contracts_post_share_post)
 -  [Function `assert_post_access_mydata_binding`](#social_contracts_post_assert_post_access_mydata_binding)
 -  [Function `assert_post_access_mydata_object_binding`](#social_contracts_post_assert_post_access_mydata_object_binding)
@@ -126,11 +131,36 @@ Implements features like comments, reposts, and quotes
 -  [Function `react_to_post`](#social_contracts_post_react_to_post)
 -  [Function `tip_post`](#social_contracts_post_tip_post)
 -  [Function `tip_post_simple`](#social_contracts_post_tip_post_simple)
--  [Function `apply_poc_redirection_coin`](#social_contracts_post_apply_poc_redirection_coin)
--  [Function `apply_poc_redirection_coin_without_beneficiary_vault`](#social_contracts_post_apply_poc_redirection_coin_without_beneficiary_vault)
--  [Function `update_poc_result`](#social_contracts_post_update_poc_result)
--  [Function `set_poc_badge_object_id`](#social_contracts_post_set_poc_badge_object_id)
+-  [Function `apply_revenue_manifest_coin`](#social_contracts_post_apply_revenue_manifest_coin)
+-  [Function `apply_revenue_manifest_coin_without_beneficiary_vault`](#social_contracts_post_apply_revenue_manifest_coin_without_beneficiary_vault)
+-  [Function `embedded_bindings`](#social_contracts_post_embedded_bindings)
+-  [Function `usage_decisions`](#social_contracts_post_usage_decisions)
+-  [Function `usage_denials`](#social_contracts_post_usage_denials)
+-  [Function `set_embedded_bindings`](#social_contracts_post_set_embedded_bindings)
+-  [Function `set_usage_decisions`](#social_contracts_post_set_usage_decisions)
+-  [Function `set_usage_denials`](#social_contracts_post_set_usage_denials)
+-  [Function `find_binding_index`](#social_contracts_post_find_binding_index)
+-  [Function `borrow_binding`](#social_contracts_post_borrow_binding)
+-  [Function `upsert_binding`](#social_contracts_post_upsert_binding)
+-  [Function `upsert_decision`](#social_contracts_post_upsert_decision)
+-  [Function `upsert_denial`](#social_contracts_post_upsert_denial)
+-  [Function `remove_denial`](#social_contracts_post_remove_denial)
+-  [Function `apply_denials_to_snapshot`](#social_contracts_post_apply_denials_to_snapshot)
+-  [Function `evaluate_binding_policy`](#social_contracts_post_evaluate_binding_policy)
+-  [Function `refresh_composition_status_from_decisions`](#social_contracts_post_refresh_composition_status_from_decisions)
+-  [Function `decision_for_binding`](#social_contracts_post_decision_for_binding)
+-  [Function `usage_is_payout_permitted_for_asset`](#social_contracts_post_usage_is_payout_permitted_for_asset)
+-  [Function `validate_binding`](#social_contracts_post_validate_binding)
+-  [Function `write_usage_decision_for_binding`](#social_contracts_post_write_usage_decision_for_binding)
+-  [Function `record_embedded_bindings`](#social_contracts_post_record_embedded_bindings)
+-  [Function `refresh_post_asset_usage_decision`](#social_contracts_post_refresh_post_asset_usage_decision)
+-  [Function `submit_candidate_revenue_manifest`](#social_contracts_post_submit_candidate_revenue_manifest)
+-  [Function `deny_container_usage`](#social_contracts_post_deny_container_usage)
+-  [Function `lift_container_usage_denial`](#social_contracts_post_lift_container_usage_denial)
+-  [Function `set_composition_result`](#social_contracts_post_set_composition_result)
+-  [Function `clear_composition_data`](#social_contracts_post_clear_composition_data)
 -  [Function `clear_poc_data`](#social_contracts_post_clear_poc_data)
+-  [Function `increment_composition_disputes_submitted`](#social_contracts_post_increment_composition_disputes_submitted)
 -  [Function `increment_poc_disputes_submitted`](#social_contracts_post_increment_poc_disputes_submitted)
 -  [Function `deposit_coin_to_beneficiary_vault`](#social_contracts_post_deposit_coin_to_beneficiary_vault)
 -  [Function `tip_repost`](#social_contracts_post_tip_repost)
@@ -163,6 +193,8 @@ Implements features like comments, reposts, and quotes
 -  [Function `get_platform_id`](#social_contracts_post_get_platform_id)
 -  [Function `get_revenue_redirect_to`](#social_contracts_post_get_revenue_redirect_to)
 -  [Function `get_revenue_redirect_percentage`](#social_contracts_post_get_revenue_redirect_percentage)
+-  [Function `poc_redirection_kind`](#social_contracts_post_poc_redirection_kind)
+-  [Function `poc_redirection_none`](#social_contracts_post_poc_redirection_none)
 -  [Function `version`](#social_contracts_post_version)
 -  [Function `borrow_version_mut`](#social_contracts_post_borrow_version_mut)
 -  [Function `comment_version`](#social_contracts_post_comment_version)
@@ -233,7 +265,10 @@ Implements features like comments, reposts, and quotes
 <b>use</b> <a href="../myso/vec_set.md#myso_vec_set">myso::vec_set</a>;
 <b>use</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit">social_contracts::ai_credit</a>;
 <b>use</b> <a href="../social_contracts/block_list.md#social_contracts_block_list">social_contracts::block_list</a>;
+<b>use</b> <a href="../social_contracts/media_asset.md#social_contracts_derivative_graph">social_contracts::derivative_graph</a>;
 <b>use</b> <a href="../social_contracts/governance.md#social_contracts_governance">social_contracts::governance</a>;
+<b>use</b> <a href="../social_contracts/media_asset.md#social_contracts_license_template">social_contracts::license_template</a>;
+<b>use</b> <a href="../social_contracts/media_asset.md#social_contracts_media_asset">social_contracts::media_asset</a>;
 <b>use</b> <a href="../social_contracts/memory.md#social_contracts_memory">social_contracts::memory</a>;
 <b>use</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">social_contracts::mydata</a>;
 <b>use</b> <a href="../social_contracts/platform.md#social_contracts_platform">social_contracts::platform</a>;
@@ -254,58 +289,6 @@ Implements features like comments, reposts, and quotes
 </code></pre>
 
 
-
-<a name="social_contracts_post_PoCBadgeSnapshot"></a>
-
-## Struct `PoCBadgeSnapshot`
-
-Denormalized PoC badge fields cached on <code><a href="../social_contracts/post.md#social_contracts_post_Post">Post</a></code> for cheap reads; authoritative record is <code>PoCBadgeObject</code>.
-
-
-<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/post.md#social_contracts_post_PoCBadgeSnapshot">PoCBadgeSnapshot</a> <b>has</b> <b>copy</b>, drop, store
-</code></pre>
-
-
-
-<details>
-<summary>Fields</summary>
-
-
-<dl>
-<dt>
-<code>reasoning: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>evidence_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>similarity_score: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>media_type: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u8&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>oracle_address: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>analyzed_at: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
-</dt>
-<dd>
-</dd>
-</dl>
-
-
-</details>
 
 <a name="social_contracts_post_Post"></a>
 
@@ -333,175 +316,140 @@ Post object that contains content information
 <code>owner: <b>address</b></code>
 </dt>
 <dd>
- Owner's wallet address (the true owner)
 </dd>
 <dt>
 <code>profile_id: <b>address</b></code>
 </dt>
 <dd>
- Author's profile ID (reference only, not ownership)
 </dd>
 <dt>
 <code>platform_id: <b>address</b></code>
 </dt>
 <dd>
- Platform ID where this post was created
 </dd>
 <dt>
 <code>content: <a href="../std/string.md#std_string_String">std::string::String</a></code>
 </dt>
 <dd>
- Post content
+</dd>
+<dt>
+<code><a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>: vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+ Canonical composition: ordered MediaAsset IDs (max 10).
 </dd>
 <dt>
 <code>media: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../myso/url.md#myso_url_Url">myso::url::Url</a>&gt;&gt;</code>
 </dt>
 <dd>
- Optional media URLs (multiple supported)
+ Display/cache URLs — not authoritative for PoC.
 </dd>
 <dt>
 <code>mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;</code>
 </dt>
 <dd>
- Optional mentioned users (profile IDs)
 </dd>
 <dt>
 <code>metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
 </dt>
 <dd>
- Optional metadata in JSON format
 </dd>
 <dt>
 <code>post_type: <a href="../std/string.md#std_string_String">std::string::String</a></code>
 </dt>
 <dd>
- Post type (standard, comment, repost, quote_repost)
 </dd>
 <dt>
 <code>parent_post_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
 </dt>
 <dd>
- Optional parent post ID for replies or quote reposts
 </dd>
 <dt>
 <code>created_at: u64</code>
 </dt>
 <dd>
- Creation timestamp
 </dd>
 <dt>
 <code>reaction_count: u64</code>
 </dt>
 <dd>
- Total number of reactions
 </dd>
 <dt>
 <code>comment_count: u64</code>
 </dt>
 <dd>
- Number of comments
 </dd>
 <dt>
 <code>repost_count: u64</code>
 </dt>
 <dd>
- Number of reposts
 </dd>
 <dt>
 <code>tips_received: u64</code>
 </dt>
 <dd>
- Total tips received in MYSO (tracking only, not actual balance)
 </dd>
 <dt>
 <code>removed_from_platform: bool</code>
 </dt>
 <dd>
- Whether the post has been removed from its platform
 </dd>
 <dt>
 <code>user_reactions: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<b>address</b>, <a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
 </dt>
 <dd>
- Table of user wallet addresses to their reactions (emoji or text)
 </dd>
 <dt>
 <code>reaction_counts: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>, u64&gt;</code>
 </dt>
 <dd>
- Table to count reactions by type
 </dd>
 <dt>
 <code>permissions: u8</code>
 </dt>
 <dd>
- Permission flags bitfield: allow_comments (bit 0), allow_reactions (bit 1), allow_reposts (bit 2), allow_quotes (bit 3), allow_tips (bit 4)
 </dd>
 <dt>
-<code>revenue_redirect_to: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
+<code><a href="../social_contracts/post.md#social_contracts_post_composition_status">composition_status</a>: u8</code>
 </dt>
 <dd>
- Optional revenue redirection to original creator (for derivative content)
+ Composition resolution status (display/use).
 </dd>
 <dt>
-<code>revenue_redirect_percentage: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+<code><a href="../social_contracts/post.md#social_contracts_post_monetization_status">monetization_status</a>: u8</code>
 </dt>
 <dd>
- Optional revenue redirection percentage (0-100)
+ Revenue eligibility status (separate from display).
 </dd>
 <dt>
-<code>poc_badge_snapshot: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../social_contracts/post.md#social_contracts_post_PoCBadgeSnapshot">social_contracts::post::PoCBadgeSnapshot</a>&gt;</code>
+<code><a href="../social_contracts/post.md#social_contracts_post_composition_badge">composition_badge</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../social_contracts/media_asset.md#social_contracts_media_asset_CompositionBadgeSnapshot">social_contracts::media_asset::CompositionBadgeSnapshot</a>&gt;</code>
 </dt>
 <dd>
- Cached PoC badge snapshot (authoritative object id below).
-</dd>
-<dt>
-<code>poc_badge_object_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
-</dt>
-<dd>
- Address of the shared <code>PoCBadgeObject</code> when issued (authoritative PoC record).
 </dd>
 <dt>
 <code>access: <a href="../social_contracts/post.md#social_contracts_post_PostAccess">social_contracts::post::PostAccess</a></code>
 </dt>
 <dd>
- Content access model (public, profile subscription, or marketplace one-time).
 </dd>
 <dt>
 <code>promotion_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
 </dt>
 <dd>
- Optional promotion data ID for promoted posts
 </dd>
 <dt>
 <code>enable_spt: bool</code>
 </dt>
 <dd>
- Opt-in for Social Proof Tokens (reservation pool created at post creation when true)
 </dd>
 <dt>
 <code>spt_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
 </dt>
 <dd>
- Optional Social Proof Token pool ID (address of TokenPool object)
-</dd>
-<dt>
-<code><a href="../social_contracts/post.md#social_contracts_post_poc_outcome">poc_outcome</a>: u8</code>
-</dt>
-<dd>
- Last applied PoC outcome (<code>POC_OUTCOME_*</code>); 0 if never analyzed or cleared
-</dd>
-<dt>
-<code><a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>: u8</code>
-</dt>
-<dd>
- Where derivative redirect slices go for this post (<code>POC_REDIRECT_*</code>)
 </dd>
 <dt>
 <code><a href="../social_contracts/post.md#social_contracts_post_version">version</a>: u64</code>
 </dt>
 <dd>
- Version for upgrades
 </dd>
 </dl>
 
@@ -583,6 +531,365 @@ Published-action attribution stored as a dynamic field (Post is at the VM field-
 </dd>
 <dt>
 <code><a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>: u8</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_post_EmbeddedAssetBinding"></a>
+
+## Struct `EmbeddedAssetBinding`
+
+Phase 4 — embedded asset binding on a post container.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/post.md#social_contracts_post_EmbeddedAssetBinding">EmbeddedAssetBinding</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>binding_id: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>source_asset_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>usage_class: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>stem: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>media_component: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>evidence_commitment: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;u8&gt;&gt;</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_post_UsageDecisionSnapshot"></a>
+
+## Struct `UsageDecisionSnapshot`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/post.md#social_contracts_post_UsageDecisionSnapshot">UsageDecisionSnapshot</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>binding_id: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>policy_playback_permitted: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>policy_payout_permitted: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>playback_permitted: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>payout_permitted: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>policy_reason_code: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>policy_version_at_decision: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_post_ContainerUsageDenial"></a>
+
+## Struct `ContainerUsageDenial`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/post.md#social_contracts_post_ContainerUsageDenial">ContainerUsageDenial</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>binding_id: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>denial_scope: u8</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_post_EmbeddedBindingRecordedEvent"></a>
+
+## Struct `EmbeddedBindingRecordedEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/post.md#social_contracts_post_EmbeddedBindingRecordedEvent">EmbeddedBindingRecordedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>post_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>bindings: vector&lt;<a href="../social_contracts/post.md#social_contracts_post_EmbeddedAssetBinding">social_contracts::post::EmbeddedAssetBinding</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_post_UsageDecisionRefreshedEvent"></a>
+
+## Struct `UsageDecisionRefreshedEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/post.md#social_contracts_post_UsageDecisionRefreshedEvent">UsageDecisionRefreshedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>post_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>binding_id: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>policy_playback_permitted: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>policy_payout_permitted: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>playback_permitted: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>payout_permitted: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>policy_reason_code: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>policy_version_at_decision: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_post_ContainerUsageDeniedEvent"></a>
+
+## Struct `ContainerUsageDeniedEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/post.md#social_contracts_post_ContainerUsageDeniedEvent">ContainerUsageDeniedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>post_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>binding_id: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>denial_scope: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_post_ContainerUsageDenialLiftedEvent"></a>
+
+## Struct `ContainerUsageDenialLiftedEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/post.md#social_contracts_post_ContainerUsageDenialLiftedEvent">ContainerUsageDenialLiftedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>post_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>binding_id: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_post_CandidateManifestSubmittedEvent"></a>
+
+## Struct `CandidateManifestSubmittedEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/post.md#social_contracts_post_CandidateManifestSubmittedEvent">CandidateManifestSubmittedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>post_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>manifest_version: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>entries_json: vector&lt;<a href="../social_contracts/media_asset.md#social_contracts_media_asset_ManifestEntry">social_contracts::media_asset::ManifestEntry</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp: u64</code>
 </dt>
 <dd>
 </dd>
@@ -1296,6 +1603,11 @@ Post created event
 <dd>
 </dd>
 <dt>
+<code><a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>: vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
 <code>media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;</code>
 </dt>
 <dd>
@@ -1316,12 +1628,12 @@ Post created event
 <dd>
 </dd>
 <dt>
-<code>revenue_redirect_to: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
+<code><a href="../social_contracts/post.md#social_contracts_post_composition_status">composition_status</a>: u8</code>
 </dt>
 <dd>
 </dd>
 <dt>
-<code>revenue_redirect_percentage: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+<code><a href="../social_contracts/post.md#social_contracts_post_monetization_status">monetization_status</a>: u8</code>
 </dt>
 <dd>
 </dd>
@@ -1334,12 +1646,6 @@ Post created event
 <code>spt_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
 </dt>
 <dd>
-</dd>
-<dt>
-<code><a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>: u8</code>
-</dt>
-<dd>
- Matches <code><a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a></code> at creation (<code>POC_REDIRECT_*</code>).
 </dd>
 <dt>
 <code><a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>: <b>address</b></code>
@@ -2879,15 +3185,6 @@ Error codes
 
 
 
-<a name="social_contracts_post_EInvalidPocOutcomeFields"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_EInvalidPocOutcomeFields">EInvalidPocOutcomeFields</a>: u64 = 35;
-</code></pre>
-
-
-
 <a name="social_contracts_post_EDisputeCapReached"></a>
 
 
@@ -2899,7 +3196,6 @@ Error codes
 
 <a name="social_contracts_post_EWrongBeneficiaryVault"></a>
 
-Escrow/vault redirect slice must use the <code>PoCBeneficiaryVault</code> whose beneficiary matches <code>revenue_redirect_to</code>.
 
 
 <pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_EWrongBeneficiaryVault">EWrongBeneficiaryVault</a>: u64 = 37;
@@ -2909,8 +3205,6 @@ Escrow/vault redirect slice must use the <code>PoCBeneficiaryVault</code> whose 
 
 <a name="social_contracts_post_ETipPostRequiresBeneficiaryVault"></a>
 
-[<code><a href="../social_contracts/post.md#social_contracts_post_tip_post_simple">tip_post_simple</a></code>] / [<code><a href="../social_contracts/post.md#social_contracts_post_tip_comment_simple">tip_comment_simple</a></code>] cannot deposit into an escrow vault; use [<code><a href="../social_contracts/post.md#social_contracts_post_tip_post">tip_post</a></code>] /
-[<code><a href="../social_contracts/post.md#social_contracts_post_tip_comment">tip_comment</a></code>] with the vault for <code>revenue_redirect_to</code>.
 
 
 <pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_ETipPostRequiresBeneficiaryVault">ETipPostRequiresBeneficiaryVault</a>: u64 = 38;
@@ -2920,7 +3214,6 @@ Escrow/vault redirect slice must use the <code>PoCBeneficiaryVault</code> whose 
 
 <a name="social_contracts_post_EInvalidBatch"></a>
 
-Empty batch, length mismatch, or batch larger than <code><a href="../social_contracts/post.md#social_contracts_post_MAX_PROMOTION_VIEW_BATCH">MAX_PROMOTION_VIEW_BATCH</a></code>
 
 
 <pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_EInvalidBatch">EInvalidBatch</a>: u64 = 39;
@@ -2930,10 +3223,81 @@ Empty batch, length mismatch, or batch larger than <code><a href="../social_cont
 
 <a name="social_contracts_post_ESptRequiresDedicatedCreate"></a>
 
-<code>enable_spt = <b>true</b></code> on plain <code>create_*</code> is blocked; use <code><a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_create_post_with_reservation_pool">social_proof_tokens::create_post_with_reservation_pool</a></code>.
 
 
 <pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_ESptRequiresDedicatedCreate">ESptRequiresDedicatedCreate</a>: u64 = 40;
+</code></pre>
+
+
+
+<a name="social_contracts_post_EInvalidMediaAsset"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_EInvalidMediaAsset">EInvalidMediaAsset</a>: u64 = 41;
+</code></pre>
+
+
+
+<a name="social_contracts_post_EMonetizationNotEnabled"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_EMonetizationNotEnabled">EMonetizationNotEnabled</a>: u64 = 42;
+</code></pre>
+
+
+
+<a name="social_contracts_post_EInvalidManifest"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_EInvalidManifest">EInvalidManifest</a>: u64 = 43;
+</code></pre>
+
+
+
+<a name="social_contracts_post_ECompositionNotVerified"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_ECompositionNotVerified">ECompositionNotVerified</a>: u64 = 44;
+</code></pre>
+
+
+
+<a name="social_contracts_post_EBindingNotFound"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_EBindingNotFound">EBindingNotFound</a>: u64 = 95;
+</code></pre>
+
+
+
+<a name="social_contracts_post_EInvalidDenialScope"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_EInvalidDenialScope">EInvalidDenialScope</a>: u64 = 96;
+</code></pre>
+
+
+
+<a name="social_contracts_post_EBindingAssetMismatch"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_EBindingAssetMismatch">EBindingAssetMismatch</a>: u64 = 97;
+</code></pre>
+
+
+
+<a name="social_contracts_post_EInvalidBinding"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_EInvalidBinding">EInvalidBinding</a>: u64 = 98;
 </code></pre>
 
 
@@ -3242,81 +3606,6 @@ Bitfield constants for permission flags (allow_*)
 
 
 
-<a name="social_contracts_post_POC_OUTCOME_NONE"></a>
-
-PoC analysis outcome (stored on Post)
-
-
-<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_POC_OUTCOME_NONE">POC_OUTCOME_NONE</a>: u8 = 0;
-</code></pre>
-
-
-
-<a name="social_contracts_post_POC_OUTCOME_ORIGINAL"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_POC_OUTCOME_ORIGINAL">POC_OUTCOME_ORIGINAL</a>: u8 = 1;
-</code></pre>
-
-
-
-<a name="social_contracts_post_POC_OUTCOME_DERIVATIVE_WALLET"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_POC_OUTCOME_DERIVATIVE_WALLET">POC_OUTCOME_DERIVATIVE_WALLET</a>: u8 = 2;
-</code></pre>
-
-
-
-<a name="social_contracts_post_POC_OUTCOME_DERIVATIVE_ESCROW"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_POC_OUTCOME_DERIVATIVE_ESCROW">POC_OUTCOME_DERIVATIVE_ESCROW</a>: u8 = 3;
-</code></pre>
-
-
-
-<a name="social_contracts_post_POC_OUTCOME_ROYALTY_FREE"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_POC_OUTCOME_ROYALTY_FREE">POC_OUTCOME_ROYALTY_FREE</a>: u8 = 4;
-</code></pre>
-
-
-
-<a name="social_contracts_post_POC_REDIRECT_NONE"></a>
-
-How PoC derivative redirect routes redirected tips / MYSO creator fees
-
-
-<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_NONE">POC_REDIRECT_NONE</a>: u8 = 0;
-</code></pre>
-
-
-
-<a name="social_contracts_post_POC_REDIRECT_WALLET"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_WALLET">POC_REDIRECT_WALLET</a>: u8 = 1;
-</code></pre>
-
-
-
-<a name="social_contracts_post_POC_REDIRECT_ESCROW"></a>
-
-Redirected MYSO accumulates in the beneficiary's shared <code>PoCBeneficiaryVault</code> (not on-post balance).
-
-
-<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_ESCROW">POC_REDIRECT_ESCROW</a>: u8 = 2;
-</code></pre>
-
-
-
 <a name="social_contracts_post_POST_ACCESS_PUBLIC"></a>
 
 Event/indexer tags for [<code><a href="../social_contracts/post.md#social_contracts_post_PostAccess">PostAccess</a></code>] (1=public, 2=profile_sub, 3=marketplace_one_time).
@@ -3363,18 +3652,35 @@ Event/indexer tags for [<code><a href="../social_contracts/post.md#social_contra
 
 
 
-<a name="social_contracts_post_POC_DISPUTES_SUBMITTED_DF_KEY"></a>
+<a name="social_contracts_post_COMPOSITION_ANALYSIS_DF_KEY"></a>
 
 
 
-<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_POC_DISPUTES_SUBMITTED_DF_KEY">POC_DISPUTES_SUBMITTED_DF_KEY</a>: vector&lt;u8&gt; = vector[112, 111, 99, 95, 100, 105, 115, 112, 117, 116, 101, 115, 95, 115, 117, 98, 109, 105, 116, 116, 101, 100];
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_COMPOSITION_ANALYSIS_DF_KEY">COMPOSITION_ANALYSIS_DF_KEY</a>: vector&lt;u8&gt; = vector[99, 111, 109, 112, 111, 115, 105, 116, 105, 111, 110, 95, 97, 110, 97, 108, 121, 115, 105, 115];
+</code></pre>
+
+
+
+<a name="social_contracts_post_REVENUE_MANIFEST_DF_KEY"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_REVENUE_MANIFEST_DF_KEY">REVENUE_MANIFEST_DF_KEY</a>: vector&lt;u8&gt; = vector[114, 101, 118, 101, 110, 117, 101, 95, 109, 97, 110, 105, 102, 101, 115, 116];
+</code></pre>
+
+
+
+<a name="social_contracts_post_COMPOSITION_DISPUTES_DF_KEY"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_COMPOSITION_DISPUTES_DF_KEY">COMPOSITION_DISPUTES_DF_KEY</a>: vector&lt;u8&gt; = vector[99, 111, 109, 112, 111, 115, 105, 116, 105, 111, 110, 95, 100, 105, 115, 112, 117, 116, 101, 115, 95, 115, 117, 98, 109, 105, 116, 116, 101, 100];
 </code></pre>
 
 
 
 <a name="social_contracts_post_SPOT_ANALYSIS_DF_KEY"></a>
 
-Multi-claim Social Proof of Truth analysis (Post is at the VM field-count limit).
 
 
 <pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_SPOT_ANALYSIS_DF_KEY">SPOT_ANALYSIS_DF_KEY</a>: vector&lt;u8&gt; = vector[115, 112, 111, 116, 95, 97, 110, 97, 108, 121, 115, 105, 115];
@@ -3382,8 +3688,100 @@ Multi-claim Social Proof of Truth analysis (Post is at the VM field-count limit)
 
 
 
+<a name="social_contracts_post_EMBEDDED_BINDINGS_DF_KEY"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_EMBEDDED_BINDINGS_DF_KEY">EMBEDDED_BINDINGS_DF_KEY</a>: vector&lt;u8&gt; = vector[101, 109, 98, 101, 100, 100, 101, 100, 95, 98, 105, 110, 100, 105, 110, 103, 115];
+</code></pre>
+
+
+
+<a name="social_contracts_post_USAGE_DECISIONS_DF_KEY"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_USAGE_DECISIONS_DF_KEY">USAGE_DECISIONS_DF_KEY</a>: vector&lt;u8&gt; = vector[117, 115, 97, 103, 101, 95, 100, 101, 99, 105, 115, 105, 111, 110, 115];
+</code></pre>
+
+
+
+<a name="social_contracts_post_USAGE_DENIALS_DF_KEY"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_USAGE_DENIALS_DF_KEY">USAGE_DENIALS_DF_KEY</a>: vector&lt;u8&gt; = vector[117, 115, 97, 103, 101, 95, 100, 101, 110, 105, 97, 108, 115];
+</code></pre>
+
+
+
+<a name="social_contracts_post_CANDIDATE_MANIFEST_DF_KEY"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_CANDIDATE_MANIFEST_DF_KEY">CANDIDATE_MANIFEST_DF_KEY</a>: vector&lt;u8&gt; = vector[99, 97, 110, 100, 105, 100, 97, 116, 101, 95, 114, 101, 118, 101, 110, 117, 101, 95, 109, 97, 110, 105, 102, 101, 115, 116];
+</code></pre>
+
+
+
+<a name="social_contracts_post_REASON_ALLOWED"></a>
+
+Application enforcement — policy reason codes for usage decision snapshots.
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_REASON_ALLOWED">REASON_ALLOWED</a>: u8 = 0;
+</code></pre>
+
+
+
+<a name="social_contracts_post_REASON_NO_GRANT"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_REASON_NO_GRANT">REASON_NO_GRANT</a>: u8 = 1;
+</code></pre>
+
+
+
+<a name="social_contracts_post_REASON_RESOLVED_POLICY"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_REASON_RESOLVED_POLICY">REASON_RESOLVED_POLICY</a>: u8 = 2;
+</code></pre>
+
+
+
+<a name="social_contracts_post_REASON_DENIAL"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_REASON_DENIAL">REASON_DENIAL</a>: u8 = 3;
+</code></pre>
+
+
+
+<a name="social_contracts_post_DENIAL_SCOPE_PLAYBACK"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_DENIAL_SCOPE_PLAYBACK">DENIAL_SCOPE_PLAYBACK</a>: u8 = 1;
+</code></pre>
+
+
+
+<a name="social_contracts_post_DENIAL_SCOPE_PAYOUT"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_DENIAL_SCOPE_PAYOUT">DENIAL_SCOPE_PAYOUT</a>: u8 = 2;
+</code></pre>
+
+
+
 <a name="social_contracts_post_SPOT_STATUS_PENDING"></a>
 
+Multi-claim Social Proof of Truth analysis (Post is at the VM field-count limit).
 SPoT multi-claim analysis lifecycle status (interpreted by <code><a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth">social_proof_of_truth</a></code>).
 
 
@@ -3951,14 +4349,13 @@ Query: check if SPT is enabled for this post
 
 </details>
 
-<a name="social_contracts_post_poc_outcome"></a>
+<a name="social_contracts_post_composition_status"></a>
 
-## Function `poc_outcome`
-
-Expose on-post PoC outcome for other modules (e.g. social_proof_tokens).
+## Function `composition_status`
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_poc_outcome">poc_outcome</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): u8
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_composition_status">composition_status</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): u8
 </code></pre>
 
 
@@ -3967,8 +4364,8 @@ Expose on-post PoC outcome for other modules (e.g. social_proof_tokens).
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_poc_outcome">poc_outcome</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): u8 {
-    <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_outcome">poc_outcome</a>
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_composition_status">composition_status</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): u8 {
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_composition_status">composition_status</a>
 }
 </code></pre>
 
@@ -3976,14 +4373,13 @@ Expose on-post PoC outcome for other modules (e.g. social_proof_tokens).
 
 </details>
 
-<a name="social_contracts_post_poc_redirection_kind"></a>
+<a name="social_contracts_post_monetization_status"></a>
 
-## Function `poc_redirection_kind`
-
-How derivative redirect is routed for this post (<code>POC_REDIRECT_*</code>).
+## Function `monetization_status`
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): u8
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_monetization_status">monetization_status</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): u8
 </code></pre>
 
 
@@ -3992,8 +4388,164 @@ How derivative redirect is routed for this post (<code>POC_REDIRECT_*</code>).
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): u8 {
-    <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_monetization_status">monetization_status</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): u8 {
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_monetization_status">monetization_status</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_media_asset_ids"></a>
+
+## Function `media_asset_ids`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): &vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): &vector&lt;ID&gt; {
+    &<a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_composition_badge"></a>
+
+## Function `composition_badge`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_composition_badge">composition_badge</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): &<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../social_contracts/media_asset.md#social_contracts_media_asset_CompositionBadgeSnapshot">social_contracts::media_asset::CompositionBadgeSnapshot</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_composition_badge">composition_badge</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): &Option&lt;CompositionBadgeSnapshot&gt; {
+    &<a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_composition_badge">composition_badge</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_composition_analysis"></a>
+
+## Function `composition_analysis`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_composition_analysis">composition_analysis</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../social_contracts/media_asset.md#social_contracts_media_asset_CompositionAnalysis">social_contracts::media_asset::CompositionAnalysis</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_composition_analysis">composition_analysis</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): Option&lt;CompositionAnalysis&gt; {
+    <b>if</b> (df::exists_with_type&lt;vector&lt;u8&gt;, CompositionAnalysis&gt;(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_COMPOSITION_ANALYSIS_DF_KEY">COMPOSITION_ANALYSIS_DF_KEY</a>)) {
+        option::some(*df::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_COMPOSITION_ANALYSIS_DF_KEY">COMPOSITION_ANALYSIS_DF_KEY</a>))
+    } <b>else</b> {
+        option::none()
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_revenue_manifest"></a>
+
+## Function `revenue_manifest`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_revenue_manifest">revenue_manifest</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../social_contracts/media_asset.md#social_contracts_media_asset_RevenueManifest">social_contracts::media_asset::RevenueManifest</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_revenue_manifest">revenue_manifest</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): Option&lt;RevenueManifest&gt; {
+    <b>if</b> (df::exists_with_type&lt;vector&lt;u8&gt;, RevenueManifest&gt;(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_REVENUE_MANIFEST_DF_KEY">REVENUE_MANIFEST_DF_KEY</a>)) {
+        option::some(*df::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_REVENUE_MANIFEST_DF_KEY">REVENUE_MANIFEST_DF_KEY</a>))
+    } <b>else</b> {
+        option::none()
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_composition_disputes_submitted"></a>
+
+## Function `composition_disputes_submitted`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_composition_disputes_submitted">composition_disputes_submitted</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_composition_disputes_submitted">composition_disputes_submitted</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): u8 {
+    <b>if</b> (df::exists_with_type&lt;vector&lt;u8&gt;, u8&gt;(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_COMPOSITION_DISPUTES_DF_KEY">COMPOSITION_DISPUTES_DF_KEY</a>)) {
+        *df::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_COMPOSITION_DISPUTES_DF_KEY">COMPOSITION_DISPUTES_DF_KEY</a>)
+    } <b>else</b> {
+        0
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_monetization_enabled"></a>
+
+## Function `monetization_enabled`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_monetization_enabled">monetization_enabled</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_monetization_enabled">monetization_enabled</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): bool {
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_monetization_status">monetization_status</a> == <a href="../social_contracts/media_asset.md#social_contracts_media_asset_monetization_enabled">media_asset::monetization_enabled</a>()
 }
 </code></pre>
 
@@ -4005,7 +4557,7 @@ How derivative redirect is routed for this post (<code>POC_REDIRECT_*</code>).
 
 ## Function `poc_disputes_submitted`
 
-Lifetime count of successful PoC dispute submissions (capped at 2 on-chain).
+Legacy alias used by dispute paths during migration.
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_poc_disputes_submitted">poc_disputes_submitted</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): u8
@@ -4018,11 +4570,77 @@ Lifetime count of successful PoC dispute submissions (capped at 2 on-chain).
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_poc_disputes_submitted">poc_disputes_submitted</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): u8 {
-    <b>if</b> (df::exists_with_type&lt;vector&lt;u8&gt;, u8&gt;(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_POC_DISPUTES_SUBMITTED_DF_KEY">POC_DISPUTES_SUBMITTED_DF_KEY</a>)) {
-        *df::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_POC_DISPUTES_SUBMITTED_DF_KEY">POC_DISPUTES_SUBMITTED_DF_KEY</a>)
-    } <b>else</b> {
-        0
-    }
+    <a href="../social_contracts/post.md#social_contracts_post_composition_disputes_submitted">composition_disputes_submitted</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_has_composition_monetization"></a>
+
+## Function `has_composition_monetization`
+
+Returns true when manifest-based revenue routing is active.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_has_composition_monetization">has_composition_monetization</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_has_composition_monetization">has_composition_monetization</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): bool {
+    <a href="../social_contracts/post.md#social_contracts_post_monetization_enabled">monetization_enabled</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>) && option::is_some(&<a href="../social_contracts/post.md#social_contracts_post_revenue_manifest">revenue_manifest</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>))
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_tip_post_requires_beneficiary_vault_for_amount"></a>
+
+## Function `tip_post_requires_beneficiary_vault_for_amount`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_post_requires_beneficiary_vault_for_amount">tip_post_requires_beneficiary_vault_for_amount</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, tip_amount: u64): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_post_requires_beneficiary_vault_for_amount">tip_post_requires_beneficiary_vault_for_amount</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>, tip_amount: u64): bool {
+    <b>if</b> (tip_amount == 0 || !<a href="../social_contracts/post.md#social_contracts_post_monetization_enabled">monetization_enabled</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>)) {
+        <b>return</b> <b>false</b>
+    };
+    <b>let</b> manifest_opt = <a href="../social_contracts/post.md#social_contracts_post_revenue_manifest">revenue_manifest</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    <b>if</b> (option::is_none(&manifest_opt)) {
+        <b>return</b> <b>false</b>
+    };
+    <b>let</b> manifest = option::borrow(&manifest_opt);
+    <b>let</b> entries = <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entries">media_asset::manifest_entries</a>(manifest);
+    <b>let</b> len = vector::length(entries);
+    <b>let</b> <b>mut</b> i = 0;
+    <b>while</b> (i &lt; len) {
+        <b>let</b> e = vector::borrow(entries, i);
+        <b>if</b> (<a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_payout_mode">media_asset::manifest_entry_payout_mode</a>(e) == <a href="../social_contracts/media_asset.md#social_contracts_media_asset_payout_escrow">media_asset::payout_escrow</a>()) {
+            <b>let</b> slice = (tip_amount * <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_share_bps">media_asset::manifest_entry_share_bps</a>(e)) / <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_bps_total">media_asset::manifest_bps_total</a>();
+            <b>if</b> (slice &gt; 0) {
+                <b>return</b> <b>true</b>
+            };
+        };
+        i = i + 1;
+    };
+    <b>false</b>
 }
 </code></pre>
 
@@ -4293,330 +4911,6 @@ Lifetime count of successful PoC dispute submissions (capped at 2 on-chain).
             <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>,
         },
     );
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_post_tip_post_requires_beneficiary_vault_for_amount"></a>
-
-## Function `tip_post_requires_beneficiary_vault_for_amount`
-
-Returns true when [<code><a href="../social_contracts/post.md#social_contracts_post_tip_post">tip_post</a></code>] must receive a [<code>PoCBeneficiaryVault</code>] whose beneficiary is <code>revenue_redirect_to</code>
-for this tip amount (escrow-mode redirect with a non-zero redirected slice of <code>tip_amount</code>).
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_post_requires_beneficiary_vault_for_amount">tip_post_requires_beneficiary_vault_for_amount</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, tip_amount: u64): bool
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_post_requires_beneficiary_vault_for_amount">tip_post_requires_beneficiary_vault_for_amount</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>, tip_amount: u64): bool {
-    <b>if</b> (tip_amount == 0) {
-        <b>return</b> <b>false</b>
-    };
-    <b>let</b> has_derivative_redirect = option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_percentage) &&
-        <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> != <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_NONE">POC_REDIRECT_NONE</a> &&
-        (<a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> == <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_ESCROW">POC_REDIRECT_ESCROW</a> ||
-            option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_to));
-    <b>if</b> (!has_derivative_redirect) {
-        <b>return</b> <b>false</b>
-    };
-    <b>let</b> redirect_percentage = *option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_percentage);
-    <b>if</b> (redirect_percentage == 0) {
-        <b>return</b> <b>false</b>
-    };
-    <b>let</b> redirected_amount = (tip_amount * redirect_percentage) / 100;
-    <b>if</b> (redirected_amount == 0) {
-        <b>return</b> <b>false</b>
-    };
-    <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> == <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_ESCROW">POC_REDIRECT_ESCROW</a>
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_post_poc_redirection_none"></a>
-
-## Function `poc_redirection_none`
-
-Sentinel: no derivative redirect kind (original badge path).
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_none">poc_redirection_none</a>(): u8
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_none">poc_redirection_none</a>(): u8 {
-    <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_NONE">POC_REDIRECT_NONE</a>
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_post_get_poc_badge"></a>
-
-## Function `get_poc_badge`
-
-Get PoC badge snapshot (returns reference to Option).
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_poc_badge">get_poc_badge</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): &<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../social_contracts/post.md#social_contracts_post_PoCBadgeSnapshot">social_contracts::post::PoCBadgeSnapshot</a>&gt;
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_poc_badge">get_poc_badge</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): &Option&lt;<a href="../social_contracts/post.md#social_contracts_post_PoCBadgeSnapshot">PoCBadgeSnapshot</a>&gt; {
-    &<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_snapshot
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_post_get_poc_badge_object_id"></a>
-
-## Function `get_poc_badge_object_id`
-
-Shared <code>PoCBadgeObject</code> id when issued.
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_poc_badge_object_id">get_poc_badge_object_id</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_poc_badge_object_id">get_poc_badge_object_id</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): Option&lt;ID&gt; {
-    <a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_object_id
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_post_has_poc_badge"></a>
-
-## Function `has_poc_badge`
-
-Check if post has PoC badge snapshot or linked badge object
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_has_poc_badge">has_poc_badge</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): bool
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_has_poc_badge">has_poc_badge</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): bool {
-    option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_snapshot) || option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_object_id)
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_post_get_poc_reasoning"></a>
-
-## Function `get_poc_reasoning`
-
-Get PoC reasoning (immutable query function)
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_poc_reasoning">get_poc_reasoning</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_poc_reasoning">get_poc_reasoning</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): Option&lt;String&gt; {
-    <b>if</b> (option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_snapshot)) {
-        <b>let</b> badge_ref = option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_snapshot);
-        badge_ref.reasoning
-    } <b>else</b> {
-        option::none()
-    }
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_post_get_poc_evidence_urls"></a>
-
-## Function `get_poc_evidence_urls`
-
-Get PoC evidence URLs (immutable query function)
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_poc_evidence_urls">get_poc_evidence_urls</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_poc_evidence_urls">get_poc_evidence_urls</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): Option&lt;vector&lt;String&gt;&gt; {
-    <b>if</b> (option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_snapshot)) {
-        <b>let</b> badge_ref = option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_snapshot);
-        badge_ref.evidence_urls
-    } <b>else</b> {
-        option::none()
-    }
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_post_get_poc_similarity_score"></a>
-
-## Function `get_poc_similarity_score`
-
-Get PoC similarity score (immutable query function)
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_poc_similarity_score">get_poc_similarity_score</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_poc_similarity_score">get_poc_similarity_score</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): Option&lt;u64&gt; {
-    <b>if</b> (option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_snapshot)) {
-        <b>let</b> badge_ref = option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_snapshot);
-        badge_ref.similarity_score
-    } <b>else</b> {
-        option::none()
-    }
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_post_get_poc_media_type"></a>
-
-## Function `get_poc_media_type`
-
-Get PoC media type (immutable query function)
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_poc_media_type">get_poc_media_type</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u8&gt;
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_poc_media_type">get_poc_media_type</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): Option&lt;u8&gt; {
-    <b>if</b> (option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_snapshot)) {
-        <b>let</b> badge_ref = option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_snapshot);
-        badge_ref.media_type
-    } <b>else</b> {
-        option::none()
-    }
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_post_get_poc_oracle_address"></a>
-
-## Function `get_poc_oracle_address`
-
-Get PoC oracle address (immutable query function)
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_poc_oracle_address">get_poc_oracle_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_poc_oracle_address">get_poc_oracle_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): Option&lt;<b>address</b>&gt; {
-    <b>if</b> (option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_snapshot)) {
-        <b>let</b> badge_ref = option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_snapshot);
-        badge_ref.oracle_address
-    } <b>else</b> {
-        option::none()
-    }
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_post_get_poc_analyzed_at"></a>
-
-## Function `get_poc_analyzed_at`
-
-Get PoC analysis timestamp (immutable query function)
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_poc_analyzed_at">get_poc_analyzed_at</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_poc_analyzed_at">get_poc_analyzed_at</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): Option&lt;u64&gt; {
-    <b>if</b> (option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_snapshot)) {
-        <b>let</b> badge_ref = option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_snapshot);
-        badge_ref.analyzed_at
-    } <b>else</b> {
-        option::none()
-    }
 }
 </code></pre>
 
@@ -5267,7 +5561,7 @@ Resolve social actor: capability, principal platform join, block list, and appro
 Internal function to create a post object (not yet shared).
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_post_internal">create_post_internal</a>(owner: <b>address</b>, profile_id: <b>address</b>, platform_id: <b>address</b>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_option: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../myso/url.md#myso_url_Url">myso::url::Url</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, post_type: <a href="../std/string.md#std_string_String">std::string::String</a>, parent_post_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>: bool, revenue_redirect_to: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, revenue_redirect_percentage: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, access: <a href="../social_contracts/post.md#social_contracts_post_PostAccess">social_contracts::post::PostAccess</a>, promotion_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, enable_spt: bool, <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>: u8, <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>: <b>address</b>, <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, organization_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>: u8, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_post_internal">create_post_internal</a>(owner: <b>address</b>, profile_id: <b>address</b>, platform_id: <b>address</b>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>: vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, media_option: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../myso/url.md#myso_url_Url">myso::url::Url</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, post_type: <a href="../std/string.md#std_string_String">std::string::String</a>, parent_post_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>: bool, access: <a href="../social_contracts/post.md#social_contracts_post_PostAccess">social_contracts::post::PostAccess</a>, promotion_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, enable_spt: bool, <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>: <b>address</b>, <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, organization_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>: u8, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>
 </code></pre>
 
 
@@ -5281,6 +5575,7 @@ Internal function to create a post object (not yet shared).
     profile_id: <b>address</b>,
     platform_id: <b>address</b>,
     content: String,
+    <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>: vector&lt;ID&gt;,
     media_option: Option&lt;vector&lt;Url&gt;&gt;,
     mentions: Option&lt;vector&lt;<b>address</b>&gt;&gt;,
     metadata_json: Option&lt;String&gt;,
@@ -5291,12 +5586,9 @@ Internal function to create a post object (not yet shared).
     <a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>: bool,
     <a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>: bool,
     <a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>: bool,
-    revenue_redirect_to: Option&lt;<b>address</b>&gt;,
-    revenue_redirect_percentage: Option&lt;u64&gt;,
     access: <a href="../social_contracts/post.md#social_contracts_post_PostAccess">PostAccess</a>,
     promotion_id: Option&lt;<b>address</b>&gt;,
     enable_spt: bool,
-    <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>: u8,
     <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>: <b>address</b>,
     <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>: Option&lt;ID&gt;,
     organization_id: Option&lt;ID&gt;,
@@ -5304,6 +5596,8 @@ Internal function to create a post object (not yet shared).
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ): <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a> {
+    <b>let</b> asset_len = vector::length(&<a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>);
+    <b>assert</b>!(asset_len &lt;= <a href="../social_contracts/post.md#social_contracts_post_MAX_MEDIA_URLS">MAX_MEDIA_URLS</a>, <a href="../social_contracts/post.md#social_contracts_post_ETooManyMediaUrls">ETooManyMediaUrls</a>);
     // Build permissions bitfield
     <b>let</b> <b>mut</b> permissions: u8 = 0;
     <b>if</b> (<a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>) { permissions = permissions | <a href="../social_contracts/post.md#social_contracts_post_PERMISSION_ALLOW_COMMENTS">PERMISSION_ALLOW_COMMENTS</a> };
@@ -5317,6 +5611,7 @@ Internal function to create a post object (not yet shared).
         profile_id,
         platform_id,
         content,
+        <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>,
         media: media_option,
         mentions,
         metadata_json,
@@ -5331,16 +5626,13 @@ Internal function to create a post object (not yet shared).
         user_reactions: table::new(ctx),
         reaction_counts: table::new(ctx),
         permissions,
-        revenue_redirect_to,
-        revenue_redirect_percentage,
-        poc_badge_snapshot: option::none(),
-        poc_badge_object_id: option::none(),
+        <a href="../social_contracts/post.md#social_contracts_post_composition_status">composition_status</a>: <a href="../social_contracts/media_asset.md#social_contracts_media_asset_composition_none">media_asset::composition_none</a>(),
+        <a href="../social_contracts/post.md#social_contracts_post_monetization_status">monetization_status</a>: <a href="../social_contracts/media_asset.md#social_contracts_media_asset_monetization_none">media_asset::monetization_none</a>(),
+        <a href="../social_contracts/post.md#social_contracts_post_composition_badge">composition_badge</a>: option::none(),
         access,
         promotion_id,
         enable_spt,
-        spt_id: option::none(), // Will be set when SPT pool is created
-        <a href="../social_contracts/post.md#social_contracts_post_poc_outcome">poc_outcome</a>: <a href="../social_contracts/post.md#social_contracts_post_POC_OUTCOME_NONE">POC_OUTCOME_NONE</a>,
-        <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>,
+        spt_id: option::none(),
         <a href="../social_contracts/post.md#social_contracts_post_version">version</a>: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     };
     <a href="../social_contracts/post.md#social_contracts_post_attach_post_attribution">attach_post_attribution</a>(
@@ -5351,6 +5643,45 @@ Internal function to create a post object (not yet shared).
         <a href="../social_contracts/post.md#social_contracts_post_action_identity_class">action_identity_class</a>,
     );
     <a href="../social_contracts/post.md#social_contracts_post">post</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_emit_post_media_asset_usages"></a>
+
+## Function `emit_post_media_asset_usages`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_emit_post_media_asset_usages">emit_post_media_asset_usages</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_emit_post_media_asset_usages">emit_post_media_asset_usages</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>, clock: &Clock) {
+    <b>let</b> post_id = object::uid_to_address(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id);
+    <b>let</b> assets = &<a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>;
+    <b>let</b> len = vector::length(assets);
+    <b>let</b> <b>mut</b> i = 0;
+    <b>while</b> (i &lt; len) {
+        <b>let</b> asset_id = *vector::borrow(assets, i);
+        <a href="../social_contracts/media_asset.md#social_contracts_media_asset_emit_media_asset_used">media_asset::emit_media_asset_used</a>(
+            post_id,
+            <a href="../social_contracts/media_asset.md#social_contracts_media_asset_container_post">media_asset::container_post</a>(),
+            asset_id,
+            <a href="../social_contracts/media_asset.md#social_contracts_media_asset_usage_social_post">media_asset::usage_social_post</a>(),
+            (i <b>as</b> u8),
+            clock,
+        );
+        i = i + 1;
+    };
 }
 </code></pre>
 
@@ -5529,7 +5860,7 @@ Cross-layer MyData access binding when the listing object is supplied in the PTB
 Create a new post with interaction permissions.
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_post_entry_body">create_post_entry_body</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spt: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spot: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, access: <a href="../social_contracts/post.md#social_contracts_post_PostAccess">social_contracts::post::PostAccess</a>, mydata_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">social_contracts::mydata::MyDataRegistry</a>, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_post_entry_body">create_post_entry_body</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>: vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spt: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spot: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, access: <a href="../social_contracts/post.md#social_contracts_post_PostAccess">social_contracts::post::PostAccess</a>, mydata_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">social_contracts::mydata::MyDataRegistry</a>, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -5546,6 +5877,7 @@ Create a new post with interaction permissions.
     config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a>,
     memory_config: &MemoryConfig,
     content: String,
+    <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>: vector&lt;ID&gt;,
     <b>mut</b> media_urls: Option&lt;vector&lt;String&gt;&gt;,
     mentions: Option&lt;vector&lt;<b>address</b>&gt;&gt;,
     metadata_json: Option&lt;String&gt;,
@@ -5652,12 +5984,13 @@ Create a new post with interaction permissions.
     <b>let</b> _ = enable_spot;
     // Convert media URLs to strings <b>for</b> event (before moving media_option)
     <b>let</b> media_urls_for_event = <a href="../social_contracts/post.md#social_contracts_post_convert_urls_to_strings">convert_urls_to_strings</a>(&media_option);
-    <b>let</b> <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> = <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_NONE">POC_REDIRECT_NONE</a>;
+    <b>let</b> media_asset_ids_for_event = <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>;
     <b>let</b> <a href="../social_contracts/post.md#social_contracts_post">post</a> = <a href="../social_contracts/post.md#social_contracts_post_create_post_internal">create_post_internal</a>(
         owner,
         profile_id,
         platform_id,
         content,
+        <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>,
         media_option,
         mentions,
         metadata_json,
@@ -5668,12 +6001,9 @@ Create a new post with interaction permissions.
         final_allow_reposts,
         final_allow_quotes,
         final_allow_tips,
-        option::none(), // revenue_redirect_to
-        option::none(), // revenue_redirect_percentage
         access,
         option::none(), // promotion_id
         <b>false</b>,
-        <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>,
         <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
         <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>,
         organization_id,
@@ -5681,6 +6011,7 @@ Create a new post with interaction permissions.
         clock,
         ctx
     );
+    <a href="../social_contracts/post.md#social_contracts_post_emit_post_media_asset_usages">emit_post_media_asset_usages</a>(&<a href="../social_contracts/post.md#social_contracts_post">post</a>, clock);
     <b>let</b> post_id = <a href="../social_contracts/post.md#social_contracts_post_share_post">share_post</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
     <b>let</b> permissions_for_event = <a href="../social_contracts/post.md#social_contracts_post_permissions_bitfield">permissions_bitfield</a>(
         final_allow_comments,
@@ -5699,15 +6030,15 @@ Create a new post with interaction permissions.
         post_type: string::utf8(<a href="../social_contracts/post.md#social_contracts_post_POST_TYPE_STANDARD">POST_TYPE_STANDARD</a>),
         parent_post_id: option::none(),
         mentions,
+        <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>: media_asset_ids_for_event,
         media_urls: media_urls_for_event,
         metadata_json,
         access,
         promotion_id: option::none(),
-        revenue_redirect_to: option::none(),
-        revenue_redirect_percentage: option::none(),
+        <a href="../social_contracts/post.md#social_contracts_post_composition_status">composition_status</a>: <a href="../social_contracts/media_asset.md#social_contracts_media_asset_composition_none">media_asset::composition_none</a>(),
+        <a href="../social_contracts/post.md#social_contracts_post_monetization_status">monetization_status</a>: <a href="../social_contracts/media_asset.md#social_contracts_media_asset_monetization_none">media_asset::monetization_none</a>(),
         enable_spt: <b>false</b>,
         spt_id: option::none(),
-        <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>,
         <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
         <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>,
         organization_id,
@@ -5728,7 +6059,7 @@ Build an unsared standard post with <code>enable_spt = <b>true</b></code> for SP
 Caller bootstraps the reservation pool, sets <code>spt_id</code>, then <code><a href="../social_contracts/post.md#social_contracts_post_share_and_emit_spt_post">share_and_emit_spt_post</a></code>.
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_post_object_for_spt">create_post_object_for_spt</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, access: <a href="../social_contracts/post.md#social_contracts_post_PostAccess">social_contracts::post::PostAccess</a>, mydata_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">social_contracts::mydata::MyDataRegistry</a>, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_post_object_for_spt">create_post_object_for_spt</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>: vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, access: <a href="../social_contracts/post.md#social_contracts_post_PostAccess">social_contracts::post::PostAccess</a>, mydata_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">social_contracts::mydata::MyDataRegistry</a>, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>
 </code></pre>
 
 
@@ -5745,6 +6076,7 @@ Caller bootstraps the reservation pool, sets <code>spt_id</code>, then <code><a 
     config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a>,
     memory_config: &MemoryConfig,
     content: String,
+    <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>: vector&lt;ID&gt;,
     <b>mut</b> media_urls: Option&lt;vector&lt;String&gt;&gt;,
     mentions: Option&lt;vector&lt;<b>address</b>&gt;&gt;,
     metadata_json: Option&lt;String&gt;,
@@ -5834,6 +6166,7 @@ Caller bootstraps the reservation pool, sets <code>spt_id</code>, then <code><a 
         profile_id,
         platform_id,
         content,
+        <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>,
         media_option,
         mentions,
         metadata_json,
@@ -5844,12 +6177,9 @@ Caller bootstraps the reservation pool, sets <code>spt_id</code>, then <code><a 
         final_allow_reposts,
         final_allow_quotes,
         final_allow_tips,
-        option::none(),
-        option::none(),
         access,
         option::none(),
         <b>true</b>, // enable_spt
-        <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_NONE">POC_REDIRECT_NONE</a>,
         <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
         <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>,
         organization_id,
@@ -5871,7 +6201,7 @@ Caller bootstraps the reservation pool, sets <code>spt_id</code>, then <code><a 
 Set reservation-pool <code>spt_id</code>, share the post, and emit <code><a href="../social_contracts/post.md#social_contracts_post_PostCreatedEvent">PostCreatedEvent</a></code> with SPT fields filled.
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_share_and_emit_spt_post">share_and_emit_spt_post</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, spt_pool_id: <b>address</b>): <b>address</b>
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_share_and_emit_spt_post">share_and_emit_spt_post</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, spt_pool_id: <b>address</b>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>): <b>address</b>
 </code></pre>
 
 
@@ -5880,10 +6210,12 @@ Set reservation-pool <code>spt_id</code>, share the post, and emit <code><a href
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_share_and_emit_spt_post">share_and_emit_spt_post</a>(<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>: <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>, spt_pool_id: <b>address</b>): <b>address</b> {
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_share_and_emit_spt_post">share_and_emit_spt_post</a>(<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>: <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>, spt_pool_id: <b>address</b>, clock: &Clock): <b>address</b> {
     <a href="../social_contracts/post.md#social_contracts_post_set_enable_spt">set_enable_spt</a>(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>, <b>true</b>);
     <a href="../social_contracts/post.md#social_contracts_post_set_spt_id">set_spt_id</a>(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>, spt_pool_id);
+    <a href="../social_contracts/post.md#social_contracts_post_emit_post_media_asset_usages">emit_post_media_asset_usages</a>(&<a href="../social_contracts/post.md#social_contracts_post">post</a>, clock);
     <b>let</b> media_urls_for_event = <a href="../social_contracts/post.md#social_contracts_post_convert_urls_to_strings">convert_urls_to_strings</a>(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.media);
+    <b>let</b> media_asset_ids_for_event = <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>;
     <b>let</b> attr = <a href="../social_contracts/post.md#social_contracts_post_post_attribution">post_attribution</a>(&<a href="../social_contracts/post.md#social_contracts_post">post</a>);
     <b>let</b> post_id = object::uid_to_address(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id);
     event::emit(<a href="../social_contracts/post.md#social_contracts_post_PostCreatedEvent">PostCreatedEvent</a> {
@@ -5896,15 +6228,15 @@ Set reservation-pool <code>spt_id</code>, share the post, and emit <code><a href
         post_type: <a href="../social_contracts/post.md#social_contracts_post">post</a>.post_type,
         parent_post_id: <a href="../social_contracts/post.md#social_contracts_post">post</a>.parent_post_id,
         mentions: <a href="../social_contracts/post.md#social_contracts_post">post</a>.mentions,
+        <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>: media_asset_ids_for_event,
         media_urls: media_urls_for_event,
         metadata_json: <a href="../social_contracts/post.md#social_contracts_post">post</a>.metadata_json,
         access: <a href="../social_contracts/post.md#social_contracts_post">post</a>.access,
         promotion_id: <a href="../social_contracts/post.md#social_contracts_post">post</a>.promotion_id,
-        revenue_redirect_to: <a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_to,
-        revenue_redirect_percentage: <a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_percentage,
+        <a href="../social_contracts/post.md#social_contracts_post_composition_status">composition_status</a>: <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_composition_status">composition_status</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_monetization_status">monetization_status</a>: <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_monetization_status">monetization_status</a>,
         enable_spt: <b>true</b>,
         spt_id: option::some(spt_pool_id),
-        <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>: <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>,
         <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>: attr.<a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
         <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>: attr.<a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>,
         organization_id: attr.organization_id,
@@ -5926,7 +6258,7 @@ Set reservation-pool <code>spt_id</code>, share the post, and emit <code><a href
 Create a new post; caller supplies access via kind + optional service/mydata ids.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_post">create_post</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spt: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spot: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, access_kind: u8, subscription_service_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, linked_mydata_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, <a href="../social_contracts/post.md#social_contracts_post_subscription_min_tier_level">subscription_min_tier_level</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, mydata_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">social_contracts::mydata::MyDataRegistry</a>, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_post">create_post</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>: vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spt: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spot: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, access_kind: u8, subscription_service_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, linked_mydata_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, <a href="../social_contracts/post.md#social_contracts_post_subscription_min_tier_level">subscription_min_tier_level</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, mydata_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">social_contracts::mydata::MyDataRegistry</a>, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -5943,6 +6275,7 @@ Create a new post; caller supplies access via kind + optional service/mydata ids
     config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a>,
     memory_config: &MemoryConfig,
     content: String,
+    <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>: vector&lt;ID&gt;,
     media_urls: Option&lt;vector&lt;String&gt;&gt;,
     mentions: Option&lt;vector&lt;<b>address</b>&gt;&gt;,
     metadata_json: Option&lt;String&gt;,
@@ -5976,6 +6309,7 @@ Create a new post; caller supplies access via kind + optional service/mydata ids
         config,
         memory_config,
         content,
+        <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>,
         media_urls,
         mentions,
         metadata_json,
@@ -6043,7 +6377,7 @@ Optional object binding for [<code><a href="../social_contracts/post.md#social_c
 Create a public post (no subscription or marketplace gate).
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_public_post">create_public_post</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spt: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spot: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, mydata_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">social_contracts::mydata::MyDataRegistry</a>, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_public_post">create_public_post</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>: vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spt: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spot: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, mydata_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">social_contracts::mydata::MyDataRegistry</a>, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -6060,6 +6394,7 @@ Create a public post (no subscription or marketplace gate).
     config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a>,
     memory_config: &MemoryConfig,
     content: String,
+    <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>: vector&lt;ID&gt;,
     media_urls: Option&lt;vector&lt;String&gt;&gt;,
     mentions: Option&lt;vector&lt;<b>address</b>&gt;&gt;,
     metadata_json: Option&lt;String&gt;,
@@ -6083,6 +6418,7 @@ Create a public post (no subscription or marketplace gate).
         config,
         memory_config,
         content,
+        <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>,
         media_urls,
         mentions,
         metadata_json,
@@ -6113,7 +6449,7 @@ Create a public post (no subscription or marketplace gate).
 Create a profile-subscription-gated post (optional linked MyData for encrypted body).
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_profile_subscription_post">create_profile_subscription_post</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spt: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spot: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, min_tier_level: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, mydata_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, mydata_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">social_contracts::mydata::MyDataRegistry</a>, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_profile_subscription_post">create_profile_subscription_post</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>: vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spt: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spot: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, min_tier_level: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, mydata_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, mydata_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">social_contracts::mydata::MyDataRegistry</a>, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -6130,6 +6466,7 @@ Create a profile-subscription-gated post (optional linked MyData for encrypted b
     config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a>,
     memory_config: &MemoryConfig,
     content: String,
+    <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>: vector&lt;ID&gt;,
     media_urls: Option&lt;vector&lt;String&gt;&gt;,
     mentions: Option&lt;vector&lt;<b>address</b>&gt;&gt;,
     metadata_json: Option&lt;String&gt;,
@@ -6174,6 +6511,7 @@ Create a profile-subscription-gated post (optional linked MyData for encrypted b
         config,
         memory_config,
         content,
+        <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>,
         media_urls,
         mentions,
         metadata_json,
@@ -6204,7 +6542,7 @@ Create a profile-subscription-gated post (optional linked MyData for encrypted b
 Profile-subscription post with linked MyData object binding in the same PTB.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_profile_subscription_post_with_mydata">create_profile_subscription_post_with_mydata</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spt: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spot: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, min_tier_level: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, mydata_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">social_contracts::mydata::MyDataRegistry</a>, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_profile_subscription_post_with_mydata">create_profile_subscription_post_with_mydata</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>: vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spt: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spot: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, min_tier_level: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, mydata_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">social_contracts::mydata::MyDataRegistry</a>, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -6221,6 +6559,7 @@ Profile-subscription post with linked MyData object binding in the same PTB.
     config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a>,
     memory_config: &MemoryConfig,
     content: String,
+    <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>: vector&lt;ID&gt;,
     media_urls: Option&lt;vector&lt;String&gt;&gt;,
     mentions: Option&lt;vector&lt;<b>address</b>&gt;&gt;,
     metadata_json: Option&lt;String&gt;,
@@ -6267,6 +6606,7 @@ Profile-subscription post with linked MyData object binding in the same PTB.
         config,
         memory_config,
         content,
+        <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>,
         media_urls,
         mentions,
         metadata_json,
@@ -6297,7 +6637,7 @@ Profile-subscription post with linked MyData object binding in the same PTB.
 Create a marketplace one-time purchase gated post (requires linked MyData listing).
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_marketplace_one_time_post">create_marketplace_one_time_post</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spt: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spot: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, mydata_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">social_contracts::mydata::MyDataRegistry</a>, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_marketplace_one_time_post">create_marketplace_one_time_post</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>: vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spt: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spot: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, mydata_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">social_contracts::mydata::MyDataRegistry</a>, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -6314,6 +6654,7 @@ Create a marketplace one-time purchase gated post (requires linked MyData listin
     config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a>,
     memory_config: &MemoryConfig,
     content: String,
+    <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>: vector&lt;ID&gt;,
     media_urls: Option&lt;vector&lt;String&gt;&gt;,
     mentions: Option&lt;vector&lt;<b>address</b>&gt;&gt;,
     metadata_json: Option&lt;String&gt;,
@@ -6353,6 +6694,7 @@ Create a marketplace one-time purchase gated post (requires linked MyData listin
         config,
         memory_config,
         content,
+        <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>,
         media_urls,
         mentions,
         metadata_json,
@@ -6537,7 +6879,7 @@ If content is provided, it's treated as a quote repost
 If content is empty/none, it's treated as a standard repost
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_repost">create_repost</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, original_post: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, content: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spt: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spot: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_repost">create_repost</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, original_post: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, content: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>: vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spt: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spot: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -6555,6 +6897,7 @@ If content is empty/none, it's treated as a standard repost
     memory_config: &MemoryConfig,
     original_post: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
     <b>mut</b> content: Option&lt;String&gt;,
+    <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>: vector&lt;ID&gt;,
     <b>mut</b> media_urls: Option&lt;vector&lt;String&gt;&gt;,
     mentions: Option&lt;vector&lt;<b>address</b>&gt;&gt;,
     metadata_json: Option&lt;String&gt;,
@@ -6714,12 +7057,13 @@ If content is empty/none, it's treated as a standard repost
     <b>let</b> _ = enable_spot;
     // Convert media URLs to strings <b>for</b> event (before moving media_option)
     <b>let</b> media_urls_for_event = <a href="../social_contracts/post.md#social_contracts_post_convert_urls_to_strings">convert_urls_to_strings</a>(&media_option);
-    <b>let</b> <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> = <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_NONE">POC_REDIRECT_NONE</a>;
+    <b>let</b> media_asset_ids_for_event = <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>;
     <b>let</b> <a href="../social_contracts/post.md#social_contracts_post">post</a> = <a href="../social_contracts/post.md#social_contracts_post_create_post_internal">create_post_internal</a>(
         owner,
         profile_id,
         platform_id,
         content_string,
+        <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>,
         media_option,
         mentions,
         metadata_json,
@@ -6730,12 +7074,9 @@ If content is empty/none, it's treated as a standard repost
         final_allow_reposts,
         final_allow_quotes,
         final_allow_tips,
-        option::none(), // revenue_redirect_to
-        option::none(), // revenue_redirect_percentage
         PostAccess::Public,
         option::none(), // promotion_id
         <b>false</b>,
-        <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>,
         <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
         <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>,
         organization_id,
@@ -6750,6 +7091,7 @@ If content is empty/none, it's treated as a standard repost
         final_allow_quotes,
         final_allow_tips,
     );
+    <a href="../social_contracts/post.md#social_contracts_post_emit_post_media_asset_usages">emit_post_media_asset_usages</a>(&<a href="../social_contracts/post.md#social_contracts_post">post</a>, clock);
     <b>let</b> post_id = <a href="../social_contracts/post.md#social_contracts_post_share_post">share_post</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
     event::emit(<a href="../social_contracts/post.md#social_contracts_post_PostCreatedEvent">PostCreatedEvent</a> {
         post_id,
@@ -6761,15 +7103,15 @@ If content is empty/none, it's treated as a standard repost
         post_type,
         parent_post_id: option::some(original_post_id),
         mentions,
+        <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>: media_asset_ids_for_event,
         media_urls: media_urls_for_event,
         metadata_json,
         access: PostAccess::Public,
         promotion_id: option::none(),
-        revenue_redirect_to: option::none(),
-        revenue_redirect_percentage: option::none(),
+        <a href="../social_contracts/post.md#social_contracts_post_composition_status">composition_status</a>: <a href="../social_contracts/media_asset.md#social_contracts_media_asset_composition_none">media_asset::composition_none</a>(),
+        <a href="../social_contracts/post.md#social_contracts_post_monetization_status">monetization_status</a>: <a href="../social_contracts/media_asset.md#social_contracts_media_asset_monetization_none">media_asset::monetization_none</a>(),
         enable_spt: <b>false</b>,
         spt_id: option::none(),
-        <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>,
         <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
         <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>,
         organization_id,
@@ -6821,6 +7163,7 @@ Delete a post owned by the caller
         profile_id: _,
         platform_id: _,
         content: _,
+        <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>: _,
         media: _,
         mentions: _,
         metadata_json: _,
@@ -6835,16 +7178,13 @@ Delete a post owned by the caller
         user_reactions,
         reaction_counts,
         permissions: _,
-        revenue_redirect_to: _,
-        revenue_redirect_percentage: _,
-        poc_badge_snapshot: _,
-        poc_badge_object_id: _,
+        <a href="../social_contracts/post.md#social_contracts_post_composition_status">composition_status</a>: _,
+        <a href="../social_contracts/post.md#social_contracts_post_monetization_status">monetization_status</a>: _,
+        <a href="../social_contracts/post.md#social_contracts_post_composition_badge">composition_badge</a>: _,
         access: _,
         promotion_id: _,
         enable_spt: _,
         spt_id: _,
-        <a href="../social_contracts/post.md#social_contracts_post_poc_outcome">poc_outcome</a>: _,
-        <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>: _,
         <a href="../social_contracts/post.md#social_contracts_post_version">version</a>: _,
     } = <a href="../social_contracts/post.md#social_contracts_post">post</a>;
     // Clean up associated data structures
@@ -7063,10 +7403,8 @@ If the user already has the exact same reaction, it will be removed (toggle beha
 
 ## Function `tip_post`
 
-Tip a post creator with coin type <code>T</code>. When this post uses vault-mode PoC redirect (<code><a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_ESCROW">POC_REDIRECT_ESCROW</a></code>)
-with a non-zero redirected slice for the given <code>amount</code>, <code>beneficiary_vault</code> must be the shared vault whose
-beneficiary is <code><a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_to</code> (use an indexer query such as <code>pocBeneficiaryVaultByBeneficiary</code>, not
-necessarily the post owner’s vault).
+Tip a post creator with coin type <code>T</code>. When manifest entries use escrow payout mode for this
+<code>amount</code>, <code>beneficiary_vault</code> must match the beneficiary's shared vault.
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_post">tip_post</a>&lt;T&gt;(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, beneficiary_vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, coins: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, amount: u64, min_vault_deposit_amount: u64, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
@@ -7100,7 +7438,7 @@ necessarily the post owner’s vault).
     <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>), <a href="../social_contracts/post.md#social_contracts_post_ETipsNotAllowed">ETipsNotAllowed</a>);
     <b>let</b> post_owner_addr = <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner;
     <b>let</b> post_oid = object::uid_to_address(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id);
-    <b>let</b> actual_received = <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_coin">apply_poc_redirection_coin</a>&lt;T&gt;(
+    <b>let</b> actual_received = <a href="../social_contracts/post.md#social_contracts_post_apply_revenue_manifest_coin">apply_revenue_manifest_coin</a>&lt;T&gt;(
         <a href="../social_contracts/post.md#social_contracts_post">post</a>,
         beneficiary_vault,
         post_owner_addr,
@@ -7137,8 +7475,7 @@ necessarily the post owner’s vault).
 ## Function `tip_post_simple`
 
 Like [<code><a href="../social_contracts/post.md#social_contracts_post_tip_post">tip_post</a></code>] but without a <code>PoCBeneficiaryVault</code> argument. Only for posts where
-[<code><a href="../social_contracts/post.md#social_contracts_post_tip_post_requires_beneficiary_vault_for_amount">tip_post_requires_beneficiary_vault_for_amount</a></code>] is false for this <code>amount</code> (e.g. no redirect,
-wallet redirect, zero redirect %, or escrow with a zero redirected slice from rounding).
+[<code><a href="../social_contracts/post.md#social_contracts_post_tip_post_requires_beneficiary_vault_for_amount">tip_post_requires_beneficiary_vault_for_amount</a></code>] is false for this <code>amount</code>.
 If an escrow deposit is required, aborts with [<code><a href="../social_contracts/post.md#social_contracts_post_ETipPostRequiresBeneficiaryVault">ETipPostRequiresBeneficiaryVault</a></code>].
 
 
@@ -7174,7 +7511,7 @@ If an escrow deposit is required, aborts with [<code><a href="../social_contract
     <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>), <a href="../social_contracts/post.md#social_contracts_post_ETipsNotAllowed">ETipsNotAllowed</a>);
     <b>let</b> post_owner_addr = <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner;
     <b>let</b> post_oid = object::uid_to_address(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id);
-    <b>let</b> actual_received = <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_coin_without_beneficiary_vault">apply_poc_redirection_coin_without_beneficiary_vault</a>&lt;T&gt;(
+    <b>let</b> actual_received = <a href="../social_contracts/post.md#social_contracts_post_apply_revenue_manifest_coin_without_beneficiary_vault">apply_revenue_manifest_coin_without_beneficiary_vault</a>&lt;T&gt;(
         <a href="../social_contracts/post.md#social_contracts_post">post</a>,
         post_owner_addr,
         amount,
@@ -7203,14 +7540,14 @@ If an escrow deposit is required, aborts with [<code><a href="../social_contract
 
 </details>
 
-<a name="social_contracts_post_apply_poc_redirection_coin"></a>
+<a name="social_contracts_post_apply_revenue_manifest_coin"></a>
 
-## Function `apply_poc_redirection_coin`
+## Function `apply_revenue_manifest_coin`
 
-PoC derivative redirect for tips and fees: escrow deposits into <code>PoCBeneficiaryVault</code> or wallet redirect.
+Manifest-based revenue split for tips and fees on the creator-attributable pool.
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_coin">apply_poc_redirection_coin</a>&lt;T&gt;(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, beneficiary_vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, intended_recipient: <b>address</b>, amount: u64, coins: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, tipper: <b>address</b>, object_id: <b>address</b>, is_post_event: bool, min_vault_deposit_amount: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): u64
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_apply_revenue_manifest_coin">apply_revenue_manifest_coin</a>&lt;T&gt;(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, beneficiary_vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, intended_recipient: <b>address</b>, amount: u64, coins: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, tipper: <b>address</b>, object_id: <b>address</b>, is_post_event: bool, min_vault_deposit_amount: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): u64
 </code></pre>
 
 
@@ -7219,7 +7556,7 @@ PoC derivative redirect for tips and fees: escrow deposits into <code>PoCBenefic
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_coin">apply_poc_redirection_coin</a>&lt;T&gt;(
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_apply_revenue_manifest_coin">apply_revenue_manifest_coin</a>&lt;T&gt;(
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
     beneficiary_vault: &<b>mut</b> PoCBeneficiaryVault,
     intended_recipient: <b>address</b>,
@@ -7237,58 +7574,74 @@ PoC derivative redirect for tips and fees: escrow deposits into <code>PoCBenefic
         transfer::public_transfer(tip_coins, intended_recipient);
         <b>return</b> amount
     };
-    <b>let</b> has_derivative_redirect = option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_percentage) &&
-        <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> != <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_NONE">POC_REDIRECT_NONE</a> &&
-        (<a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> == <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_ESCROW">POC_REDIRECT_ESCROW</a> ||
-            option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_to));
-    <b>if</b> (!has_derivative_redirect) {
+    <b>if</b> (!<a href="../social_contracts/post.md#social_contracts_post_monetization_enabled">monetization_enabled</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>)) {
         <b>let</b> tip_coins = coin::split(coins, amount, ctx);
         transfer::public_transfer(tip_coins, intended_recipient);
         <b>return</b> amount
     };
-    <b>let</b> redirect_percentage = *option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_percentage);
-    <b>if</b> (redirect_percentage == 0) {
+    <b>let</b> manifest_opt = <a href="../social_contracts/post.md#social_contracts_post_revenue_manifest">revenue_manifest</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    <b>if</b> (option::is_none(&manifest_opt)) {
         <b>let</b> tip_coins = coin::split(coins, amount, ctx);
         transfer::public_transfer(tip_coins, intended_recipient);
         <b>return</b> amount
     };
-    <b>let</b> redirected_amount = (amount * redirect_percentage) / 100;
-    <b>let</b> remaining_amount = amount - redirected_amount;
+    <b>let</b> manifest = option::borrow(&manifest_opt);
+    <b>let</b> entries = <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entries">media_asset::manifest_entries</a>(manifest);
+    <b>let</b> len = vector::length(entries);
+    <b>let</b> bps_total = <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_bps_total">media_asset::manifest_bps_total</a>();
     <b>let</b> coin_type = type_name::with_defining_ids&lt;T&gt;();
     <b>let</b> <b>mut</b> tip_coins = coin::split(coins, amount, ctx);
-    <b>if</b> (redirected_amount &gt; 0) {
-        <b>let</b> redirected_coins = coin::split(&<b>mut</b> tip_coins, redirected_amount, ctx);
-        <b>if</b> (<a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> == <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_ESCROW">POC_REDIRECT_ESCROW</a>) {
-            <b>let</b> ben = *option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_to);
-            <b>assert</b>!(<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_beneficiary_address">poc_vault::beneficiary_address</a>(beneficiary_vault) == ben, <a href="../social_contracts/post.md#social_contracts_post_EWrongBeneficiaryVault">EWrongBeneficiaryVault</a>);
-            <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_deposit_coin">poc_vault::deposit_coin</a>&lt;T&gt;(
-                beneficiary_vault,
-                ben,
-                redirected_coins,
-                option::some(object_id),
-                min_vault_deposit_amount,
-                clock,
-                ctx
-            );
-        } <b>else</b> {
-            <b>let</b> pay_to = *option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_to);
-            transfer::public_transfer(redirected_coins, pay_to);
-            event::emit(<a href="../social_contracts/post.md#social_contracts_post_TipEvent">TipEvent</a> {
-                object_id,
-                from: tipper,
-                to: pay_to,
-                amount: redirected_amount,
-                coin_type,
-                is_post: is_post_event,
-            });
+    <b>let</b> <b>mut</b> owner_received = 0u64;
+    <b>let</b> <b>mut</b> i = 0;
+    <b>while</b> (i &lt; len) {
+        <b>let</b> e = vector::borrow(entries, i);
+        <b>let</b> slice = (amount * <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_share_bps">media_asset::manifest_entry_share_bps</a>(e)) / bps_total;
+        <b>if</b> (slice &gt; 0) {
+            <b>let</b> source_opt = <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_source_asset_id">media_asset::manifest_entry_source_asset_id</a>(e);
+            <b>let</b> skip_payout = <b>if</b> (option::is_some(&source_opt)) {
+                !<a href="../social_contracts/post.md#social_contracts_post_usage_is_payout_permitted_for_asset">usage_is_payout_permitted_for_asset</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, *option::borrow(&source_opt))
+            } <b>else</b> {
+                <b>false</b>
+            };
+            <b>if</b> (!skip_payout) {
+                <b>let</b> pay_coins = coin::split(&<b>mut</b> tip_coins, slice, ctx);
+                <b>if</b> (<a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_payout_mode">media_asset::manifest_entry_payout_mode</a>(e) == <a href="../social_contracts/media_asset.md#social_contracts_media_asset_payout_escrow">media_asset::payout_escrow</a>()) {
+                    <b>assert</b>!(<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_beneficiary_address">poc_vault::beneficiary_address</a>(beneficiary_vault) == <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_beneficiary">media_asset::manifest_entry_beneficiary</a>(e), <a href="../social_contracts/post.md#social_contracts_post_EWrongBeneficiaryVault">EWrongBeneficiaryVault</a>);
+                    <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_deposit_coin">poc_vault::deposit_coin</a>&lt;T&gt;(
+                        beneficiary_vault,
+                        <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_beneficiary">media_asset::manifest_entry_beneficiary</a>(e),
+                        pay_coins,
+                        option::some(object_id),
+                        min_vault_deposit_amount,
+                        clock,
+                        ctx
+                    );
+                } <b>else</b> {
+                    transfer::public_transfer(pay_coins, <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_beneficiary">media_asset::manifest_entry_beneficiary</a>(e));
+                    event::emit(<a href="../social_contracts/post.md#social_contracts_post_TipEvent">TipEvent</a> {
+                        object_id,
+                        from: tipper,
+                        to: <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_beneficiary">media_asset::manifest_entry_beneficiary</a>(e),
+                        amount: slice,
+                        coin_type,
+                        is_post: is_post_event,
+                    });
+                };
+                <b>if</b> (<a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_beneficiary">media_asset::manifest_entry_beneficiary</a>(e) == intended_recipient) {
+                    owner_received = owner_received + slice;
+                };
+            };
         };
+        i = i + 1;
     };
-    <b>if</b> (remaining_amount &gt; 0) {
+    <b>let</b> remainder = coin::value(&tip_coins);
+    <b>if</b> (remainder &gt; 0) {
         transfer::public_transfer(tip_coins, intended_recipient);
+        owner_received = owner_received + remainder;
     } <b>else</b> {
         coin::destroy_zero(tip_coins);
     };
-    remaining_amount
+    owner_received
 }
 </code></pre>
 
@@ -7296,14 +7649,14 @@ PoC derivative redirect for tips and fees: escrow deposits into <code>PoCBenefic
 
 </details>
 
-<a name="social_contracts_post_apply_poc_redirection_coin_without_beneficiary_vault"></a>
+<a name="social_contracts_post_apply_revenue_manifest_coin_without_beneficiary_vault"></a>
 
-## Function `apply_poc_redirection_coin_without_beneficiary_vault`
+## Function `apply_revenue_manifest_coin_without_beneficiary_vault`
 
-Same as [<code><a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_coin">apply_poc_redirection_coin</a></code>] for tip paths that never deposit into an escrow vault for this <code>amount</code>.
+Same as [<code><a href="../social_contracts/post.md#social_contracts_post_apply_revenue_manifest_coin">apply_revenue_manifest_coin</a></code>] for tip paths that never deposit into escrow for this <code>amount</code>.
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_coin_without_beneficiary_vault">apply_poc_redirection_coin_without_beneficiary_vault</a>&lt;T&gt;(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, intended_recipient: <b>address</b>, amount: u64, coins: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, tipper: <b>address</b>, object_id: <b>address</b>, is_post_event: bool, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): u64
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_apply_revenue_manifest_coin_without_beneficiary_vault">apply_revenue_manifest_coin_without_beneficiary_vault</a>&lt;T&gt;(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, intended_recipient: <b>address</b>, amount: u64, coins: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, tipper: <b>address</b>, object_id: <b>address</b>, is_post_event: bool, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): u64
 </code></pre>
 
 
@@ -7312,7 +7665,7 @@ Same as [<code><a href="../social_contracts/post.md#social_contracts_post_apply_
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_coin_without_beneficiary_vault">apply_poc_redirection_coin_without_beneficiary_vault</a>&lt;T&gt;(
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_apply_revenue_manifest_coin_without_beneficiary_vault">apply_revenue_manifest_coin_without_beneficiary_vault</a>&lt;T&gt;(
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
     intended_recipient: <b>address</b>,
     amount: u64,
@@ -7327,48 +7680,64 @@ Same as [<code><a href="../social_contracts/post.md#social_contracts_post_apply_
         transfer::public_transfer(tip_coins, intended_recipient);
         <b>return</b> amount
     };
-    <b>let</b> has_derivative_redirect = option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_percentage) &&
-        <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> != <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_NONE">POC_REDIRECT_NONE</a> &&
-        (<a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> == <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_ESCROW">POC_REDIRECT_ESCROW</a> ||
-            option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_to));
-    <b>if</b> (!has_derivative_redirect) {
+    <b>if</b> (!<a href="../social_contracts/post.md#social_contracts_post_monetization_enabled">monetization_enabled</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>)) {
         <b>let</b> tip_coins = coin::split(coins, amount, ctx);
         transfer::public_transfer(tip_coins, intended_recipient);
         <b>return</b> amount
     };
-    <b>let</b> redirect_percentage = *option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_percentage);
-    <b>if</b> (redirect_percentage == 0) {
+    <b>let</b> manifest_opt = <a href="../social_contracts/post.md#social_contracts_post_revenue_manifest">revenue_manifest</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    <b>if</b> (option::is_none(&manifest_opt)) {
         <b>let</b> tip_coins = coin::split(coins, amount, ctx);
         transfer::public_transfer(tip_coins, intended_recipient);
         <b>return</b> amount
     };
-    <b>let</b> redirected_amount = (amount * redirect_percentage) / 100;
-    <b>let</b> remaining_amount = amount - redirected_amount;
+    <b>let</b> manifest = option::borrow(&manifest_opt);
+    <b>let</b> entries = <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entries">media_asset::manifest_entries</a>(manifest);
+    <b>let</b> len = vector::length(entries);
+    <b>let</b> bps_total = <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_bps_total">media_asset::manifest_bps_total</a>();
     <b>let</b> coin_type = type_name::with_defining_ids&lt;T&gt;();
     <b>let</b> <b>mut</b> tip_coins = coin::split(coins, amount, ctx);
-    <b>if</b> (redirected_amount &gt; 0) {
-        <b>let</b> redirected_coins = coin::split(&<b>mut</b> tip_coins, redirected_amount, ctx);
-        <b>if</b> (<a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> == <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_ESCROW">POC_REDIRECT_ESCROW</a>) {
-            <b>abort</b> <a href="../social_contracts/post.md#social_contracts_post_ETipPostRequiresBeneficiaryVault">ETipPostRequiresBeneficiaryVault</a>
-        } <b>else</b> {
-            <b>let</b> pay_to = *option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_to);
-            transfer::public_transfer(redirected_coins, pay_to);
-            event::emit(<a href="../social_contracts/post.md#social_contracts_post_TipEvent">TipEvent</a> {
-                object_id,
-                from: tipper,
-                to: pay_to,
-                amount: redirected_amount,
-                coin_type,
-                is_post: is_post_event,
-            });
+    <b>let</b> <b>mut</b> owner_received = 0u64;
+    <b>let</b> <b>mut</b> i = 0;
+    <b>while</b> (i &lt; len) {
+        <b>let</b> e = vector::borrow(entries, i);
+        <b>let</b> slice = (amount * <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_share_bps">media_asset::manifest_entry_share_bps</a>(e)) / bps_total;
+        <b>if</b> (slice &gt; 0) {
+            <b>let</b> source_opt = <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_source_asset_id">media_asset::manifest_entry_source_asset_id</a>(e);
+            <b>let</b> skip_payout = <b>if</b> (option::is_some(&source_opt)) {
+                !<a href="../social_contracts/post.md#social_contracts_post_usage_is_payout_permitted_for_asset">usage_is_payout_permitted_for_asset</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, *option::borrow(&source_opt))
+            } <b>else</b> {
+                <b>false</b>
+            };
+            <b>if</b> (!skip_payout) {
+                <b>if</b> (<a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_payout_mode">media_asset::manifest_entry_payout_mode</a>(e) == <a href="../social_contracts/media_asset.md#social_contracts_media_asset_payout_escrow">media_asset::payout_escrow</a>()) {
+                    <b>abort</b> <a href="../social_contracts/post.md#social_contracts_post_ETipPostRequiresBeneficiaryVault">ETipPostRequiresBeneficiaryVault</a>
+                };
+                <b>let</b> pay_coins = coin::split(&<b>mut</b> tip_coins, slice, ctx);
+                transfer::public_transfer(pay_coins, <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_beneficiary">media_asset::manifest_entry_beneficiary</a>(e));
+                event::emit(<a href="../social_contracts/post.md#social_contracts_post_TipEvent">TipEvent</a> {
+                    object_id,
+                    from: tipper,
+                    to: <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_beneficiary">media_asset::manifest_entry_beneficiary</a>(e),
+                    amount: slice,
+                    coin_type,
+                    is_post: is_post_event,
+                });
+                <b>if</b> (<a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_beneficiary">media_asset::manifest_entry_beneficiary</a>(e) == intended_recipient) {
+                    owner_received = owner_received + slice;
+                };
+            };
         };
+        i = i + 1;
     };
-    <b>if</b> (remaining_amount &gt; 0) {
+    <b>let</b> remainder = coin::value(&tip_coins);
+    <b>if</b> (remainder &gt; 0) {
         transfer::public_transfer(tip_coins, intended_recipient);
+        owner_received = owner_received + remainder;
     } <b>else</b> {
         coin::destroy_zero(tip_coins);
     };
-    remaining_amount
+    owner_received
 }
 </code></pre>
 
@@ -7376,14 +7745,13 @@ Same as [<code><a href="../social_contracts/post.md#social_contracts_post_apply_
 
 </details>
 
-<a name="social_contracts_post_update_poc_result"></a>
+<a name="social_contracts_post_embedded_bindings"></a>
 
-## Function `update_poc_result`
-
-Internal function to update PoC result (called only from proof_of_creativity module)
+## Function `embedded_bindings`
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_update_poc_result">update_poc_result</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, result_type: u8, <a href="../social_contracts/post.md#social_contracts_post_poc_outcome">poc_outcome</a>: u8, <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>: u8, redirect_to: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, redirect_percentage: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, reasoning: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, evidence_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, similarity_score: u64, media_type: u8, oracle_address: <b>address</b>, analyzed_at: u64)
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_embedded_bindings">embedded_bindings</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): vector&lt;<a href="../social_contracts/post.md#social_contracts_post_EmbeddedAssetBinding">social_contracts::post::EmbeddedAssetBinding</a>&gt;
 </code></pre>
 
 
@@ -7392,43 +7760,654 @@ Internal function to update PoC result (called only from proof_of_creativity mod
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_update_poc_result">update_poc_result</a>(
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_embedded_bindings">embedded_bindings</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): vector&lt;<a href="../social_contracts/post.md#social_contracts_post_EmbeddedAssetBinding">EmbeddedAssetBinding</a>&gt; {
+    <b>if</b> (df::exists_with_type&lt;vector&lt;u8&gt;, vector&lt;<a href="../social_contracts/post.md#social_contracts_post_EmbeddedAssetBinding">EmbeddedAssetBinding</a>&gt;&gt;(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_EMBEDDED_BINDINGS_DF_KEY">EMBEDDED_BINDINGS_DF_KEY</a>)) {
+        *df::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_EMBEDDED_BINDINGS_DF_KEY">EMBEDDED_BINDINGS_DF_KEY</a>)
+    } <b>else</b> {
+        vector[]
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_usage_decisions"></a>
+
+## Function `usage_decisions`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_usage_decisions">usage_decisions</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): vector&lt;<a href="../social_contracts/post.md#social_contracts_post_UsageDecisionSnapshot">social_contracts::post::UsageDecisionSnapshot</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_usage_decisions">usage_decisions</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): vector&lt;<a href="../social_contracts/post.md#social_contracts_post_UsageDecisionSnapshot">UsageDecisionSnapshot</a>&gt; {
+    <b>if</b> (df::exists_with_type&lt;vector&lt;u8&gt;, vector&lt;<a href="../social_contracts/post.md#social_contracts_post_UsageDecisionSnapshot">UsageDecisionSnapshot</a>&gt;&gt;(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_USAGE_DECISIONS_DF_KEY">USAGE_DECISIONS_DF_KEY</a>)) {
+        *df::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_USAGE_DECISIONS_DF_KEY">USAGE_DECISIONS_DF_KEY</a>)
+    } <b>else</b> {
+        vector[]
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_usage_denials"></a>
+
+## Function `usage_denials`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_usage_denials">usage_denials</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): vector&lt;<a href="../social_contracts/post.md#social_contracts_post_ContainerUsageDenial">social_contracts::post::ContainerUsageDenial</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_usage_denials">usage_denials</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): vector&lt;<a href="../social_contracts/post.md#social_contracts_post_ContainerUsageDenial">ContainerUsageDenial</a>&gt; {
+    <b>if</b> (df::exists_with_type&lt;vector&lt;u8&gt;, vector&lt;<a href="../social_contracts/post.md#social_contracts_post_ContainerUsageDenial">ContainerUsageDenial</a>&gt;&gt;(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_USAGE_DENIALS_DF_KEY">USAGE_DENIALS_DF_KEY</a>)) {
+        *df::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_USAGE_DENIALS_DF_KEY">USAGE_DENIALS_DF_KEY</a>)
+    } <b>else</b> {
+        vector[]
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_set_embedded_bindings"></a>
+
+## Function `set_embedded_bindings`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_set_embedded_bindings">set_embedded_bindings</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, bindings: vector&lt;<a href="../social_contracts/post.md#social_contracts_post_EmbeddedAssetBinding">social_contracts::post::EmbeddedAssetBinding</a>&gt;)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_set_embedded_bindings">set_embedded_bindings</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>, bindings: vector&lt;<a href="../social_contracts/post.md#social_contracts_post_EmbeddedAssetBinding">EmbeddedAssetBinding</a>&gt;) {
+    <b>if</b> (df::exists_with_type&lt;vector&lt;u8&gt;, vector&lt;<a href="../social_contracts/post.md#social_contracts_post_EmbeddedAssetBinding">EmbeddedAssetBinding</a>&gt;&gt;(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_EMBEDDED_BINDINGS_DF_KEY">EMBEDDED_BINDINGS_DF_KEY</a>)) {
+        <b>let</b> stored = df::borrow_mut(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_EMBEDDED_BINDINGS_DF_KEY">EMBEDDED_BINDINGS_DF_KEY</a>);
+        *stored = bindings;
+    } <b>else</b> {
+        df::add(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_EMBEDDED_BINDINGS_DF_KEY">EMBEDDED_BINDINGS_DF_KEY</a>, bindings);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_set_usage_decisions"></a>
+
+## Function `set_usage_decisions`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_set_usage_decisions">set_usage_decisions</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, decisions: vector&lt;<a href="../social_contracts/post.md#social_contracts_post_UsageDecisionSnapshot">social_contracts::post::UsageDecisionSnapshot</a>&gt;)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_set_usage_decisions">set_usage_decisions</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>, decisions: vector&lt;<a href="../social_contracts/post.md#social_contracts_post_UsageDecisionSnapshot">UsageDecisionSnapshot</a>&gt;) {
+    <b>if</b> (df::exists_with_type&lt;vector&lt;u8&gt;, vector&lt;<a href="../social_contracts/post.md#social_contracts_post_UsageDecisionSnapshot">UsageDecisionSnapshot</a>&gt;&gt;(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_USAGE_DECISIONS_DF_KEY">USAGE_DECISIONS_DF_KEY</a>)) {
+        <b>let</b> stored = df::borrow_mut(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_USAGE_DECISIONS_DF_KEY">USAGE_DECISIONS_DF_KEY</a>);
+        *stored = decisions;
+    } <b>else</b> {
+        df::add(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_USAGE_DECISIONS_DF_KEY">USAGE_DECISIONS_DF_KEY</a>, decisions);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_set_usage_denials"></a>
+
+## Function `set_usage_denials`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_set_usage_denials">set_usage_denials</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, denials: vector&lt;<a href="../social_contracts/post.md#social_contracts_post_ContainerUsageDenial">social_contracts::post::ContainerUsageDenial</a>&gt;)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_set_usage_denials">set_usage_denials</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>, denials: vector&lt;<a href="../social_contracts/post.md#social_contracts_post_ContainerUsageDenial">ContainerUsageDenial</a>&gt;) {
+    <b>if</b> (df::exists_with_type&lt;vector&lt;u8&gt;, vector&lt;<a href="../social_contracts/post.md#social_contracts_post_ContainerUsageDenial">ContainerUsageDenial</a>&gt;&gt;(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_USAGE_DENIALS_DF_KEY">USAGE_DENIALS_DF_KEY</a>)) {
+        <b>let</b> stored = df::borrow_mut(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_USAGE_DENIALS_DF_KEY">USAGE_DENIALS_DF_KEY</a>);
+        *stored = denials;
+    } <b>else</b> {
+        df::add(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_USAGE_DENIALS_DF_KEY">USAGE_DENIALS_DF_KEY</a>, denials);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_find_binding_index"></a>
+
+## Function `find_binding_index`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_find_binding_index">find_binding_index</a>(bindings: &vector&lt;<a href="../social_contracts/post.md#social_contracts_post_EmbeddedAssetBinding">social_contracts::post::EmbeddedAssetBinding</a>&gt;, binding_id: u64): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_find_binding_index">find_binding_index</a>(bindings: &vector&lt;<a href="../social_contracts/post.md#social_contracts_post_EmbeddedAssetBinding">EmbeddedAssetBinding</a>&gt;, binding_id: u64): Option&lt;u64&gt; {
+    <b>let</b> len = vector::length(bindings);
+    <b>let</b> <b>mut</b> i = 0;
+    <b>while</b> (i &lt; len) {
+        <b>if</b> (vector::borrow(bindings, i).binding_id == binding_id) {
+            <b>return</b> option::some(i)
+        };
+        i = i + 1;
+    };
+    option::none()
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_borrow_binding"></a>
+
+## Function `borrow_binding`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_borrow_binding">borrow_binding</a>(bindings: &vector&lt;<a href="../social_contracts/post.md#social_contracts_post_EmbeddedAssetBinding">social_contracts::post::EmbeddedAssetBinding</a>&gt;, binding_id: u64): &<a href="../social_contracts/post.md#social_contracts_post_EmbeddedAssetBinding">social_contracts::post::EmbeddedAssetBinding</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_borrow_binding">borrow_binding</a>(bindings: &vector&lt;<a href="../social_contracts/post.md#social_contracts_post_EmbeddedAssetBinding">EmbeddedAssetBinding</a>&gt;, binding_id: u64): &<a href="../social_contracts/post.md#social_contracts_post_EmbeddedAssetBinding">EmbeddedAssetBinding</a> {
+    <b>let</b> idx = option::borrow(&<a href="../social_contracts/post.md#social_contracts_post_find_binding_index">find_binding_index</a>(bindings, binding_id));
+    vector::borrow(bindings, *idx)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_upsert_binding"></a>
+
+## Function `upsert_binding`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_upsert_binding">upsert_binding</a>(bindings: &<b>mut</b> vector&lt;<a href="../social_contracts/post.md#social_contracts_post_EmbeddedAssetBinding">social_contracts::post::EmbeddedAssetBinding</a>&gt;, binding: <a href="../social_contracts/post.md#social_contracts_post_EmbeddedAssetBinding">social_contracts::post::EmbeddedAssetBinding</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_upsert_binding">upsert_binding</a>(bindings: &<b>mut</b> vector&lt;<a href="../social_contracts/post.md#social_contracts_post_EmbeddedAssetBinding">EmbeddedAssetBinding</a>&gt;, binding: <a href="../social_contracts/post.md#social_contracts_post_EmbeddedAssetBinding">EmbeddedAssetBinding</a>) {
+    <b>let</b> binding_id = binding.binding_id;
+    <b>if</b> (option::is_some(&<a href="../social_contracts/post.md#social_contracts_post_find_binding_index">find_binding_index</a>(bindings, binding_id))) {
+        <b>let</b> idx = *option::borrow(&<a href="../social_contracts/post.md#social_contracts_post_find_binding_index">find_binding_index</a>(bindings, binding_id));
+        *vector::borrow_mut(bindings, idx) = binding;
+    } <b>else</b> {
+        vector::push_back(bindings, binding);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_upsert_decision"></a>
+
+## Function `upsert_decision`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_upsert_decision">upsert_decision</a>(decisions: &<b>mut</b> vector&lt;<a href="../social_contracts/post.md#social_contracts_post_UsageDecisionSnapshot">social_contracts::post::UsageDecisionSnapshot</a>&gt;, snapshot: <a href="../social_contracts/post.md#social_contracts_post_UsageDecisionSnapshot">social_contracts::post::UsageDecisionSnapshot</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_upsert_decision">upsert_decision</a>(decisions: &<b>mut</b> vector&lt;<a href="../social_contracts/post.md#social_contracts_post_UsageDecisionSnapshot">UsageDecisionSnapshot</a>&gt;, snapshot: <a href="../social_contracts/post.md#social_contracts_post_UsageDecisionSnapshot">UsageDecisionSnapshot</a>) {
+    <b>let</b> binding_id = snapshot.binding_id;
+    <b>let</b> len = vector::length(decisions);
+    <b>let</b> <b>mut</b> i = 0;
+    <b>let</b> <b>mut</b> found = <b>false</b>;
+    <b>while</b> (i &lt; len) {
+        <b>if</b> (vector::borrow(decisions, i).binding_id == binding_id) {
+            *vector::borrow_mut(decisions, i) = snapshot;
+            found = <b>true</b>;
+            <b>break</b>
+        };
+        i = i + 1;
+    };
+    <b>if</b> (!found) {
+        vector::push_back(decisions, snapshot);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_upsert_denial"></a>
+
+## Function `upsert_denial`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_upsert_denial">upsert_denial</a>(denials: &<b>mut</b> vector&lt;<a href="../social_contracts/post.md#social_contracts_post_ContainerUsageDenial">social_contracts::post::ContainerUsageDenial</a>&gt;, denial: <a href="../social_contracts/post.md#social_contracts_post_ContainerUsageDenial">social_contracts::post::ContainerUsageDenial</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_upsert_denial">upsert_denial</a>(denials: &<b>mut</b> vector&lt;<a href="../social_contracts/post.md#social_contracts_post_ContainerUsageDenial">ContainerUsageDenial</a>&gt;, denial: <a href="../social_contracts/post.md#social_contracts_post_ContainerUsageDenial">ContainerUsageDenial</a>) {
+    <b>let</b> binding_id = denial.binding_id;
+    <b>let</b> len = vector::length(denials);
+    <b>let</b> <b>mut</b> i = 0;
+    <b>let</b> <b>mut</b> found = <b>false</b>;
+    <b>while</b> (i &lt; len) {
+        <b>if</b> (vector::borrow(denials, i).binding_id == binding_id) {
+            *vector::borrow_mut(denials, i) = denial;
+            found = <b>true</b>;
+            <b>break</b>
+        };
+        i = i + 1;
+    };
+    <b>if</b> (!found) {
+        vector::push_back(denials, denial);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_remove_denial"></a>
+
+## Function `remove_denial`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_remove_denial">remove_denial</a>(denials: &<b>mut</b> vector&lt;<a href="../social_contracts/post.md#social_contracts_post_ContainerUsageDenial">social_contracts::post::ContainerUsageDenial</a>&gt;, binding_id: u64, denial_scope: u8)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_remove_denial">remove_denial</a>(denials: &<b>mut</b> vector&lt;<a href="../social_contracts/post.md#social_contracts_post_ContainerUsageDenial">ContainerUsageDenial</a>&gt;, binding_id: u64, denial_scope: u8) {
+    <b>let</b> <b>mut</b> out = vector[];
+    <b>let</b> len = vector::length(denials);
+    <b>let</b> <b>mut</b> i = 0;
+    <b>while</b> (i &lt; len) {
+        <b>let</b> d = vector::borrow(denials, i);
+        <b>if</b> (!(d.binding_id == binding_id && d.denial_scope == denial_scope)) {
+            vector::push_back(&<b>mut</b> out, *d);
+        };
+        i = i + 1;
+    };
+    *denials = out;
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_apply_denials_to_snapshot"></a>
+
+## Function `apply_denials_to_snapshot`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_apply_denials_to_snapshot">apply_denials_to_snapshot</a>(policy_playback: bool, policy_payout: bool, denials: &vector&lt;<a href="../social_contracts/post.md#social_contracts_post_ContainerUsageDenial">social_contracts::post::ContainerUsageDenial</a>&gt;, binding_id: u64): (bool, bool)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_apply_denials_to_snapshot">apply_denials_to_snapshot</a>(
+    policy_playback: bool,
+    policy_payout: bool,
+    denials: &vector&lt;<a href="../social_contracts/post.md#social_contracts_post_ContainerUsageDenial">ContainerUsageDenial</a>&gt;,
+    binding_id: u64,
+): (bool, bool) {
+    <b>let</b> <b>mut</b> playback = policy_playback;
+    <b>let</b> <b>mut</b> payout = policy_payout;
+    <b>let</b> len = vector::length(denials);
+    <b>let</b> <b>mut</b> i = 0;
+    <b>while</b> (i &lt; len) {
+        <b>let</b> d = vector::borrow(denials, i);
+        <b>if</b> (d.binding_id == binding_id) {
+            <b>if</b> (d.denial_scope == <a href="../social_contracts/post.md#social_contracts_post_DENIAL_SCOPE_PLAYBACK">DENIAL_SCOPE_PLAYBACK</a>) {
+                playback = <b>false</b>;
+            };
+            <b>if</b> (d.denial_scope == <a href="../social_contracts/post.md#social_contracts_post_DENIAL_SCOPE_PAYOUT">DENIAL_SCOPE_PAYOUT</a>) {
+                payout = <b>false</b>;
+            };
+        };
+        i = i + 1;
+    };
+    (playback, payout)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_evaluate_binding_policy"></a>
+
+## Function `evaluate_binding_policy`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_evaluate_binding_policy">evaluate_binding_policy</a>(asset: &<a href="../social_contracts/media_asset.md#social_contracts_media_asset_MediaAsset">social_contracts::media_asset::MediaAsset</a>, usage_class: u8, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>): (bool, bool, u8, u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_evaluate_binding_policy">evaluate_binding_policy</a>(
+    asset: &MediaAsset,
+    usage_class: u8,
+    clock: &Clock,
+): (bool, bool, u8, u64) {
+    <b>let</b> <a href="../social_contracts/post.md#social_contracts_post_version">version</a> = <b>if</b> (option::is_some(&<a href="../social_contracts/media_asset.md#social_contracts_media_asset_resolved_policy_version">media_asset::resolved_policy_version</a>(asset))) {
+        *option::borrow(&<a href="../social_contracts/media_asset.md#social_contracts_media_asset_resolved_policy_version">media_asset::resolved_policy_version</a>(asset))
+    } <b>else</b> {
+        0
+    };
+    <b>let</b> grant_playback = <a href="../social_contracts/media_asset.md#social_contracts_media_asset_rights_permits_usage">media_asset::rights_permits_usage</a>(asset, usage_class, clock);
+    <b>if</b> (!grant_playback) {
+        <b>return</b> (<b>false</b>, <b>false</b>, <a href="../social_contracts/post.md#social_contracts_post_REASON_NO_GRANT">REASON_NO_GRANT</a>, <a href="../social_contracts/post.md#social_contracts_post_version">version</a>)
+    };
+    <b>if</b> (!<a href="../social_contracts/media_asset.md#social_contracts_media_asset_resolved_policy_permits_usage">media_asset::resolved_policy_permits_usage</a>(asset, usage_class)) {
+        <b>return</b> (<b>false</b>, <b>false</b>, <a href="../social_contracts/post.md#social_contracts_post_REASON_RESOLVED_POLICY">REASON_RESOLVED_POLICY</a>, <a href="../social_contracts/post.md#social_contracts_post_version">version</a>)
+    };
+    <b>let</b> grant_payout = <a href="../social_contracts/media_asset.md#social_contracts_media_asset_usage_allows_paid_exploitation">media_asset::usage_allows_paid_exploitation</a>(asset, usage_class, clock);
+    (<b>true</b>, grant_payout, <a href="../social_contracts/post.md#social_contracts_post_REASON_ALLOWED">REASON_ALLOWED</a>, <a href="../social_contracts/post.md#social_contracts_post_version">version</a>)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_refresh_composition_status_from_decisions"></a>
+
+## Function `refresh_composition_status_from_decisions`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_refresh_composition_status_from_decisions">refresh_composition_status_from_decisions</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_refresh_composition_status_from_decisions">refresh_composition_status_from_decisions</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>) {
+    <b>let</b> decisions = <a href="../social_contracts/post.md#social_contracts_post_usage_decisions">usage_decisions</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    <b>let</b> len = vector::length(&decisions);
+    <b>if</b> (len == 0) {
+        <b>return</b>
+    };
+    <b>let</b> <b>mut</b> any_restricted = <b>false</b>;
+    <b>let</b> <b>mut</b> all_restricted = <b>true</b>;
+    <b>let</b> <b>mut</b> i = 0;
+    <b>while</b> (i &lt; len) {
+        <b>let</b> d = vector::borrow(&decisions, i);
+        <b>let</b> restricted = !d.playback_permitted || !d.payout_permitted;
+        <b>if</b> (restricted) {
+            any_restricted = <b>true</b>;
+        } <b>else</b> {
+            all_restricted = <b>false</b>;
+        };
+        i = i + 1;
+    };
+    <b>if</b> (all_restricted) {
+        <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_composition_status">composition_status</a> = <a href="../social_contracts/media_asset.md#social_contracts_media_asset_composition_invalid">media_asset::composition_invalid</a>();
+    } <b>else</b> <b>if</b> (any_restricted) {
+        <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_composition_status">composition_status</a> = <a href="../social_contracts/media_asset.md#social_contracts_media_asset_composition_partially_restricted">media_asset::composition_partially_restricted</a>();
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_decision_for_binding"></a>
+
+## Function `decision_for_binding`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_decision_for_binding">decision_for_binding</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, binding_id: u64): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../social_contracts/post.md#social_contracts_post_UsageDecisionSnapshot">social_contracts::post::UsageDecisionSnapshot</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_decision_for_binding">decision_for_binding</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>, binding_id: u64): Option&lt;<a href="../social_contracts/post.md#social_contracts_post_UsageDecisionSnapshot">UsageDecisionSnapshot</a>&gt; {
+    <b>let</b> decisions = <a href="../social_contracts/post.md#social_contracts_post_usage_decisions">usage_decisions</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    <b>let</b> len = vector::length(&decisions);
+    <b>let</b> <b>mut</b> i = 0;
+    <b>while</b> (i &lt; len) {
+        <b>let</b> d = vector::borrow(&decisions, i);
+        <b>if</b> (d.binding_id == binding_id) {
+            <b>return</b> option::some(*d)
+        };
+        i = i + 1;
+    };
+    option::none()
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_usage_is_payout_permitted_for_asset"></a>
+
+## Function `usage_is_payout_permitted_for_asset`
+
+Fail-closed payout check for manifest routing by source asset id.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_usage_is_payout_permitted_for_asset">usage_is_payout_permitted_for_asset</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, source_asset_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_usage_is_payout_permitted_for_asset">usage_is_payout_permitted_for_asset</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>, source_asset_id: ID): bool {
+    <b>let</b> bindings = <a href="../social_contracts/post.md#social_contracts_post_embedded_bindings">embedded_bindings</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    <b>let</b> len = vector::length(&bindings);
+    <b>let</b> <b>mut</b> i = 0;
+    <b>while</b> (i &lt; len) {
+        <b>let</b> b = vector::borrow(&bindings, i);
+        <b>if</b> (b.source_asset_id == source_asset_id) {
+            <b>let</b> decision_opt = <a href="../social_contracts/post.md#social_contracts_post_decision_for_binding">decision_for_binding</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, b.binding_id);
+            <b>if</b> (option::is_none(&decision_opt)) {
+                <b>return</b> <b>false</b>
+            };
+            <b>return</b> option::borrow(&decision_opt).payout_permitted
+        };
+        i = i + 1;
+    };
+    <b>true</b>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_validate_binding"></a>
+
+## Function `validate_binding`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_validate_binding">validate_binding</a>(binding: &<a href="../social_contracts/post.md#social_contracts_post_EmbeddedAssetBinding">social_contracts::post::EmbeddedAssetBinding</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_validate_binding">validate_binding</a>(binding: &<a href="../social_contracts/post.md#social_contracts_post_EmbeddedAssetBinding">EmbeddedAssetBinding</a>) {
+    <b>assert</b>!(binding.binding_id &gt; 0, <a href="../social_contracts/post.md#social_contracts_post_EInvalidBinding">EInvalidBinding</a>);
+    <a href="../social_contracts/media_asset.md#social_contracts_media_asset_assert_valid_usage_class">media_asset::assert_valid_usage_class</a>(binding.usage_class);
+    // Oracle slot indices — must be readable at validation time <b>for</b> event/indexer ABI parity.
+    <b>assert</b>!(binding.stem &lt;= 255, <a href="../social_contracts/post.md#social_contracts_post_EInvalidBinding">EInvalidBinding</a>);
+    <b>assert</b>!(binding.media_component &lt;= 255, <a href="../social_contracts/post.md#social_contracts_post_EInvalidBinding">EInvalidBinding</a>);
+    <a href="../social_contracts/media_asset.md#social_contracts_media_asset_assert_valid_optional_evidence_commitment">media_asset::assert_valid_optional_evidence_commitment</a>(&binding.evidence_commitment);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_write_usage_decision_for_binding"></a>
+
+## Function `write_usage_decision_for_binding`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_write_usage_decision_for_binding">write_usage_decision_for_binding</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, asset: &<a href="../social_contracts/media_asset.md#social_contracts_media_asset_MediaAsset">social_contracts::media_asset::MediaAsset</a>, binding_id: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, timestamp: u64): <a href="../social_contracts/post.md#social_contracts_post_UsageDecisionSnapshot">social_contracts::post::UsageDecisionSnapshot</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_write_usage_decision_for_binding">write_usage_decision_for_binding</a>(
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
-    result_type: u8, // 1 = badge issued, 2 = redirection applied
-    <a href="../social_contracts/post.md#social_contracts_post_poc_outcome">poc_outcome</a>: u8,
-    <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>: u8,
-    redirect_to: Option&lt;<b>address</b>&gt;,
-    redirect_percentage: Option&lt;u64&gt;,
-    reasoning: Option&lt;String&gt;,
-    evidence_urls: Option&lt;vector&lt;String&gt;&gt;,
-    similarity_score: u64,
-    media_type: u8,
-    oracle_address: <b>address</b>,
-    analyzed_at: u64
-) {
-    // Store PoC badge snapshot (same <b>for</b> both badge and redirection)
-    <b>let</b> poc_badge = <a href="../social_contracts/post.md#social_contracts_post_PoCBadgeSnapshot">PoCBadgeSnapshot</a> {
-        reasoning,
-        evidence_urls,
-        similarity_score: option::some(similarity_score),
-        media_type: option::some(media_type),
-        oracle_address: option::some(oracle_address),
-        analyzed_at: option::some(analyzed_at),
+    asset: &MediaAsset,
+    binding_id: u64,
+    clock: &Clock,
+    timestamp: u64,
+): <a href="../social_contracts/post.md#social_contracts_post_UsageDecisionSnapshot">UsageDecisionSnapshot</a> {
+    <b>let</b> bindings = <a href="../social_contracts/post.md#social_contracts_post_embedded_bindings">embedded_bindings</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    <b>assert</b>!(option::is_some(&<a href="../social_contracts/post.md#social_contracts_post_find_binding_index">find_binding_index</a>(&bindings, binding_id)), <a href="../social_contracts/post.md#social_contracts_post_EBindingNotFound">EBindingNotFound</a>);
+    <b>let</b> binding = <a href="../social_contracts/post.md#social_contracts_post_borrow_binding">borrow_binding</a>(&bindings, binding_id);
+    <b>assert</b>!(binding.source_asset_id == object::id(asset), <a href="../social_contracts/post.md#social_contracts_post_EBindingAssetMismatch">EBindingAssetMismatch</a>);
+    <b>let</b> (policy_playback, policy_payout, reason_code, policy_version) =
+        <a href="../social_contracts/post.md#social_contracts_post_evaluate_binding_policy">evaluate_binding_policy</a>(asset, binding.usage_class, clock);
+    <b>let</b> denials = <a href="../social_contracts/post.md#social_contracts_post_usage_denials">usage_denials</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    <b>let</b> (playback, payout) =
+        <a href="../social_contracts/post.md#social_contracts_post_apply_denials_to_snapshot">apply_denials_to_snapshot</a>(policy_playback, policy_payout, &denials, binding_id);
+    <b>let</b> reason = <b>if</b> (playback != policy_playback || payout != policy_payout) {
+        <a href="../social_contracts/post.md#social_contracts_post_REASON_DENIAL">REASON_DENIAL</a>
+    } <b>else</b> {
+        reason_code
     };
-    <a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_snapshot = option::some(poc_badge);
-    <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_outcome">poc_outcome</a> = <a href="../social_contracts/post.md#social_contracts_post_poc_outcome">poc_outcome</a>;
-    <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> = <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>;
-    <b>if</b> (result_type == 1) {
-        // PoC badge issued - content is original
-        <a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_to = option::none();
-        <a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_percentage = option::none();
-        <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post_poc_outcome">poc_outcome</a> == <a href="../social_contracts/post.md#social_contracts_post_POC_OUTCOME_ORIGINAL">POC_OUTCOME_ORIGINAL</a>, <a href="../social_contracts/post.md#social_contracts_post_EInvalidPocOutcomeFields">EInvalidPocOutcomeFields</a>);
-        <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> == <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_NONE">POC_REDIRECT_NONE</a>, <a href="../social_contracts/post.md#social_contracts_post_EInvalidPocOutcomeFields">EInvalidPocOutcomeFields</a>);
-    } <b>else</b> <b>if</b> (result_type == 2) {
-        // Revenue redirection applied - content is derivative
-        <a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_to = redirect_to;
-        <a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_percentage = redirect_percentage;
+    <b>let</b> snapshot = <a href="../social_contracts/post.md#social_contracts_post_UsageDecisionSnapshot">UsageDecisionSnapshot</a> {
+        binding_id,
+        policy_playback_permitted: policy_playback,
+        policy_payout_permitted: policy_payout,
+        playback_permitted: playback,
+        payout_permitted: payout,
+        policy_reason_code: reason,
+        policy_version_at_decision: policy_version,
     };
+    <b>let</b> <b>mut</b> decisions = <a href="../social_contracts/post.md#social_contracts_post_usage_decisions">usage_decisions</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    <a href="../social_contracts/post.md#social_contracts_post_upsert_decision">upsert_decision</a>(&<b>mut</b> decisions, snapshot);
+    <a href="../social_contracts/post.md#social_contracts_post_set_usage_decisions">set_usage_decisions</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, decisions);
+    <a href="../social_contracts/post.md#social_contracts_post_refresh_composition_status_from_decisions">refresh_composition_status_from_decisions</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    event::emit(<a href="../social_contracts/post.md#social_contracts_post_UsageDecisionRefreshedEvent">UsageDecisionRefreshedEvent</a> {
+        post_id: <a href="../social_contracts/post.md#social_contracts_post_get_id_address">get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>),
+        binding_id,
+        policy_playback_permitted: policy_playback,
+        policy_payout_permitted: policy_payout,
+        playback_permitted: playback,
+        payout_permitted: payout,
+        policy_reason_code: reason,
+        policy_version_at_decision: policy_version,
+        timestamp,
+    });
+    snapshot
 }
 </code></pre>
 
@@ -7436,14 +8415,14 @@ Internal function to update PoC result (called only from proof_of_creativity mod
 
 </details>
 
-<a name="social_contracts_post_set_poc_badge_object_id"></a>
+<a name="social_contracts_post_record_embedded_bindings"></a>
 
-## Function `set_poc_badge_object_id`
+## Function `record_embedded_bindings`
 
-Links the post to the authoritative shared <code>PoCBadgeObject</code> (after mint + share).
+Oracle records embedded asset bindings detected during composition analysis.
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_set_poc_badge_object_id">set_poc_badge_object_id</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, badge_object_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_record_embedded_bindings">record_embedded_bindings</a>(oracle: <b>address</b>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, bindings: vector&lt;<a href="../social_contracts/post.md#social_contracts_post_EmbeddedAssetBinding">social_contracts::post::EmbeddedAssetBinding</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -7452,8 +8431,311 @@ Links the post to the authoritative shared <code>PoCBadgeObject</code> (after mi
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_set_poc_badge_object_id">set_poc_badge_object_id</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>, badge_object_id: ID) {
-    <a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_object_id = option::some(badge_object_id);
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_record_embedded_bindings">record_embedded_bindings</a>(
+    oracle: <b>address</b>,
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
+    bindings: vector&lt;<a href="../social_contracts/post.md#social_contracts_post_EmbeddedAssetBinding">EmbeddedAssetBinding</a>&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(tx_context::sender(ctx) == oracle, <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
+    <b>let</b> timestamp = clock::timestamp_ms(clock);
+    <b>let</b> <b>mut</b> stored = <a href="../social_contracts/post.md#social_contracts_post_embedded_bindings">embedded_bindings</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    <b>let</b> len = vector::length(&bindings);
+    <b>let</b> <b>mut</b> i = 0;
+    <b>while</b> (i &lt; len) {
+        <b>let</b> b = vector::borrow(&bindings, i);
+        <a href="../social_contracts/post.md#social_contracts_post_validate_binding">validate_binding</a>(b);
+        <a href="../social_contracts/post.md#social_contracts_post_upsert_binding">upsert_binding</a>(&<b>mut</b> stored, *b);
+        i = i + 1;
+    };
+    <a href="../social_contracts/post.md#social_contracts_post_set_embedded_bindings">set_embedded_bindings</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, stored);
+    event::emit(<a href="../social_contracts/post.md#social_contracts_post_EmbeddedBindingRecordedEvent">EmbeddedBindingRecordedEvent</a> {
+        post_id: <a href="../social_contracts/post.md#social_contracts_post_get_id_address">get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>),
+        bindings: <a href="../social_contracts/post.md#social_contracts_post_embedded_bindings">embedded_bindings</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>),
+        timestamp,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_refresh_post_asset_usage_decision"></a>
+
+## Function `refresh_post_asset_usage_decision`
+
+Oracle refreshes a usage decision snapshot for one binding (requires live <code>MediaAsset</code>).
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_refresh_post_asset_usage_decision">refresh_post_asset_usage_decision</a>(oracle: <b>address</b>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, asset: &<a href="../social_contracts/media_asset.md#social_contracts_media_asset_MediaAsset">social_contracts::media_asset::MediaAsset</a>, binding_id: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_refresh_post_asset_usage_decision">refresh_post_asset_usage_decision</a>(
+    oracle: <b>address</b>,
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
+    asset: &MediaAsset,
+    binding_id: u64,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(tx_context::sender(ctx) == oracle, <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
+    <b>let</b> timestamp = clock::timestamp_ms(clock);
+    <b>let</b> _ = <a href="../social_contracts/post.md#social_contracts_post_write_usage_decision_for_binding">write_usage_decision_for_binding</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, asset, binding_id, clock, timestamp);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_submit_candidate_revenue_manifest"></a>
+
+## Function `submit_candidate_revenue_manifest`
+
+Oracle submits a candidate revenue manifest for indexer materialization.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_submit_candidate_revenue_manifest">submit_candidate_revenue_manifest</a>(oracle: <b>address</b>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, manifest: <a href="../social_contracts/media_asset.md#social_contracts_media_asset_RevenueManifest">social_contracts::media_asset::RevenueManifest</a>, manifest_version: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_submit_candidate_revenue_manifest">submit_candidate_revenue_manifest</a>(
+    oracle: <b>address</b>,
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
+    manifest: RevenueManifest,
+    manifest_version: u64,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(tx_context::sender(ctx) == oracle, <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
+    <a href="../social_contracts/media_asset.md#social_contracts_media_asset_validate_revenue_manifest">media_asset::validate_revenue_manifest</a>(&manifest);
+    <b>let</b> timestamp = clock::timestamp_ms(clock);
+    <b>let</b> entries = *<a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entries">media_asset::manifest_entries</a>(&manifest);
+    <b>if</b> (df::exists_with_type&lt;vector&lt;u8&gt;, RevenueManifest&gt;(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_CANDIDATE_MANIFEST_DF_KEY">CANDIDATE_MANIFEST_DF_KEY</a>)) {
+        <b>let</b> stored = df::borrow_mut(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_CANDIDATE_MANIFEST_DF_KEY">CANDIDATE_MANIFEST_DF_KEY</a>);
+        *stored = manifest;
+    } <b>else</b> {
+        df::add(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_CANDIDATE_MANIFEST_DF_KEY">CANDIDATE_MANIFEST_DF_KEY</a>, manifest);
+    };
+    event::emit(<a href="../social_contracts/post.md#social_contracts_post_CandidateManifestSubmittedEvent">CandidateManifestSubmittedEvent</a> {
+        post_id: <a href="../social_contracts/post.md#social_contracts_post_get_id_address">get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>),
+        manifest_version,
+        entries_json: entries,
+        timestamp,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_deny_container_usage"></a>
+
+## Function `deny_container_usage`
+
+Rights holder denies container-scoped usage on this post for one binding.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_deny_container_usage">deny_container_usage</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, asset: &<a href="../social_contracts/media_asset.md#social_contracts_media_asset_MediaAsset">social_contracts::media_asset::MediaAsset</a>, binding_id: u64, denial_scope: u8, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_deny_container_usage">deny_container_usage</a>(
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
+    asset: &MediaAsset,
+    binding_id: u64,
+    denial_scope: u8,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(
+        denial_scope == <a href="../social_contracts/post.md#social_contracts_post_DENIAL_SCOPE_PLAYBACK">DENIAL_SCOPE_PLAYBACK</a> || denial_scope == <a href="../social_contracts/post.md#social_contracts_post_DENIAL_SCOPE_PAYOUT">DENIAL_SCOPE_PAYOUT</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_EInvalidDenialScope">EInvalidDenialScope</a>,
+    );
+    <b>let</b> sender = tx_context::sender(ctx);
+    <b>assert</b>!(<a href="../social_contracts/media_asset.md#social_contracts_media_asset_can_update_rights">media_asset::can_update_rights</a>(asset, sender), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
+    <b>let</b> bindings = <a href="../social_contracts/post.md#social_contracts_post_embedded_bindings">embedded_bindings</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    <b>assert</b>!(option::is_some(&<a href="../social_contracts/post.md#social_contracts_post_find_binding_index">find_binding_index</a>(&bindings, binding_id)), <a href="../social_contracts/post.md#social_contracts_post_EBindingNotFound">EBindingNotFound</a>);
+    <b>let</b> binding = <a href="../social_contracts/post.md#social_contracts_post_borrow_binding">borrow_binding</a>(&bindings, binding_id);
+    <b>assert</b>!(binding.source_asset_id == object::id(asset), <a href="../social_contracts/post.md#social_contracts_post_EBindingAssetMismatch">EBindingAssetMismatch</a>);
+    <b>let</b> timestamp = clock::timestamp_ms(clock);
+    <b>let</b> <b>mut</b> denials = <a href="../social_contracts/post.md#social_contracts_post_usage_denials">usage_denials</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    <a href="../social_contracts/post.md#social_contracts_post_upsert_denial">upsert_denial</a>(&<b>mut</b> denials, <a href="../social_contracts/post.md#social_contracts_post_ContainerUsageDenial">ContainerUsageDenial</a> { binding_id, denial_scope });
+    <a href="../social_contracts/post.md#social_contracts_post_set_usage_denials">set_usage_denials</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, denials);
+    <b>let</b> _ = <a href="../social_contracts/post.md#social_contracts_post_write_usage_decision_for_binding">write_usage_decision_for_binding</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, asset, binding_id, clock, timestamp);
+    event::emit(<a href="../social_contracts/post.md#social_contracts_post_ContainerUsageDeniedEvent">ContainerUsageDeniedEvent</a> {
+        post_id: <a href="../social_contracts/post.md#social_contracts_post_get_id_address">get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>),
+        binding_id,
+        denial_scope,
+        timestamp,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_lift_container_usage_denial"></a>
+
+## Function `lift_container_usage_denial`
+
+Rights holder lifts a container-scoped denial for one binding and scope.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_lift_container_usage_denial">lift_container_usage_denial</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, asset: &<a href="../social_contracts/media_asset.md#social_contracts_media_asset_MediaAsset">social_contracts::media_asset::MediaAsset</a>, binding_id: u64, denial_scope: u8, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_lift_container_usage_denial">lift_container_usage_denial</a>(
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
+    asset: &MediaAsset,
+    binding_id: u64,
+    denial_scope: u8,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(
+        denial_scope == <a href="../social_contracts/post.md#social_contracts_post_DENIAL_SCOPE_PLAYBACK">DENIAL_SCOPE_PLAYBACK</a> || denial_scope == <a href="../social_contracts/post.md#social_contracts_post_DENIAL_SCOPE_PAYOUT">DENIAL_SCOPE_PAYOUT</a>,
+        <a href="../social_contracts/post.md#social_contracts_post_EInvalidDenialScope">EInvalidDenialScope</a>,
+    );
+    <b>let</b> sender = tx_context::sender(ctx);
+    <b>assert</b>!(<a href="../social_contracts/media_asset.md#social_contracts_media_asset_can_update_rights">media_asset::can_update_rights</a>(asset, sender), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
+    <b>let</b> bindings = <a href="../social_contracts/post.md#social_contracts_post_embedded_bindings">embedded_bindings</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    <b>assert</b>!(option::is_some(&<a href="../social_contracts/post.md#social_contracts_post_find_binding_index">find_binding_index</a>(&bindings, binding_id)), <a href="../social_contracts/post.md#social_contracts_post_EBindingNotFound">EBindingNotFound</a>);
+    <b>let</b> binding = <a href="../social_contracts/post.md#social_contracts_post_borrow_binding">borrow_binding</a>(&bindings, binding_id);
+    <b>assert</b>!(binding.source_asset_id == object::id(asset), <a href="../social_contracts/post.md#social_contracts_post_EBindingAssetMismatch">EBindingAssetMismatch</a>);
+    <b>let</b> timestamp = clock::timestamp_ms(clock);
+    <b>let</b> <b>mut</b> denials = <a href="../social_contracts/post.md#social_contracts_post_usage_denials">usage_denials</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    <a href="../social_contracts/post.md#social_contracts_post_remove_denial">remove_denial</a>(&<b>mut</b> denials, binding_id, denial_scope);
+    <a href="../social_contracts/post.md#social_contracts_post_set_usage_denials">set_usage_denials</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, denials);
+    <b>let</b> _ = <a href="../social_contracts/post.md#social_contracts_post_write_usage_decision_for_binding">write_usage_decision_for_binding</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, asset, binding_id, clock, timestamp);
+    event::emit(<a href="../social_contracts/post.md#social_contracts_post_ContainerUsageDenialLiftedEvent">ContainerUsageDenialLiftedEvent</a> {
+        post_id: <a href="../social_contracts/post.md#social_contracts_post_get_id_address">get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>),
+        binding_id,
+        timestamp,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_set_composition_result"></a>
+
+## Function `set_composition_result`
+
+Internal function to store composition analysis + optional revenue manifest (oracle-only).
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_set_composition_result">set_composition_result</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, <a href="../social_contracts/post.md#social_contracts_post_composition_status">composition_status</a>: u8, <a href="../social_contracts/post.md#social_contracts_post_monetization_status">monetization_status</a>: u8, badge: <a href="../social_contracts/media_asset.md#social_contracts_media_asset_CompositionBadgeSnapshot">social_contracts::media_asset::CompositionBadgeSnapshot</a>, analysis: <a href="../social_contracts/media_asset.md#social_contracts_media_asset_CompositionAnalysis">social_contracts::media_asset::CompositionAnalysis</a>, manifest: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../social_contracts/media_asset.md#social_contracts_media_asset_RevenueManifest">social_contracts::media_asset::RevenueManifest</a>&gt;)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_set_composition_result">set_composition_result</a>(
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
+    <a href="../social_contracts/post.md#social_contracts_post_composition_status">composition_status</a>: u8,
+    <a href="../social_contracts/post.md#social_contracts_post_monetization_status">monetization_status</a>: u8,
+    badge: CompositionBadgeSnapshot,
+    analysis: CompositionAnalysis,
+    manifest: Option&lt;RevenueManifest&gt;,
+) {
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_composition_status">composition_status</a> = <a href="../social_contracts/post.md#social_contracts_post_composition_status">composition_status</a>;
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_monetization_status">monetization_status</a> = <a href="../social_contracts/post.md#social_contracts_post_monetization_status">monetization_status</a>;
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_composition_badge">composition_badge</a> = option::some(badge);
+    <b>if</b> (df::exists_with_type&lt;vector&lt;u8&gt;, CompositionAnalysis&gt;(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_COMPOSITION_ANALYSIS_DF_KEY">COMPOSITION_ANALYSIS_DF_KEY</a>)) {
+        <b>let</b> stored = df::borrow_mut(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_COMPOSITION_ANALYSIS_DF_KEY">COMPOSITION_ANALYSIS_DF_KEY</a>);
+        *stored = analysis;
+    } <b>else</b> {
+        df::add(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_COMPOSITION_ANALYSIS_DF_KEY">COMPOSITION_ANALYSIS_DF_KEY</a>, analysis);
+    };
+    <b>if</b> (option::is_some(&manifest)) {
+        <b>let</b> m = *option::borrow(&manifest);
+        <a href="../social_contracts/media_asset.md#social_contracts_media_asset_validate_revenue_manifest">media_asset::validate_revenue_manifest</a>(&m);
+        <b>if</b> (df::exists_with_type&lt;vector&lt;u8&gt;, RevenueManifest&gt;(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_REVENUE_MANIFEST_DF_KEY">REVENUE_MANIFEST_DF_KEY</a>)) {
+            <b>let</b> stored = df::borrow_mut(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_REVENUE_MANIFEST_DF_KEY">REVENUE_MANIFEST_DF_KEY</a>);
+            *stored = m;
+        } <b>else</b> {
+            df::add(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_REVENUE_MANIFEST_DF_KEY">REVENUE_MANIFEST_DF_KEY</a>, m);
+        };
+    } <b>else</b> <b>if</b> (df::exists_with_type&lt;vector&lt;u8&gt;, RevenueManifest&gt;(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_REVENUE_MANIFEST_DF_KEY">REVENUE_MANIFEST_DF_KEY</a>)) {
+        df::remove&lt;vector&lt;u8&gt;, RevenueManifest&gt;(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_REVENUE_MANIFEST_DF_KEY">REVENUE_MANIFEST_DF_KEY</a>);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_clear_composition_data"></a>
+
+## Function `clear_composition_data`
+
+Clears composition routing data on the post after dispute resolution (vault balances are unaffected).
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_clear_composition_data">clear_composition_data</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_clear_composition_data">clear_composition_data</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>) {
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_composition_status">composition_status</a> = <a href="../social_contracts/media_asset.md#social_contracts_media_asset_composition_none">media_asset::composition_none</a>();
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_monetization_status">monetization_status</a> = <a href="../social_contracts/media_asset.md#social_contracts_media_asset_monetization_none">media_asset::monetization_none</a>();
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_composition_badge">composition_badge</a> = option::none();
+    <b>if</b> (df::exists_with_type&lt;vector&lt;u8&gt;, CompositionAnalysis&gt;(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_COMPOSITION_ANALYSIS_DF_KEY">COMPOSITION_ANALYSIS_DF_KEY</a>)) {
+        df::remove&lt;vector&lt;u8&gt;, CompositionAnalysis&gt;(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_COMPOSITION_ANALYSIS_DF_KEY">COMPOSITION_ANALYSIS_DF_KEY</a>);
+    };
+    <b>if</b> (df::exists_with_type&lt;vector&lt;u8&gt;, RevenueManifest&gt;(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_REVENUE_MANIFEST_DF_KEY">REVENUE_MANIFEST_DF_KEY</a>)) {
+        df::remove&lt;vector&lt;u8&gt;, RevenueManifest&gt;(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_REVENUE_MANIFEST_DF_KEY">REVENUE_MANIFEST_DF_KEY</a>);
+    };
+    <b>if</b> (df::exists_with_type&lt;vector&lt;u8&gt;, vector&lt;<a href="../social_contracts/post.md#social_contracts_post_EmbeddedAssetBinding">EmbeddedAssetBinding</a>&gt;&gt;(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_EMBEDDED_BINDINGS_DF_KEY">EMBEDDED_BINDINGS_DF_KEY</a>)) {
+        df::remove&lt;vector&lt;u8&gt;, vector&lt;<a href="../social_contracts/post.md#social_contracts_post_EmbeddedAssetBinding">EmbeddedAssetBinding</a>&gt;&gt;(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_EMBEDDED_BINDINGS_DF_KEY">EMBEDDED_BINDINGS_DF_KEY</a>);
+    };
+    <b>if</b> (df::exists_with_type&lt;vector&lt;u8&gt;, vector&lt;<a href="../social_contracts/post.md#social_contracts_post_UsageDecisionSnapshot">UsageDecisionSnapshot</a>&gt;&gt;(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_USAGE_DECISIONS_DF_KEY">USAGE_DECISIONS_DF_KEY</a>)) {
+        df::remove&lt;vector&lt;u8&gt;, vector&lt;<a href="../social_contracts/post.md#social_contracts_post_UsageDecisionSnapshot">UsageDecisionSnapshot</a>&gt;&gt;(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_USAGE_DECISIONS_DF_KEY">USAGE_DECISIONS_DF_KEY</a>);
+    };
+    <b>if</b> (df::exists_with_type&lt;vector&lt;u8&gt;, vector&lt;<a href="../social_contracts/post.md#social_contracts_post_ContainerUsageDenial">ContainerUsageDenial</a>&gt;&gt;(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_USAGE_DENIALS_DF_KEY">USAGE_DENIALS_DF_KEY</a>)) {
+        df::remove&lt;vector&lt;u8&gt;, vector&lt;<a href="../social_contracts/post.md#social_contracts_post_ContainerUsageDenial">ContainerUsageDenial</a>&gt;&gt;(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_USAGE_DENIALS_DF_KEY">USAGE_DENIALS_DF_KEY</a>);
+    };
+    <b>if</b> (df::exists_with_type&lt;vector&lt;u8&gt;, RevenueManifest&gt;(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_CANDIDATE_MANIFEST_DF_KEY">CANDIDATE_MANIFEST_DF_KEY</a>)) {
+        df::remove&lt;vector&lt;u8&gt;, RevenueManifest&gt;(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_CANDIDATE_MANIFEST_DF_KEY">CANDIDATE_MANIFEST_DF_KEY</a>);
+    };
 }
 </code></pre>
 
@@ -7465,7 +8747,7 @@ Links the post to the authoritative shared <code>PoCBadgeObject</code> (after mi
 
 ## Function `clear_poc_data`
 
-Clears PoC redirect + badge pointers on the post after dispute resolution (vault balances are unaffected).
+Legacy alias for dispute paths during migration.
 
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_clear_poc_data">clear_poc_data</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>)
@@ -7478,12 +8760,40 @@ Clears PoC redirect + badge pointers on the post after dispute resolution (vault
 
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_clear_poc_data">clear_poc_data</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>) {
-    <a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_to = option::none();
-    <a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_percentage = option::none();
-    <a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_snapshot = option::none();
-    <a href="../social_contracts/post.md#social_contracts_post">post</a>.poc_badge_object_id = option::none();
-    <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_outcome">poc_outcome</a> = <a href="../social_contracts/post.md#social_contracts_post_POC_OUTCOME_NONE">POC_OUTCOME_NONE</a>;
-    <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> = <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_NONE">POC_REDIRECT_NONE</a>;
+    <a href="../social_contracts/post.md#social_contracts_post_clear_composition_data">clear_composition_data</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_increment_composition_disputes_submitted"></a>
+
+## Function `increment_composition_disputes_submitted`
+
+Increment after each successful composition dispute submission.
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_increment_composition_disputes_submitted">increment_composition_disputes_submitted</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, max_disputes: u8)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_increment_composition_disputes_submitted">increment_composition_disputes_submitted</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>, max_disputes: u8) {
+    <b>let</b> submitted = <a href="../social_contracts/post.md#social_contracts_post_composition_disputes_submitted">composition_disputes_submitted</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    <b>assert</b>!(submitted &lt; max_disputes, <a href="../social_contracts/post.md#social_contracts_post_EDisputeCapReached">EDisputeCapReached</a>);
+    <b>let</b> next = submitted + 1;
+    <b>if</b> (df::exists_with_type&lt;vector&lt;u8&gt;, u8&gt;(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_COMPOSITION_DISPUTES_DF_KEY">COMPOSITION_DISPUTES_DF_KEY</a>)) {
+        <b>let</b> count = df::borrow_mut(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_COMPOSITION_DISPUTES_DF_KEY">COMPOSITION_DISPUTES_DF_KEY</a>);
+        *count = next;
+    } <b>else</b> {
+        df::add(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_COMPOSITION_DISPUTES_DF_KEY">COMPOSITION_DISPUTES_DF_KEY</a>, next);
+    };
 }
 </code></pre>
 
@@ -7495,7 +8805,7 @@ Clears PoC redirect + badge pointers on the post after dispute resolution (vault
 
 ## Function `increment_poc_disputes_submitted`
 
-Increment after each successful <code>submit_poc_dispute</code>.
+Legacy alias for dispute paths during migration.
 
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_increment_poc_disputes_submitted">increment_poc_disputes_submitted</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, max_disputes: u8)
@@ -7508,15 +8818,7 @@ Increment after each successful <code>submit_poc_dispute</code>.
 
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_increment_poc_disputes_submitted">increment_poc_disputes_submitted</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>, max_disputes: u8) {
-    <b>let</b> submitted = <a href="../social_contracts/post.md#social_contracts_post_poc_disputes_submitted">poc_disputes_submitted</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
-    <b>assert</b>!(submitted &lt; max_disputes, <a href="../social_contracts/post.md#social_contracts_post_EDisputeCapReached">EDisputeCapReached</a>);
-    <b>let</b> next = submitted + 1;
-    <b>if</b> (df::exists_with_type&lt;vector&lt;u8&gt;, u8&gt;(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_POC_DISPUTES_SUBMITTED_DF_KEY">POC_DISPUTES_SUBMITTED_DF_KEY</a>)) {
-        <b>let</b> count = df::borrow_mut(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_POC_DISPUTES_SUBMITTED_DF_KEY">POC_DISPUTES_SUBMITTED_DF_KEY</a>);
-        *count = next;
-    } <b>else</b> {
-        df::add(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_POC_DISPUTES_SUBMITTED_DF_KEY">POC_DISPUTES_SUBMITTED_DF_KEY</a>, next);
-    };
+    <a href="../social_contracts/post.md#social_contracts_post_increment_composition_disputes_submitted">increment_composition_disputes_submitted</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, max_disputes);
 }
 </code></pre>
 
@@ -7528,7 +8830,7 @@ Increment after each successful <code>submit_poc_dispute</code>.
 
 ## Function `deposit_coin_to_beneficiary_vault`
 
-Deposit redirected reservation/trading fees into the beneficiary vault when the post uses vault-mode redirect.
+Deposit manifest-routed fees into the beneficiary vault when the post uses escrow payout mode.
 
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_deposit_coin_to_beneficiary_vault">deposit_coin_to_beneficiary_vault</a>&lt;T&gt;(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, beneficiary_vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, fee_coin: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, min_vault_deposit_amount: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
@@ -7548,12 +8850,25 @@ Deposit redirected reservation/trading fees into the beneficiary vault when the 
     clock: &Clock,
     ctx: &TxContext
 ) {
-    <b>assert</b>!(
-        <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> == <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_ESCROW">POC_REDIRECT_ESCROW</a> && option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_to),
-        <a href="../social_contracts/post.md#social_contracts_post_EInvalidPocOutcomeFields">EInvalidPocOutcomeFields</a>
-    );
-    <b>let</b> ben = *option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_to);
-    <b>assert</b>!(<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_beneficiary_address">poc_vault::beneficiary_address</a>(beneficiary_vault) == ben, <a href="../social_contracts/post.md#social_contracts_post_EWrongBeneficiaryVault">EWrongBeneficiaryVault</a>);
+    <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post_monetization_enabled">monetization_enabled</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>), <a href="../social_contracts/post.md#social_contracts_post_EMonetizationNotEnabled">EMonetizationNotEnabled</a>);
+    <b>let</b> manifest_opt = <a href="../social_contracts/post.md#social_contracts_post_revenue_manifest">revenue_manifest</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    <b>assert</b>!(option::is_some(&manifest_opt), <a href="../social_contracts/post.md#social_contracts_post_EInvalidManifest">EInvalidManifest</a>);
+    <b>let</b> manifest = option::borrow(&manifest_opt);
+    <b>let</b> ben = <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_beneficiary_address">poc_vault::beneficiary_address</a>(beneficiary_vault);
+    <b>let</b> entries = <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entries">media_asset::manifest_entries</a>(manifest);
+    <b>let</b> len = vector::length(entries);
+    <b>let</b> <b>mut</b> i = 0;
+    <b>let</b> <b>mut</b> found_escrow = <b>false</b>;
+    <b>while</b> (i &lt; len) {
+        <b>let</b> e = vector::borrow(entries, i);
+        <b>if</b> (<a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_payout_mode">media_asset::manifest_entry_payout_mode</a>(e) == <a href="../social_contracts/media_asset.md#social_contracts_media_asset_payout_escrow">media_asset::payout_escrow</a>()
+            && <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_beneficiary">media_asset::manifest_entry_beneficiary</a>(e) == ben) {
+            found_escrow = <b>true</b>;
+            <b>break</b>
+        };
+        i = i + 1;
+    };
+    <b>assert</b>!(found_escrow, <a href="../social_contracts/post.md#social_contracts_post_EInvalidManifest">EInvalidManifest</a>);
     <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_deposit_coin">poc_vault::deposit_coin</a>&lt;T&gt;(
         beneficiary_vault,
         ben,
@@ -7575,7 +8890,7 @@ Deposit redirected reservation/trading fees into the beneficiary vault when the 
 ## Function `tip_repost`
 
 Tip a repost or quote repost; splits per <code><a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a></code> between repost owner and original author.
-Pass the shared <code>PoCBeneficiaryVault</code> for each post when that post uses <code><a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_ESCROW">POC_REDIRECT_ESCROW</a></code>.
+Pass the shared <code>PoCBeneficiaryVault</code> for each post when manifest entries use escrow payout mode.
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_repost">tip_repost</a>&lt;T&gt;(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, original_post: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, vault_for_post: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, vault_for_original: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, coin: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, amount: u64, min_vault_deposit_amount: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
@@ -7616,7 +8931,7 @@ Pass the shared <code>PoCBeneficiaryVault</code> for each post when that post us
     <b>if</b> (<a href="../social_contracts/post.md#social_contracts_post">post</a>.owner == original_post.owner) {
         <b>let</b> po = <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner;
         <b>let</b> poid = object::uid_to_address(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id);
-        <b>let</b> actual_received = <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_coin">apply_poc_redirection_coin</a>&lt;T&gt;(
+        <b>let</b> actual_received = <a href="../social_contracts/post.md#social_contracts_post_apply_revenue_manifest_coin">apply_revenue_manifest_coin</a>&lt;T&gt;(
             <a href="../social_contracts/post.md#social_contracts_post">post</a>,
             vault_for_post,
             po,
@@ -7648,7 +8963,7 @@ Pass the shared <code>PoCBeneficiaryVault</code> for each post when that post us
         <b>let</b> poid = object::uid_to_address(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id);
         <b>let</b> opo = original_post.owner;
         <b>let</b> opoid = object::uid_to_address(&original_post.id);
-        <b>let</b> repost_actual_received = <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_coin">apply_poc_redirection_coin</a>&lt;T&gt;(
+        <b>let</b> repost_actual_received = <a href="../social_contracts/post.md#social_contracts_post_apply_revenue_manifest_coin">apply_revenue_manifest_coin</a>&lt;T&gt;(
             <a href="../social_contracts/post.md#social_contracts_post">post</a>,
             vault_for_post,
             po,
@@ -7661,7 +8976,7 @@ Pass the shared <code>PoCBeneficiaryVault</code> for each post when that post us
             clock,
             ctx
         );
-        <b>let</b> original_actual_received = <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_coin">apply_poc_redirection_coin</a>&lt;T&gt;(
+        <b>let</b> original_actual_received = <a href="../social_contracts/post.md#social_contracts_post_apply_revenue_manifest_coin">apply_revenue_manifest_coin</a>&lt;T&gt;(
             original_post,
             vault_for_original,
             opo,
@@ -7710,7 +9025,7 @@ Pass the shared <code>PoCBeneficiaryVault</code> for each post when that post us
 
 ## Function `tip_comment`
 
-Tip a comment; split per <code><a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a></code> with PoC redirection on the post owner's share (vault when escrow).
+Tip a comment; split per <code><a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a></code> with manifest-based routing on the post owner's share.
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_comment">tip_comment</a>&lt;T&gt;(comment: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Comment">social_contracts::post::Comment</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, beneficiary_vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, coin: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, amount: u64, min_vault_deposit_amount: u64, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
@@ -7746,7 +9061,7 @@ Tip a comment; split per <code><a href="../social_contracts/post.md#social_contr
     <b>let</b> po = <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner;
     <b>let</b> poid = object::uid_to_address(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id);
     <b>let</b> ct = type_name::with_defining_ids&lt;T&gt;();
-    <b>let</b> post_owner_actual_received = <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_coin">apply_poc_redirection_coin</a>&lt;T&gt;(
+    <b>let</b> post_owner_actual_received = <a href="../social_contracts/post.md#social_contracts_post_apply_revenue_manifest_coin">apply_revenue_manifest_coin</a>&lt;T&gt;(
         <a href="../social_contracts/post.md#social_contracts_post">post</a>,
         beneficiary_vault,
         po,
@@ -7832,7 +9147,7 @@ Only for posts where [<code><a href="../social_contracts/post.md#social_contract
     <b>let</b> po = <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner;
     <b>let</b> poid = object::uid_to_address(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id);
     <b>let</b> ct = type_name::with_defining_ids&lt;T&gt;();
-    <b>let</b> post_owner_actual_received = <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_coin_without_beneficiary_vault">apply_poc_redirection_coin_without_beneficiary_vault</a>&lt;T&gt;(
+    <b>let</b> post_owner_actual_received = <a href="../social_contracts/post.md#social_contracts_post_apply_revenue_manifest_coin_without_beneficiary_vault">apply_revenue_manifest_coin_without_beneficiary_vault</a>&lt;T&gt;(
         <a href="../social_contracts/post.md#social_contracts_post">post</a>,
         po,
         post_owner_amount,
@@ -9026,10 +10341,10 @@ Get the platform ID for a post
 
 ## Function `get_revenue_redirect_to`
 
-Get the revenue redirect address for a post
+Get the revenue redirect address for a post (legacy compat stub — always none).
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_revenue_redirect_to">get_revenue_redirect_to</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): &<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_revenue_redirect_to">get_revenue_redirect_to</a>(_post: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;
 </code></pre>
 
 
@@ -9038,8 +10353,8 @@ Get the revenue redirect address for a post
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_revenue_redirect_to">get_revenue_redirect_to</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): &Option&lt;<b>address</b>&gt; {
-    &<a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_to
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_revenue_redirect_to">get_revenue_redirect_to</a>(_post: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): Option&lt;<b>address</b>&gt; {
+    option::none()
 }
 </code></pre>
 
@@ -9051,10 +10366,10 @@ Get the revenue redirect address for a post
 
 ## Function `get_revenue_redirect_percentage`
 
-Get the revenue redirect percentage for a post
+Get the revenue redirect percentage for a post (legacy compat stub — always none).
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_revenue_redirect_percentage">get_revenue_redirect_percentage</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): &<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_revenue_redirect_percentage">get_revenue_redirect_percentage</a>(_post: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;
 </code></pre>
 
 
@@ -9063,9 +10378,66 @@ Get the revenue redirect percentage for a post
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_revenue_redirect_percentage">get_revenue_redirect_percentage</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): &Option&lt;u64&gt; {
-    &<a href="../social_contracts/post.md#social_contracts_post">post</a>.revenue_redirect_percentage
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_revenue_redirect_percentage">get_revenue_redirect_percentage</a>(_post: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): Option&lt;u64&gt; {
+    option::none()
 }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_poc_redirection_kind"></a>
+
+## Function `poc_redirection_kind`
+
+Legacy compat — derived from cached revenue manifest payout modes.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): u8 {
+    <b>let</b> manifest_opt = <a href="../social_contracts/post.md#social_contracts_post_revenue_manifest">revenue_manifest</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    <b>if</b> (option::is_none(&manifest_opt)) {
+        <b>return</b> 0
+    };
+    <b>let</b> manifest = option::borrow(&manifest_opt);
+    <b>if</b> (<a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_uses_escrow_redirect">media_asset::manifest_uses_escrow_redirect</a>(manifest)) {
+        2
+    } <b>else</b> {
+        1
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_poc_redirection_none"></a>
+
+## Function `poc_redirection_none`
+
+Legacy compat stub for fee-routing callers during migration.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_none">poc_redirection_none</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_none">poc_redirection_none</a>(): u8 { 0 }
 </code></pre>
 
 
@@ -9249,8 +10621,9 @@ Migration function for Post
     // Remember old <a href="../social_contracts/post.md#social_contracts_post_version">version</a> and update to new <a href="../social_contracts/post.md#social_contracts_post_version">version</a>
     <b>let</b> old_version = <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_version">version</a>;
     <b>if</b> (old_version &lt; 2) {
-        <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_outcome">poc_outcome</a> = <a href="../social_contracts/post.md#social_contracts_post_POC_OUTCOME_NONE">POC_OUTCOME_NONE</a>;
-        <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> = <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_NONE">POC_REDIRECT_NONE</a>;
+        <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_composition_status">composition_status</a> = <a href="../social_contracts/media_asset.md#social_contracts_media_asset_composition_none">media_asset::composition_none</a>();
+        <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_monetization_status">monetization_status</a> = <a href="../social_contracts/media_asset.md#social_contracts_media_asset_monetization_none">media_asset::monetization_none</a>();
+        <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_composition_badge">composition_badge</a> = option::none();
     };
     <b>if</b> (old_version &lt; 3) {
         <b>if</b> (!df::exists_with_type&lt;vector&lt;u8&gt;, <a href="../social_contracts/post.md#social_contracts_post_PostAttribution">PostAttribution</a>&gt;(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id, <a href="../social_contracts/post.md#social_contracts_post_POST_ATTRIBUTION_DF_KEY">POST_ATTRIBUTION_DF_KEY</a>)) {
@@ -9509,7 +10882,7 @@ Update post parameters (admin only)
 Create a promoted post with MYSO tokens for viewer payments
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_promoted_post">create_promoted_post</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, payment_per_view: u64, promotion_budget: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, enable_spt: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spot: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, mydata_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">social_contracts::mydata::MyDataRegistry</a>, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_promoted_post">create_promoted_post</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>: vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, payment_per_view: u64, promotion_budget: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, enable_spt: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, enable_spot: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, mydata_registry: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">social_contracts::mydata::MyDataRegistry</a>, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -9526,6 +10899,7 @@ Create a promoted post with MYSO tokens for viewer payments
     config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a>,
     memory_config: &MemoryConfig,
     content: String,
+    <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>: vector&lt;ID&gt;,
     <b>mut</b> media_urls: Option&lt;vector&lt;String&gt;&gt;,
     mentions: Option&lt;vector&lt;<b>address</b>&gt;&gt;,
     metadata_json: Option&lt;String&gt;,
@@ -9616,12 +10990,13 @@ Create a promoted post with MYSO tokens for viewer payments
     <b>let</b> _ = enable_spot;
     // Convert media URLs to strings <b>for</b> <a href="../social_contracts/post.md#social_contracts_post_PostCreatedEvent">PostCreatedEvent</a> (before moving media_option)
     <b>let</b> media_urls_for_event = <a href="../social_contracts/post.md#social_contracts_post_convert_urls_to_strings">convert_urls_to_strings</a>(&media_option);
-    <b>let</b> <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a> = <a href="../social_contracts/post.md#social_contracts_post_POC_REDIRECT_NONE">POC_REDIRECT_NONE</a>;
+    <b>let</b> media_asset_ids_for_event = <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>;
     <b>let</b> <a href="../social_contracts/post.md#social_contracts_post">post</a> = <a href="../social_contracts/post.md#social_contracts_post_create_post_internal">create_post_internal</a>(
         owner,
         profile_id,
         platform_id,
         content,
+        <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>,
         media_option,
         mentions,
         metadata_json,
@@ -9632,12 +11007,9 @@ Create a promoted post with MYSO tokens for viewer payments
         <b>true</b>, // <a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>
         <b>true</b>, // <a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>
         <b>true</b>, // <a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>
-        option::none(), // revenue_redirect_to
-        option::none(), // revenue_redirect_percentage
         access,
         option::some(promotion_id),
         <b>false</b>,
-        <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>,
         <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
         <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>,
         organization_id,
@@ -9646,6 +11018,7 @@ Create a promoted post with MYSO tokens for viewer payments
         ctx
     );
     // Indexers read <a href="../social_contracts/post.md#social_contracts_post_PostCreatedEvent">PostCreatedEvent</a> to upsert `posts` with promotion_id before <a href="../social_contracts/post.md#social_contracts_post_PromotedPostCreatedEvent">PromotedPostCreatedEvent</a>
+    <a href="../social_contracts/post.md#social_contracts_post_emit_post_media_asset_usages">emit_post_media_asset_usages</a>(&<a href="../social_contracts/post.md#social_contracts_post">post</a>, clock);
     <b>let</b> post_id = <a href="../social_contracts/post.md#social_contracts_post_share_post">share_post</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
     event::emit(<a href="../social_contracts/post.md#social_contracts_post_PostCreatedEvent">PostCreatedEvent</a> {
         post_id,
@@ -9657,15 +11030,15 @@ Create a promoted post with MYSO tokens for viewer payments
         post_type: string::utf8(<a href="../social_contracts/post.md#social_contracts_post_POST_TYPE_STANDARD">POST_TYPE_STANDARD</a>),
         parent_post_id: option::none(),
         mentions,
+        <a href="../social_contracts/post.md#social_contracts_post_media_asset_ids">media_asset_ids</a>: media_asset_ids_for_event,
         media_urls: media_urls_for_event,
         metadata_json,
         access,
         promotion_id: option::some(promotion_id),
-        revenue_redirect_to: option::none(),
-        revenue_redirect_percentage: option::none(),
+        <a href="../social_contracts/post.md#social_contracts_post_composition_status">composition_status</a>: <a href="../social_contracts/media_asset.md#social_contracts_media_asset_composition_none">media_asset::composition_none</a>(),
+        <a href="../social_contracts/post.md#social_contracts_post_monetization_status">monetization_status</a>: <a href="../social_contracts/media_asset.md#social_contracts_media_asset_monetization_none">media_asset::monetization_none</a>(),
         enable_spt: <b>false</b>,
         spt_id: option::none(),
-        <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">poc_redirection_kind</a>,
         <a href="../social_contracts/post.md#social_contracts_post_actor_address">actor_address</a>,
         <a href="../social_contracts/post.md#social_contracts_post_sub_agent_id">sub_agent_id</a>,
         organization_id,

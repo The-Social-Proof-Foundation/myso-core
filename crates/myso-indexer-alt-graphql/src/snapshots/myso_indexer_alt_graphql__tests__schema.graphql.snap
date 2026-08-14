@@ -1,5 +1,6 @@
 ---
 source: crates/myso-indexer-alt-graphql/src/lib.rs
+assertion_line: 503
 expression: sdl
 ---
 """
@@ -336,6 +337,13 @@ type AiCreditUsageLine {
 	settled: Boolean!
 	settlementTx: String
 	usageKind: Int!
+}
+
+type AncestrySnapshot {
+	ancestorIds: JSON
+	ancestryHash: String
+	ancestryVersion: Int!
+	mediaAssetId: String!
 }
 
 type AnonymousVote {
@@ -1037,6 +1045,10 @@ type CommentSummary {
 	User reports filed against this comment (paginated, newest first).
 	"""
 	reports(limit: Int, offset: Int): [PostReport!]
+	"""
+	Commenter tip earnings credited on-chain (`Comment.tips_received`).
+	"""
+	tipsReceived: Int!
 }
 
 type CommunityVote {
@@ -1046,6 +1058,15 @@ type CommunityVote {
 	voteTime: Int!
 	voteWeight: Int!
 	voterAddress: MySoAddress!
+}
+
+type CompositionAnalysis {
+	analysisJson: JSON
+	analyzedAt: Int!
+	compositionStatus: PostCompositionStatus!
+	monetizationStatus: PostMonetizationStatus!
+	postId: String!
+	usageContext: Int!
 }
 
 """
@@ -1149,6 +1170,11 @@ type ConsensusObjectRead {
 	object: Object
 }
 
+type ContainerUsageDenial {
+	bindingId: Int!
+	denialScope: Int!
+}
+
 """
 ISO-8601 Date and Time: RFC3339 in UTC with format: YYYY-MM-DDTHH:MM:SS.mmmZ. Note that the milliseconds part is optional, and it may be omitted if its value is 0.
 """
@@ -1242,12 +1268,104 @@ enum DelegateRatingVoteKind {
 	CLEARED
 }
 
+enum DetectedAssetRelationshipStatus {
+	PROPOSED
+	ACCEPTED
+	REJECTED
+	FINALIZED
+}
+
+enum DerivativeRelationshipType {
+	UNSPECIFIED
+	REMIX
+	SAMPLE
+	COVER
+	MASHUP
+}
+
+enum GovernanceProposalStatus {
+	SUBMITTED
+	DELEGATE_REVIEW
+	COMMUNITY_VOTING
+	APPROVED
+	REJECTED
+	IMPLEMENTED
+	OWNER_RESCIND
+}
+
+enum MediaAssetKind {
+	UNSPECIFIED
+	VISUAL_WORK
+	MUSICAL_COMPOSITION
+	SOUND_RECORDING
+}
+
+enum MediaAssetMediaType {
+	UNSPECIFIED
+	IMAGE
+	VIDEO
+	AUDIO
+}
+
+enum MediaAssetOriginalityStatus {
+	UNRESOLVED
+	ORIGINAL
+	DERIVATIVE
+}
+
+enum MediaAssetProvenanceStatus {
+	UNVERIFIED
+	VERIFIED
+}
+
+enum PostCompositionStatus {
+	NONE
+	PENDING
+	VERIFIED
+	INVALID
+	PARTIALLY_RESTRICTED
+}
+
+enum PostMonetizationStatus {
+	NONE
+	PENDING
+	ENABLED
+	RESTRICTED
+}
+
 type DelegateVote {
 	approve: Boolean!
 	delegateAddress: MySoAddress!
 	proposalId: String!
 	reason: String
 	voteTime: Int!
+}
+
+type DerivativeEdge {
+	ancestryVersion: Int!
+	childAssetId: String!
+	licenseInstanceId: String!
+	parentAssetId: String!
+	parentShareBps: Int!
+	relationshipId: Int!
+	relationshipType: DerivativeRelationshipType!
+	templateVersionId: String!
+}
+
+type DerivativeGraph {
+	assetId: String!
+	childEdges: [DerivativeEdge!]!
+	parentEdges: [DerivativeEdge!]!
+}
+
+type DetectedAssetRelationship {
+	accusedAssetId: String
+	accusedPendingId: String!
+	detectedAt: Int!
+	originalAssetId: String!
+	proposalId: String!
+	similarityBps: Int!
+	status: DetectedAssetRelationshipStatus!
 }
 
 """
@@ -1490,6 +1608,14 @@ type EcosystemTreasury {
 	Configuration version.
 	"""
 	version: Int!
+}
+
+type EmbeddedAssetBinding {
+	bindingId: Int!
+	mediaComponent: Int!
+	sourceAssetId: String!
+	stem: Int!
+	usageClass: Int!
 }
 
 """
@@ -2754,6 +2880,45 @@ type MakeMoveVecCommand {
 	If the elements are not objects, or the vector is empty, a type must be supplied.
 	"""
 	type: MoveType
+}
+
+type MediaAsset {
+	activeRightsProposal: Proposal
+	ancestry: AncestrySnapshot
+	assetKind: MediaAssetKind!
+	derivativeGraph(limit: Int, offset: Int): DerivativeGraph
+	detectedRelationships(limit: Int, offset: Int): [DetectedAssetRelationship!]
+	economicsVersion: Int!
+	lineageParentId: String
+	mediaAssetId: String!
+	mediaType: MediaAssetMediaType!
+	originalityStatus: MediaAssetOriginalityStatus!
+	provenanceStatus: MediaAssetProvenanceStatus!
+	registeredAt: Int!
+	registeredBy: String!
+	resolvedPolicy: ResolvedPolicy
+	rightsDisputesSubmitted: Int!
+	rightsProposals(limit: Int, offset: Int): [Proposal!]
+	rightsUpdates(limit: Int, offset: Int): [MediaAssetRightsUpdate!]
+	rightsVersion: Int!
+	usages(limit: Int, offset: Int): [MediaAssetUsage!]
+	verifiedAt: Int
+}
+
+type MediaAssetRightsUpdate {
+	mediaAssetId: String!
+	proposalId: String
+	rightsVersion: Int!
+	time: DateTime!
+	transactionId: String!
+}
+
+type MediaAssetUsage {
+	assetId: String!
+	containerId: String!
+	containerType: Int!
+	position: Int!
+	usageClass: Int!
 }
 
 type MemoryAccount {
@@ -5375,6 +5540,11 @@ type PlatformUserAccess {
 	moderatorPermissions: [String!]!
 }
 
+type PlaybackPolicy {
+	audioMuted: Boolean!
+	videoRestricted: Boolean!
+}
+
 type PocAnalysisResult {
 	"""
 	When the analysis was performed (epoch milliseconds).
@@ -5530,6 +5700,18 @@ type PocConfig {
 	Minimum vault deposit amount required to submit a dispute (MYSO base units).
 	"""
 	minVaultDepositAmount: Int!
+	"""
+	Treasury fee for initiating a media-asset rights governance dispute (MYSO base units).
+	"""
+	mediaAssetDisputeCost: Int!
+	"""
+	Lifetime cap on rights governance disputes per media asset.
+	"""
+	maxDisputesPerMediaAsset: Int!
+	"""
+	Max bps any embedded source asset may redirect from a post revenue pool (0-10000).
+	"""
+	maxEmbeddedAssetRedirectBps: Int!
 	"""
 	Minimum stake per vote on a dispute (MYSO base units).
 	"""
@@ -5804,6 +5986,14 @@ type Post implements Node {
 	"""
 	comments(limit: Int, offset: Int): [CommentSummary!]
 	"""
+	Latest composition analysis sidecar for this post.
+	"""
+	compositionAnalysis: CompositionAnalysis
+	"""
+	Composition verification status (0=none, 1=pending, 2=verified, 3=invalid, 4=partially_restricted).
+	"""
+	compositionStatus: PostCompositionStatus
+	"""
 	The post content.
 	"""
 	content: String!
@@ -5820,6 +6010,10 @@ type Post implements Node {
 	"""
 	deletionEvents(limit: Int, offset: Int): [PostDeletionEvent!]
 	"""
+	Embedded media asset bindings detected in this post's composition.
+	"""
+	embeddedBindings: [EmbeddedAssetBinding!]
+	"""
 	Whether Social Proof Token (SPT) features are enabled for this post.
 	"""
 	enableSpt: Boolean!
@@ -5831,6 +6025,14 @@ type Post implements Node {
 	The post's globally unique identifier.
 	"""
 	id: ID!
+	"""
+	Canonical MediaAsset object ids referenced by this post.
+	"""
+	mediaAssetIds: JSON
+	"""
+	Resolved MediaAsset records for ids indexed on this post.
+	"""
+	mediaAssets: [MediaAsset!]
 	"""
 	Media URLs (JSON array).
 	"""
@@ -5847,6 +6049,10 @@ type Post implements Node {
 	Platform moderation actions on this post (paginated, newest first).
 	"""
 	moderationEvents(limit: Int, offset: Int): [PostModerationEvent!]
+	"""
+	Monetization eligibility status (0=none, 1=pending, 2=enabled, 3=restricted).
+	"""
+	monetizationStatus: PostMonetizationStatus
 	"""
 	Indexed MyData record when `mydata_id` is set and found in the indexer.
 	"""
@@ -5879,6 +6085,10 @@ type Post implements Node {
 	Platform id where this post was created (indexed from `PostCreatedEvent`).
 	"""
 	platformId: String
+	"""
+	Derived playback/monetization restrictions from bindings and decision snapshots.
+	"""
+	playbackPolicy: PlaybackPolicy!
 	"""
 	Latest PoC analysis result for this post.
 	"""
@@ -5916,7 +6126,7 @@ type Post implements Node {
 	"""
 	pocOracleAddress: String
 	"""
-	PoC outcome code from chain.
+	PoC outcome code from chain (legacy post-level PoC; deprecated for MediaAsset-centric posts).
 	"""
 	pocOutcome: Int
 	"""
@@ -5974,6 +6184,10 @@ type Post implements Node {
 	"""
 	reposts(limit: Int, offset: Int): [RepostSummary!]
 	requiresSubscription: Boolean @deprecated(reason: "Use `access.kind` instead.")
+	"""
+	Latest revenue manifest indexed for creator-attributable tip splits on this post.
+	"""
+	revenueManifest: RevenueManifest
 	"""
 	Optional off-chain / indexed revenue recipient address.
 	"""
@@ -6052,6 +6266,14 @@ type Post implements Node {
 	When the post was last updated (Unix timestamp in milliseconds).
 	"""
 	updatedAt: Int
+	"""
+	Effective usage decision snapshots per embedded binding.
+	"""
+	usageDecisions: [UsageDecisionSnapshot!]
+	"""
+	Active container usage denials scoped to bindings on this post.
+	"""
+	usageDenials: [ContainerUsageDenial!]
 }
 
 type PostAccess {
@@ -6980,9 +7202,13 @@ type Proposal {
 	"""
 	spotRecord: SpotRecord
 	"""
+	Linked media asset for PoC media-asset rights governance proposals (registry_type=1).
+	"""
+	mediaAsset: MediaAsset
+	"""
 	Proposal lifecycle status (0=submitted, 1=delegate_review, 2=community_voting, 3=approved, 4=rejected, 5=implemented, 6=rescinded). New proposals created on chain enter delegate review (1); `0` is not used for newly submitted work.
 	"""
-	status: Int!
+	status: GovernanceProposalStatus!
 	"""
 	Submission time (epoch ms).
 	"""
@@ -7246,6 +7472,14 @@ type Query {
 	List MyData records (paginated, optionally filtered by creator, media_type, platform_id). Returns empty when social DB not configured.
 	"""
 	listMydata(creator: MySoAddress, mediaType: String, platformId: String, sortBy: String, limit: Int, offset: Int): [MyDataRecord!]
+	"""
+	Fetch a registered media asset by object id.
+	"""
+	mediaAsset(id: ID!): MediaAsset
+	"""
+	Governance proposals for media asset rights disputes on the given asset.
+	"""
+	mediaAssetRightsProposals(mediaAssetId: ID!, limit: Int, offset: Int): [Proposal!]
 	"""
 	Memory configuration. Returns null when social DB not configured or no config.
 	"""
@@ -7853,6 +8087,34 @@ type RepostSummary {
 	repostId: String!
 }
 
+type ResolvedObligation {
+	beneficiaryAddress: String!
+	beneficiaryAssetId: String
+	obligationIndex: Int!
+	obligationKind: Int!
+	shareBps: Int!
+	sourceLicenseInstanceId: String
+	sourceRelationshipId: Int
+}
+
+type ResolvedPolicy {
+	attributionRequired: Boolean!
+	commercialAllowed: Boolean!
+	derivativesAllowed: Boolean!
+	effectiveRights: Int!
+	lineageHash: String!
+	lineageJson: JSON
+	mediaAssetId: String!
+	obligations: [ResolvedObligation!]
+	policyVersion: Int!
+}
+
+type RevenueManifest {
+	entriesJson: JSON
+	manifestVersion: Int!
+	postId: String!
+}
+
 type RewardDistribution {
 	amount: Int!
 	distributionTime: Int!
@@ -8087,6 +8349,9 @@ type SocialProofToken {
 	owner: MySoAddress
 	platformEarnings: Int
 	poolId: String
+	"""
+	Price change percentage vs ~24h ago, or vs first indexed price when the pool is younger than 24h.
+	"""
 	priceChange24H: Float
 	requiredThreshold: BigInt!
 	"""
@@ -8797,7 +9062,7 @@ type SptPool {
 	"""
 	price: Int!
 	"""
-	24-hour price change (percentage).
+	Price change percentage vs ~24h ago, or vs first indexed price when the pool is younger than 24h.
 	"""
 	priceChange24H: Float
 	"""
@@ -9651,6 +9916,14 @@ type UpgradeCommand {
 	The `UpgradeTicket` authorizing the upgrade.
 	"""
 	upgradeTicket: TransactionArgument
+}
+
+type UsageDecisionSnapshot {
+	bindingId: Int!
+	playbackPermitted: Boolean!
+	policyPlaybackPermitted: Boolean!
+	policyReasonCode: Int!
+	policyVersionAtDecision: Int!
 }
 
 type UserSignature {

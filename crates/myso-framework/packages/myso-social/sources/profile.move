@@ -27,6 +27,7 @@ module social_contracts::profile {
     use social_contracts::upgrade;
     use social_contracts::memory as memory;
     use social_contracts::ai_credit::{Self, AiCreditConfig};
+    use social_contracts::media_asset::{Self as media_asset, MediaAsset};
 
     /// Error codes
     const EProfileAlreadyExists: u64 = 0;
@@ -215,10 +216,14 @@ module social_contracts::profile {
         display_name: Option<String>,
         /// Bio of the profile
         bio: String,
-        /// Profile picture URL
+        /// Profile picture URL (display cache)
         profile_picture: Option<Url>,
-        /// Cover photo URL
+        /// Cover photo URL (display cache)
         cover_photo: Option<Url>,
+        /// Canonical MediaAsset for profile picture (PoC-resolved)
+        profile_picture_asset_id: Option<ID>,
+        /// Canonical MediaAsset for cover photo (PoC-resolved)
+        cover_photo_asset_id: Option<ID>,
         /// Creation timestamp
         created_at: u64,
         /// Profile owner address
@@ -384,7 +389,17 @@ module social_contracts::profile {
         removed_at: u64,
     }
 
-    /// Profile created event (username is emitted via [`UsernameClaimedEvent`])
+    /// Emitted when profile media references a MediaAsset (usage graph).
+    public struct ProfileMediaAssetUpdatedEvent has copy, drop {
+        profile_id: address,
+        field: u8,
+        media_asset_id: ID,
+        timestamp: u64,
+    }
+
+    const PROFILE_MEDIA_FIELD_PICTURE: u8 = 1;
+    const PROFILE_MEDIA_FIELD_COVER: u8 = 2;
+
     public struct ProfileCreatedEvent has copy, drop {
         profile_id: address,
         display_name: String,
@@ -1036,6 +1051,8 @@ module social_contracts::profile {
             bio,
             profile_picture,
             cover_photo,
+            profile_picture_asset_id: option::none(),
+            cover_photo_asset_id: option::none(),
             created_at: now,
             owner,
             x_username: option::none(),
@@ -1142,6 +1159,8 @@ module social_contracts::profile {
             bio: bio_str,
             profile_picture,
             cover_photo,
+            profile_picture_asset_id: option::none(),
+            cover_photo_asset_id: option::none(),
             created_at: now,
             owner,
             x_username: option::none(),
@@ -1252,6 +1271,80 @@ module social_contracts::profile {
         apply_optional_string_update(&mut profile.location, new_location);
 
         emit_profile_updated_event(profile, clock, ctx);
+    }
+
+    /// Set profile picture from a PoC-resolved MediaAsset (usage class must permit PROFILE_PICTURE).
+    public entry fun update_profile_picture_asset(
+        profile: &mut Profile,
+        asset: &MediaAsset,
+        display_url: vector<u8>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(profile.owner == tx_context::sender(ctx), EUnauthorized);
+        media_asset::assert_media_asset_version(asset);
+        media_asset::assert_usage_permitted(asset, media_asset::usage_profile_picture(), clock);
+        profile.profile_picture_asset_id = option::some(media_asset::media_asset_id(asset));
+        if (vector::length(&display_url) > 0) {
+            profile.profile_picture = option::some(url::new_unsafe_from_bytes(display_url));
+        };
+        let profile_id = object::uid_to_address(&profile.id);
+        media_asset::emit_media_asset_used(
+            profile_id,
+            media_asset::container_profile(),
+            media_asset::media_asset_id(asset),
+            media_asset::usage_profile_picture(),
+            0,
+            clock,
+        );
+        event::emit(ProfileMediaAssetUpdatedEvent {
+            profile_id,
+            field: PROFILE_MEDIA_FIELD_PICTURE,
+            media_asset_id: media_asset::media_asset_id(asset),
+            timestamp: clock::timestamp_ms(clock),
+        });
+        emit_profile_updated_event(profile, clock, ctx);
+    }
+
+    /// Set cover photo from a PoC-resolved MediaAsset (usage class must permit COVER_PHOTO).
+    public entry fun update_cover_photo_asset(
+        profile: &mut Profile,
+        asset: &MediaAsset,
+        display_url: vector<u8>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(profile.owner == tx_context::sender(ctx), EUnauthorized);
+        media_asset::assert_media_asset_version(asset);
+        media_asset::assert_usage_permitted(asset, media_asset::usage_cover_photo(), clock);
+        profile.cover_photo_asset_id = option::some(media_asset::media_asset_id(asset));
+        if (vector::length(&display_url) > 0) {
+            profile.cover_photo = option::some(url::new_unsafe_from_bytes(display_url));
+        };
+        let profile_id = object::uid_to_address(&profile.id);
+        media_asset::emit_media_asset_used(
+            profile_id,
+            media_asset::container_profile(),
+            media_asset::media_asset_id(asset),
+            media_asset::usage_cover_photo(),
+            0,
+            clock,
+        );
+        event::emit(ProfileMediaAssetUpdatedEvent {
+            profile_id,
+            field: PROFILE_MEDIA_FIELD_COVER,
+            media_asset_id: media_asset::media_asset_id(asset),
+            timestamp: clock::timestamp_ms(clock),
+        });
+        emit_profile_updated_event(profile, clock, ctx);
+    }
+
+    public fun profile_picture_asset_id(profile: &Profile): Option<ID> {
+        profile.profile_picture_asset_id
+    }
+
+    public fun cover_photo_asset_id(profile: &Profile): Option<ID> {
+        profile.cover_photo_asset_id
     }
     
     // === Accessor functions ===
@@ -1938,6 +2031,8 @@ module social_contracts::profile {
         profile.website = option::none();
         profile.birthdate = option::none();
         profile.location = option::none();
+        profile.profile_picture_asset_id = option::none();
+        profile.cover_photo_asset_id = option::none();
         profile.version = current_version;
 
         upgrade::emit_migration_event(
@@ -2204,6 +2299,8 @@ module social_contracts::profile {
             bio: string::utf8(b"Test bio"),
             profile_picture: option::none(),
             cover_photo: option::none(),
+            profile_picture_asset_id: option::none(),
+            cover_photo_asset_id: option::none(),
             created_at: epoch,
             owner,
             x_username: option::none(),

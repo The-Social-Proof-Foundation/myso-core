@@ -74,10 +74,13 @@ plus optional sub-token nano remainder into the <code>u64</code> nano-SPT values
 -  [Function `create_reservation_pool_for_profile`](#social_contracts_social_proof_tokens_create_reservation_pool_for_profile)
 -  [Function `can_create_auction`](#social_contracts_social_proof_tokens_can_create_auction)
 -  [Function `create_social_proof_token`](#social_contracts_social_proof_tokens_create_social_proof_token)
+-  [Function `sync_token_pool_manifest_from_post`](#social_contracts_social_proof_tokens_sync_token_pool_manifest_from_post)
 -  [Function `sync_token_pool_poc_from_post`](#social_contracts_social_proof_tokens_sync_token_pool_poc_from_post)
 -  [Function `update_token_poc_data`](#social_contracts_social_proof_tokens_update_token_poc_data)
--  [Function `calculate_poc_split`](#social_contracts_social_proof_tokens_calculate_poc_split)
--  [Function `apply_token_poc_redirection`](#social_contracts_social_proof_tokens_apply_token_poc_redirection)
+-  [Function `pool_manifest_has_escrow_payout`](#social_contracts_social_proof_tokens_pool_manifest_has_escrow_payout)
+-  [Function `should_apply_pool_revenue_manifest`](#social_contracts_social_proof_tokens_should_apply_pool_revenue_manifest)
+-  [Function `apply_pool_revenue_manifest_coin`](#social_contracts_social_proof_tokens_apply_pool_revenue_manifest_coin)
+-  [Function `apply_post_revenue_manifest_coin`](#social_contracts_social_proof_tokens_apply_post_revenue_manifest_coin)
 -  [Function `distribute_creator_fee`](#social_contracts_social_proof_tokens_distribute_creator_fee)
 -  [Function `distribute_creator_fee_from_pool`](#social_contracts_social_proof_tokens_distribute_creator_fee_from_pool)
 -  [Function `apply_post_poc_redirection`](#social_contracts_social_proof_tokens_apply_post_poc_redirection)
@@ -130,10 +133,12 @@ plus optional sub-token nano remainder into the <code>u64</code> nano-SPT values
 -  [Function `get_token_owner`](#social_contracts_social_proof_tokens_get_token_owner)
 -  [Function `get_pool_price`](#social_contracts_social_proof_tokens_get_pool_price)
 -  [Function `get_user_balance`](#social_contracts_social_proof_tokens_get_user_balance)
+-  [Function `get_revenue_manifest`](#social_contracts_social_proof_tokens_get_revenue_manifest)
+-  [Function `has_poc_redirection`](#social_contracts_social_proof_tokens_has_poc_redirection)
 -  [Function `get_poc_redirect_to`](#social_contracts_social_proof_tokens_get_poc_redirect_to)
 -  [Function `get_poc_redirect_percentage`](#social_contracts_social_proof_tokens_get_poc_redirect_percentage)
--  [Function `has_poc_redirection`](#social_contracts_social_proof_tokens_has_poc_redirection)
 -  [Function `get_pool_associated_id`](#social_contracts_social_proof_tokens_get_pool_associated_id)
+-  [Function `set_revenue_manifest`](#social_contracts_social_proof_tokens_set_revenue_manifest)
 -  [Function `set_poc_redirection`](#social_contracts_social_proof_tokens_set_poc_redirection)
 -  [Function `set_poc_redirection_entry`](#social_contracts_social_proof_tokens_set_poc_redirection_entry)
 -  [Function `set_poc_redirection_admin`](#social_contracts_social_proof_tokens_set_poc_redirection_admin)
@@ -198,7 +203,10 @@ plus optional sub-token nano remainder into the <code>u64</code> nano-SPT values
 <b>use</b> <a href="../myso/vec_set.md#myso_vec_set">myso::vec_set</a>;
 <b>use</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit">social_contracts::ai_credit</a>;
 <b>use</b> <a href="../social_contracts/block_list.md#social_contracts_block_list">social_contracts::block_list</a>;
+<b>use</b> <a href="../social_contracts/media_asset.md#social_contracts_derivative_graph">social_contracts::derivative_graph</a>;
 <b>use</b> <a href="../social_contracts/governance.md#social_contracts_governance">social_contracts::governance</a>;
+<b>use</b> <a href="../social_contracts/media_asset.md#social_contracts_license_template">social_contracts::license_template</a>;
+<b>use</b> <a href="../social_contracts/media_asset.md#social_contracts_media_asset">social_contracts::media_asset</a>;
 <b>use</b> <a href="../social_contracts/memory.md#social_contracts_memory">social_contracts::memory</a>;
 <b>use</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">social_contracts::mydata</a>;
 <b>use</b> <a href="../social_contracts/platform.md#social_contracts_platform">social_contracts::platform</a>;
@@ -592,22 +600,10 @@ Liquidity pool for a token (key only - not transferable)
  Holder balances in **nano-SPT**.
 </dd>
 <dt>
-<code>poc_redirect_to: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
+<code>revenue_manifest: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../social_contracts/media_asset.md#social_contracts_media_asset_RevenueManifest">social_contracts::media_asset::RevenueManifest</a>&gt;</code>
 </dt>
 <dd>
- PoC revenue redirection address (for post tokens only)
-</dd>
-<dt>
-<code>poc_redirect_percentage: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
-</dt>
-<dd>
- PoC revenue redirection percentage (for post tokens only)
-</dd>
-<dt>
-<code>poc_redirection_kind: u8</code>
-</dt>
-<dd>
- Mirrors <code><a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">post::poc_redirection_kind</a></code> for fee routing (<code>0</code> = none, <code>1</code> wallet, <code>2</code> escrow)
+ Cached post revenue manifest for creator-fee routing (post tokens only)
 </dd>
 <dt>
 <code>version: u64</code>
@@ -4226,6 +4222,7 @@ Create a post and bootstrap its SPT reservation pool in one transaction.
         post_config,
         memory_config,
         content,
+        vector[],
         media_urls,
         mentions,
         metadata_json,
@@ -4250,7 +4247,7 @@ Create a post and bootstrap its SPT reservation pool in one transaction.
         clock,
         ctx,
     );
-    <b>let</b> _post_id = <a href="../social_contracts/post.md#social_contracts_post_share_and_emit_spt_post">post::share_and_emit_spt_post</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, pool_object_id);
+    <b>let</b> _post_id = <a href="../social_contracts/post.md#social_contracts_post_share_and_emit_spt_post">post::share_and_emit_spt_post</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, pool_object_id, clock);
 }
 </code></pre>
 
@@ -4505,9 +4502,7 @@ This replaces the auction system - only the post/profile owner can call this
         info: pool_token_info,
         myso_balance: balance::zero(),
         holders: table::new(ctx),
-        poc_redirect_to: option::none(),
-        poc_redirect_percentage: option::none(),
-        poc_redirection_kind: 0,
+        revenue_manifest: option::none(),
         version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     };
     // Distribute tokens to reservers proportionally
@@ -4598,14 +4593,59 @@ This replaces the auction system - only the post/profile owner can call this
 
 </details>
 
+<a name="social_contracts_social_proof_tokens_sync_token_pool_manifest_from_post"></a>
+
+## Function `sync_token_pool_manifest_from_post`
+
+Copy <code><a href="../social_contracts/post.md#social_contracts_post_revenue_manifest">post::revenue_manifest</a></code> into a matching POST <code><a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">TokenPool</a></code> and emit <code><a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_PocRedirectionUpdatedEvent">PocRedirectionUpdatedEvent</a></code>.
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_sync_token_pool_manifest_from_post">sync_token_pool_manifest_from_post</a>(registry: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>, pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">social_contracts::social_proof_tokens::TokenPool</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, updated_by: <b>address</b>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, _ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_sync_token_pool_manifest_from_post">sync_token_pool_manifest_from_post</a>(
+    registry: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">TokenRegistry</a>,
+    pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">TokenPool</a>,
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &Post,
+    updated_by: <b>address</b>,
+    clock: &Clock,
+    _ctx: &TxContext,
+) {
+    <b>assert</b>!(pool.info.token_type == <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TOKEN_TYPE_POST">TOKEN_TYPE_POST</a>, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidTokenType">EInvalidTokenType</a>);
+    <b>let</b> post_id = <a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    <b>assert</b>!(post_id == pool.info.associated_id, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidID">EInvalidID</a>);
+    <b>assert</b>!(<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_token_exists">token_exists</a>(registry, post_id), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ETokenNotFound">ETokenNotFound</a>);
+    pool.revenue_manifest = <a href="../social_contracts/post.md#social_contracts_post_revenue_manifest">post::revenue_manifest</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    event::emit(<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_PocRedirectionUpdatedEvent">PocRedirectionUpdatedEvent</a> {
+        pool_id: object::uid_to_address(&pool.id),
+        post_id,
+        redirect_to: option::none(),
+        redirect_percentage: option::none(),
+        poc_redirection_kind: 0,
+        updated_by,
+        timestamp: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_social_proof_tokens_sync_token_pool_poc_from_post"></a>
 
 ## Function `sync_token_pool_poc_from_post`
 
-Copy PoC redirect fields from <code><a href="../social_contracts/post.md#social_contracts_post">post</a></code> into a matching POST <code><a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">TokenPool</a></code> and emit <code><a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_PocRedirectionUpdatedEvent">PocRedirectionUpdatedEvent</a></code>.
+Legacy alias for manifest sync callers during migration.
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_sync_token_pool_poc_from_post">sync_token_pool_poc_from_post</a>(registry: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>, pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">social_contracts::social_proof_tokens::TokenPool</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, updated_by: <b>address</b>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, _ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_sync_token_pool_poc_from_post">sync_token_pool_poc_from_post</a>(registry: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>, pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">social_contracts::social_proof_tokens::TokenPool</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, updated_by: <b>address</b>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4620,36 +4660,9 @@ Copy PoC redirect fields from <code><a href="../social_contracts/post.md#social_
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &Post,
     updated_by: <b>address</b>,
     clock: &Clock,
-    _ctx: &TxContext,
+    ctx: &TxContext,
 ) {
-    <b>assert</b>!(pool.info.token_type == <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TOKEN_TYPE_POST">TOKEN_TYPE_POST</a>, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidTokenType">EInvalidTokenType</a>);
-    <b>let</b> post_id = <a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
-    <b>assert</b>!(post_id == pool.info.associated_id, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidID">EInvalidID</a>);
-    <b>assert</b>!(<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_token_exists">token_exists</a>(registry, post_id), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ETokenNotFound">ETokenNotFound</a>);
-    <b>let</b> redirect_to = <b>if</b> (option::is_some(<a href="../social_contracts/post.md#social_contracts_post_get_revenue_redirect_to">post::get_revenue_redirect_to</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>))) {
-        option::some(*option::borrow(<a href="../social_contracts/post.md#social_contracts_post_get_revenue_redirect_to">post::get_revenue_redirect_to</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>)))
-    } <b>else</b> {
-        option::none()
-    };
-    <b>let</b> redirect_percentage = <b>if</b> (option::is_some(<a href="../social_contracts/post.md#social_contracts_post_get_revenue_redirect_percentage">post::get_revenue_redirect_percentage</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>))) {
-        <b>let</b> percentage = *option::borrow(<a href="../social_contracts/post.md#social_contracts_post_get_revenue_redirect_percentage">post::get_revenue_redirect_percentage</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>));
-        <b>assert</b>!(percentage &lt;= 100, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
-        option::some(percentage)
-    } <b>else</b> {
-        option::none()
-    };
-    pool.poc_redirect_to = redirect_to;
-    pool.poc_redirect_percentage = redirect_percentage;
-    pool.poc_redirection_kind = <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">post::poc_redirection_kind</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
-    event::emit(<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_PocRedirectionUpdatedEvent">PocRedirectionUpdatedEvent</a> {
-        pool_id: object::uid_to_address(&pool.id),
-        post_id,
-        redirect_to,
-        redirect_percentage,
-        poc_redirection_kind: pool.poc_redirection_kind,
-        updated_by,
-        timestamp: clock::timestamp_ms(clock),
-    });
+    <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_sync_token_pool_manifest_from_post">sync_token_pool_manifest_from_post</a>(registry, pool, <a href="../social_contracts/post.md#social_contracts_post">post</a>, updated_by, clock, ctx);
 }
 </code></pre>
 
@@ -4683,7 +4696,7 @@ This function copies PoC data from a post into the corresponding token pool
 ) {
     <b>let</b> caller = tx_context::sender(ctx);
     <b>assert</b>!(caller == <a href="../social_contracts/post.md#social_contracts_post_get_post_owner">post::get_post_owner</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ENotAuthorized">ENotAuthorized</a>);
-    <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_sync_token_pool_poc_from_post">sync_token_pool_poc_from_post</a>(registry, pool, <a href="../social_contracts/post.md#social_contracts_post">post</a>, caller, clock, ctx);
+    <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_sync_token_pool_manifest_from_post">sync_token_pool_manifest_from_post</a>(registry, pool, <a href="../social_contracts/post.md#social_contracts_post">post</a>, caller, clock, ctx);
 }
 </code></pre>
 
@@ -4691,14 +4704,13 @@ This function copies PoC data from a post into the corresponding token pool
 
 </details>
 
-<a name="social_contracts_social_proof_tokens_calculate_poc_split"></a>
+<a name="social_contracts_social_proof_tokens_pool_manifest_has_escrow_payout"></a>
 
-## Function `calculate_poc_split`
-
-Calculate PoC revenue split - shared utility for consistent logic
+## Function `pool_manifest_has_escrow_payout`
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_poc_split">calculate_poc_split</a>(amount: u64, redirect_percentage: u64): (u64, u64)
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_pool_manifest_has_escrow_payout">pool_manifest_has_escrow_payout</a>(pool: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">social_contracts::social_proof_tokens::TokenPool</a>, amount: u64): bool
 </code></pre>
 
 
@@ -4707,12 +4719,11 @@ Calculate PoC revenue split - shared utility for consistent logic
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_poc_split">calculate_poc_split</a>(amount: u64, redirect_percentage: u64): (u64, u64) {
-    // Validate redirect percentage to prevent underflow
-    <b>assert</b>!(redirect_percentage &lt;= 100, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
-    <b>let</b> redirected_amount = (amount * redirect_percentage) / 100;
-    <b>let</b> remaining_amount = amount - redirected_amount;
-    (redirected_amount, remaining_amount)
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_pool_manifest_has_escrow_payout">pool_manifest_has_escrow_payout</a>(pool: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">TokenPool</a>, amount: u64): bool {
+    <b>if</b> (amount == 0 || option::is_none(&pool.revenue_manifest)) {
+        <b>return</b> <b>false</b>
+    };
+    <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_has_escrow_payout">media_asset::manifest_has_escrow_payout</a>(option::borrow(&pool.revenue_manifest), amount)
 }
 </code></pre>
 
@@ -4720,14 +4731,13 @@ Calculate PoC revenue split - shared utility for consistent logic
 
 </details>
 
-<a name="social_contracts_social_proof_tokens_apply_token_poc_redirection"></a>
+<a name="social_contracts_social_proof_tokens_should_apply_pool_revenue_manifest"></a>
 
-## Function `apply_token_poc_redirection`
-
-Apply PoC redirection to creator fees with consolidated logic
+## Function `should_apply_pool_revenue_manifest`
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_apply_token_poc_redirection">apply_token_poc_redirection</a>(pool: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">social_contracts::social_proof_tokens::TokenPool</a>, amount: u64, _ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (u64, u64)
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_should_apply_pool_revenue_manifest">should_apply_pool_revenue_manifest</a>(pool: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">social_contracts::social_proof_tokens::TokenPool</a>): bool
 </code></pre>
 
 
@@ -4736,18 +4746,137 @@ Apply PoC redirection to creator fees with consolidated logic
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_apply_token_poc_redirection">apply_token_poc_redirection</a>(
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_should_apply_pool_revenue_manifest">should_apply_pool_revenue_manifest</a>(pool: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">TokenPool</a>): bool {
+    pool.info.token_type == <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TOKEN_TYPE_POST">TOKEN_TYPE_POST</a> && option::is_some(&pool.revenue_manifest)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_apply_pool_revenue_manifest_coin"></a>
+
+## Function `apply_pool_revenue_manifest_coin`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_apply_pool_revenue_manifest_coin">apply_pool_revenue_manifest_coin</a>(pool: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">social_contracts::social_proof_tokens::TokenPool</a>, intended_recipient: <b>address</b>, amount: u64, coins: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_apply_pool_revenue_manifest_coin">apply_pool_revenue_manifest_coin</a>(
     pool: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">TokenPool</a>,
+    intended_recipient: <b>address</b>,
     amount: u64,
-    _ctx: &<b>mut</b> TxContext
-): (u64, u64) {
-    <b>if</b> (<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_has_poc_redirection">has_poc_redirection</a>(pool)) {
-        <b>let</b> redirect_percentage = *option::borrow(&pool.poc_redirect_percentage);
-        // Use shared utility function <b>for</b> consistent calculation
-        <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_poc_split">calculate_poc_split</a>(amount, redirect_percentage)
+    coins: &<b>mut</b> Coin&lt;MYSO&gt;,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> manifest = option::borrow(&pool.revenue_manifest);
+    <b>let</b> entries = <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entries">media_asset::manifest_entries</a>(manifest);
+    <b>let</b> len = vector::length(entries);
+    <b>let</b> bps_total = <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_bps_total">media_asset::manifest_bps_total</a>();
+    <b>let</b> <b>mut</b> fee_coins = coin::split(coins, amount, ctx);
+    <b>let</b> <b>mut</b> i = 0;
+    <b>while</b> (i &lt; len) {
+        <b>let</b> e = vector::borrow(entries, i);
+        <b>let</b> slice = (amount * <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_share_bps">media_asset::manifest_entry_share_bps</a>(e)) / bps_total;
+        <b>if</b> (slice &gt; 0) {
+            <b>let</b> pay_coins = coin::split(&<b>mut</b> fee_coins, slice, ctx);
+            <b>assert</b>!(<a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_payout_mode">media_asset::manifest_entry_payout_mode</a>(e) == <a href="../social_contracts/media_asset.md#social_contracts_media_asset_payout_wallet">media_asset::payout_wallet</a>(), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EPostPoolEscrowTradingBlocked">EPostPoolEscrowTradingBlocked</a>);
+            transfer::public_transfer(pay_coins, <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_beneficiary">media_asset::manifest_entry_beneficiary</a>(e));
+        };
+        i = i + 1;
+    };
+    <b>let</b> remainder = coin::value(&fee_coins);
+    <b>if</b> (remainder &gt; 0) {
+        transfer::public_transfer(fee_coins, intended_recipient);
     } <b>else</b> {
-        (0, amount)
-    }
+        coin::destroy_zero(fee_coins);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_apply_post_revenue_manifest_coin"></a>
+
+## Function `apply_post_revenue_manifest_coin`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_apply_post_revenue_manifest_coin">apply_post_revenue_manifest_coin</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, beneficiary_vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, intended_recipient: <b>address</b>, amount: u64, coins: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, object_id: <b>address</b>, min_vault_deposit_amount: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_apply_post_revenue_manifest_coin">apply_post_revenue_manifest_coin</a>(
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &Post,
+    beneficiary_vault: &<b>mut</b> PoCBeneficiaryVault,
+    intended_recipient: <b>address</b>,
+    amount: u64,
+    coins: &<b>mut</b> Coin&lt;MYSO&gt;,
+    object_id: <b>address</b>,
+    min_vault_deposit_amount: u64,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>if</b> (!<a href="../social_contracts/post.md#social_contracts_post_monetization_enabled">post::monetization_enabled</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>)) {
+        <b>let</b> fee_coin = coin::split(coins, amount, ctx);
+        transfer::public_transfer(fee_coin, intended_recipient);
+        <b>return</b>
+    };
+    <b>let</b> manifest_opt = <a href="../social_contracts/post.md#social_contracts_post_revenue_manifest">post::revenue_manifest</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    <b>if</b> (option::is_none(&manifest_opt)) {
+        <b>let</b> fee_coin = coin::split(coins, amount, ctx);
+        transfer::public_transfer(fee_coin, intended_recipient);
+        <b>return</b>
+    };
+    <b>let</b> manifest = option::borrow(&manifest_opt);
+    <b>let</b> entries = <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entries">media_asset::manifest_entries</a>(manifest);
+    <b>let</b> len = vector::length(entries);
+    <b>let</b> bps_total = <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_bps_total">media_asset::manifest_bps_total</a>();
+    <b>let</b> <b>mut</b> fee_coins = coin::split(coins, amount, ctx);
+    <b>let</b> <b>mut</b> i = 0;
+    <b>while</b> (i &lt; len) {
+        <b>let</b> e = vector::borrow(entries, i);
+        <b>let</b> slice = (amount * <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_share_bps">media_asset::manifest_entry_share_bps</a>(e)) / bps_total;
+        <b>if</b> (slice &gt; 0) {
+            <b>let</b> pay_coins = coin::split(&<b>mut</b> fee_coins, slice, ctx);
+            <b>if</b> (<a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_payout_mode">media_asset::manifest_entry_payout_mode</a>(e) == <a href="../social_contracts/media_asset.md#social_contracts_media_asset_payout_escrow">media_asset::payout_escrow</a>()) {
+                <b>assert</b>!(<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_beneficiary_address">poc_vault::beneficiary_address</a>(beneficiary_vault) == <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_beneficiary">media_asset::manifest_entry_beneficiary</a>(e), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
+                <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_deposit_coin">poc_vault::deposit_coin</a>&lt;MYSO&gt;(
+                    beneficiary_vault,
+                    <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_beneficiary">media_asset::manifest_entry_beneficiary</a>(e),
+                    pay_coins,
+                    option::some(object_id),
+                    min_vault_deposit_amount,
+                    clock,
+                    ctx
+                );
+            } <b>else</b> {
+                transfer::public_transfer(pay_coins, <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_beneficiary">media_asset::manifest_entry_beneficiary</a>(e));
+            };
+        };
+        i = i + 1;
+    };
+    <b>let</b> remainder = coin::value(&fee_coins);
+    <b>if</b> (remainder &gt; 0) {
+        transfer::public_transfer(fee_coins, intended_recipient);
+    } <b>else</b> {
+        coin::destroy_zero(fee_coins);
+    };
 }
 </code></pre>
 
@@ -4759,7 +4888,7 @@ Apply PoC redirection to creator fees with consolidated logic
 
 ## Function `distribute_creator_fee`
 
-Distribute creator fees with automatic PoC redirection
+Distribute creator fees with automatic manifest-based revenue routing
 
 
 <pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_creator_fee">distribute_creator_fee</a>(pool: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">social_contracts::social_proof_tokens::TokenPool</a>, creator_fee_amount: u64, creator_fee_coin: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
@@ -4781,24 +4910,13 @@ Distribute creator fees with automatic PoC redirection
         <b>return</b>
     };
     <b>assert</b>!(
-        !(pool.info.token_type == <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TOKEN_TYPE_POST">TOKEN_TYPE_POST</a> && pool.poc_redirection_kind == 2),
+        !(pool.info.token_type == <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TOKEN_TYPE_POST">TOKEN_TYPE_POST</a> && <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_pool_manifest_has_escrow_payout">pool_manifest_has_escrow_payout</a>(pool, creator_fee_amount)),
         <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EPostPoolEscrowTradingBlocked">EPostPoolEscrowTradingBlocked</a>
     );
-    <b>let</b> (redirected_amount, _remaining_amount) = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_apply_token_poc_redirection">apply_token_poc_redirection</a>(pool, creator_fee_amount, ctx);
-    <b>let</b> <b>mut</b> fee_coin = coin::split(creator_fee_coin, creator_fee_amount, ctx);
-    <b>if</b> (redirected_amount &gt; 0) {
-        // Split the fee: redirected portion goes to original creator, remainder to <a href="../social_contracts/post.md#social_contracts_post">post</a> owner
-        <b>let</b> redirected_fee = coin::split(&<b>mut</b> fee_coin, redirected_amount, ctx);
-        <b>let</b> redirect_to = *option::borrow(&pool.poc_redirect_to);
-        transfer::public_transfer(redirected_fee, redirect_to);
-        // Send remainder to current <a href="../social_contracts/post.md#social_contracts_post">post</a> owner
-        <b>if</b> (coin::value(&fee_coin) &gt; 0) {
-            transfer::public_transfer(fee_coin, pool.info.owner);
-        } <b>else</b> {
-            coin::destroy_zero(fee_coin);
-        };
+    <b>if</b> (<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_should_apply_pool_revenue_manifest">should_apply_pool_revenue_manifest</a>(pool)) {
+        <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_apply_pool_revenue_manifest_coin">apply_pool_revenue_manifest_coin</a>(pool, pool.info.owner, creator_fee_amount, creator_fee_coin, ctx);
     } <b>else</b> {
-        // No redirection - send full amount to current <a href="../social_contracts/post.md#social_contracts_post">post</a> owner
+        <b>let</b> fee_coin = coin::split(creator_fee_coin, creator_fee_amount, ctx);
         transfer::public_transfer(fee_coin, pool.info.owner);
     };
 }
@@ -4812,7 +4930,7 @@ Distribute creator fees with automatic PoC redirection
 
 ## Function `distribute_creator_fee_from_pool`
 
-Distribute creator fees from pool balance with PoC redirection support
+Distribute creator fees from pool balance with manifest-based revenue routing
 
 
 <pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_creator_fee_from_pool">distribute_creator_fee_from_pool</a>(pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">social_contracts::social_proof_tokens::TokenPool</a>, creator_fee: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
@@ -4833,24 +4951,15 @@ Distribute creator fees from pool balance with PoC redirection support
         <b>return</b>
     };
     <b>assert</b>!(
-        !(pool.info.token_type == <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TOKEN_TYPE_POST">TOKEN_TYPE_POST</a> && pool.poc_redirection_kind == 2),
+        !(pool.info.token_type == <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TOKEN_TYPE_POST">TOKEN_TYPE_POST</a> && <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_pool_manifest_has_escrow_payout">pool_manifest_has_escrow_payout</a>(pool, creator_fee)),
         <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EPostPoolEscrowTradingBlocked">EPostPoolEscrowTradingBlocked</a>
     );
-    <b>let</b> (redirected_amount, _remaining_amount) = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_apply_token_poc_redirection">apply_token_poc_redirection</a>(pool, creator_fee, ctx);
-    <b>let</b> <b>mut</b> fee_coin = coin::from_balance(balance::split(&<b>mut</b> pool.myso_balance, creator_fee), ctx);
-    <b>if</b> (redirected_amount &gt; 0) {
-        // Split the fee: redirected portion goes to original creator, remainder to <a href="../social_contracts/post.md#social_contracts_post">post</a> owner
-        <b>let</b> redirected_fee = coin::split(&<b>mut</b> fee_coin, redirected_amount, ctx);
-        <b>let</b> redirect_to = *option::borrow(&pool.poc_redirect_to);
-        transfer::public_transfer(redirected_fee, redirect_to);
-        // Send remainder to current <a href="../social_contracts/post.md#social_contracts_post">post</a> owner
-        <b>if</b> (coin::value(&fee_coin) &gt; 0) {
-            transfer::public_transfer(fee_coin, pool.info.owner);
-        } <b>else</b> {
-            coin::destroy_zero(fee_coin);
-        };
+    <b>if</b> (<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_should_apply_pool_revenue_manifest">should_apply_pool_revenue_manifest</a>(pool)) {
+        <b>let</b> <b>mut</b> fee_coin = coin::from_balance(balance::split(&<b>mut</b> pool.myso_balance, creator_fee), ctx);
+        <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_apply_pool_revenue_manifest_coin">apply_pool_revenue_manifest_coin</a>(pool, pool.info.owner, creator_fee, &<b>mut</b> fee_coin, ctx);
+        coin::destroy_zero(fee_coin);
     } <b>else</b> {
-        // No redirection - send full amount to current <a href="../social_contracts/post.md#social_contracts_post">post</a> owner
+        <b>let</b> fee_coin = coin::from_balance(balance::split(&<b>mut</b> pool.myso_balance, creator_fee), ctx);
         transfer::public_transfer(fee_coin, pool.info.owner);
     };
 }
@@ -4864,10 +4973,10 @@ Distribute creator fees from pool balance with PoC redirection support
 
 ## Function `apply_post_poc_redirection`
 
-Apply PoC redirection from post (reuses calculate_poc_split utility)
+Legacy alias retained for package callers during migration.
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_apply_post_poc_redirection">apply_post_poc_redirection</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, amount: u64): (u64, u64)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_apply_post_poc_redirection">apply_post_poc_redirection</a>(_post: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, amount: u64): (u64, u64)
 </code></pre>
 
 
@@ -4877,20 +4986,10 @@ Apply PoC redirection from post (reuses calculate_poc_split utility)
 
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_apply_post_poc_redirection">apply_post_poc_redirection</a>(
-    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &Post,
+    _post: &Post,
     amount: u64
 ): (u64, u64) {
-    <b>let</b> k = <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">post::poc_redirection_kind</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
-    <b>let</b> has_split = option::is_some(<a href="../social_contracts/post.md#social_contracts_post_get_revenue_redirect_percentage">post::get_revenue_redirect_percentage</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>)) &&
-        k != <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_none">post::poc_redirection_none</a>() &&
-        (k == 2 || option::is_some(<a href="../social_contracts/post.md#social_contracts_post_get_revenue_redirect_to">post::get_revenue_redirect_to</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>)));
-    <b>if</b> (has_split) {
-        <b>let</b> redirect_percentage = *option::borrow(<a href="../social_contracts/post.md#social_contracts_post_get_revenue_redirect_percentage">post::get_revenue_redirect_percentage</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>));
-        <b>assert</b>!(redirect_percentage &lt;= 100, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
-        <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_poc_split">calculate_poc_split</a>(amount, redirect_percentage)
-    } <b>else</b> {
-        (0, amount)
-    }
+    (0, amount)
 }
 </code></pre>
 
@@ -4928,23 +5027,20 @@ when paying from <code>&<b>mut</b> reservation_pool_object.myso_balance</code> d
     <b>if</b> (creator_fee_amount == 0) {
         <b>return</b>
     };
-    <b>let</b> (redirected_amount, _remaining_amount) = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_apply_post_poc_redirection">apply_post_poc_redirection</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, creator_fee_amount);
-    <b>let</b> <b>mut</b> fee_coin = coin::split(creator_fee_coin, creator_fee_amount, ctx);
-    <b>if</b> (redirected_amount &gt; 0) {
-        <b>let</b> redirected_fee = coin::split(&<b>mut</b> fee_coin, redirected_amount, ctx);
-        <b>let</b> k = <a href="../social_contracts/post.md#social_contracts_post_poc_redirection_kind">post::poc_redirection_kind</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
-        <b>if</b> (k == 2) {
-            <a href="../social_contracts/post.md#social_contracts_post_deposit_coin_to_beneficiary_vault">post::deposit_coin_to_beneficiary_vault</a>&lt;MYSO&gt;(<a href="../social_contracts/post.md#social_contracts_post">post</a>, beneficiary_vault, redirected_fee, min_vault_deposit_amount, clock, ctx);
-        } <b>else</b> {
-            <b>let</b> redirect_to = *option::borrow(<a href="../social_contracts/post.md#social_contracts_post_get_revenue_redirect_to">post::get_revenue_redirect_to</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>));
-            transfer::public_transfer(redirected_fee, redirect_to);
-        };
-        <b>if</b> (coin::value(&fee_coin) &gt; 0) {
-            transfer::public_transfer(fee_coin, pool_owner);
-        } <b>else</b> {
-            coin::destroy_zero(fee_coin);
-        };
+    <b>if</b> (<a href="../social_contracts/post.md#social_contracts_post_monetization_enabled">post::monetization_enabled</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>) && option::is_some(&<a href="../social_contracts/post.md#social_contracts_post_revenue_manifest">post::revenue_manifest</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>))) {
+        <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_apply_post_revenue_manifest_coin">apply_post_revenue_manifest_coin</a>(
+            <a href="../social_contracts/post.md#social_contracts_post">post</a>,
+            beneficiary_vault,
+            pool_owner,
+            creator_fee_amount,
+            creator_fee_coin,
+            <a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>),
+            min_vault_deposit_amount,
+            clock,
+            ctx
+        );
     } <b>else</b> {
+        <b>let</b> fee_coin = coin::split(creator_fee_coin, creator_fee_amount, ctx);
         transfer::public_transfer(fee_coin, pool_owner);
     };
 }
@@ -7848,14 +7944,14 @@ Get user's token balance
 
 </details>
 
-<a name="social_contracts_social_proof_tokens_get_poc_redirect_to"></a>
+<a name="social_contracts_social_proof_tokens_get_revenue_manifest"></a>
 
-## Function `get_poc_redirect_to`
+## Function `get_revenue_manifest`
 
-Get PoC redirection data from token pool
+Get cached revenue manifest from token pool
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_get_poc_redirect_to">get_poc_redirect_to</a>(pool: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">social_contracts::social_proof_tokens::TokenPool</a>): &<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_get_revenue_manifest">get_revenue_manifest</a>(pool: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">social_contracts::social_proof_tokens::TokenPool</a>): &<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../social_contracts/media_asset.md#social_contracts_media_asset_RevenueManifest">social_contracts::media_asset::RevenueManifest</a>&gt;
 </code></pre>
 
 
@@ -7864,33 +7960,8 @@ Get PoC redirection data from token pool
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_get_poc_redirect_to">get_poc_redirect_to</a>(pool: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">TokenPool</a>): &Option&lt;<b>address</b>&gt; {
-    &pool.poc_redirect_to
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_social_proof_tokens_get_poc_redirect_percentage"></a>
-
-## Function `get_poc_redirect_percentage`
-
-Get PoC redirection percentage from token pool
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_get_poc_redirect_percentage">get_poc_redirect_percentage</a>(pool: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">social_contracts::social_proof_tokens::TokenPool</a>): &<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_get_poc_redirect_percentage">get_poc_redirect_percentage</a>(pool: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">TokenPool</a>): &Option&lt;u64&gt; {
-    &pool.poc_redirect_percentage
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_get_revenue_manifest">get_revenue_manifest</a>(pool: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">TokenPool</a>): &Option&lt;RevenueManifest&gt; {
+    &pool.revenue_manifest
 }
 </code></pre>
 
@@ -7902,7 +7973,7 @@ Get PoC redirection percentage from token pool
 
 ## Function `has_poc_redirection`
 
-Check if token pool has PoC redirection configured
+Legacy alias — true when a cached revenue manifest is present.
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_has_poc_redirection">has_poc_redirection</a>(pool: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">social_contracts::social_proof_tokens::TokenPool</a>): bool
@@ -7915,7 +7986,69 @@ Check if token pool has PoC redirection configured
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_has_poc_redirection">has_poc_redirection</a>(pool: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">TokenPool</a>): bool {
-    option::is_some(&pool.poc_redirect_to) && option::is_some(&pool.poc_redirect_percentage)
+    option::is_some(&pool.revenue_manifest)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_get_poc_redirect_to"></a>
+
+## Function `get_poc_redirect_to`
+
+Legacy compat — first non-owner manifest beneficiary.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_get_poc_redirect_to">get_poc_redirect_to</a>(pool: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">social_contracts::social_proof_tokens::TokenPool</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_get_poc_redirect_to">get_poc_redirect_to</a>(pool: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">TokenPool</a>): Option&lt;<b>address</b>&gt; {
+    <b>if</b> (option::is_none(&pool.revenue_manifest)) {
+        <b>return</b> option::none()
+    };
+    <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_redirect_beneficiary">media_asset::manifest_redirect_beneficiary</a>(
+        option::borrow(&pool.revenue_manifest),
+        pool.info.owner,
+    )
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_get_poc_redirect_percentage"></a>
+
+## Function `get_poc_redirect_percentage`
+
+Legacy compat — redirect share as whole-number percent (e.g. 75 = 75%).
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_get_poc_redirect_percentage">get_poc_redirect_percentage</a>(pool: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">social_contracts::social_proof_tokens::TokenPool</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_get_poc_redirect_percentage">get_poc_redirect_percentage</a>(pool: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">TokenPool</a>): Option&lt;u64&gt; {
+    <b>if</b> (option::is_none(&pool.revenue_manifest)) {
+        <b>return</b> option::none()
+    };
+    <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_redirect_percentage">media_asset::manifest_redirect_percentage</a>(
+        option::borrow(&pool.revenue_manifest),
+        pool.info.owner,
+    )
 }
 </code></pre>
 
@@ -7948,12 +8081,35 @@ Get the associated ID (post/profile ID) from a token pool
 
 </details>
 
+<a name="social_contracts_social_proof_tokens_set_revenue_manifest"></a>
+
+## Function `set_revenue_manifest`
+
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_set_revenue_manifest">set_revenue_manifest</a>(pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">social_contracts::social_proof_tokens::TokenPool</a>, manifest: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../social_contracts/media_asset.md#social_contracts_media_asset_RevenueManifest">social_contracts::media_asset::RevenueManifest</a>&gt;)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_set_revenue_manifest">set_revenue_manifest</a>(pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">TokenPool</a>, manifest: Option&lt;RevenueManifest&gt;) {
+    pool.revenue_manifest = manifest;
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_social_proof_tokens_set_poc_redirection"></a>
 
 ## Function `set_poc_redirection`
 
-Set PoC redirection data for a token pool (called by PoC system)
-Set PoC redirection for a token pool (package-only, requires auth via entry function)
+Build or clear cached manifest from legacy redirect parameters.
 
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_set_poc_redirection">set_poc_redirection</a>(pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">social_contracts::social_proof_tokens::TokenPool</a>, redirect_to: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, redirect_percentage: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, poc_redirection_kind: u8)
@@ -7971,19 +8127,49 @@ Set PoC redirection for a token pool (package-only, requires auth via entry func
     redirect_percentage: Option&lt;u64&gt;,
     poc_redirection_kind: u8,
 ) {
-    <b>assert</b>!(poc_redirection_kind &lt;= 2, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
     <b>if</b> (poc_redirection_kind == 0) {
-        <b>assert</b>!(option::is_none(&redirect_to), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
-        <b>assert</b>!(option::is_none(&redirect_percentage), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
-    } <b>else</b> {
-        <b>assert</b>!(option::is_some(&redirect_to), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
-        <b>assert</b>!(option::is_some(&redirect_percentage), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
-        <b>let</b> percentage = *option::borrow(&redirect_percentage);
-        <b>assert</b>!(percentage &lt;= 100, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
+        pool.revenue_manifest = option::none();
+        <b>return</b>
     };
-    pool.poc_redirect_to = redirect_to;
-    pool.poc_redirect_percentage = redirect_percentage;
-    pool.poc_redirection_kind = poc_redirection_kind;
+    <b>assert</b>!(
+        option::is_some(&redirect_to) && option::is_some(&redirect_percentage),
+        <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>,
+    );
+    <b>let</b> redirect_to_addr = *option::borrow(&redirect_to);
+    <b>let</b> redirect_pct = *option::borrow(&redirect_percentage);
+    <b>assert</b>!(redirect_pct &gt; 0 && redirect_pct &lt;= 100, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidFeeConfig">EInvalidFeeConfig</a>);
+    <b>let</b> redirect_bps = redirect_pct * 100;
+    <b>let</b> owner_bps = <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_bps_total">media_asset::manifest_bps_total</a>() - redirect_bps;
+    <b>let</b> owner = pool.info.owner;
+    <b>let</b> redirect_payout_mode = <b>if</b> (poc_redirection_kind == 2) {
+        <a href="../social_contracts/media_asset.md#social_contracts_media_asset_payout_escrow">media_asset::payout_escrow</a>()
+    } <b>else</b> {
+        <a href="../social_contracts/media_asset.md#social_contracts_media_asset_payout_wallet">media_asset::payout_wallet</a>()
+    };
+    <b>let</b> <b>mut</b> entries = vector[];
+    <b>if</b> (redirect_bps &gt; 0) {
+        vector::push_back(
+            &<b>mut</b> entries,
+            <a href="../social_contracts/media_asset.md#social_contracts_media_asset_new_manifest_entry">media_asset::new_manifest_entry</a>(
+                redirect_to_addr,
+                redirect_bps,
+                redirect_payout_mode,
+            ),
+        );
+    };
+    <b>if</b> (owner_bps &gt; 0) {
+        vector::push_back(
+            &<b>mut</b> entries,
+            <a href="../social_contracts/media_asset.md#social_contracts_media_asset_new_manifest_entry">media_asset::new_manifest_entry</a>(
+                owner,
+                owner_bps,
+                <a href="../social_contracts/media_asset.md#social_contracts_media_asset_payout_wallet">media_asset::payout_wallet</a>(),
+            ),
+        );
+    };
+    <b>let</b> manifest = <a href="../social_contracts/media_asset.md#social_contracts_media_asset_new_revenue_manifest">media_asset::new_revenue_manifest</a>(entries);
+    <a href="../social_contracts/media_asset.md#social_contracts_media_asset_validate_revenue_manifest">media_asset::validate_revenue_manifest</a>(&manifest);
+    pool.revenue_manifest = option::some(manifest);
 }
 </code></pre>
 
@@ -8065,7 +8251,7 @@ Admin entry function to set PoC redirection (requires admin cap)
 
 ## Function `clear_poc_redirection`
 
-Clear PoC redirection data from a token pool (called by PoC system)
+Clear cached revenue manifest from a token pool.
 
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_clear_poc_redirection">clear_poc_redirection</a>(pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">social_contracts::social_proof_tokens::TokenPool</a>)
@@ -8078,9 +8264,7 @@ Clear PoC redirection data from a token pool (called by PoC system)
 
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_clear_poc_redirection">clear_poc_redirection</a>(pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">TokenPool</a>) {
-    pool.poc_redirect_to = option::none();
-    pool.poc_redirect_percentage = option::none();
-    pool.poc_redirection_kind = 0;
+    pool.revenue_manifest = option::none();
 }
 </code></pre>
 

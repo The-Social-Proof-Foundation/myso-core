@@ -195,6 +195,12 @@ pub struct PocConfigRow {
     pub max_disputes_per_post: i16,
     #[diesel(sql_type = BigInt)]
     pub min_vault_deposit_amount: i64,
+    #[diesel(sql_type = BigInt)]
+    pub media_asset_dispute_cost: i64,
+    #[diesel(sql_type = SmallInt)]
+    pub max_disputes_per_media_asset: i16,
+    #[diesel(sql_type = BigInt)]
+    pub max_embedded_asset_redirect_bps: i64,
     #[diesel(sql_type = Text)]
     pub updated_by: String,
     #[diesel(sql_type = BigInt)]
@@ -315,6 +321,9 @@ pub struct NewPocConfiguration {
     pub username_beneficiary_join_referral_bps: i64,
     pub max_disputes_per_post: i16,
     pub min_vault_deposit_amount: i64,
+    pub media_asset_dispute_cost: i64,
+    pub max_disputes_per_media_asset: i16,
+    pub max_embedded_asset_redirect_bps: i64,
     pub updated_by: String,
     pub updated_at: i64,
     pub transaction_id: String,

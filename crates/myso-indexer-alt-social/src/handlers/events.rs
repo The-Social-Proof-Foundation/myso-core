@@ -59,6 +59,10 @@ fn optional_move_object_id_json(id: &Option<BcsMoveObjectId>) -> Option<String> 
     id.as_ref().map(move_object_id_to_string)
 }
 
+fn move_object_ids_to_json(ids: &[BcsMoveObjectId]) -> Vec<String> {
+    ids.iter().map(move_object_id_to_string).collect()
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct BcsProfileCreatedEvent {
     profile_id: AccountAddress,
@@ -676,15 +680,15 @@ pub struct BcsPostCreatedEvent {
     post_type: String,
     parent_post_id: Option<AccountAddress>,
     mentions: Option<Vec<AccountAddress>>,
+    media_asset_ids: Vec<BcsMoveObjectId>,
     media_urls: Option<Vec<String>>,
     metadata_json: Option<String>,
     access: BcsPostAccess,
     promotion_id: Option<AccountAddress>,
-    revenue_redirect_to: Option<AccountAddress>,
-    revenue_redirect_percentage: Option<u64>,
+    composition_status: u8,
+    monetization_status: u8,
     enable_spt: bool,
     spt_id: Option<AccountAddress>,
-    poc_redirection_kind: u8,
     actor_address: AccountAddress,
     sub_agent_id: Option<BcsMoveObjectId>,
     organization_id: Option<BcsMoveObjectId>,
@@ -701,6 +705,7 @@ struct ParsedPostCreated {
     post_type: String,
     parent_post_id: Option<AccountAddress>,
     mentions: Option<Vec<AccountAddress>>,
+    media_asset_ids: Vec<String>,
     media_urls: Option<Vec<String>>,
     metadata_json: Option<String>,
     post_access_kind: String,
@@ -708,11 +713,10 @@ struct ParsedPostCreated {
     subscription_service_id: Option<AccountAddress>,
     requires_subscription: bool,
     promotion_id: Option<AccountAddress>,
-    revenue_redirect_to: Option<AccountAddress>,
-    revenue_redirect_percentage: Option<u64>,
+    composition_status: u8,
+    monetization_status: u8,
     enable_spt: bool,
     spt_id: Option<AccountAddress>,
-    poc_redirection_kind: u8,
     actor_address: AccountAddress,
     sub_agent_id: Option<String>,
     organization_id: Option<String>,
@@ -732,6 +736,7 @@ impl From<BcsPostCreatedEvent> for ParsedPostCreated {
             post_type: ev.post_type,
             parent_post_id: ev.parent_post_id,
             mentions: ev.mentions,
+            media_asset_ids: move_object_ids_to_json(&ev.media_asset_ids),
             media_urls: ev.media_urls,
             metadata_json: ev.metadata_json,
             post_access_kind: access_fields.post_access_kind,
@@ -745,11 +750,10 @@ impl From<BcsPostCreatedEvent> for ParsedPostCreated {
                 .and_then(|s| AccountAddress::from_hex_literal(s).ok()),
             requires_subscription: access_fields.requires_subscription.unwrap_or(false),
             promotion_id: ev.promotion_id,
-            revenue_redirect_to: ev.revenue_redirect_to,
-            revenue_redirect_percentage: ev.revenue_redirect_percentage,
+            composition_status: ev.composition_status,
+            monetization_status: ev.monetization_status,
             enable_spt: ev.enable_spt,
             spt_id: ev.spt_id,
-            poc_redirection_kind: ev.poc_redirection_kind,
             actor_address: ev.actor_address,
             sub_agent_id: optional_move_object_id_json(&ev.sub_agent_id),
             organization_id: optional_move_object_id_json(&ev.organization_id),
@@ -1856,6 +1860,40 @@ pub struct BcsPocConfigUpdatedEvent {
     username_beneficiary_join_referral_bps: u64,
     max_disputes_per_post: u8,
     min_vault_deposit_amount: u64,
+    media_asset_dispute_cost: u64,
+    max_disputes_per_media_asset: u8,
+    max_embedded_asset_redirect_bps: u64,
+    timestamp: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsMediaAssetRightsDisputeProposedEvent {
+    media_asset_id: AccountAddress,
+    proposal_id: AccountAddress,
+    submitter: AccountAddress,
+    claims_commitment: Vec<u8>,
+    timestamp: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsMediaAssetGovernanceProposalLinkedEvent {
+    media_asset_id: AccountAddress,
+    proposal_id: AccountAddress,
+    timestamp: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsMediaAssetGovernanceProposalClearedEvent {
+    media_asset_id: AccountAddress,
+    proposal_id: AccountAddress,
+    outcome: u8,
+    timestamp: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsMediaAssetRightsUpdatedEvent {
+    media_asset_id: AccountAddress,
+    rights_version: u64,
     timestamp: u64,
 }
 
@@ -3068,6 +3106,7 @@ fn parse_event_contents_inner(
         }
         "platform" => parse_platform_event(event_name, contents),
         "poc" | "proof_of_creativity" => parse_poc_event(event_name, contents),
+        "media_asset" => parse_media_asset_event(event_name, contents),
         "poc_vault" => parse_poc_vault_event(event_name, contents),
         "poc_username_beneficiary" => parse_poc_username_beneficiary_event(event_name, contents),
         "mydata" | "my_ip" => parse_mydata_event(event_name, contents),
@@ -3883,6 +3922,7 @@ fn parse_post_event(
                 "post_type": ev.post_type,
                 "parent_post_id": ev.parent_post_id.as_ref().map(addr_to_string),
                 "mentions": mentions_to_json(&ev.mentions),
+                "media_asset_ids": ev.media_asset_ids,
                 "media_urls": ev.media_urls,
                 "metadata_json": ev.metadata_json,
                 "post_access_kind": ev.post_access_kind,
@@ -3891,11 +3931,10 @@ fn parse_post_event(
                 "requires_subscription": ev.requires_subscription,
                 "access": access_json["access"],
                 "promotion_id": ev.promotion_id.as_ref().map(addr_to_string),
-                "revenue_redirect_to": ev.revenue_redirect_to.as_ref().map(addr_to_string),
-                "revenue_redirect_percentage": ev.revenue_redirect_percentage,
+                "composition_status": ev.composition_status,
+                "monetization_status": ev.monetization_status,
                 "enable_spt": ev.enable_spt,
                 "spt_id": ev.spt_id.as_ref().map(addr_to_string),
-                "poc_redirection_kind": ev.poc_redirection_kind,
                 "actor_address": addr_to_string(&ev.actor_address),
                 "sub_agent_id": ev.sub_agent_id,
                 "organization_id": ev.organization_id,
@@ -4902,6 +4941,24 @@ fn parse_platform_event(
     }
 }
 
+fn parse_media_asset_event(
+    event_name: &str,
+    contents: &[u8],
+) -> Result<Option<serde_json::Value>, EventParseError> {
+    match event_name {
+        "MediaAssetRightsUpdatedEvent" => {
+            let ev = bcs::from_bytes::<BcsMediaAssetRightsUpdatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "media_asset_id": addr_to_string(&ev.media_asset_id),
+                "rights_version": ev.rights_version,
+                "timestamp": ev.timestamp,
+            })))
+        }
+        _ => Ok(None),
+    }
+}
+
 fn parse_poc_event(
     event_name: &str,
     contents: &[u8],
@@ -5046,6 +5103,39 @@ fn parse_poc_event(
                 "username_beneficiary_join_referral_bps": ev.username_beneficiary_join_referral_bps,
                 "max_disputes_per_post": ev.max_disputes_per_post,
                 "min_vault_deposit_amount": ev.min_vault_deposit_amount,
+                "media_asset_dispute_cost": ev.media_asset_dispute_cost,
+                "max_disputes_per_media_asset": ev.max_disputes_per_media_asset,
+                "max_embedded_asset_redirect_bps": ev.max_embedded_asset_redirect_bps,
+                "timestamp": ev.timestamp,
+            })))
+        }
+        "MediaAssetRightsDisputeProposedEvent" => {
+            let ev = bcs::from_bytes::<BcsMediaAssetRightsDisputeProposedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "media_asset_id": addr_to_string(&ev.media_asset_id),
+                "proposal_id": addr_to_string(&ev.proposal_id),
+                "submitter": addr_to_string(&ev.submitter),
+                "claims_commitment": format!("0x{}", hex::encode(&ev.claims_commitment)),
+                "timestamp": ev.timestamp,
+            })))
+        }
+        "MediaAssetGovernanceProposalLinkedEvent" => {
+            let ev = bcs::from_bytes::<BcsMediaAssetGovernanceProposalLinkedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "media_asset_id": addr_to_string(&ev.media_asset_id),
+                "proposal_id": addr_to_string(&ev.proposal_id),
+                "timestamp": ev.timestamp,
+            })))
+        }
+        "MediaAssetGovernanceProposalClearedEvent" => {
+            let ev = bcs::from_bytes::<BcsMediaAssetGovernanceProposalClearedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "media_asset_id": addr_to_string(&ev.media_asset_id),
+                "proposal_id": addr_to_string(&ev.proposal_id),
+                "outcome": ev.outcome,
                 "timestamp": ev.timestamp,
             })))
         }
@@ -8016,15 +8106,15 @@ mod tests {
             post_type: "post".into(),
             parent_post_id: None,
             mentions: None,
+            media_asset_ids: vec![],
             media_urls: None,
             metadata_json: None,
             access: BcsPostAccess::Public,
             promotion_id: None,
-            revenue_redirect_to: None,
-            revenue_redirect_percentage: None,
+            composition_status: 0,
+            monetization_status: 0,
             enable_spt: false,
             spt_id: None,
-            poc_redirection_kind: 1,
             actor_address: AccountAddress::from_hex_literal("0x2").unwrap(),
             sub_agent_id: None,
             organization_id,
@@ -8056,6 +8146,27 @@ mod tests {
         let bytes = bcs::to_bytes(&ev).expect("bcs");
         let json = parse_event_contents("post", "PostCreatedEvent", &bytes).expect("parse");
         assert!(json["organization_id"].is_null());
+    }
+
+    #[test]
+    fn post_created_event_bcs_round_trip_with_media_asset_ids() {
+        let asset_id = BcsMoveObjectId {
+            bytes: AccountAddress::from_hex_literal(
+                "0x00000000000000000000000000000000000000000000000000000000000000aa",
+            )
+            .unwrap(),
+        };
+        let mut ev = sample_post_created_with_attribution(Some(org_object_id()));
+        ev.media_asset_ids = vec![asset_id];
+        ev.composition_status = 1;
+        ev.monetization_status = 2;
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let json = parse_event_contents("post", "PostCreatedEvent", &bytes).expect("parse");
+        assert_eq!(json["composition_status"], 1);
+        assert_eq!(json["monetization_status"], 2);
+        let ids = json["media_asset_ids"].as_array().expect("media_asset_ids array");
+        assert_eq!(ids.len(), 1);
+        assert!(ids[0].as_str().unwrap().ends_with("aa"));
     }
 
     #[test]
@@ -8284,6 +8395,9 @@ mod tests {
             username_beneficiary_join_referral_bps: 500,
             max_disputes_per_post: 2,
             min_vault_deposit_amount: 1,
+            media_asset_dispute_cost: 10_000_000_000,
+            max_disputes_per_media_asset: 2,
+            max_embedded_asset_redirect_bps: 5000,
             timestamp: 1_700_000_000,
         };
         let bytes = bcs::to_bytes(&ev).expect("serialize PoCConfigUpdatedEvent");
@@ -8293,6 +8407,9 @@ mod tests {
             .as_str()
             .unwrap()
             .starts_with("0x"));
+        assert_eq!(json["media_asset_dispute_cost"], 10_000_000_000_i64);
+        assert_eq!(json["max_disputes_per_media_asset"], 2);
+        assert_eq!(json["max_embedded_asset_redirect_bps"], 5000);
     }
 
     #[test]

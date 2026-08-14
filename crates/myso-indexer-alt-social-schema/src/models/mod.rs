@@ -7,6 +7,7 @@ mod blocked;
 mod governance;
 mod insurance;
 mod memory;
+mod media_asset;
 mod messaging;
 mod mydata;
 mod org_invitations;
@@ -75,6 +76,20 @@ pub use insurance::{
 pub use memory::{
     AgentMemoryVaultRow, MemoryAccountRow, MemoryUsageStatsRow, NewAgentMemoryVault,
     NewMemoryAccount, NewMemoryConfig, NewSubAgent, NewSubAgentEvent, SubAgentRow,
+};
+pub use media_asset::{
+    AncestrySnapshotRow, CompositionAnalysisRow, DerivativeEdgeRow, DetectedRelationshipRow,
+    MediaAssetGovernanceLinkRow, MediaAssetRightsUpdateRow, MediaAssetRow, MediaAssetUsageRow,
+    NewCompositionAnalysisRecord, NewDetectedAssetRelationship, NewFingerprintObservation,
+    NewLicenseInstance, NewLicenseTemplateVersion, NewMediaAsset, NewMediaAssetAncestrySnapshot,
+    NewMediaAssetDerivativeEdge, NewMediaAssetGovernanceLink, NewMediaAssetResolvedObligation,
+    NewMediaAssetResolvedPolicy, NewMediaAssetRightsUpdate, NewMediaAssetUsage,
+    NewPostUsageDecisionEvent, NewRevenueManifestRecord, ResolvedObligationRow, ResolvedPolicyRow,
+    RevenueManifestRow, GOV_LINK_STATUS_ACTIVE, GOV_LINK_STATUS_IMPLEMENTED,
+    GOV_LINK_STATUS_REJECTED,
+    COMPOSITION_INVALID, COMPOSITION_NONE, COMPOSITION_PENDING, COMPOSITION_VERIFIED,
+    CONTAINER_TYPE_POST, CONTAINER_TYPE_PROFILE, MONETIZATION_ENABLED, MONETIZATION_NONE,
+    MONETIZATION_PENDING, MONETIZATION_RESTRICTED,
 };
 pub use messaging::{
     NewMessageDigest, NewMessagingAgentGroup, NewMessagingConfig, NewPaidMessageEscrow,

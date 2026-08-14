@@ -224,8 +224,26 @@ struct PocConfigUpdatedEvent {
     max_disputes_per_post: u64,
     #[serde(default, deserialize_with = "deserialize_u64")]
     min_vault_deposit_amount: u64,
+    #[serde(default = "default_media_asset_dispute_cost", deserialize_with = "deserialize_u64")]
+    media_asset_dispute_cost: u64,
+    #[serde(default = "default_max_disputes_per_media_asset", deserialize_with = "deserialize_u64")]
+    max_disputes_per_media_asset: u64,
+    #[serde(default = "default_max_embedded_asset_redirect_bps", deserialize_with = "deserialize_u64")]
+    max_embedded_asset_redirect_bps: u64,
     #[serde(deserialize_with = "deserialize_u64")]
     timestamp: u64,
+}
+
+fn default_max_embedded_asset_redirect_bps() -> u64 {
+    5000
+}
+
+fn default_media_asset_dispute_cost() -> u64 {
+    10_000_000_000
+}
+
+fn default_max_disputes_per_media_asset() -> u64 {
+    2
 }
 
 fn default_username_beneficiary_join_referral_bps() -> u64 {
@@ -258,7 +276,7 @@ struct PoCResultAppliedEventJson {
     timestamp: u64,
 }
 
-fn deserialize_u64<'de, D>(deserializer: D) -> Result<u64, D::Error>
+pub(crate) fn deserialize_u64<'de, D>(deserializer: D) -> Result<u64, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
@@ -327,7 +345,20 @@ pub fn handle_poc_event(
         "CreatorIdentityWalletLinkedEvent" => {
             process_creator_identity_wallet_linked_event(data, event_id, &tx_id)
         }
-        _ => None,
+        "MediaAssetRightsDisputeProposedEvent"
+        | "MediaAssetGovernanceProposalLinkedEvent"
+        | "MediaAssetGovernanceProposalClearedEvent" => {
+            super::media_asset_rights::handle_media_asset_rights_poc_event(
+                event_name, data, event_id,
+            )
+        }
+        "PostCompositionAnalyzedEvent" => super::media_asset::handle_media_asset_event(
+            event_name,
+            data,
+            event_id,
+            tx_sender,
+        ),
+        other => super::media_asset_graph::handle_discovery_event(other, data, event_id, tx_sender),
     }
 }
 
@@ -706,6 +737,9 @@ fn process_poc_config_updated_event(
         username_beneficiary_join_referral_bps: ev.username_beneficiary_join_referral_bps as i64,
         max_disputes_per_post: ev.max_disputes_per_post as i16,
         min_vault_deposit_amount: ev.min_vault_deposit_amount as i64,
+        media_asset_dispute_cost: ev.media_asset_dispute_cost as i64,
+        max_disputes_per_media_asset: ev.max_disputes_per_media_asset as i16,
+        max_embedded_asset_redirect_bps: ev.max_embedded_asset_redirect_bps as i64,
         updated_by: ev.updated_by,
         updated_at: ev.timestamp as i64,
         transaction_id: tx_id.to_string(),

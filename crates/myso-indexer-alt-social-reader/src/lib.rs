@@ -9,6 +9,8 @@ pub mod ai_credit;
 pub mod enterprise;
 pub mod insurance;
 pub mod memory;
+pub mod media_asset;
+pub mod media_asset_graph;
 pub mod messaging;
 mod metrics;
 pub mod mydata;
@@ -57,6 +59,11 @@ pub use myso_indexer_alt_social_schema::models::{
     PromotionHourlyRow, PromotionStatsRow, PromotionTimeSeriesRow, PromotionViewRow, ProposalRow,
     SpotBetRow, SpotBetWithdrawalRow, SpotPayoutRow, SpotRecordRow, SpotRefundRow,
     SpotResolutionRow,
+};
+pub use myso_indexer_alt_social_schema::models::{
+    AncestrySnapshotRow, CompositionAnalysisRow, DerivativeEdgeRow, DetectedRelationshipRow,
+    MediaAssetGovernanceLinkRow, MediaAssetRightsUpdateRow, MediaAssetRow, MediaAssetUsageRow, ResolvedObligationRow, ResolvedPolicyRow,
+    RevenueManifestRow,
 };
 pub use myso_indexer_alt_social_schema::models::{
     PocAnalysisResultRow, PocBadgeRow, PocBeneficiaryVaultRow, PocConfigRow,

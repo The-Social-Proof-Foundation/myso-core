@@ -44,6 +44,7 @@ module social_contracts::social_proof_tokens {
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
     use social_contracts::memory::{MemoryAccount, MemoryConfig};
     use social_contracts::mydata;
+    use social_contracts::media_asset::{Self as media_asset, RevenueManifest};
 
     // === Error codes ===
     /// Operation can only be performed by the admin
@@ -281,12 +282,8 @@ module social_contracts::social_proof_tokens {
         myso_balance: Balance<MYSO>,
         /// Holder balances in **nano-SPT**.
         holders: Table<address, u64>,
-        /// PoC revenue redirection address (for post tokens only)
-        poc_redirect_to: Option<address>,
-        /// PoC revenue redirection percentage (for post tokens only)
-        poc_redirect_percentage: Option<u64>,
-        /// Mirrors `post::poc_redirection_kind` for fee routing (`0` = none, `1` wallet, `2` escrow)
-        poc_redirection_kind: u8,
+        /// Cached post revenue manifest for creator-fee routing (post tokens only)
+        revenue_manifest: Option<RevenueManifest>,
         /// Version for upgrades
         version: u64,
     }
@@ -2140,6 +2137,7 @@ module social_contracts::social_proof_tokens {
             post_config,
             memory_config,
             content,
+            vector[],
             media_urls,
             mentions,
             metadata_json,
@@ -2164,7 +2162,7 @@ module social_contracts::social_proof_tokens {
             clock,
             ctx,
         );
-        let _post_id = post::share_and_emit_spt_post(post, pool_object_id);
+        let _post_id = post::share_and_emit_spt_post(post, pool_object_id, clock);
     }
 
     /// Late-enable SPT on an existing post that is not already SPT-enabled.
@@ -2363,9 +2361,7 @@ module social_contracts::social_proof_tokens {
             info: pool_token_info,
             myso_balance: balance::zero(),
             holders: table::new(ctx),
-            poc_redirect_to: option::none(),
-            poc_redirect_percentage: option::none(),
-            poc_redirection_kind: 0,
+            revenue_manifest: option::none(),
             version: upgrade::current_version(),
         };
         
@@ -2470,8 +2466,8 @@ module social_contracts::social_proof_tokens {
 
     // === PoC Revenue Redirection Functions ===
 
-    /// Copy PoC redirect fields from `post` into a matching POST `TokenPool` and emit `PocRedirectionUpdatedEvent`.
-    public(package) fun sync_token_pool_poc_from_post(
+    /// Copy `post::revenue_manifest` into a matching POST `TokenPool` and emit `PocRedirectionUpdatedEvent`.
+    public(package) fun sync_token_pool_manifest_from_post(
         registry: &TokenRegistry,
         pool: &mut TokenPool,
         post: &Post,
@@ -2484,33 +2480,29 @@ module social_contracts::social_proof_tokens {
         assert!(post_id == pool.info.associated_id, EInvalidID);
         assert!(token_exists(registry, post_id), ETokenNotFound);
 
-        let redirect_to = if (option::is_some(post::get_revenue_redirect_to(post))) {
-            option::some(*option::borrow(post::get_revenue_redirect_to(post)))
-        } else {
-            option::none()
-        };
-
-        let redirect_percentage = if (option::is_some(post::get_revenue_redirect_percentage(post))) {
-            let percentage = *option::borrow(post::get_revenue_redirect_percentage(post));
-            assert!(percentage <= 100, EInvalidFeeConfig);
-            option::some(percentage)
-        } else {
-            option::none()
-        };
-
-        pool.poc_redirect_to = redirect_to;
-        pool.poc_redirect_percentage = redirect_percentage;
-        pool.poc_redirection_kind = post::poc_redirection_kind(post);
+        pool.revenue_manifest = post::revenue_manifest(post);
 
         event::emit(PocRedirectionUpdatedEvent {
             pool_id: object::uid_to_address(&pool.id),
             post_id,
-            redirect_to,
-            redirect_percentage,
-            poc_redirection_kind: pool.poc_redirection_kind,
+            redirect_to: option::none(),
+            redirect_percentage: option::none(),
+            poc_redirection_kind: 0,
             updated_by,
             timestamp: clock::timestamp_ms(clock),
         });
+    }
+
+    /// Legacy alias for manifest sync callers during migration.
+    public(package) fun sync_token_pool_poc_from_post(
+        registry: &TokenRegistry,
+        pool: &mut TokenPool,
+        post: &Post,
+        updated_by: address,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        sync_token_pool_manifest_from_post(registry, pool, post, updated_by, clock, ctx);
     }
 
     /// Update PoC redirection data for a token pool (called by PoC system)
@@ -2524,34 +2516,116 @@ module social_contracts::social_proof_tokens {
     ) {
         let caller = tx_context::sender(ctx);
         assert!(caller == post::get_post_owner(post), ENotAuthorized);
-        sync_token_pool_poc_from_post(registry, pool, post, caller, clock, ctx);
+        sync_token_pool_manifest_from_post(registry, pool, post, caller, clock, ctx);
     }
 
-    /// Calculate PoC revenue split - shared utility for consistent logic
-    fun calculate_poc_split(amount: u64, redirect_percentage: u64): (u64, u64) {
-        // Validate redirect percentage to prevent underflow
-        assert!(redirect_percentage <= 100, EInvalidFeeConfig);
-        let redirected_amount = (amount * redirect_percentage) / 100;
-        let remaining_amount = amount - redirected_amount;
-        (redirected_amount, remaining_amount)
+    fun pool_manifest_has_escrow_payout(pool: &TokenPool, amount: u64): bool {
+        if (amount == 0 || option::is_none(&pool.revenue_manifest)) {
+            return false
+        };
+        media_asset::manifest_has_escrow_payout(option::borrow(&pool.revenue_manifest), amount)
     }
 
-    /// Apply PoC redirection to creator fees with consolidated logic
-    fun apply_token_poc_redirection(
+    fun should_apply_pool_revenue_manifest(pool: &TokenPool): bool {
+        pool.info.token_type == TOKEN_TYPE_POST && option::is_some(&pool.revenue_manifest)
+    }
+
+    fun apply_pool_revenue_manifest_coin(
         pool: &TokenPool,
+        intended_recipient: address,
         amount: u64,
-        _ctx: &mut TxContext  
-    ): (u64, u64) {
-        if (has_poc_redirection(pool)) {
-            let redirect_percentage = *option::borrow(&pool.poc_redirect_percentage);
-            // Use shared utility function for consistent calculation
-            calculate_poc_split(amount, redirect_percentage)
+        coins: &mut Coin<MYSO>,
+        ctx: &mut TxContext
+    ) {
+        let manifest = option::borrow(&pool.revenue_manifest);
+        let entries = media_asset::manifest_entries(manifest);
+        let len = vector::length(entries);
+        let bps_total = media_asset::manifest_bps_total();
+
+        let mut fee_coins = coin::split(coins, amount, ctx);
+        let mut i = 0;
+        while (i < len) {
+            let e = vector::borrow(entries, i);
+            let slice = (amount * media_asset::manifest_entry_share_bps(e)) / bps_total;
+            if (slice > 0) {
+                let pay_coins = coin::split(&mut fee_coins, slice, ctx);
+                assert!(media_asset::manifest_entry_payout_mode(e) == media_asset::payout_wallet(), EPostPoolEscrowTradingBlocked);
+                transfer::public_transfer(pay_coins, media_asset::manifest_entry_beneficiary(e));
+            };
+            i = i + 1;
+        };
+
+        let remainder = coin::value(&fee_coins);
+        if (remainder > 0) {
+            transfer::public_transfer(fee_coins, intended_recipient);
         } else {
-            (0, amount)
-        }
+            coin::destroy_zero(fee_coins);
+        };
     }
 
-    /// Distribute creator fees with automatic PoC redirection  
+    fun apply_post_revenue_manifest_coin(
+        post: &Post,
+        beneficiary_vault: &mut PoCBeneficiaryVault,
+        intended_recipient: address,
+        amount: u64,
+        coins: &mut Coin<MYSO>,
+        object_id: address,
+        min_vault_deposit_amount: u64,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        if (!post::monetization_enabled(post)) {
+            let fee_coin = coin::split(coins, amount, ctx);
+            transfer::public_transfer(fee_coin, intended_recipient);
+            return
+        };
+
+        let manifest_opt = post::revenue_manifest(post);
+        if (option::is_none(&manifest_opt)) {
+            let fee_coin = coin::split(coins, amount, ctx);
+            transfer::public_transfer(fee_coin, intended_recipient);
+            return
+        };
+
+        let manifest = option::borrow(&manifest_opt);
+        let entries = media_asset::manifest_entries(manifest);
+        let len = vector::length(entries);
+        let bps_total = media_asset::manifest_bps_total();
+
+        let mut fee_coins = coin::split(coins, amount, ctx);
+        let mut i = 0;
+        while (i < len) {
+            let e = vector::borrow(entries, i);
+            let slice = (amount * media_asset::manifest_entry_share_bps(e)) / bps_total;
+            if (slice > 0) {
+                let pay_coins = coin::split(&mut fee_coins, slice, ctx);
+                if (media_asset::manifest_entry_payout_mode(e) == media_asset::payout_escrow()) {
+                    assert!(poc_vault::beneficiary_address(beneficiary_vault) == media_asset::manifest_entry_beneficiary(e), EInvalidFeeConfig);
+                    poc_vault::deposit_coin<MYSO>(
+                        beneficiary_vault,
+                        media_asset::manifest_entry_beneficiary(e),
+                        pay_coins,
+                        option::some(object_id),
+                        min_vault_deposit_amount,
+                        clock,
+                        ctx
+                    );
+                } else {
+                    transfer::public_transfer(pay_coins, media_asset::manifest_entry_beneficiary(e));
+                };
+            };
+            i = i + 1;
+        };
+
+        let remainder = coin::value(&fee_coins);
+        if (remainder > 0) {
+            transfer::public_transfer(fee_coins, intended_recipient);
+        } else {
+            coin::destroy_zero(fee_coins);
+        };
+    }
+
+    /// Distribute creator fees with automatic manifest-based revenue routing
     fun distribute_creator_fee(
         pool: &TokenPool,
         creator_fee_amount: u64,
@@ -2563,32 +2637,19 @@ module social_contracts::social_proof_tokens {
         };
 
         assert!(
-            !(pool.info.token_type == TOKEN_TYPE_POST && pool.poc_redirection_kind == 2),
+            !(pool.info.token_type == TOKEN_TYPE_POST && pool_manifest_has_escrow_payout(pool, creator_fee_amount)),
             EPostPoolEscrowTradingBlocked
         );
 
-        let (redirected_amount, _remaining_amount) = apply_token_poc_redirection(pool, creator_fee_amount, ctx);
-        let mut fee_coin = coin::split(creator_fee_coin, creator_fee_amount, ctx);
-        
-        if (redirected_amount > 0) {
-            // Split the fee: redirected portion goes to original creator, remainder to post owner
-            let redirected_fee = coin::split(&mut fee_coin, redirected_amount, ctx);
-            let redirect_to = *option::borrow(&pool.poc_redirect_to);
-            transfer::public_transfer(redirected_fee, redirect_to);
-            
-            // Send remainder to current post owner
-            if (coin::value(&fee_coin) > 0) {
-                transfer::public_transfer(fee_coin, pool.info.owner);
-            } else {
-                coin::destroy_zero(fee_coin);
-            };
+        if (should_apply_pool_revenue_manifest(pool)) {
+            apply_pool_revenue_manifest_coin(pool, pool.info.owner, creator_fee_amount, creator_fee_coin, ctx);
         } else {
-            // No redirection - send full amount to current post owner
+            let fee_coin = coin::split(creator_fee_coin, creator_fee_amount, ctx);
             transfer::public_transfer(fee_coin, pool.info.owner);
         };
     }
 
-    /// Distribute creator fees from pool balance with PoC redirection support
+    /// Distribute creator fees from pool balance with manifest-based revenue routing
     fun distribute_creator_fee_from_pool(
         pool: &mut TokenPool,
         creator_fee: u64,
@@ -2599,49 +2660,28 @@ module social_contracts::social_proof_tokens {
         };
 
         assert!(
-            !(pool.info.token_type == TOKEN_TYPE_POST && pool.poc_redirection_kind == 2),
+            !(pool.info.token_type == TOKEN_TYPE_POST && pool_manifest_has_escrow_payout(pool, creator_fee)),
             EPostPoolEscrowTradingBlocked
         );
 
-        let (redirected_amount, _remaining_amount) = apply_token_poc_redirection(pool, creator_fee, ctx);
-        let mut fee_coin = coin::from_balance(balance::split(&mut pool.myso_balance, creator_fee), ctx);
-        
-        if (redirected_amount > 0) {
-            // Split the fee: redirected portion goes to original creator, remainder to post owner
-            let redirected_fee = coin::split(&mut fee_coin, redirected_amount, ctx);
-            let redirect_to = *option::borrow(&pool.poc_redirect_to);
-            transfer::public_transfer(redirected_fee, redirect_to);
-            
-            // Send remainder to current post owner
-            if (coin::value(&fee_coin) > 0) {
-                transfer::public_transfer(fee_coin, pool.info.owner);
-            } else {
-                coin::destroy_zero(fee_coin);
-            };
+        if (should_apply_pool_revenue_manifest(pool)) {
+            let mut fee_coin = coin::from_balance(balance::split(&mut pool.myso_balance, creator_fee), ctx);
+            apply_pool_revenue_manifest_coin(pool, pool.info.owner, creator_fee, &mut fee_coin, ctx);
+            coin::destroy_zero(fee_coin);
         } else {
-            // No redirection - send full amount to current post owner
+            let fee_coin = coin::from_balance(balance::split(&mut pool.myso_balance, creator_fee), ctx);
             transfer::public_transfer(fee_coin, pool.info.owner);
         };
     }
 
     // === Reservation Fee Distribution Functions ===
 
-    /// Apply PoC redirection from post (reuses calculate_poc_split utility)
+    /// Legacy alias retained for package callers during migration.
     public(package) fun apply_post_poc_redirection(
-        post: &Post,
+        _post: &Post,
         amount: u64
     ): (u64, u64) {
-        let k = post::poc_redirection_kind(post);
-        let has_split = option::is_some(post::get_revenue_redirect_percentage(post)) &&
-            k != post::poc_redirection_none() &&
-            (k == 2 || option::is_some(post::get_revenue_redirect_to(post)));
-        if (has_split) {
-            let redirect_percentage = *option::borrow(post::get_revenue_redirect_percentage(post));
-            assert!(redirect_percentage <= 100, EInvalidFeeConfig);
-            calculate_poc_split(amount, redirect_percentage)
-        } else {
-            (0, amount)
-        }
+        (0, amount)
     }
 
     /// PoC-aware post reservation creator fee using an explicit pool owner (avoids borrow conflicts
@@ -2660,25 +2700,20 @@ module social_contracts::social_proof_tokens {
             return
         };
 
-        let (redirected_amount, _remaining_amount) = apply_post_poc_redirection(post, creator_fee_amount);
-        let mut fee_coin = coin::split(creator_fee_coin, creator_fee_amount, ctx);
-
-        if (redirected_amount > 0) {
-            let redirected_fee = coin::split(&mut fee_coin, redirected_amount, ctx);
-            let k = post::poc_redirection_kind(post);
-            if (k == 2) {
-                post::deposit_coin_to_beneficiary_vault<MYSO>(post, beneficiary_vault, redirected_fee, min_vault_deposit_amount, clock, ctx);
-            } else {
-                let redirect_to = *option::borrow(post::get_revenue_redirect_to(post));
-                transfer::public_transfer(redirected_fee, redirect_to);
-            };
-
-            if (coin::value(&fee_coin) > 0) {
-                transfer::public_transfer(fee_coin, pool_owner);
-            } else {
-                coin::destroy_zero(fee_coin);
-            };
+        if (post::monetization_enabled(post) && option::is_some(&post::revenue_manifest(post))) {
+            apply_post_revenue_manifest_coin(
+                post,
+                beneficiary_vault,
+                pool_owner,
+                creator_fee_amount,
+                creator_fee_coin,
+                post::get_id_address(post),
+                min_vault_deposit_amount,
+                clock,
+                ctx
+            );
         } else {
+            let fee_coin = coin::split(creator_fee_coin, creator_fee_amount, ctx);
             transfer::public_transfer(fee_coin, pool_owner);
         };
     }
@@ -4836,19 +4871,36 @@ module social_contracts::social_proof_tokens {
         }
     }
 
-    /// Get PoC redirection data from token pool
-    public fun get_poc_redirect_to(pool: &TokenPool): &Option<address> {
-        &pool.poc_redirect_to
+    /// Get cached revenue manifest from token pool
+    public fun get_revenue_manifest(pool: &TokenPool): &Option<RevenueManifest> {
+        &pool.revenue_manifest
     }
 
-    /// Get PoC redirection percentage from token pool
-    public fun get_poc_redirect_percentage(pool: &TokenPool): &Option<u64> {
-        &pool.poc_redirect_percentage
-    }
-
-    /// Check if token pool has PoC redirection configured
+    /// Legacy alias — true when a cached revenue manifest is present.
     public fun has_poc_redirection(pool: &TokenPool): bool {
-        option::is_some(&pool.poc_redirect_to) && option::is_some(&pool.poc_redirect_percentage)
+        option::is_some(&pool.revenue_manifest)
+    }
+
+    /// Legacy compat — first non-owner manifest beneficiary.
+    public fun get_poc_redirect_to(pool: &TokenPool): Option<address> {
+        if (option::is_none(&pool.revenue_manifest)) {
+            return option::none()
+        };
+        media_asset::manifest_redirect_beneficiary(
+            option::borrow(&pool.revenue_manifest),
+            pool.info.owner,
+        )
+    }
+
+    /// Legacy compat — redirect share as whole-number percent (e.g. 75 = 75%).
+    public fun get_poc_redirect_percentage(pool: &TokenPool): Option<u64> {
+        if (option::is_none(&pool.revenue_manifest)) {
+            return option::none()
+        };
+        media_asset::manifest_redirect_percentage(
+            option::borrow(&pool.revenue_manifest),
+            pool.info.owner,
+        )
     }
 
     /// Get the associated ID (post/profile ID) from a token pool
@@ -4856,27 +4908,60 @@ module social_contracts::social_proof_tokens {
         pool.info.associated_id
     }
 
-    /// Set PoC redirection data for a token pool (called by PoC system)
-    /// Set PoC redirection for a token pool (package-only, requires auth via entry function)
+    public(package) fun set_revenue_manifest(pool: &mut TokenPool, manifest: Option<RevenueManifest>) {
+        pool.revenue_manifest = manifest;
+    }
+
+    /// Build or clear cached manifest from legacy redirect parameters.
     public(package) fun set_poc_redirection(
         pool: &mut TokenPool,
         redirect_to: Option<address>,
         redirect_percentage: Option<u64>,
         poc_redirection_kind: u8,
     ) {
-        assert!(poc_redirection_kind <= 2, EInvalidFeeConfig);
         if (poc_redirection_kind == 0) {
-            assert!(option::is_none(&redirect_to), EInvalidFeeConfig);
-            assert!(option::is_none(&redirect_percentage), EInvalidFeeConfig);
-        } else {
-            assert!(option::is_some(&redirect_to), EInvalidFeeConfig);
-            assert!(option::is_some(&redirect_percentage), EInvalidFeeConfig);
-            let percentage = *option::borrow(&redirect_percentage);
-            assert!(percentage <= 100, EInvalidFeeConfig);
+            pool.revenue_manifest = option::none();
+            return
         };
-        pool.poc_redirect_to = redirect_to;
-        pool.poc_redirect_percentage = redirect_percentage;
-        pool.poc_redirection_kind = poc_redirection_kind;
+        assert!(
+            option::is_some(&redirect_to) && option::is_some(&redirect_percentage),
+            EInvalidFeeConfig,
+        );
+        let redirect_to_addr = *option::borrow(&redirect_to);
+        let redirect_pct = *option::borrow(&redirect_percentage);
+        assert!(redirect_pct > 0 && redirect_pct <= 100, EInvalidFeeConfig);
+        let redirect_bps = redirect_pct * 100;
+        let owner_bps = media_asset::manifest_bps_total() - redirect_bps;
+        let owner = pool.info.owner;
+        let redirect_payout_mode = if (poc_redirection_kind == 2) {
+            media_asset::payout_escrow()
+        } else {
+            media_asset::payout_wallet()
+        };
+        let mut entries = vector[];
+        if (redirect_bps > 0) {
+            vector::push_back(
+                &mut entries,
+                media_asset::new_manifest_entry(
+                    redirect_to_addr,
+                    redirect_bps,
+                    redirect_payout_mode,
+                ),
+            );
+        };
+        if (owner_bps > 0) {
+            vector::push_back(
+                &mut entries,
+                media_asset::new_manifest_entry(
+                    owner,
+                    owner_bps,
+                    media_asset::payout_wallet(),
+                ),
+            );
+        };
+        let manifest = media_asset::new_revenue_manifest(entries);
+        media_asset::validate_revenue_manifest(&manifest);
+        pool.revenue_manifest = option::some(manifest);
     }
     
     /// Entry function to set PoC redirection (requires pool owner)
@@ -4911,11 +4996,9 @@ module social_contracts::social_proof_tokens {
         set_poc_redirection(pool, redirect_to, redirect_percentage, poc_redirection_kind);
     }
 
-    /// Clear PoC redirection data from a token pool (called by PoC system)
+    /// Clear cached revenue manifest from a token pool.
     public(package) fun clear_poc_redirection(pool: &mut TokenPool) {
-        pool.poc_redirect_to = option::none();
-        pool.poc_redirect_percentage = option::none();
-        pool.poc_redirection_kind = 0;
+        pool.revenue_manifest = option::none();
     }
 
 
@@ -4932,7 +5015,15 @@ module social_contracts::social_proof_tokens {
 
     #[test_only]
     public fun poc_redirection_kind_for_testing(pool: &TokenPool): u8 {
-        pool.poc_redirection_kind
+        if (option::is_none(&pool.revenue_manifest)) {
+            0
+        } else if (
+            media_asset::manifest_uses_escrow_redirect(option::borrow(&pool.revenue_manifest))
+        ) {
+            2
+        } else {
+            1
+        }
     }
 
     #[test_only]
@@ -5026,9 +5117,7 @@ module social_contracts::social_proof_tokens {
             info: token_info,
             myso_balance: balance::zero(),
             holders: table::new(ctx),
-            poc_redirect_to: option::none(),
-            poc_redirect_percentage: option::none(),
-            poc_redirection_kind: 0,
+            revenue_manifest: option::none(),
             version: upgrade::current_version(),
         }
     }

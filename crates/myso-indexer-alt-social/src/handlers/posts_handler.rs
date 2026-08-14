@@ -25,17 +25,24 @@ use myso_indexer_alt_social_schema::models::{
     NewPocConfiguration, NewPocCreatorIdentityLink, NewPocDispute, NewPocDisputeVote,
     NewPocRevenueRedirection, NewPocUsernameBeneficiary, NewPocUsernameBeneficiaryEvent,
     NewPocVaultClaim, NewPocVaultDeposit, NewPost, NewPostTransfer, NewPromotedPost,
+    NewCompositionAnalysisRecord, NewDetectedAssetRelationship, NewFingerprintObservation,
+    NewLicenseInstance, NewLicenseTemplateVersion, NewMediaAsset, NewMediaAssetAncestrySnapshot,
+    NewMediaAssetDerivativeEdge, NewMediaAssetGovernanceLink, NewMediaAssetResolvedObligation,
+    NewMediaAssetResolvedPolicy, NewMediaAssetRightsUpdate, NewMediaAssetUsage, NewPostUsageDecisionEvent, NewRevenueManifestRecord,
     NewPromotionBudgetEvent, NewPromotionStatusEvent, NewPromotionView, NewReaction,
     NewReactionCount, NewReport, NewRepost, NewSubscriptionAccessLog, NewTip, NewUnifiedRevenue,
     REVENUE_TYPE_PROMOTION_ECOSYSTEM_FEE, REVENUE_TYPE_PROMOTION_PLATFORM_FEE,
     REVENUE_TYPE_PROMOTION_VIEWER_NET,
 };
 use myso_indexer_alt_social_schema::schema::{
-    comments, ecosystem_treasury, poc_analysis_results, poc_badges, poc_config,
+    comments, ecosystem_treasury,     composition_analysis_records, detected_asset_relationships, fingerprint_observations,
+    license_instances, license_template_versions, media_asset_ancestry_snapshots,
+    media_asset_derivative_edges, media_asset_governance_links, media_asset_resolved_obligations,
+    media_asset_resolved_policies, media_asset_rights_updates, media_asset_usages, media_assets, poc_analysis_results, poc_badges, poc_config,
     poc_creator_identity_links, poc_dispute_votes, poc_disputes, poc_revenue_redirections,
-    poc_username_beneficiary_events, poc_vault_claims, poc_vault_deposits, post_config, posts,
-    promoted_posts, promotion_budget_events, promotion_status_events, promotion_views,
-    reaction_counts, reactions, reposts, subscription_access_logs, tips,
+    poc_username_beneficiary_events, poc_vault_claims, poc_vault_deposits, post_config,
+    post_usage_decision_events, posts, promoted_posts, promotion_budget_events, promotion_status_events, promotion_views,
+    reaction_counts, reactions, reposts, revenue_manifests, subscription_access_logs, tips,
 };
 use myso_indexer_alt_social_schema::schema::{
     posts_deletion_events, posts_moderation_events, posts_reports, posts_transfers, profiles,
@@ -53,6 +60,7 @@ use super::organization_stats::{
 use super::poc;
 use super::post;
 use super::post_mydata;
+use super::media_asset;
 
 const POST_MODULES: &[&str] = &["post", "comment", "reaction", "repost", "tip"];
 const POC_MODULES: &[&str] = &[
@@ -60,6 +68,8 @@ const POC_MODULES: &[&str] = &[
     "proof_of_creativity",
     "poc_vault",
     "poc_username_beneficiary",
+    "media_asset",
+    "license_template",
 ];
 
 #[derive(Debug, Clone)]
@@ -223,6 +233,44 @@ pub enum PostRow {
     PostPocBadgePointer {
         post_id: String,
         poc_badge_object_id: String,
+    },
+    MediaAsset(NewMediaAsset),
+    FingerprintObservation(NewFingerprintObservation),
+    MediaAssetUsage(NewMediaAssetUsage),
+    CompositionAnalysisRecord(NewCompositionAnalysisRecord),
+    RevenueManifestRecord(NewRevenueManifestRecord),
+    MediaAssetDerivativeEdge(NewMediaAssetDerivativeEdge),
+    MediaAssetAncestrySnapshot(NewMediaAssetAncestrySnapshot),
+    LicenseTemplateVersion(NewLicenseTemplateVersion),
+    LicenseInstance(NewLicenseInstance),
+    MediaAssetResolvedPolicy(NewMediaAssetResolvedPolicy),
+    MediaAssetResolvedObligation(NewMediaAssetResolvedObligation),
+    PostUsageDecisionEvent(NewPostUsageDecisionEvent),
+    PostEnforcementUpdate {
+        post_id: String,
+        embedded_bindings: Option<serde_json::Value>,
+        usage_decisions: Option<serde_json::Value>,
+        usage_denials: Option<serde_json::Value>,
+    },
+    PostEnforcementUpdateDenialLift {
+        post_id: String,
+        binding_id: i64,
+    },
+    DetectedAssetRelationship(NewDetectedAssetRelationship),
+    MediaAssetGovernanceLink(NewMediaAssetGovernanceLink),
+    MediaAssetGovernanceLinkStatusUpdate {
+        media_asset_id: String,
+        proposal_id: String,
+        status: i16,
+        transaction_id: String,
+        time: chrono::DateTime<chrono::Utc>,
+    },
+    MediaAssetRightsUpdate(NewMediaAssetRightsUpdate),
+    PostCompositionUpdate {
+        post_id: String,
+        composition_status: i16,
+        monetization_status: i16,
+        analyzed_at: i64,
     },
     PocBeneficiaryVaultDeposit {
         vault_id: String,
@@ -572,6 +620,77 @@ impl PostRow {
                 post_id,
                 poc_badge_object_id,
             }),
+            SocialEventRow::MediaAsset(a) => Some(PostRow::MediaAsset(a)),
+            SocialEventRow::FingerprintObservation(o) => Some(PostRow::FingerprintObservation(o)),
+            SocialEventRow::MediaAssetUsage(u) => Some(PostRow::MediaAssetUsage(u)),
+            SocialEventRow::CompositionAnalysisRecord(r) => {
+                Some(PostRow::CompositionAnalysisRecord(r))
+            }
+            SocialEventRow::RevenueManifestRecord(r) => Some(PostRow::RevenueManifestRecord(r)),
+            SocialEventRow::MediaAssetDerivativeEdge(e) => {
+                Some(PostRow::MediaAssetDerivativeEdge(e))
+            }
+            SocialEventRow::MediaAssetAncestrySnapshot(s) => {
+                Some(PostRow::MediaAssetAncestrySnapshot(s))
+            }
+            SocialEventRow::LicenseTemplateVersion(t) => Some(PostRow::LicenseTemplateVersion(t)),
+            SocialEventRow::LicenseInstance(i) => Some(PostRow::LicenseInstance(i)),
+            SocialEventRow::MediaAssetResolvedPolicy(p) => {
+                Some(PostRow::MediaAssetResolvedPolicy(p))
+            }
+            SocialEventRow::MediaAssetResolvedObligation(o) => {
+                Some(PostRow::MediaAssetResolvedObligation(o))
+            }
+            SocialEventRow::PostUsageDecisionEvent(e) => Some(PostRow::PostUsageDecisionEvent(e)),
+            SocialEventRow::PostEnforcementUpdate {
+                post_id,
+                embedded_bindings,
+                usage_decisions,
+                usage_denials,
+            } => Some(PostRow::PostEnforcementUpdate {
+                post_id,
+                embedded_bindings,
+                usage_decisions,
+                usage_denials,
+            }),
+            SocialEventRow::PostEnforcementUpdateDenialLift {
+                post_id,
+                binding_id,
+            } => Some(PostRow::PostEnforcementUpdateDenialLift {
+                post_id,
+                binding_id,
+            }),
+            SocialEventRow::DetectedAssetRelationship(r) => {
+                Some(PostRow::DetectedAssetRelationship(r))
+            }
+            SocialEventRow::MediaAssetGovernanceLink(r) => {
+                Some(PostRow::MediaAssetGovernanceLink(r))
+            }
+            SocialEventRow::MediaAssetGovernanceLinkStatusUpdate {
+                media_asset_id,
+                proposal_id,
+                status,
+                transaction_id,
+                time,
+            } => Some(PostRow::MediaAssetGovernanceLinkStatusUpdate {
+                media_asset_id,
+                proposal_id,
+                status,
+                transaction_id,
+                time,
+            }),
+            SocialEventRow::MediaAssetRightsUpdate(r) => Some(PostRow::MediaAssetRightsUpdate(r)),
+            SocialEventRow::PostCompositionUpdate {
+                post_id,
+                composition_status,
+                monetization_status,
+                analyzed_at,
+            } => Some(PostRow::PostCompositionUpdate {
+                post_id,
+                composition_status,
+                monetization_status,
+                analyzed_at,
+            }),
             SocialEventRow::PocBeneficiaryVaultDeposit {
                 vault_id,
                 vault_routing_key,
@@ -719,7 +838,74 @@ impl PostRow {
 }
 
 impl FieldCount for PostRow {
-    const FIELD_COUNT: usize = 91;
+    const FIELD_COUNT: usize = 93;
+}
+
+async fn merge_post_json_array_by_binding_id(
+    conn: &mut Connection<'_>,
+    post_id: &str,
+    column: &str,
+    incoming: &serde_json::Value,
+) -> Result<usize> {
+    use diesel::sql_query;
+    use diesel::sql_types::{BigInt, Jsonb, Text};
+
+    let Some(items) = incoming.as_array() else {
+        return Ok(0);
+    };
+    if items.is_empty() {
+        return Ok(0);
+    }
+    if items.len() > 1 {
+        let query = format!("UPDATE posts SET {column} = $1 WHERE post_id = $2");
+        return Ok(sql_query(query)
+            .bind::<Jsonb, _>(incoming)
+            .bind::<Text, _>(post_id)
+            .execute(conn)
+            .await?);
+    }
+    let item = &items[0];
+    let binding_id = item
+        .get("binding_id")
+        .and_then(|v| v.as_u64().or_else(|| v.as_str().and_then(|s| s.parse().ok())))
+        .unwrap_or(0) as i64;
+    let query = format!(
+        "UPDATE posts SET {column} = (
+            SELECT COALESCE(jsonb_agg(elem), '[]'::jsonb) FROM (
+                SELECT elem FROM jsonb_array_elements(COALESCE({column}, '[]'::jsonb)) elem
+                WHERE COALESCE((elem->>'binding_id')::bigint, -1) != $1
+                UNION ALL
+                SELECT $2::jsonb
+            ) merged
+        ) WHERE post_id = $3"
+    );
+    Ok(sql_query(query)
+        .bind::<BigInt, _>(binding_id)
+        .bind::<Jsonb, _>(item)
+        .bind::<Text, _>(post_id)
+        .execute(conn)
+        .await?)
+}
+
+async fn lift_post_usage_denial(
+    conn: &mut Connection<'_>,
+    post_id: &str,
+    binding_id: i64,
+) -> Result<usize> {
+    use diesel::sql_query;
+    use diesel::sql_types::{BigInt, Text};
+
+    Ok(sql_query(
+        "UPDATE posts SET usage_denials = (
+            SELECT COALESCE(jsonb_agg(elem), '[]'::jsonb)
+            FROM jsonb_array_elements(COALESCE(usage_denials, '[]'::jsonb)) elem
+            WHERE COALESCE((elem->>'binding_id')::bigint, -1) != $1
+        ) WHERE post_id = $2",
+    )
+    .bind::<BigInt, _>(binding_id)
+    .bind::<Text, _>(post_id)
+    .execute(conn)
+    .await?)
 }
 
 pub struct PostsHandler;
@@ -784,9 +970,22 @@ impl Processor for PostsHandler {
                             }
                         }
                     }
-                } else if let Some(rows) =
+                } else if let Some(rows) = if module == "media_asset" {
+                    media_asset::handle_media_asset_event(
+                        event_name,
+                        &event_data,
+                        &event_id,
+                        Some(&tx_sender),
+                    )
+                } else if module == "license_template" {
+                    super::media_asset_graph::handle_license_template_event(
+                        event_name,
+                        &event_data,
+                        &event_id,
+                    )
+                } else {
                     poc::handle_poc_event(event_name, &event_data, &event_id, Some(&tx_sender))
-                {
+                } {
                     for row in rows {
                         if let Some(r) = PostRow::from_social(row) {
                             values.push(r);
@@ -1879,6 +2078,165 @@ impl Handler for PostsHandler {
                         .execute(conn)
                         .await?;
                 }
+                PostRow::MediaAsset(a) => {
+                    total += diesel::insert_into(media_assets::table)
+                        .values(a)
+                        .execute(conn)
+                        .await?;
+                }
+                PostRow::FingerprintObservation(o) => {
+                    total += diesel::insert_into(fingerprint_observations::table)
+                        .values(o)
+                        .execute(conn)
+                        .await?;
+                }
+                PostRow::MediaAssetUsage(u) => {
+                    total += diesel::insert_into(media_asset_usages::table)
+                        .values(u)
+                        .execute(conn)
+                        .await?;
+                }
+                PostRow::CompositionAnalysisRecord(r) => {
+                    total += diesel::insert_into(composition_analysis_records::table)
+                        .values(r)
+                        .execute(conn)
+                        .await?;
+                }
+                PostRow::RevenueManifestRecord(r) => {
+                    total += diesel::insert_into(revenue_manifests::table)
+                        .values(r)
+                        .execute(conn)
+                        .await?;
+                }
+                PostRow::MediaAssetDerivativeEdge(e) => {
+                    total += diesel::insert_into(media_asset_derivative_edges::table)
+                        .values(e)
+                        .execute(conn)
+                        .await?;
+                }
+                PostRow::MediaAssetAncestrySnapshot(s) => {
+                    total += diesel::insert_into(media_asset_ancestry_snapshots::table)
+                        .values(s)
+                        .execute(conn)
+                        .await?;
+                }
+                PostRow::LicenseTemplateVersion(t) => {
+                    total += diesel::insert_into(license_template_versions::table)
+                        .values(t)
+                        .execute(conn)
+                        .await?;
+                }
+                PostRow::LicenseInstance(i) => {
+                    total += diesel::insert_into(license_instances::table)
+                        .values(i)
+                        .execute(conn)
+                        .await?;
+                }
+                PostRow::MediaAssetResolvedPolicy(p) => {
+                    total += diesel::insert_into(media_asset_resolved_policies::table)
+                        .values(p)
+                        .execute(conn)
+                        .await?;
+                }
+                PostRow::MediaAssetResolvedObligation(o) => {
+                    total += diesel::insert_into(media_asset_resolved_obligations::table)
+                        .values(o)
+                        .execute(conn)
+                        .await?;
+                }
+                PostRow::PostUsageDecisionEvent(e) => {
+                    total += diesel::insert_into(post_usage_decision_events::table)
+                        .values(e)
+                        .execute(conn)
+                        .await?;
+                }
+                PostRow::PostEnforcementUpdate {
+                    post_id,
+                    embedded_bindings,
+                    usage_decisions,
+                    usage_denials,
+                } => {
+                    if let Some(bindings) = embedded_bindings {
+                        total += diesel::update(posts::table.filter(posts::post_id.eq(post_id)))
+                            .set(posts::embedded_bindings.eq(Some(bindings.clone())))
+                            .execute(conn)
+                            .await?;
+                    }
+                    if let Some(decisions) = usage_decisions {
+                        total += merge_post_json_array_by_binding_id(
+                            conn,
+                            post_id,
+                            "usage_decisions",
+                            decisions,
+                        )
+                        .await?;
+                    }
+                    if let Some(denials) = usage_denials {
+                        total += merge_post_json_array_by_binding_id(
+                            conn,
+                            post_id,
+                            "usage_denials",
+                            denials,
+                        )
+                        .await?;
+                    }
+                }
+                PostRow::PostEnforcementUpdateDenialLift {
+                    post_id,
+                    binding_id,
+                } => {
+                    total += lift_post_usage_denial(conn, post_id, *binding_id).await?;
+                }
+                PostRow::DetectedAssetRelationship(r) => {
+                    total += diesel::insert_into(detected_asset_relationships::table)
+                        .values(r)
+                        .execute(conn)
+                        .await?;
+                }
+                PostRow::MediaAssetGovernanceLink(r) => {
+                    total += diesel::insert_into(media_asset_governance_links::table)
+                        .values(r)
+                        .execute(conn)
+                        .await?;
+                }
+                PostRow::MediaAssetGovernanceLinkStatusUpdate {
+                    media_asset_id,
+                    proposal_id,
+                    status,
+                    transaction_id,
+                    ..
+                } => {
+                    total += diesel::update(media_asset_governance_links::table)
+                        .filter(media_asset_governance_links::media_asset_id.eq(media_asset_id))
+                        .filter(media_asset_governance_links::proposal_id.eq(proposal_id))
+                        .set((
+                            media_asset_governance_links::status.eq(*status),
+                            media_asset_governance_links::transaction_id.eq(transaction_id),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                PostRow::MediaAssetRightsUpdate(r) => {
+                    total += diesel::insert_into(media_asset_rights_updates::table)
+                        .values(r)
+                        .execute(conn)
+                        .await?;
+                }
+                PostRow::PostCompositionUpdate {
+                    post_id,
+                    composition_status,
+                    monetization_status,
+                    ..
+                } => {
+                    total += diesel::update(posts::table)
+                        .filter(posts::post_id.eq(post_id))
+                        .set((
+                            posts::composition_status.eq(Some(*composition_status)),
+                            posts::monetization_status.eq(Some(*monetization_status)),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
                 PostRow::PocBeneficiaryVaultDeposit {
                     vault_id,
                     vault_routing_key,
@@ -2702,6 +3060,9 @@ mod poc_analysis_result_commit_tests {
             action_identity_class: None,
             organization_id: None,
             contract_version: 0,
+            composition_status: None,
+            monetization_status: None,
+            media_asset_ids: None,
         }
     }
 
