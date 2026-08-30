@@ -2822,18 +2822,28 @@ impl CheckpointBuilder {
     }
 }
 
+const SETTLEMENT_EFFECTS_FATAL_AFTER_TIMEOUTS: u32 = 12;
+
+fn settlement_effects_timeout_secs() -> u64 {
+    if in_antithesis() {
+        // antithesis has aggressive thread pausing, 5 seconds causes false positives
+        15
+    } else {
+        std::env::var("MYSO_SETTLEMENT_EFFECTS_TIMEOUT_SECS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(5)
+    }
+}
+
 async fn wait_for_effects_with_retry(
     effects_store: &dyn TransactionCacheRead,
     task_name: &'static str,
     digests: &[TransactionDigest],
     tx_key: TransactionKey,
 ) -> Vec<TransactionEffects> {
-    let delay = if in_antithesis() {
-        // antithesis has aggressive thread pausing, 5 seconds causes false positives
-        15
-    } else {
-        5
-    };
+    let delay = settlement_effects_timeout_secs();
+    let mut consecutive_timeouts = 0u32;
     loop {
         match tokio::time::timeout(Duration::from_secs(delay), async {
             effects_store
@@ -2844,12 +2854,183 @@ async fn wait_for_effects_with_retry(
         {
             Ok(effects) => break effects,
             Err(_) => {
-                debug_fatal!(
-                    "Timeout waiting for transactions to be executed {:?}, retrying...",
-                    tx_key
+                consecutive_timeouts += 1;
+                warn!(
+                    ?tx_key,
+                    ?digests,
+                    timeout_secs = delay,
+                    consecutive_timeouts,
+                    "Timeout waiting for transactions to be executed, retrying..."
                 );
+                if consecutive_timeouts >= SETTLEMENT_EFFECTS_FATAL_AFTER_TIMEOUTS {
+                    debug_fatal!(
+                        "Timeout waiting for transactions to be executed {:?} after {} consecutive timeouts ({}s each)",
+                        tx_key,
+                        consecutive_timeouts,
+                        delay
+                    );
+                }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod wait_for_effects_with_retry_tests {
+    use super::*;
+    use futures::FutureExt as _;
+    use futures::future::BoxFuture;
+    use myso_types::accumulator_event::AccumulatorEvent;
+    use myso_types::base_types::TransactionEffectsDigest;
+    use myso_types::digests::TransactionDigest;
+    use myso_types::effects::{TransactionEffects, TransactionEvents};
+    use myso_types::transaction::TransactionKey;
+    use std::collections::HashMap;
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::time::Duration;
+
+    struct DelayedEffectsStore {
+        effects: HashMap<TransactionDigest, TransactionEffects>,
+        attempts: AtomicUsize,
+        slow_attempts: usize,
+        slow_sleep: Duration,
+    }
+
+    impl DelayedEffectsStore {
+        fn new(
+            effects: HashMap<TransactionDigest, TransactionEffects>,
+            slow_attempts: usize,
+            slow_sleep: Duration,
+        ) -> Self {
+            Self {
+                effects,
+                attempts: AtomicUsize::new(0),
+                slow_attempts,
+                slow_sleep,
+            }
+        }
+    }
+
+    impl TransactionCacheRead for DelayedEffectsStore {
+        fn notify_read_executed_effects(
+            &self,
+            _: &str,
+            digests: &[TransactionDigest],
+        ) -> BoxFuture<'_, Vec<TransactionEffects>> {
+            let attempt = self.attempts.fetch_add(1, Ordering::SeqCst);
+            let slow = attempt < self.slow_attempts;
+            let slow_sleep = self.slow_sleep;
+            let effects: Vec<TransactionEffects> = digests
+                .iter()
+                .map(|d| self.effects.get(d).expect("effects not found").clone())
+                .collect();
+            async move {
+                if slow {
+                    tokio::time::sleep(slow_sleep).await;
+                }
+                effects
+            }
+            .boxed()
+        }
+
+        fn notify_read_executed_effects_digests(
+            &self,
+            _: &str,
+            digests: &[TransactionDigest],
+        ) -> BoxFuture<'_, Vec<TransactionEffectsDigest>> {
+            std::future::ready(
+                digests
+                    .iter()
+                    .map(|d| {
+                        self.effects
+                            .get(d)
+                            .map(|fx| fx.digest())
+                            .expect("effects not found")
+                    })
+                    .collect(),
+            )
+            .boxed()
+        }
+
+        fn multi_get_executed_effects(
+            &self,
+            digests: &[TransactionDigest],
+        ) -> Vec<Option<TransactionEffects>> {
+            digests.iter().map(|d| self.effects.get(d).cloned()).collect()
+        }
+
+        fn multi_get_transaction_blocks(
+            &self,
+            _: &[TransactionDigest],
+        ) -> Vec<Option<Arc<myso_types::transaction::VerifiedTransaction>>> {
+            unimplemented!()
+        }
+
+        fn multi_get_executed_effects_digests(
+            &self,
+            _: &[TransactionDigest],
+        ) -> Vec<Option<TransactionEffectsDigest>> {
+            unimplemented!()
+        }
+
+        fn multi_get_effects(
+            &self,
+            _: &[TransactionEffectsDigest],
+        ) -> Vec<Option<TransactionEffects>> {
+            unimplemented!()
+        }
+
+        fn multi_get_events(&self, _: &[TransactionDigest]) -> Vec<Option<TransactionEvents>> {
+            unimplemented!()
+        }
+
+        fn get_mysticeti_fastpath_outputs(
+            &self,
+            _: &TransactionDigest,
+        ) -> Option<Arc<crate::transaction_outputs::TransactionOutputs>> {
+            unimplemented!()
+        }
+
+        fn notify_read_fastpath_transaction_outputs<'a>(
+            &'a self,
+            _: &'a [TransactionDigest],
+        ) -> BoxFuture<'a, Vec<Arc<crate::transaction_outputs::TransactionOutputs>>> {
+            unimplemented!()
+        }
+
+        fn take_accumulator_events(&self, _: &TransactionDigest) -> Option<Vec<AccumulatorEvent>> {
+            unimplemented!()
+        }
+
+        fn get_unchanged_loaded_runtime_objects(
+            &self,
+            _: &TransactionDigest,
+        ) -> Option<Vec<myso_types::storage::ObjectKey>> {
+            unimplemented!()
+        }
+
+        fn transaction_executed_in_last_epoch(&self, _: &TransactionDigest, _: EpochId) -> bool {
+            unimplemented!()
+        }
+    }
+
+    #[tokio::test]
+    async fn wait_for_effects_with_retry_survives_initial_timeout() {
+        let digest = TransactionDigest::random();
+        let mut effects = TransactionEffects::default();
+        *effects.transaction_digest_mut_for_testing() = digest;
+
+        let mut store_map = HashMap::new();
+        store_map.insert(digest, effects.clone());
+        // First attempt blocks longer than the default 5s timeout; second succeeds immediately.
+        let store = DelayedEffectsStore::new(store_map, 1, Duration::from_secs(6));
+
+        let tx_key = TransactionKey::AccumulatorSettlement(0, 1);
+        let result = wait_for_effects_with_retry(&store, "test", &[digest], tx_key).await;
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].transaction_digest(), &digest);
+        assert!(store.attempts.load(Ordering::SeqCst) >= 2);
     }
 }
 

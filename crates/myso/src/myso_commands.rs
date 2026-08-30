@@ -1213,6 +1213,16 @@ async fn start(
     let prometheus_registry = Registry::new();
     let mut rpc_services = Service::new();
 
+    let debug_heavy_sidecars = cfg!(debug_assertions)
+        && (with_messaging.is_some()
+            || with_indexer.is_some()
+            || with_social_indexer.is_some()
+            || with_graphql.is_some()
+            || with_mydata.is_some()
+            || with_orderbook.is_some()
+            || with_poc.is_some()
+            || with_spot.is_some());
+
     // Set-up the database for the indexer, if needed
     let (_database, database_url) = match with_indexer {
         None => (None, None),
@@ -1655,6 +1665,14 @@ async fn start(
         .context("Failed to start messaging relayer")?;
         crate::local_messaging::log_messaging_once(&info);
         sidecars.messaging = Some(child);
+    }
+
+    if debug_heavy_sidecars {
+        info!(
+            "Debug build with sidecars: checkpoint settlement waits retry under load. \
+             For long local sessions prefer `cargo run --release -p myso`, or set \
+             MYSO_SETTLEMENT_EFFECTS_TIMEOUT_SECS=30."
+        );
     }
 
     if let Some(input) = with_faucet {

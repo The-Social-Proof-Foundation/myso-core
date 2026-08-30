@@ -150,7 +150,7 @@ impl SptUserHoldingsQuery {
 
 #[derive(Debug, Deserialize)]
 pub struct SptReservationVolumeQuery {
-    /// `hour` or `day` (default `hour`).
+    /// `event`, `five_min`, `hour`, or `day` (default `hour`).
     pub interval: Option<String>,
     pub limit: Option<i64>,
     /// Start of range (epoch milliseconds, UTC).

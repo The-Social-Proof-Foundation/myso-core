@@ -16,6 +16,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use crate::config::OracleArgs;
+use crate::openrouter_client::{ChatMessage as RouterChatMessage, OpenRouterToolCall, ToolCall};
 use crate::server::{run_inference_core, AppState, InferenceRequest, InferenceResponse};
 
 #[derive(Debug, Clone)]
@@ -88,6 +89,18 @@ impl ProviderError {
         }
     }
 
+    /// OpenClaw remaps every `type: invalid_request_error` to a fake "schema or
+    /// tool payload" failure, including HTTP 402 billing rejects. Keep payment
+    /// and auth types distinct from request-schema errors.
+    fn openai_type(&self) -> &'static str {
+        match self {
+            ProviderError::Unauthorized(_) => "authentication_error",
+            ProviderError::PaymentRequired(_) => "insufficient_quota",
+            ProviderError::Upstream(_, _) => "api_error",
+            ProviderError::BadRequest(_) | ProviderError::Conflict(_) => "invalid_request_error",
+        }
+    }
+
     fn status(&self) -> StatusCode {
         match self {
             ProviderError::Unauthorized(_) => StatusCode::UNAUTHORIZED,
@@ -116,7 +129,7 @@ impl IntoResponse for ProviderError {
             Json(json!({
                 "error": {
                     "message": self.message(),
-                    "type": "invalid_request_error",
+                    "type": self.openai_type(),
                     "code": self.openai_code(),
                 }
             })),
@@ -142,7 +155,8 @@ pub fn authenticate_provider(
 fn map_core_status(status: StatusCode) -> ProviderError {
     match status {
         StatusCode::PAYMENT_REQUIRED => {
-            ProviderError::PaymentRequired("insufficient_ai_balance_or_approval".into())
+            // Phrase must match OpenClaw's `/insufficient[_ ]balance/` billing detector.
+            ProviderError::PaymentRequired("insufficient_balance".into())
         }
         StatusCode::CONFLICT => ProviderError::Conflict(
             "AI inference with this idempotency key is still reconciling".into(),
@@ -168,6 +182,10 @@ pub struct ChatCompletionsRequest {
     pub stream: bool,
     #[allow(dead_code)]
     pub temperature: Option<f64>,
+    #[serde(default)]
+    pub tools: Option<Value>,
+    #[serde(default)]
+    pub tool_choice: Option<Value>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -175,6 +193,10 @@ pub struct ChatMessage {
     pub role: String,
     #[serde(default)]
     pub content: ChatContent,
+    #[serde(default)]
+    pub tool_call_id: Option<String>,
+    #[serde(default)]
+    pub tool_calls: Option<Vec<Value>>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -228,14 +250,21 @@ pub struct ResponsesRequest {
     pub stream: bool,
     #[serde(default)]
     pub messages: Vec<ChatMessage>,
+    #[serde(default)]
+    pub tools: Option<Value>,
+    #[serde(default)]
+    pub tool_choice: Option<Value>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct InferencePrompt {
     pub system_prompt: Option<String>,
     pub prompt: String,
     pub max_tokens: u32,
     pub model_id: String,
+    pub chat_messages: Vec<RouterChatMessage>,
+    pub tools: Option<Value>,
+    pub tool_choice: Option<Value>,
 }
 
 pub fn extract_chat_prompt(
@@ -251,42 +280,39 @@ pub fn extract_chat_prompt(
         return Err(ProviderError::BadRequest("messages cannot be empty".into()));
     }
 
-    let mut system_parts = Vec::new();
-    let mut user_parts = Vec::new();
-    for msg in &req.messages {
-        let text = msg.content.as_text();
-        if text.trim().is_empty() {
-            continue;
-        }
-        match msg.role.as_str() {
-            "system" | "developer" => system_parts.push(text),
-            "assistant" => user_parts.push(format!("Assistant: {text}")),
-            _ => user_parts.push(text),
-        }
-    }
-    let prompt = user_parts.join("\n\n");
+    let chat_messages = openai_chat_to_router(&req.messages);
+    let (system_prompt, prompt) = flatten_router_messages(&chat_messages);
     if prompt.trim().is_empty() {
         return Err(ProviderError::BadRequest(
-            "at least one non-empty user/assistant message is required".into(),
+            "at least one non-empty user/assistant/tool message is required".into(),
         ));
     }
-    let system_prompt = if system_parts.is_empty() {
-        None
-    } else {
-        Some(system_parts.join("\n\n"))
-    };
     Ok(InferencePrompt {
         system_prompt,
         prompt,
-        max_tokens: req.max_tokens.or(req.max_completion_tokens).unwrap_or(512),
-        model_id: req
-            .model
-            .as_deref()
-            .map(str::trim)
-            .filter(|s| !s.is_empty())
-            .unwrap_or(default_model)
-            .to_string(),
+        max_tokens: clamp_provider_max_tokens(req.max_tokens.or(req.max_completion_tokens)),
+        model_id: resolve_model_id(req.model.as_deref(), default_model),
+        chat_messages,
+        tools: req.tools.as_ref().and_then(convert_to_openrouter_tools),
+        tool_choice: req.tool_choice.clone(),
     })
+}
+
+const MAX_OPENAI_PROVIDER_OUTPUT_TOKENS: u32 = 4096;
+
+fn clamp_provider_max_tokens(requested: Option<u32>) -> u32 {
+    match requested {
+        Some(0) | None => 512,
+        Some(n) => n.min(MAX_OPENAI_PROVIDER_OUTPUT_TOKENS),
+    }
+}
+
+fn resolve_model_id(model: Option<&str>, default_model: &str) -> String {
+    model
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .unwrap_or(default_model)
+        .to_string()
 }
 
 fn flatten_input_value(value: &Value) -> String {
@@ -302,6 +328,9 @@ fn flatten_input_value(value: &Value) -> String {
             if let Some(text) = map.get("text").and_then(|v| v.as_str()) {
                 return text.to_string();
             }
+            if let Some(output) = map.get("output") {
+                return flatten_input_value(output);
+            }
             if let Some(content) = map.get("content") {
                 return flatten_input_value(content);
             }
@@ -311,6 +340,214 @@ fn flatten_input_value(value: &Value) -> String {
             String::new()
         }
         _ => String::new(),
+    }
+}
+
+pub fn convert_to_openrouter_tools(tools: &Value) -> Option<Value> {
+    let items = tools.as_array()?;
+    let converted: Vec<Value> = items
+        .iter()
+        .filter_map(|tool| {
+            if tool.get("function").is_some() {
+                return Some(tool.clone());
+            }
+            let name = tool.get("name").and_then(|v| v.as_str())?;
+            Some(json!({
+                "type": "function",
+                "function": {
+                    "name": name,
+                    "description": tool.get("description").cloned().unwrap_or(json!("")),
+                    "parameters": tool.get("parameters").cloned().unwrap_or(json!({
+                        "type": "object",
+                        "properties": {}
+                    })),
+                }
+            }))
+        })
+        .collect();
+    if converted.is_empty() {
+        None
+    } else {
+        Some(Value::Array(converted))
+    }
+}
+
+fn parse_openai_tool_calls(raw: Option<&Vec<Value>>) -> Option<Vec<OpenRouterToolCall>> {
+    let items = raw?;
+    let parsed: Vec<OpenRouterToolCall> = items
+        .iter()
+        .filter_map(|value| {
+            if let Ok(call) = serde_json::from_value::<OpenRouterToolCall>(value.clone()) {
+                return Some(call);
+            }
+            let id = value
+                .get("id")
+                .or_else(|| value.get("call_id"))
+                .and_then(|v| v.as_str())?
+                .to_string();
+            let name = value
+                .get("name")
+                .or_else(|| value.get("function").and_then(|f| f.get("name")))
+                .and_then(|v| v.as_str())?
+                .to_string();
+            let arguments = match value
+                .get("arguments")
+                .or_else(|| value.get("function").and_then(|f| f.get("arguments")))
+            {
+                Some(Value::String(s)) => s.clone(),
+                Some(other) => other.to_string(),
+                None => "{}".to_string(),
+            };
+            Some(OpenRouterToolCall::function(id, name, arguments))
+        })
+        .collect();
+    if parsed.is_empty() {
+        None
+    } else {
+        Some(parsed)
+    }
+}
+
+fn openai_chat_to_router(messages: &[ChatMessage]) -> Vec<RouterChatMessage> {
+    messages
+        .iter()
+        .filter_map(|msg| {
+            let text = msg.content.as_text();
+            let tool_calls = parse_openai_tool_calls(msg.tool_calls.as_ref());
+            if text.trim().is_empty() && tool_calls.is_none() && msg.tool_call_id.is_none() {
+                return None;
+            }
+            Some(RouterChatMessage {
+                role: msg.role.clone(),
+                content: if text.is_empty() { None } else { Some(text) },
+                tool_call_id: msg.tool_call_id.clone(),
+                tool_calls,
+            })
+        })
+        .collect()
+}
+
+fn flatten_router_messages(messages: &[RouterChatMessage]) -> (Option<String>, String) {
+    let mut system_parts = Vec::new();
+    let mut user_parts = Vec::new();
+    for msg in messages {
+        match msg.role.as_str() {
+            "system" | "developer" => {
+                if let Some(text) = &msg.content {
+                    if !text.trim().is_empty() {
+                        system_parts.push(text.clone());
+                    }
+                }
+            }
+            "assistant" => {
+                if let Some(text) = &msg.content {
+                    if !text.trim().is_empty() {
+                        user_parts.push(format!("Assistant: {text}"));
+                    }
+                }
+                if let Some(calls) = &msg.tool_calls {
+                    for call in calls {
+                        user_parts.push(format!(
+                            "Assistant tool_call {}: {}",
+                            call.function.name, call.function.arguments
+                        ));
+                    }
+                }
+            }
+            "tool" => {
+                let id = msg.tool_call_id.as_deref().unwrap_or("");
+                let text = msg.content.as_deref().unwrap_or("");
+                user_parts.push(format!("Tool {id}: {text}"));
+            }
+            _ => {
+                if let Some(text) = &msg.content {
+                    if !text.trim().is_empty() {
+                        user_parts.push(text.clone());
+                    }
+                }
+            }
+        }
+    }
+    let system_prompt = if system_parts.is_empty() {
+        None
+    } else {
+        Some(system_parts.join("\n\n"))
+    };
+    (system_prompt, user_parts.join("\n\n"))
+}
+
+fn responses_item_to_messages(item: &Value) -> Vec<RouterChatMessage> {
+    let item_type = item.get("type").and_then(|v| v.as_str()).unwrap_or("");
+    match item_type {
+        "function_call" => {
+            let call_id = item
+                .get("call_id")
+                .or_else(|| item.get("id"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let name = item
+                .get("name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let arguments = match item.get("arguments") {
+                Some(Value::String(s)) => s.clone(),
+                Some(other) => other.to_string(),
+                None => "{}".to_string(),
+            };
+            vec![RouterChatMessage {
+                role: "assistant".into(),
+                content: None,
+                tool_call_id: None,
+                tool_calls: Some(vec![OpenRouterToolCall::function(call_id, name, arguments)]),
+            }]
+        }
+        "function_call_output" => {
+            let call_id = item
+                .get("call_id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let output = match item.get("output") {
+                Some(Value::String(s)) => s.clone(),
+                Some(other) => flatten_input_value(other),
+                None => String::new(),
+            };
+            vec![RouterChatMessage {
+                role: "tool".into(),
+                content: Some(output),
+                tool_call_id: Some(call_id),
+                tool_calls: None,
+            }]
+        }
+        _ => {
+            let role = item
+                .get("role")
+                .and_then(|v| v.as_str())
+                .unwrap_or("user")
+                .to_string();
+            let text = item
+                .get("content")
+                .map(flatten_input_value)
+                .filter(|s| !s.trim().is_empty())
+                .or_else(|| item.get("text").and_then(|v| v.as_str()).map(String::from))
+                .unwrap_or_else(|| flatten_input_value(item));
+            if text.trim().is_empty() {
+                Vec::new()
+            } else {
+                vec![RouterChatMessage::text(role, text)]
+            }
+        }
+    }
+}
+
+pub fn responses_input_to_messages(input: &Value) -> Vec<RouterChatMessage> {
+    match input {
+        Value::String(s) => vec![RouterChatMessage::text("user", s.clone())],
+        Value::Array(items) => items.iter().flat_map(responses_item_to_messages).collect(),
+        Value::Object(_) => responses_item_to_messages(input),
+        _ => Vec::new(),
     }
 }
 
@@ -324,31 +561,21 @@ pub fn extract_responses_prompt(
         ));
     }
 
-    let mut prompt = String::new();
-    if let Some(input) = &req.input {
-        prompt = flatten_input_value(input);
-    }
-    if prompt.trim().is_empty() && !req.messages.is_empty() {
-        let chat = ChatCompletionsRequest {
-            model: req.model.clone(),
-            messages: req.messages.clone(),
-            max_tokens: req.max_tokens.or(req.max_output_tokens),
-            max_completion_tokens: None,
-            stream: false,
-            temperature: None,
-        };
-        let mut extracted = extract_chat_prompt(&chat, default_model)?;
-        if extracted.system_prompt.is_none() {
-            extracted.system_prompt = req.instructions.clone();
-        } else if let Some(instr) = &req.instructions {
-            extracted.system_prompt = Some(format!(
-                "{}\n\n{}",
-                extracted.system_prompt.as_deref().unwrap_or(""),
-                instr
-            ));
+    let mut chat_messages = Vec::new();
+    if let Some(instructions) = &req.instructions {
+        if !instructions.trim().is_empty() {
+            chat_messages.push(RouterChatMessage::text("system", instructions.clone()));
         }
-        return Ok(extracted);
     }
+    if let Some(input) = &req.input {
+        chat_messages.extend(responses_input_to_messages(input));
+    }
+    let has_non_system = chat_messages.iter().any(|msg| msg.role != "system");
+    if !has_non_system && !req.messages.is_empty() {
+        chat_messages.extend(openai_chat_to_router(&req.messages));
+    }
+
+    let (system_prompt, prompt) = flatten_router_messages(&chat_messages);
     if prompt.trim().is_empty() {
         return Err(ProviderError::BadRequest(
             "input (or messages) cannot be empty".into(),
@@ -356,16 +583,13 @@ pub fn extract_responses_prompt(
     }
 
     Ok(InferencePrompt {
-        system_prompt: req.instructions.clone(),
+        system_prompt,
         prompt,
-        max_tokens: req.max_output_tokens.or(req.max_tokens).unwrap_or(512),
-        model_id: req
-            .model
-            .as_deref()
-            .map(str::trim)
-            .filter(|s| !s.is_empty())
-            .unwrap_or(default_model)
-            .to_string(),
+        max_tokens: clamp_provider_max_tokens(req.max_output_tokens.or(req.max_tokens)),
+        model_id: resolve_model_id(req.model.as_deref(), default_model),
+        chat_messages,
+        tools: req.tools.as_ref().and_then(convert_to_openrouter_tools),
+        tool_choice: req.tool_choice.clone(),
     })
 }
 
@@ -376,8 +600,38 @@ fn now_epoch_secs() -> u64 {
         .unwrap_or(0)
 }
 
+fn tool_calls_as_openai(tool_calls: &[ToolCall]) -> Vec<Value> {
+    tool_calls
+        .iter()
+        .map(|call| {
+            json!({
+                "id": call.id,
+                "type": "function",
+                "function": {
+                    "name": call.name,
+                    "arguments": call.arguments,
+                }
+            })
+        })
+        .collect()
+}
+
 pub fn chat_completion_response(model: &str, result: &InferenceResponse) -> Value {
     let id = format!("chatcmpl-{}", uuid::Uuid::new_v4());
+    let has_tools = !result.tool_calls.is_empty();
+    let mut message = serde_json::Map::new();
+    message.insert("role".into(), json!("assistant"));
+    if result.content.is_empty() && has_tools {
+        message.insert("content".into(), Value::Null);
+    } else {
+        message.insert("content".into(), json!(result.content));
+    }
+    if has_tools {
+        message.insert(
+            "tool_calls".into(),
+            json!(tool_calls_as_openai(&result.tool_calls)),
+        );
+    }
     json!({
         "id": id,
         "object": "chat.completion",
@@ -385,11 +639,8 @@ pub fn chat_completion_response(model: &str, result: &InferenceResponse) -> Valu
         "model": model,
         "choices": [{
             "index": 0,
-            "message": {
-                "role": "assistant",
-                "content": result.content,
-            },
-            "finish_reason": "stop",
+            "message": message,
+            "finish_reason": if has_tools { "tool_calls" } else { "stop" },
         }],
         "usage": {
             "prompt_tokens": result.tokens_in,
@@ -401,13 +652,9 @@ pub fn chat_completion_response(model: &str, result: &InferenceResponse) -> Valu
 
 pub fn responses_api_response(model: &str, result: &InferenceResponse) -> Value {
     let id = format!("resp_{}", uuid::Uuid::new_v4().simple());
-    json!({
-        "id": id,
-        "object": "response",
-        "created_at": now_epoch_secs(),
-        "status": "completed",
-        "model": model,
-        "output": [{
+    let mut output = Vec::new();
+    if !result.content.is_empty() || result.tool_calls.is_empty() {
+        output.push(json!({
             "type": "message",
             "id": format!("msg_{}", uuid::Uuid::new_v4().simple()),
             "role": "assistant",
@@ -416,7 +663,24 @@ pub fn responses_api_response(model: &str, result: &InferenceResponse) -> Value 
                 "type": "output_text",
                 "text": result.content,
             }],
-        }],
+        }));
+    }
+    for call in &result.tool_calls {
+        output.push(json!({
+            "type": "function_call",
+            "id": format!("fc_{}", uuid::Uuid::new_v4().simple()),
+            "call_id": call.id,
+            "name": call.name,
+            "arguments": call.arguments,
+        }));
+    }
+    json!({
+        "id": id,
+        "object": "response",
+        "created_at": now_epoch_secs(),
+        "status": "completed",
+        "model": model,
+        "output": output,
         "usage": {
             "input_tokens": result.tokens_in,
             "output_tokens": result.tokens_out,
@@ -439,6 +703,9 @@ fn build_inference_request(
         prompt: prompt.prompt,
         max_tokens: Some(prompt.max_tokens),
         idempotency_key: uuid::Uuid::new_v4().to_string(),
+        chat_messages: prompt.chat_messages,
+        tools: prompt.tools,
+        tool_choice: prompt.tool_choice,
     }
 }
 
@@ -568,16 +835,22 @@ mod tests {
                 ChatMessage {
                     role: "system".into(),
                     content: ChatContent::Text("Be brief".into()),
+                    tool_call_id: None,
+                    tool_calls: None,
                 },
                 ChatMessage {
                     role: "user".into(),
                     content: ChatContent::Text("Hello".into()),
+                    tool_call_id: None,
+                    tool_calls: None,
                 },
             ],
             max_tokens: Some(64),
             max_completion_tokens: None,
             stream: false,
             temperature: None,
+            tools: None,
+            tool_choice: None,
         };
         let prompt = extract_chat_prompt(&req, "openai/gpt-4o-mini").unwrap();
         assert_eq!(prompt.system_prompt.as_deref(), Some("Be brief"));
@@ -593,11 +866,15 @@ mod tests {
             messages: vec![ChatMessage {
                 role: "user".into(),
                 content: ChatContent::Text("hi".into()),
+                tool_call_id: None,
+                tool_calls: None,
             }],
             max_tokens: None,
             max_completion_tokens: None,
             stream: true,
             temperature: None,
+            tools: None,
+            tool_choice: None,
         };
         assert!(extract_chat_prompt(&req, "openai/gpt-4o-mini").is_err());
     }
@@ -612,6 +889,8 @@ mod tests {
             max_tokens: None,
             stream: false,
             messages: vec![],
+            tools: None,
+            tool_choice: None,
         };
         let prompt = extract_responses_prompt(&req, "openai/gpt-4o-mini").unwrap();
         assert_eq!(prompt.prompt, "ping");
@@ -656,6 +935,7 @@ mod tests {
             tokens_out: 3,
             model_id: "openai/gpt-4o-mini".into(),
             content: "AI_CREDIT_OK".into(),
+            tool_calls: vec![],
             provider_cost_usd_micros: 1,
             upstream_cost_usd_micros: None,
             provider_generation_id: None,
@@ -674,6 +954,9 @@ mod tests {
             prompt: "hello".into(),
             max_tokens: 32,
             model_id: "openai/gpt-4o-mini".into(),
+            chat_messages: vec![],
+            tools: None,
+            tool_choice: None,
         };
         let req = build_inference_request(&identity, prompt);
         assert_eq!(req.owner, "0xowner");
@@ -684,7 +967,150 @@ mod tests {
         assert_eq!(req.system_prompt.as_deref(), Some("sys"));
         assert_eq!(req.prompt, "hello");
         assert_eq!(req.max_tokens, Some(32));
+        assert!(req.chat_messages.is_empty());
+        assert!(req.tools.is_none());
         assert!(!req.idempotency_key.is_empty());
+    }
+
+    #[test]
+    fn convert_responses_tools_to_openrouter_functions() {
+        let tools = json!([{
+            "type": "function",
+            "name": "web_search",
+            "description": "Search the web",
+            "parameters": { "type": "object", "properties": { "query": { "type": "string" } } },
+            "strict": false
+        }]);
+        let converted = convert_to_openrouter_tools(&tools).expect("tools");
+        assert_eq!(converted[0]["type"], "function");
+        assert_eq!(converted[0]["function"]["name"], "web_search");
+        assert_eq!(converted[0]["function"]["description"], "Search the web");
+        assert!(converted[0]["function"]["parameters"]["properties"]["query"].is_object());
+    }
+
+    #[test]
+    fn extract_responses_prompt_keeps_function_call_and_output() {
+        let req = ResponsesRequest {
+            model: Some("openai/gpt-4o-mini".into()),
+            input: Some(json!([
+                {
+                    "type": "message",
+                    "role": "user",
+                    "content": [{ "type": "input_text", "text": "Cowboys preseason score?" }]
+                },
+                {
+                    "type": "function_call",
+                    "call_id": "call_1",
+                    "name": "web_search",
+                    "arguments": "{\"query\":\"Cowboys latest preseason game\"}"
+                },
+                {
+                    "type": "function_call_output",
+                    "call_id": "call_1",
+                    "output": "Cowboys beat the Rams 31-21"
+                }
+            ])),
+            instructions: Some("Be brief".into()),
+            max_output_tokens: Some(128),
+            max_tokens: None,
+            stream: false,
+            messages: vec![],
+            tools: Some(json!([{
+                "type": "function",
+                "name": "web_search",
+                "description": "Search the web",
+                "parameters": { "type": "object", "properties": {} }
+            }])),
+            tool_choice: None,
+        };
+        let prompt = extract_responses_prompt(&req, "openai/gpt-4o-mini").unwrap();
+        assert!(prompt.prompt.contains("Cowboys preseason score?"));
+        assert!(prompt.prompt.contains("Assistant tool_call web_search"));
+        assert!(prompt
+            .prompt
+            .contains("Tool call_1: Cowboys beat the Rams 31-21"));
+        assert_eq!(prompt.chat_messages.len(), 4);
+        assert_eq!(prompt.chat_messages[0].role, "system");
+        assert_eq!(prompt.chat_messages[2].role, "assistant");
+        assert_eq!(
+            prompt.chat_messages[2].tool_calls.as_ref().unwrap()[0]
+                .function
+                .name,
+            "web_search"
+        );
+        assert_eq!(prompt.chat_messages[3].role, "tool");
+        assert_eq!(
+            prompt.chat_messages[3].tool_call_id.as_deref(),
+            Some("call_1")
+        );
+        assert_eq!(
+            prompt.tools.as_ref().unwrap()[0]["function"]["name"],
+            "web_search"
+        );
+    }
+
+    #[test]
+    fn responses_api_emits_function_call_items() {
+        let result = InferenceResponse {
+            receipt_id: None,
+            amount_mist: 14,
+            settlement_nonce: None,
+            signature: None,
+            receipt: None,
+            reservation_nonce: Some(1),
+            reserved_mist: Some(20),
+            reserve_digest: None,
+            capture_digest: None,
+            billing_state: "captured".into(),
+            tokens_in: 11,
+            tokens_out: 3,
+            model_id: "openai/gpt-4o-mini".into(),
+            content: String::new(),
+            tool_calls: vec![ToolCall {
+                id: "call_1".into(),
+                name: "web_search".into(),
+                arguments: "{\"query\":\"Cowboys\"}".into(),
+            }],
+            provider_cost_usd_micros: 1,
+            upstream_cost_usd_micros: None,
+            provider_generation_id: None,
+        };
+        let responses = responses_api_response("openai/gpt-4o-mini", &result);
+        assert_eq!(responses["output"][0]["type"], "function_call");
+        assert_eq!(responses["output"][0]["call_id"], "call_1");
+        assert_eq!(responses["output"][0]["name"], "web_search");
+        assert_eq!(
+            responses["output"][0]["arguments"],
+            "{\"query\":\"Cowboys\"}"
+        );
+        let chat = chat_completion_response("openai/gpt-4o-mini", &result);
+        assert_eq!(chat["choices"][0]["finish_reason"], "tool_calls");
+        assert_eq!(
+            chat["choices"][0]["message"]["tool_calls"][0]["function"]["name"],
+            "web_search"
+        );
+    }
+
+    #[test]
+    fn clamp_provider_max_tokens_defaults_and_caps() {
+        assert_eq!(clamp_provider_max_tokens(None), 512);
+        assert_eq!(clamp_provider_max_tokens(Some(0)), 512);
+        assert_eq!(clamp_provider_max_tokens(Some(64)), 64);
+        assert_eq!(
+            clamp_provider_max_tokens(Some(200_000)),
+            MAX_OPENAI_PROVIDER_OUTPUT_TOKENS
+        );
+    }
+
+    #[test]
+    fn payment_required_is_not_invalid_request_error() {
+        let err = map_core_status(StatusCode::PAYMENT_REQUIRED);
+        assert_eq!(err.openai_type(), "insufficient_quota");
+        assert_eq!(err.openai_code(), "insufficient_quota");
+        assert_eq!(err.message(), "insufficient_balance");
+        assert_eq!(err.status(), StatusCode::PAYMENT_REQUIRED);
+        let schema = map_core_status(StatusCode::BAD_REQUEST);
+        assert_eq!(schema.openai_type(), "invalid_request_error");
     }
 
     #[test]

@@ -2318,8 +2318,9 @@ module social_contracts::social_proof_tokens {
         let total_reserved = reservation_pool_object.info.total_reserved;
         assert!(total_reserved > 0, ENoContribution);
         let base_price = config.base_price;
+        // Intermediate `total_reserved * SPT_SCALE` may exceed u64 (e.g. default 10k MYSO
+        // profile threshold). That is expected; the bound that matters is the quotient.
         let product_u128 = (total_reserved as u128) * (SPT_SCALE as u128);
-        assert!(product_u128 <= MAX_ONCHAIN_U64_U128, EOverflow);
         let initial_u128 = product_u128 / (base_price as u128);
         assert!(initial_u128 > 0 && initial_u128 <= MAX_ONCHAIN_U64_U128, EInvalidCurveParams);
         let initial_token_supply = initial_u128 as u64;

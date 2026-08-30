@@ -1050,41 +1050,169 @@ pub(crate) async fn get_spt_reservation_volume_history(
 ) -> Result<Vec<crate::reader::SptReservationVolumeBucketRow>, SocialError> {
     let mut conn = db.connect().await?;
     let limit = limit.clamp(1, 500);
-    let bucket_width = match trunc {
-        "day" => "interval '1 day'",
-        _ => "interval '1 hour'",
-    };
-    let query = format!(
-        r#"
-        SELECT
-            (EXTRACT(EPOCH FROM date_trunc('{trunc}', r.time)))::bigint AS bucket_start,
-            (EXTRACT(EPOCH FROM date_trunc('{trunc}', r.time) + {bucket_width}))::bigint AS bucket_end,
-            (EXTRACT(EPOCH FROM MIN(r.time)))::bigint AS earliest_at,
-            (EXTRACT(EPOCH FROM MAX(r.time)))::bigint AS latest_at,
-            COALESCE(SUM(CASE WHEN r.amount > 0 THEN r.amount ELSE 0 END), 0)::bigint AS deposit_volume,
-            COALESCE(SUM(CASE WHEN r.amount < 0 THEN -r.amount ELSE 0 END), 0)::bigint AS withdrawal_volume,
-            COUNT(*) FILTER (WHERE r.amount > 0)::bigint AS deposit_count,
-            COUNT(*) FILTER (WHERE r.amount < 0)::bigint AS withdrawal_count
-        FROM spt_reservations r
-        WHERE (
-            r.pool_id = $1
-            OR r.pool_id = (
-                SELECT 'reservation_pool_' || associated_id
-                FROM spt_reservation_pools
-                WHERE pool_id = $1 OR associated_id = $1
-                ORDER BY time DESC
-                LIMIT 1
+    let pool_match = r#"
+            (
+                r.pool_id = $1
+                OR r.pool_id = (
+                    SELECT 'reservation_pool_' || associated_id
+                    FROM spt_reservation_pools
+                    WHERE pool_id = $1 OR associated_id = $1
+                    ORDER BY time DESC
+                    LIMIT 1
+                )
             )
+    "#;
+    let mut trunc = trunc;
+    if trunc == "event" {
+        #[derive(QueryableByName)]
+        struct CountRow {
+            #[diesel(sql_type = BigInt)]
+            count: i64,
+        }
+        let count_sql = format!(
+            r#"
+            SELECT COUNT(*)::bigint AS count
+            FROM spt_reservations r
+            WHERE {pool_match}
+            AND ($2::timestamptz IS NULL OR r.time >= $2)
+            AND ($3::timestamptz IS NULL OR r.time <= $3)
+            "#,
+            pool_match = pool_match,
+        );
+        let count = diesel::sql_query(&count_sql)
+            .bind::<Text, _>(pool_id_param)
+            .bind::<Nullable<Timestamptz>, _>(from)
+            .bind::<Nullable<Timestamptz>, _>(to)
+            .get_result::<CountRow>(&mut conn)
+            .await?
+            .count;
+        if count > 288.min(limit) {
+            trunc = "five_min";
+        }
+    }
+
+    let query = if trunc == "event" {
+        format!(
+            r#"
+            SELECT
+                (EXTRACT(EPOCH FROM r.time))::bigint AS bucket_start,
+                (EXTRACT(EPOCH FROM r.time))::bigint AS bucket_end,
+                (EXTRACT(EPOCH FROM r.time))::bigint AS earliest_at,
+                (EXTRACT(EPOCH FROM r.time))::bigint AS latest_at,
+                COALESCE(CASE WHEN r.amount > 0 THEN r.amount ELSE 0 END, 0)::bigint AS deposit_volume,
+                COALESCE(CASE WHEN r.amount < 0 THEN -r.amount ELSE 0 END, 0)::bigint AS withdrawal_volume,
+                (CASE WHEN r.amount > 0 THEN 1 ELSE 0 END)::bigint AS deposit_count,
+                (CASE WHEN r.amount < 0 THEN 1 ELSE 0 END)::bigint AS withdrawal_count
+            FROM spt_reservations r
+            WHERE {pool_match}
+            AND ($2::timestamptz IS NULL OR r.time >= $2)
+            AND ($3::timestamptz IS NULL OR r.time <= $3)
+            ORDER BY r.time DESC
+            LIMIT $4
+            "#,
+            pool_match = pool_match,
         )
-        AND ($2::timestamptz IS NULL OR r.time >= $2)
-        AND ($3::timestamptz IS NULL OR r.time <= $3)
-        GROUP BY date_trunc('{trunc}', r.time)
-        ORDER BY date_trunc('{trunc}', r.time) DESC
-        LIMIT $4
-        "#,
-        trunc = trunc,
-        bucket_width = bucket_width,
-    );
+    } else if trunc == "five_min" {
+        #[derive(QueryableByName)]
+        struct ExistsRow {
+            #[diesel(sql_type = Bool)]
+            exists: bool,
+        }
+        let cagg_exists = diesel::sql_query(
+            "SELECT EXISTS (
+                SELECT 1
+                FROM timescaledb_information.continuous_aggregates
+                WHERE view_name = 'spt_reservation_volume_5m'
+            ) AS exists",
+        )
+        .get_result::<ExistsRow>(&mut conn)
+        .await
+        .map(|row| row.exists)
+        .unwrap_or(false);
+        if cagg_exists {
+            r#"
+            SELECT
+                (EXTRACT(EPOCH FROM v.bucket))::bigint AS bucket_start,
+                (EXTRACT(EPOCH FROM v.bucket + interval '5 minutes'))::bigint AS bucket_end,
+                (EXTRACT(EPOCH FROM v.earliest_at))::bigint AS earliest_at,
+                (EXTRACT(EPOCH FROM v.latest_at))::bigint AS latest_at,
+                v.deposit_volume::bigint AS deposit_volume,
+                v.withdrawal_volume::bigint AS withdrawal_volume,
+                v.deposit_count::bigint AS deposit_count,
+                v.withdrawal_count::bigint AS withdrawal_count
+            FROM spt_reservation_volume_5m v
+            WHERE (
+                v.pool_id = $1
+                OR v.pool_id = (
+                    SELECT 'reservation_pool_' || associated_id
+                    FROM spt_reservation_pools
+                    WHERE pool_id = $1 OR associated_id = $1
+                    ORDER BY time DESC
+                    LIMIT 1
+                )
+            )
+            AND ($2::timestamptz IS NULL OR v.bucket >= $2)
+            AND ($3::timestamptz IS NULL OR v.bucket <= $3)
+            ORDER BY v.bucket DESC
+            LIMIT $4
+            "#
+            .to_string()
+        } else {
+            format!(
+                r#"
+                SELECT
+                    (EXTRACT(EPOCH FROM time_bucket('5 minutes', r.time)))::bigint AS bucket_start,
+                    (EXTRACT(EPOCH FROM time_bucket('5 minutes', r.time) + interval '5 minutes'))::bigint AS bucket_end,
+                    (EXTRACT(EPOCH FROM MIN(r.time)))::bigint AS earliest_at,
+                    (EXTRACT(EPOCH FROM MAX(r.time)))::bigint AS latest_at,
+                    COALESCE(SUM(CASE WHEN r.amount > 0 THEN r.amount ELSE 0 END), 0)::bigint AS deposit_volume,
+                    COALESCE(SUM(CASE WHEN r.amount < 0 THEN -r.amount ELSE 0 END), 0)::bigint AS withdrawal_volume,
+                    COUNT(*) FILTER (WHERE r.amount > 0)::bigint AS deposit_count,
+                    COUNT(*) FILTER (WHERE r.amount < 0)::bigint AS withdrawal_count
+                FROM spt_reservations r
+                WHERE {pool_match}
+                AND ($2::timestamptz IS NULL OR r.time >= $2)
+                AND ($3::timestamptz IS NULL OR r.time <= $3)
+                GROUP BY time_bucket('5 minutes', r.time)
+                ORDER BY time_bucket('5 minutes', r.time) DESC
+                LIMIT $4
+                "#,
+                pool_match = pool_match,
+            )
+        }
+    } else {
+        let bucket = match trunc {
+            "day" => "time_bucket('1 day', r.time)",
+            _ => "time_bucket('1 hour', r.time)",
+        };
+        let bucket_width = match trunc {
+            "day" => "interval '1 day'",
+            _ => "interval '1 hour'",
+        };
+        format!(
+            r#"
+            SELECT
+                (EXTRACT(EPOCH FROM {bucket}))::bigint AS bucket_start,
+                (EXTRACT(EPOCH FROM {bucket} + {bucket_width}))::bigint AS bucket_end,
+                (EXTRACT(EPOCH FROM MIN(r.time)))::bigint AS earliest_at,
+                (EXTRACT(EPOCH FROM MAX(r.time)))::bigint AS latest_at,
+                COALESCE(SUM(CASE WHEN r.amount > 0 THEN r.amount ELSE 0 END), 0)::bigint AS deposit_volume,
+                COALESCE(SUM(CASE WHEN r.amount < 0 THEN -r.amount ELSE 0 END), 0)::bigint AS withdrawal_volume,
+                COUNT(*) FILTER (WHERE r.amount > 0)::bigint AS deposit_count,
+                COUNT(*) FILTER (WHERE r.amount < 0)::bigint AS withdrawal_count
+            FROM spt_reservations r
+            WHERE {pool_match}
+            AND ($2::timestamptz IS NULL OR r.time >= $2)
+            AND ($3::timestamptz IS NULL OR r.time <= $3)
+            GROUP BY {bucket}
+            ORDER BY {bucket} DESC
+            LIMIT $4
+            "#,
+            bucket = bucket,
+            bucket_width = bucket_width,
+            pool_match = pool_match,
+        )
+    };
     use diesel::sql_types::{Nullable, Timestamptz};
     let results = diesel::sql_query(&query)
         .bind::<diesel::sql_types::Text, _>(pool_id_param)

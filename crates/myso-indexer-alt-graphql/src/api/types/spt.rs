@@ -63,6 +63,8 @@ impl From<SptSortBy> for SptSortByReader {
 
 #[derive(Enum, Copy, Clone, Eq, PartialEq)]
 pub enum SptReservationVolumeInterval {
+    Event,
+    FiveMin,
     Hour,
     Day,
 }
@@ -72,6 +74,8 @@ impl From<SptReservationVolumeInterval>
 {
     fn from(v: SptReservationVolumeInterval) -> Self {
         match v {
+            SptReservationVolumeInterval::Event => Self::Event,
+            SptReservationVolumeInterval::FiveMin => Self::FiveMin,
             SptReservationVolumeInterval::Hour => Self::Hour,
             SptReservationVolumeInterval::Day => Self::Day,
         }

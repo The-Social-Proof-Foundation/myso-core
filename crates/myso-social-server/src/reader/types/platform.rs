@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use serde::Serialize;
-use serde_json::Value as JsonValue;
 
 use diesel::sql_types::{BigInt, Text};
 use diesel::QueryableByName;
@@ -130,12 +129,11 @@ impl PlatformUserAccessRow {
         is_member: bool,
         is_blocked: bool,
         is_moderator: bool,
-        moderator_permissions: JsonValue,
+        moderator_permissions: Vec<String>,
         developer_address: &str,
         user_address: &str,
     ) -> Self {
-        let permissions: Vec<String> =
-            serde_json::from_value(moderator_permissions).unwrap_or_default();
+        let permissions = moderator_permissions;
         let is_developer = developer_address == user_address;
         let can_block_users = permissions.iter().any(|p| {
             p == myso_indexer_alt_social_schema::platform_permissions::PLATFORM_BLOCK_ADMIN
@@ -175,8 +173,8 @@ pub struct PlatformUserAccessDbRow {
     is_blocked: bool,
     #[diesel(sql_type = diesel::sql_types::Bool)]
     is_moderator: bool,
-    #[diesel(sql_type = diesel::sql_types::Jsonb)]
-    moderator_permissions: JsonValue,
+    #[diesel(sql_type = diesel::sql_types::Array<diesel::sql_types::Text>)]
+    moderator_permissions: Vec<String>,
 }
 
 impl From<PlatformUserAccessDbRow> for PlatformUserAccessRow {

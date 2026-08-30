@@ -1012,7 +1012,7 @@ impl Query {
         )
     }
 
-    /// Time-bucketed reservation deposit / withdrawal volume for a reservation pool (MYSO base units). Returns empty when social DB not configured.
+    /// Reservation deposit / withdrawal volume (`EVENT`, `FIVE_MIN`, `HOUR`, `DAY`). Returns empty when social DB not configured.
     async fn spt_reservation_volume_history(
         &self,
         ctx: &Context<'_>,

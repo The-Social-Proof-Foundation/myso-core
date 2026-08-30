@@ -1364,15 +1364,27 @@ start_oracle_background() {
         export AI_CREDIT_SETTLE_MIN_COUNT=1
         export AI_CREDIT_SETTLE_MAX_AGE_SECS=2
         export AI_CREDIT_SETTLEMENT_INTERVAL_SECS=5
+        export AI_CREDIT_DATABASE_URL="${AI_CREDIT_DATABASE_URL:-postgres://memory:memory_secret@127.0.0.1:5432/myso_ai_credit}"
         export AI_CREDIT_RECEIPT_STORE="$RECEIPT_STORE"
         export AI_CREDIT_STRICT_CATALOG=false
         export AI_CREDIT_MYSO_PRICE_MAX_STALE_SECS="${AI_CREDIT_MYSO_PRICE_MAX_STALE_SECS:-86400}"
         if openrouter_key_configured; then
             export AI_CREDIT_OPENROUTER_API_KEY
             export AI_CREDIT_INFERENCE_ENABLED=true
+            if session_value_set AI_CREDIT_BALANCE_ID && session_value_set MEMORY_ACCOUNT_ID && session_value_set AGENT_OBJECT_ID; then
+                export AI_CREDIT_PROVIDER_TOKEN="${AI_CREDIT_PROVIDER_TOKEN:-local-openclaw-token}"
+                export AI_CREDIT_PROVIDER_OWNER="$(normalize_hex_id "$OWNER_ADDRESS")"
+                export AI_CREDIT_PROVIDER_BALANCE_ID="$(normalize_hex_id "$AI_CREDIT_BALANCE_ID")"
+                export AI_CREDIT_PROVIDER_MEMORY_ACCOUNT_ID="$(normalize_hex_id "$MEMORY_ACCOUNT_ID")"
+                export AI_CREDIT_PROVIDER_AGENT_OBJECT_ID="$(normalize_hex_id "$AGENT_OBJECT_ID")"
+                export AI_CREDIT_PROVIDER_MODELS="${AI_CREDIT_PROVIDER_MODELS:-openai/gpt-4o-mini,openai/gpt-4o}"
+            fi
         else
             unset AI_CREDIT_OPENROUTER_API_KEY 2>/dev/null || true
             export AI_CREDIT_INFERENCE_ENABLED=false
+            unset AI_CREDIT_PROVIDER_TOKEN AI_CREDIT_PROVIDER_OWNER AI_CREDIT_PROVIDER_BALANCE_ID \
+                AI_CREDIT_PROVIDER_MEMORY_ACCOUNT_ID AI_CREDIT_PROVIDER_AGENT_OBJECT_ID AI_CREDIT_PROVIDER_MODELS \
+                2>/dev/null || true
         fi
         export RUST_LOG="${RUST_LOG:-info,myso_ai_credit_oracle=debug}"
         exec "$oracle_bin"

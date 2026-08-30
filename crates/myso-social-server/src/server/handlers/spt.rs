@@ -292,10 +292,18 @@ pub async fn get_spt_reservation_pool_volume_history(
     let trunc = match params.interval.as_deref() {
         Some(s) if s.eq_ignore_ascii_case("day") => "day",
         Some(s) if s.eq_ignore_ascii_case("hour") => "hour",
+        Some(s)
+            if s.eq_ignore_ascii_case("five_min")
+                || s.eq_ignore_ascii_case("fivemin")
+                || s.eq_ignore_ascii_case("5m") =>
+        {
+            "five_min"
+        }
+        Some(s) if s.eq_ignore_ascii_case("event") => "event",
         None => "hour",
         Some(other) => {
             return Err(SocialError::bad_request(format!(
-                "invalid interval '{other}', expected hour or day"
+                "invalid interval '{other}', expected event, five_min, hour, or day"
             )));
         }
     };

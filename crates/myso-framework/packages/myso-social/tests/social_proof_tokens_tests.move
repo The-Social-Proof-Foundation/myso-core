@@ -537,6 +537,165 @@ module social_contracts::token_exchange_tests {
         test_scenario::end(scenario);
     }
 
+    /// Production genesis defaults: 10,000 MYSO profile threshold and 1.0 MYSO `base_price`.
+    /// `total_reserved * SPT_SCALE` exceeds u64; launch must still succeed after dividing by `base_price`.
+    const DEFAULT_PROFILE_THRESHOLD_MIST: u64 = 10_000_000_000_000;
+    const DEFAULT_BASE_PRICE_NANO: u64 = 1_000_000_000;
+    /// `DEFAULT_PROFILE_THRESHOLD_MIST * 10^9 / DEFAULT_BASE_PRICE_NANO`.
+    const DEFAULT_THRESHOLD_INITIAL_NANO_SPT: u64 = 10_000_000_000_000;
+
+    #[test]
+    fun test_create_social_proof_token_launch_at_default_profile_threshold() {
+        let mut scenario = setup_test_scenario();
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let admin_cap = test_scenario::take_from_sender<social_proof_tokens::SocialProofTokensAdminCap>(&scenario);
+            let mut config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
+            social_proof_tokens::update_social_proof_tokens_config(
+                &admin_cap,
+                &mut config,
+                100,
+                25,
+                25,
+                100,
+                25,
+                25,
+                DEFAULT_BASE_PRICE_NANO,
+                100_000,
+                500,
+                1_000_000_000_000,
+                DEFAULT_PROFILE_THRESHOLD_MIST,
+                10000,
+                1000,
+                5000,
+                5000,
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_to_sender(&scenario, admin_cap);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        let profile_id = {
+            let mut username_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            profile::create_profile(
+                &mut username_registry,
+                &profile_config,
+                &mut memory_registry,
+                &mut ai_credit_config,
+                string::utf8(b"Default Threshold Profile"),
+                string::utf8(b"default_thr"),
+                string::utf8(b""),
+                b"",
+                b"",
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+            let mut p = profile::lookup_profile_by_owner(&username_registry, CREATOR);
+            let pid = option::extract(&mut p);
+            test_scenario::return_shared(ai_credit_config);
+            test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(username_registry);
+            test_scenario::return_shared(profile_config);
+            pid
+        };
+
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let mut registry = test_scenario::take_shared<social_proof_tokens::TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
+            let profile = test_scenario::take_from_sender<Profile>(&scenario);
+            social_proof_tokens::create_reservation_pool_for_profile(
+                &mut registry,
+                &config,
+                &profile,
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_to_sender(&scenario, profile);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let mut registry = test_scenario::take_shared<social_proof_tokens::TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
+            let mut reservation_pool_object =
+                test_scenario::take_shared<social_proof_tokens::ReservationPoolObject>(&scenario);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
+            let extra = coin::mint_for_testing<MYSO>(
+                DEFAULT_PROFILE_THRESHOLD_MIST + fee_on_gross(DEFAULT_PROFILE_THRESHOLD_MIST),
+                test_scenario::ctx(&mut scenario)
+            );
+            social_proof_tokens::reserve_towards_profile(
+                &mut registry,
+                &config,
+                &mut reservation_pool_object,
+                &treasury,
+                extra,
+                DEFAULT_PROFILE_THRESHOLD_MIST,
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(reservation_pool_object);
+            test_scenario::return_shared(treasury);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let mut registry = test_scenario::take_shared<social_proof_tokens::TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
+            let mut reservation_pool_object =
+                test_scenario::take_shared<social_proof_tokens::ReservationPoolObject>(&scenario);
+            social_proof_tokens::create_social_proof_token(
+                &mut registry,
+                &config,
+                &mut reservation_pool_object,
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(reservation_pool_object);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let t = test_scenario::take_from_sender<SocialToken>(&scenario);
+            assert!(social_proof_tokens::amount(&t) == DEFAULT_THRESHOLD_INITIAL_NANO_SPT, 0);
+            assert!(social_proof_tokens::token_type(&t) == TOKEN_TYPE_PROFILE, 1);
+            test_scenario::return_to_sender(&scenario, t);
+        };
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let registry = test_scenario::take_shared<social_proof_tokens::TokenRegistry>(&scenario);
+            let info = social_proof_tokens::get_token_info(&registry, profile_id);
+            assert!(social_proof_tokens::token_info_circulating_supply(info) == DEFAULT_THRESHOLD_INITIAL_NANO_SPT, 2);
+            test_scenario::return_shared(registry);
+        };
+
+        test_scenario::end(scenario);
+    }
+
     #[test]
     fun test_create_social_proof_token_launch_supply_base_price_scaled_post() {
         let mut scenario = setup_test_scenario();

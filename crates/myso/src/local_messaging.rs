@@ -9,6 +9,7 @@ use std::time::Duration;
 
 use anyhow::{Context, bail};
 use colored::Colorize;
+use myso_types::{MYSO_FRAMEWORK_PACKAGE_ID, MYSO_MESSAGING_PACKAGE_ID};
 use tokio::process::Child;
 
 use crate::local_sidecar_util::{
@@ -60,9 +61,14 @@ pub async fn spawn_messaging_relayer(
             )
         })?;
 
+    let groups_package_id = myso_types::base_types::ObjectID::from(MYSO_FRAMEWORK_PACKAGE_ID);
+    let messaging_package_id = myso_types::base_types::ObjectID::from(MYSO_MESSAGING_PACKAGE_ID);
+
     let mut envs = vec![
         ("PORT", listen.port().to_string()),
         ("MYSO_RPC_URL", fullnode_rpc_url.to_string()),
+        ("GROUPS_PACKAGE_ID", groups_package_id.to_string()),
+        ("MESSAGING_PACKAGE_ID", messaging_package_id.to_string()),
         ("STORAGE_TYPE", "memory".to_string()),
         ("MEMBERSHIP_STORE_TYPE", "memory".to_string()),
         ("RUST_LOG", "messaging_relayer=info".to_string()),

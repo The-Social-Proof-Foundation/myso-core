@@ -8,6 +8,9 @@ use std::time::Duration;
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
+
+const ASSISTANT_ENVELOPE_VERSION: &str = "myso_assistant_v1";
 
 #[derive(Debug, Clone)]
 pub struct OpenRouterModelRate {
@@ -16,15 +19,112 @@ pub struct OpenRouterModelRate {
     pub output_usd_per_1m: f64,
 }
 
-#[derive(Debug, Clone, Serialize)]
-pub struct ChatMessage<'a> {
-    pub role: &'a str,
-    pub content: &'a str,
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ToolCall {
+    pub id: String,
+    pub name: String,
+    pub arguments: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OpenRouterFunction {
+    pub name: String,
+    #[serde(default)]
+    pub arguments: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OpenRouterToolCall {
+    pub id: String,
+    #[serde(default = "default_function_type", rename = "type")]
+    pub kind: String,
+    pub function: OpenRouterFunction,
+}
+
+fn default_function_type() -> String {
+    "function".to_string()
+}
+
+impl OpenRouterToolCall {
+    pub fn function(
+        id: impl Into<String>,
+        name: impl Into<String>,
+        arguments: impl Into<String>,
+    ) -> Self {
+        Self {
+            id: id.into(),
+            kind: default_function_type(),
+            function: OpenRouterFunction {
+                name: name.into(),
+                arguments: arguments.into(),
+            },
+        }
+    }
+
+    pub fn to_tool_call(&self) -> ToolCall {
+        ToolCall {
+            id: self.id.clone(),
+            name: self.function.name.clone(),
+            arguments: self.function.arguments.clone(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChatMessage {
+    pub role: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub content: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_call_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_calls: Option<Vec<OpenRouterToolCall>>,
+}
+
+impl ChatMessage {
+    pub fn text(role: impl Into<String>, content: impl Into<String>) -> Self {
+        Self {
+            role: role.into(),
+            content: Some(content.into()),
+            tool_call_id: None,
+            tool_calls: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct AssistantEnvelope {
+    v: String,
+    text: String,
+    #[serde(default)]
+    tool_calls: Vec<ToolCall>,
+}
+
+/// Persist text plus tool calls in the reservation `content` column without a
+/// schema migration. Plain-text replies stay plain strings.
+pub fn encode_assistant_content(text: &str, tool_calls: &[ToolCall]) -> String {
+    if tool_calls.is_empty() {
+        return text.to_string();
+    }
+    serde_json::to_string(&AssistantEnvelope {
+        v: ASSISTANT_ENVELOPE_VERSION.to_string(),
+        text: text.to_string(),
+        tool_calls: tool_calls.to_vec(),
+    })
+    .unwrap_or_else(|_| text.to_string())
+}
+
+pub fn decode_assistant_content(content: &str) -> (String, Vec<ToolCall>) {
+    match serde_json::from_str::<AssistantEnvelope>(content) {
+        Ok(env) if env.v == ASSISTANT_ENVELOPE_VERSION => (env.text, env.tool_calls),
+        _ => (content.to_string(), Vec::new()),
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct ChatCompletionResult {
     pub content: String,
+    pub tool_calls: Vec<ToolCall>,
     pub prompt_tokens: u64,
     pub completion_tokens: u64,
     pub total_tokens: u64,
@@ -71,8 +171,12 @@ struct PricingEntry {
 #[derive(Debug, Serialize)]
 struct ChatCompletionRequest<'a> {
     model: &'a str,
-    messages: Vec<ChatMessage<'a>>,
+    messages: &'a [ChatMessage],
     max_tokens: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tools: Option<&'a Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tool_choice: Option<&'a Value>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -95,6 +199,8 @@ struct ChatChoice {
 struct ChatChoiceMessage {
     #[serde(default)]
     content: Option<String>,
+    #[serde(default)]
+    tool_calls: Vec<OpenRouterToolCall>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -154,13 +260,17 @@ impl OpenRouterClient {
     pub async fn chat_completions(
         &self,
         model: &str,
-        messages: &[ChatMessage<'_>],
+        messages: &[ChatMessage],
         max_tokens: u32,
+        tools: Option<&Value>,
+        tool_choice: Option<&Value>,
     ) -> Result<ChatCompletionResult> {
         let body = ChatCompletionRequest {
             model,
-            messages: messages.to_vec(),
+            messages,
             max_tokens,
+            tools,
+            tool_choice,
         };
         let response = self
             .http
@@ -170,23 +280,33 @@ impl OpenRouterClient {
             .json(&body)
             .send()
             .await
-            .context("openrouter chat completions request")?
-            .error_for_status()
-            .context("openrouter chat completions status")?
-            .json::<ChatCompletionResponse>()
+            .context("openrouter chat completions request")?;
+        let status = response.status();
+        let bytes = response
+            .bytes()
             .await
+            .context("openrouter chat completions body")?;
+        if !status.is_success() {
+            let preview = String::from_utf8_lossy(&bytes);
+            let preview = preview.chars().take(500).collect::<String>();
+            anyhow::bail!("openrouter chat completions status {status}: {preview}");
+        }
+        let parsed = serde_json::from_slice::<ChatCompletionResponse>(&bytes)
             .context("openrouter chat completions json")?;
-
-        parse_chat_completion(response)
+        parse_chat_completion(parsed)
     }
 }
 
 fn parse_chat_completion(response: ChatCompletionResponse) -> Result<ChatCompletionResult> {
-    let content = response
-        .choices
-        .first()
-        .and_then(|c| c.message.as_ref())
-        .and_then(|m| m.content.clone())
+    let message = response.choices.first().and_then(|c| c.message.as_ref());
+    let content = message.and_then(|m| m.content.clone()).unwrap_or_default();
+    let tool_calls = message
+        .map(|m| {
+            m.tool_calls
+                .iter()
+                .map(OpenRouterToolCall::to_tool_call)
+                .collect()
+        })
         .unwrap_or_default();
     let usage = response
         .usage
@@ -209,6 +329,7 @@ fn parse_chat_completion(response: ChatCompletionResponse) -> Result<ChatComplet
         .transpose()?;
     Ok(ChatCompletionResult {
         content,
+        tool_calls,
         prompt_tokens: usage.prompt_tokens,
         completion_tokens: usage.completion_tokens,
         total_tokens: usage.total_tokens,
@@ -321,6 +442,7 @@ mod tests {
         async fn mock_chat(Json(body): Json<serde_json::Value>) -> Json<serde_json::Value> {
             assert_eq!(body["model"], "openai/gpt-4o-mini");
             assert_eq!(body["max_tokens"], 32);
+            assert!(body.get("tools").is_none());
             Json(json!({
                 "id": "gen-mock-1",
                 "choices": [{ "message": { "content": "AI_CREDIT_OK" } }],
@@ -349,19 +471,93 @@ mod tests {
             format!("http://{addr}/chat/completions"),
             "test-key",
         );
-        let messages = [ChatMessage {
-            role: "user",
-            content: "ping",
-        }];
+        let messages = [ChatMessage::text("user", "ping")];
         let result = client
-            .chat_completions("openai/gpt-4o-mini", &messages, 32)
+            .chat_completions("openai/gpt-4o-mini", &messages, 32, None, None)
             .await
             .expect("mocked chat");
         assert_eq!(result.content, "AI_CREDIT_OK");
+        assert!(result.tool_calls.is_empty());
         assert_eq!(result.prompt_tokens, 5);
         assert_eq!(result.completion_tokens, 3);
         assert_eq!(result.provider_cost_usd_micros, 2);
         assert_eq!(result.generation_id.as_deref(), Some("gen-mock-1"));
+    }
+
+    #[tokio::test]
+    async fn chat_completions_forwards_tools_and_parses_tool_calls() {
+        use axum::routing::post;
+        use axum::{Json, Router};
+        use serde_json::json;
+
+        async fn mock_chat(Json(body): Json<serde_json::Value>) -> Json<serde_json::Value> {
+            assert_eq!(body["tools"][0]["function"]["name"], "web_search");
+            assert_eq!(body["messages"][1]["role"], "tool");
+            assert_eq!(body["messages"][1]["tool_call_id"], "call_1");
+            Json(json!({
+                "id": "gen-tools-1",
+                "choices": [{
+                    "message": {
+                        "content": null,
+                        "tool_calls": [{
+                            "id": "call_2",
+                            "type": "function",
+                            "function": {
+                                "name": "web_search",
+                                "arguments": "{\"query\":\"Cowboys\"}"
+                            }
+                        }]
+                    }
+                }],
+                "usage": {
+                    "prompt_tokens": 20,
+                    "completion_tokens": 8,
+                    "total_tokens": 28,
+                    "cost": 0.000003
+                }
+            }))
+        }
+
+        let app = Router::new().route("/chat/completions", post(mock_chat));
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("bind mock openrouter");
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            axum::serve(listener, app).await.ok();
+        });
+        tokio::task::yield_now().await;
+
+        let client = OpenRouterClient::new(
+            format!("http://{addr}/models"),
+            format!("http://{addr}/chat/completions"),
+            "test-key",
+        );
+        let messages = [
+            ChatMessage::text("user", "score?"),
+            ChatMessage {
+                role: "tool".into(),
+                content: Some("Cowboys won".into()),
+                tool_call_id: Some("call_1".into()),
+                tool_calls: None,
+            },
+        ];
+        let tools = json!([{
+            "type": "function",
+            "function": {
+                "name": "web_search",
+                "description": "Search the web",
+                "parameters": { "type": "object", "properties": {} }
+            }
+        }]);
+        let result = client
+            .chat_completions("openai/gpt-4o-mini", &messages, 64, Some(&tools), None)
+            .await
+            .expect("mocked tool chat");
+        assert_eq!(result.tool_calls.len(), 1);
+        assert_eq!(result.tool_calls[0].id, "call_2");
+        assert_eq!(result.tool_calls[0].name, "web_search");
+        assert_eq!(result.tool_calls[0].arguments, "{\"query\":\"Cowboys\"}");
     }
 
     #[test]
@@ -382,6 +578,7 @@ mod tests {
         let body: ChatCompletionResponse = serde_json::from_str(json).unwrap();
         let result = parse_chat_completion(body).unwrap();
         assert_eq!(result.content, "hello");
+        assert!(result.tool_calls.is_empty());
         assert_eq!(result.prompt_tokens, 12);
         assert_eq!(result.completion_tokens, 3);
         assert_eq!(result.total_tokens, 15);
@@ -402,5 +599,60 @@ mod tests {
             1_234_567
         );
         assert_eq!(parse_usd_micros(&serde_json::json!("1e-7")).unwrap(), 1);
+    }
+
+    #[tokio::test]
+    async fn chat_completions_includes_status_and_body_on_error() {
+        use axum::http::StatusCode;
+        use axum::routing::post;
+        use axum::{Json, Router};
+        use serde_json::json;
+
+        async fn mock_reject(
+            Json(_body): Json<serde_json::Value>,
+        ) -> (StatusCode, Json<serde_json::Value>) {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(json!({ "error": { "message": "bad tools" } })),
+            )
+        }
+
+        let app = Router::new().route("/chat/completions", post(mock_reject));
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("bind mock openrouter");
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            axum::serve(listener, app).await.ok();
+        });
+        tokio::task::yield_now().await;
+
+        let client = OpenRouterClient::new(
+            format!("http://{addr}/models"),
+            format!("http://{addr}/chat/completions"),
+            "test-key",
+        );
+        let messages = [ChatMessage::text("user", "ping")];
+        let error = client
+            .chat_completions("openai/gpt-4o-mini", &messages, 32, None, None)
+            .await
+            .expect_err("400 should fail");
+        let text = error.to_string();
+        assert!(text.contains("status 400"), "{text}");
+        assert!(text.contains("bad tools"), "{text}");
+    }
+
+    #[test]
+    fn assistant_envelope_round_trips_tool_calls() {
+        let calls = vec![ToolCall {
+            id: "call_1".into(),
+            name: "web_search".into(),
+            arguments: "{\"q\":\"x\"}".into(),
+        }];
+        let encoded = encode_assistant_content("", &calls);
+        let (text, decoded) = decode_assistant_content(&encoded);
+        assert_eq!(text, "");
+        assert_eq!(decoded, calls);
+        assert_eq!(decode_assistant_content("plain"), ("plain".into(), vec![]));
     }
 }

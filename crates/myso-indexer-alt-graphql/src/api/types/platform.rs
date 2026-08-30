@@ -383,25 +383,27 @@ impl Platform {
         permission: Option<String>,
         limit: Option<u64>,
         offset: Option<u64>,
-    ) -> Option<Vec<PlatformModeratorSummary>> {
+    ) -> Option<Result<Vec<PlatformModeratorSummary>, RpcError>> {
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
         let limit = limit.unwrap_or(20).min(100) as i64;
         let offset = offset.unwrap_or(0) as i64;
-        let rows = reader
-            .get_platform_moderators(
-                &self.inner.platform_id,
-                permission.as_deref(),
-                limit,
-                offset,
-            )
-            .await
-            .ok()?;
         Some(
-            rows.into_iter()
-                .map(PlatformModeratorSummary::from_row)
-                .collect(),
+            reader
+                .get_platform_moderators(
+                    &self.inner.platform_id,
+                    permission.as_deref(),
+                    limit,
+                    offset,
+                )
+                .await
+                .map_err(Into::into)
+                .map(|rows| {
+                    rows.into_iter()
+                        .map(PlatformModeratorSummary::from_row)
+                        .collect()
+                }),
         )
     }
 

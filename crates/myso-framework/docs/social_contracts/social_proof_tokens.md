@@ -4464,8 +4464,9 @@ This replaces the auction system - only the post/profile owner can call this
     <b>let</b> total_reserved = reservation_pool_object.info.total_reserved;
     <b>assert</b>!(total_reserved &gt; 0, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ENoContribution">ENoContribution</a>);
     <b>let</b> base_price = config.base_price;
+    // Intermediate `total_reserved * <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SPT_SCALE">SPT_SCALE</a>` may exceed u64 (e.g. default 10k MYSO
+    // <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> threshold). That is expected; the bound that matters is the quotient.
     <b>let</b> product_u128 = (total_reserved <b>as</b> u128) * (<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SPT_SCALE">SPT_SCALE</a> <b>as</b> u128);
-    <b>assert</b>!(product_u128 &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_ONCHAIN_U64_U128">MAX_ONCHAIN_U64_U128</a>, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
     <b>let</b> initial_u128 = product_u128 / (base_price <b>as</b> u128);
     <b>assert</b>!(initial_u128 &gt; 0 && initial_u128 &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_ONCHAIN_U64_U128">MAX_ONCHAIN_U64_U128</a>, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidCurveParams">EInvalidCurveParams</a>);
     <b>let</b> initial_token_supply = initial_u128 <b>as</b> u64;

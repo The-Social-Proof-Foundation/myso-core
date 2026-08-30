@@ -1070,8 +1070,10 @@ pub(crate) async fn get_spt_exchange_config(
 }
 
 /// Calendar period for aggregating [`SptReservationVolumeBucket`] rows.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SptReservationVolumeInterval {
+    Event,
+    FiveMin,
     Hour,
     Day,
 }
@@ -1080,10 +1082,10 @@ pub enum SptReservationVolumeInterval {
 #[derive(Debug, Clone, QueryableByName)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct SptReservationVolumeBucket {
-    /// `date_trunc` bucket start, Unix epoch seconds (UTC).
+    /// Bucket start, Unix epoch seconds (UTC). Event rows use the trade timestamp.
     #[diesel(sql_type = BigInt)]
     pub bucket_start: i64,
-    /// Exclusive bucket end, Unix epoch seconds (UTC): start of next hour or day.
+    /// Exclusive bucket end, Unix epoch seconds (UTC). Event rows repeat `bucket_start`.
     #[diesel(sql_type = BigInt)]
     pub bucket_end: i64,
     /// Earliest `spt_reservations.time` in this bucket, Unix epoch seconds (UTC).
@@ -1103,6 +1105,168 @@ pub struct SptReservationVolumeBucket {
 }
 
 const RESERVATION_VOLUME_HISTORY_MAX_LIMIT: i64 = 500;
+const EVENT_DOWNSAMPLE_THRESHOLD: i64 = 288;
+
+const RESERVATION_POOL_MATCH_SQL: &str = r#"
+        (
+            r.pool_id = $1
+            OR r.pool_id = (
+                SELECT 'reservation_pool_' || associated_id
+                FROM spt_reservation_pools
+                WHERE pool_id = $1 OR associated_id = $1
+                ORDER BY time DESC
+                LIMIT 1
+            )
+        )
+"#;
+
+fn reservation_volume_bucket_width(interval: SptReservationVolumeInterval) -> &'static str {
+    match interval {
+        SptReservationVolumeInterval::Event => "interval '0 seconds'",
+        SptReservationVolumeInterval::FiveMin => "interval '5 minutes'",
+        SptReservationVolumeInterval::Hour => "interval '1 hour'",
+        SptReservationVolumeInterval::Day => "interval '1 day'",
+    }
+}
+
+fn reservation_volume_time_bucket(interval: SptReservationVolumeInterval) -> &'static str {
+    match interval {
+        SptReservationVolumeInterval::Event => "r.time",
+        SptReservationVolumeInterval::FiveMin => "time_bucket('5 minutes', r.time)",
+        SptReservationVolumeInterval::Hour => "time_bucket('1 hour', r.time)",
+        SptReservationVolumeInterval::Day => "time_bucket('1 day', r.time)",
+    }
+}
+
+fn reservation_volume_event_sql() -> String {
+    format!(
+        r#"
+        SELECT
+            (EXTRACT(EPOCH FROM r.time))::bigint AS bucket_start,
+            (EXTRACT(EPOCH FROM r.time))::bigint AS bucket_end,
+            (EXTRACT(EPOCH FROM r.time))::bigint AS earliest_at,
+            (EXTRACT(EPOCH FROM r.time))::bigint AS latest_at,
+            COALESCE(CASE WHEN r.amount > 0 THEN r.amount ELSE 0 END, 0)::bigint AS deposit_volume,
+            COALESCE(CASE WHEN r.amount < 0 THEN -r.amount ELSE 0 END, 0)::bigint AS withdrawal_volume,
+            (CASE WHEN r.amount > 0 THEN 1 ELSE 0 END)::bigint AS deposit_count,
+            (CASE WHEN r.amount < 0 THEN 1 ELSE 0 END)::bigint AS withdrawal_count
+        FROM spt_reservations r
+        WHERE {pool_match}
+        AND ($2::timestamptz IS NULL OR r.time >= $2)
+        AND ($3::timestamptz IS NULL OR r.time <= $3)
+        ORDER BY r.time DESC
+        LIMIT $4
+        "#,
+        pool_match = RESERVATION_POOL_MATCH_SQL,
+    )
+}
+
+fn reservation_volume_bucket_sql(interval: SptReservationVolumeInterval) -> String {
+    let bucket = reservation_volume_time_bucket(interval);
+    let bucket_width = reservation_volume_bucket_width(interval);
+    format!(
+        r#"
+        SELECT
+            (EXTRACT(EPOCH FROM {bucket}))::bigint AS bucket_start,
+            (EXTRACT(EPOCH FROM {bucket} + {bucket_width}))::bigint AS bucket_end,
+            (EXTRACT(EPOCH FROM MIN(r.time)))::bigint AS earliest_at,
+            (EXTRACT(EPOCH FROM MAX(r.time)))::bigint AS latest_at,
+            COALESCE(SUM(CASE WHEN r.amount > 0 THEN r.amount ELSE 0 END), 0)::bigint AS deposit_volume,
+            COALESCE(SUM(CASE WHEN r.amount < 0 THEN -r.amount ELSE 0 END), 0)::bigint AS withdrawal_volume,
+            COUNT(*) FILTER (WHERE r.amount > 0)::bigint AS deposit_count,
+            COUNT(*) FILTER (WHERE r.amount < 0)::bigint AS withdrawal_count
+        FROM spt_reservations r
+        WHERE {pool_match}
+        AND ($2::timestamptz IS NULL OR r.time >= $2)
+        AND ($3::timestamptz IS NULL OR r.time <= $3)
+        GROUP BY {bucket}
+        ORDER BY {bucket} DESC
+        LIMIT $4
+        "#,
+        bucket = bucket,
+        bucket_width = bucket_width,
+        pool_match = RESERVATION_POOL_MATCH_SQL,
+    )
+}
+
+fn reservation_volume_5m_cagg_sql() -> &'static str {
+    r#"
+        SELECT
+            (EXTRACT(EPOCH FROM v.bucket))::bigint AS bucket_start,
+            (EXTRACT(EPOCH FROM v.bucket + interval '5 minutes'))::bigint AS bucket_end,
+            (EXTRACT(EPOCH FROM v.earliest_at))::bigint AS earliest_at,
+            (EXTRACT(EPOCH FROM v.latest_at))::bigint AS latest_at,
+            v.deposit_volume::bigint AS deposit_volume,
+            v.withdrawal_volume::bigint AS withdrawal_volume,
+            v.deposit_count::bigint AS deposit_count,
+            v.withdrawal_count::bigint AS withdrawal_count
+        FROM spt_reservation_volume_5m v
+        WHERE (
+            v.pool_id = $1
+            OR v.pool_id = (
+                SELECT 'reservation_pool_' || associated_id
+                FROM spt_reservation_pools
+                WHERE pool_id = $1 OR associated_id = $1
+                ORDER BY time DESC
+                LIMIT 1
+            )
+        )
+        AND ($2::timestamptz IS NULL OR v.bucket >= $2)
+        AND ($3::timestamptz IS NULL OR v.bucket <= $3)
+        ORDER BY v.bucket DESC
+        LIMIT $4
+    "#
+}
+
+#[derive(QueryableByName)]
+struct ReservationVolumeCountRow {
+    #[diesel(sql_type = BigInt)]
+    count: i64,
+}
+
+#[derive(QueryableByName)]
+struct ReservationVolumeExistsRow {
+    #[diesel(sql_type = Bool)]
+    exists: bool,
+}
+
+async fn count_reservation_events(
+    conn: &mut Connection<'_>,
+    pool_id_param: &str,
+    from: Option<chrono::DateTime<chrono::Utc>>,
+    to: Option<chrono::DateTime<chrono::Utc>>,
+) -> anyhow::Result<i64> {
+    let query = format!(
+        r#"
+        SELECT COUNT(*)::bigint AS count
+        FROM spt_reservations r
+        WHERE {pool_match}
+        AND ($2::timestamptz IS NULL OR r.time >= $2)
+        AND ($3::timestamptz IS NULL OR r.time <= $3)
+        "#,
+        pool_match = RESERVATION_POOL_MATCH_SQL,
+    );
+    let row = diesel::sql_query(&query)
+        .bind::<Text, _>(pool_id_param)
+        .bind::<Nullable<Timestamptz>, _>(from)
+        .bind::<Nullable<Timestamptz>, _>(to)
+        .get_result::<ReservationVolumeCountRow>(conn)
+        .await?;
+    Ok(row.count)
+}
+
+async fn reservation_volume_5m_cagg_exists(conn: &mut Connection<'_>) -> bool {
+    let result = diesel::sql_query(
+        "SELECT EXISTS (
+            SELECT 1
+            FROM timescaledb_information.continuous_aggregates
+            WHERE view_name = 'spt_reservation_volume_5m'
+        ) AS exists",
+    )
+    .get_result::<ReservationVolumeExistsRow>(conn)
+    .await;
+    matches!(result, Ok(row) if row.exists)
+}
 
 pub(crate) async fn get_spt_reservation_volume_history(
     conn: &mut Connection<'_>,
@@ -1117,46 +1281,25 @@ pub(crate) async fn get_spt_reservation_volume_history(
     let _guard = metrics.latency.start_timer();
 
     let limit = limit.clamp(1, RESERVATION_VOLUME_HISTORY_MAX_LIMIT);
-    let trunc = match interval {
-        SptReservationVolumeInterval::Hour => "hour",
-        SptReservationVolumeInterval::Day => "day",
-    };
-    let bucket_width = match interval {
-        SptReservationVolumeInterval::Hour => "interval '1 hour'",
-        SptReservationVolumeInterval::Day => "interval '1 day'",
-    };
+    let mut interval = interval;
+    if interval == SptReservationVolumeInterval::Event {
+        let count = count_reservation_events(conn, pool_id_param, from, to).await?;
+        if count > EVENT_DOWNSAMPLE_THRESHOLD.min(limit) {
+            interval = SptReservationVolumeInterval::FiveMin;
+        }
+    }
 
-    let query = format!(
-        r#"
-        SELECT
-            (EXTRACT(EPOCH FROM date_trunc('{trunc}', r.time)))::bigint AS bucket_start,
-            (EXTRACT(EPOCH FROM date_trunc('{trunc}', r.time) + {bucket_width}))::bigint AS bucket_end,
-            (EXTRACT(EPOCH FROM MIN(r.time)))::bigint AS earliest_at,
-            (EXTRACT(EPOCH FROM MAX(r.time)))::bigint AS latest_at,
-            COALESCE(SUM(CASE WHEN r.amount > 0 THEN r.amount ELSE 0 END), 0)::bigint AS deposit_volume,
-            COALESCE(SUM(CASE WHEN r.amount < 0 THEN -r.amount ELSE 0 END), 0)::bigint AS withdrawal_volume,
-            COUNT(*) FILTER (WHERE r.amount > 0)::bigint AS deposit_count,
-            COUNT(*) FILTER (WHERE r.amount < 0)::bigint AS withdrawal_count
-        FROM spt_reservations r
-        WHERE (
-            r.pool_id = $1
-            OR r.pool_id = (
-                SELECT 'reservation_pool_' || associated_id
-                FROM spt_reservation_pools
-                WHERE pool_id = $1 OR associated_id = $1
-                ORDER BY time DESC
-                LIMIT 1
-            )
-        )
-        AND ($2::timestamptz IS NULL OR r.time >= $2)
-        AND ($3::timestamptz IS NULL OR r.time <= $3)
-        GROUP BY date_trunc('{trunc}', r.time)
-        ORDER BY date_trunc('{trunc}', r.time) DESC
-        LIMIT $4
-        "#,
-        trunc = trunc,
-        bucket_width = bucket_width,
-    );
+    let use_five_min_cagg = interval == SptReservationVolumeInterval::FiveMin
+        && reservation_volume_5m_cagg_exists(conn).await;
+    let query = match interval {
+        SptReservationVolumeInterval::Event => reservation_volume_event_sql(),
+        SptReservationVolumeInterval::FiveMin if use_five_min_cagg => {
+            reservation_volume_5m_cagg_sql().to_string()
+        }
+        SptReservationVolumeInterval::FiveMin
+        | SptReservationVolumeInterval::Hour
+        | SptReservationVolumeInterval::Day => reservation_volume_bucket_sql(interval),
+    };
 
     let results = diesel::sql_query(&query)
         .bind::<Text, _>(pool_id_param)
@@ -1172,7 +1315,10 @@ pub(crate) async fn get_spt_reservation_volume_history(
 
 #[cfg(test)]
 mod earnings_sql_tests {
-    use super::SPT_EARNINGS_BY_ASSOCIATED_ID_LATERAL;
+    use super::{
+        reservation_volume_5m_cagg_sql, reservation_volume_bucket_sql, reservation_volume_event_sql,
+        SptReservationVolumeInterval, SPT_EARNINGS_BY_ASSOCIATED_ID_LATERAL,
+    };
 
     #[test]
     fn earnings_lateral_sums_trading_and_reservation_pool_revenue() {
@@ -1182,5 +1328,31 @@ mod earnings_sql_tests {
         assert!(SPT_EARNINGS_BY_ASSOCIATED_ID_LATERAL.contains("creator_earnings"));
         assert!(SPT_EARNINGS_BY_ASSOCIATED_ID_LATERAL.contains("platform_earnings"));
         assert!(SPT_EARNINGS_BY_ASSOCIATED_ID_LATERAL.contains("ecosystem_earnings"));
+    }
+
+    #[test]
+    fn event_volume_sql_is_ungrouped() {
+        let sql = reservation_volume_event_sql();
+        assert!(sql.contains("ORDER BY r.time DESC"));
+        assert!(!sql.contains("GROUP BY"));
+        assert!(!sql.contains("date_trunc"));
+    }
+
+    #[test]
+    fn bucket_volume_sql_uses_time_bucket() {
+        let five = reservation_volume_bucket_sql(SptReservationVolumeInterval::FiveMin);
+        assert!(five.contains("time_bucket('5 minutes', r.time)"));
+        assert!(!five.contains("date_trunc"));
+        let hour = reservation_volume_bucket_sql(SptReservationVolumeInterval::Hour);
+        assert!(hour.contains("time_bucket('1 hour', r.time)"));
+        let day = reservation_volume_bucket_sql(SptReservationVolumeInterval::Day);
+        assert!(day.contains("time_bucket('1 day', r.time)"));
+    }
+
+    #[test]
+    fn five_min_cagg_sql_reads_reservation_volume_view() {
+        let sql = reservation_volume_5m_cagg_sql();
+        assert!(sql.contains("FROM spt_reservation_volume_5m v"));
+        assert!(sql.contains("interval '5 minutes'"));
     }
 }

@@ -7906,7 +7906,7 @@ type Query {
 	"""
 	sptReservationHolders(poolId: ID!, viewer: MySoAddress, prioritizeFollowed: Boolean, limit: Int, offset: Int): [SptReservationHolding!]
 	"""
-	Time-bucketed reservation deposit / withdrawal volume for a reservation pool (MYSO base units). Returns empty when social DB not configured.
+	Reservation deposit / withdrawal volume for a reservation pool (MYSO base units). `EVENT` is one point per trade; `FIVE_MIN` / `HOUR` / `DAY` use time buckets. Returns empty when social DB not configured.
 	"""
 	sptReservationVolumeHistory(poolId: ID!, interval: SptReservationVolumeInterval!, limit: Int, from: String, to: String): [SptReservationVolumeBucket!]
 	"""
@@ -9212,6 +9212,8 @@ type SptReservationVolumeBucket {
 }
 
 enum SptReservationVolumeInterval {
+	EVENT
+	FIVE_MIN
 	HOUR
 	DAY
 }

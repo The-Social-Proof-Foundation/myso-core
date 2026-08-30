@@ -22,7 +22,9 @@ use crate::graphql_client::MarkupConfigClient;
 use crate::ledger::BalanceLedger;
 use crate::markup_refresh::{spawn_markup_refresh_worker, startup_markup_refresh};
 use crate::myso_price_client::MysoPriceClient;
-use crate::openrouter_client::OpenRouterClient;
+use crate::openrouter_client::{
+    decode_assistant_content, encode_assistant_content, ChatMessage, OpenRouterClient, ToolCall,
+};
 use crate::price_refresh::{spawn_price_refresh_worker, startup_price_refresh};
 use crate::pricing::{
     PriceBreakdown, PricingEngine, CATALOG_USD_PEG, DEFAULT_ORACLE_MARKUP_BPS, USAGE_EMBED,
@@ -185,6 +187,14 @@ pub struct InferenceRequest {
     #[serde(default)]
     pub max_tokens: Option<u32>,
     pub idempotency_key: String,
+    /// Structured OpenRouter messages. When empty, inference synthesizes
+    /// system + user from `system_prompt` / `prompt`.
+    #[serde(default)]
+    pub chat_messages: Vec<ChatMessage>,
+    #[serde(default)]
+    pub tools: Option<serde_json::Value>,
+    #[serde(default)]
+    pub tool_choice: Option<serde_json::Value>,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -211,6 +221,8 @@ pub struct InferenceResponse {
     pub tokens_out: u64,
     pub model_id: String,
     pub content: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tool_calls: Vec<ToolCall>,
     pub provider_cost_usd_micros: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub upstream_cost_usd_micros: Option<u64>,
@@ -470,6 +482,40 @@ fn hash32(parts: &[&[u8]]) -> Vec<u8> {
     hasher.finalize()[..32].to_vec()
 }
 
+fn is_payment_policy_reason(reason: &str) -> bool {
+    matches!(
+        reason,
+        "insufficient_ai_balance"
+            | "agent_budget_exceeded"
+            | "agent_budget_disabled"
+            | "daily_cap_exceeded"
+            | "monthly_cap_exceeded"
+            | "no_ai_credit_balance"
+            | "balance_inactive"
+    )
+}
+
+fn estimated_input_tokens(prompt_bytes: usize, tools: Option<&serde_json::Value>) -> u64 {
+    let tools_bytes = tools.map(|value| value.to_string().len()).unwrap_or(0);
+    (prompt_bytes.saturating_add(tools_bytes) as u64)
+        .max(1)
+        .div_ceil(4)
+}
+
+fn openrouter_error_is_safe_to_cancel(error: &impl ToString) -> bool {
+    let text = error.to_string();
+    [
+        "status 400",
+        "status 401",
+        "status 403",
+        "status 404",
+        "status 413",
+        "status 422",
+    ]
+    .iter()
+    .any(|needle| text.contains(needle))
+}
+
 fn apply_reservation_buffer(amount: u64, buffer_bps: u64) -> Result<u64, StatusCode> {
     let numerator = (amount as u128)
         .checked_mul(10_000u128 + buffer_bps as u128)
@@ -487,6 +533,7 @@ fn inference_response_from_reservation(
     ) {
         return Err(StatusCode::CONFLICT);
     }
+    let (content, tool_calls) = decode_assistant_content(record.content.as_deref().unwrap_or(""));
     Ok(InferenceResponse {
         receipt_id: Some(derive_receipt_id(
             &record.idempotency_key,
@@ -509,7 +556,8 @@ fn inference_response_from_reservation(
         tokens_in: record.tokens_in.unwrap_or(0),
         tokens_out: record.tokens_out.unwrap_or(0),
         model_id: record.model_id.clone(),
-        content: record.content.clone().unwrap_or_default(),
+        content,
+        tool_calls,
         provider_cost_usd_micros: record.provider_cost_usd_micros.unwrap_or(0),
         upstream_cost_usd_micros: record.upstream_cost_usd_micros,
         provider_generation_id: record.provider_generation_id.clone(),
@@ -1271,7 +1319,7 @@ pub async fn run_inference_core(
         }
         let envelope = pricing.inference_breakdown(
             &req.model_id,
-            combined_prompt_bytes.max(1) as u64,
+            estimated_input_tokens(combined_prompt_bytes, req.tools.as_ref()),
             max_tokens as u64,
         );
         (
@@ -1305,20 +1353,36 @@ pub async fn run_inference_core(
                 return Err(StatusCode::PAYMENT_REQUIRED)
             }
             Err(error) => {
-                tracing::warn!(reason = %error.reason(), "inference reservation rejected");
-                return Err(StatusCode::BAD_REQUEST);
+                let reason = error.reason();
+                tracing::warn!(reason = %reason, "inference reservation rejected");
+                return Err(if is_payment_policy_reason(&reason) {
+                    StatusCode::PAYMENT_REQUIRED
+                } else {
+                    StatusCode::BAD_REQUEST
+                });
             }
         }
     };
 
+    let estimated_tokens_in = estimated_input_tokens(combined_prompt_bytes, req.tools.as_ref());
     let provider_envelope_hash = hash32(&[
         b"openrouter-chat-v1",
         req.model_id.as_bytes(),
-        &(combined_prompt_bytes.max(1) as u64).to_le_bytes(),
+        &estimated_tokens_in.to_le_bytes(),
         &(max_tokens as u64).to_le_bytes(),
         catalog_version.as_bytes(),
         &state.oracle_args.reservation_price_buffer_bps.to_le_bytes(),
     ]);
+    let tools_hash = req
+        .tools
+        .as_ref()
+        .map(|value| value.to_string())
+        .unwrap_or_default();
+    let tool_choice_hash = req
+        .tool_choice
+        .as_ref()
+        .map(|value| value.to_string())
+        .unwrap_or_default();
     let request_hash = hash32(&[
         req.owner.as_bytes(),
         req.balance_id.as_bytes(),
@@ -1327,6 +1391,8 @@ pub async fn run_inference_core(
         req.model_id.as_bytes(),
         system_prompt.as_bytes(),
         req.prompt.as_bytes(),
+        tools_hash.as_bytes(),
+        tool_choice_hash.as_bytes(),
         &(max_tokens as u64).to_le_bytes(),
         req.idempotency_key.as_bytes(),
     ]);
@@ -1449,27 +1515,89 @@ pub async fn run_inference_core(
             StatusCode::SERVICE_UNAVAILABLE
         })?;
 
-    let mut messages = Vec::with_capacity(if system_prompt.is_empty() { 1 } else { 2 });
-    if !system_prompt.is_empty() {
-        messages.push(crate::openrouter_client::ChatMessage {
-            role: "system",
-            content: system_prompt,
-        });
-    }
-    messages.push(crate::openrouter_client::ChatMessage {
-        role: "user",
-        content: &req.prompt,
-    });
+    let synthesized_messages;
+    let messages = if req.chat_messages.is_empty() {
+        let mut built = Vec::with_capacity(if system_prompt.is_empty() { 1 } else { 2 });
+        if !system_prompt.is_empty() {
+            built.push(ChatMessage::text("system", system_prompt));
+        }
+        built.push(ChatMessage::text("user", req.prompt.clone()));
+        synthesized_messages = built;
+        &synthesized_messages
+    } else {
+        &req.chat_messages
+    };
     let completion = match openrouter
-        .chat_completions(&req.model_id, &messages, max_tokens)
+        .chat_completions(
+            &req.model_id,
+            messages,
+            max_tokens,
+            req.tools.as_ref(),
+            req.tool_choice.as_ref(),
+        )
         .await
     {
         Ok(completion) => completion,
         Err(error) => {
+            let error_text = error.to_string();
+            if openrouter_error_is_safe_to_cancel(&error) {
+                tracing::warn!(
+                    %error,
+                    reservation_nonce,
+                    "OpenRouter rejected the request; cancelling reservation"
+                );
+                let provider_record = update_reservation_record(
+                    &state,
+                    &req.balance_id,
+                    &req.agent_object_id,
+                    &req.idempotency_key,
+                    |record| {
+                        record.status = ReservationStatus::ProviderSucceeded;
+                        record.amount_mist = Some(0);
+                        record.provider_cost_usd_micros = Some(0);
+                        record.content = Some(String::new());
+                        record.tokens_in = Some(0);
+                        record.tokens_out = Some(0);
+                        record.last_error = Some(error_text.clone());
+                    },
+                )
+                .await?;
+                if state
+                    .reservation_ledger
+                    .claim_action(&provider_record, "cancel")
+                    .await
+                    .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?
+                {
+                    if let Ok((_, digest)) = process_outbox_action(
+                        &state,
+                        &provider_record,
+                        "cancel",
+                        chrono::Utc::now().timestamp_millis() as u64,
+                    )
+                    .await
+                    {
+                        let _ = state
+                            .reservation_ledger
+                            .complete_action(
+                                &req.balance_id,
+                                &req.agent_object_id,
+                                &req.idempotency_key,
+                                "cancel",
+                                &digest,
+                                |record| {
+                                    record.status = ReservationStatus::Cancelled;
+                                    record.cancel_digest = Some(digest.clone());
+                                    record.amount_mist = Some(0);
+                                },
+                            )
+                            .await;
+                    }
+                }
+                return Err(StatusCode::BAD_GATEWAY);
+            }
             // A transport/parse failure is ambiguous: OpenRouter may have generated and
             // charged. Never issue an unsafe cancellation. Hard expiry releases funds while
             // the durable record prevents duplicate inference for this key.
-            let error_text = error.to_string();
             let _ = update_reservation_record(
                 &state,
                 &req.balance_id,
@@ -1537,7 +1665,10 @@ pub async fn run_inference_core(
             record.provider_cost_usd_micros = Some(provider.provider_cost_usd_micros);
             record.upstream_cost_usd_micros = provider.upstream_cost_usd_micros;
             record.provider_generation_id = provider.generation_id.clone();
-            record.content = Some(completion.content.clone());
+            record.content = Some(encode_assistant_content(
+                &completion.content,
+                &completion.tool_calls,
+            ));
             record.tokens_in = Some(completion.prompt_tokens);
             record.tokens_out = Some(completion.completion_tokens);
         },
@@ -1743,8 +1874,13 @@ async fn record_usage_core(
                 return Err(StatusCode::PAYMENT_REQUIRED);
             }
             Err(err) => {
-                tracing::warn!(reason = %err.reason(), "usage rejected");
-                return Err(StatusCode::BAD_REQUEST);
+                let reason = err.reason();
+                tracing::warn!(reason = %reason, "usage rejected");
+                return Err(if is_payment_policy_reason(&reason) {
+                    StatusCode::PAYMENT_REQUIRED
+                } else {
+                    StatusCode::BAD_REQUEST
+                });
             }
         };
 
@@ -1976,4 +2112,40 @@ async fn trigger_settle(
         .run_cycle(SettlementMode::DueBalances)
         .await;
     Ok(Json(serde_json::json!({ "settled": settled })))
+}
+
+#[cfg(test)]
+mod payment_estimate_tests {
+    use super::{
+        estimated_input_tokens, is_payment_policy_reason, openrouter_error_is_safe_to_cancel,
+    };
+
+    #[test]
+    fn payment_policy_reasons_are_detected() {
+        assert!(is_payment_policy_reason("insufficient_ai_balance"));
+        assert!(is_payment_policy_reason("agent_budget_exceeded"));
+        assert!(!is_payment_policy_reason("balance_id_mismatch"));
+    }
+
+    #[test]
+    fn estimated_input_tokens_uses_bytes_over_four() {
+        assert_eq!(estimated_input_tokens(4, None), 1);
+        assert_eq!(estimated_input_tokens(5, None), 2);
+        let tools = serde_json::json!([{"name": "web_search"}]);
+        assert!(estimated_input_tokens(4, Some(&tools)) > 1);
+    }
+
+    #[test]
+    fn openrouter_4xx_is_safe_to_cancel() {
+        assert!(openrouter_error_is_safe_to_cancel(
+            &"openrouter chat completions status 400 Bad Request: bad tools"
+        ));
+        assert!(openrouter_error_is_safe_to_cancel(
+            &"openrouter chat completions status 422 Unprocessable Entity: x"
+        ));
+        assert!(!openrouter_error_is_safe_to_cancel(
+            &"openrouter chat completions status 502 Bad Gateway: upstream"
+        ));
+        assert!(!openrouter_error_is_safe_to_cancel(&"connection reset"));
+    }
 }

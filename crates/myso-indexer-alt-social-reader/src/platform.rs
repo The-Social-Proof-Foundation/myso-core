@@ -4,7 +4,7 @@
 use chrono::NaiveDateTime;
 use diesel::OptionalExtension;
 use diesel::QueryableByName;
-use diesel::sql_types::{BigInt, Bool, Int4, Nullable, SmallInt, Text, Timestamp};
+use diesel::sql_types::{Array, BigInt, Bool, Int4, Nullable, SmallInt, Text, Timestamp};
 use diesel_async::RunQueryDsl;
 use serde_json::Value as JsonValue;
 
@@ -29,13 +29,13 @@ pub struct PlatformUserAccessRow {
     pub is_blocked: bool,
     #[diesel(sql_type = Bool)]
     pub is_moderator: bool,
-    #[diesel(sql_type = diesel::sql_types::Jsonb)]
-    pub moderator_permissions: JsonValue,
+    #[diesel(sql_type = Array<Text>)]
+    pub moderator_permissions: Vec<String>,
 }
 
 impl PlatformUserAccessRow {
     pub fn permissions(&self) -> Vec<String> {
-        serde_json::from_value(self.moderator_permissions.clone()).unwrap_or_default()
+        self.moderator_permissions.clone()
     }
 
     pub fn can_block_users(&self) -> bool {
@@ -412,8 +412,8 @@ pub(crate) async fn get_platform_moderators(
         added_by: String,
         #[diesel(sql_type = Timestamp)]
         created_at: NaiveDateTime,
-        #[diesel(sql_type = diesel::sql_types::Jsonb)]
-        permissions: JsonValue,
+        #[diesel(sql_type = Array<Text>)]
+        permissions: Vec<String>,
     }
     let query = if permission_filter.is_some() {
         "
@@ -422,9 +422,9 @@ pub(crate) async fn get_platform_moderators(
             m.added_by,
             m.created_at,
             COALESCE(
-                json_agg(p.permission_type ORDER BY p.permission_type)
+                array_agg(p.permission_type ORDER BY p.permission_type)
                     FILTER (WHERE p.revoked_at IS NULL),
-                '[]'::json
+                '{}'::text[]
             ) AS permissions
         FROM platform_moderators m
         INNER JOIN platform_moderator_permissions p
@@ -444,9 +444,9 @@ pub(crate) async fn get_platform_moderators(
             m.added_by,
             m.created_at,
             COALESCE(
-                json_agg(p.permission_type ORDER BY p.permission_type)
+                array_agg(p.permission_type ORDER BY p.permission_type)
                     FILTER (WHERE p.revoked_at IS NULL),
-                '[]'::json
+                '{}'::text[]
             ) AS permissions
         FROM platform_moderators m
         LEFT JOIN platform_moderator_permissions p
@@ -481,7 +481,7 @@ pub(crate) async fn get_platform_moderators(
             moderator_address: r.moderator_address,
             added_by: r.added_by,
             created_at: r.created_at,
-            permissions: serde_json::from_value(r.permissions).unwrap_or_default(),
+            permissions: r.permissions,
         })
         .collect())
 }
@@ -516,12 +516,12 @@ pub(crate) async fn get_platform_user_access(
                 )
             ) AS is_moderator,
             COALESCE((
-                SELECT json_agg(DISTINCT p.permission_type ORDER BY p.permission_type)
+                SELECT array_agg(DISTINCT p.permission_type ORDER BY p.permission_type)
                 FROM platform_moderator_permissions p
                 WHERE p.platform_id = $1
                   AND p.moderator_address = $2
                   AND p.revoked_at IS NULL
-            ), '[]'::json) AS moderator_permissions",
+            ), '{}'::text[]) AS moderator_permissions",
     )
     .bind::<Text, _>(platform_id)
     .bind::<Text, _>(user_address)
