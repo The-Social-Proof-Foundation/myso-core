@@ -6564,6 +6564,16 @@ type Profile implements Node {
 	"""
 	memoryAccountId: String
 	"""
+	Accounts the browsing viewer follows that also follow this profile.
+	Ranked by follower count. `limit` defaults to 20 (max 100).
+	"""
+	mutualConnections(viewer: MySoAddress!, limit: Int, offset: Int): [ProfileSummary!]
+	"""
+	Count of accounts the browsing viewer follows that also follow this profile.
+	Returns `0` when `viewer` is this profile.
+	"""
+	mutualCount(viewer: MySoAddress!): Int
+	"""
 	MyData records owned by this profile (paginated).
 	"""
 	mydataRecords(limit: Int, offset: Int): [MyDataRecord!]
@@ -8328,6 +8338,10 @@ type SocialProofToken {
 	(nano-MYSO reserved × scale ÷ pool `base_price` in MYSO smallest units), before further trades.
 	"""
 	circulatingSupply: BigInt
+	"""
+	Circulating supply change percentage vs ~24h ago, or vs first indexed supply when the pool is younger than 24h.
+	"""
+	circulatingSupplyChange24H: Float
 	createdAt: Int
 	creatorEarnings: Int
 	currentPrice: Int
@@ -8341,6 +8355,10 @@ type SocialProofToken {
 	Market cap: current price (MYSO smallest units) × circulating supply (nano-SPT).
 	"""
 	marketCap: BigInt
+	"""
+	Market cap change percentage vs ~24h ago, or vs first indexed sample when the pool is younger than 24h.
+	"""
+	marketCapChange24H: Float
 	owner: MySoAddress
 	platformEarnings: Int
 	poolId: String
@@ -9017,6 +9035,10 @@ enum SptOrder {
 
 type SptPool {
 	"""
+	Circulating supply change percentage vs ~24h ago, or vs first indexed supply when the pool is younger than 24h.
+	"""
+	circulatingSupplyChange24H: Float
+	"""
 	Total creator fees earned.
 	"""
 	creatorEarnings: Int
@@ -9036,6 +9058,11 @@ type SptPool {
 	Market cap (price in MYSO smallest units × circulating supply in nano-SPT).
 	"""
 	marketCap: BigInt!
+	"""
+	Market cap change percentage vs ~24h ago, or vs first indexed sample when the pool is younger than 24h.
+	Uses price and circulating supply from the same historical row as `priceChange24H`.
+	"""
+	marketCapChange24H: Float
 	"""
 	Pool owner address.
 	"""

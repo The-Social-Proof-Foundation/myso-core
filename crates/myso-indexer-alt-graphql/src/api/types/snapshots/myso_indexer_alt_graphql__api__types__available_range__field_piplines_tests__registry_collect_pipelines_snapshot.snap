@@ -5750,6 +5750,12 @@ SocialProofToken.marketCap
 SocialProofToken.priceChange24H
   => {}
 
+SocialProofToken.circulatingSupplyChange24H
+  => {}
+
+SocialProofToken.marketCapChange24H
+  => {}
+
 SocialProofToken.volume24H
   => {}
 
@@ -6375,6 +6381,12 @@ SptPool.marketCap
   => {}
 
 SptPool.priceChange24H
+  => {}
+
+SptPool.circulatingSupplyChange24H
+  => {}
+
+SptPool.marketCapChange24H
   => {}
 
 SptPool.volume24H

@@ -35,6 +35,8 @@ pub struct SocialProofTokenInfo {
     /// `current_price * circulating_supply` as decimal string (avoids i64 overflow).
     pub market_cap: Option<String>,
     pub price_change_24h: Option<f64>,
+    pub circulating_supply_change_24h: Option<f64>,
+    pub market_cap_change_24h: Option<f64>,
     pub volume_24h: Option<i64>,
     pub creator_earnings: Option<i64>,
     pub platform_earnings: Option<i64>,
@@ -145,6 +147,7 @@ async fn enrich_users_with_universal_data(
             spt.token_type as spt_token_type,
             ph.price as current_price,
             COALESCE(ph24.price, fp.price) as price_24h_ago,
+            COALESCE(ph24.circulating_supply, fp.circulating_supply) as circulating_supply_24h_ago,
             (COALESCE(vol24.vol, 0) + COALESCE(res_vol24.vol, 0))::bigint as volume_24h,
             COALESCE(rev.creator_earnings, 0)::bigint as creator_earnings,
             COALESCE(rev.platform_earnings, 0)::bigint as platform_earnings,
@@ -172,12 +175,12 @@ async fn enrich_users_with_universal_data(
             ORDER BY time DESC LIMIT 1
         ) ph ON spt.pool_id IS NOT NULL
         LEFT JOIN LATERAL (
-            SELECT price FROM spt_price_history
+            SELECT price, circulating_supply FROM spt_price_history
             WHERE pool_id = spt.pool_id AND time <= NOW() - INTERVAL '24 hours'
             ORDER BY time DESC LIMIT 1
         ) ph24 ON spt.pool_id IS NOT NULL
         LEFT JOIN LATERAL (
-            SELECT price FROM spt_price_history
+            SELECT price, circulating_supply FROM spt_price_history
             WHERE pool_id = spt.pool_id
             ORDER BY time ASC LIMIT 1
         ) fp ON spt.pool_id IS NOT NULL
@@ -257,6 +260,8 @@ async fn enrich_users_with_universal_data(
         #[diesel(sql_type = Nullable<BigInt>)]
         price_24h_ago: Option<i64>,
         #[diesel(sql_type = Nullable<BigInt>)]
+        circulating_supply_24h_ago: Option<i64>,
+        #[diesel(sql_type = Nullable<BigInt>)]
         volume_24h: Option<i64>,
         #[diesel(sql_type = Nullable<BigInt>)]
         creator_earnings: Option<i64>,
@@ -324,19 +329,28 @@ async fn enrich_users_with_universal_data(
         let social_proof_token_address = row.social_proof_token_address.clone();
         let is_active = spt_pool_id.is_some();
 
-        let (market_cap, price_change_24h) =
+        let circulating_supply_change_24h =
+            match (row.spt_circulating_supply, row.circulating_supply_24h_ago) {
+                (Some(circ), Some(prev)) => crate::pct_change(circ, prev),
+                _ => None,
+            };
+
+        let (market_cap, price_change_24h, market_cap_change_24h) =
             if let (Some(current), Some(circ)) = (row.current_price, row.spt_circulating_supply) {
                 let cap = ((current as i128) * (circ as i128)).to_string();
-                let change = row.price_24h_ago.and_then(|prev| {
-                    if prev > 0 {
-                        Some(((current - prev) as f64 / prev as f64) * 100.0)
-                    } else {
-                        None
-                    }
-                });
-                (Some(cap), change)
+                let price_change = row
+                    .price_24h_ago
+                    .and_then(|prev| crate::pct_change(current, prev));
+                let mcap_change = match (row.price_24h_ago, row.circulating_supply_24h_ago) {
+                    (Some(prev_price), Some(prev_supply)) => crate::pct_change_i128(
+                        (current as i128) * (circ as i128),
+                        (prev_price as i128) * (prev_supply as i128),
+                    ),
+                    _ => None,
+                };
+                (Some(cap), price_change, mcap_change)
             } else {
-                (None, None)
+                (None, None, None)
             };
 
         let social_proof_token = if spt_pool_id.is_some()
@@ -357,6 +371,8 @@ async fn enrich_users_with_universal_data(
                 current_price: row.current_price,
                 market_cap,
                 price_change_24h,
+                circulating_supply_change_24h,
+                market_cap_change_24h,
                 volume_24h: row.volume_24h,
                 creator_earnings: row.creator_earnings,
                 platform_earnings: row.platform_earnings,

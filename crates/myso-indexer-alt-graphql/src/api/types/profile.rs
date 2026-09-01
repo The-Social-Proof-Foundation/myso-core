@@ -326,6 +326,63 @@ impl Profile {
         }
     }
 
+    /// Count of accounts the browsing viewer follows that also follow this profile.
+    /// Returns `0` when `viewer` is this profile.
+    async fn mutual_count(&self, ctx: &Context<'_>, viewer: MySoAddress) -> Option<i32> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        match reader
+            .get_mutual_count(&self.inner.owner_address, &viewer.to_string())
+            .await
+        {
+            Ok(count) => Some(count),
+            Err(e) => {
+                warn!(
+                    owner_address = %self.inner.owner_address,
+                    error = %e,
+                    "mutual_count query failed"
+                );
+                None
+            }
+        }
+    }
+
+    /// Accounts the browsing viewer follows that also follow this profile.
+    /// Ranked by follower count. `limit` defaults to 20 (max 100).
+    async fn mutual_connections(
+        &self,
+        ctx: &Context<'_>,
+        viewer: MySoAddress,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<ProfileSummary>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        match reader
+            .get_mutual_connections(
+                &self.inner.owner_address,
+                &viewer.to_string(),
+                limit,
+                offset,
+            )
+            .await
+        {
+            Ok(rows) => Some(rows.into_iter().map(ProfileSummary::from_row).collect()),
+            Err(e) => {
+                warn!(
+                    owner_address = %self.inner.owner_address,
+                    error = %e,
+                    "mutual_connections query failed"
+                );
+                None
+            }
+        }
+    }
+
     /// Follow suggestions for the browsing viewer while viewing this profile.
     ///
     /// Candidates come from this profile's friends-of-friends. Results exclude accounts
@@ -934,6 +991,16 @@ impl SocialProofToken {
     /// Price change percentage vs ~24h ago, or vs first indexed price when the pool is younger than 24h.
     async fn price_change_24h(&self) -> Option<f64> {
         self.inner.price_change_24h
+    }
+
+    /// Circulating supply change percentage vs ~24h ago, or vs first indexed supply when the pool is younger than 24h.
+    async fn circulating_supply_change_24h(&self) -> Option<f64> {
+        self.inner.circulating_supply_change_24h
+    }
+
+    /// Market cap change percentage vs ~24h ago, or vs first indexed sample when the pool is younger than 24h.
+    async fn market_cap_change_24h(&self) -> Option<f64> {
+        self.inner.market_cap_change_24h
     }
 
     async fn volume_24h(&self) -> Option<i64> {

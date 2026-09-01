@@ -17,15 +17,17 @@ use myso_indexer_alt_social_schema::models::{
     DelegateRatingRow, DelegateVoteRow, GovernanceEventRow, NominatedDelegateRow,
     RewardDistributionRow, VoteDecryptionFailureRow,
 };
-use myso_indexer_alt_social_schema::{PROPOSAL_TYPE_PLATFORM, PROPOSAL_TYPE_PROOF_OF_CREATIVITY, PROPOSAL_TYPE_SPOT};
+use myso_indexer_alt_social_schema::{
+    PROPOSAL_TYPE_PLATFORM, PROPOSAL_TYPE_PROOF_OF_CREATIVITY, PROPOSAL_TYPE_SPOT,
+};
 
 use crate::api::resolve_profile::resolve_profile_summary;
 use crate::api::scalars::json::Json;
 use crate::api::scalars::myso_address::MySoAddress;
-use crate::api::types::platform::{Platform, resolve_platform_by_id};
-use crate::api::types::profile_summary::ProfileSummary;
 use crate::api::types::media_asset::MediaAsset;
 use crate::api::types::media_asset_enums::GovernanceProposalStatus;
+use crate::api::types::platform::{Platform, resolve_platform_by_id};
+use crate::api::types::profile_summary::ProfileSummary;
 use crate::api::types::spot::SpotRecord;
 
 #[derive(Enum, Copy, Clone, Eq, PartialEq)]

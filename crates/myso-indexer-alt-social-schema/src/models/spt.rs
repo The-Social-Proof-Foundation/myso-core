@@ -14,8 +14,8 @@ use super::revenue::{
 };
 use crate::schema::{
     ecosystem_treasury, spt_config, spt_events, spt_holdings, spt_pools, spt_price_history,
-    spt_reservation_pools, spt_reservations, spt_revenue, spt_swaps, spt_transfers,
-    spt_transactions, unified_revenue,
+    spt_reservation_pools, spt_reservations, spt_revenue, spt_swaps, spt_transactions,
+    spt_transfers, unified_revenue,
 };
 
 pub const TOKEN_TYPE_PROFILE: i16 = 1;
@@ -179,6 +179,8 @@ pub struct SptPoolRow {
     pub price: i64,
     #[diesel(sql_type = Nullable<BigInt>)]
     pub price_24h_ago: Option<i64>,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub circulating_supply_24h_ago: Option<i64>,
     #[diesel(sql_type = Nullable<BigInt>)]
     pub volume_24h: Option<i64>,
     #[diesel(sql_type = Nullable<BigInt>)]

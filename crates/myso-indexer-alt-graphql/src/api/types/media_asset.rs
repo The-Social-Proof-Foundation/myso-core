@@ -5,8 +5,8 @@ use async_graphql::Context;
 use async_graphql::Object;
 use myso_indexer_alt_social_reader::{
     AncestrySnapshotRow, CompositionAnalysisRow, DerivativeEdgeRow, DetectedRelationshipRow,
-    MediaAssetRightsUpdateRow, MediaAssetRow, MediaAssetUsageRow,
-    ResolvedObligationRow, ResolvedPolicyRow, RevenueManifestRow,
+    MediaAssetRightsUpdateRow, MediaAssetRow, MediaAssetUsageRow, ResolvedObligationRow,
+    ResolvedPolicyRow, RevenueManifestRow,
 };
 
 use crate::api::scalars::date_time::DateTime;

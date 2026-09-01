@@ -108,7 +108,10 @@ impl ContainerUsageDenial {
 fn json_u64(value: &JsonValue, key: &str) -> Option<i64> {
     value
         .get(key)
-        .and_then(|v| v.as_u64().or_else(|| v.as_str().and_then(|s| s.parse().ok())))
+        .and_then(|v| {
+            v.as_u64()
+                .or_else(|| v.as_str().and_then(|s| s.parse().ok()))
+        })
         .map(|v| v as i64)
 }
 
@@ -147,11 +150,7 @@ pub(crate) fn parse_usage_decisions(value: &JsonValue) -> Vec<UsageDecisionSnaps
             let playback = json_bool(item, "playback_permitted", false);
             Some(UsageDecisionSnapshot {
                 binding_id,
-                policy_playback_permitted: json_bool(
-                    item,
-                    "policy_playback_permitted",
-                    playback,
-                ),
+                policy_playback_permitted: json_bool(item, "policy_playback_permitted", playback),
                 playback_permitted: playback,
                 policy_reason_code: json_u16(item, "policy_reason_code"),
                 policy_version_at_decision: json_u64(item, "policy_version_at_decision")
@@ -192,7 +191,8 @@ pub(crate) fn derive_playback_policy(
         };
         let media_component = json_u64(binding, "media_component").unwrap_or(0);
         let decision = decisions_arr.and_then(|arr| {
-            arr.iter().find(|d| json_u64(d, "binding_id") == Some(binding_id))
+            arr.iter()
+                .find(|d| json_u64(d, "binding_id") == Some(binding_id))
         });
         let playback_permitted = match decision {
             Some(d) => json_bool(d, "playback_permitted", false),

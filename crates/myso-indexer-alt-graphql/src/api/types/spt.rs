@@ -9,8 +9,8 @@ use async_graphql::Object;
 use myso_indexer_alt_social_reader::{
     SptHoldingRow, SptPoolRow, SptPriceHistory as SptPriceHistoryRow,
     SptReservationVolumeBucket as SptReservationVolumeBucketRow, SptSortBy as SptSortByReader,
-    SptSwap as SptSwapRow, SptTransfer as SptTransferRow, SptTransaction as SptTransactionRow,
-    ViewerSocialContext,
+    SptSwap as SptSwapRow, SptTransaction as SptTransactionRow, SptTransfer as SptTransferRow,
+    ViewerSocialContext, pct_change, pct_change_i128,
 };
 use myso_indexer_alt_social_schema::models::{SptReservationHoldingRow, TOKEN_TYPE_POST};
 
@@ -229,13 +229,27 @@ impl SptPool {
 
     /// Price change percentage vs ~24h ago, or vs first indexed price when the pool is younger than 24h.
     async fn price_change_24h(&self) -> Option<f64> {
-        self.inner.price_24h_ago.and_then(|prev| {
-            if prev > 0 {
-                Some(((self.inner.price - prev) as f64 / prev as f64) * 100.0)
-            } else {
-                None
-            }
-        })
+        self.inner
+            .price_24h_ago
+            .and_then(|prev| pct_change(self.inner.price, prev))
+    }
+
+    /// Circulating supply change percentage vs ~24h ago, or vs first indexed supply when the pool is younger than 24h.
+    async fn circulating_supply_change_24h(&self) -> Option<f64> {
+        self.inner
+            .circulating_supply_24h_ago
+            .and_then(|prev| pct_change(self.inner.circulating_supply, prev))
+    }
+
+    /// Market cap change percentage vs ~24h ago, or vs first indexed sample when the pool is younger than 24h.
+    /// Uses price and circulating supply from the same historical row as `priceChange24H`.
+    async fn market_cap_change_24h(&self) -> Option<f64> {
+        let prev_price = self.inner.price_24h_ago?;
+        let prev_supply = self.inner.circulating_supply_24h_ago?;
+        pct_change_i128(
+            (self.inner.price as i128) * (self.inner.circulating_supply as i128),
+            (prev_price as i128) * (prev_supply as i128),
+        )
     }
 
     /// 24-hour trading volume (MYSO).

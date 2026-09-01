@@ -26,10 +26,7 @@ impl ProfileSummary {
     }
 }
 
-async fn load_enriched(
-    ctx: &Context<'_>,
-    address: &str,
-) -> Option<UniversalUserResult> {
+async fn load_enriched(ctx: &Context<'_>, address: &str) -> Option<UniversalUserResult> {
     if let Some(loader) = ctx.data_opt::<Arc<DataLoader<SocialPgReader>>>() {
         return loader
             .load_one(ProfileSummaryEnrichmentKey::new(address))

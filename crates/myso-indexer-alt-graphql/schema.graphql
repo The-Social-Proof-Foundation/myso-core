@@ -1263,71 +1263,6 @@ enum DelegateRatingVoteKind {
 	CLEARED
 }
 
-enum DetectedAssetRelationshipStatus {
-	PROPOSED
-	ACCEPTED
-	REJECTED
-	FINALIZED
-}
-
-enum DerivativeRelationshipType {
-	UNSPECIFIED
-	REMIX
-	SAMPLE
-	COVER
-	MASHUP
-}
-
-enum GovernanceProposalStatus {
-	SUBMITTED
-	DELEGATE_REVIEW
-	COMMUNITY_VOTING
-	APPROVED
-	REJECTED
-	IMPLEMENTED
-	OWNER_RESCIND
-}
-
-enum MediaAssetKind {
-	UNSPECIFIED
-	VISUAL_WORK
-	MUSICAL_COMPOSITION
-	SOUND_RECORDING
-}
-
-enum MediaAssetMediaType {
-	UNSPECIFIED
-	IMAGE
-	VIDEO
-	AUDIO
-}
-
-enum MediaAssetOriginalityStatus {
-	UNRESOLVED
-	ORIGINAL
-	DERIVATIVE
-}
-
-enum MediaAssetProvenanceStatus {
-	UNVERIFIED
-	VERIFIED
-}
-
-enum PostCompositionStatus {
-	NONE
-	PENDING
-	VERIFIED
-	INVALID
-	PARTIALLY_RESTRICTED
-}
-
-enum PostMonetizationStatus {
-	NONE
-	PENDING
-	ENABLED
-	RESTRICTED
-}
-
 type DelegateVote {
 	approve: Boolean!
 	delegateAddress: MySoAddress!
@@ -1353,6 +1288,17 @@ type DerivativeGraph {
 	parentEdges: [DerivativeEdge!]!
 }
 
+"""
+Move `media_asset::relationship_*` constants.
+"""
+enum DerivativeRelationshipType {
+	UNSPECIFIED
+	REMIX
+	SAMPLE
+	COVER
+	MASHUP
+}
+
 type DetectedAssetRelationship {
 	accusedAssetId: String
 	accusedPendingId: String!
@@ -1361,6 +1307,16 @@ type DetectedAssetRelationship {
 	proposalId: String!
 	similarityBps: Int!
 	status: DetectedAssetRelationshipStatus!
+}
+
+"""
+Move `proof_of_creativity` detected relationship status constants.
+"""
+enum DetectedAssetRelationshipStatus {
+	PROPOSED
+	ACCEPTED
+	REJECTED
+	FINALIZED
 }
 
 """
@@ -2073,6 +2029,19 @@ type GovernanceEvent {
 	id: Int!
 	proposalId: String
 	registryType: Int!
+}
+
+"""
+Move `governance::STATUS_*` constants.
+"""
+enum GovernanceProposalStatus {
+	SUBMITTED
+	DELEGATE_REVIEW
+	COMMUNITY_VOTING
+	APPROVED
+	REJECTED
+	IMPLEMENTED
+	OWNER_RESCIND
 }
 
 type GovernanceRegistry {
@@ -2892,12 +2861,49 @@ type MediaAsset {
 	registeredAt: Int!
 	registeredBy: String!
 	resolvedPolicy: ResolvedPolicy
-	rightsDisputesSubmitted: Int!
+	rightsDisputesSubmitted: Int
 	rightsProposals(limit: Int, offset: Int): [Proposal!]
 	rightsUpdates(limit: Int, offset: Int): [MediaAssetRightsUpdate!]
 	rightsVersion: Int!
 	usages(limit: Int, offset: Int): [MediaAssetUsage!]
 	verifiedAt: Int
+}
+
+"""
+Move `media_asset::asset_kind_*` constants.
+"""
+enum MediaAssetKind {
+	UNSPECIFIED
+	VISUAL_WORK
+	MUSICAL_COMPOSITION
+	SOUND_RECORDING
+}
+
+"""
+Move `media_asset::media_type_*` constants.
+"""
+enum MediaAssetMediaType {
+	UNSPECIFIED
+	IMAGE
+	VIDEO
+	AUDIO
+}
+
+"""
+Move `media_asset::originality_*` constants.
+"""
+enum MediaAssetOriginalityStatus {
+	UNRESOLVED
+	ORIGINAL
+	DERIVATIVE
+}
+
+"""
+Move `media_asset::provenance_*` constants.
+"""
+enum MediaAssetProvenanceStatus {
+	UNVERIFIED
+	VERIFIED
 }
 
 type MediaAssetRightsUpdate {
@@ -5671,9 +5677,17 @@ type PocConfig {
 	"""
 	imageThreshold: Int!
 	"""
+	Lifetime cap on rights governance disputes per media asset.
+	"""
+	maxDisputesPerMediaAsset: Int!
+	"""
 	Maximum number of disputes allowed per post.
 	"""
 	maxDisputesPerPost: Int!
+	"""
+	Max bps any embedded source asset may redirect from a post revenue pool (0-10000).
+	"""
+	maxEmbeddedAssetRedirectBps: Int!
 	"""
 	Max evidence URLs per submission.
 	"""
@@ -5692,21 +5706,13 @@ type PocConfig {
 	"""
 	maxVotesPerDispute: Int!
 	"""
-	Minimum vault deposit amount required to submit a dispute (MYSO base units).
-	"""
-	minVaultDepositAmount: Int!
-	"""
 	Treasury fee for initiating a media-asset rights governance dispute (MYSO base units).
 	"""
 	mediaAssetDisputeCost: Int!
 	"""
-	Lifetime cap on rights governance disputes per media asset.
+	Minimum vault deposit amount required to submit a dispute (MYSO base units).
 	"""
-	maxDisputesPerMediaAsset: Int!
-	"""
-	Max bps any embedded source asset may redirect from a post revenue pool (0-10000).
-	"""
-	maxEmbeddedAssetRedirectBps: Int!
+	minVaultDepositAmount: Int!
 	"""
 	Minimum stake per vote on a dispute (MYSO base units).
 	"""
@@ -6284,6 +6290,17 @@ enum PostAccessKind {
 	MARKETPLACE_ONE_TIME
 }
 
+"""
+Move `media_asset::composition_*` constants.
+"""
+enum PostCompositionStatus {
+	NONE
+	PENDING
+	VERIFIED
+	INVALID
+	PARTIALLY_RESTRICTED
+}
+
 type PostConfig {
 	"""
 	Commenter tip percentage (remainder to post owner).
@@ -6419,6 +6436,16 @@ type PostModerationEvent {
 	"""
 	time: DateTime!
 	transactionId: String!
+}
+
+"""
+Move `media_asset::monetization_*` constants.
+"""
+enum PostMonetizationStatus {
+	NONE
+	PENDING
+	ENABLED
+	RESTRICTED
 }
 
 type PostPage {
@@ -6563,6 +6590,16 @@ type Profile implements Node {
 	Linked memory account object id for this profile's sub-agent registry.
 	"""
 	memoryAccountId: String
+	"""
+	Accounts the browsing viewer follows that also follow this profile.
+	Ranked by follower count. `limit` defaults to 20 (max 100).
+	"""
+	mutualConnections(viewer: MySoAddress!, limit: Int, offset: Int): [ProfileSummary!]
+	"""
+	Count of accounts the browsing viewer follows that also follow this profile.
+	Returns `0` when `viewer` is this profile.
+	"""
+	mutualCount(viewer: MySoAddress!): Int
 	"""
 	MyData records owned by this profile (paginated).
 	"""
@@ -7161,6 +7198,10 @@ type Proposal {
 	"""
 	implementedDescription: String
 	"""
+	Linked media asset for PoC media-asset rights governance proposals (registry_type=1).
+	"""
+	mediaAsset: MediaAsset
+	"""
 	Metadata JSON (arbitrary structured data).
 	"""
 	metadataJson: JSON
@@ -7196,10 +7237,6 @@ type Proposal {
 	Linked SPoT record for SPoT resolution proposals (registry_type=2).
 	"""
 	spotRecord: SpotRecord
-	"""
-	Linked media asset for PoC media-asset rights governance proposals (registry_type=1).
-	"""
-	mediaAsset: MediaAsset
 	"""
 	Proposal lifecycle status (0=submitted, 1=delegate_review, 2=community_voting, 3=approved, 4=rejected, 5=implemented, 6=rescinded). New proposals created on chain enter delegate review (1); `0` is not used for newly submitted work.
 	"""
@@ -7472,7 +7509,7 @@ type Query {
 	"""
 	mediaAsset(id: ID!): MediaAsset
 	"""
-	Governance proposals for media asset rights disputes on the given asset.
+	List governance proposals linked to a media asset rights dispute.
 	"""
 	mediaAssetRightsProposals(mediaAssetId: ID!, limit: Int, offset: Int): [Proposal!]
 	"""
@@ -7906,7 +7943,7 @@ type Query {
 	"""
 	sptReservationHolders(poolId: ID!, viewer: MySoAddress, prioritizeFollowed: Boolean, limit: Int, offset: Int): [SptReservationHolding!]
 	"""
-	Reservation deposit / withdrawal volume for a reservation pool (MYSO base units). `EVENT` is one point per trade; `FIVE_MIN` / `HOUR` / `DAY` use time buckets. Returns empty when social DB not configured.
+	Reservation deposit / withdrawal volume (`EVENT`, `FIVE_MIN`, `HOUR`, `DAY`). Returns empty when social DB not configured.
 	"""
 	sptReservationVolumeHistory(poolId: ID!, interval: SptReservationVolumeInterval!, limit: Int, from: String, to: String): [SptReservationVolumeBucket!]
 	"""
@@ -8328,6 +8365,10 @@ type SocialProofToken {
 	(nano-MYSO reserved × scale ÷ pool `base_price` in MYSO smallest units), before further trades.
 	"""
 	circulatingSupply: BigInt
+	"""
+	Circulating supply change percentage vs ~24h ago, or vs first indexed supply when the pool is younger than 24h.
+	"""
+	circulatingSupplyChange24H: Float
 	createdAt: Int
 	creatorEarnings: Int
 	currentPrice: Int
@@ -8341,6 +8382,10 @@ type SocialProofToken {
 	Market cap: current price (MYSO smallest units) × circulating supply (nano-SPT).
 	"""
 	marketCap: BigInt
+	"""
+	Market cap change percentage vs ~24h ago, or vs first indexed sample when the pool is younger than 24h.
+	"""
+	marketCapChange24H: Float
 	owner: MySoAddress
 	platformEarnings: Int
 	poolId: String
@@ -9017,6 +9062,10 @@ enum SptOrder {
 
 type SptPool {
 	"""
+	Circulating supply change percentage vs ~24h ago, or vs first indexed supply when the pool is younger than 24h.
+	"""
+	circulatingSupplyChange24H: Float
+	"""
 	Total creator fees earned.
 	"""
 	creatorEarnings: Int
@@ -9036,6 +9085,11 @@ type SptPool {
 	Market cap (price in MYSO smallest units × circulating supply in nano-SPT).
 	"""
 	marketCap: BigInt!
+	"""
+	Market cap change percentage vs ~24h ago, or vs first indexed sample when the pool is younger than 24h.
+	Uses price and circulating supply from the same historical row as `priceChange24H`.
+	"""
+	marketCapChange24H: Float
 	"""
 	Pool owner address.
 	"""

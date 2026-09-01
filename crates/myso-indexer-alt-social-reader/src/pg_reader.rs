@@ -34,6 +34,16 @@ use crate::insurance::{
     list_insurance_route_fills_for_route, list_insurance_user_exposure_totals_for_vault,
     list_insurance_vault_transactions, list_insurance_vaults,
 };
+use crate::media_asset::{
+    count_rights_disputes_submitted, get_active_rights_proposal_id_for_asset,
+    get_composition_analysis_for_post, get_media_asset_by_id,
+    get_media_asset_id_for_rights_proposal, get_revenue_manifest_for_post,
+    list_media_asset_governance_links, list_media_asset_rights_updates, list_media_asset_usages,
+};
+use crate::media_asset_graph::{
+    get_ancestry_snapshot, get_resolved_policy, list_derivative_edges_for_child,
+    list_derivative_edges_for_parent, list_detected_relationships, list_resolved_obligations,
+};
 use crate::memory::SubAgentListResult;
 use crate::memory::get_memory_config as fetch_memory_config;
 use crate::messaging::{
@@ -64,16 +74,6 @@ use crate::platform::{
     list_platform_treasury_withdrawals,
 };
 use crate::pnl::{ProfilePnLWindow, ProfilePnLWindowResult, get_profile_pnl_for_windows};
-use crate::media_asset::{
-    get_composition_analysis_for_post, get_media_asset_by_id, get_revenue_manifest_for_post,
-    list_media_asset_governance_links, list_media_asset_rights_updates, list_media_asset_usages,
-    count_rights_disputes_submitted, get_active_rights_proposal_id_for_asset,
-    get_media_asset_id_for_rights_proposal,
-};
-use crate::media_asset_graph::{
-    get_ancestry_snapshot, get_resolved_policy, list_derivative_edges_for_child,
-    list_derivative_edges_for_parent, list_detected_relationships, list_resolved_obligations,
-};
 use crate::poc::{
     get_poc_analysis_for_post, get_poc_badges_for_post,
     get_poc_beneficiary_vault_by_beneficiary_address, get_poc_beneficiary_vault_by_vault_id,
@@ -82,6 +82,7 @@ use crate::poc::{
     list_poc_vault_coin_balances_for_vault, list_poc_vault_deposits_for_vault,
 };
 use crate::post::PostRow;
+use crate::profile::UniversalUserResult;
 use crate::profile::get_ecosystem_treasury;
 use crate::profile::get_profile_badges;
 use crate::profile::get_profile_by_address;
@@ -90,7 +91,6 @@ use crate::profile::get_profile_or_wallet_by_address;
 use crate::profile::get_profile_summary_enriched;
 use crate::profile::get_profiles;
 use crate::profile::get_profiles_summary_enriched;
-use crate::profile::UniversalUserResult;
 use crate::promotion::{
     get_promotion, get_promotion_by_post_id, get_promotion_hourly, get_promotion_stats,
     get_promotion_time_series, get_promotion_views, get_promotion_views_count, get_spending_trends,
@@ -101,8 +101,8 @@ use crate::social_graph::{
     FollowSortBy, ProfileSummaryRow, ViewerSocialContext, batch_viewer_social_context,
     check_following, check_platform_blocked, check_profile_blocked,
     count_profile_platform_memberships, get_blocked_platforms, get_blocked_profiles,
-    get_follow_recommendations, get_followers, get_following, get_profile_platform_memberships,
-    resolve_profile_address,
+    get_follow_recommendations, get_followers, get_following, get_mutual_connections,
+    get_mutual_count, get_profile_platform_memberships, resolve_profile_address,
 };
 use crate::spot::{
     get_spot_claim_by_object_id, get_spot_config, get_spot_creator_stats,
@@ -121,7 +121,7 @@ use crate::spt::{
     get_spt_pool_id_for_profile, get_spt_price_history,
     get_spt_reservation_holdings_for_reserver as fetch_spt_reservation_holdings_for_reserver,
     get_spt_reservation_volume_history, get_spt_swaps_for_pool, get_spt_swaps_for_trader,
-    get_spt_transfers_for_pool, get_spt_transactions, list_spt_pools,
+    get_spt_transactions, get_spt_transfers_for_pool, list_spt_pools,
 };
 use crate::subscription::get_subscription_config;
 use crate::vesting::{get_vesting_leaderboard, get_vesting_wallet, list_vesting_wallets};
@@ -890,6 +890,24 @@ impl SocialPgReader {
         get_following(&mut conn, address, viewer, limit, offset, &self.metrics).await
     }
 
+    /// Count of accounts `viewer` follows that also follow `address`.
+    pub async fn get_mutual_count(&self, address: &str, viewer: &str) -> anyhow::Result<i32> {
+        let mut conn = self.connect().await?;
+        get_mutual_count(&mut conn, address, viewer, &self.metrics).await
+    }
+
+    /// Paginated accounts `viewer` follows that also follow `address`.
+    pub async fn get_mutual_connections(
+        &self,
+        address: &str,
+        viewer: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<ProfileSummaryRow>> {
+        let mut conn = self.connect().await?;
+        get_mutual_connections(&mut conn, address, viewer, limit, offset, &self.metrics).await
+    }
+
     /// Friends-of-friends follow recommendations for a profile or wallet-only address.
     pub async fn get_follow_recommendations(
         &self,
@@ -1580,14 +1598,8 @@ impl SocialPgReader {
         offset: i64,
     ) -> anyhow::Result<Vec<crate::DerivativeEdgeRow>> {
         let mut conn = self.connect().await?;
-        list_derivative_edges_for_child(
-            &mut conn,
-            child_asset_id,
-            limit,
-            offset,
-            &self.metrics,
-        )
-        .await
+        list_derivative_edges_for_child(&mut conn, child_asset_id, limit, offset, &self.metrics)
+            .await
     }
 
     /// Child edges referencing a parent asset.
@@ -1598,14 +1610,8 @@ impl SocialPgReader {
         offset: i64,
     ) -> anyhow::Result<Vec<crate::DerivativeEdgeRow>> {
         let mut conn = self.connect().await?;
-        list_derivative_edges_for_parent(
-            &mut conn,
-            parent_asset_id,
-            limit,
-            offset,
-            &self.metrics,
-        )
-        .await
+        list_derivative_edges_for_parent(&mut conn, parent_asset_id, limit, offset, &self.metrics)
+            .await
     }
 
     /// Latest ancestry snapshot for an asset.
@@ -1633,13 +1639,7 @@ impl SocialPgReader {
         policy_version: i64,
     ) -> anyhow::Result<Vec<crate::ResolvedObligationRow>> {
         let mut conn = self.connect().await?;
-        list_resolved_obligations(
-            &mut conn,
-            media_asset_id,
-            policy_version,
-            &self.metrics,
-        )
-        .await
+        list_resolved_obligations(&mut conn, media_asset_id, policy_version, &self.metrics).await
     }
 
     /// Detected remix relationships involving an asset or pending id.

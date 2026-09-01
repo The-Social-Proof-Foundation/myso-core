@@ -16,15 +16,15 @@ use crate::api::scalars::id::Id;
 use crate::api::scalars::json::Json;
 use crate::api::scalars::myso_address::MySoAddress;
 use crate::api::types::access::PostAccess;
-use crate::api::types::memory::SocialAttribution;
 use crate::api::types::media_asset::{CompositionAnalysis, MediaAsset, RevenueManifest};
 use crate::api::types::media_asset_enums::{PostCompositionStatus, PostMonetizationStatus};
-use crate::api::types::post_enforcement::{
-    derive_playback_policy, parse_embedded_bindings, parse_usage_decisions, parse_usage_denials,
-    ContainerUsageDenial, EmbeddedAssetBinding, PlaybackPolicy, UsageDecisionSnapshot,
-};
+use crate::api::types::memory::SocialAttribution;
 use crate::api::types::mydata::MyDataRecord;
 use crate::api::types::poc::{PocAnalysisResult, PocBadge, PocDispute, PocRevenueRedirection};
+use crate::api::types::post_enforcement::{
+    ContainerUsageDenial, EmbeddedAssetBinding, PlaybackPolicy, UsageDecisionSnapshot,
+    derive_playback_policy, parse_embedded_bindings, parse_usage_decisions, parse_usage_denials,
+};
 use crate::api::types::profile_summary::ProfileSummary;
 use crate::api::types::promotion::Promotion;
 use crate::api::types::spot::{

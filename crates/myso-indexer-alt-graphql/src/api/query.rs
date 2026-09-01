@@ -48,6 +48,7 @@ use crate::api::types::insurance::{
     InsuranceCoverageRoute, InsuranceModuleEvent, InsurancePolicy, InsuranceRouteFill,
     InsuranceVault,
 };
+use crate::api::types::media_asset::MediaAsset;
 use crate::api::types::messaging::{MessagingAgentGroup, PaidMessageEscrow};
 use crate::api::types::move_object::MoveObject;
 use crate::api::types::move_package;
@@ -74,7 +75,6 @@ use crate::api::types::organization::{
 use crate::api::types::platform::{Platform, PlatformUserAccess};
 use crate::api::types::poc::PocBeneficiaryVault;
 use crate::api::types::poc_username_beneficiary::PocUsernameBeneficiary;
-use crate::api::types::media_asset::MediaAsset;
 use crate::api::types::post::{CommentSummary, Post, ReactionSummary, RepostSummary, TipSummary};
 use crate::api::types::profile::Profile;
 use crate::api::types::profile_subscription::{

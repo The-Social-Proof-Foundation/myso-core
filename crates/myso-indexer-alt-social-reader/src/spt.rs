@@ -3,6 +3,7 @@
 
 use std::collections::HashMap;
 
+use diesel::BoolExpressionMethods;
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
 use diesel::QueryDsl;
@@ -10,13 +11,12 @@ use diesel::QueryableByName;
 use diesel::SelectableHelper;
 use diesel::sql_types::{Array, BigInt, Bool, Integer, Nullable, Text, Timestamptz};
 use diesel_async::RunQueryDsl;
-use diesel::BoolExpressionMethods;
 use myso_indexer_alt_social_schema::models::{
-    SptHoldingRow, SptPoolRow, SptPriceHistory, SptReservationHoldingRow, SptSwap, SptTransfer,
-    SptTransaction,
+    SptHoldingRow, SptPoolRow, SptPriceHistory, SptReservationHoldingRow, SptSwap, SptTransaction,
+    SptTransfer,
 };
 use myso_indexer_alt_social_schema::schema::{
-    spt_price_history, spt_swaps, spt_transfers, spt_transactions,
+    spt_price_history, spt_swaps, spt_transactions, spt_transfers,
 };
 
 use myso_pg_db::Connection;
@@ -166,6 +166,20 @@ pub enum SptSortBy {
     EcosystemEarnings,
     TotalEarnings,
     CreatedAt,
+}
+
+/// Percent change from `prev` to `current`. `None` when `prev <= 0` (no baseline).
+pub fn pct_change(current: i64, prev: i64) -> Option<f64> {
+    pct_change_i128(current as i128, prev as i128)
+}
+
+/// Percent change for values that may exceed `i64` (e.g. `price * circulating_supply`).
+pub fn pct_change_i128(current: i128, prev: i128) -> Option<f64> {
+    if prev > 0 {
+        Some(((current - prev) as f64 / prev as f64) * 100.0)
+    } else {
+        None
+    }
 }
 
 fn order_by_clause(sort_by: SptSortBy, ascending: bool) -> String {
@@ -367,14 +381,14 @@ pub(crate) async fn get_spt_pool(
             LIMIT 1
         ),
         price_24h AS (
-            SELECT price FROM spt_price_history
+            SELECT price, circulating_supply FROM spt_price_history
             WHERE pool_id = $1 AND time <= NOW() - INTERVAL '24 hours'
             ORDER BY time DESC
             LIMIT 1
         ),
         -- Since-open fallback when no sample exists at/before now-24h (young pools).
         first_price AS (
-            SELECT price FROM spt_price_history
+            SELECT price, circulating_supply FROM spt_price_history
             WHERE pool_id = $1
             ORDER BY time ASC
             LIMIT 1
@@ -400,6 +414,7 @@ pub(crate) async fn get_spt_pool(
                p.circulating_supply, p.base_price, p.quadratic_coefficient, p.created_at,
                p.time, p.transaction_id, COALESCE(lp.price, 0)::bigint as price,
                COALESCE(ph24.price, fp.price) as price_24h_ago,
+               COALESCE(ph24.circulating_supply, fp.circulating_supply) as circulating_supply_24h_ago,
                v.vol as volume_24h,
                r.creator_earnings,
                r.platform_earnings,
@@ -684,6 +699,7 @@ pub(crate) async fn list_spt_pools(
                 p.transaction_id,
                 COALESCE(ph.price, 0)::bigint as price,
                 COALESCE(ph24.price, fp.price) as price_24h_ago,
+                COALESCE(ph24.circulating_supply, fp.circulating_supply) as circulating_supply_24h_ago,
                 COALESCE(v.vol, 0)::bigint as volume_24h,
                 COALESCE(r.creator_earnings, 0)::bigint as creator_earnings,
                 COALESCE(r.platform_earnings, 0)::bigint as platform_earnings,
@@ -702,12 +718,12 @@ pub(crate) async fn list_spt_pools(
                 WHERE pool_id = p.pool_id ORDER BY time DESC LIMIT 1
             ) ph ON true
             LEFT JOIN LATERAL (
-                SELECT price FROM spt_price_history
+                SELECT price, circulating_supply FROM spt_price_history
                 WHERE pool_id = p.pool_id AND time <= NOW() - INTERVAL '24 hours'
                 ORDER BY time DESC LIMIT 1
             ) ph24 ON true
             LEFT JOIN LATERAL (
-                SELECT price FROM spt_price_history
+                SELECT price, circulating_supply FROM spt_price_history
                 WHERE pool_id = p.pool_id ORDER BY time ASC LIMIT 1
             ) fp ON true
             LEFT JOIN LATERAL (
@@ -721,7 +737,7 @@ pub(crate) async fn list_spt_pools(
         )
         SELECT pool_id, token_type, owner, associated_id, circulating_supply,
                base_price, quadratic_coefficient, created_at, time, transaction_id, price,
-               price_24h_ago, volume_24h, creator_earnings, platform_earnings, ecosystem_earnings
+               price_24h_ago, circulating_supply_24h_ago, volume_24h, creator_earnings, platform_earnings, ecosystem_earnings
         FROM pool_metrics
         ORDER BY {order_clause}
         LIMIT $1 OFFSET $2
@@ -1314,10 +1330,53 @@ pub(crate) async fn get_spt_reservation_volume_history(
 }
 
 #[cfg(test)]
+mod pct_change_tests {
+    use super::{pct_change, pct_change_i128};
+
+    const SPT_SCALE: i64 = 1_000_000_000;
+
+    #[test]
+    fn ten_to_fourteen_display_tokens_is_forty_percent() {
+        let prev = 10 * SPT_SCALE;
+        let current = 14 * SPT_SCALE;
+        assert_eq!(pct_change(current, prev), Some(40.0));
+    }
+
+    #[test]
+    fn prev_non_positive_is_none() {
+        assert_eq!(pct_change(14, 0), None);
+        assert_eq!(pct_change(14, -1), None);
+        assert_eq!(pct_change_i128(100, 0), None);
+    }
+
+    #[test]
+    fn flat_price_market_cap_follows_supply() {
+        let price = 1_000_000_000_i64;
+        let prev_supply = 10 * SPT_SCALE;
+        let current_supply = 14 * SPT_SCALE;
+        let pct = pct_change_i128(
+            (price as i128) * (current_supply as i128),
+            (price as i128) * (prev_supply as i128),
+        );
+        assert_eq!(pct, Some(40.0));
+    }
+
+    #[test]
+    fn default_curve_price_10_to_14_is_near_zero() {
+        // p(s) = base + coeff * (s/SCALE)^2 / BPS_DENOM with defaults.
+        let p10 = 1_000_001_000;
+        let p14 = 1_000_001_960;
+        let pct = pct_change(p14, p10).expect("positive baseline");
+        assert!(pct > 0.0 && pct < 0.001, "got {pct}");
+    }
+}
+
+#[cfg(test)]
 mod earnings_sql_tests {
     use super::{
-        reservation_volume_5m_cagg_sql, reservation_volume_bucket_sql, reservation_volume_event_sql,
-        SptReservationVolumeInterval, SPT_EARNINGS_BY_ASSOCIATED_ID_LATERAL,
+        SPT_EARNINGS_BY_ASSOCIATED_ID_LATERAL, SptReservationVolumeInterval,
+        reservation_volume_5m_cagg_sql, reservation_volume_bucket_sql,
+        reservation_volume_event_sql,
     };
 
     #[test]

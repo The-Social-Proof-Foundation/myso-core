@@ -775,6 +775,211 @@ async fn load_mutual_connections_for_candidates(
     Ok(by_candidate)
 }
 
+const PROFILE_MUTUALS_CTE: &str = r#"
+        subject_refs AS (
+            SELECT $1::text AS owner_ref, $2::text AS profile_ref
+        ),
+        viewer_refs AS (
+            SELECT $3::text AS owner_ref, $4::text AS profile_ref
+        ),
+        viewer_following AS (
+            SELECT DISTINCT sgr.following_address AS addr
+            FROM social_graph_relationships sgr
+            CROSS JOIN viewer_refs vr
+            WHERE sgr.follower_address IN (vr.owner_ref, vr.profile_ref)
+              AND sgr.following_address NOT IN (vr.owner_ref, vr.profile_ref)
+        ),
+        overlap AS (
+            SELECT DISTINCT vf.addr AS connection_addr
+            FROM viewer_following vf
+            CROSS JOIN subject_refs sr
+            CROSS JOIN viewer_refs vr
+            JOIN social_graph_relationships sgr
+                ON sgr.follower_address = vf.addr
+               AND sgr.following_address IN (sr.owner_ref, sr.profile_ref)
+            WHERE vf.addr NOT IN (sr.owner_ref, sr.profile_ref)
+              AND NOT EXISTS (
+                  SELECT 1 FROM blocked_profiles bp
+                  WHERE (bp.blocker_address IN (vr.owner_ref, vr.profile_ref)
+                         AND bp.blocked_address = vf.addr)
+                     OR (bp.blocker_address = vf.addr
+                         AND bp.blocked_address IN (vr.owner_ref, vr.profile_ref))
+              )
+        )
+"#;
+
+fn same_owner(a: &str, b: &str) -> bool {
+    a.eq_ignore_ascii_case(b)
+}
+
+/// Count of accounts `viewer` follows that also follow `address` (uncapped).
+pub(crate) async fn get_mutual_count(
+    conn: &mut Connection<'_>,
+    address: &str,
+    viewer_address: &str,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<i32> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+
+    let (subject_profile_id, subject_owner) = resolve_profile_address(conn, address).await?;
+    let (viewer_profile_id, viewer_owner) = resolve_profile_address(conn, viewer_address).await?;
+    if same_owner(&subject_owner, &viewer_owner) {
+        metrics.requests_succeeded.inc();
+        return Ok(0);
+    }
+
+    let subject_profile_ref = subject_profile_id
+        .as_deref()
+        .unwrap_or(subject_owner.as_str());
+    let viewer_profile_ref = viewer_profile_id
+        .as_deref()
+        .unwrap_or(viewer_owner.as_str());
+
+    #[derive(QueryableByName)]
+    struct CountRow {
+        #[diesel(sql_type = BigInt)]
+        cnt: i64,
+    }
+
+    let count_sql =
+        format!("WITH {PROFILE_MUTUALS_CTE} SELECT COUNT(*)::bigint AS cnt FROM overlap");
+    let count = diesel::sql_query(&count_sql)
+        .bind::<Text, _>(&subject_owner)
+        .bind::<Text, _>(subject_profile_ref)
+        .bind::<Text, _>(&viewer_owner)
+        .bind::<Text, _>(viewer_profile_ref)
+        .get_result::<CountRow>(conn)
+        .await?
+        .cnt;
+    metrics.requests_succeeded.inc();
+    Ok(i32::try_from(count).unwrap_or(i32::MAX))
+}
+
+/// Paginated accounts `viewer` follows that also follow `address`, ranked by follower count.
+pub(crate) async fn get_mutual_connections(
+    conn: &mut Connection<'_>,
+    address: &str,
+    viewer_address: &str,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<ProfileSummaryRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+
+    let (subject_profile_id, subject_owner) = resolve_profile_address(conn, address).await?;
+    let (viewer_profile_id, viewer_owner) = resolve_profile_address(conn, viewer_address).await?;
+    if same_owner(&subject_owner, &viewer_owner) || limit <= 0 {
+        metrics.requests_succeeded.inc();
+        return Ok(vec![]);
+    }
+
+    let subject_profile_ref = subject_profile_id
+        .as_deref()
+        .unwrap_or(subject_owner.as_str());
+    let viewer_profile_ref = viewer_profile_id
+        .as_deref()
+        .unwrap_or(viewer_owner.as_str());
+
+    #[derive(QueryableByName)]
+    struct Row {
+        #[diesel(sql_type = Text)]
+        addr: String,
+        #[diesel(sql_type = Nullable<Text>)]
+        username: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        display_name: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        profile_photo: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        bio: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        selected_badge_id: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        social_proof_token_address: Option<String>,
+        #[diesel(sql_type = Nullable<Text>)]
+        reservation_pool_address: Option<String>,
+        #[diesel(sql_type = Nullable<BigInt>)]
+        post_count: Option<i64>,
+        #[diesel(sql_type = Nullable<Integer>)]
+        followers_count: Option<i32>,
+        #[diesel(sql_type = Nullable<Integer>)]
+        following_count: Option<i32>,
+        #[diesel(sql_type = Nullable<Integer>)]
+        blocked_count: Option<i32>,
+    }
+
+    let data_sql = format!(
+        r#"WITH {PROFILE_MUTUALS_CTE}
+        SELECT o.connection_addr AS addr,
+               p.username, p.display_name, p.profile_photo, p.bio,
+               p.selected_badge_id, p.social_proof_token_address, p.reservation_pool_address,
+               COALESCE(p.post_count, 0)::bigint AS post_count,
+               COALESCE(p.followers_count, wsg.followers_count) AS followers_count,
+               COALESCE(p.following_count, wsg.following_count) AS following_count,
+               COALESCE(p.blocked_count, wsg.blocked_count) AS blocked_count
+        FROM overlap o
+        LEFT JOIN LATERAL (
+            SELECT owner_address, username, display_name, profile_photo, bio, selected_badge_id,
+                   social_proof_token_address, reservation_pool_address, post_count,
+                   followers_count, following_count, blocked_count
+            FROM profiles
+            WHERE owner_address = o.connection_addr
+            ORDER BY updated_at DESC
+            LIMIT 1
+        ) p ON true
+        LEFT JOIN wallet_social_graph wsg
+            ON wsg.wallet_address = o.connection_addr AND p.owner_address IS NULL
+        ORDER BY COALESCE(p.followers_count, wsg.followers_count, 0) DESC,
+                 o.connection_addr ASC
+        LIMIT $5 OFFSET $6"#
+    );
+
+    let rows = diesel::sql_query(&data_sql)
+        .bind::<Text, _>(&subject_owner)
+        .bind::<Text, _>(subject_profile_ref)
+        .bind::<Text, _>(&viewer_owner)
+        .bind::<Text, _>(viewer_profile_ref)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset.max(0))
+        .load::<Row>(conn)
+        .await?;
+
+    let addresses: Vec<String> = rows.iter().map(|r| r.addr.clone()).collect();
+    let viewer_ctx =
+        batch_viewer_social_context(conn, &addresses, &viewer_profile_id, &viewer_owner).await?;
+
+    metrics.requests_succeeded.inc();
+    Ok(rows
+        .into_iter()
+        .map(|r| {
+            let ctx = viewer_ctx.get(&r.addr).copied().unwrap_or_default();
+            ProfileSummaryRow {
+                owner_address: r.addr,
+                username: r.username,
+                display_name: r.display_name,
+                profile_photo: r.profile_photo,
+                bio: r.bio,
+                selected_badge_id: r.selected_badge_id,
+                social_proof_token_address: r.social_proof_token_address,
+                reservation_pool_address: r.reservation_pool_address,
+                followers_count: r.followers_count,
+                following_count: r.following_count,
+                post_count: r.post_count.map(|v| v as i32),
+                blocked_count: r.blocked_count,
+                // Viewer already follows every mutual connection by definition.
+                is_following: Some(true),
+                follows_viewer: Some(ctx.follows_viewer),
+                blocked_by_viewer: Some(ctx.blocked_by_viewer),
+                blocked_by_subject: Some(ctx.blocked_by_subject),
+                mutual_count: None,
+                mutual_connections: None,
+            }
+        })
+        .collect())
+}
+
 async fn subject_has_social_graph_activity(
     conn: &mut Connection<'_>,
     owner_ref: &str,
