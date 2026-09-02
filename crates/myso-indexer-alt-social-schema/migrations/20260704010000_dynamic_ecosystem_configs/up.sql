@@ -41,6 +41,17 @@ COMMENT ON COLUMN post_config.max_promotion_amount IS 'Maximum payment per view 
 COMMENT ON COLUMN post_config.min_view_duration_ms IS 'Minimum view duration in ms for a promoted post view to count (default: 3000)';
 
 -- 1.3 spt_config — exchange parameters (consolidates former spt_exchange_config hypertable)
+-- Legacy DBs only had spt_exchange_config; create the pre-hypertable shape so ALTERs below succeed.
+CREATE TABLE IF NOT EXISTS spt_config (
+    id SERIAL PRIMARY KEY,
+    trading_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    admin_address TEXT NOT NULL DEFAULT '',
+    reason TEXT NOT NULL DEFAULT '',
+    timestamp_ms BIGINT NOT NULL DEFAULT 0,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    transaction_id TEXT NOT NULL DEFAULT ''
+);
+
 ALTER TABLE spt_config
 ADD COLUMN IF NOT EXISTS post_threshold BIGINT NOT NULL DEFAULT 1000000000000,
 ADD COLUMN IF NOT EXISTS profile_threshold BIGINT NOT NULL DEFAULT 10000000000000,
