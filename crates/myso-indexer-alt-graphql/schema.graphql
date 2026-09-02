@@ -5261,13 +5261,17 @@ type Platform implements Node {
 	"""
 	termsOfService: String
 	"""
-	Materialized platform treasury balance in mist (indexed from on-chain events).
+	Indexed treasury balance for one coin type.
 	"""
-	treasuryBalance: UInt53
+	treasuryBalance(coinType: String!): UInt53
 	"""
-	Live platform treasury balance in mist (read from the Platform object on-chain).
+	Live bag balance for one coin type (RPC read of `treasury_balances`).
 	"""
-	treasuryBalanceLive: UInt53
+	treasuryBalanceLive(coinType: String!): UInt53
+	"""
+	Indexed multi-asset platform treasury holdings.
+	"""
+	treasuryBalances: [PlatformTreasuryBalance!]!
 	"""
 	Paginated platform treasury withdrawals.
 	"""
@@ -5508,8 +5512,16 @@ type PlatformRevenueSummary {
 	totalTransactions: Int!
 }
 
+type PlatformTreasuryBalance {
+	balance: UInt53!
+	coinType: String!
+	lastFundedAt: UInt53
+	lastWithdrawnAt: UInt53
+}
+
 type PlatformTreasuryWithdrawalSummary {
 	amount: UInt53!
+	coinType: String!
 	executedBy: String!
 	platformId: String!
 	reasonCode: Int!
@@ -6146,6 +6158,11 @@ type Post implements Node {
 	The post ID.
 	"""
 	postId: String!
+	"""
+	True when this reservation amount's creator-fee slice hits an escrow revenue-manifest
+	entry and Move requires `reserve_towards_post_with_platform` (vault).
+	"""
+	postReserveRequiresBeneficiaryVault(reservationAmountMist: UInt53!): Boolean!
 	"""
 	The post type.
 	"""
@@ -6847,6 +6864,7 @@ type ProfileSubscription {
 	active: Boolean!
 	autoRenew: Boolean!
 	cancelledAt: Int
+	coinType: String!
 	createdAt: Int!
 	durationMs: Int!
 	expiresAt: Int!
@@ -6864,6 +6882,7 @@ type ProfileSubscription {
 
 type ProfileSubscriptionPlan {
 	active: Boolean!
+	coinType: String!
 	createdAt: Int!
 	description: String
 	durationMs: Int!
@@ -8143,8 +8162,16 @@ type ResolvedPolicy {
 
 type RevenueManifest {
 	entriesJson: JSON
+	"""
+	Beneficiaries on escrow entries with a non-zero share.
+	"""
+	escrowBeneficiaries: [String!]!
 	manifestVersion: Int!
 	postId: String!
+	"""
+	True when any manifest entry routes through escrow with a non-zero share.
+	"""
+	usesEscrowRedirect: Boolean!
 }
 
 type RewardDistribution {

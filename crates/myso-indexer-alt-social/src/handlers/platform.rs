@@ -260,6 +260,7 @@ struct PlatformTreasuryWithdrawalEvent {
     amount: u64,
     reason_code: u8,
     executed_by: String,
+    coin_type: String,
     #[serde(deserialize_with = "de_u64")]
     timestamp: u64,
 }
@@ -281,6 +282,7 @@ struct PlatformTreasuryFundedEvent {
     platform_id: String,
     #[serde(deserialize_with = "de_u64")]
     new_balance: u64,
+    coin_type: String,
     #[serde(deserialize_with = "de_u64")]
     timestamp: u64,
 }
@@ -937,6 +939,7 @@ fn process_platform_treasury_withdrawal_event(
         timestamp: ev.timestamp as i64,
         created_at: now,
         event_id: Some(event_id.to_string()),
+        coin_type: ev.coin_type.clone(),
     };
 
     let platform_event = NewPlatformEvent {
@@ -952,6 +955,7 @@ fn process_platform_treasury_withdrawal_event(
         SocialEventRow::PlatformTreasuryWithdrawal(withdrawal),
         SocialEventRow::PlatformTreasuryBalanceDecrement {
             platform_id: ev.platform_id,
+            coin_type: ev.coin_type,
             amount: ev.amount as i64,
             withdrawn_at: ev.timestamp as i64,
             updated_at: now,
@@ -988,7 +992,8 @@ fn process_platform_treasury_funded_event(
     Some(vec![
         SocialEventRow::PlatformTreasuryBalanceUpsert {
             platform_id: ev.platform_id,
-            balance_mist: ev.new_balance as i64,
+            coin_type: ev.coin_type,
+            balance: ev.new_balance as i64,
             funded_at: ev.timestamp as i64,
             updated_at: now,
         },
@@ -1106,6 +1111,7 @@ mod platform_deleted_tests {
             "amount": 5_000_000_000u64,
             "funded_by": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
             "new_balance": 5_000_000_000u64,
+            "coin_type": "0x2::myso::MYSO",
             "timestamp": ts_ms,
         });
         let event_id = "digest:funded";
@@ -1115,7 +1121,8 @@ mod platform_deleted_tests {
 
         let SocialEventRow::PlatformTreasuryBalanceUpsert {
             platform_id: upsert_id,
-            balance_mist,
+            coin_type,
+            balance,
             funded_at,
             ..
         } = &rows[0]
@@ -1126,7 +1133,8 @@ mod platform_deleted_tests {
             );
         };
         assert_eq!(upsert_id.as_str(), platform_id);
-        assert_eq!(*balance_mist, 5_000_000_000);
+        assert_eq!(coin_type.as_str(), "0x2::myso::MYSO");
+        assert_eq!(*balance, 5_000_000_000);
         assert_eq!(*funded_at, ts_ms as i64);
 
         let SocialEventRow::PlatformEvent(ev) = &rows[1] else {
@@ -1147,6 +1155,7 @@ mod platform_deleted_tests {
             "amount": 1_000_000_000u64,
             "reason_code": 1u8,
             "executed_by": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "coin_type": "0x2::myso::MYSO",
             "timestamp": ts_ms,
         });
         let event_id = "digest:withdraw";

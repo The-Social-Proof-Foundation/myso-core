@@ -119,6 +119,10 @@ module social_contracts::social_proof_tokens {
     const ESptAlreadyEnabled: u64 = 34;
     /// Transfer amount must be positive
     const EInvalidTransferAmount: u64 = 35;
+    /// Simple post reserve called when the revenue manifest requires a beneficiary vault
+    const EPostReserveRequiresBeneficiaryVault: u64 = 36;
+    /// Vault post reserve called when the revenue manifest does not require a vault
+    const EPostReserveVaultNotRequired: u64 = 37;
 
     // === Constants ===
     // Token types
@@ -904,6 +908,122 @@ module social_contracts::social_proof_tokens {
         (fee_amount * component_bps) / total_bps
     }
 
+    /// Creator-fee amount that reservation fee paths pass through the post revenue manifest.
+    fun reservation_creator_fee_for_vault_check(
+        config: &SocialProofTokensConfig,
+        amount: u64,
+        platform: bool
+    ): u64 {
+        let reservation_total_fee_bps = calculate_reservation_total_fee_bps(config);
+        let fee_amount = calculate_fee_amount_safe(amount, reservation_total_fee_bps);
+        let creator_fee = calculate_component_fee_safe(
+            fee_amount,
+            config.reservation_creator_fee_bps,
+            reservation_total_fee_bps
+        );
+        if (platform) {
+            creator_fee
+        } else {
+            let platform_fee = calculate_component_fee_safe(
+                fee_amount,
+                config.reservation_platform_fee_bps,
+                reservation_total_fee_bps
+            );
+            creator_fee + (platform_fee * config.non_platform_platform_to_creator_bps) / BPS_DENOM
+        }
+    }
+
+    /// Shared post-reservation bookkeeping after fees have been taken from `remaining_payment`.
+    fun finalize_post_reservation(
+        registry: &mut TokenRegistry,
+        config: &SocialProofTokensConfig,
+        reservation_pool_object: &mut ReservationPoolObject,
+        reserver: address,
+        post_id: address,
+        post_owner: address,
+        net_amount: u64,
+        mut remaining_payment: Coin<MYSO>,
+        fee_amount: u64,
+        creator_fee: u64,
+        platform_fee: u64,
+        treasury_fee: u64,
+        now: u64,
+        ctx: &mut TxContext
+    ) {
+        let max_individual_reservation = (config.post_threshold * config.max_individual_reservation_bps) / BPS_DENOM;
+        let current_reservation = if (table::contains(&reservation_pool_object.reservations, reserver)) {
+            *table::borrow(&reservation_pool_object.reservations, reserver)
+        } else {
+            0
+        };
+        assert!(current_reservation + net_amount <= max_individual_reservation, EExceededMaxHold);
+
+        let reservation_payment = coin::split(&mut remaining_payment, net_amount, ctx);
+        balance::join(&mut reservation_pool_object.myso_balance, coin::into_balance(reservation_payment));
+
+        if (table::contains(&reservation_pool_object.reservations, reserver)) {
+            let reservation_balance = table::borrow_mut(&mut reservation_pool_object.reservations, reserver);
+            assert!(*reservation_balance <= MAX_U64 - net_amount, EOverflow);
+            *reservation_balance = *reservation_balance + net_amount;
+        } else {
+            let current_reservers_count = vector::length(&reservation_pool_object.reservers);
+            assert!(current_reservers_count < config.max_reservers_per_pool, ETooManyReservers);
+            table::add(&mut reservation_pool_object.reservations, reserver, net_amount);
+            vector::push_back(&mut reservation_pool_object.reservers, reserver);
+        };
+
+        assert!(reservation_pool_object.info.total_reserved <= MAX_U64 - net_amount, EOverflow);
+        reservation_pool_object.info.total_reserved = reservation_pool_object.info.total_reserved + net_amount;
+
+        if (table::contains(&registry.reservation_pools, post_id)) {
+            let registry_pool = table::borrow_mut(&mut registry.reservation_pools, post_id);
+            registry_pool.total_reserved = reservation_pool_object.info.total_reserved;
+        } else {
+            let reservation_pool = ReservationPool {
+                associated_id: post_id,
+                token_type: TOKEN_TYPE_POST,
+                owner: post_owner,
+                total_reserved: reservation_pool_object.info.total_reserved,
+                required_threshold: config.post_threshold,
+                created_at: now,
+            };
+            table::add(&mut registry.reservation_pools, post_id, reservation_pool);
+        };
+
+        let threshold_met = reservation_pool_object.info.total_reserved >= config.post_threshold;
+        let was_threshold_met = (reservation_pool_object.info.total_reserved - net_amount) >= config.post_threshold;
+        if (threshold_met && !was_threshold_met) {
+            event::emit(ThresholdMetEvent {
+                associated_id: post_id,
+                token_type: TOKEN_TYPE_POST,
+                owner: post_owner,
+                total_reserved: reservation_pool_object.info.total_reserved,
+                required_threshold: config.post_threshold,
+                timestamp: now,
+            });
+        };
+
+        if (coin::value(&remaining_payment) > 0) {
+            transfer::public_transfer(remaining_payment, reserver);
+        } else {
+            coin::destroy_zero(remaining_payment);
+        };
+
+        event::emit(ReservationCreatedEvent {
+            associated_id: post_id,
+            token_type: TOKEN_TYPE_POST,
+            reserver,
+            amount: net_amount,
+            total_reserved: reservation_pool_object.info.total_reserved,
+            threshold_met,
+            reserved_at: now,
+            fee_amount,
+            creator_fee,
+            platform_fee,
+            treasury_fee,
+        });
+    }
+
     // === Reservation Functions ===
 
     /// Reserve MYSO tokens towards a post to support social proof token creation
@@ -949,6 +1069,11 @@ module social_contracts::social_proof_tokens {
         validate_reservation_fees(config);
         let reservation_total_fee_bps = calculate_reservation_total_fee_bps(config);
         let fee_amount = calculate_fee_amount_safe(amount, reservation_total_fee_bps);
+        let creator_fee_check = reservation_creator_fee_for_vault_check(config, amount, false);
+        assert!(
+            post::tip_post_requires_beneficiary_vault_for_amount(post, creator_fee_check),
+            EPostReserveVaultNotRequired
+        );
         
         // Determine if fees should be on top or deducted from amount
         let fees_on_top = coin::value(&payment) >= amount + fee_amount;
@@ -1118,6 +1243,11 @@ module social_contracts::social_proof_tokens {
         validate_reservation_fees(config);
         let reservation_total_fee_bps = calculate_reservation_total_fee_bps(config);
         let fee_amount = calculate_fee_amount_safe(amount, reservation_total_fee_bps);
+        let creator_fee_check = reservation_creator_fee_for_vault_check(config, amount, true);
+        assert!(
+            post::tip_post_requires_beneficiary_vault_for_amount(post, creator_fee_check),
+            EPostReserveVaultNotRequired
+        );
         
         // Determine if fees should be on top or deducted from amount
         let fees_on_top = coin::value(&payment) >= amount + fee_amount;
@@ -1235,6 +1365,158 @@ module social_contracts::social_proof_tokens {
             platform_fee,
             treasury_fee,
         });
+    }
+
+    /// Post reserve when the revenue manifest has no escrow slice. No beneficiary vault arg.
+    #[allow(lint(self_transfer))]
+    public fun reserve_towards_post_simple(
+        registry: &mut TokenRegistry,
+        config: &SocialProofTokensConfig,
+        reservation_pool_object: &mut ReservationPoolObject,
+        treasury: &EcosystemTreasury,
+        post: &Post,
+        payment: Coin<MYSO>,
+        amount: u64,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert!(config.trading_enabled, ETradingHalted);
+        assert!(!reservation_pool_object.converted, EReservationPoolConverted);
+
+        let reserver = tx_context::sender(ctx);
+        let post_id = reservation_pool_object.info.associated_id;
+        let post_owner = reservation_pool_object.info.owner;
+        let now = clock::timestamp_ms(clock);
+
+        assert!(reservation_pool_object.info.token_type == TOKEN_TYPE_POST, EInvalidTokenType);
+        assert!(post::get_id_address(post) == post_id, EInvalidID);
+        assert!(coin::value(&payment) >= amount && amount > 0, EInsufficientFunds);
+
+        validate_reservation_fees(config);
+        let reservation_total_fee_bps = calculate_reservation_total_fee_bps(config);
+        let fee_amount = calculate_fee_amount_safe(amount, reservation_total_fee_bps);
+        let creator_fee_check = reservation_creator_fee_for_vault_check(config, amount, false);
+        assert!(
+            !post::tip_post_requires_beneficiary_vault_for_amount(post, creator_fee_check),
+            EPostReserveRequiresBeneficiaryVault
+        );
+
+        let fees_on_top = coin::value(&payment) >= amount + fee_amount;
+        let net_amount = if (fees_on_top) {
+            amount
+        } else {
+            assert!(coin::value(&payment) >= amount, EInsufficientFunds);
+            amount - fee_amount
+        };
+
+        let (remaining_payment, fee_amount, creator_fee, platform_fee, treasury_fee) =
+            distribute_reservation_fees_with_post_no_vault(
+                config,
+                reservation_pool_object,
+                post,
+                amount,
+                payment,
+                treasury,
+                ctx
+            );
+
+        finalize_post_reservation(
+            registry,
+            config,
+            reservation_pool_object,
+            reserver,
+            post_id,
+            post_owner,
+            net_amount,
+            remaining_payment,
+            fee_amount,
+            creator_fee,
+            platform_fee,
+            treasury_fee,
+            now,
+            ctx
+        );
+    }
+
+    /// Platform post reserve when the revenue manifest has no escrow slice. No beneficiary vault arg.
+    #[allow(lint(self_transfer))]
+    public fun reserve_towards_post_with_platform_simple(
+        registry: &mut TokenRegistry,
+        config: &SocialProofTokensConfig,
+        reservation_pool_object: &mut ReservationPoolObject,
+        treasury: &EcosystemTreasury,
+        platform_registry: &PlatformRegistry,
+        platform: &mut social_contracts::platform::Platform,
+        block_list_registry: &BlockListRegistry,
+        post: &Post,
+        payment: Coin<MYSO>,
+        amount: u64,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert!(config.trading_enabled, ETradingHalted);
+        assert!(!reservation_pool_object.converted, EReservationPoolConverted);
+
+        let reserver = tx_context::sender(ctx);
+        let post_id = reservation_pool_object.info.associated_id;
+        let post_owner = reservation_pool_object.info.owner;
+        let now = clock::timestamp_ms(clock);
+
+        assert!(reservation_pool_object.info.token_type == TOKEN_TYPE_POST, EInvalidTokenType);
+        assert!(post::get_id_address(post) == post_id, EInvalidID);
+        assert!(coin::value(&payment) >= amount && amount > 0, EInsufficientFunds);
+
+        let platform_id = object::uid_to_address(platform::id(platform));
+        assert!(platform::is_approved(platform_registry, platform_id), ENotAuthorized);
+        assert!(platform::has_joined_platform(platform, reserver), EUserNotJoinedPlatform);
+        assert!(!block_list::is_blocked(block_list_registry, platform_id, reserver), EUserBlockedByPlatform);
+
+        validate_reservation_fees(config);
+        let reservation_total_fee_bps = calculate_reservation_total_fee_bps(config);
+        let fee_amount = calculate_fee_amount_safe(amount, reservation_total_fee_bps);
+        let creator_fee_check = reservation_creator_fee_for_vault_check(config, amount, true);
+        assert!(
+            !post::tip_post_requires_beneficiary_vault_for_amount(post, creator_fee_check),
+            EPostReserveRequiresBeneficiaryVault
+        );
+
+        let fees_on_top = coin::value(&payment) >= amount + fee_amount;
+        let net_amount = if (fees_on_top) {
+            amount
+        } else {
+            assert!(coin::value(&payment) >= amount, EInsufficientFunds);
+            amount - fee_amount
+        };
+
+        let (remaining_payment, fee_amount, creator_fee, platform_fee, treasury_fee) =
+            distribute_reservation_fees_with_post_and_platform_no_vault(
+                config,
+                reservation_pool_object,
+                post,
+                amount,
+                payment,
+                treasury,
+                platform,
+                clock,
+                ctx
+            );
+
+        finalize_post_reservation(
+            registry,
+            config,
+            reservation_pool_object,
+            reserver,
+            post_id,
+            post_owner,
+            net_amount,
+            remaining_payment,
+            fee_amount,
+            creator_fee,
+            platform_fee,
+            treasury_fee,
+            now,
+            ctx
+        );
     }
 
     /// Reserve MYSO tokens towards a profile to support social proof token creation
@@ -2624,6 +2906,164 @@ module social_contracts::social_proof_tokens {
         } else {
             coin::destroy_zero(fee_coins);
         };
+    }
+
+    /// Same as [`apply_post_revenue_manifest_coin`] when no escrow slice exists for `amount`.
+    fun apply_post_revenue_manifest_coin_without_vault(
+        post: &Post,
+        intended_recipient: address,
+        amount: u64,
+        coins: &mut Coin<MYSO>,
+        ctx: &mut TxContext
+    ) {
+        if (!post::monetization_enabled(post)) {
+            let fee_coin = coin::split(coins, amount, ctx);
+            transfer::public_transfer(fee_coin, intended_recipient);
+            return
+        };
+
+        let manifest_opt = post::revenue_manifest(post);
+        if (option::is_none(&manifest_opt)) {
+            let fee_coin = coin::split(coins, amount, ctx);
+            transfer::public_transfer(fee_coin, intended_recipient);
+            return
+        };
+
+        let manifest = option::borrow(&manifest_opt);
+        let entries = media_asset::manifest_entries(manifest);
+        let len = vector::length(entries);
+        let bps_total = media_asset::manifest_bps_total();
+
+        let mut fee_coins = coin::split(coins, amount, ctx);
+        let mut i = 0;
+        while (i < len) {
+            let e = vector::borrow(entries, i);
+            let slice = (amount * media_asset::manifest_entry_share_bps(e)) / bps_total;
+            if (slice > 0) {
+                if (media_asset::manifest_entry_payout_mode(e) == media_asset::payout_escrow()) {
+                    abort EPostReserveRequiresBeneficiaryVault
+                };
+                let pay_coins = coin::split(&mut fee_coins, slice, ctx);
+                transfer::public_transfer(pay_coins, media_asset::manifest_entry_beneficiary(e));
+            };
+            i = i + 1;
+        };
+
+        let remainder = coin::value(&fee_coins);
+        if (remainder > 0) {
+            transfer::public_transfer(fee_coins, intended_recipient);
+        } else {
+            coin::destroy_zero(fee_coins);
+        };
+    }
+
+    fun distribute_reservation_creator_fee_without_vault(
+        pool_owner: address,
+        post: &Post,
+        creator_fee_amount: u64,
+        creator_fee_coin: &mut Coin<MYSO>,
+        ctx: &mut TxContext
+    ) {
+        if (creator_fee_amount == 0) {
+            return
+        };
+
+        if (post::monetization_enabled(post) && option::is_some(&post::revenue_manifest(post))) {
+            apply_post_revenue_manifest_coin_without_vault(
+                post,
+                pool_owner,
+                creator_fee_amount,
+                creator_fee_coin,
+                ctx
+            );
+        } else {
+            let fee_coin = coin::split(creator_fee_coin, creator_fee_amount, ctx);
+            transfer::public_transfer(fee_coin, pool_owner);
+        };
+    }
+
+    /// Non-platform reservation fees for posts that do not require a beneficiary vault.
+    public(package) fun distribute_reservation_fees_with_post_no_vault(
+        config: &SocialProofTokensConfig,
+        reservation_pool: &ReservationPoolObject,
+        post: &Post,
+        amount: u64,
+        mut payment: Coin<MYSO>,
+        treasury: &EcosystemTreasury,
+        ctx: &mut TxContext
+    ): (Coin<MYSO>, u64, u64, u64, u64) {
+        validate_reservation_fees(config);
+        let reservation_total_fee_bps = calculate_reservation_total_fee_bps(config);
+        let fee_amount = calculate_fee_amount_safe(amount, reservation_total_fee_bps);
+        let creator_fee = calculate_component_fee_safe(fee_amount, config.reservation_creator_fee_bps, reservation_total_fee_bps);
+        let platform_fee = calculate_component_fee_safe(fee_amount, config.reservation_platform_fee_bps, reservation_total_fee_bps);
+        let treasury_fee = fee_amount - creator_fee - platform_fee;
+
+        let platform_fee_to_creator = (platform_fee * config.non_platform_platform_to_creator_bps) / BPS_DENOM;
+        let platform_fee_to_treasury = platform_fee - platform_fee_to_creator;
+
+        if (fee_amount > 0) {
+            let creator_total = creator_fee + platform_fee_to_creator;
+            if (creator_total > 0) {
+                distribute_reservation_creator_fee_without_vault(
+                    reservation_pool.info.owner,
+                    post,
+                    creator_total,
+                    &mut payment,
+                    ctx
+                );
+            };
+            let treasury_total = treasury_fee + platform_fee_to_treasury;
+            if (treasury_total > 0) {
+                let treasury_fee_coin = coin::split(&mut payment, treasury_total, ctx);
+                transfer::public_transfer(treasury_fee_coin, profile::get_treasury_address(treasury));
+            };
+        };
+
+        (payment, fee_amount, creator_fee + platform_fee_to_creator, 0, treasury_fee + platform_fee_to_treasury)
+    }
+
+    /// Platform reservation fees for posts that do not require a beneficiary vault.
+    public(package) fun distribute_reservation_fees_with_post_and_platform_no_vault(
+        config: &SocialProofTokensConfig,
+        reservation_pool: &ReservationPoolObject,
+        post: &Post,
+        amount: u64,
+        mut payment: Coin<MYSO>,
+        treasury: &EcosystemTreasury,
+        platform: &mut social_contracts::platform::Platform,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ): (Coin<MYSO>, u64, u64, u64, u64) {
+        validate_reservation_fees(config);
+        let reservation_total_fee_bps = calculate_reservation_total_fee_bps(config);
+        let fee_amount = calculate_fee_amount_safe(amount, reservation_total_fee_bps);
+        let creator_fee = calculate_component_fee_safe(fee_amount, config.reservation_creator_fee_bps, reservation_total_fee_bps);
+        let platform_fee = calculate_component_fee_safe(fee_amount, config.reservation_platform_fee_bps, reservation_total_fee_bps);
+        let treasury_fee = fee_amount - creator_fee - platform_fee;
+
+        if (fee_amount > 0) {
+            if (creator_fee > 0) {
+                distribute_reservation_creator_fee_without_vault(
+                    reservation_pool.info.owner,
+                    post,
+                    creator_fee,
+                    &mut payment,
+                    ctx
+                );
+            };
+            if (platform_fee > 0) {
+                let mut platform_fee_coin = coin::split(&mut payment, platform_fee, ctx);
+                social_contracts::platform::add_to_treasury(platform, &mut platform_fee_coin, platform_fee, clock, ctx);
+                coin::destroy_zero(platform_fee_coin);
+            };
+            if (treasury_fee > 0) {
+                let treasury_fee_coin = coin::split(&mut payment, treasury_fee, ctx);
+                transfer::public_transfer(treasury_fee_coin, profile::get_treasury_address(treasury));
+            };
+        };
+
+        (payment, fee_amount, creator_fee, platform_fee, treasury_fee)
     }
 
     /// Distribute creator fees with automatic manifest-based revenue routing

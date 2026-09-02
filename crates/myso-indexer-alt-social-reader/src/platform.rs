@@ -4,7 +4,9 @@
 use chrono::NaiveDateTime;
 use diesel::OptionalExtension;
 use diesel::QueryableByName;
-use diesel::sql_types::{Array, BigInt, Bool, Int4, Nullable, SmallInt, Text, Timestamp};
+use diesel::sql_types::{
+    Array, BigInt, Bool, Int4, Nullable, SmallInt, Text, Timestamp, Timestamptz,
+};
 use diesel_async::RunQueryDsl;
 use serde_json::Value as JsonValue;
 
@@ -167,14 +169,16 @@ pub(crate) async fn get_platform_by_id(
 pub struct PlatformTreasuryBalanceRow {
     #[diesel(sql_type = Text)]
     pub platform_id: String,
+    #[diesel(sql_type = Text)]
+    pub coin_type: String,
     #[diesel(sql_type = BigInt)]
-    pub balance_mist: i64,
+    pub balance: i64,
     #[diesel(sql_type = Nullable<BigInt>)]
     pub last_funded_at: Option<i64>,
     #[diesel(sql_type = Nullable<BigInt>)]
     pub last_withdrawn_at: Option<i64>,
-    #[diesel(sql_type = Timestamp)]
-    pub updated_at: NaiveDateTime,
+    #[diesel(sql_type = Timestamptz)]
+    pub updated_at: chrono::DateTime<chrono::Utc>,
 }
 
 #[derive(Debug, Clone, QueryableByName)]
@@ -197,22 +201,46 @@ pub struct PlatformTreasuryWithdrawalRow {
     pub created_at: NaiveDateTime,
     #[diesel(sql_type = Nullable<Text>)]
     pub event_id: Option<String>,
+    #[diesel(sql_type = Text)]
+    pub coin_type: String,
+}
+
+pub(crate) async fn list_platform_treasury_balances(
+    conn: &mut Connection<'_>,
+    platform_id: &str,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<PlatformTreasuryBalanceRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    let rows = diesel::sql_query(
+        "SELECT platform_id, coin_type, balance, last_funded_at, last_withdrawn_at, updated_at
+         FROM platform_treasury_coin_balances
+         WHERE platform_id = $1
+         ORDER BY coin_type ASC",
+    )
+    .bind::<Text, _>(platform_id)
+    .load::<PlatformTreasuryBalanceRow>(conn)
+    .await?;
+    metrics.requests_succeeded.inc();
+    Ok(rows)
 }
 
 pub(crate) async fn get_platform_treasury_balance(
     conn: &mut Connection<'_>,
     platform_id: &str,
+    coin_type: &str,
     metrics: &DbReaderMetrics,
 ) -> anyhow::Result<Option<PlatformTreasuryBalanceRow>> {
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
     let result = diesel::sql_query(
-        "SELECT platform_id, balance_mist, last_funded_at, last_withdrawn_at, updated_at
-         FROM platform_treasury_balances
-         WHERE platform_id = $1
+        "SELECT platform_id, coin_type, balance, last_funded_at, last_withdrawn_at, updated_at
+         FROM platform_treasury_coin_balances
+         WHERE platform_id = $1 AND coin_type = $2
          LIMIT 1",
     )
     .bind::<Text, _>(platform_id)
+    .bind::<Text, _>(coin_type)
     .get_result::<PlatformTreasuryBalanceRow>(conn)
     .await
     .optional()?;
@@ -230,7 +258,7 @@ pub(crate) async fn list_platform_treasury_withdrawals(
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
     let rows = diesel::sql_query(
-        "SELECT id, platform_id, recipient, amount, reason_code, executed_by, timestamp, created_at, event_id
+        "SELECT id, platform_id, recipient, amount, reason_code, executed_by, timestamp, created_at, event_id, coin_type
          FROM platform_treasury_withdrawals
          WHERE platform_id = $1
          ORDER BY timestamp DESC

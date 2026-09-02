@@ -1377,7 +1377,7 @@ let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
                 &clock,
                 test_scenario::ctx(&mut scenario),
             );
-            assert!(platform::treasury_balance(&platform) == 500_000_000, 0);
+            assert!(platform::treasury_balance<MYSO>(&platform) == 500_000_000, 0);
 
             coin::destroy_zero(funding_coin);
             test_scenario::return_shared(clock);
@@ -1390,7 +1390,7 @@ let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
             let group = test_scenario::take_shared<PermissionedGroup<PlatformPackage>>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             let recipients = vector[USER1];
-            platform::withdraw_from_platform_treasury(
+            platform::withdraw_from_platform_treasury<MYSO>(
                 &mut platform,
                 &group,
                 recipients,
@@ -1399,7 +1399,7 @@ let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
                 &clock,
                 test_scenario::ctx(&mut scenario),
             );
-            assert!(platform::treasury_balance(&platform) == 400_000_000, 1);
+            assert!(platform::treasury_balance<MYSO>(&platform) == 400_000_000, 1);
 
             test_scenario::return_shared(clock);
             test_scenario::return_shared(group);
@@ -1444,7 +1444,7 @@ let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
             let group = test_scenario::take_shared<PermissionedGroup<PlatformPackage>>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             let recipients = vector[USER2];
-            platform::withdraw_from_platform_treasury(
+            platform::withdraw_from_platform_treasury<MYSO>(
                 &mut platform,
                 &group,
                 recipients,
@@ -1455,6 +1455,49 @@ let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
             );
             test_scenario::return_shared(clock);
             test_scenario::return_shared(group);
+            test_scenario::return_shared(platform);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    public struct TEST_USD has drop {}
+
+    #[test]
+    fun test_platform_treasury_holds_multiple_coin_types() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        create_test_platform(&mut scenario);
+
+        test_scenario::next_tx(&mut scenario, PLATFORM_ADMIN);
+        {
+            let mut platform = test_scenario::take_shared<Platform>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let mut myso_coin = coin::mint_for_testing<MYSO>(100, test_scenario::ctx(&mut scenario));
+            let mut usd_coin = coin::mint_for_testing<TEST_USD>(50, test_scenario::ctx(&mut scenario));
+
+            platform::test_fund_platform_treasury(
+                &mut platform,
+                &mut myso_coin,
+                100,
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            platform::test_fund_platform_treasury(
+                &mut platform,
+                &mut usd_coin,
+                50,
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+
+            assert!(platform::treasury_balance<MYSO>(&platform) == 100, 0);
+            assert!(platform::treasury_balance<TEST_USD>(&platform) == 50, 1);
+            assert!(platform::treasury_has_balance<MYSO>(&platform), 2);
+            assert!(platform::treasury_has_balance<TEST_USD>(&platform), 3);
+
+            coin::destroy_zero(myso_coin);
+            coin::destroy_zero(usd_coin);
+            test_scenario::return_shared(clock);
             test_scenario::return_shared(platform);
         };
 

@@ -58,6 +58,7 @@ pub enum SubscriptionRow {
         duration_ms: i64,
         tier_level: Option<i64>,
         platform_id: Option<String>,
+        coin_type: String,
         active: bool,
         updated_at: i64,
     },
@@ -99,6 +100,7 @@ pub enum SubscriptionRow {
         creator_amount: i64,
         platform_address: Option<String>,
         revenue_type: String,
+        coin_type: String,
         payment_time: i64,
         transaction_id: String,
     },
@@ -120,6 +122,7 @@ pub enum SubscriptionRow {
         ecosystem_fee: i64,
         creator_amount: i64,
         platform_address: Option<String>,
+        coin_type: String,
         transaction_id: String,
     },
 }
@@ -160,6 +163,7 @@ impl SubscriptionRow {
                 duration_ms,
                 tier_level,
                 platform_id,
+                coin_type,
                 active,
                 updated_at,
             } => Some(SubscriptionRow::ProfileSubscriptionPlanUpdate {
@@ -170,6 +174,7 @@ impl SubscriptionRow {
                 duration_ms,
                 tier_level,
                 platform_id,
+                coin_type,
                 active,
                 updated_at,
             }),
@@ -235,6 +240,7 @@ impl SubscriptionRow {
                 creator_amount,
                 platform_address,
                 revenue_type,
+                coin_type,
                 payment_time,
                 transaction_id,
             } => Some(SubscriptionRow::SubscriptionRevenueFromCreated {
@@ -247,6 +253,7 @@ impl SubscriptionRow {
                 creator_amount,
                 platform_address,
                 revenue_type,
+                coin_type,
                 payment_time,
                 transaction_id,
             }),
@@ -273,6 +280,7 @@ impl SubscriptionRow {
                 ecosystem_fee,
                 creator_amount,
                 platform_address,
+                coin_type,
                 transaction_id,
             } => Some(SubscriptionRow::SubscriptionRevenueFromRenewal {
                 subscription_id,
@@ -286,6 +294,7 @@ impl SubscriptionRow {
                 ecosystem_fee,
                 creator_amount,
                 platform_address,
+                coin_type,
                 transaction_id,
             }),
             _ => None,
@@ -462,6 +471,7 @@ impl Handler for SubscriptionHandler {
                     duration_ms,
                     tier_level,
                     platform_id,
+                    coin_type,
                     active,
                     updated_at,
                 } => {
@@ -474,8 +484,9 @@ impl Handler for SubscriptionHandler {
                             profile_subscription_plans::duration_ms.eq(duration_ms),
                             profile_subscription_plans::tier_level.eq(tier_level),
                             profile_subscription_plans::platform_id.eq(platform_id),
+                            profile_subscription_plans::coin_type.eq(coin_type),
                             profile_subscription_plans::active.eq(active),
-                            profile_subscription_plans::updated_at.eq(Some(updated_at)),
+                            profile_subscription_plans::updated_at.eq(Some(*updated_at)),
                         ))
                         .execute(conn)
                         .await?;
@@ -628,6 +639,7 @@ impl Handler for SubscriptionHandler {
                     creator_amount,
                     platform_address,
                     revenue_type,
+                    coin_type,
                     payment_time,
                     transaction_id,
                 } => {
@@ -654,6 +666,7 @@ impl Handler for SubscriptionHandler {
                             creator_amount: creator_net,
                             platform_address: platform_address.clone(),
                             revenue_type: revenue_type.clone(),
+                            coin_type: coin_type.clone(),
                             payment_time: *payment_time,
                             time: chrono::Utc::now(),
                             transaction_id: transaction_id.clone(),
@@ -674,6 +687,7 @@ impl Handler for SubscriptionHandler {
                             *platform_fee,
                             *ecosystem_fee,
                             revenue_type,
+                            coin_type,
                             *payment_time,
                             transaction_id,
                         )
@@ -686,17 +700,18 @@ impl Handler for SubscriptionHandler {
                     refunded_amount,
                     transaction_id,
                 } => {
-                    let sub_row: Option<(String, String)> = profile_subscriptions::table
+                    let sub_row: Option<(String, String, String)> = profile_subscriptions::table
                         .filter(profile_subscriptions::subscription_id.eq(subscription_id))
                         .order(profile_subscriptions::time.desc())
                         .select((
                             profile_subscriptions::service_id,
                             profile_subscriptions::subscriber,
+                            profile_subscriptions::coin_type,
                         ))
                         .first(conn)
                         .await
                         .ok();
-                    if let Some((service_id, _)) = sub_row {
+                    if let Some((service_id, _, coin_type)) = sub_row {
                         let profile_owner: Option<String> = profile_subscription_services::table
                             .filter(profile_subscription_services::service_id.eq(&service_id))
                             .select(profile_subscription_services::profile_owner)
@@ -715,6 +730,7 @@ impl Handler for SubscriptionHandler {
                                 creator_amount: -(*refunded_amount),
                                 platform_address: None,
                                 revenue_type: "refund".to_string(),
+                                coin_type,
                                 payment_time: chrono::Utc::now().timestamp_millis(),
                                 time: chrono::Utc::now(),
                                 transaction_id: transaction_id.clone(),
@@ -740,6 +756,7 @@ impl Handler for SubscriptionHandler {
                     ecosystem_fee,
                     creator_amount,
                     platform_address,
+                    coin_type,
                     transaction_id,
                 } => {
                     let sub_row: Option<(String, i64)> = profile_subscriptions::table
@@ -782,6 +799,7 @@ impl Handler for SubscriptionHandler {
                                 creator_amount: creator_net,
                                 platform_address: platform_address.clone(),
                                 revenue_type: revenue_type.to_string(),
+                                coin_type: coin_type.clone(),
                                 payment_time,
                                 time: chrono::Utc::now(),
                                 transaction_id: transaction_id.clone(),
@@ -802,6 +820,7 @@ impl Handler for SubscriptionHandler {
                                 *platform_fee,
                                 *ecosystem_fee,
                                 revenue_type,
+                                coin_type,
                                 payment_time,
                                 transaction_id,
                             )
@@ -834,6 +853,7 @@ async fn insert_subscription_unified_revenue(
     platform_fee: i64,
     ecosystem_fee: i64,
     revenue_type: &str,
+    currency: &str,
     revenue_time: i64,
     transaction_id: &str,
 ) -> Result<usize> {
@@ -845,6 +865,7 @@ async fn insert_subscription_unified_revenue(
                 creator_address.to_string(),
                 platform_address.map(str::to_string),
                 creator_amount,
+                currency.to_string(),
                 service_id.to_string(),
                 payer_address.to_string(),
                 creator_address.to_string(),
@@ -862,6 +883,7 @@ async fn insert_subscription_unified_revenue(
                     creator_address.to_string(),
                     Some(platform.to_string()),
                     platform_fee,
+                    currency.to_string(),
                     service_id.to_string(),
                     payer_address.to_string(),
                     platform.to_string(),
@@ -880,6 +902,7 @@ async fn insert_subscription_unified_revenue(
                     creator_address.to_string(),
                     None,
                     ecosystem_fee,
+                    currency.to_string(),
                     service_id.to_string(),
                     payer_address.to_string(),
                     treasury,

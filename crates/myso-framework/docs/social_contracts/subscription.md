@@ -10,6 +10,7 @@ Handles subscription services for profiles & MyData
 -  [Struct `SubscriptionConfig`](#social_contracts_subscription_SubscriptionConfig)
 -  [Struct `SubscriptionConfigUpdatedEvent`](#social_contracts_subscription_SubscriptionConfigUpdatedEvent)
 -  [Struct `SubscriptionPlan`](#social_contracts_subscription_SubscriptionPlan)
+-  [Struct `RenewalBalanceKey`](#social_contracts_subscription_RenewalBalanceKey)
 -  [Struct `ProfileSubscriptionService`](#social_contracts_subscription_ProfileSubscriptionService)
 -  [Struct `ProfileSubscription`](#social_contracts_subscription_ProfileSubscription)
 -  [Struct `ProfileSubscriptionCreatedEvent`](#social_contracts_subscription_ProfileSubscriptionCreatedEvent)
@@ -35,6 +36,11 @@ Handles subscription services for profiles & MyData
 -  [Function `platform_satisfies`](#social_contracts_subscription_platform_satisfies)
 -  [Function `borrow_active_plan`](#social_contracts_subscription_borrow_active_plan)
 -  [Function `borrow_plan_for_renewal`](#social_contracts_subscription_borrow_plan_for_renewal)
+-  [Function `assert_plan_coin_type`](#social_contracts_subscription_assert_plan_coin_type)
+-  [Function `assert_subscription_coin_type`](#social_contracts_subscription_assert_subscription_coin_type)
+-  [Function `renewal_balance_value`](#social_contracts_subscription_renewal_balance_value)
+-  [Function `join_renewal_balance`](#social_contracts_subscription_join_renewal_balance)
+-  [Function `split_renewal_balance`](#social_contracts_subscription_split_renewal_balance)
 -  [Function `create_profile_service`](#social_contracts_subscription_create_profile_service)
 -  [Function `create_profile_service_entry`](#social_contracts_subscription_create_profile_service_entry)
 -  [Function `resolve_plan_duration_ms`](#social_contracts_subscription_resolve_plan_duration_ms)
@@ -73,6 +79,8 @@ Handles subscription services for profiles & MyData
 -  [Function `subscription_expires_at`](#social_contracts_subscription_subscription_expires_at)
 -  [Function `subscription_auto_renew`](#social_contracts_subscription_subscription_auto_renew)
 -  [Function `subscription_renewal_balance`](#social_contracts_subscription_subscription_renewal_balance)
+-  [Function `subscription_coin_type`](#social_contracts_subscription_subscription_coin_type)
+-  [Function `plan_coin_type`](#social_contracts_subscription_plan_coin_type)
 -  [Function `bootstrap_init`](#social_contracts_subscription_bootstrap_init)
 -  [Function `create_subscription_admin_cap`](#social_contracts_subscription_create_subscription_admin_cap)
 -  [Function `update_subscription_config`](#social_contracts_subscription_update_subscription_config)
@@ -344,6 +352,11 @@ Sellable plan on a profile subscription service.
 <dd>
 </dd>
 <dt>
+<code>coin_type: <a href="../std/type_name.md#std_type_name_TypeName">std::type_name::TypeName</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
 <code>active: bool</code>
 </dt>
 <dd>
@@ -358,6 +371,28 @@ Sellable plan on a profile subscription service.
 </dt>
 <dd>
 </dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_subscription_RenewalBalanceKey"></a>
+
+## Struct `RenewalBalanceKey`
+
+Bag key for a <code>Balance&lt;T&gt;</code> renewal slot on a subscription.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_RenewalBalanceKey">RenewalBalanceKey</a>&lt;<b>phantom</b> T&gt; <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
 </dl>
 
 
@@ -503,10 +538,16 @@ Individual subscription to a profile
  Whether auto-renewal is enabled
 </dd>
 <dt>
-<code>renewal_balance: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;</code>
+<code>coin_type: <a href="../std/type_name.md#std_type_name_TypeName">std::type_name::TypeName</a></code>
 </dt>
 <dd>
- Balance for auto-renewal payments
+ Coin type copied from the plan at purchase time
+</dd>
+<dt>
+<code>renewal_balances: <a href="../myso/bag.md#myso_bag_Bag">myso::bag::Bag</a></code>
+</dt>
+<dd>
+ Per-coin pre-funded renewal balances
 </dd>
 <dt>
 <code>renewal_count: u64</code>
@@ -606,6 +647,11 @@ Events
 </dt>
 <dd>
 </dd>
+<dt>
+<code>coin_type: <a href="../std/type_name.md#std_type_name_TypeName">std::type_name::TypeName</a></code>
+</dt>
+<dd>
+</dd>
 </dl>
 
 
@@ -694,6 +740,11 @@ Events
 </dd>
 <dt>
 <code>payment_platform_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>coin_type: <a href="../std/type_name.md#std_type_name_TypeName">std::type_name::TypeName</a></code>
 </dt>
 <dd>
 </dd>
@@ -792,6 +843,11 @@ Additional event for plan updates
 </dd>
 <dt>
 <code>platform_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>coin_type: <a href="../std/type_name.md#std_type_name_TypeName">std::type_name::TypeName</a></code>
 </dt>
 <dd>
 </dd>
@@ -914,6 +970,11 @@ Event emitted when a subscription service is created
 <dd>
 </dd>
 <dt>
+<code>coin_type: <a href="../std/type_name.md#std_type_name_TypeName">std::type_name::TypeName</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
 <code>created_at: u64</code>
 </dt>
 <dd>
@@ -993,6 +1054,11 @@ Event emitted when renewal balance is funded
 </dd>
 <dt>
 <code>new_balance: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>coin_type: <a href="../std/type_name.md#std_type_name_TypeName">std::type_name::TypeName</a></code>
 </dt>
 <dd>
 </dd>
@@ -1144,6 +1210,15 @@ Error codes
 
 
 <pre><code><b>const</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ENoActivePlans">ENoActivePlans</a>: u64 = 86;
+</code></pre>
+
+
+
+<a name="social_contracts_subscription_ECoinTypeMismatch"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ECoinTypeMismatch">ECoinTypeMismatch</a>: u64 = 87;
 </code></pre>
 
 
@@ -1319,7 +1394,7 @@ Default bootstrap values (used only at init)
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_route_non_platform_platform_fee">route_non_platform_platform_fee</a>(config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">social_contracts::subscription::SubscriptionConfig</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, platform_fee: u64, creator_amount: u64, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): u64
+<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_route_non_platform_platform_fee">route_non_platform_platform_fee</a>&lt;T&gt;(config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">social_contracts::subscription::SubscriptionConfig</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, platform_fee: u64, creator_amount: u64, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): u64
 </code></pre>
 
 
@@ -1328,12 +1403,12 @@ Default bootstrap values (used only at init)
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_route_non_platform_platform_fee">route_non_platform_platform_fee</a>(
+<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_route_non_platform_platform_fee">route_non_platform_platform_fee</a>&lt;T&gt;(
     config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">SubscriptionConfig</a>,
     treasury: &EcosystemTreasury,
     platform_fee: u64,
     creator_amount: u64,
-    payment: &<b>mut</b> Coin&lt;MYSO&gt;,
+    payment: &<b>mut</b> Coin&lt;T&gt;,
     ctx: &<b>mut</b> TxContext,
 ): u64 {
     <b>let</b> platform_fee_to_creator =
@@ -1358,7 +1433,7 @@ Default bootstrap values (used only at init)
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_distribute_subscription_payment_fees_no_platform">distribute_subscription_payment_fees_no_platform</a>(config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">social_contracts::subscription::SubscriptionConfig</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, profile_owner: <b>address</b>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (u64, u64, u64)
+<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_distribute_subscription_payment_fees_no_platform">distribute_subscription_payment_fees_no_platform</a>&lt;T&gt;(config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">social_contracts::subscription::SubscriptionConfig</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, profile_owner: <b>address</b>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (u64, u64, u64)
 </code></pre>
 
 
@@ -1367,11 +1442,11 @@ Default bootstrap values (used only at init)
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_distribute_subscription_payment_fees_no_platform">distribute_subscription_payment_fees_no_platform</a>(
+<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_distribute_subscription_payment_fees_no_platform">distribute_subscription_payment_fees_no_platform</a>&lt;T&gt;(
     config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">SubscriptionConfig</a>,
     treasury: &EcosystemTreasury,
     profile_owner: <b>address</b>,
-    payment: Coin&lt;MYSO&gt;,
+    payment: Coin&lt;T&gt;,
     ctx: &<b>mut</b> TxContext,
 ): (u64, u64, u64) {
     <b>let</b> gross = coin::value(&payment);
@@ -1408,7 +1483,7 @@ Default bootstrap values (used only at init)
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_distribute_subscription_payment_fees_with_platform">distribute_subscription_payment_fees_with_platform</a>(config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">social_contracts::subscription::SubscriptionConfig</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, profile_owner: <b>address</b>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (u64, u64, u64)
+<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_distribute_subscription_payment_fees_with_platform">distribute_subscription_payment_fees_with_platform</a>&lt;T&gt;(config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">social_contracts::subscription::SubscriptionConfig</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, profile_owner: <b>address</b>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (u64, u64, u64)
 </code></pre>
 
 
@@ -1417,11 +1492,11 @@ Default bootstrap values (used only at init)
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_distribute_subscription_payment_fees_with_platform">distribute_subscription_payment_fees_with_platform</a>(
+<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_distribute_subscription_payment_fees_with_platform">distribute_subscription_payment_fees_with_platform</a>&lt;T&gt;(
     config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">SubscriptionConfig</a>,
     treasury: &EcosystemTreasury,
     profile_owner: <b>address</b>,
-    payment: Coin&lt;MYSO&gt;,
+    payment: Coin&lt;T&gt;,
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> Platform,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
@@ -1435,7 +1510,7 @@ Default bootstrap values (used only at init)
     };
     <b>if</b> (platform_fee &gt; 0) {
         <b>let</b> <b>mut</b> platform_coin = coin::split(&<b>mut</b> payment, platform_fee, ctx);
-        <a href="../social_contracts/platform.md#social_contracts_platform_add_to_treasury">platform::add_to_treasury</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, &<b>mut</b> platform_coin, platform_fee, clock, ctx);
+        <a href="../social_contracts/platform.md#social_contracts_platform_fund_platform_treasury_from_coin">platform::fund_platform_treasury_from_coin</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, &<b>mut</b> platform_coin, platform_fee, clock, ctx);
         coin::destroy_zero(platform_coin);
     };
     transfer::public_transfer(payment, profile_owner);
@@ -1655,6 +1730,147 @@ Default bootstrap values (used only at init)
 
 </details>
 
+<a name="social_contracts_subscription_assert_plan_coin_type"></a>
+
+## Function `assert_plan_coin_type`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_assert_plan_coin_type">assert_plan_coin_type</a>&lt;T&gt;(plan: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionPlan">social_contracts::subscription::SubscriptionPlan</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_assert_plan_coin_type">assert_plan_coin_type</a>&lt;T&gt;(plan: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionPlan">SubscriptionPlan</a>) {
+    <b>assert</b>!(plan.coin_type == type_name::with_defining_ids&lt;T&gt;(), <a href="../social_contracts/subscription.md#social_contracts_subscription_ECoinTypeMismatch">ECoinTypeMismatch</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_subscription_assert_subscription_coin_type"></a>
+
+## Function `assert_subscription_coin_type`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_assert_subscription_coin_type">assert_subscription_coin_type</a>&lt;T&gt;(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_assert_subscription_coin_type">assert_subscription_coin_type</a>&lt;T&gt;(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">ProfileSubscription</a>) {
+    <b>assert</b>!(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.coin_type == type_name::with_defining_ids&lt;T&gt;(), <a href="../social_contracts/subscription.md#social_contracts_subscription_ECoinTypeMismatch">ECoinTypeMismatch</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_subscription_renewal_balance_value"></a>
+
+## Function `renewal_balance_value`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_renewal_balance_value">renewal_balance_value</a>&lt;T&gt;(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_renewal_balance_value">renewal_balance_value</a>&lt;T&gt;(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">ProfileSubscription</a>): u64 {
+    <b>let</b> key = <a href="../social_contracts/subscription.md#social_contracts_subscription_RenewalBalanceKey">RenewalBalanceKey</a>&lt;T&gt; {};
+    <b>if</b> (!bag::contains_with_type&lt;<a href="../social_contracts/subscription.md#social_contracts_subscription_RenewalBalanceKey">RenewalBalanceKey</a>&lt;T&gt;, Balance&lt;T&gt;&gt;(&<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.renewal_balances, key)) {
+        <b>return</b> 0
+    };
+    <b>let</b> slot: &Balance&lt;T&gt; = bag::borrow(&<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.renewal_balances, key);
+    balance::value(slot)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_subscription_join_renewal_balance"></a>
+
+## Function `join_renewal_balance`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_join_renewal_balance">join_renewal_balance</a>&lt;T&gt;(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, incoming: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;T&gt;)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_join_renewal_balance">join_renewal_balance</a>&lt;T&gt;(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">ProfileSubscription</a>, incoming: Balance&lt;T&gt;) {
+    <b>if</b> (balance::value(&incoming) == 0) {
+        balance::destroy_zero(incoming);
+        <b>return</b>
+    };
+    <b>let</b> key = <a href="../social_contracts/subscription.md#social_contracts_subscription_RenewalBalanceKey">RenewalBalanceKey</a>&lt;T&gt; {};
+    <b>if</b> (bag::contains(&<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.renewal_balances, key)) {
+        <b>let</b> slot: &<b>mut</b> Balance&lt;T&gt; = bag::borrow_mut(&<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.renewal_balances, key);
+        balance::join(slot, incoming);
+    } <b>else</b> {
+        bag::add(&<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.renewal_balances, key, incoming);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_subscription_split_renewal_balance"></a>
+
+## Function `split_renewal_balance`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_split_renewal_balance">split_renewal_balance</a>&lt;T&gt;(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, amount: u64): <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;T&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_split_renewal_balance">split_renewal_balance</a>&lt;T&gt;(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">ProfileSubscription</a>, amount: u64): Balance&lt;T&gt; {
+    <b>let</b> key = <a href="../social_contracts/subscription.md#social_contracts_subscription_RenewalBalanceKey">RenewalBalanceKey</a>&lt;T&gt; {};
+    <b>assert</b>!(
+        bag::contains_with_type&lt;<a href="../social_contracts/subscription.md#social_contracts_subscription_RenewalBalanceKey">RenewalBalanceKey</a>&lt;T&gt;, Balance&lt;T&gt;&gt;(&<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.renewal_balances, key),
+        <a href="../social_contracts/subscription.md#social_contracts_subscription_EInvalidFee">EInvalidFee</a>,
+    );
+    <b>let</b> slot: &<b>mut</b> Balance&lt;T&gt; = bag::borrow_mut(&<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.renewal_balances, key);
+    balance::split(slot, amount)
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_subscription_create_profile_service"></a>
 
 ## Function `create_profile_service`
@@ -1770,7 +1986,7 @@ Entry function to create and share a profile subscription service
 Create a sellable plan on a profile subscription service (profile owner only).
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_create_subscription_plan">create_subscription_plan</a>(config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">social_contracts::subscription::SubscriptionConfig</a>, service: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, title: <a href="../std/string.md#std_string_String">std::string::String</a>, description: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, price: u64, duration_ms: u64, tier_level: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, platform_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_create_subscription_plan">create_subscription_plan</a>&lt;T&gt;(config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">social_contracts::subscription::SubscriptionConfig</a>, service: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, title: <a href="../std/string.md#std_string_String">std::string::String</a>, description: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, price: u64, duration_ms: u64, tier_level: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, platform_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1779,7 +1995,7 @@ Create a sellable plan on a profile subscription service (profile owner only).
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_create_subscription_plan">create_subscription_plan</a>(
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_create_subscription_plan">create_subscription_plan</a>&lt;T&gt;(
     config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">SubscriptionConfig</a>,
     service: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">ProfileSubscriptionService</a>,
     title: string::String,
@@ -1795,6 +2011,7 @@ Create a sellable plan on a profile subscription service (profile owner only).
     <b>assert</b>!(tx_context::sender(ctx) == service.profile_owner, <a href="../social_contracts/subscription.md#social_contracts_subscription_ENotSubscriptionOwner">ENotSubscriptionOwner</a>);
     <b>assert</b>!(price &gt; 0, <a href="../social_contracts/subscription.md#social_contracts_subscription_EInvalidFee">EInvalidFee</a>);
     <b>let</b> resolved_duration_ms = <a href="../social_contracts/subscription.md#social_contracts_subscription_resolve_plan_duration_ms">resolve_plan_duration_ms</a>(config, duration_ms);
+    <b>let</b> coin_type = type_name::with_defining_ids&lt;T&gt;();
     <b>let</b> now = clock::timestamp_ms(clock);
     <b>let</b> plan_id = <a href="../social_contracts/subscription.md#social_contracts_subscription_new_plan_id">new_plan_id</a>(ctx);
     <b>let</b> service_id = object::id(service);
@@ -1805,6 +2022,7 @@ Create a sellable plan on a profile subscription service (profile owner only).
         duration_ms: resolved_duration_ms,
         tier_level,
         platform_id,
+        coin_type,
         active: <b>true</b>,
         created_at: now,
         updated_at: now,
@@ -1821,6 +2039,7 @@ Create a sellable plan on a profile subscription service (profile owner only).
         duration_ms: resolved_duration_ms,
         tier_level,
         platform_id,
+        coin_type,
         created_at: now,
     });
 }
@@ -1886,6 +2105,7 @@ Update an existing plan (profile owner only).
         duration_ms: plan.duration_ms,
         tier_level: plan.tier_level,
         platform_id: plan.platform_id,
+        coin_type: plan.coin_type,
         active: plan.active,
         updated_by,
         updated_at: plan.updated_at,
@@ -1946,7 +2166,7 @@ Deactivate a plan so it no longer accepts new subscriptions (profile owner only)
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_subscribe_to_profile_internal_no_platform">subscribe_to_profile_internal_no_platform</a>(block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">social_contracts::subscription::SubscriptionConfig</a>, service: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, plan_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, auto_renew: bool, renewal_periods: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_subscribe_to_profile_internal_no_platform">subscribe_to_profile_internal_no_platform</a>&lt;T&gt;(block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">social_contracts::subscription::SubscriptionConfig</a>, service: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, plan_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, auto_renew: bool, renewal_periods: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1955,13 +2175,13 @@ Deactivate a plan so it no longer accepts new subscriptions (profile owner only)
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_subscribe_to_profile_internal_no_platform">subscribe_to_profile_internal_no_platform</a>(
+<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_subscribe_to_profile_internal_no_platform">subscribe_to_profile_internal_no_platform</a>&lt;T&gt;(
     block_list_registry: &BlockListRegistry,
     config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">SubscriptionConfig</a>,
     service: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">ProfileSubscriptionService</a>,
     plan_id: ID,
     treasury: &EcosystemTreasury,
-    payment: &<b>mut</b> Coin&lt;MYSO&gt;,
+    payment: &<b>mut</b> Coin&lt;T&gt;,
     auto_renew: bool,
     renewal_periods: u64,
     clock: &Clock,
@@ -1974,6 +2194,7 @@ Deactivate a plan so it no longer accepts new subscriptions (profile owner only)
         <b>assert</b>!(renewal_periods &lt;= config.max_renewal_months, <a href="../social_contracts/subscription.md#social_contracts_subscription_EInvalidInput">EInvalidInput</a>);
     };
     <b>let</b> plan = <a href="../social_contracts/subscription.md#social_contracts_subscription_borrow_active_plan">borrow_active_plan</a>(service, plan_id);
+    <a href="../social_contracts/subscription.md#social_contracts_subscription_assert_plan_coin_type">assert_plan_coin_type</a>&lt;T&gt;(plan);
     <b>let</b> plan_price = plan.price;
     <b>let</b> plan_duration_ms = plan.duration_ms;
     <b>let</b> plan_tier_level = plan.tier_level;
@@ -2025,7 +2246,7 @@ Deactivate a plan so it no longer accepts new subscriptions (profile owner only)
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_subscribe_to_profile_internal_with_platform">subscribe_to_profile_internal_with_platform</a>(block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">social_contracts::subscription::SubscriptionConfig</a>, service: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, plan_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, auto_renew: bool, renewal_periods: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_subscribe_to_profile_internal_with_platform">subscribe_to_profile_internal_with_platform</a>&lt;T&gt;(block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">social_contracts::subscription::SubscriptionConfig</a>, service: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, plan_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, auto_renew: bool, renewal_periods: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2034,14 +2255,14 @@ Deactivate a plan so it no longer accepts new subscriptions (profile owner only)
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_subscribe_to_profile_internal_with_platform">subscribe_to_profile_internal_with_platform</a>(
+<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_subscribe_to_profile_internal_with_platform">subscribe_to_profile_internal_with_platform</a>&lt;T&gt;(
     block_list_registry: &BlockListRegistry,
     config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">SubscriptionConfig</a>,
     service: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">ProfileSubscriptionService</a>,
     plan_id: ID,
     treasury: &EcosystemTreasury,
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> Platform,
-    payment: &<b>mut</b> Coin&lt;MYSO&gt;,
+    payment: &<b>mut</b> Coin&lt;T&gt;,
     auto_renew: bool,
     renewal_periods: u64,
     clock: &Clock,
@@ -2054,6 +2275,7 @@ Deactivate a plan so it no longer accepts new subscriptions (profile owner only)
         <b>assert</b>!(renewal_periods &lt;= config.max_renewal_months, <a href="../social_contracts/subscription.md#social_contracts_subscription_EInvalidInput">EInvalidInput</a>);
     };
     <b>let</b> plan = <a href="../social_contracts/subscription.md#social_contracts_subscription_borrow_active_plan">borrow_active_plan</a>(service, plan_id);
+    <a href="../social_contracts/subscription.md#social_contracts_subscription_assert_plan_coin_type">assert_plan_coin_type</a>&lt;T&gt;(plan);
     <b>let</b> plan_price = plan.price;
     <b>let</b> plan_duration_ms = plan.duration_ms;
     <b>let</b> plan_tier_level = plan.tier_level;
@@ -2107,7 +2329,7 @@ Deactivate a plan so it no longer accepts new subscriptions (profile owner only)
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_finish_subscribe">finish_subscribe</a>(service: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, plan_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, plan_price: u64, plan_duration_ms: u64, plan_tier_level: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, plan_platform_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, auto_renew: bool, renewal_periods: u64, subscriber: <b>address</b>, now: u64, platform_fee: u64, ecosystem_fee: u64, creator_amount: u64, payment_platform_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_finish_subscribe">finish_subscribe</a>&lt;T&gt;(service: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, plan_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, plan_price: u64, plan_duration_ms: u64, plan_tier_level: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, plan_platform_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, auto_renew: bool, renewal_periods: u64, subscriber: <b>address</b>, now: u64, platform_fee: u64, ecosystem_fee: u64, creator_amount: u64, payment_platform_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2116,14 +2338,14 @@ Deactivate a plan so it no longer accepts new subscriptions (profile owner only)
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_finish_subscribe">finish_subscribe</a>(
+<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_finish_subscribe">finish_subscribe</a>&lt;T&gt;(
     service: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">ProfileSubscriptionService</a>,
     plan_id: ID,
     plan_price: u64,
     plan_duration_ms: u64,
     plan_tier_level: Option&lt;u64&gt;,
     plan_platform_id: Option&lt;<b>address</b>&gt;,
-    payment: &<b>mut</b> Coin&lt;MYSO&gt;,
+    payment: &<b>mut</b> Coin&lt;T&gt;,
     auto_renew: bool,
     renewal_periods: u64,
     subscriber: <b>address</b>,
@@ -2134,16 +2356,16 @@ Deactivate a plan so it no longer accepts new subscriptions (profile owner only)
     payment_platform_id: Option&lt;<b>address</b>&gt;,
     ctx: &<b>mut</b> TxContext,
 ) {
-    <b>let</b> renewal_balance = <b>if</b> (auto_renew && renewal_periods &gt; 0) {
+    <b>let</b> <b>mut</b> renewal_balances = bag::new(ctx);
+    <b>if</b> (auto_renew && renewal_periods &gt; 0) {
         <b>assert</b>!(renewal_periods &lt;= <a href="../social_contracts/subscription.md#social_contracts_subscription_MAX_U64">MAX_U64</a> / plan_price, <a href="../social_contracts/subscription.md#social_contracts_subscription_EOverflow">EOverflow</a>);
         <b>let</b> renewal_amount = plan_price * renewal_periods;
-        <b>let</b> renewal_payment = coin::split(payment, renewal_amount, ctx);
-        coin::into_balance(renewal_payment)
-    } <b>else</b> {
-        balance::zero&lt;MYSO&gt;()
+        <b>let</b> incoming = coin::into_balance(coin::split(payment, renewal_amount, ctx));
+        bag::add(&<b>mut</b> renewal_balances, <a href="../social_contracts/subscription.md#social_contracts_subscription_RenewalBalanceKey">RenewalBalanceKey</a>&lt;T&gt; {}, incoming);
     };
     <b>assert</b>!(now &lt;= <a href="../social_contracts/subscription.md#social_contracts_subscription_MAX_U64">MAX_U64</a> - plan_duration_ms, <a href="../social_contracts/subscription.md#social_contracts_subscription_EOverflow">EOverflow</a>);
     <b>let</b> expires_at = now + plan_duration_ms;
+    <b>let</b> coin_type = type_name::with_defining_ids&lt;T&gt;();
     <b>let</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a> = <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">ProfileSubscription</a> {
         id: object::new(ctx),
         service_id: object::id(service),
@@ -2154,7 +2376,8 @@ Deactivate a plan so it no longer accepts new subscriptions (profile owner only)
         created_at: now,
         expires_at,
         auto_renew,
-        renewal_balance,
+        coin_type,
+        renewal_balances,
         renewal_count: 0,
     };
     <b>assert</b>!(service.subscriber_count &lt;= <a href="../social_contracts/subscription.md#social_contracts_subscription_MAX_U64">MAX_U64</a> - 1, <a href="../social_contracts/subscription.md#social_contracts_subscription_EOverflow">EOverflow</a>);
@@ -2175,6 +2398,7 @@ Deactivate a plan so it no longer accepts new subscriptions (profile owner only)
         ecosystem_fee,
         creator_amount,
         payment_platform_id,
+        coin_type,
     });
     transfer::transfer(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>, subscriber);
 }
@@ -2191,7 +2415,7 @@ Deactivate a plan so it no longer accepts new subscriptions (profile owner only)
 Subscribe to a profile plan with optional auto-renewal (no platform fee recipient).
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_subscribe_to_profile">subscribe_to_profile</a>(block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">social_contracts::subscription::SubscriptionConfig</a>, service: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, plan_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, auto_renew: bool, renewal_periods: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_subscribe_to_profile">subscribe_to_profile</a>&lt;T&gt;(block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">social_contracts::subscription::SubscriptionConfig</a>, service: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, plan_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, auto_renew: bool, renewal_periods: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2200,13 +2424,13 @@ Subscribe to a profile plan with optional auto-renewal (no platform fee recipien
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_subscribe_to_profile">subscribe_to_profile</a>(
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_subscribe_to_profile">subscribe_to_profile</a>&lt;T&gt;(
     block_list_registry: &BlockListRegistry,
     config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">SubscriptionConfig</a>,
     service: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">ProfileSubscriptionService</a>,
     plan_id: ID,
     treasury: &EcosystemTreasury,
-    payment: &<b>mut</b> Coin&lt;MYSO&gt;,
+    payment: &<b>mut</b> Coin&lt;T&gt;,
     auto_renew: bool,
     renewal_periods: u64,
     clock: &Clock,
@@ -2238,7 +2462,7 @@ Subscribe to a profile plan with optional auto-renewal (no platform fee recipien
 Subscribe to a profile plan with platform treasury routing for the platform-fee slice.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_subscribe_to_profile_with_platform">subscribe_to_profile_with_platform</a>(block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">social_contracts::subscription::SubscriptionConfig</a>, service: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, plan_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, auto_renew: bool, renewal_periods: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_subscribe_to_profile_with_platform">subscribe_to_profile_with_platform</a>&lt;T&gt;(block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">social_contracts::subscription::SubscriptionConfig</a>, service: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, plan_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, auto_renew: bool, renewal_periods: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2247,14 +2471,14 @@ Subscribe to a profile plan with platform treasury routing for the platform-fee 
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_subscribe_to_profile_with_platform">subscribe_to_profile_with_platform</a>(
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_subscribe_to_profile_with_platform">subscribe_to_profile_with_platform</a>&lt;T&gt;(
     block_list_registry: &BlockListRegistry,
     config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">SubscriptionConfig</a>,
     service: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">ProfileSubscriptionService</a>,
     plan_id: ID,
     treasury: &EcosystemTreasury,
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> Platform,
-    payment: &<b>mut</b> Coin&lt;MYSO&gt;,
+    payment: &<b>mut</b> Coin&lt;T&gt;,
     auto_renew: bool,
     renewal_periods: u64,
     clock: &Clock,
@@ -2286,7 +2510,7 @@ Subscribe to a profile plan with platform treasury routing for the platform-fee 
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_renew_subscription_internal_no_platform">renew_subscription_internal_no_platform</a>(block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">social_contracts::subscription::SubscriptionConfig</a>, service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_renew_subscription_internal_no_platform">renew_subscription_internal_no_platform</a>&lt;T&gt;(block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">social_contracts::subscription::SubscriptionConfig</a>, service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2295,12 +2519,12 @@ Subscribe to a profile plan with platform treasury routing for the platform-fee 
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_renew_subscription_internal_no_platform">renew_subscription_internal_no_platform</a>(
+<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_renew_subscription_internal_no_platform">renew_subscription_internal_no_platform</a>&lt;T&gt;(
     block_list_registry: &BlockListRegistry,
     config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">SubscriptionConfig</a>,
     service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">ProfileSubscriptionService</a>,
     <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">ProfileSubscription</a>,
-    payment: Coin&lt;MYSO&gt;,
+    payment: Coin&lt;T&gt;,
     treasury: &EcosystemTreasury,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
@@ -2311,6 +2535,8 @@ Subscribe to a profile plan with platform treasury routing for the platform-fee 
     <b>assert</b>!(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.service_id == object::id(service), <a href="../social_contracts/subscription.md#social_contracts_subscription_ENoAccess">ENoAccess</a>);
     <a href="../social_contracts/subscription.md#social_contracts_subscription_assert_subscriber_not_blocked">assert_subscriber_not_blocked</a>(block_list_registry, subscriber, service.profile_owner);
     <b>let</b> plan = <a href="../social_contracts/subscription.md#social_contracts_subscription_borrow_plan_for_renewal">borrow_plan_for_renewal</a>(service, <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.plan_id);
+    <a href="../social_contracts/subscription.md#social_contracts_subscription_assert_plan_coin_type">assert_plan_coin_type</a>&lt;T&gt;(plan);
+    <a href="../social_contracts/subscription.md#social_contracts_subscription_assert_subscription_coin_type">assert_subscription_coin_type</a>&lt;T&gt;(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>);
     <b>assert</b>!(coin::value(&payment) &gt;= plan.price, <a href="../social_contracts/subscription.md#social_contracts_subscription_EInvalidFee">EInvalidFee</a>);
     <b>let</b> (platform_fee, ecosystem_fee, creator_amount) =
         <a href="../social_contracts/subscription.md#social_contracts_subscription_distribute_subscription_payment_fees_no_platform">distribute_subscription_payment_fees_no_platform</a>(
@@ -2344,7 +2570,7 @@ Subscribe to a profile plan with platform treasury routing for the platform-fee 
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_renew_subscription_internal_with_platform">renew_subscription_internal_with_platform</a>(block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">social_contracts::subscription::SubscriptionConfig</a>, service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_renew_subscription_internal_with_platform">renew_subscription_internal_with_platform</a>&lt;T&gt;(block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">social_contracts::subscription::SubscriptionConfig</a>, service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2353,12 +2579,12 @@ Subscribe to a profile plan with platform treasury routing for the platform-fee 
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_renew_subscription_internal_with_platform">renew_subscription_internal_with_platform</a>(
+<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_renew_subscription_internal_with_platform">renew_subscription_internal_with_platform</a>&lt;T&gt;(
     block_list_registry: &BlockListRegistry,
     config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">SubscriptionConfig</a>,
     service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">ProfileSubscriptionService</a>,
     <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">ProfileSubscription</a>,
-    payment: Coin&lt;MYSO&gt;,
+    payment: Coin&lt;T&gt;,
     treasury: &EcosystemTreasury,
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> Platform,
     clock: &Clock,
@@ -2370,6 +2596,8 @@ Subscribe to a profile plan with platform treasury routing for the platform-fee 
     <b>assert</b>!(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.service_id == object::id(service), <a href="../social_contracts/subscription.md#social_contracts_subscription_ENoAccess">ENoAccess</a>);
     <a href="../social_contracts/subscription.md#social_contracts_subscription_assert_subscriber_not_blocked">assert_subscriber_not_blocked</a>(block_list_registry, subscriber, service.profile_owner);
     <b>let</b> plan = <a href="../social_contracts/subscription.md#social_contracts_subscription_borrow_plan_for_renewal">borrow_plan_for_renewal</a>(service, <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.plan_id);
+    <a href="../social_contracts/subscription.md#social_contracts_subscription_assert_plan_coin_type">assert_plan_coin_type</a>&lt;T&gt;(plan);
+    <a href="../social_contracts/subscription.md#social_contracts_subscription_assert_subscription_coin_type">assert_subscription_coin_type</a>&lt;T&gt;(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>);
     <b>assert</b>!(coin::value(&payment) &gt;= plan.price, <a href="../social_contracts/subscription.md#social_contracts_subscription_EInvalidFee">EInvalidFee</a>);
     <b>let</b> (platform_fee, ecosystem_fee, creator_amount) =
         <a href="../social_contracts/subscription.md#social_contracts_subscription_distribute_subscription_payment_fees_with_platform">distribute_subscription_payment_fees_with_platform</a>(
@@ -2452,6 +2680,7 @@ Subscribe to a profile plan with platform treasury routing for the platform-fee 
         ecosystem_fee,
         creator_amount,
         payment_platform_id,
+        coin_type: <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.coin_type,
     });
 }
 </code></pre>
@@ -2467,7 +2696,7 @@ Subscribe to a profile plan with platform treasury routing for the platform-fee 
 Manually renew a subscription (no platform).
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_renew_subscription">renew_subscription</a>(block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">social_contracts::subscription::SubscriptionConfig</a>, service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_renew_subscription">renew_subscription</a>&lt;T&gt;(block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">social_contracts::subscription::SubscriptionConfig</a>, service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2476,13 +2705,13 @@ Manually renew a subscription (no platform).
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_renew_subscription">renew_subscription</a>(
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_renew_subscription">renew_subscription</a>&lt;T&gt;(
     block_list_registry: &BlockListRegistry,
     config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">SubscriptionConfig</a>,
     service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">ProfileSubscriptionService</a>,
     <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">ProfileSubscription</a>,
     treasury: &EcosystemTreasury,
-    payment: Coin&lt;MYSO&gt;,
+    payment: Coin&lt;T&gt;,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
@@ -2510,7 +2739,7 @@ Manually renew a subscription (no platform).
 Manually renew a subscription with platform treasury routing.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_renew_subscription_with_platform">renew_subscription_with_platform</a>(block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">social_contracts::subscription::SubscriptionConfig</a>, service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_renew_subscription_with_platform">renew_subscription_with_platform</a>&lt;T&gt;(block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">social_contracts::subscription::SubscriptionConfig</a>, service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2519,14 +2748,14 @@ Manually renew a subscription with platform treasury routing.
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_renew_subscription_with_platform">renew_subscription_with_platform</a>(
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_renew_subscription_with_platform">renew_subscription_with_platform</a>&lt;T&gt;(
     block_list_registry: &BlockListRegistry,
     config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">SubscriptionConfig</a>,
     service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">ProfileSubscriptionService</a>,
     <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">ProfileSubscription</a>,
     treasury: &EcosystemTreasury,
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> Platform,
-    payment: Coin&lt;MYSO&gt;,
+    payment: Coin&lt;T&gt;,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
@@ -2554,7 +2783,7 @@ Manually renew a subscription with platform treasury routing.
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_auto_renew_subscription_internal_no_platform">auto_renew_subscription_internal_no_platform</a>(block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">social_contracts::subscription::SubscriptionConfig</a>, service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_auto_renew_subscription_internal_no_platform">auto_renew_subscription_internal_no_platform</a>&lt;T&gt;(block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">social_contracts::subscription::SubscriptionConfig</a>, service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2563,7 +2792,7 @@ Manually renew a subscription with platform treasury routing.
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_auto_renew_subscription_internal_no_platform">auto_renew_subscription_internal_no_platform</a>(
+<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_auto_renew_subscription_internal_no_platform">auto_renew_subscription_internal_no_platform</a>&lt;T&gt;(
     block_list_registry: &BlockListRegistry,
     config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">SubscriptionConfig</a>,
     service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">ProfileSubscriptionService</a>,
@@ -2582,11 +2811,13 @@ Manually renew a subscription with platform treasury routing.
         service.profile_owner,
     );
     <b>let</b> plan = <a href="../social_contracts/subscription.md#social_contracts_subscription_borrow_plan_for_renewal">borrow_plan_for_renewal</a>(service, <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.plan_id);
+    <a href="../social_contracts/subscription.md#social_contracts_subscription_assert_plan_coin_type">assert_plan_coin_type</a>&lt;T&gt;(plan);
+    <a href="../social_contracts/subscription.md#social_contracts_subscription_assert_subscription_coin_type">assert_subscription_coin_type</a>&lt;T&gt;(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>);
     <b>let</b> plan_price = plan.price;
     <b>let</b> now = clock::timestamp_ms(clock);
     <b>assert</b>!(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.expires_at &lt;= now, <a href="../social_contracts/subscription.md#social_contracts_subscription_ESubscriptionExpired">ESubscriptionExpired</a>);
-    <b>let</b> renewal_balance_value = balance::value(&<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.renewal_balance);
-    <b>if</b> (renewal_balance_value &lt; plan_price) {
+    <b>let</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_renewal_balance_value">renewal_balance_value</a> = <a href="../social_contracts/subscription.md#social_contracts_subscription_renewal_balance_value">renewal_balance_value</a>&lt;T&gt;(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>);
+    <b>if</b> (<a href="../social_contracts/subscription.md#social_contracts_subscription_renewal_balance_value">renewal_balance_value</a> &lt; plan_price) {
         <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.auto_renew = <b>false</b>;
         event::emit(<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionCancelledEvent">ProfileSubscriptionCancelledEvent</a> {
             subscription_id: object::id(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>),
@@ -2595,10 +2826,7 @@ Manually renew a subscription with platform treasury routing.
         });
         <b>return</b>
     };
-    <b>let</b> renewal_payment = coin::from_balance(
-        balance::split(&<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.renewal_balance, plan_price),
-        ctx
-    );
+    <b>let</b> renewal_payment = coin::from_balance(<a href="../social_contracts/subscription.md#social_contracts_subscription_split_renewal_balance">split_renewal_balance</a>&lt;T&gt;(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>, plan_price), ctx);
     <b>let</b> (platform_fee, ecosystem_fee, creator_amount) =
         <a href="../social_contracts/subscription.md#social_contracts_subscription_distribute_subscription_payment_fees_no_platform">distribute_subscription_payment_fees_no_platform</a>(
             config,
@@ -2632,7 +2860,7 @@ Manually renew a subscription with platform treasury routing.
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_auto_renew_subscription_internal_with_platform">auto_renew_subscription_internal_with_platform</a>(block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">social_contracts::subscription::SubscriptionConfig</a>, service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_auto_renew_subscription_internal_with_platform">auto_renew_subscription_internal_with_platform</a>&lt;T&gt;(block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">social_contracts::subscription::SubscriptionConfig</a>, service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2641,7 +2869,7 @@ Manually renew a subscription with platform treasury routing.
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_auto_renew_subscription_internal_with_platform">auto_renew_subscription_internal_with_platform</a>(
+<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_auto_renew_subscription_internal_with_platform">auto_renew_subscription_internal_with_platform</a>&lt;T&gt;(
     block_list_registry: &BlockListRegistry,
     config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">SubscriptionConfig</a>,
     service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">ProfileSubscriptionService</a>,
@@ -2661,11 +2889,13 @@ Manually renew a subscription with platform treasury routing.
         service.profile_owner,
     );
     <b>let</b> plan = <a href="../social_contracts/subscription.md#social_contracts_subscription_borrow_plan_for_renewal">borrow_plan_for_renewal</a>(service, <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.plan_id);
+    <a href="../social_contracts/subscription.md#social_contracts_subscription_assert_plan_coin_type">assert_plan_coin_type</a>&lt;T&gt;(plan);
+    <a href="../social_contracts/subscription.md#social_contracts_subscription_assert_subscription_coin_type">assert_subscription_coin_type</a>&lt;T&gt;(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>);
     <b>let</b> plan_price = plan.price;
     <b>let</b> now = clock::timestamp_ms(clock);
     <b>assert</b>!(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.expires_at &lt;= now, <a href="../social_contracts/subscription.md#social_contracts_subscription_ESubscriptionExpired">ESubscriptionExpired</a>);
-    <b>let</b> renewal_balance_value = balance::value(&<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.renewal_balance);
-    <b>if</b> (renewal_balance_value &lt; plan_price) {
+    <b>let</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_renewal_balance_value">renewal_balance_value</a> = <a href="../social_contracts/subscription.md#social_contracts_subscription_renewal_balance_value">renewal_balance_value</a>&lt;T&gt;(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>);
+    <b>if</b> (<a href="../social_contracts/subscription.md#social_contracts_subscription_renewal_balance_value">renewal_balance_value</a> &lt; plan_price) {
         <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.auto_renew = <b>false</b>;
         event::emit(<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionCancelledEvent">ProfileSubscriptionCancelledEvent</a> {
             subscription_id: object::id(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>),
@@ -2674,10 +2904,7 @@ Manually renew a subscription with platform treasury routing.
         });
         <b>return</b>
     };
-    <b>let</b> renewal_payment = coin::from_balance(
-        balance::split(&<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.renewal_balance, plan_price),
-        ctx
-    );
+    <b>let</b> renewal_payment = coin::from_balance(<a href="../social_contracts/subscription.md#social_contracts_subscription_split_renewal_balance">split_renewal_balance</a>&lt;T&gt;(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>, plan_price), ctx);
     <b>let</b> (platform_fee, ecosystem_fee, creator_amount) =
         <a href="../social_contracts/subscription.md#social_contracts_subscription_distribute_subscription_payment_fees_with_platform">distribute_subscription_payment_fees_with_platform</a>(
             config,
@@ -2714,7 +2941,7 @@ Manually renew a subscription with platform treasury routing.
 Gas-optimized auto-renew using pre-funded renewal balance (no platform).
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_auto_renew_subscription">auto_renew_subscription</a>(block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">social_contracts::subscription::SubscriptionConfig</a>, service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_auto_renew_subscription">auto_renew_subscription</a>&lt;T&gt;(block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">social_contracts::subscription::SubscriptionConfig</a>, service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2723,7 +2950,7 @@ Gas-optimized auto-renew using pre-funded renewal balance (no platform).
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_auto_renew_subscription">auto_renew_subscription</a>(
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_auto_renew_subscription">auto_renew_subscription</a>&lt;T&gt;(
     block_list_registry: &BlockListRegistry,
     config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">SubscriptionConfig</a>,
     service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">ProfileSubscriptionService</a>,
@@ -2732,7 +2959,7 @@ Gas-optimized auto-renew using pre-funded renewal balance (no platform).
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
-    <a href="../social_contracts/subscription.md#social_contracts_subscription_auto_renew_subscription_internal_no_platform">auto_renew_subscription_internal_no_platform</a>(
+    <a href="../social_contracts/subscription.md#social_contracts_subscription_auto_renew_subscription_internal_no_platform">auto_renew_subscription_internal_no_platform</a>&lt;T&gt;(
         block_list_registry,
         config,
         service,
@@ -2755,7 +2982,7 @@ Gas-optimized auto-renew using pre-funded renewal balance (no platform).
 Gas-optimized auto-renew with platform treasury routing.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_auto_renew_subscription_with_platform">auto_renew_subscription_with_platform</a>(block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">social_contracts::subscription::SubscriptionConfig</a>, service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_auto_renew_subscription_with_platform">auto_renew_subscription_with_platform</a>&lt;T&gt;(block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">social_contracts::subscription::SubscriptionConfig</a>, service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2764,7 +2991,7 @@ Gas-optimized auto-renew with platform treasury routing.
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_auto_renew_subscription_with_platform">auto_renew_subscription_with_platform</a>(
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_auto_renew_subscription_with_platform">auto_renew_subscription_with_platform</a>&lt;T&gt;(
     block_list_registry: &BlockListRegistry,
     config: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionConfig">SubscriptionConfig</a>,
     service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">ProfileSubscriptionService</a>,
@@ -2774,7 +3001,7 @@ Gas-optimized auto-renew with platform treasury routing.
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
-    <a href="../social_contracts/subscription.md#social_contracts_subscription_auto_renew_subscription_internal_with_platform">auto_renew_subscription_internal_with_platform</a>(
+    <a href="../social_contracts/subscription.md#social_contracts_subscription_auto_renew_subscription_internal_with_platform">auto_renew_subscription_internal_with_platform</a>&lt;T&gt;(
         block_list_registry,
         config,
         service,
@@ -2798,7 +3025,7 @@ Gas-optimized auto-renew with platform treasury routing.
 Check if subscription is eligible for auto-renewal without expensive operations
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_can_auto_renew">can_auto_renew</a>(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>): bool
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_can_auto_renew">can_auto_renew</a>&lt;T&gt;(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>): bool
 </code></pre>
 
 
@@ -2807,7 +3034,7 @@ Check if subscription is eligible for auto-renewal without expensive operations
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_can_auto_renew">can_auto_renew</a>(
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_can_auto_renew">can_auto_renew</a>&lt;T&gt;(
     <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">ProfileSubscription</a>,
     service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">ProfileSubscriptionService</a>,
     clock: &Clock,
@@ -2816,10 +3043,12 @@ Check if subscription is eligible for auto-renewal without expensive operations
     <b>if</b> (<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.service_id != object::id(service)) <b>return</b> <b>false</b>;
     <b>if</b> (!service.active) <b>return</b> <b>false</b>;
     <b>if</b> (!table::contains(&service.plans, <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.plan_id)) <b>return</b> <b>false</b>;
+    <b>if</b> (<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.coin_type != type_name::with_defining_ids&lt;T&gt;()) <b>return</b> <b>false</b>;
     <b>let</b> now = clock::timestamp_ms(clock);
     <b>if</b> (<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.expires_at &gt; now) <b>return</b> <b>false</b>;
     <b>let</b> plan = table::borrow(&service.plans, <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.plan_id);
-    balance::value(&<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.renewal_balance) &gt;= plan.price
+    <b>if</b> (plan.coin_type != type_name::with_defining_ids&lt;T&gt;()) <b>return</b> <b>false</b>;
+    <a href="../social_contracts/subscription.md#social_contracts_subscription_renewal_balance_value">renewal_balance_value</a>&lt;T&gt;(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>) &gt;= plan.price
 }
 </code></pre>
 
@@ -2834,7 +3063,7 @@ Check if subscription is eligible for auto-renewal without expensive operations
 User funds their renewal balance for auto-renewal
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_fund_renewal_balance">fund_renewal_balance</a>(block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_fund_renewal_balance">fund_renewal_balance</a>&lt;T&gt;(block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2843,25 +3072,27 @@ User funds their renewal balance for auto-renewal
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_fund_renewal_balance">fund_renewal_balance</a>(
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_fund_renewal_balance">fund_renewal_balance</a>&lt;T&gt;(
     block_list_registry: &BlockListRegistry,
     service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">ProfileSubscriptionService</a>,
     <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">ProfileSubscription</a>,
-    payment: Coin&lt;MYSO&gt;,
+    payment: Coin&lt;T&gt;,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
     <b>let</b> subscriber = tx_context::sender(ctx);
     <b>assert</b>!(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.subscriber == subscriber, <a href="../social_contracts/subscription.md#social_contracts_subscription_ENotSubscriptionOwner">ENotSubscriptionOwner</a>);
     <b>assert</b>!(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.service_id == object::id(service), <a href="../social_contracts/subscription.md#social_contracts_subscription_ENoAccess">ENoAccess</a>);
+    <a href="../social_contracts/subscription.md#social_contracts_subscription_assert_subscription_coin_type">assert_subscription_coin_type</a>&lt;T&gt;(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>);
     <a href="../social_contracts/subscription.md#social_contracts_subscription_assert_subscriber_not_blocked">assert_subscriber_not_blocked</a>(block_list_registry, subscriber, service.profile_owner);
     <b>let</b> funded_amount = coin::value(&payment);
-    balance::join(&<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.renewal_balance, coin::into_balance(payment));
+    <a href="../social_contracts/subscription.md#social_contracts_subscription_join_renewal_balance">join_renewal_balance</a>(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>, coin::into_balance(payment));
     event::emit(<a href="../social_contracts/subscription.md#social_contracts_subscription_RenewalBalanceFundedEvent">RenewalBalanceFundedEvent</a> {
         subscription_id: object::id(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>),
         subscriber,
         funded_amount,
-        new_balance: balance::value(&<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.renewal_balance),
+        new_balance: <a href="../social_contracts/subscription.md#social_contracts_subscription_renewal_balance_value">renewal_balance_value</a>&lt;T&gt;(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>),
+        coin_type: type_name::with_defining_ids&lt;T&gt;(),
         timestamp: clock::timestamp_ms(clock),
     });
 }
@@ -3066,7 +3297,7 @@ Deactivate service (profile owner only)
 Cancel subscription and get refund of unused renewal balance
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_cancel_subscription">cancel_subscription</a>(service: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_cancel_subscription">cancel_subscription</a>&lt;T&gt;(service: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3075,7 +3306,7 @@ Cancel subscription and get refund of unused renewal balance
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_cancel_subscription">cancel_subscription</a>(
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_cancel_subscription">cancel_subscription</a>&lt;T&gt;(
     service: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">ProfileSubscriptionService</a>,
     <b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">ProfileSubscription</a>,
     ctx: &<b>mut</b> TxContext,
@@ -3084,13 +3315,21 @@ Cancel subscription and get refund of unused renewal balance
     <b>let</b> subscriber = tx_context::sender(ctx);
     <b>assert</b>!(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.subscriber == subscriber, <a href="../social_contracts/subscription.md#social_contracts_subscription_ENotSubscriptionOwner">ENotSubscriptionOwner</a>);
     <b>assert</b>!(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.service_id == object::id(service), <a href="../social_contracts/subscription.md#social_contracts_subscription_ENoAccess">ENoAccess</a>);
-    <b>let</b> refund_amount = balance::value(&<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.renewal_balance);
+    <a href="../social_contracts/subscription.md#social_contracts_subscription_assert_subscription_coin_type">assert_subscription_coin_type</a>&lt;T&gt;(&<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>);
+    <b>let</b> refund_amount = <a href="../social_contracts/subscription.md#social_contracts_subscription_renewal_balance_value">renewal_balance_value</a>&lt;T&gt;(&<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>);
     <b>if</b> (refund_amount &gt; 0) {
-        <b>let</b> refund = coin::from_balance(
-            balance::withdraw_all(&<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.renewal_balance),
-            ctx
+        <b>let</b> key = <a href="../social_contracts/subscription.md#social_contracts_subscription_RenewalBalanceKey">RenewalBalanceKey</a>&lt;T&gt; {};
+        <b>let</b> stored = bag::remove&lt;<a href="../social_contracts/subscription.md#social_contracts_subscription_RenewalBalanceKey">RenewalBalanceKey</a>&lt;T&gt;, Balance&lt;T&gt;&gt;(&<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.renewal_balances, key);
+        transfer::public_transfer(coin::from_balance(stored, ctx), subscriber);
+    } <b>else</b> <b>if</b> (bag::contains_with_type&lt;<a href="../social_contracts/subscription.md#social_contracts_subscription_RenewalBalanceKey">RenewalBalanceKey</a>&lt;T&gt;, Balance&lt;T&gt;&gt;(
+        &<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.renewal_balances,
+        <a href="../social_contracts/subscription.md#social_contracts_subscription_RenewalBalanceKey">RenewalBalanceKey</a>&lt;T&gt; {},
+    )) {
+        <b>let</b> stored = bag::remove&lt;<a href="../social_contracts/subscription.md#social_contracts_subscription_RenewalBalanceKey">RenewalBalanceKey</a>&lt;T&gt;, Balance&lt;T&gt;&gt;(
+            &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.renewal_balances,
+            <a href="../social_contracts/subscription.md#social_contracts_subscription_RenewalBalanceKey">RenewalBalanceKey</a>&lt;T&gt; {},
         );
-        transfer::public_transfer(refund, subscriber);
+        balance::destroy_zero(stored);
     };
     <b>assert</b>!(service.subscriber_count &gt; 0, <a href="../social_contracts/subscription.md#social_contracts_subscription_EOverflow">EOverflow</a>);
     service.subscriber_count = service.subscriber_count - 1;
@@ -3109,10 +3348,11 @@ Cancel subscription and get refund of unused renewal balance
         created_at: _,
         expires_at: _,
         auto_renew: _,
-        renewal_balance,
+        coin_type: _,
+        renewal_balances,
         renewal_count: _,
     } = <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>;
-    balance::destroy_zero(renewal_balance);
+    bag::destroy_empty(renewal_balances);
     object::delete(id);
 }
 </code></pre>
@@ -3319,7 +3559,7 @@ Cancel subscription and get refund of unused renewal balance
 
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_subscription_renewal_balance">subscription_renewal_balance</a>(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>): u64
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_subscription_renewal_balance">subscription_renewal_balance</a>&lt;T&gt;(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>): u64
 </code></pre>
 
 
@@ -3328,8 +3568,56 @@ Cancel subscription and get refund of unused renewal balance
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_subscription_renewal_balance">subscription_renewal_balance</a>(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">ProfileSubscription</a>): u64 {
-    balance::value(&<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.renewal_balance)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_subscription_renewal_balance">subscription_renewal_balance</a>&lt;T&gt;(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">ProfileSubscription</a>): u64 {
+    <a href="../social_contracts/subscription.md#social_contracts_subscription_renewal_balance_value">renewal_balance_value</a>&lt;T&gt;(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_subscription_subscription_coin_type"></a>
+
+## Function `subscription_coin_type`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_subscription_coin_type">subscription_coin_type</a>(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>): <a href="../std/type_name.md#std_type_name_TypeName">std::type_name::TypeName</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_subscription_coin_type">subscription_coin_type</a>(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">ProfileSubscription</a>): TypeName {
+    <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.coin_type
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_subscription_plan_coin_type"></a>
+
+## Function `plan_coin_type`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_plan_coin_type">plan_coin_type</a>(plan: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionPlan">social_contracts::subscription::SubscriptionPlan</a>): <a href="../std/type_name.md#std_type_name_TypeName">std::type_name::TypeName</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_plan_coin_type">plan_coin_type</a>(plan: &<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionPlan">SubscriptionPlan</a>): TypeName {
+    plan.coin_type
 }
 </code></pre>
 

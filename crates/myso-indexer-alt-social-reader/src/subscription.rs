@@ -74,6 +74,8 @@ pub struct ProfileSubscriptionPlanRow {
     pub tier_level: Option<i64>,
     #[diesel(sql_type = Nullable<Text>)]
     pub platform_id: Option<String>,
+    #[diesel(sql_type = Text)]
+    pub coin_type: String,
     #[diesel(sql_type = Bool)]
     pub active: bool,
     #[diesel(sql_type = BigInt)]
@@ -110,6 +112,8 @@ pub struct ProfileSubscriptionRow {
     pub renewal_balance: i64,
     #[diesel(sql_type = BigInt)]
     pub renewal_count: i64,
+    #[diesel(sql_type = Text)]
+    pub coin_type: String,
     #[diesel(sql_type = Nullable<BigInt>)]
     pub cancelled_at: Option<i64>,
     #[diesel(sql_type = Text)]
@@ -216,7 +220,7 @@ pub(crate) async fn list_profile_subscription_plans_by_service(
     let query = if active_only {
         "
         SELECT plan_id, service_id, title, description, price, duration_ms,
-               tier_level, platform_id, active, created_at, updated_at
+               tier_level, platform_id, coin_type, active, created_at, updated_at
         FROM profile_subscription_plans
         WHERE service_id = $1 AND active = true
         ORDER BY tier_level NULLS FIRST, price ASC
@@ -225,7 +229,7 @@ pub(crate) async fn list_profile_subscription_plans_by_service(
     } else {
         "
         SELECT plan_id, service_id, title, description, price, duration_ms,
-               tier_level, platform_id, active, created_at, updated_at
+               tier_level, platform_id, coin_type, active, created_at, updated_at
         FROM profile_subscription_plans
         WHERE service_id = $1
         ORDER BY created_at ASC
@@ -251,7 +255,7 @@ pub(crate) async fn get_profile_subscription_plan_by_id(
     let _guard = metrics.latency.start_timer();
     let query = "
         SELECT plan_id, service_id, title, description, price, duration_ms,
-               tier_level, platform_id, active, created_at, updated_at
+               tier_level, platform_id, coin_type, active, created_at, updated_at
         FROM profile_subscription_plans
         WHERE plan_id = $1
     ";
@@ -275,7 +279,7 @@ pub(crate) async fn get_profile_subscription_by_id(
         SELECT sub.subscription_id, sub.service_id, sub.plan_id, sub.tier_level, sub.platform_id,
                sub.price, sub.duration_ms, sub.subscriber, sub.created_at,
                sub.expires_at, sub.auto_renew, sub.renewal_balance, sub.renewal_count,
-               sub.cancelled_at, s.profile_owner
+               sub.coin_type, sub.cancelled_at, s.profile_owner
         FROM (
             SELECT * FROM profile_subscriptions
             WHERE subscription_id = $1
@@ -309,7 +313,7 @@ pub(crate) async fn list_active_profile_subscriptions_by_subscriber(
         SELECT sub.subscription_id, sub.service_id, sub.plan_id, sub.tier_level, sub.platform_id,
                sub.price, sub.duration_ms, sub.subscriber, sub.created_at,
                sub.expires_at, sub.auto_renew, sub.renewal_balance, sub.renewal_count,
-               sub.cancelled_at, s.profile_owner
+               sub.coin_type, sub.cancelled_at, s.profile_owner
         FROM (
             SELECT DISTINCT ON (subscription_id) *
             FROM profile_subscriptions
@@ -326,7 +330,7 @@ pub(crate) async fn list_active_profile_subscriptions_by_subscriber(
         SELECT sub.subscription_id, sub.service_id, sub.plan_id, sub.tier_level, sub.platform_id,
                sub.price, sub.duration_ms, sub.subscriber, sub.created_at,
                sub.expires_at, sub.auto_renew, sub.renewal_balance, sub.renewal_count,
-               sub.cancelled_at, s.profile_owner
+               sub.coin_type, sub.cancelled_at, s.profile_owner
         FROM (
             SELECT DISTINCT ON (subscription_id) *
             FROM profile_subscriptions

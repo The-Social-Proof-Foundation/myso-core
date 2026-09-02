@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::schema::{
     platform_blocked_profiles, platform_config, platform_events, platform_memberships,
     platform_moderator_permissions, platform_moderators, platform_treasury_balances,
-    platform_treasury_withdrawals, platforms,
+    platform_treasury_coin_balances, platform_treasury_withdrawals, platforms,
 };
 
 pub const PLATFORM_STATUS_DEVELOPMENT: i16 = 0;
@@ -330,6 +330,7 @@ pub struct PlatformTreasuryWithdrawal {
     pub timestamp: i64,
     pub created_at: NaiveDateTime,
     pub event_id: Option<String>,
+    pub coin_type: String,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -343,6 +344,29 @@ pub struct NewPlatformTreasuryWithdrawal {
     pub timestamp: i64,
     pub created_at: NaiveDateTime,
     pub event_id: Option<String>,
+    pub coin_type: String,
+}
+
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = platform_treasury_coin_balances)]
+pub struct PlatformTreasuryCoinBalance {
+    pub platform_id: String,
+    pub coin_type: String,
+    pub balance: i64,
+    pub last_funded_at: Option<i64>,
+    pub last_withdrawn_at: Option<i64>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize, AsChangeset)]
+#[diesel(table_name = platform_treasury_coin_balances)]
+pub struct NewPlatformTreasuryCoinBalance {
+    pub platform_id: String,
+    pub coin_type: String,
+    pub balance: i64,
+    pub last_funded_at: Option<i64>,
+    pub last_withdrawn_at: Option<i64>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

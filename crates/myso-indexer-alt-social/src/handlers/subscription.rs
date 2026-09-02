@@ -29,6 +29,7 @@ struct SubscriptionPlanCreatedEvent {
     duration_ms: u64,
     tier_level: Option<u64>,
     platform_id: Option<String>,
+    coin_type: String,
     created_at: u64,
 }
 
@@ -42,6 +43,7 @@ struct SubscriptionPlanUpdatedEvent {
     duration_ms: u64,
     tier_level: Option<u64>,
     platform_id: Option<String>,
+    coin_type: String,
     active: bool,
     updated_by: String,
     updated_at: u64,
@@ -72,6 +74,7 @@ struct ProfileSubscriptionCreatedEvent {
     #[serde(default)]
     creator_amount: u64,
     payment_platform_id: Option<String>,
+    coin_type: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -93,6 +96,7 @@ struct ProfileSubscriptionRenewedEvent {
     #[serde(default)]
     creator_amount: u64,
     payment_platform_id: Option<String>,
+    coin_type: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -108,6 +112,7 @@ struct RenewalBalanceFundedEvent {
     subscriber: String,
     funded_amount: u64,
     new_balance: u64,
+    coin_type: String,
     timestamp: u64,
 }
 
@@ -230,6 +235,7 @@ fn process_subscription_plan_created_event(
         duration_ms: event.duration_ms as i64,
         tier_level: event.tier_level.map(|v| v as i64),
         platform_id: event.platform_id,
+        coin_type: event.coin_type,
         active: true,
         created_at: event.created_at as i64,
         updated_at: None,
@@ -299,6 +305,7 @@ fn process_subscription_plan_updated_event(
             duration_ms: event.duration_ms as i64,
             tier_level: event.tier_level.map(|v| v as i64),
             platform_id: event.platform_id,
+            coin_type: event.coin_type,
             active: event.active,
             updated_at: event.updated_at as i64,
         },
@@ -374,6 +381,7 @@ fn process_subscription_created_event(
         auto_renew: event.auto_renew,
         renewal_balance: ctx.renewal_balance as i64,
         renewal_count: 0,
+        coin_type: event.coin_type.clone(),
         cancelled_at: None,
         time: now,
         transaction_id: event_id.to_string(),
@@ -421,6 +429,7 @@ fn process_subscription_created_event(
         },
         platform_address,
         revenue_type: "subscription".to_string(),
+        coin_type: event.coin_type,
         payment_time,
         transaction_id: event_id.to_string(),
     });
@@ -487,6 +496,7 @@ fn process_subscription_renewed_event(
         ecosystem_fee: event.ecosystem_fee as i64,
         creator_amount: event.creator_amount as i64,
         platform_address,
+        coin_type: event.coin_type,
         transaction_id: event_id.to_string(),
     });
 
@@ -571,6 +581,7 @@ fn process_renewal_balance_funded_event(
             "subscriber": event.subscriber,
             "funded_amount": event.funded_amount,
             "new_balance": event.new_balance,
+            "coin_type": event.coin_type,
             "timestamp": event.timestamp,
         }),
         event_time: event.timestamp as i64,

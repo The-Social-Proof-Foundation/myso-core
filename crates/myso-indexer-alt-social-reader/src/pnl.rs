@@ -171,7 +171,8 @@ async fn profile_pnl_one_window(
              WHERE recipient_address = $1
                AND ($2::bigint < 0 OR time >= (NOW() - ($2::bigint * INTERVAL '1 day')))
                AND revenue_source = 'subscription'
-               AND revenue_type NOT IN ('platform_fee', 'ecosystem_fee')) AS subscriptions_myso,
+               AND revenue_type NOT IN ('platform_fee', 'ecosystem_fee')
+               AND currency = '0x2::myso::MYSO') AS subscriptions_myso,
             (SELECT COALESCE(SUM(amount), 0)::bigint FROM unified_revenue
              WHERE recipient_address = $1
                AND ($2::bigint < 0 OR time >= (NOW() - ($2::bigint * INTERVAL '1 day')))

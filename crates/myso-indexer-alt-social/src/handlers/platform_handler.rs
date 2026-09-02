@@ -17,11 +17,11 @@ use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
     NewPlatform, NewPlatformBlockedProfile, NewPlatformConfig, NewPlatformEvent,
     NewPlatformMembership, NewPlatformModerator, NewPlatformModeratorPermission,
-    NewPlatformTreasuryBalance, NewPlatformTreasuryWithdrawal,
+    NewPlatformTreasuryCoinBalance, NewPlatformTreasuryWithdrawal,
 };
 use myso_indexer_alt_social_schema::schema::{
     platform_blocked_profiles, platform_config, platform_events, platform_memberships,
-    platform_moderator_permissions, platform_moderators, platform_treasury_balances,
+    platform_moderator_permissions, platform_moderators, platform_treasury_coin_balances,
     platform_treasury_withdrawals, platforms,
 };
 
@@ -92,12 +92,14 @@ pub enum PlatformRow {
     PlatformTreasuryWithdrawal(NewPlatformTreasuryWithdrawal),
     PlatformTreasuryBalanceUpsert {
         platform_id: String,
-        balance_mist: i64,
+        coin_type: String,
+        balance: i64,
         funded_at: i64,
         updated_at: chrono::NaiveDateTime,
     },
     PlatformTreasuryBalanceDecrement {
         platform_id: String,
+        coin_type: String,
         amount: i64,
         withdrawn_at: i64,
         updated_at: chrono::NaiveDateTime,
@@ -226,22 +228,26 @@ impl PlatformRow {
             }
             crate::handlers::SocialEventRow::PlatformTreasuryBalanceUpsert {
                 platform_id,
-                balance_mist,
+                coin_type,
+                balance,
                 funded_at,
                 updated_at,
             } => Some(PlatformRow::PlatformTreasuryBalanceUpsert {
                 platform_id,
-                balance_mist,
+                coin_type,
+                balance,
                 funded_at,
                 updated_at,
             }),
             crate::handlers::SocialEventRow::PlatformTreasuryBalanceDecrement {
                 platform_id,
+                coin_type,
                 amount,
                 withdrawn_at,
                 updated_at,
             } => Some(PlatformRow::PlatformTreasuryBalanceDecrement {
                 platform_id,
+                coin_type,
                 amount,
                 withdrawn_at,
                 updated_at,
@@ -574,50 +580,63 @@ impl Handler for PlatformHandler {
                 }
                 PlatformRow::PlatformTreasuryBalanceUpsert {
                     platform_id,
-                    balance_mist,
+                    coin_type,
+                    balance,
                     funded_at,
                     updated_at,
                 } => {
-                    let row = NewPlatformTreasuryBalance {
+                    let updated_at_utc = updated_at.and_utc();
+                    let row = NewPlatformTreasuryCoinBalance {
                         platform_id: platform_id.clone(),
-                        balance_mist: *balance_mist,
+                        coin_type: coin_type.clone(),
+                        balance: *balance,
                         last_funded_at: Some(*funded_at),
                         last_withdrawn_at: None,
-                        updated_at: *updated_at,
+                        updated_at: updated_at_utc,
                     };
-                    total += diesel::insert_into(platform_treasury_balances::table)
+                    total += diesel::insert_into(platform_treasury_coin_balances::table)
                         .values(&row)
-                        .on_conflict(platform_treasury_balances::platform_id)
+                        .on_conflict((
+                            platform_treasury_coin_balances::platform_id,
+                            platform_treasury_coin_balances::coin_type,
+                        ))
                         .do_update()
                         .set((
-                            platform_treasury_balances::balance_mist.eq(*balance_mist),
-                            platform_treasury_balances::last_funded_at.eq(Some(*funded_at)),
-                            platform_treasury_balances::updated_at.eq(*updated_at),
+                            platform_treasury_coin_balances::balance.eq(*balance),
+                            platform_treasury_coin_balances::last_funded_at.eq(Some(*funded_at)),
+                            platform_treasury_coin_balances::updated_at.eq(updated_at_utc),
                         ))
                         .execute(conn)
                         .await?;
                 }
                 PlatformRow::PlatformTreasuryBalanceDecrement {
                     platform_id,
+                    coin_type,
                     amount,
                     withdrawn_at,
                     updated_at,
                 } => {
-                    total += diesel::insert_into(platform_treasury_balances::table)
-                        .values(NewPlatformTreasuryBalance {
+                    let updated_at_utc = updated_at.and_utc();
+                    total += diesel::insert_into(platform_treasury_coin_balances::table)
+                        .values(NewPlatformTreasuryCoinBalance {
                             platform_id: platform_id.clone(),
-                            balance_mist: -amount,
+                            coin_type: coin_type.clone(),
+                            balance: -amount,
                             last_funded_at: None,
                             last_withdrawn_at: Some(*withdrawn_at),
-                            updated_at: *updated_at,
+                            updated_at: updated_at_utc,
                         })
-                        .on_conflict(platform_treasury_balances::platform_id)
+                        .on_conflict((
+                            platform_treasury_coin_balances::platform_id,
+                            platform_treasury_coin_balances::coin_type,
+                        ))
                         .do_update()
                         .set((
-                            platform_treasury_balances::balance_mist
-                                .eq(platform_treasury_balances::balance_mist - amount),
-                            platform_treasury_balances::last_withdrawn_at.eq(Some(*withdrawn_at)),
-                            platform_treasury_balances::updated_at.eq(*updated_at),
+                            platform_treasury_coin_balances::balance
+                                .eq(platform_treasury_coin_balances::balance - amount),
+                            platform_treasury_coin_balances::last_withdrawn_at
+                                .eq(Some(*withdrawn_at)),
+                            platform_treasury_coin_balances::updated_at.eq(updated_at_utc),
                         ))
                         .execute(conn)
                         .await?;

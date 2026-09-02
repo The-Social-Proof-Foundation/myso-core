@@ -582,6 +582,20 @@ impl RevenueManifest {
     async fn entries_json(&self) -> Option<Json> {
         Json::try_from(self.inner.entries_json.clone()).ok()
     }
+
+    /// True when any manifest entry routes through escrow with a non-zero share.
+    async fn uses_escrow_redirect(&self) -> bool {
+        myso_indexer_alt_social_schema::models::manifest_uses_escrow_redirect(
+            &self.inner.entries_json,
+        )
+    }
+
+    /// Beneficiaries on escrow entries with a non-zero share.
+    async fn escrow_beneficiaries(&self) -> Vec<String> {
+        myso_indexer_alt_social_schema::models::manifest_escrow_beneficiaries(
+            &self.inner.entries_json,
+        )
+    }
 }
 
 #[derive(Clone)]

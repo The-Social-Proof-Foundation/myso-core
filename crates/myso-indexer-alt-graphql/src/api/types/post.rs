@@ -15,6 +15,7 @@ use crate::api::scalars::date_time::DateTime;
 use crate::api::scalars::id::Id;
 use crate::api::scalars::json::Json;
 use crate::api::scalars::myso_address::MySoAddress;
+use crate::api::scalars::uint53::UInt53;
 use crate::api::types::access::PostAccess;
 use crate::api::types::media_asset::{CompositionAnalysis, MediaAsset, RevenueManifest};
 use crate::api::types::media_asset_enums::{PostCompositionStatus, PostMonetizationStatus};
@@ -306,6 +307,71 @@ impl Post {
     /// Revenue redirect mode (none, wallet, escrow, treasury).
     async fn poc_redirection_kind(&self) -> Option<i32> {
         self.inner.poc_redirection_kind.map(i32::from)
+    }
+
+    /// True when this reservation amount's creator-fee slice hits an escrow revenue-manifest
+    /// entry and Move requires `reserve_towards_post_with_platform` (vault).
+    async fn post_reserve_requires_beneficiary_vault(
+        &self,
+        ctx: &Context<'_>,
+        reservation_amount_mist: UInt53,
+    ) -> bool {
+        let amount = u64::from(reservation_amount_mist);
+        if amount == 0 {
+            return false;
+        }
+        let monetization_enabled = myso_indexer_alt_social_schema::models::MONETIZATION_ENABLED;
+        if self
+            .inner
+            .monetization_status
+            .is_some_and(|status| status != monetization_enabled)
+        {
+            return false;
+        }
+        let Some(reader_opt) = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()
+        else {
+            return false;
+        };
+        let Some(reader) = reader_opt.as_ref().as_ref() else {
+            return false;
+        };
+        let Ok(Some(manifest)) = reader
+            .get_revenue_manifest_for_post(&self.inner.post_id)
+            .await
+        else {
+            return false;
+        };
+        let (creator_bps, platform_bps, treasury_bps, non_platform_to_creator_bps) =
+            match reader.get_spt_exchange_config().await {
+                Ok(Some(config)) => (
+                    config.reservation_creator_fee_bps.max(0) as u64,
+                    config.reservation_platform_fee_bps.max(0) as u64,
+                    config.reservation_treasury_fee_bps.max(0) as u64,
+                    config.non_platform_platform_to_creator_bps.max(0) as u64,
+                ),
+                _ => (
+                    myso_indexer_alt_social_schema::models::DEFAULT_RESERVATION_CREATOR_FEE_BPS
+                        as u64,
+                    myso_indexer_alt_social_schema::models::DEFAULT_RESERVATION_PLATFORM_FEE_BPS
+                        as u64,
+                    myso_indexer_alt_social_schema::models::DEFAULT_RESERVATION_TREASURY_FEE_BPS
+                        as u64,
+                    5_000,
+                ),
+            };
+        let creator_fee = myso_indexer_alt_social_schema::models::reservation_creator_fee_for_vault_check(
+            amount,
+            creator_bps,
+            platform_bps,
+            treasury_bps,
+            non_platform_to_creator_bps,
+            true,
+        );
+        myso_indexer_alt_social_schema::models::post_reserve_requires_beneficiary_vault_for_amount(
+            &manifest.entries_json,
+            creator_fee,
+        )
     }
 
     /// Media type analyzed (1=image, 2=video, 3=audio).

@@ -31,8 +31,8 @@ use myso_indexer_alt_social_schema::models::{
     NewMediaAssetResolvedPolicy, NewMediaAssetRightsUpdate, NewMediaAssetUsage, NewPostUsageDecisionEvent, NewRevenueManifestRecord,
     NewPromotionBudgetEvent, NewPromotionStatusEvent, NewPromotionView, NewReaction,
     NewReactionCount, NewReport, NewRepost, NewSubscriptionAccessLog, NewTip, NewUnifiedRevenue,
-    REVENUE_TYPE_PROMOTION_ECOSYSTEM_FEE, REVENUE_TYPE_PROMOTION_PLATFORM_FEE,
-    REVENUE_TYPE_PROMOTION_VIEWER_NET,
+    derive_poc_redirect_from_manifest, REVENUE_TYPE_PROMOTION_ECOSYSTEM_FEE,
+    REVENUE_TYPE_PROMOTION_PLATFORM_FEE, REVENUE_TYPE_PROMOTION_VIEWER_NET,
 };
 use myso_indexer_alt_social_schema::schema::{
     comments, ecosystem_treasury,     composition_analysis_records, detected_asset_relationships, fingerprint_observations,
@@ -2103,8 +2103,26 @@ impl Handler for PostsHandler {
                         .await?;
                 }
                 PostRow::RevenueManifestRecord(r) => {
+                    let post_id = r.post_id.clone();
+                    let entries_json = r.entries_json.clone();
                     total += diesel::insert_into(revenue_manifests::table)
                         .values(r)
+                        .execute(conn)
+                        .await?;
+                    let owner: Option<String> = posts::table
+                        .filter(posts::post_id.eq(&post_id))
+                        .order(posts::time.desc())
+                        .select(posts::owner)
+                        .first(conn)
+                        .await
+                        .optional()?;
+                    let derived =
+                        derive_poc_redirect_from_manifest(&entries_json, owner.as_deref());
+                    total += diesel::update(posts::table.filter(posts::post_id.eq(&post_id)))
+                        .set((
+                            posts::poc_redirection_kind.eq(Some(derived.poc_redirection_kind)),
+                            posts::revenue_redirect_to.eq(derived.revenue_redirect_to),
+                        ))
                         .execute(conn)
                         .await?;
                 }

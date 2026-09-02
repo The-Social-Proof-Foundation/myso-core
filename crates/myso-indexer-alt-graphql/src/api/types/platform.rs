@@ -13,11 +13,16 @@ use myso_indexer_alt_social_schema::models::{
 };
 
 use crate::api::resolve_profile::resolve_profile_summary;
+use myso_types::dynamic_field::DynamicFieldType;
+
+use crate::api::scalars::base64::Base64;
 use crate::api::scalars::id::Id;
 use crate::api::scalars::json::Json;
 use crate::api::scalars::myso_address::MySoAddress;
+use crate::api::scalars::type_filter::TypeInput;
 use crate::api::scalars::uint53::UInt53;
 use crate::api::types::blocked::PlatformBlockedProfileSummary;
+use crate::api::types::dynamic_field::DynamicField;
 use crate::api::types::move_object::MoveObject;
 use crate::api::types::move_type::MoveType;
 use crate::api::types::move_value::MoveValue;
@@ -26,25 +31,40 @@ use crate::api::types::profile_summary::ProfileSummary;
 use crate::error::RpcError;
 use crate::scope::Scope;
 
-fn parse_platform_treasury_balance_from_json(value: &serde_json::Value) -> Option<u64> {
-    value.get("treasury").and_then(|treasury| {
-        if let Some(s) = treasury.as_str() {
-            s.parse().ok()
-        } else if let Some(obj) = treasury.as_object() {
-            obj.get("value").and_then(|v| {
-                v.as_str()
-                    .and_then(|s| s.parse().ok())
-                    .or_else(|| v.as_u64())
-            })
-        } else {
-            treasury.as_u64()
-        }
-    })
+fn parse_u64_json(value: &serde_json::Value) -> Option<u64> {
+    if let Some(s) = value.as_str() {
+        s.parse().ok()
+    } else {
+        value.as_u64()
+    }
+}
+
+fn parse_balance_value_json(value: &serde_json::Value) -> Option<u64> {
+    if let Some(n) = parse_u64_json(value) {
+        return Some(n);
+    }
+    value
+        .get("value")
+        .and_then(parse_u64_json)
+        .or_else(|| value.get("value").and_then(parse_balance_value_json))
+}
+
+fn extract_bag_id(value: &serde_json::Value) -> Option<String> {
+    let bag = value.get("treasury_balances")?;
+    if let Some(s) = bag.as_str() {
+        return Some(s.to_string());
+    }
+    let id = bag.get("id")?;
+    if let Some(s) = id.as_str() {
+        return Some(s.to_string());
+    }
+    id.get("id").and_then(|v| v.as_str()).map(str::to_string)
 }
 
 async fn load_live_platform_treasury_balance(
     ctx: &Context<'_>,
     platform_id: &str,
+    coin_type: &str,
 ) -> Option<Result<UInt53, RpcError>> {
     let address = MySoAddress::from_str(platform_id).ok()?;
     let scope: &Scope = ctx.data().ok()?;
@@ -63,19 +83,53 @@ async fn load_live_platform_treasury_balance(
         Ok(None) => return None,
         Err(error) => return Some(Err(error)),
     };
-    let scope = move_object
+    let package = native.type_().address().to_canonical_string(true);
+    let object_scope = move_object
         .super_
         .super_
         .scope
         .with_root_version(native.version().value());
-    let move_type = MoveType::from_native(native.type_().clone().into(), scope);
+    let move_type = MoveType::from_native(native.type_().clone().into(), object_scope.clone());
     let move_value = MoveValue::new(move_type, native.contents().to_owned());
     let json_value = match move_value.to_json_value(ctx).await {
         Ok(Some(json_value)) => json_value,
         Ok(None) => return None,
         Err(error) => return Some(Err(error)),
     };
-    let balance = parse_platform_treasury_balance_from_json(&json_value)?;
+    let bag_id = extract_bag_id(&json_value)?;
+    let bag_address = MySoAddress::from_str(&bag_id).ok()?;
+    let key_type = format!("{package}::platform::PlatformTreasuryKey<{coin_type}>");
+    let type_input = match TypeInput::from_str(&key_type) {
+        Ok(t) => t,
+        Err(_) => return None,
+    };
+    let field = match DynamicField::by_serialized_name(
+        ctx,
+        object_scope.clone(),
+        bag_address,
+        DynamicFieldType::DynamicField,
+        type_input,
+        Base64::from(Vec::new()),
+    )
+    .await
+    {
+        Ok(Some(field)) => field,
+        Ok(None) => return None,
+        Err(error) => return Some(Err(error)),
+    };
+    let native_field = match field.native(ctx).await {
+        Ok(Some(native_field)) => native_field,
+        Ok(None) => return None,
+        Err(error) => return Some(Err(error)),
+    };
+    let value_type = MoveType::from_native(native_field.value_type.clone(), object_scope);
+    let value = MoveValue::new(value_type, native_field.value_bytes.clone());
+    let value_json = match value.to_json_value(ctx).await {
+        Ok(Some(value_json)) => value_json,
+        Ok(None) => return None,
+        Err(error) => return Some(Err(error)),
+    };
+    let balance = parse_balance_value_json(&value_json)?;
     Some(Ok(UInt53::from(balance)))
 }
 
@@ -290,21 +344,44 @@ impl Platform {
         self.inner.voting_period_epochs
     }
 
-    /// Materialized platform treasury balance in mist (indexed from on-chain events).
-    async fn treasury_balance(&self, ctx: &Context<'_>) -> Option<UInt53> {
+    /// Indexed multi-asset platform treasury holdings.
+    async fn treasury_balances(&self, ctx: &Context<'_>) -> Vec<PlatformTreasuryBalance> {
+        let Some(reader_opt) = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()
+        else {
+            return Vec::new();
+        };
+        let Some(reader) = reader_opt.as_ref().as_ref() else {
+            return Vec::new();
+        };
+        reader
+            .list_platform_treasury_balances(&self.inner.platform_id)
+            .await
+            .unwrap_or_default()
+            .into_iter()
+            .map(PlatformTreasuryBalance::from_row)
+            .collect()
+    }
+
+    /// Indexed treasury balance for one coin type.
+    async fn treasury_balance(&self, ctx: &Context<'_>, coin_type: String) -> Option<UInt53> {
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
         let row = reader
-            .get_platform_treasury_balance(&self.inner.platform_id)
+            .get_platform_treasury_balance(&self.inner.platform_id, &coin_type)
             .await
             .ok()??;
-        Some(UInt53::from(row.balance_mist as u64))
+        Some(UInt53::from(row.balance as u64))
     }
 
-    /// Live platform treasury balance in mist (read from the Platform object on-chain).
-    async fn treasury_balance_live(&self, ctx: &Context<'_>) -> Option<Result<UInt53, RpcError>> {
-        load_live_platform_treasury_balance(ctx, &self.inner.platform_id).await
+    /// Live bag balance for one coin type (RPC read of `treasury_balances`).
+    async fn treasury_balance_live(
+        &self,
+        ctx: &Context<'_>,
+        coin_type: String,
+    ) -> Option<Result<UInt53, RpcError>> {
+        load_live_platform_treasury_balance(ctx, &self.inner.platform_id, &coin_type).await
     }
 
     /// Paginated platform treasury withdrawals.
@@ -466,6 +543,40 @@ impl PlatformTreasuryWithdrawalSummary {
 
     async fn timestamp(&self) -> UInt53 {
         UInt53::from(self.inner.timestamp as u64)
+    }
+
+    async fn coin_type(&self) -> &str {
+        &self.inner.coin_type
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct PlatformTreasuryBalance {
+    inner: myso_indexer_alt_social_reader::platform::PlatformTreasuryBalanceRow,
+}
+
+impl PlatformTreasuryBalance {
+    fn from_row(inner: myso_indexer_alt_social_reader::platform::PlatformTreasuryBalanceRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl PlatformTreasuryBalance {
+    async fn coin_type(&self) -> &str {
+        &self.inner.coin_type
+    }
+
+    async fn balance(&self) -> UInt53 {
+        UInt53::from(self.inner.balance as u64)
+    }
+
+    async fn last_funded_at(&self) -> Option<UInt53> {
+        self.inner.last_funded_at.map(|v| UInt53::from(v as u64))
+    }
+
+    async fn last_withdrawn_at(&self) -> Option<UInt53> {
+        self.inner.last_withdrawn_at.map(|v| UInt53::from(v as u64))
     }
 }
 

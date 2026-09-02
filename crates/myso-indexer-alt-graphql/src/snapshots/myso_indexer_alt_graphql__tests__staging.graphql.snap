@@ -5262,11 +5262,15 @@ type Platform implements Node {
 	"""
 	Materialized platform treasury balance in mist (indexed from on-chain events).
 	"""
-	treasuryBalance: UInt53
+	treasuryBalances: [PlatformTreasuryBalance!]!
 	"""
-	Live platform treasury balance in mist (read from the Platform object on-chain).
+	Indexed treasury balance for one coin type.
 	"""
-	treasuryBalanceLive: UInt53
+	treasuryBalance(coinType: String!): UInt53
+	"""
+	Live bag balance for one coin type (RPC read of treasury_balances).
+	"""
+	treasuryBalanceLive(coinType: String!): UInt53
 	"""
 	Paginated platform treasury withdrawals.
 	"""
@@ -5507,8 +5511,16 @@ type PlatformRevenueSummary {
 	totalTransactions: Int!
 }
 
+type PlatformTreasuryBalance {
+	balance: UInt53!
+	coinType: String!
+	lastFundedAt: UInt53
+	lastWithdrawnAt: UInt53
+}
+
 type PlatformTreasuryWithdrawalSummary {
 	amount: UInt53!
+	coinType: String!
 	executedBy: String!
 	platformId: String!
 	reasonCode: Int!
@@ -6838,6 +6850,7 @@ type ProfileSubscription {
 	subscriber: String!
 	subscriptionId: String!
 	tierLevel: Int
+	coinType: String!
 }
 
 type ProfileSubscriptionPlan {
@@ -6852,6 +6865,7 @@ type ProfileSubscriptionPlan {
 	tierLevel: Int
 	title: String!
 	updatedAt: Int
+	coinType: String!
 }
 
 type ProfileSubscriptionService {

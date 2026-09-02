@@ -430,3 +430,243 @@ pub struct DetectedRelationshipRow {
     #[diesel(sql_type = BigInt)]
     pub detected_at: i64,
 }
+
+/// Matches `post::POC_REDIRECT_*` / Move `poc_redirection_kind` on posts.
+pub const POC_REDIRECT_NONE: i16 = 0;
+pub const POC_REDIRECT_WALLET: i16 = 1;
+pub const POC_REDIRECT_ESCROW: i16 = 2;
+
+/// Matches `media_asset::payout_wallet` / `payout_escrow`.
+pub const MANIFEST_PAYOUT_WALLET: u8 = 0;
+pub const MANIFEST_PAYOUT_ESCROW: u8 = 1;
+pub const MANIFEST_BPS_TOTAL: u64 = 10_000;
+
+/// Parsed revenue-manifest entry used to derive post PoC redirect fields.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ManifestEntryView {
+    pub beneficiary: String,
+    pub share_bps: u64,
+    pub payout_mode: u8,
+}
+
+/// `posts.poc_redirection_kind` + `posts.revenue_redirect_to` derived from a manifest write.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ManifestPocRedirect {
+    pub poc_redirection_kind: i16,
+    pub revenue_redirect_to: Option<String>,
+}
+
+fn json_u64(value: &serde_json::Value) -> Option<u64> {
+    value
+        .as_u64()
+        .or_else(|| value.as_i64().and_then(|n| u64::try_from(n).ok()))
+        .or_else(|| value.as_str().and_then(|s| s.parse().ok()))
+}
+
+fn json_address(value: &serde_json::Value) -> Option<String> {
+    if let Some(s) = value.as_str() {
+        let trimmed = s.trim();
+        if trimmed.starts_with("0x") && trimmed.len() > 2 {
+            return Some(trimmed.to_string());
+        }
+    }
+    if let Some(s) = value.get("address").and_then(|v| v.as_str()) {
+        let trimmed = s.trim();
+        if trimmed.starts_with("0x") && trimmed.len() > 2 {
+            return Some(trimmed.to_string());
+        }
+    }
+    None
+}
+
+fn normalize_address(raw: &str) -> String {
+    raw.trim().to_ascii_lowercase()
+}
+
+fn manifest_entry_object(value: &serde_json::Value) -> Option<&serde_json::Map<String, serde_json::Value>> {
+    let object = value.as_object()?;
+    if let Some(fields) = object.get("fields").and_then(|v| v.as_object()) {
+        return Some(fields);
+    }
+    Some(object)
+}
+
+fn parse_manifest_entry(value: &serde_json::Value) -> Option<ManifestEntryView> {
+    let fields = manifest_entry_object(value)?;
+    let beneficiary = fields.get("beneficiary").and_then(json_address)?;
+    let share_bps = fields
+        .get("share_bps")
+        .or_else(|| fields.get("shareBps"))
+        .and_then(json_u64)?;
+    let payout_mode = fields
+        .get("payout_mode")
+        .or_else(|| fields.get("payoutMode"))
+        .and_then(json_u64)
+        .and_then(|n| u8::try_from(n).ok())
+        .unwrap_or(MANIFEST_PAYOUT_WALLET);
+    Some(ManifestEntryView {
+        beneficiary,
+        share_bps,
+        payout_mode,
+    })
+}
+
+/// Parse `revenue_manifests.entries_json` (array, or `{ entries | entries_json: [...] }`).
+pub fn parse_manifest_entries(entries_json: &serde_json::Value) -> Vec<ManifestEntryView> {
+    let array = entries_json.as_array().or_else(|| {
+        entries_json
+            .get("entries")
+            .and_then(|v| v.as_array())
+            .or_else(|| entries_json.get("entries_json").and_then(|v| v.as_array()))
+    });
+    array
+        .map(|items| items.iter().filter_map(parse_manifest_entry).collect())
+        .unwrap_or_default()
+}
+
+pub fn manifest_uses_escrow_redirect(entries_json: &serde_json::Value) -> bool {
+    parse_manifest_entries(entries_json)
+        .iter()
+        .any(|e| e.payout_mode == MANIFEST_PAYOUT_ESCROW && e.share_bps > 0)
+}
+
+pub fn manifest_escrow_beneficiaries(entries_json: &serde_json::Value) -> Vec<String> {
+    parse_manifest_entries(entries_json)
+        .into_iter()
+        .filter(|e| e.payout_mode == MANIFEST_PAYOUT_ESCROW && e.share_bps > 0)
+        .map(|e| e.beneficiary)
+        .collect()
+}
+
+/// Derive `poc_redirection_kind` and `revenue_redirect_to` from a newly written manifest.
+/// Escrow entry with share > 0 → 2; otherwise a present manifest → 1.
+/// `revenue_redirect_to` is the first non-owner beneficiary (Move `manifest_redirect_beneficiary`).
+pub fn derive_poc_redirect_from_manifest(
+    entries_json: &serde_json::Value,
+    post_owner: Option<&str>,
+) -> ManifestPocRedirect {
+    let entries = parse_manifest_entries(entries_json);
+    let poc_redirection_kind = if entries
+        .iter()
+        .any(|e| e.payout_mode == MANIFEST_PAYOUT_ESCROW && e.share_bps > 0)
+    {
+        POC_REDIRECT_ESCROW
+    } else {
+        POC_REDIRECT_WALLET
+    };
+    let owner_norm = post_owner.map(normalize_address);
+    let revenue_redirect_to = entries.iter().find_map(|e| {
+        let beneficiary_norm = normalize_address(&e.beneficiary);
+        if owner_norm
+            .as_ref()
+            .is_some_and(|owner| owner == &beneficiary_norm)
+        {
+            None
+        } else {
+            Some(e.beneficiary.clone())
+        }
+    });
+    ManifestPocRedirect {
+        poc_redirection_kind,
+        revenue_redirect_to,
+    }
+}
+
+/// Creator-fee amount that reservation fee paths pass through the post revenue manifest.
+/// Mirrors `social_proof_tokens::reservation_creator_fee_for_vault_check`.
+pub fn reservation_creator_fee_for_vault_check(
+    reservation_amount: u64,
+    reservation_creator_fee_bps: u64,
+    reservation_platform_fee_bps: u64,
+    reservation_treasury_fee_bps: u64,
+    non_platform_platform_to_creator_bps: u64,
+    platform: bool,
+) -> u64 {
+    let total_bps = reservation_creator_fee_bps
+        .saturating_add(reservation_platform_fee_bps)
+        .saturating_add(reservation_treasury_fee_bps);
+    if reservation_amount == 0 || total_bps == 0 {
+        return 0;
+    }
+    let fee_amount = reservation_amount.saturating_mul(total_bps) / 10_000;
+    let creator_fee = fee_amount.saturating_mul(reservation_creator_fee_bps) / total_bps;
+    if platform {
+        creator_fee
+    } else {
+        let platform_fee = fee_amount.saturating_mul(reservation_platform_fee_bps) / total_bps;
+        creator_fee
+            + platform_fee.saturating_mul(non_platform_platform_to_creator_bps) / 10_000
+    }
+}
+
+/// True when the creator-fee slice hits an escrow manifest entry (Move tip/reserve vault predicate).
+pub fn post_reserve_requires_beneficiary_vault_for_amount(
+    entries_json: &serde_json::Value,
+    creator_fee_amount: u64,
+) -> bool {
+    if creator_fee_amount == 0 {
+        return false;
+    }
+    parse_manifest_entries(entries_json).iter().any(|e| {
+        e.payout_mode == MANIFEST_PAYOUT_ESCROW
+            && creator_fee_amount.saturating_mul(e.share_bps) / MANIFEST_BPS_TOTAL > 0
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn entry(beneficiary: &str, share_bps: u64, payout_mode: u8) -> serde_json::Value {
+        serde_json::json!({
+            "beneficiary": beneficiary,
+            "share_bps": share_bps,
+            "payout_mode": payout_mode,
+        })
+    }
+
+    #[test]
+    fn derive_wallet_manifest_sets_kind_one() {
+        let owner = "0xabc";
+        let json = serde_json::json!([
+            entry(owner, 7_000, MANIFEST_PAYOUT_WALLET),
+            entry("0xdef", 3_000, MANIFEST_PAYOUT_WALLET),
+        ]);
+        let derived = derive_poc_redirect_from_manifest(&json, Some(owner));
+        assert_eq!(derived.poc_redirection_kind, POC_REDIRECT_WALLET);
+        assert_eq!(derived.revenue_redirect_to.as_deref(), Some("0xdef"));
+        assert!(!manifest_uses_escrow_redirect(&json));
+    }
+
+    #[test]
+    fn derive_escrow_manifest_sets_kind_two() {
+        let owner = "0xABC";
+        let json = serde_json::json!([
+            entry("0xabc", 5_000, MANIFEST_PAYOUT_WALLET),
+            entry("0xparent", 5_000, MANIFEST_PAYOUT_ESCROW),
+        ]);
+        let derived = derive_poc_redirect_from_manifest(&json, Some(owner));
+        assert_eq!(derived.poc_redirection_kind, POC_REDIRECT_ESCROW);
+        assert_eq!(derived.revenue_redirect_to.as_deref(), Some("0xparent"));
+        assert_eq!(
+            manifest_escrow_beneficiaries(&json),
+            vec!["0xparent".to_string()]
+        );
+    }
+
+    #[test]
+    fn vault_required_uses_creator_fee_slice() {
+        let json = serde_json::json!([entry("0xparent", 100, MANIFEST_PAYOUT_ESCROW)]);
+        assert!(!post_reserve_requires_beneficiary_vault_for_amount(&json, 50));
+        assert!(post_reserve_requires_beneficiary_vault_for_amount(&json, 100));
+        let creator_fee = reservation_creator_fee_for_vault_check(
+            1_000_000_000,
+            100,
+            25,
+            25,
+            5_000,
+            true,
+        );
+        assert_eq!(creator_fee, 10_000_000);
+    }
+}

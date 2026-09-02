@@ -345,6 +345,29 @@ subscription_call_create_subscription_plan() {
         "@$(normalize_hex_id "$CLOCK_ID")"
 }
 
+subscription_call_create_subscription_plan_myusd() {
+    local sender="${1:-$CREATOR_ADDRESS}"
+    local title="${2:-DripDrop Badge Monthly}"
+    local price="${3:-3990000}"
+    local duration_ms="${4:-2592000000}"
+    local coin_type="${5:-${MYUSD_COIN_TYPE:-}}"
+    subscription_require_session_objects SUBSCRIPTION_CONFIG_ID SERVICE_ID || return 1
+    if [[ -z "$coin_type" ]]; then
+        echo "MYUSD_COIN_TYPE is required for create_subscription_plan<MYUSD>" >&2
+        return 1
+    fi
+    run_myso_call_as_capture_typed "$sender" subscription create_subscription_plan "$coin_type" \
+        "@$(normalize_hex_id "$SUBSCRIPTION_CONFIG_ID")" \
+        "@$(normalize_hex_id "$SERVICE_ID")" \
+        "$(literal_move_string "$title")" \
+        '[]' \
+        "$price" \
+        "$duration_ms" \
+        '[]' \
+        '[]' \
+        "@$(normalize_hex_id "$CLOCK_ID")"
+}
+
 subscription_call_subscribe_to_profile() {
     local sender="$1" coin="$2" auto_renew="${3:-false}" renewal_periods="${4:-${RENEWAL_PERIODS:-${RENEWAL_MONTHS:-0}}}"
     subscription_require_session_objects SERVICE_ID PLAN_ID || return 1

@@ -71,7 +71,7 @@ use crate::platform::PlatformRow;
 use crate::platform::{
     get_platform_blocked_profiles, get_platform_config, get_platform_members,
     get_platform_moderators, get_platform_treasury_balance, get_platform_user_access,
-    list_platform_treasury_withdrawals,
+    list_platform_treasury_balances, list_platform_treasury_withdrawals,
 };
 use crate::pnl::{ProfilePnLWindow, ProfilePnLWindowResult, get_profile_pnl_for_windows};
 use crate::poc::{
@@ -1099,12 +1099,21 @@ impl SocialPgReader {
         get_platform_user_access(&mut conn, platform_id, user_address, &self.metrics).await
     }
 
+    pub async fn list_platform_treasury_balances(
+        &self,
+        platform_id: &str,
+    ) -> anyhow::Result<Vec<crate::platform::PlatformTreasuryBalanceRow>> {
+        let mut conn = self.connect().await?;
+        list_platform_treasury_balances(&mut conn, platform_id, &self.metrics).await
+    }
+
     pub async fn get_platform_treasury_balance(
         &self,
         platform_id: &str,
+        coin_type: &str,
     ) -> anyhow::Result<Option<crate::platform::PlatformTreasuryBalanceRow>> {
         let mut conn = self.connect().await?;
-        get_platform_treasury_balance(&mut conn, platform_id, &self.metrics).await
+        get_platform_treasury_balance(&mut conn, platform_id, coin_type, &self.metrics).await
     }
 
     pub async fn list_platform_treasury_withdrawals(

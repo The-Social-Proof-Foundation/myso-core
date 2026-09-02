@@ -97,6 +97,10 @@ impl ProfileSubscriptionPlan {
         self.inner.platform_id.as_deref()
     }
 
+    async fn coin_type(&self) -> &str {
+        &self.inner.coin_type
+    }
+
     async fn active(&self) -> bool {
         self.inner.active
     }
@@ -141,6 +145,10 @@ impl ProfileSubscription {
 
     async fn platform_id(&self) -> Option<&str> {
         self.inner.platform_id.as_deref()
+    }
+
+    async fn coin_type(&self) -> &str {
+        &self.inner.coin_type
     }
 
     async fn price(&self) -> i64 {

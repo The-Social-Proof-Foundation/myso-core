@@ -766,6 +766,18 @@ diesel::table! {
         timestamp -> Int8,
         created_at -> Timestamp,
         event_id -> Nullable<Text>,
+        coin_type -> Text,
+    }
+}
+
+diesel::table! {
+    platform_treasury_coin_balances (platform_id, coin_type) {
+        platform_id -> Text,
+        coin_type -> Text,
+        balance -> Int8,
+        last_funded_at -> Nullable<Int8>,
+        last_withdrawn_at -> Nullable<Int8>,
+        updated_at -> Timestamptz,
     }
 }
 
@@ -1505,6 +1517,7 @@ diesel::table! {
         duration_ms -> Int8,
         tier_level -> Nullable<Int8>,
         platform_id -> Nullable<Text>,
+        coin_type -> Text,
         active -> Bool,
         created_at -> Int8,
         updated_at -> Nullable<Int8>,
@@ -1528,6 +1541,7 @@ diesel::table! {
         auto_renew -> Bool,
         renewal_balance -> Int8,
         renewal_count -> Int8,
+        coin_type -> Text,
         cancelled_at -> Nullable<Int8>,
         time -> Timestamptz,
         transaction_id -> Text,
@@ -2779,6 +2793,7 @@ diesel::table! {
         creator_amount -> Int8,
         platform_address -> Nullable<Text>,
         revenue_type -> Text,
+        coin_type -> Text,
         payment_time -> Int8,
         time -> Timestamptz,
         transaction_id -> Text,
@@ -3139,6 +3154,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     platform_moderator_permissions,
     platform_moderators,
     platform_treasury_balances,
+    platform_treasury_coin_balances,
     platform_treasury_withdrawals,
     platforms,
     poc_analysis_results,

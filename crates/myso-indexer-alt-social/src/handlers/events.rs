@@ -2564,6 +2564,7 @@ pub struct BcsSubscriptionPlanCreatedEvent {
     duration_ms: u64,
     tier_level: Option<u64>,
     platform_id: Option<AccountAddress>,
+    coin_type: BcsMoveTypeName,
     created_at: u64,
 }
 
@@ -2577,6 +2578,7 @@ pub struct BcsSubscriptionPlanUpdatedEvent {
     duration_ms: u64,
     tier_level: Option<u64>,
     platform_id: Option<AccountAddress>,
+    coin_type: BcsMoveTypeName,
     active: bool,
     updated_by: AccountAddress,
     updated_at: u64,
@@ -2605,6 +2607,7 @@ pub struct BcsProfileSubscriptionCreatedEvent {
     ecosystem_fee: u64,
     creator_amount: u64,
     payment_platform_id: Option<AccountAddress>,
+    coin_type: BcsMoveTypeName,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -2623,6 +2626,7 @@ pub struct BcsProfileSubscriptionRenewedEvent {
     ecosystem_fee: u64,
     creator_amount: u64,
     payment_platform_id: Option<AccountAddress>,
+    coin_type: BcsMoveTypeName,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -2638,6 +2642,7 @@ pub struct BcsRenewalBalanceFundedEvent {
     subscriber: AccountAddress,
     funded_amount: u64,
     new_balance: u64,
+    coin_type: BcsMoveTypeName,
     timestamp: u64,
 }
 
@@ -3059,6 +3064,7 @@ pub struct BcsPlatformTreasuryWithdrawalEvent {
     amount: u64,
     reason_code: u8,
     executed_by: AccountAddress,
+    coin_type: BcsMoveTypeName,
     timestamp: u64,
 }
 
@@ -3068,6 +3074,7 @@ pub struct BcsPlatformTreasuryFundedEvent {
     amount: u64,
     funded_by: AccountAddress,
     new_balance: u64,
+    coin_type: BcsMoveTypeName,
     timestamp: u64,
 }
 
@@ -4910,6 +4917,7 @@ fn parse_platform_event(
                 "amount": ev.amount,
                 "reason_code": ev.reason_code,
                 "executed_by": addr_to_string(&ev.executed_by),
+                "coin_type": bcs_move_type_name_display(&ev.coin_type),
                 "timestamp": ev.timestamp,
             })))
         }
@@ -4921,6 +4929,7 @@ fn parse_platform_event(
                 "amount": ev.amount,
                 "funded_by": addr_to_string(&ev.funded_by),
                 "new_balance": ev.new_balance,
+                "coin_type": bcs_move_type_name_display(&ev.coin_type),
                 "timestamp": ev.timestamp,
             })))
         }
@@ -6266,6 +6275,7 @@ fn parse_subscription_event(
                 "duration_ms": ev.duration_ms,
                 "tier_level": ev.tier_level,
                 "platform_id": ev.platform_id.as_ref().map(addr_to_string),
+                "coin_type": bcs_move_type_name_display(&ev.coin_type),
                 "created_at": ev.created_at,
             })))
         }
@@ -6281,6 +6291,7 @@ fn parse_subscription_event(
                 "duration_ms": ev.duration_ms,
                 "tier_level": ev.tier_level,
                 "platform_id": ev.platform_id.as_ref().map(addr_to_string),
+                "coin_type": bcs_move_type_name_display(&ev.coin_type),
                 "active": ev.active,
                 "updated_by": addr_to_string(&ev.updated_by),
                 "updated_at": ev.updated_at,
@@ -6313,6 +6324,7 @@ fn parse_subscription_event(
                 "ecosystem_fee": ev.ecosystem_fee,
                 "creator_amount": ev.creator_amount,
                 "payment_platform_id": ev.payment_platform_id.as_ref().map(addr_to_string),
+                "coin_type": bcs_move_type_name_display(&ev.coin_type),
             })))
         }
         "ProfileSubscriptionRenewedEvent" => {
@@ -6333,6 +6345,7 @@ fn parse_subscription_event(
                 "ecosystem_fee": ev.ecosystem_fee,
                 "creator_amount": ev.creator_amount,
                 "payment_platform_id": ev.payment_platform_id.as_ref().map(addr_to_string),
+                "coin_type": bcs_move_type_name_display(&ev.coin_type),
             })))
         }
         "ProfileSubscriptionCancelledEvent" => {
@@ -6352,6 +6365,7 @@ fn parse_subscription_event(
                 "subscriber": addr_to_string(&ev.subscriber),
                 "funded_amount": ev.funded_amount,
                 "new_balance": ev.new_balance,
+                "coin_type": bcs_move_type_name_display(&ev.coin_type),
                 "timestamp": ev.timestamp,
             })))
         }
@@ -7189,6 +7203,11 @@ mod tests {
             ecosystem_fee: 25,
             creator_amount: 425,
             payment_platform_id: None,
+            coin_type: BcsMoveTypeName {
+                name: BcsMoveAsciiString {
+                    bytes: b"0x2::myso::MYSO".to_vec(),
+                },
+            },
         };
         let bytes2 = bcs::to_bytes(&ev2).expect("serialize");
         let result2 =

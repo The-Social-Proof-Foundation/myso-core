@@ -10198,6 +10198,9 @@ PlatformContentModerator
 PlatformPromotionAdmin
 	public struct
 	0x50c1::platform
+PlatformTreasuryKey
+	public struct
+	0x50c1::platform
 Platform
 	public struct
 	0x50c1::platform
@@ -10257,6 +10260,9 @@ registry_version
 	0x50c1::platform
 borrow_registry_version_mut
 	public(package) fun
+	0x50c1::platform
+deposit_to_treasury
+	fun
 	0x50c1::platform
 add_to_treasury
 	public(package) fun
@@ -10435,6 +10441,9 @@ created_at
 treasury_balance
 	public fun
 	0x50c1::platform
+treasury_has_balance
+	public fun
+	0x50c1::platform
 id
 	public fun
 	0x50c1::platform
@@ -10493,6 +10502,9 @@ SubscriptionConfigUpdatedEvent
 	public struct
 	0x50c1::subscription
 SubscriptionPlan
+	public struct
+	0x50c1::subscription
+RenewalBalanceKey
 	public struct
 	0x50c1::subscription
 ProfileSubscriptionService
@@ -10565,6 +10577,21 @@ borrow_active_plan
 	fun
 	0x50c1::subscription
 borrow_plan_for_renewal
+	fun
+	0x50c1::subscription
+assert_plan_coin_type
+	fun
+	0x50c1::subscription
+assert_subscription_coin_type
+	fun
+	0x50c1::subscription
+renewal_balance_value
+	fun
+	0x50c1::subscription
+join_renewal_balance
+	fun
+	0x50c1::subscription
+split_renewal_balance
 	fun
 	0x50c1::subscription
 create_profile_service
@@ -10679,6 +10706,12 @@ subscription_auto_renew
 	public fun
 	0x50c1::subscription
 subscription_renewal_balance
+	public fun
+	0x50c1::subscription
+subscription_coin_type
+	public fun
+	0x50c1::subscription
+plan_coin_type
 	public fun
 	0x50c1::subscription
 bootstrap_init
@@ -11968,10 +12001,22 @@ calculate_fee_amount_safe
 calculate_component_fee_safe
 	public(package) fun
 	0x50c1::social_proof_tokens
+reservation_creator_fee_for_vault_check
+	fun
+	0x50c1::social_proof_tokens
+finalize_post_reservation
+	fun
+	0x50c1::social_proof_tokens
 reserve_towards_post
 	public fun
 	0x50c1::social_proof_tokens
 reserve_towards_post_with_platform
+	public fun
+	0x50c1::social_proof_tokens
+reserve_towards_post_simple
+	public fun
+	0x50c1::social_proof_tokens
+reserve_towards_post_with_platform_simple
 	public fun
 	0x50c1::social_proof_tokens
 reserve_towards_profile
@@ -12048,6 +12093,18 @@ apply_pool_revenue_manifest_coin
 	0x50c1::social_proof_tokens
 apply_post_revenue_manifest_coin
 	fun
+	0x50c1::social_proof_tokens
+apply_post_revenue_manifest_coin_without_vault
+	fun
+	0x50c1::social_proof_tokens
+distribute_reservation_creator_fee_without_vault
+	fun
+	0x50c1::social_proof_tokens
+distribute_reservation_fees_with_post_no_vault
+	public(package) fun
+	0x50c1::social_proof_tokens
+distribute_reservation_fees_with_post_and_platform_no_vault
+	public(package) fun
 	0x50c1::social_proof_tokens
 distribute_creator_fee
 	fun

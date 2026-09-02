@@ -6,7 +6,7 @@
 
 #[allow(duplicate_alias, unused_use, lint(public_entry))]
 module social_contracts::platform {
-    use std::{string::{Self, String}, option, vector, type_name};
+    use std::{string::{Self, String}, option, vector, type_name::{Self, TypeName}};
     
     use myso::{
         object::{Self, UID, ID},
@@ -16,6 +16,7 @@ module social_contracts::platform {
         dynamic_field,
         vec_set::{Self, VecSet},
         table::{Self, Table},
+        bag::{Self, Bag},
         coin::{Self, Coin},
         balance::{Self, Balance},
         myso::MYSO,
@@ -164,6 +165,9 @@ module social_contracts::platform {
     /// Permission to manage promoted posts and view payouts
     public struct PlatformPromotionAdmin() has drop;
 
+    /// Bag key for a `Balance<T>` treasury slot.
+    public struct PlatformTreasuryKey<phantom T> has copy, drop, store {}
+
     /// Platform object that contains information about a social media platform
     public struct Platform has key {
         id: UID,
@@ -201,8 +205,8 @@ module social_contracts::platform {
         shutdown_date: Option<String>,
         /// Creation timestamp
         created_at: u64,
-        /// Platform-specific MYSO tokens treasury
-        treasury: Balance<MYSO>,
+        /// Per-coin treasury balances keyed by `PlatformTreasuryKey<T>`
+        treasury_balances: Bag,
         /// Whether the platform wants DAO governance
         wants_dao_governance: bool,
         /// DAO governance configuration parameters (all optional)
@@ -352,6 +356,7 @@ module social_contracts::platform {
         amount: u64,
         reason_code: u8,
         executed_by: address,
+        coin_type: TypeName,
         timestamp: u64,
     }
 
@@ -361,6 +366,7 @@ module social_contracts::platform {
         amount: u64,
         funded_by: address,
         new_balance: u64,
+        coin_type: TypeName,
         timestamp: u64,
     }
 
@@ -494,7 +500,7 @@ module social_contracts::platform {
             release_date,
             shutdown_date: option::none(),
             created_at: now,
-            treasury: balance::zero(),
+            treasury_balances: bag::new(ctx),
             wants_dao_governance,
             delegate_count: actual_delegate_count,
             delegate_term_epochs: actual_delegate_term_epochs,
@@ -747,6 +753,37 @@ module social_contracts::platform {
         &mut registry.version
     }
 
+    fun deposit_to_treasury<T>(
+        platform: &mut Platform,
+        coin: &mut Coin<T>,
+        amount: u64,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert!(platform.version == upgrade::current_version(), EWrongVersion);
+        assert!(amount > 0 && coin::value(coin) >= amount, EInvalidTokenAmount);
+
+        let treasury_coin = coin::split(coin, amount, ctx);
+        let incoming = coin::into_balance(treasury_coin);
+        let key = PlatformTreasuryKey<T> {};
+        if (bag::contains(&platform.treasury_balances, key)) {
+            let slot: &mut Balance<T> = bag::borrow_mut(&mut platform.treasury_balances, key);
+            balance::join(slot, incoming);
+        } else {
+            bag::add(&mut platform.treasury_balances, key, incoming);
+        };
+
+        let platform_id = object::uid_to_address(&platform.id);
+        event::emit(PlatformTreasuryFundedEvent {
+            platform_id,
+            amount,
+            funded_by: tx_context::sender(ctx),
+            new_balance: treasury_balance<T>(platform),
+            coin_type: type_name::with_defining_ids<T>(),
+            timestamp: clock::timestamp_ms(clock),
+        });
+    }
+
     /// Add MYSO tokens to platform treasury
     public(package) fun add_to_treasury(
         platform: &mut Platform,
@@ -755,37 +792,18 @@ module social_contracts::platform {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        // Check version compatibility
-        assert!(platform.version == upgrade::current_version(), EWrongVersion);
-        
-        // Check amount validity
-        assert!(amount > 0 && coin::value(coin) >= amount, EInvalidTokenAmount);
-        
-        // Split coin and add to treasury
-        let treasury_coin = coin::split(coin, amount, ctx);
-        balance::join(&mut platform.treasury, coin::into_balance(treasury_coin));
-        
-        // Emit treasury funded event
-        let platform_id = object::uid_to_address(&platform.id);
-        let new_balance = balance::value(&platform.treasury);
-        event::emit(PlatformTreasuryFundedEvent {
-            platform_id,
-            amount,
-            funded_by: tx_context::sender(ctx),
-            new_balance,
-            timestamp: clock::timestamp_ms(clock),
-        });
+        deposit_to_treasury<MYSO>(platform, coin, amount, clock, ctx);
     }
 
     /// Fund platform treasury from an external module (e.g. messaging paid DMs).
-    public fun fund_platform_treasury_from_coin(
+    public fun fund_platform_treasury_from_coin<T>(
         platform: &mut Platform,
-        coin: &mut Coin<MYSO>,
+        coin: &mut Coin<T>,
         amount: u64,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        add_to_treasury(platform, coin, amount, clock, ctx);
+        deposit_to_treasury<T>(platform, coin, amount, clock, ctx);
     }
 
     /// Mark a platform-linked governance proposal as implemented; pay the proposer the implementation pool.
@@ -1699,9 +1717,21 @@ module social_contracts::platform {
         platform.created_at
     }
 
-    /// Get platform treasury balance
-    public fun treasury_balance(platform: &Platform): u64 {
-        balance::value(&platform.treasury)
+    /// Get platform treasury balance for coin type `T`
+    public fun treasury_balance<T>(platform: &Platform): u64 {
+        let key = PlatformTreasuryKey<T> {};
+        if (!bag::contains_with_type<PlatformTreasuryKey<T>, Balance<T>>(&platform.treasury_balances, key)) {
+            return 0
+        };
+        let slot: &Balance<T> = bag::borrow(&platform.treasury_balances, key);
+        balance::value(slot)
+    }
+
+    /// Whether the platform treasury has a bag slot for coin type `T`
+    public fun treasury_has_balance<T>(platform: &Platform): bool {
+        let key = PlatformTreasuryKey<T> {};
+        bag::contains_with_type<PlatformTreasuryKey<T>, Balance<T>>(&platform.treasury_balances, key)
+            && treasury_balance<T>(platform) > 0
     }
 
     /// Get platform ID
@@ -1796,7 +1826,7 @@ module social_contracts::platform {
 
     /// Withdraw tokens to multiple recipients from the platform treasury.
     /// Callable by the platform developer or a moderator with treasury permission.
-    public entry fun withdraw_from_platform_treasury(
+    public entry fun withdraw_from_platform_treasury<T>(
         platform: &mut Platform,
         group: &PermissionedGroup<PlatformPackage>,
         recipients: vector<address>,
@@ -1813,19 +1843,25 @@ module social_contracts::platform {
         assert!(recipients_count > 0, EEmptyRecipientsList);
         
         let total_amount = amount_per_recipient * recipients_count;
-        assert!(balance::value(&platform.treasury) >= total_amount, EInsufficientTreasuryFunds);
+        let key = PlatformTreasuryKey<T> {};
+        assert!(
+            bag::contains_with_type<PlatformTreasuryKey<T>, Balance<T>>(&platform.treasury_balances, key),
+            EInsufficientTreasuryFunds
+        );
+        {
+            let slot: &Balance<T> = bag::borrow(&platform.treasury_balances, key);
+            assert!(balance::value(slot) >= total_amount, EInsufficientTreasuryFunds);
+        };
         
         let current_time = clock::timestamp_ms(clock);
         let platform_id = object::uid_to_address(&platform.id);
+        let coin_type = type_name::with_defining_ids<T>();
         
         let mut i = 0;
         while (i < recipients_count) {
             let recipient = *vector::borrow(&recipients, i);
-            
-            let withdrawal_coin = coin::from_balance(
-                balance::split(&mut platform.treasury, amount_per_recipient), 
-                ctx
-            );
+            let slot: &mut Balance<T> = bag::borrow_mut(&mut platform.treasury_balances, key);
+            let withdrawal_coin = coin::from_balance(balance::split(slot, amount_per_recipient), ctx);
             
             transfer::public_transfer(withdrawal_coin, recipient);
             
@@ -1835,6 +1871,7 @@ module social_contracts::platform {
                 amount: amount_per_recipient,
                 reason_code,
                 executed_by: caller,
+                coin_type,
                 timestamp: current_time,
             });
             
@@ -2088,14 +2125,14 @@ module social_contracts::platform {
     }
     
     #[test_only]
-    public fun test_fund_platform_treasury(
+    public fun test_fund_platform_treasury<T>(
         platform: &mut Platform,
-        coin: &mut Coin<MYSO>,
+        coin: &mut Coin<T>,
         amount: u64,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        add_to_treasury(platform, coin, amount, clock, ctx);
+        deposit_to_treasury<T>(platform, coin, amount, clock, ctx);
     }
 
     #[test_only]

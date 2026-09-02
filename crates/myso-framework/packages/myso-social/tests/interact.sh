@@ -434,7 +434,10 @@ subscription_create_plan() {
     read -r -p "duration_ms: " duration_ms
     read -r -p "Clock [${CLOCK_ID}]: " clk
     clk="${clk:-$CLOCK_ID}"
+    read -r -p "coin type [0x2::myso::MYSO]: " coin_type
+    coin_type="${coin_type:-0x2::myso::MYSO}"
     myso client call --package "$PACKAGE_ID" --module subscription --function create_subscription_plan \
+        --type-args "${coin_type}" \
         --args "@${cfg}" "@${svc}" "\"${title}\"" none "$price" "$duration_ms" none none "@${clk}" --gas-budget "$GAS_BUDGET"
     press_enter
     subscription_menu
@@ -452,7 +455,10 @@ subscription_subscribe() {
     read -r -p "renewal_periods: " rm
     read -r -p "Clock [${CLOCK_ID}]: " clk
     clk="${clk:-$CLOCK_ID}"
+    read -r -p "coin type [0x2::myso::MYSO]: " coin_type
+    coin_type="${coin_type:-0x2::myso::MYSO}"
     myso client call --package "$PACKAGE_ID" --module subscription --function subscribe_to_profile \
+        --type-args "${coin_type}" \
         --args "@${blr}" "@${cfg}" "@${svc}" "@${plan_id}" "@${tre}" "$coin" "$ar" "$rm" "@${clk}" --gas-budget "$GAS_BUDGET"
     press_enter
     subscription_menu

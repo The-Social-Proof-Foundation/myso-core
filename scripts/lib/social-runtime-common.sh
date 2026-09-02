@@ -847,6 +847,37 @@ run_myso_call_as_capture() {
     fi
 }
 
+run_myso_call_as_capture_typed() {
+    local sender="$1" module="$2" func="$3" type_args="$4"
+    shift 4
+    local -a cmd call_args=() out
+    local arg
+    while IFS= read -r -d '' arg; do call_args+=("$arg"); done < <(normalize_client_call_args "$@")
+    sender="$(normalize_hex_id "$sender")" || return 1
+    cmd=(myso client call --package "$PKG_SOCIAL" --sender "$sender" \
+        --module "$module" --function "$func" --type-args "$type_args")
+    local g
+    while IFS= read -r g; do [[ -n "$g" ]] && cmd+=("$g"); done < <(extra_gas_budget)
+    while IFS= read -r g; do [[ -n "$g" ]] && cmd+=("$g"); done < <(extra_dry)
+    cmd+=(--args)
+    cmd+=("${call_args[@]}")
+    echo "---" >&2
+    printf ' %q\n' "${cmd[@]}" >&2
+    echo "---" >&2
+    if [[ "${SKIP_CONFIRM_RUN:-0}" == 1 ]] || confirm_run; then
+        local rc=0
+        out="$(run_with_timeout "${MYSO_CMD_TIMEOUT_SEC:-180}" "${cmd[@]}" 2>&1)" || rc=$?
+        if [[ "$rc" == 124 ]]; then
+            echo "Timed out after ${MYSO_CMD_TIMEOUT_SEC:-180}s: ${cmd[*]}" >&2
+        fi
+        echo "$out" >&2
+        printf '%s' "$out"
+        return "$rc"
+    else
+        return 0
+    fi
+}
+
 extract_tx_digest() {
     local out="$1" digest
     [[ -n "$out" ]] || return 1

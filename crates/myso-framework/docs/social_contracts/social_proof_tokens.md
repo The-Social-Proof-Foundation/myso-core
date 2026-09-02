@@ -54,8 +54,12 @@ plus optional sub-token nano remainder into the <code>u64</code> nano-SPT values
 -  [Function `validate_reservation_fees`](#social_contracts_social_proof_tokens_validate_reservation_fees)
 -  [Function `calculate_fee_amount_safe`](#social_contracts_social_proof_tokens_calculate_fee_amount_safe)
 -  [Function `calculate_component_fee_safe`](#social_contracts_social_proof_tokens_calculate_component_fee_safe)
+-  [Function `reservation_creator_fee_for_vault_check`](#social_contracts_social_proof_tokens_reservation_creator_fee_for_vault_check)
+-  [Function `finalize_post_reservation`](#social_contracts_social_proof_tokens_finalize_post_reservation)
 -  [Function `reserve_towards_post`](#social_contracts_social_proof_tokens_reserve_towards_post)
 -  [Function `reserve_towards_post_with_platform`](#social_contracts_social_proof_tokens_reserve_towards_post_with_platform)
+-  [Function `reserve_towards_post_simple`](#social_contracts_social_proof_tokens_reserve_towards_post_simple)
+-  [Function `reserve_towards_post_with_platform_simple`](#social_contracts_social_proof_tokens_reserve_towards_post_with_platform_simple)
 -  [Function `reserve_towards_profile`](#social_contracts_social_proof_tokens_reserve_towards_profile)
 -  [Function `reserve_towards_profile_with_platform`](#social_contracts_social_proof_tokens_reserve_towards_profile_with_platform)
 -  [Function `apply_reservation_withdrawal_ledger`](#social_contracts_social_proof_tokens_apply_reservation_withdrawal_ledger)
@@ -81,6 +85,10 @@ plus optional sub-token nano remainder into the <code>u64</code> nano-SPT values
 -  [Function `should_apply_pool_revenue_manifest`](#social_contracts_social_proof_tokens_should_apply_pool_revenue_manifest)
 -  [Function `apply_pool_revenue_manifest_coin`](#social_contracts_social_proof_tokens_apply_pool_revenue_manifest_coin)
 -  [Function `apply_post_revenue_manifest_coin`](#social_contracts_social_proof_tokens_apply_post_revenue_manifest_coin)
+-  [Function `apply_post_revenue_manifest_coin_without_vault`](#social_contracts_social_proof_tokens_apply_post_revenue_manifest_coin_without_vault)
+-  [Function `distribute_reservation_creator_fee_without_vault`](#social_contracts_social_proof_tokens_distribute_reservation_creator_fee_without_vault)
+-  [Function `distribute_reservation_fees_with_post_no_vault`](#social_contracts_social_proof_tokens_distribute_reservation_fees_with_post_no_vault)
+-  [Function `distribute_reservation_fees_with_post_and_platform_no_vault`](#social_contracts_social_proof_tokens_distribute_reservation_fees_with_post_and_platform_no_vault)
 -  [Function `distribute_creator_fee`](#social_contracts_social_proof_tokens_distribute_creator_fee)
 -  [Function `distribute_creator_fee_from_pool`](#social_contracts_social_proof_tokens_distribute_creator_fee_from_pool)
 -  [Function `apply_post_poc_redirection`](#social_contracts_social_proof_tokens_apply_post_poc_redirection)
@@ -1983,6 +1991,26 @@ Transfer amount must be positive
 
 
 
+<a name="social_contracts_social_proof_tokens_EPostReserveRequiresBeneficiaryVault"></a>
+
+Simple post reserve called when the revenue manifest requires a beneficiary vault
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EPostReserveRequiresBeneficiaryVault">EPostReserveRequiresBeneficiaryVault</a>: u64 = 36;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_tokens_EPostReserveVaultNotRequired"></a>
+
+Vault post reserve called when the revenue manifest does not require a vault
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EPostReserveVaultNotRequired">EPostReserveVaultNotRequired</a>: u64 = 37;
+</code></pre>
+
+
+
 <a name="social_contracts_social_proof_tokens_TOKEN_TYPE_PROFILE"></a>
 
 
@@ -2799,6 +2827,155 @@ With overflow protection
 
 </details>
 
+<a name="social_contracts_social_proof_tokens_reservation_creator_fee_for_vault_check"></a>
+
+## Function `reservation_creator_fee_for_vault_check`
+
+Creator-fee amount that reservation fee paths pass through the post revenue manifest.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_reservation_creator_fee_for_vault_check">reservation_creator_fee_for_vault_check</a>(config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, amount: u64, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: bool): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_reservation_creator_fee_for_vault_check">reservation_creator_fee_for_vault_check</a>(
+    config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a>,
+    amount: u64,
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: bool
+): u64 {
+    <b>let</b> reservation_total_fee_bps = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_reservation_total_fee_bps">calculate_reservation_total_fee_bps</a>(config);
+    <b>let</b> fee_amount = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_fee_amount_safe">calculate_fee_amount_safe</a>(amount, reservation_total_fee_bps);
+    <b>let</b> creator_fee = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_component_fee_safe">calculate_component_fee_safe</a>(
+        fee_amount,
+        config.reservation_creator_fee_bps,
+        reservation_total_fee_bps
+    );
+    <b>if</b> (<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>) {
+        creator_fee
+    } <b>else</b> {
+        <b>let</b> platform_fee = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_component_fee_safe">calculate_component_fee_safe</a>(
+            fee_amount,
+            config.reservation_platform_fee_bps,
+            reservation_total_fee_bps
+        );
+        creator_fee + (platform_fee * config.non_platform_platform_to_creator_bps) / <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_finalize_post_reservation"></a>
+
+## Function `finalize_post_reservation`
+
+Shared post-reservation bookkeeping after fees have been taken from <code>remaining_payment</code>.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_finalize_post_reservation">finalize_post_reservation</a>(registry: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>, config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, reservation_pool_object: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">social_contracts::social_proof_tokens::ReservationPoolObject</a>, reserver: <b>address</b>, post_id: <b>address</b>, post_owner: <b>address</b>, net_amount: u64, remaining_payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, fee_amount: u64, creator_fee: u64, platform_fee: u64, treasury_fee: u64, now: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_finalize_post_reservation">finalize_post_reservation</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">TokenRegistry</a>,
+    config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a>,
+    reservation_pool_object: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">ReservationPoolObject</a>,
+    reserver: <b>address</b>,
+    post_id: <b>address</b>,
+    post_owner: <b>address</b>,
+    net_amount: u64,
+    <b>mut</b> remaining_payment: Coin&lt;MYSO&gt;,
+    fee_amount: u64,
+    creator_fee: u64,
+    platform_fee: u64,
+    treasury_fee: u64,
+    now: u64,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> max_individual_reservation = (config.post_threshold * config.max_individual_reservation_bps) / <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>;
+    <b>let</b> current_reservation = <b>if</b> (table::contains(&reservation_pool_object.reservations, reserver)) {
+        *table::borrow(&reservation_pool_object.reservations, reserver)
+    } <b>else</b> {
+        0
+    };
+    <b>assert</b>!(current_reservation + net_amount &lt;= max_individual_reservation, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EExceededMaxHold">EExceededMaxHold</a>);
+    <b>let</b> reservation_payment = coin::split(&<b>mut</b> remaining_payment, net_amount, ctx);
+    balance::join(&<b>mut</b> reservation_pool_object.myso_balance, coin::into_balance(reservation_payment));
+    <b>if</b> (table::contains(&reservation_pool_object.reservations, reserver)) {
+        <b>let</b> reservation_balance = table::borrow_mut(&<b>mut</b> reservation_pool_object.reservations, reserver);
+        <b>assert</b>!(*reservation_balance &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> - net_amount, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
+        *reservation_balance = *reservation_balance + net_amount;
+    } <b>else</b> {
+        <b>let</b> current_reservers_count = vector::length(&reservation_pool_object.reservers);
+        <b>assert</b>!(current_reservers_count &lt; config.max_reservers_per_pool, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ETooManyReservers">ETooManyReservers</a>);
+        table::add(&<b>mut</b> reservation_pool_object.reservations, reserver, net_amount);
+        vector::push_back(&<b>mut</b> reservation_pool_object.reservers, reserver);
+    };
+    <b>assert</b>!(reservation_pool_object.info.total_reserved &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> - net_amount, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
+    reservation_pool_object.info.total_reserved = reservation_pool_object.info.total_reserved + net_amount;
+    <b>if</b> (table::contains(&registry.reservation_pools, post_id)) {
+        <b>let</b> registry_pool = table::borrow_mut(&<b>mut</b> registry.reservation_pools, post_id);
+        registry_pool.total_reserved = reservation_pool_object.info.total_reserved;
+    } <b>else</b> {
+        <b>let</b> reservation_pool = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPool">ReservationPool</a> {
+            associated_id: post_id,
+            token_type: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TOKEN_TYPE_POST">TOKEN_TYPE_POST</a>,
+            owner: post_owner,
+            total_reserved: reservation_pool_object.info.total_reserved,
+            required_threshold: config.post_threshold,
+            created_at: now,
+        };
+        table::add(&<b>mut</b> registry.reservation_pools, post_id, reservation_pool);
+    };
+    <b>let</b> threshold_met = reservation_pool_object.info.total_reserved &gt;= config.post_threshold;
+    <b>let</b> was_threshold_met = (reservation_pool_object.info.total_reserved - net_amount) &gt;= config.post_threshold;
+    <b>if</b> (threshold_met && !was_threshold_met) {
+        event::emit(<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ThresholdMetEvent">ThresholdMetEvent</a> {
+            associated_id: post_id,
+            token_type: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TOKEN_TYPE_POST">TOKEN_TYPE_POST</a>,
+            owner: post_owner,
+            total_reserved: reservation_pool_object.info.total_reserved,
+            required_threshold: config.post_threshold,
+            timestamp: now,
+        });
+    };
+    <b>if</b> (coin::value(&remaining_payment) &gt; 0) {
+        transfer::public_transfer(remaining_payment, reserver);
+    } <b>else</b> {
+        coin::destroy_zero(remaining_payment);
+    };
+    event::emit(<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationCreatedEvent">ReservationCreatedEvent</a> {
+        associated_id: post_id,
+        token_type: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TOKEN_TYPE_POST">TOKEN_TYPE_POST</a>,
+        reserver,
+        amount: net_amount,
+        total_reserved: reservation_pool_object.info.total_reserved,
+        threshold_met,
+        reserved_at: now,
+        fee_amount,
+        creator_fee,
+        platform_fee,
+        treasury_fee,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_social_proof_tokens_reserve_towards_post"></a>
 
 ## Function `reserve_towards_post`
@@ -2850,6 +3027,11 @@ Non-platform version: platform fees go to ecosystem treasury
     <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_validate_reservation_fees">validate_reservation_fees</a>(config);
     <b>let</b> reservation_total_fee_bps = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_reservation_total_fee_bps">calculate_reservation_total_fee_bps</a>(config);
     <b>let</b> fee_amount = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_fee_amount_safe">calculate_fee_amount_safe</a>(amount, reservation_total_fee_bps);
+    <b>let</b> creator_fee_check = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_reservation_creator_fee_for_vault_check">reservation_creator_fee_for_vault_check</a>(config, amount, <b>false</b>);
+    <b>assert</b>!(
+        <a href="../social_contracts/post.md#social_contracts_post_tip_post_requires_beneficiary_vault_for_amount">post::tip_post_requires_beneficiary_vault_for_amount</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, creator_fee_check),
+        <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EPostReserveVaultNotRequired">EPostReserveVaultNotRequired</a>
+    );
     // Determine <b>if</b> fees should be on top or deducted from amount
     <b>let</b> fees_on_top = coin::value(&payment) &gt;= amount + fee_amount;
     <b>let</b> net_amount = <b>if</b> (fees_on_top) {
@@ -3018,6 +3200,11 @@ Platform version: platform fees go to platform treasury, includes platform valid
     <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_validate_reservation_fees">validate_reservation_fees</a>(config);
     <b>let</b> reservation_total_fee_bps = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_reservation_total_fee_bps">calculate_reservation_total_fee_bps</a>(config);
     <b>let</b> fee_amount = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_fee_amount_safe">calculate_fee_amount_safe</a>(amount, reservation_total_fee_bps);
+    <b>let</b> creator_fee_check = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_reservation_creator_fee_for_vault_check">reservation_creator_fee_for_vault_check</a>(config, amount, <b>true</b>);
+    <b>assert</b>!(
+        <a href="../social_contracts/post.md#social_contracts_post_tip_post_requires_beneficiary_vault_for_amount">post::tip_post_requires_beneficiary_vault_for_amount</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, creator_fee_check),
+        <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EPostReserveVaultNotRequired">EPostReserveVaultNotRequired</a>
+    );
     // Determine <b>if</b> fees should be on top or deducted from amount
     <b>let</b> fees_on_top = coin::value(&payment) &gt;= amount + fee_amount;
     <b>let</b> net_amount = <b>if</b> (fees_on_top) {
@@ -3123,6 +3310,183 @@ Platform version: platform fees go to platform treasury, includes platform valid
         platform_fee,
         treasury_fee,
     });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_reserve_towards_post_simple"></a>
+
+## Function `reserve_towards_post_simple`
+
+Post reserve when the revenue manifest has no escrow slice. No beneficiary vault arg.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_reserve_towards_post_simple">reserve_towards_post_simple</a>(registry: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>, config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, reservation_pool_object: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">social_contracts::social_proof_tokens::ReservationPoolObject</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, amount: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_reserve_towards_post_simple">reserve_towards_post_simple</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">TokenRegistry</a>,
+    config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a>,
+    reservation_pool_object: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">ReservationPoolObject</a>,
+    treasury: &EcosystemTreasury,
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &Post,
+    payment: Coin&lt;MYSO&gt;,
+    amount: u64,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>assert</b>!(config.trading_enabled, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ETradingHalted">ETradingHalted</a>);
+    <b>assert</b>!(!reservation_pool_object.converted, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EReservationPoolConverted">EReservationPoolConverted</a>);
+    <b>let</b> reserver = tx_context::sender(ctx);
+    <b>let</b> post_id = reservation_pool_object.info.associated_id;
+    <b>let</b> post_owner = reservation_pool_object.info.owner;
+    <b>let</b> now = clock::timestamp_ms(clock);
+    <b>assert</b>!(reservation_pool_object.info.token_type == <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TOKEN_TYPE_POST">TOKEN_TYPE_POST</a>, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidTokenType">EInvalidTokenType</a>);
+    <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>) == post_id, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidID">EInvalidID</a>);
+    <b>assert</b>!(coin::value(&payment) &gt;= amount && amount &gt; 0, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInsufficientFunds">EInsufficientFunds</a>);
+    <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_validate_reservation_fees">validate_reservation_fees</a>(config);
+    <b>let</b> reservation_total_fee_bps = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_reservation_total_fee_bps">calculate_reservation_total_fee_bps</a>(config);
+    <b>let</b> fee_amount = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_fee_amount_safe">calculate_fee_amount_safe</a>(amount, reservation_total_fee_bps);
+    <b>let</b> creator_fee_check = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_reservation_creator_fee_for_vault_check">reservation_creator_fee_for_vault_check</a>(config, amount, <b>false</b>);
+    <b>assert</b>!(
+        !<a href="../social_contracts/post.md#social_contracts_post_tip_post_requires_beneficiary_vault_for_amount">post::tip_post_requires_beneficiary_vault_for_amount</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, creator_fee_check),
+        <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EPostReserveRequiresBeneficiaryVault">EPostReserveRequiresBeneficiaryVault</a>
+    );
+    <b>let</b> fees_on_top = coin::value(&payment) &gt;= amount + fee_amount;
+    <b>let</b> net_amount = <b>if</b> (fees_on_top) {
+        amount
+    } <b>else</b> {
+        <b>assert</b>!(coin::value(&payment) &gt;= amount, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInsufficientFunds">EInsufficientFunds</a>);
+        amount - fee_amount
+    };
+    <b>let</b> (remaining_payment, fee_amount, creator_fee, platform_fee, treasury_fee) =
+        <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_fees_with_post_no_vault">distribute_reservation_fees_with_post_no_vault</a>(
+            config,
+            reservation_pool_object,
+            <a href="../social_contracts/post.md#social_contracts_post">post</a>,
+            amount,
+            payment,
+            treasury,
+            ctx
+        );
+    <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_finalize_post_reservation">finalize_post_reservation</a>(
+        registry,
+        config,
+        reservation_pool_object,
+        reserver,
+        post_id,
+        post_owner,
+        net_amount,
+        remaining_payment,
+        fee_amount,
+        creator_fee,
+        platform_fee,
+        treasury_fee,
+        now,
+        ctx
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_reserve_towards_post_with_platform_simple"></a>
+
+## Function `reserve_towards_post_with_platform_simple`
+
+Platform post reserve when the revenue manifest has no escrow slice. No beneficiary vault arg.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_reserve_towards_post_with_platform_simple">reserve_towards_post_with_platform_simple</a>(registry: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>, config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, reservation_pool_object: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">social_contracts::social_proof_tokens::ReservationPoolObject</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, amount: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_reserve_towards_post_with_platform_simple">reserve_towards_post_with_platform_simple</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">TokenRegistry</a>,
+    config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a>,
+    reservation_pool_object: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">ReservationPoolObject</a>,
+    treasury: &EcosystemTreasury,
+    platform_registry: &PlatformRegistry,
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>,
+    block_list_registry: &BlockListRegistry,
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &Post,
+    payment: Coin&lt;MYSO&gt;,
+    amount: u64,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>assert</b>!(config.trading_enabled, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ETradingHalted">ETradingHalted</a>);
+    <b>assert</b>!(!reservation_pool_object.converted, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EReservationPoolConverted">EReservationPoolConverted</a>);
+    <b>let</b> reserver = tx_context::sender(ctx);
+    <b>let</b> post_id = reservation_pool_object.info.associated_id;
+    <b>let</b> post_owner = reservation_pool_object.info.owner;
+    <b>let</b> now = clock::timestamp_ms(clock);
+    <b>assert</b>!(reservation_pool_object.info.token_type == <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TOKEN_TYPE_POST">TOKEN_TYPE_POST</a>, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidTokenType">EInvalidTokenType</a>);
+    <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>) == post_id, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidID">EInvalidID</a>);
+    <b>assert</b>!(coin::value(&payment) &gt;= amount && amount &gt; 0, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInsufficientFunds">EInsufficientFunds</a>);
+    <b>let</b> platform_id = object::uid_to_address(<a href="../social_contracts/platform.md#social_contracts_platform_id">platform::id</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>));
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_approved">platform::is_approved</a>(platform_registry, platform_id), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ENotAuthorized">ENotAuthorized</a>);
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_has_joined_platform">platform::has_joined_platform</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, reserver), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EUserNotJoinedPlatform">EUserNotJoinedPlatform</a>);
+    <b>assert</b>!(!<a href="../social_contracts/block_list.md#social_contracts_block_list_is_blocked">block_list::is_blocked</a>(block_list_registry, platform_id, reserver), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EUserBlockedByPlatform">EUserBlockedByPlatform</a>);
+    <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_validate_reservation_fees">validate_reservation_fees</a>(config);
+    <b>let</b> reservation_total_fee_bps = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_reservation_total_fee_bps">calculate_reservation_total_fee_bps</a>(config);
+    <b>let</b> fee_amount = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_fee_amount_safe">calculate_fee_amount_safe</a>(amount, reservation_total_fee_bps);
+    <b>let</b> creator_fee_check = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_reservation_creator_fee_for_vault_check">reservation_creator_fee_for_vault_check</a>(config, amount, <b>true</b>);
+    <b>assert</b>!(
+        !<a href="../social_contracts/post.md#social_contracts_post_tip_post_requires_beneficiary_vault_for_amount">post::tip_post_requires_beneficiary_vault_for_amount</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>, creator_fee_check),
+        <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EPostReserveRequiresBeneficiaryVault">EPostReserveRequiresBeneficiaryVault</a>
+    );
+    <b>let</b> fees_on_top = coin::value(&payment) &gt;= amount + fee_amount;
+    <b>let</b> net_amount = <b>if</b> (fees_on_top) {
+        amount
+    } <b>else</b> {
+        <b>assert</b>!(coin::value(&payment) &gt;= amount, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInsufficientFunds">EInsufficientFunds</a>);
+        amount - fee_amount
+    };
+    <b>let</b> (remaining_payment, fee_amount, creator_fee, platform_fee, treasury_fee) =
+        <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_fees_with_post_and_platform_no_vault">distribute_reservation_fees_with_post_and_platform_no_vault</a>(
+            config,
+            reservation_pool_object,
+            <a href="../social_contracts/post.md#social_contracts_post">post</a>,
+            amount,
+            payment,
+            treasury,
+            <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>,
+            clock,
+            ctx
+        );
+    <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_finalize_post_reservation">finalize_post_reservation</a>(
+        registry,
+        config,
+        reservation_pool_object,
+        reserver,
+        post_id,
+        post_owner,
+        net_amount,
+        remaining_payment,
+        fee_amount,
+        creator_fee,
+        platform_fee,
+        treasury_fee,
+        now,
+        ctx
+    );
 }
 </code></pre>
 
@@ -4878,6 +5242,234 @@ This function copies PoC data from a post into the corresponding token pool
     } <b>else</b> {
         coin::destroy_zero(fee_coins);
     };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_apply_post_revenue_manifest_coin_without_vault"></a>
+
+## Function `apply_post_revenue_manifest_coin_without_vault`
+
+Same as [<code><a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_apply_post_revenue_manifest_coin">apply_post_revenue_manifest_coin</a></code>] when no escrow slice exists for <code>amount</code>.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_apply_post_revenue_manifest_coin_without_vault">apply_post_revenue_manifest_coin_without_vault</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, intended_recipient: <b>address</b>, amount: u64, coins: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_apply_post_revenue_manifest_coin_without_vault">apply_post_revenue_manifest_coin_without_vault</a>(
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &Post,
+    intended_recipient: <b>address</b>,
+    amount: u64,
+    coins: &<b>mut</b> Coin&lt;MYSO&gt;,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>if</b> (!<a href="../social_contracts/post.md#social_contracts_post_monetization_enabled">post::monetization_enabled</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>)) {
+        <b>let</b> fee_coin = coin::split(coins, amount, ctx);
+        transfer::public_transfer(fee_coin, intended_recipient);
+        <b>return</b>
+    };
+    <b>let</b> manifest_opt = <a href="../social_contracts/post.md#social_contracts_post_revenue_manifest">post::revenue_manifest</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    <b>if</b> (option::is_none(&manifest_opt)) {
+        <b>let</b> fee_coin = coin::split(coins, amount, ctx);
+        transfer::public_transfer(fee_coin, intended_recipient);
+        <b>return</b>
+    };
+    <b>let</b> manifest = option::borrow(&manifest_opt);
+    <b>let</b> entries = <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entries">media_asset::manifest_entries</a>(manifest);
+    <b>let</b> len = vector::length(entries);
+    <b>let</b> bps_total = <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_bps_total">media_asset::manifest_bps_total</a>();
+    <b>let</b> <b>mut</b> fee_coins = coin::split(coins, amount, ctx);
+    <b>let</b> <b>mut</b> i = 0;
+    <b>while</b> (i &lt; len) {
+        <b>let</b> e = vector::borrow(entries, i);
+        <b>let</b> slice = (amount * <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_share_bps">media_asset::manifest_entry_share_bps</a>(e)) / bps_total;
+        <b>if</b> (slice &gt; 0) {
+            <b>if</b> (<a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_payout_mode">media_asset::manifest_entry_payout_mode</a>(e) == <a href="../social_contracts/media_asset.md#social_contracts_media_asset_payout_escrow">media_asset::payout_escrow</a>()) {
+                <b>abort</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EPostReserveRequiresBeneficiaryVault">EPostReserveRequiresBeneficiaryVault</a>
+            };
+            <b>let</b> pay_coins = coin::split(&<b>mut</b> fee_coins, slice, ctx);
+            transfer::public_transfer(pay_coins, <a href="../social_contracts/media_asset.md#social_contracts_media_asset_manifest_entry_beneficiary">media_asset::manifest_entry_beneficiary</a>(e));
+        };
+        i = i + 1;
+    };
+    <b>let</b> remainder = coin::value(&fee_coins);
+    <b>if</b> (remainder &gt; 0) {
+        transfer::public_transfer(fee_coins, intended_recipient);
+    } <b>else</b> {
+        coin::destroy_zero(fee_coins);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_distribute_reservation_creator_fee_without_vault"></a>
+
+## Function `distribute_reservation_creator_fee_without_vault`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_creator_fee_without_vault">distribute_reservation_creator_fee_without_vault</a>(pool_owner: <b>address</b>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, creator_fee_amount: u64, creator_fee_coin: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_creator_fee_without_vault">distribute_reservation_creator_fee_without_vault</a>(
+    pool_owner: <b>address</b>,
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &Post,
+    creator_fee_amount: u64,
+    creator_fee_coin: &<b>mut</b> Coin&lt;MYSO&gt;,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>if</b> (creator_fee_amount == 0) {
+        <b>return</b>
+    };
+    <b>if</b> (<a href="../social_contracts/post.md#social_contracts_post_monetization_enabled">post::monetization_enabled</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>) && option::is_some(&<a href="../social_contracts/post.md#social_contracts_post_revenue_manifest">post::revenue_manifest</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>))) {
+        <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_apply_post_revenue_manifest_coin_without_vault">apply_post_revenue_manifest_coin_without_vault</a>(
+            <a href="../social_contracts/post.md#social_contracts_post">post</a>,
+            pool_owner,
+            creator_fee_amount,
+            creator_fee_coin,
+            ctx
+        );
+    } <b>else</b> {
+        <b>let</b> fee_coin = coin::split(creator_fee_coin, creator_fee_amount, ctx);
+        transfer::public_transfer(fee_coin, pool_owner);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_distribute_reservation_fees_with_post_no_vault"></a>
+
+## Function `distribute_reservation_fees_with_post_no_vault`
+
+Non-platform reservation fees for posts that do not require a beneficiary vault.
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_fees_with_post_no_vault">distribute_reservation_fees_with_post_no_vault</a>(config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, reservation_pool: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">social_contracts::social_proof_tokens::ReservationPoolObject</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, amount: u64, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (<a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, u64, u64, u64, u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_fees_with_post_no_vault">distribute_reservation_fees_with_post_no_vault</a>(
+    config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a>,
+    reservation_pool: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">ReservationPoolObject</a>,
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &Post,
+    amount: u64,
+    <b>mut</b> payment: Coin&lt;MYSO&gt;,
+    treasury: &EcosystemTreasury,
+    ctx: &<b>mut</b> TxContext
+): (Coin&lt;MYSO&gt;, u64, u64, u64, u64) {
+    <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_validate_reservation_fees">validate_reservation_fees</a>(config);
+    <b>let</b> reservation_total_fee_bps = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_reservation_total_fee_bps">calculate_reservation_total_fee_bps</a>(config);
+    <b>let</b> fee_amount = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_fee_amount_safe">calculate_fee_amount_safe</a>(amount, reservation_total_fee_bps);
+    <b>let</b> creator_fee = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_component_fee_safe">calculate_component_fee_safe</a>(fee_amount, config.reservation_creator_fee_bps, reservation_total_fee_bps);
+    <b>let</b> platform_fee = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_component_fee_safe">calculate_component_fee_safe</a>(fee_amount, config.reservation_platform_fee_bps, reservation_total_fee_bps);
+    <b>let</b> treasury_fee = fee_amount - creator_fee - platform_fee;
+    <b>let</b> platform_fee_to_creator = (platform_fee * config.non_platform_platform_to_creator_bps) / <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_BPS_DENOM">BPS_DENOM</a>;
+    <b>let</b> platform_fee_to_treasury = platform_fee - platform_fee_to_creator;
+    <b>if</b> (fee_amount &gt; 0) {
+        <b>let</b> creator_total = creator_fee + platform_fee_to_creator;
+        <b>if</b> (creator_total &gt; 0) {
+            <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_creator_fee_without_vault">distribute_reservation_creator_fee_without_vault</a>(
+                reservation_pool.info.owner,
+                <a href="../social_contracts/post.md#social_contracts_post">post</a>,
+                creator_total,
+                &<b>mut</b> payment,
+                ctx
+            );
+        };
+        <b>let</b> treasury_total = treasury_fee + platform_fee_to_treasury;
+        <b>if</b> (treasury_total &gt; 0) {
+            <b>let</b> treasury_fee_coin = coin::split(&<b>mut</b> payment, treasury_total, ctx);
+            transfer::public_transfer(treasury_fee_coin, <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">profile::get_treasury_address</a>(treasury));
+        };
+    };
+    (payment, fee_amount, creator_fee + platform_fee_to_creator, 0, treasury_fee + platform_fee_to_treasury)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_distribute_reservation_fees_with_post_and_platform_no_vault"></a>
+
+## Function `distribute_reservation_fees_with_post_and_platform_no_vault`
+
+Platform reservation fees for posts that do not require a beneficiary vault.
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_fees_with_post_and_platform_no_vault">distribute_reservation_fees_with_post_and_platform_no_vault</a>(config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, reservation_pool: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">social_contracts::social_proof_tokens::ReservationPoolObject</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, amount: u64, payment: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (<a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, u64, u64, u64, u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_fees_with_post_and_platform_no_vault">distribute_reservation_fees_with_post_and_platform_no_vault</a>(
+    config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a>,
+    reservation_pool: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">ReservationPoolObject</a>,
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &Post,
+    amount: u64,
+    <b>mut</b> payment: Coin&lt;MYSO&gt;,
+    treasury: &EcosystemTreasury,
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+): (Coin&lt;MYSO&gt;, u64, u64, u64, u64) {
+    <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_validate_reservation_fees">validate_reservation_fees</a>(config);
+    <b>let</b> reservation_total_fee_bps = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_reservation_total_fee_bps">calculate_reservation_total_fee_bps</a>(config);
+    <b>let</b> fee_amount = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_fee_amount_safe">calculate_fee_amount_safe</a>(amount, reservation_total_fee_bps);
+    <b>let</b> creator_fee = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_component_fee_safe">calculate_component_fee_safe</a>(fee_amount, config.reservation_creator_fee_bps, reservation_total_fee_bps);
+    <b>let</b> platform_fee = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_component_fee_safe">calculate_component_fee_safe</a>(fee_amount, config.reservation_platform_fee_bps, reservation_total_fee_bps);
+    <b>let</b> treasury_fee = fee_amount - creator_fee - platform_fee;
+    <b>if</b> (fee_amount &gt; 0) {
+        <b>if</b> (creator_fee &gt; 0) {
+            <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_creator_fee_without_vault">distribute_reservation_creator_fee_without_vault</a>(
+                reservation_pool.info.owner,
+                <a href="../social_contracts/post.md#social_contracts_post">post</a>,
+                creator_fee,
+                &<b>mut</b> payment,
+                ctx
+            );
+        };
+        <b>if</b> (platform_fee &gt; 0) {
+            <b>let</b> <b>mut</b> platform_fee_coin = coin::split(&<b>mut</b> payment, platform_fee, ctx);
+            <a href="../social_contracts/platform.md#social_contracts_platform_add_to_treasury">social_contracts::platform::add_to_treasury</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, &<b>mut</b> platform_fee_coin, platform_fee, clock, ctx);
+            coin::destroy_zero(platform_fee_coin);
+        };
+        <b>if</b> (treasury_fee &gt; 0) {
+            <b>let</b> treasury_fee_coin = coin::split(&<b>mut</b> payment, treasury_fee, ctx);
+            transfer::public_transfer(treasury_fee_coin, <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">profile::get_treasury_address</a>(treasury));
+        };
+    };
+    (payment, fee_amount, creator_fee, platform_fee, treasury_fee)
 }
 </code></pre>
 

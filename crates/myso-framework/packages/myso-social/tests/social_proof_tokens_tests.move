@@ -830,14 +830,12 @@ CREATOR,
             let mut poc_vault_obj = test_scenario::take_shared<PoCBeneficiaryVault>(&scenario);
             let mut coin = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
             let pay = coin::split(&mut coin, 650_000_000, test_scenario::ctx(&mut scenario));
-            social_proof_tokens::reserve_towards_post(
+            social_proof_tokens::reserve_towards_post_simple(
                 &mut registry,
                 &config,
-                1,
                 &mut reservation_pool_object,
                 &treasury,
                 &post_obj,
-                &mut poc_vault_obj,
                 pay,
                 RESERVE_NET_A,
                 &clock,
@@ -867,14 +865,12 @@ CREATOR,
             let mut poc_vault_obj = test_scenario::take_shared<PoCBeneficiaryVault>(&scenario);
             let mut coin = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
             let pay = coin::split(&mut coin, 450_000_000, test_scenario::ctx(&mut scenario));
-            social_proof_tokens::reserve_towards_post(
+            social_proof_tokens::reserve_towards_post_simple(
                 &mut registry,
                 &config,
-                1,
                 &mut reservation_pool_object,
                 &treasury,
                 &post_obj,
-                &mut poc_vault_obj,
                 pay,
                 RESERVE_NET_B,
                 &clock,
@@ -1942,14 +1938,12 @@ CREATOR,
             let mut poc_vault_obj = test_scenario::take_shared<PoCBeneficiaryVault>(&scenario);
             let mut coin = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
             let pay = coin::split(&mut coin, gross + fee, test_scenario::ctx(&mut scenario));
-            social_proof_tokens::reserve_towards_post(
+            social_proof_tokens::reserve_towards_post_simple(
                 &mut registry,
                 &config,
-                1,
                 &mut pool,
                 &treasury,
                 &post_obj,
-                &mut poc_vault_obj,
                 pay,
                 gross,
                 &clock,
@@ -2281,14 +2275,12 @@ CREATOR,
             let mut poc_vault_obj = test_scenario::take_shared<PoCBeneficiaryVault>(&scenario);
             let mut coin = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
             let pay = coin::split(&mut coin, gross + fee, test_scenario::ctx(&mut scenario));
-            social_proof_tokens::reserve_towards_post(
+            social_proof_tokens::reserve_towards_post_simple(
                 &mut registry,
                 &config,
-                1,
                 &mut pool,
                 &treasury,
                 &post_a,
-                &mut poc_vault_obj,
                 pay,
                 gross,
                 &clock,
@@ -2599,14 +2591,12 @@ CREATOR,
             let mut poc_vault_obj = test_scenario::take_shared<PoCBeneficiaryVault>(&scenario);
             let mut coin = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
             let pay = coin::split(&mut coin, gross + fee, test_scenario::ctx(&mut scenario));
-            social_proof_tokens::reserve_towards_post(
+            social_proof_tokens::reserve_towards_post_simple(
                 &mut registry,
                 &config,
-                1,
                 &mut pool,
                 &treasury,
                 &post_obj,
-                &mut poc_vault_obj,
                 pay,
                 gross,
                 &clock,
@@ -2905,17 +2895,15 @@ CREATOR,
             let mut poc_vault_obj = test_scenario::take_shared<PoCBeneficiaryVault>(&scenario);
             let mut coin = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
             let pay = coin::split(&mut coin, gross + fee, test_scenario::ctx(&mut scenario));
-            social_proof_tokens::reserve_towards_post_with_platform(
+            social_proof_tokens::reserve_towards_post_with_platform_simple(
                 &mut registry,
                 &config,
-                1,
                 &mut pool,
                 &treasury,
                 &platform_registry,
                 &mut platform_obj,
                 &block_list_registry,
                 &post_obj,
-                &mut poc_vault_obj,
                 pay,
                 gross,
                 &clock,
@@ -3087,14 +3075,12 @@ CREATOR,
             let mut poc_vault_obj = test_scenario::take_shared<PoCBeneficiaryVault>(&scenario);
             let mut coin = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
             let pay = coin::split(&mut coin, gross + fee, test_scenario::ctx(&mut scenario));
-            social_proof_tokens::reserve_towards_post(
+            social_proof_tokens::reserve_towards_post_simple(
                 &mut registry,
                 &config,
-                1,
                 &mut pool,
                 &treasury,
                 &post_obj,
-                &mut poc_vault_obj,
                 pay,
                 gross,
                 &clock,
@@ -4898,6 +4884,300 @@ CREATOR,
             test_scenario::return_shared(profile_registry);
             test_scenario::return_shared(block_list_registry);
             test_scenario::return_shared(platform);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    fun create_creator_profile_and_platform(
+        scenario: &mut Scenario,
+        display: vector<u8>,
+        username: vector<u8>,
+    ): (address, address) {
+        let profile_id = {
+            test_scenario::next_tx(scenario, CREATOR);
+            let mut username_registry = test_scenario::take_shared<UsernameRegistry>(scenario);
+            let profile_config = test_scenario::take_shared<ProfileConfig>(scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+            profile::create_profile(
+                &mut username_registry,
+                &profile_config,
+                &mut memory_registry,
+                &mut ai_credit_config,
+                string::utf8(display),
+                string::utf8(username),
+                string::utf8(b""),
+                b"",
+                b"",
+                &clock,
+                test_scenario::ctx(scenario)
+            );
+            let mut p = profile::lookup_profile_by_owner(&username_registry, CREATOR);
+            let pid = option::extract(&mut p);
+            test_scenario::return_shared(ai_credit_config);
+            test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(username_registry);
+            test_scenario::return_shared(profile_config);
+            pid
+        };
+        let platform_id = {
+            test_scenario::next_tx(scenario, ADMIN);
+            let registry = test_scenario::take_shared<PlatformRegistry>(scenario);
+            let mut opt = platform::get_platform_by_name(&registry, string::utf8(b"Test Platform"));
+            let pid = option::extract(&mut opt);
+            test_scenario::return_shared(registry);
+            pid
+        };
+        (profile_id, platform_id)
+    }
+
+    #[test]
+    fun test_reserve_towards_post_simple_wallet_manifest_ok() {
+        let mut scenario = setup_test_scenario();
+        let (profile_id, platform_id) = create_creator_profile_and_platform(
+            &mut scenario,
+            b"Wallet Manifest",
+            b"wallet_rsv",
+        );
+        let gross = WITHDRAW_TEST_GROSS_POST;
+        let fee = fee_on_gross(gross);
+
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            post::test_create_post_with_wallet_manifest(
+                CREATOR,
+                profile_id,
+                platform_id,
+                string::utf8(b"wallet manifest post"),
+                USER3,
+                10_000,
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
+            let mut post_obj = test_scenario::take_shared<Post>(&scenario);
+            social_proof_tokens::enable_spt_for_post(
+                &mut registry,
+                &config,
+                &mut post_obj,
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(post_obj);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
+            let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
+            let post_obj = test_scenario::take_shared<Post>(&scenario);
+            let mut coin = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
+            let pay = coin::split(&mut coin, gross + fee, test_scenario::ctx(&mut scenario));
+            social_proof_tokens::reserve_towards_post_simple(
+                &mut registry,
+                &config,
+                &mut pool,
+                &treasury,
+                &post_obj,
+                pay,
+                gross,
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+            assert!(social_proof_tokens::reservation_pool_total_reserved_for_testing(&pool) == gross, 1);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(pool);
+            test_scenario::return_shared(treasury);
+            test_scenario::return_shared(post_obj);
+            test_scenario::return_to_sender(&scenario, coin);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 36, location = social_contracts::social_proof_tokens)]
+    fun test_reserve_towards_post_simple_escrow_aborts() {
+        let mut scenario = setup_test_scenario();
+        let (profile_id, platform_id) = create_creator_profile_and_platform(
+            &mut scenario,
+            b"Escrow Abort",
+            b"escrow_abort",
+        );
+        let gross = WITHDRAW_TEST_GROSS_POST;
+        let fee = fee_on_gross(gross);
+
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            post::test_create_post_with_escrow_manifest(
+                CREATOR,
+                profile_id,
+                platform_id,
+                string::utf8(b"escrow manifest post"),
+                USER3,
+                10_000,
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
+            let mut post_obj = test_scenario::take_shared<Post>(&scenario);
+            social_proof_tokens::enable_spt_for_post(
+                &mut registry,
+                &config,
+                &mut post_obj,
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(post_obj);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
+            let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
+            let post_obj = test_scenario::take_shared<Post>(&scenario);
+            let mut coin = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
+            let pay = coin::split(&mut coin, gross + fee, test_scenario::ctx(&mut scenario));
+            social_proof_tokens::reserve_towards_post_simple(
+                &mut registry,
+                &config,
+                &mut pool,
+                &treasury,
+                &post_obj,
+                pay,
+                gross,
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(pool);
+            test_scenario::return_shared(treasury);
+            test_scenario::return_shared(post_obj);
+            test_scenario::return_to_sender(&scenario, coin);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_reserve_towards_post_escrow_vault_ok() {
+        let mut scenario = setup_test_scenario();
+        let (profile_id, platform_id) = create_creator_profile_and_platform(
+            &mut scenario,
+            b"Escrow Vault",
+            b"escrow_vault",
+        );
+        let gross = WITHDRAW_TEST_GROSS_POST;
+        let fee = fee_on_gross(gross);
+
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            post::test_create_post_with_escrow_manifest(
+                CREATOR,
+                profile_id,
+                platform_id,
+                string::utf8(b"escrow vault post"),
+                USER3,
+                10_000,
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
+            let mut post_obj = test_scenario::take_shared<Post>(&scenario);
+            social_proof_tokens::enable_spt_for_post(
+                &mut registry,
+                &config,
+                &mut post_obj,
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(post_obj);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            poc_vault::create_shared_dummy_vault_for_testing(USER3, test_scenario::ctx(&mut scenario));
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let mut registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
+            let mut pool = test_scenario::take_shared<ReservationPoolObject>(&scenario);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
+            let post_obj = test_scenario::take_shared<Post>(&scenario);
+            let mut poc_vault_obj = test_scenario::take_shared<PoCBeneficiaryVault>(&scenario);
+            let mut coin = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
+            let pay = coin::split(&mut coin, gross + fee, test_scenario::ctx(&mut scenario));
+            social_proof_tokens::reserve_towards_post(
+                &mut registry,
+                &config,
+                1,
+                &mut pool,
+                &treasury,
+                &post_obj,
+                &mut poc_vault_obj,
+                pay,
+                gross,
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+            assert!(social_proof_tokens::reservation_pool_total_reserved_for_testing(&pool) == gross, 2);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(pool);
+            test_scenario::return_shared(treasury);
+            test_scenario::return_shared(post_obj);
+            test_scenario::return_shared(poc_vault_obj);
+            test_scenario::return_to_sender(&scenario, coin);
             test_scenario::return_shared(clock);
         };
 
