@@ -55,6 +55,7 @@ use crate::bigtable::proto::bigtable::v2::request_stats::StatsView;
 use crate::bigtable::proto::bigtable::v2::row_filter::Chain;
 use crate::bigtable::proto::bigtable::v2::row_filter::Filter;
 use crate::bigtable::proto::bigtable::v2::row_range::EndKey;
+use crate::bigtable::proto::bigtable::v2::row_range::StartKey;
 use crate::tables;
 
 /// Error returned when a batch write has per-entry failures.
@@ -513,10 +514,13 @@ impl BigTableClient {
     async fn reversed_scan(
         &mut self,
         table_name: &str,
+        lower_limit: Option<Bytes>,
         upper_limit: Bytes,
     ) -> Result<Vec<(Bytes, Vec<(Bytes, Bytes)>)>> {
         let start_time = Instant::now();
-        let result = self.reversed_scan_internal(table_name, upper_limit).await;
+        let result = self
+            .reversed_scan_internal(table_name, lower_limit, upper_limit)
+            .await;
         let elapsed_ms = start_time.elapsed().as_millis() as f64;
         let labels = [&self.client_name, table_name];
         match &self.metrics {
@@ -544,10 +548,11 @@ impl BigTableClient {
     async fn reversed_scan_internal(
         &mut self,
         table_name: &str,
+        lower_limit: Option<Bytes>,
         upper_limit: Bytes,
     ) -> Result<Vec<(Bytes, Vec<(Bytes, Bytes)>)>> {
         let range = RowRange {
-            start_key: None,
+            start_key: lower_limit.map(StartKey::StartKeyClosed),
             end_key: Some(EndKey::EndKeyClosed(upper_limit)),
         };
         let request = ReadRowsRequest {
@@ -675,9 +680,14 @@ impl KeyValueStoreReader for BigTableClient {
     }
 
     async fn get_latest_object(&mut self, object_id: &ObjectID) -> Result<Option<Object>> {
+        let lower_limit = Self::raw_object_key(&ObjectKey::min_for_id(object_id));
         let upper_limit = Self::raw_object_key(&ObjectKey::max_for_id(object_id));
         if let Some((_, row)) = self
-            .reversed_scan(tables::objects::NAME, upper_limit.into())
+            .reversed_scan(
+                tables::objects::NAME,
+                Some(lower_limit.into()),
+                upper_limit.into(),
+            )
             .await?
             .pop()
         {
@@ -701,7 +711,7 @@ impl KeyValueStoreReader for BigTableClient {
     async fn get_latest_epoch(&mut self) -> Result<Option<EpochData>> {
         let upper_limit = tables::epochs::encode_key_upper_bound();
         match self
-            .reversed_scan(tables::epochs::NAME, upper_limit)
+            .reversed_scan(tables::epochs::NAME, None, upper_limit)
             .await?
             .pop()
         {
