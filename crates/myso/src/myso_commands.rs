@@ -101,7 +101,7 @@ use crate::validator_commands::MySoValidatorCommand;
 
 const DEFAULT_EPOCH_DURATION_MS: u64 = 60_000;
 
-const DEFAULT_FAUCET_MIST_AMOUNT: u64 = 5_000_000_000; // 5 MySo
+const DEFAULT_FAUCET_MIST_AMOUNT: u64 = 1_000_000_000_000; // 1,000 MySo
 const DEFAULT_FAUCET_PORT: u16 = 9123;
 
 const DEFAULT_CONSISTENT_STORE_PORT: u16 = 9124;

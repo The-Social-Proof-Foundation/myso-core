@@ -49,6 +49,12 @@ cargo fmt --all -- --check
 cargo xclippy
 ```
 
+### Local dev (`myso start`)
+
+- **Messaging relayer:** `PermissionsGranted` events for admin caps (`EncryptionKeyRotator`, `PermissionsAdmin`, etc.) are expected when creating groups; only the four API caps (`MessagingSender/Reader/Editor/Deleter`) are indexed by the relayer.
+- **Heavy sidecar stacks** (indexer, social, graphql, mydata, messaging, …) can delay `AccumulatorSettlement` system txs. In debug builds, waits retry with `warn!` and only panic after ~60s sustained stall. For long sessions use `cargo run --release -p myso` or `MYSO_SETTLEMENT_EFFECTS_TIMEOUT_SECS=30`.
+- Avoid `MYSO_ENABLE_DEBUG_ASSERTIONS=1` when running many sidecars locally.
+
 `cargo xclippy does not recognize -p option` - This is a known issue with some clippy command variations
 
 ## High-Level Architecture

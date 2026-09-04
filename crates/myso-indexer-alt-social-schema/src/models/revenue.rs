@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use chrono::{DateTime, NaiveDate, Utc};
-use diesel::QueryableByName;
 use diesel::prelude::*;
 use diesel::sql_types::{BigInt, Date, Double, Nullable, Text};
+use diesel::QueryableByName;
 use serde::{Deserialize, Serialize};
 
 use crate::schema::spt_revenue;
@@ -70,6 +70,20 @@ pub const CONTENT_TYPE_MESSAGING: &str = "messaging";
 pub const CONTENT_TYPE_USERNAME: &str = "username";
 
 pub const CURRENCY_MYSO: &str = "MYSO";
+pub const CURRENCY_MYSO_TYPE: &str = "0x2::myso::MYSO";
+
+/// Collapse legacy `MYSO` labels and Move type strings onto `0x2::myso::MYSO`.
+pub fn normalize_revenue_currency(currency: &str) -> String {
+    let trimmed = currency.trim();
+    let lower = trimmed.to_ascii_lowercase();
+    if lower == "myso"
+        || lower == CURRENCY_MYSO_TYPE.to_ascii_lowercase()
+        || lower.ends_with("::myso::myso")
+    {
+        return CURRENCY_MYSO_TYPE.to_string();
+    }
+    trimmed.to_string()
+}
 
 pub const MYSO_DECIMAL_PLACES: u32 = 9;
 pub const MYSO_DECIMAL_FACTOR: i64 = 1_000_000_000;
@@ -153,4 +167,54 @@ pub struct PlatformRevenueSummaryRow {
     pub active_months: i64,
     #[diesel(sql_type = Nullable<Date>)]
     pub last_active_month: Option<NaiveDate>,
+}
+
+/// Query result for platform_revenue_by_source_currency view.
+#[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
+pub struct PlatformRevenueBreakdownRow {
+    #[diesel(sql_type = Text)]
+    pub platform_address: String,
+    #[diesel(sql_type = Text)]
+    pub revenue_source: String,
+    #[diesel(sql_type = Text)]
+    pub currency: String,
+    #[diesel(sql_type = BigInt)]
+    pub total_amount: i64,
+    #[diesel(sql_type = BigInt)]
+    pub transaction_count: i64,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn normalize_revenue_currency_unifies_myso_labels() {
+        assert_eq!(normalize_revenue_currency("MYSO"), CURRENCY_MYSO_TYPE);
+        assert_eq!(normalize_revenue_currency("myso"), CURRENCY_MYSO_TYPE);
+        assert_eq!(
+            normalize_revenue_currency("0x2::myso::MYSO"),
+            CURRENCY_MYSO_TYPE
+        );
+        assert_eq!(
+            normalize_revenue_currency("0xABC::myso::MYSO"),
+            CURRENCY_MYSO_TYPE
+        );
+    }
+
+    #[test]
+    fn normalize_revenue_currency_preserves_other_move_types() {
+        assert_eq!(
+            normalize_revenue_currency("0xabc::myusd::MYUSD"),
+            "0xabc::myusd::MYUSD"
+        );
+        assert_eq!(
+            normalize_revenue_currency("0xabc::btc::BTC"),
+            "0xabc::btc::BTC"
+        );
+        assert_eq!(
+            normalize_revenue_currency("0xabc::eth::ETH"),
+            "0xabc::eth::ETH"
+        );
+    }
 }

@@ -5,7 +5,8 @@
 # Usage: ./scripts/bootstrap.sh
 #
 # Claims all social admin capabilities, then seeds the localnet with the
-# myso_admin profile and approved DAO platforms: DripDrop, SoFiSwap, Chatr.
+# myso_admin profile, approved DAO platforms (DripDrop, SoFiSwap, Chatr),
+# and localnet-friendly Social Proof Tokens config thresholds.
 
 set -euo pipefail
 
@@ -54,6 +55,28 @@ readonly PLATFORM_DAO_QUADRATIC_BASE_COST=500
 readonly PLATFORM_DAO_VOTING_PERIOD_EPOCHS=7
 readonly PLATFORM_DAO_QUORUM_VOTES=7
 
+# SPT localnet config (matches admin UI)
+readonly SPT_POST_THRESHOLD='10000000000'
+readonly SPT_PROFILE_THRESHOLD='10000000000'
+readonly SPT_MAX_INDIVIDUAL_RESERVATION_BPS='200000'
+readonly SPT_MAX_HOLD_PERCENT_BPS='500000'
+
+# Unchanged defaults from social_proof_tokens.move bootstrap_init
+readonly SPT_TRADING_CREATOR_FEE_BPS='100'
+readonly SPT_TRADING_PLATFORM_FEE_BPS='25'
+readonly SPT_TRADING_TREASURY_FEE_BPS='25'
+readonly SPT_RESERVATION_CREATOR_FEE_BPS='100'
+readonly SPT_RESERVATION_PLATFORM_FEE_BPS='25'
+readonly SPT_RESERVATION_TREASURY_FEE_BPS='25'
+readonly SPT_BASE_PRICE='1000000000'
+readonly SPT_QUADRATIC_COEFFICIENT='100000'
+readonly SPT_MAX_RESERVERS_PER_POOL='1000'
+readonly SPT_NON_PLATFORM_TO_CREATOR_BPS='5000'
+readonly SPT_NON_PLATFORM_TO_TREASURY_BPS='5000'
+
+SPT_ADMIN_CAP_ID=''
+SOCIAL_PROOF_TOKENS_CONFIG_ID=''
+
 bootstrap_refresh_session_with_retry() {
     local attempt max=12
     for ((attempt = 1; attempt <= max; attempt++)); do
@@ -81,6 +104,8 @@ bootstrap_append_session_ids() {
         printf '%s=%q\n' SOFISWAP_PLATFORM_ID "${SOFISWAP_PLATFORM_ID:-}"
         printf '%s=%q\n' CHATR_PLATFORM_ID "${CHATR_PLATFORM_ID:-}"
         printf '%s=%q\n' PLATFORM_OBJECT_ID "${PLATFORM_OBJECT_ID:-}"
+        printf '%s=%q\n' SPT_ADMIN_CAP_ID "${SPT_ADMIN_CAP_ID:-}"
+        printf '%s=%q\n' SOCIAL_PROOF_TOKENS_CONFIG_ID "${SOCIAL_PROOF_TOKENS_CONFIG_ID:-}"
     } >> "$SOCIAL_SESSION_SAVE_PATH"
     chmod 600 "$SOCIAL_SESSION_SAVE_PATH" 2>/dev/null || true
 }
@@ -135,6 +160,44 @@ bootstrap_create_seed_platform() {
         "$PLATFORM_DAO_QUADRATIC_BASE_COST" \
         "$PLATFORM_DAO_VOTING_PERIOD_EPOCHS" \
         "$PLATFORM_DAO_QUORUM_VOTES"
+}
+
+bootstrap_update_spt_config() {
+    local admin_addr out
+    SPT_ADMIN_CAP_ID="$(gql_live_object_address_for_type \
+        '0x50c1::social_proof_tokens::SocialProofTokensAdminCap' ANY)" || SPT_ADMIN_CAP_ID=''
+    SOCIAL_PROOF_TOKENS_CONFIG_ID="$(gql_live_object_address_for_type \
+        '0x50c1::social_proof_tokens::SocialProofTokensConfig' SHARED)" || SOCIAL_PROOF_TOKENS_CONFIG_ID=''
+    [[ -n "$SPT_ADMIN_CAP_ID" && -n "$SOCIAL_PROOF_TOKENS_CONFIG_ID" ]] || {
+        echo "Could not resolve SPT admin cap or config object ids" >&2
+        return 1
+    }
+    admin_addr="$(object_address_owner "$SPT_ADMIN_CAP_ID" 2>/dev/null)" || admin_addr=''
+    admin_addr="$(normalize_hex_id "${admin_addr:-$(resolve_myso_active_address)}")" || return 1
+    ensure_wallet_funded "$admin_addr" "$SOCIAL_DEFAULT_GAS_BUDGET" || return 1
+    log_step "Updating SPT config (post/profile threshold=10 MYSO, max reservation=2000%, max hold=5000%)"
+    log_session_use "SPT_ADMIN_CAP_ID" "$SPT_ADMIN_CAP_ID"
+    log_session_use "SOCIAL_PROOF_TOKENS_CONFIG_ID" "$SOCIAL_PROOF_TOKENS_CONFIG_ID"
+    out="$(run_myso_call_as_capture "$admin_addr" social_proof_tokens update_social_proof_tokens_config \
+        "@$(normalize_hex_id "$SPT_ADMIN_CAP_ID")" \
+        "@$(normalize_hex_id "$SOCIAL_PROOF_TOKENS_CONFIG_ID")" \
+        "$SPT_TRADING_CREATOR_FEE_BPS" \
+        "$SPT_TRADING_PLATFORM_FEE_BPS" \
+        "$SPT_TRADING_TREASURY_FEE_BPS" \
+        "$SPT_RESERVATION_CREATOR_FEE_BPS" \
+        "$SPT_RESERVATION_PLATFORM_FEE_BPS" \
+        "$SPT_RESERVATION_TREASURY_FEE_BPS" \
+        "$SPT_BASE_PRICE" \
+        "$SPT_QUADRATIC_COEFFICIENT" \
+        "$SPT_MAX_HOLD_PERCENT_BPS" \
+        "$SPT_POST_THRESHOLD" \
+        "$SPT_PROFILE_THRESHOLD" \
+        "$SPT_MAX_INDIVIDUAL_RESERVATION_BPS" \
+        "$SPT_MAX_RESERVERS_PER_POOL" \
+        "$SPT_NON_PLATFORM_TO_CREATOR_BPS" \
+        "$SPT_NON_PLATFORM_TO_TREASURY_BPS" \
+        "@$(normalize_hex_id "$CLOCK_ID")")" || return 1
+    assert_tx_success "$out" || return 1
 }
 
 echo ">>> Faucet"
@@ -194,10 +257,16 @@ CHATR_PLATFORM_ID="$(bootstrap_create_seed_platform \
     "$CHATR_COVER_URL")"
 
 PLATFORM_OBJECT_ID="$DRIPDROP_PLATFORM_ID"
+
+echo ">>> Updating SPT config for localnet"
+bootstrap_update_spt_config
+
 bootstrap_append_session_ids
 
 echo "ADMIN_PROFILE_ID=$ADMIN_PROFILE_ID"
 echo "DRIPDROP_PLATFORM_ID=$DRIPDROP_PLATFORM_ID"
 echo "SOFISWAP_PLATFORM_ID=$SOFISWAP_PLATFORM_ID"
 echo "CHATR_PLATFORM_ID=$CHATR_PLATFORM_ID"
+echo "SPT_ADMIN_CAP_ID=$SPT_ADMIN_CAP_ID"
+echo "SOCIAL_PROOF_TOKENS_CONFIG_ID=$SOCIAL_PROOF_TOKENS_CONFIG_ID"
 echo "Bootstrap complete."

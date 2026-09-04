@@ -1,9 +1,9 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use diesel::QueryableByName;
 use diesel::prelude::*;
 use diesel::sql_types::{BigInt, Bytea, Jsonb, SmallInt, Text};
+use diesel::QueryableByName;
 use serde::{Deserialize, Serialize};
 
 use crate::schema::{
@@ -483,7 +483,9 @@ fn normalize_address(raw: &str) -> String {
     raw.trim().to_ascii_lowercase()
 }
 
-fn manifest_entry_object(value: &serde_json::Value) -> Option<&serde_json::Map<String, serde_json::Value>> {
+fn manifest_entry_object(
+    value: &serde_json::Value,
+) -> Option<&serde_json::Map<String, serde_json::Value>> {
     let object = value.as_object()?;
     if let Some(fields) = object.get("fields").and_then(|v| v.as_object()) {
         return Some(fields);
@@ -594,8 +596,7 @@ pub fn reservation_creator_fee_for_vault_check(
         creator_fee
     } else {
         let platform_fee = fee_amount.saturating_mul(reservation_platform_fee_bps) / total_bps;
-        creator_fee
-            + platform_fee.saturating_mul(non_platform_platform_to_creator_bps) / 10_000
+        creator_fee + platform_fee.saturating_mul(non_platform_platform_to_creator_bps) / 10_000
     }
 }
 
@@ -657,16 +658,14 @@ mod tests {
     #[test]
     fn vault_required_uses_creator_fee_slice() {
         let json = serde_json::json!([entry("0xparent", 100, MANIFEST_PAYOUT_ESCROW)]);
-        assert!(!post_reserve_requires_beneficiary_vault_for_amount(&json, 50));
-        assert!(post_reserve_requires_beneficiary_vault_for_amount(&json, 100));
-        let creator_fee = reservation_creator_fee_for_vault_check(
-            1_000_000_000,
-            100,
-            25,
-            25,
-            5_000,
-            true,
-        );
+        assert!(!post_reserve_requires_beneficiary_vault_for_amount(
+            &json, 50
+        ));
+        assert!(post_reserve_requires_beneficiary_vault_for_amount(
+            &json, 100
+        ));
+        let creator_fee =
+            reservation_creator_fee_for_vault_check(1_000_000_000, 100, 25, 25, 5_000, true);
         assert_eq!(creator_fee, 10_000_000);
     }
 }

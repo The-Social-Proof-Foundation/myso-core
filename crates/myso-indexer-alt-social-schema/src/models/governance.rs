@@ -1,11 +1,11 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use diesel::QueryableByName;
 use diesel::prelude::*;
 use diesel::sql_types::{
     BigInt, Bool, Date, Integer, Jsonb, Nullable, SmallInt, Text, Timestamptz,
 };
+use diesel::QueryableByName;
 
 type NullableJsonb = Nullable<Jsonb>;
 use serde::{Deserialize, Serialize};

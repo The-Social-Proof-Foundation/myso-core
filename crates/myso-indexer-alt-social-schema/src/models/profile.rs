@@ -359,7 +359,7 @@ impl NewProfileConfig {
 #[cfg(test)]
 mod merge_profile_config_tests {
     use super::{
-        NewProfileConfig, USERNAME_SALE_FEE_BPS, default_profile_config, merge_profile_config,
+        default_profile_config, merge_profile_config, NewProfileConfig, USERNAME_SALE_FEE_BPS,
     };
 
     fn sample_config(

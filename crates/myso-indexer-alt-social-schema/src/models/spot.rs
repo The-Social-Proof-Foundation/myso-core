@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use chrono::{DateTime, NaiveDateTime, Utc};
-use diesel::QueryableByName;
 use diesel::prelude::*;
 use diesel::sql_types::{BigInt, Int4, Jsonb, Nullable, SmallInt, Text};
+use diesel::QueryableByName;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 

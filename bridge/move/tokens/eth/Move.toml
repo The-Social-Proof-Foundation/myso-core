@@ -9,3 +9,7 @@ MySo = { local = "../../../../crates/myso-framework/packages/myso-framework" }
 
 [addresses]
 bridged_eth = "0x0"
+
+[environments]
+localnet = "7fe1c64b"
+testnet = "56a7099f"

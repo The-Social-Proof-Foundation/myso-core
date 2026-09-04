@@ -4,8 +4,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use anyhow::Context;
 use anyhow::bail;
+use anyhow::Context;
 use async_graphql::dataloader::DataLoader;
 use myso_indexer_alt_metrics::db::DbConnectionStatsCollector;
 use prometheus::Registry;
@@ -13,18 +13,17 @@ use url::Url;
 
 use myso_pg_db as db;
 
-use crate::PostDeletionEventRow;
-use crate::PostModerationEventRow;
 use crate::ai_credit::get_ai_credit_config;
 use crate::governance::{
-    DelegateRatingViewerTarget, batch_viewer_latest_delegate_rating_vote_kind,
-    get_anonymous_voting_trends, get_delegate_by_address, get_delegate_proposals,
-    get_delegate_ratings, get_governance_registry_by_platform_id, get_governance_registry_by_type,
+    batch_viewer_latest_delegate_rating_vote_kind, get_anonymous_voting_trends,
+    get_delegate_by_address, get_delegate_proposals, get_delegate_ratings,
+    get_governance_registry_by_platform_id, get_governance_registry_by_type,
     get_governance_stats_by_registry_id, get_proposal_anonymous_stats,
     get_proposal_anonymous_votes, get_proposal_by_id, get_proposal_community_votes,
     get_proposal_community_votes_count, get_proposal_decryption_failures,
     get_proposal_delegate_votes, get_proposal_reward_distributions, list_delegates,
     list_governance_events, list_governance_registries, list_nominated_delegates, list_proposals,
+    DelegateRatingViewerTarget,
 };
 use crate::insurance::{
     get_insurance_config, get_insurance_coverage_route, get_insurance_policy,
@@ -44,8 +43,8 @@ use crate::media_asset_graph::{
     get_ancestry_snapshot, get_resolved_policy, list_derivative_edges_for_child,
     list_derivative_edges_for_parent, list_detected_relationships, list_resolved_obligations,
 };
-use crate::memory::SubAgentListResult;
 use crate::memory::get_memory_config as fetch_memory_config;
+use crate::memory::SubAgentListResult;
 use crate::messaging::{
     get_messaging_agent_groups_by_org, get_messaging_config, get_messaging_revenue_summary,
     get_paid_message_escrows_by_wallet,
@@ -62,8 +61,8 @@ use crate::mydata::{
     list_mydata_sub_pools_for_broad_pool, list_mydata_sub_pools_for_listing,
 };
 use crate::org_leaderboard::{
-    OrganizationCategoryInfo, OrganizationLeaderboardResult, OrganizationLeaderboardSort,
-    org_type_from_slug, organization_categories,
+    org_type_from_slug, organization_categories, OrganizationCategoryInfo,
+    OrganizationLeaderboardResult, OrganizationLeaderboardSort,
 };
 use crate::org_stats::{OrganizationStatistics, OrganizationStatsWindow};
 use crate::organization::AgenticOrganizationListResult;
@@ -73,7 +72,7 @@ use crate::platform::{
     get_platform_moderators, get_platform_treasury_balance, get_platform_user_access,
     list_platform_treasury_balances, list_platform_treasury_withdrawals,
 };
-use crate::pnl::{ProfilePnLWindow, ProfilePnLWindowResult, get_profile_pnl_for_windows};
+use crate::pnl::{get_profile_pnl_for_windows, ProfilePnLWindow, ProfilePnLWindowResult};
 use crate::poc::{
     get_poc_analysis_for_post, get_poc_badges_for_post,
     get_poc_beneficiary_vault_by_beneficiary_address, get_poc_beneficiary_vault_by_vault_id,
@@ -82,7 +81,6 @@ use crate::poc::{
     list_poc_vault_coin_balances_for_vault, list_poc_vault_deposits_for_vault,
 };
 use crate::post::PostRow;
-use crate::profile::UniversalUserResult;
 use crate::profile::get_ecosystem_treasury;
 use crate::profile::get_profile_badges;
 use crate::profile::get_profile_by_address;
@@ -91,18 +89,19 @@ use crate::profile::get_profile_or_wallet_by_address;
 use crate::profile::get_profile_summary_enriched;
 use crate::profile::get_profiles;
 use crate::profile::get_profiles_summary_enriched;
+use crate::profile::UniversalUserResult;
 use crate::promotion::{
     get_promotion, get_promotion_by_post_id, get_promotion_hourly, get_promotion_stats,
     get_promotion_time_series, get_promotion_views, get_promotion_views_count, get_spending_trends,
     get_top_performing_promotions, list_promoted_posts,
 };
-use crate::revenue::get_platform_revenue_summary;
+use crate::revenue::{get_platform_revenue_breakdown, get_platform_revenue_summary};
 use crate::social_graph::{
-    FollowSortBy, ProfileSummaryRow, ViewerSocialContext, batch_viewer_social_context,
-    check_following, check_platform_blocked, check_profile_blocked,
+    batch_viewer_social_context, check_following, check_platform_blocked, check_profile_blocked,
     count_profile_platform_memberships, get_blocked_platforms, get_blocked_profiles,
     get_follow_recommendations, get_followers, get_following, get_mutual_connections,
-    get_mutual_count, get_profile_platform_memberships, resolve_profile_address,
+    get_mutual_count, get_profile_platform_memberships, resolve_profile_address, FollowSortBy,
+    ProfileSummaryRow, ViewerSocialContext,
 };
 use crate::spot::{
     get_spot_claim_by_object_id, get_spot_config, get_spot_creator_stats,
@@ -115,16 +114,17 @@ use crate::spot::{
 };
 use crate::spt::SptReservationVolumeInterval;
 use crate::spt::{
-    SptTransactionsWithViewer, get_former_reservation_holdings_for_pool,
-    get_reservation_holdings_for_pool, get_reservation_pool_id_for_associated_id,
-    get_spt_exchange_config, get_spt_holdings_by_holder, get_spt_holdings_by_pool, get_spt_pool,
-    get_spt_pool_id_for_profile, get_spt_price_history,
+    get_former_reservation_holdings_for_pool, get_reservation_holdings_for_pool,
+    get_reservation_pool_id_for_associated_id, get_spt_exchange_config, get_spt_holdings_by_holder,
+    get_spt_holdings_by_pool, get_spt_pool, get_spt_pool_id_for_profile, get_spt_price_history,
     get_spt_reservation_holdings_for_reserver as fetch_spt_reservation_holdings_for_reserver,
     get_spt_reservation_volume_history, get_spt_swaps_for_pool, get_spt_swaps_for_trader,
-    get_spt_transactions, get_spt_transfers_for_pool, list_spt_pools,
+    get_spt_transactions, get_spt_transfers_for_pool, list_spt_pools, SptTransactionsWithViewer,
 };
 use crate::subscription::get_subscription_config;
 use crate::vesting::{get_vesting_leaderboard, get_vesting_wallet, list_vesting_wallets};
+use crate::PostDeletionEventRow;
+use crate::PostModerationEventRow;
 use myso_indexer_alt_social_schema::models::{
     AgenticOrganizationRow, MemoryAccountRow, SubAgentRow,
 };
@@ -3004,6 +3004,16 @@ impl SocialPgReader {
     {
         let mut conn = self.connect().await?;
         get_platform_revenue_summary(&mut conn, platform_address, &self.metrics).await
+    }
+
+    /// Per-source, per-currency platform revenue (from platform_revenue_by_source_currency).
+    pub async fn get_platform_revenue_breakdown(
+        &self,
+        platform_address: &str,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::PlatformRevenueBreakdownRow>>
+    {
+        let mut conn = self.connect().await?;
+        get_platform_revenue_breakdown(&mut conn, platform_address, &self.metrics).await
     }
 
     /// Cash-flow P&L for a profile owner wallet across the given windows (MYSO base units).

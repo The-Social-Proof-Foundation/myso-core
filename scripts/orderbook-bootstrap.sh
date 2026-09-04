@@ -8,6 +8,10 @@
 # All object IDs, package IDs, cap IDs, coin types, and pool IDs are discovered
 # automatically from GraphQL + the active wallet. Do not paste addresses.
 # Optional env vars (PKG_MYUSD, ORDERBOOK_REGISTRY_ID, …) are debug overrides only.
+# ORDERBOOK_PUBLISH_ENV=localnet (default) always passes -e localnet on publish.
+# ORDERBOOK_CLEAR_PUBLICATION=1 (default) deletes Published.toml / Pub.*.toml before each publish.
+# ORDERBOOK_MANAGE_MOVE_TOML=1 (default) temporarily strips explicit MoveStdlib/MySo deps and
+# ensures a [environments] localnet slot, then restores the original Move.toml.
 #
 # Prerequisites:
 #   - myso start --with-indexer --with-orderbook
@@ -20,8 +24,17 @@
 #   ./scripts/orderbook-bootstrap.sh
 #   ./scripts/orderbook-bootstrap.sh --refresh-session
 #   ./scripts/orderbook-bootstrap.sh --skip-mint
+#   ./scripts/orderbook-bootstrap.sh --skip-mm
+#   ./scripts/orderbook-bootstrap.sh --skip-oracle
+#   ./scripts/orderbook-bootstrap.sh --e2e-test
 #   ASSUME_YES=1 ./scripts/orderbook-bootstrap.sh
 #   ./scripts/orderbook-bootstrap.sh -y
+#
+# MYSO/MYUSD localnet mid is live from MYSO HTTP oracle + Pyth (no static seed by default).
+# ORDERBOOK_ORACLE_SEED_STATIC=1 + MM_ALLOW_FALLBACK=1 = offline fake prices only.
+# ORDERBOOK_MYSO_RESEED=1 (default) cancels leftover MYSO/MYUSD book orders before MM start.
+# After MM is ready, bootstrap runs a BTC/MYUSD market buy demo via orderbook-demo-btc-trades.ts.
+# ORDERBOOK_DEMO_ROUND_TRIP=1 adds sell leg; ORDERBOOK_SKIP_DEMO_TRADE=1 skips demo.
 
 set -euo pipefail
 
@@ -32,6 +45,8 @@ SOCIAL_SESSION_SAVE_PATH="${ORDERBOOK_SESSION_SAVE_PATH:-$REPO_ROOT/network.conf
 source "${SCRIPT_DIR}/lib/social-runtime-common.sh"
 # shellcheck source=lib/orderbook-bootstrap-common.sh
 source "${SCRIPT_DIR}/lib/orderbook-bootstrap-common.sh"
+# shellcheck source=lib/orderbook-mm-supervisor.sh
+source "${SCRIPT_DIR}/lib/orderbook-mm-supervisor.sh"
 # shellcheck source=lib/runnable-summary-common.sh
 source "${SCRIPT_DIR}/lib/runnable-summary-common.sh"
 
@@ -39,6 +54,9 @@ SKIP_CONFIRM_RUN=1
 ASSUME_YES="${ASSUME_YES:-1}"
 DO_REFRESH=0
 SKIP_MINT=0
+SKIP_MM=0
+SKIP_ORACLE=0
+E2E_TEST=0
 
 usage() {
     sed -n '2,24p' "$0" | sed 's/^# \?//'
@@ -92,13 +110,38 @@ ensure_pool() {
     local id_var="$2"
     local base_type="$3"
     local tick="$4"
-    local pool
+    local pool catalog_pool
     if [[ -n "${!id_var:-}" ]] && object_exists_on_fullnode "${!id_var}"; then
-        log_step "Reusing pool $name ${!id_var}"
+        if orderbook_pool_is_shared "${!id_var}"; then
+            log_step "Reusing pool $name ${!id_var}"
+            return 0
+        fi
+        log_step "Pool $name ${!id_var} exists but is not a shared Pool object — MM will skip it"
+        return 0
+    fi
+    if catalog_pool="$(orderbook_catalog_pool_id_for_base "$base_type" 2>/dev/null)" \
+        && [[ -n "$catalog_pool" ]] \
+        && object_exists_on_fullnode "$catalog_pool"; then
+        printf -v "$id_var" '%s' "$catalog_pool"
+        log_session_use "$id_var" "$catalog_pool"
+        orderbook_save_session
+        if orderbook_pool_is_shared "$catalog_pool"; then
+            log_step "Reusing catalog pool $name $catalog_pool"
+            return 0
+        fi
+        log_step "Catalog pool $name $catalog_pool is not shared — MM will skip it"
         return 0
     fi
     log_step "Creating pool $name ($base_type / $MYUSD_COIN_TYPE)"
     pool="$(orderbook_create_pool "$base_type" "$tick" "$LOT_SIZE" "$MIN_SIZE")" || {
+        if catalog_pool="$(orderbook_catalog_pool_id_for_base "$base_type" 2>/dev/null)" \
+            && [[ -n "$catalog_pool" ]]; then
+            printf -v "$id_var" '%s' "$catalog_pool"
+            log_session_use "$id_var" "$catalog_pool"
+            orderbook_save_session
+            log_step "Pool $name already registered in catalog ($catalog_pool)"
+            return 0
+        fi
         echo "Failed to create pool $name" >&2
         return 1
     }
@@ -160,6 +203,7 @@ run_bootstrap() {
     orderbook_save_session
 
     ensure_pool MYSO_MYUSD MYSO_MYUSD_POOL_ID "$MYSO_COIN_TYPE" "$TICK_SIZE_MYSO" || return 1
+    orderbook_ensure_mysousd_tick || return 1
     ensure_pool BTC_MYUSD BTC_MYUSD_POOL_ID "$BTC_COIN_TYPE" "$TICK_SIZE_BTC" || return 1
     ensure_pool ETH_MYUSD ETH_MYUSD_POOL_ID "$ETH_COIN_TYPE" "$TICK_SIZE_ETH" || return 1
 
@@ -167,6 +211,24 @@ run_bootstrap() {
     orderbook_register_assets || return 1
     orderbook_register_pools || return 1
     orderbook_save_session
+
+    if [[ "$SKIP_MM" == 1 ]]; then
+        log_step "Skipping Pyth / oracle / MM (--skip-mm)"
+        print_run_summary_header "Orderbook bootstrap complete (catalog only)"
+        print_run_summary_line "Active address" "$active"
+        print_run_summary_line "Catalog API" "$ORDERBOOK_API_URL"
+        print_run_summary_line "Session" "$SOCIAL_SESSION_SAVE_PATH"
+        print_run_summary_footer
+        return 0
+    fi
+
+    orderbook_run_pyth_setup || return 1
+    if [[ -n "${ORACLE_ADDRESS:-}" ]]; then
+        log_step "Funding oracle wallet gas ($ORACLE_ADDRESS)"
+        orderbook_fund_address "$ORACLE_ADDRESS" 300000000 || return 1
+    fi
+    orderbook_ensure_demo_trade_funds || return 1
+    orderbook_fetch_mm_pools_json >/dev/null || return 1
 
     print_run_summary_header "Orderbook bootstrap complete"
     print_run_summary_line "Active address" "$active"
@@ -181,9 +243,21 @@ run_bootstrap() {
     print_run_summary_line "MYSO_MYUSD pool" "$MYSO_MYUSD_POOL_ID"
     print_run_summary_line "BTC_MYUSD pool" "$BTC_MYUSD_POOL_ID"
     print_run_summary_line "ETH_MYUSD pool" "$ETH_MYUSD_POOL_ID"
+    print_run_summary_line "Pyth package" "$PYTH_PACKAGE_ID"
+    print_run_summary_line "Oracle PIO (BTC)" "$BTC_PRICE_INFO_OBJECT_ID"
+    print_run_summary_line "MM pools" "$(echo "$MM_POOLS" | jq -r 'map(.poolId) | join(", ")')"
     print_run_summary_line "Catalog API" "$ORDERBOOK_API_URL"
     print_run_summary_line "Session" "$SOCIAL_SESSION_SAVE_PATH"
     print_run_summary_footer
+
+    if [[ "$E2E_TEST" == 1 ]]; then
+        ORDERBOOK_MM_BACKGROUND=1
+        orderbook_mm_supervisor_run "$SKIP_ORACLE" 1 || return 1
+        log_step "E2E test passed — oracle PID=${ORACLE_PID:-} MM PID=${MM_PID:-} still running"
+        return 0
+    fi
+
+    orderbook_mm_supervisor_run "$SKIP_ORACLE" 0 || return 1
 }
 
 while [[ $# -gt 0 ]]; do
@@ -194,6 +268,19 @@ while [[ $# -gt 0 ]]; do
             ;;
         --skip-mint)
             SKIP_MINT=1
+            shift
+            ;;
+        --skip-mm)
+            SKIP_MM=1
+            shift
+            ;;
+        --skip-oracle)
+            SKIP_ORACLE=1
+            shift
+            ;;
+        --e2e-test)
+            E2E_TEST=1
+            ORDERBOOK_MM_BACKGROUND=1
             shift
             ;;
         -y|--yes)

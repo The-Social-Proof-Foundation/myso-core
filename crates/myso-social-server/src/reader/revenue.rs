@@ -10,8 +10,8 @@ use diesel::QueryableByName;
 use diesel::SelectableHelper;
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::{
-    UnifiedRevenue, REVENUE_SOURCE_MYDATA, REVENUE_SOURCE_SPT, REVENUE_SOURCE_SUBSCRIPTION,
-    REVENUE_SOURCE_TIPS,
+    normalize_revenue_currency, PlatformRevenueBreakdownRow, UnifiedRevenue, REVENUE_SOURCE_MYDATA,
+    REVENUE_SOURCE_SPT, REVENUE_SOURCE_SUBSCRIPTION, REVENUE_SOURCE_TIPS,
 };
 use myso_indexer_alt_social_schema::schema::{ecosystem_treasury, unified_revenue};
 use myso_pg_db::Db;
@@ -200,7 +200,7 @@ pub(crate) async fn get_revenue_dashboard(db: &Db) -> Result<serde_json::Value, 
         SELECT COUNT(DISTINCT creator_address) as unique_creators_24h,
                COUNT(DISTINCT payer_address) as unique_payers_24h
         FROM unified_revenue
-        WHERE time >= NOW() - INTERVAL '24 hours' AND amount > 0 AND currency = 'MYS'
+        WHERE time >= NOW() - INTERVAL '24 hours' AND amount > 0
     "#;
     #[derive(QueryableByName)]
     struct UniqueRow {
@@ -560,10 +560,37 @@ pub(crate) async fn get_platform_revenue_stats(
         .get_result(&mut conn)
         .await
         .optional()?;
+
+    let breakdown_query = "
+        SELECT platform_address, revenue_source, currency, total_amount, transaction_count
+        FROM platform_revenue_by_source_currency
+        WHERE platform_address = $1
+    ";
+    let breakdown_rows: Vec<PlatformRevenueBreakdownRow> = diesel::sql_query(breakdown_query)
+        .bind::<Text, _>(platform_address)
+        .load(&mut conn)
+        .await
+        .unwrap_or_default();
+
+    let mut revenue_by_source = serde_json::Map::new();
+    for row in breakdown_rows {
+        let coin_type = normalize_revenue_currency(&row.currency);
+        let bucket = revenue_by_source
+            .entry(row.revenue_source)
+            .or_insert_with(|| serde_json::Value::Array(Vec::new()));
+        if let Some(items) = bucket.as_array_mut() {
+            items.push(serde_json::json!({
+                "coin_type": coin_type,
+                "amount": row.total_amount.to_string(),
+            }));
+        }
+    }
+
     Ok(result.map_or_else(
         || {
             serde_json::json!({
                 "platform_address": platform_address,
+                "revenue_by_source": revenue_by_source,
                 "total_revenue": 0,
                 "subscription_revenue": 0,
                 "mydata_revenue": 0,
@@ -580,6 +607,7 @@ pub(crate) async fn get_platform_revenue_stats(
         |r| {
             serde_json::json!({
                 "platform_address": r.platform_address,
+                "revenue_by_source": revenue_by_source,
                 "total_revenue": r.total_revenue,
                 "subscription_revenue": r.total_subscription_revenue,
                 "mydata_revenue": r.total_mydata_revenue,
