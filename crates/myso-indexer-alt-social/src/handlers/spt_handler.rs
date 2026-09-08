@@ -24,7 +24,7 @@ use myso_indexer_alt_social_schema::models::{
     default_spt_config, merge_spt_config, InsertSptConfig, NewSocialProofTokensEvent,
     NewSptConfigEvent, NewSptHolding, NewSptPool, NewSptPriceHistory, NewSptReservation,
     NewSptReservationPool, NewSptRevenue, NewSptSwap, NewSptTransfer, NewSptTransaction,
-    NewUnifiedRevenue,
+    NewUnifiedRevenue, NewUserSptPositionEvent, NewUserSptPositionSnapshot, UserSptPositionState,
     ProfileUpdateSet, RESERVATION_POOL_STATUS_ACTIVE, RESERVATION_POOL_STATUS_THRESHOLD_MET,
     REVENUE_TYPE_SPT_CREATOR_FEE, REVENUE_TYPE_SPT_PLATFORM_FEE, REVENUE_TYPE_SPT_TREASURY_FEE,
     TOKEN_TYPE_POST, TOKEN_TYPE_PROFILE, TRANSACTION_TYPE_BUY, TRANSACTION_TYPE_SELL,
@@ -32,7 +32,8 @@ use myso_indexer_alt_social_schema::models::{
 use myso_indexer_alt_social_schema::schema::{
     ecosystem_treasury, posts, profiles, spt_config, spt_events, spt_holdings, spt_pools,
     spt_reservation_pools, spt_reservations, spt_revenue, spt_swaps, spt_transfers,
-    spt_transactions, unified_revenue,
+    spt_transactions, unified_revenue, user_spt_position_events, user_spt_position_snapshots,
+    user_spt_position_state,
 };
 
 use super::common;
@@ -44,6 +45,9 @@ use super::spt;
 use super::ProfileUpdate;
 
 use crate::metrics::SocialMetrics;
+use crate::position_accounting::{
+    apply_spt_position_event, PositionEvent, PositionEventKind,
+};
 
 const SPT_MODULES: &[&str] = &["social_proof_tokens", "spt"];
 
@@ -692,6 +696,88 @@ impl Processor for SptHandler {
     }
 }
 
+async fn latest_circulating_supply(conn: &mut Connection<'_>, pool_id: &str) -> Result<i64> {
+    #[derive(QueryableByName)]
+    struct SupplyRow {
+        #[diesel(sql_type = BigInt)]
+        circulating_supply: i64,
+    }
+    let row: Option<SupplyRow> = diesel::sql_query(
+        "SELECT circulating_supply FROM spt_pools WHERE pool_id = $1 ORDER BY time DESC LIMIT 1",
+    )
+    .bind::<Text, _>(pool_id)
+    .get_result(conn)
+    .await
+    .optional()?;
+    Ok(row.map(|r| r.circulating_supply).unwrap_or(0))
+}
+
+async fn apply_and_persist_position(
+    conn: &mut Connection<'_>,
+    holder: &str,
+    pool_id: &str,
+    event: PositionEvent,
+    transaction_id: &str,
+    event_time: chrono::DateTime<chrono::Utc>,
+) -> Result<usize> {
+    let claimed = diesel::insert_into(user_spt_position_events::table)
+        .values(NewUserSptPositionEvent {
+            transaction_id: transaction_id.to_string(),
+            event_type: event.kind.as_str().to_string(),
+            holder_address: holder.to_string(),
+            pool_id: pool_id.to_string(),
+        })
+        .on_conflict_do_nothing()
+        .execute(conn)
+        .await?;
+    if claimed == 0 {
+        return Ok(0);
+    }
+
+    let existing: Option<UserSptPositionState> = user_spt_position_state::table
+        .find((holder.to_string(), pool_id.to_string()))
+        .first(conn)
+        .await
+        .optional()?;
+    let mut state = existing.unwrap_or_else(|| {
+        UserSptPositionState::empty(holder.to_string(), pool_id.to_string())
+    });
+    apply_spt_position_event(&mut state, &event);
+    state.last_event_time = Some(event_time);
+    state.last_tx_id = Some(transaction_id.to_string());
+    state.updated_at = chrono::Utc::now();
+
+    diesel::insert_into(user_spt_position_state::table)
+        .values(&state)
+        .on_conflict((
+            user_spt_position_state::holder_address,
+            user_spt_position_state::pool_id,
+        ))
+        .do_update()
+        .set(&state)
+        .execute(conn)
+        .await?;
+
+    let circulating_supply = latest_circulating_supply(conn, pool_id).await?;
+    diesel::insert_into(user_spt_position_snapshots::table)
+        .values(NewUserSptPositionSnapshot {
+            time: event_time,
+            holder_address: holder.to_string(),
+            pool_id: pool_id.to_string(),
+            token_balance: state.token_balance,
+            circulating_supply,
+            cost_basis_myso: state.cost_basis_myso,
+            realized_myso: state.realized_myso,
+            disposed_cost_basis_myso: state.disposed_cost_basis_myso,
+            reservation_cost_myso: state.reservation_cost_myso,
+            event_type: event.kind.as_str().to_string(),
+            transaction_id: transaction_id.to_string(),
+        })
+        .execute(conn)
+        .await?;
+    Ok(1)
+}
+
 async fn load_latest_spt_config(conn: &mut Connection<'_>) -> Result<Option<InsertSptConfig>> {
     spt_config::table
         .order(spt_config::time.desc())
@@ -731,6 +817,37 @@ impl Handler for SptHandler {
                         .values(&tx)
                         .execute(conn)
                         .await?;
+                    if tx.transaction_type == TRANSACTION_TYPE_BUY {
+                        total += apply_and_persist_position(
+                            conn,
+                            &tx.sender,
+                            &tx.pool_id,
+                            PositionEvent {
+                                kind: PositionEventKind::Buy,
+                                token_qty: tx.amount,
+                                myso_amount: tx.myso_amount.abs(),
+                                inherited_cost_myso: None,
+                            },
+                            &tx.transaction_id,
+                            tx.time,
+                        )
+                        .await?;
+                    } else if tx.transaction_type == TRANSACTION_TYPE_SELL {
+                        total += apply_and_persist_position(
+                            conn,
+                            &tx.sender,
+                            &tx.pool_id,
+                            PositionEvent {
+                                kind: PositionEventKind::Sell,
+                                token_qty: tx.amount.abs(),
+                                myso_amount: tx.myso_amount.abs(),
+                                inherited_cost_myso: None,
+                            },
+                            &tx.transaction_id,
+                            tx.time,
+                        )
+                        .await?;
+                    }
                     if tx.transaction_type == TRANSACTION_TYPE_BUY && tx.myso_amount > 0 {
                         apply_org_outbound_spend(
                             conn,
@@ -798,6 +915,47 @@ impl Handler for SptHandler {
                         .values(&xfer)
                         .execute(conn)
                         .await?;
+                    let sender_state: Option<UserSptPositionState> = user_spt_position_state::table
+                        .find((xfer.from_address.clone(), xfer.pool_id.clone()))
+                        .first(conn)
+                        .await
+                        .optional()?;
+                    let inherited = sender_state.as_ref().and_then(|s| {
+                        if s.token_balance <= 0 {
+                            return None;
+                        }
+                        let cost = ((s.cost_basis_myso as i128) * (xfer.amount as i128)
+                            / (s.token_balance as i128)) as i64;
+                        Some(cost)
+                    });
+                    total += apply_and_persist_position(
+                        conn,
+                        &xfer.from_address,
+                        &xfer.pool_id,
+                        PositionEvent {
+                            kind: PositionEventKind::TransferOut,
+                            token_qty: xfer.amount,
+                            myso_amount: 0,
+                            inherited_cost_myso: None,
+                        },
+                        &xfer.transaction_id,
+                        xfer.time,
+                    )
+                    .await?;
+                    total += apply_and_persist_position(
+                        conn,
+                        &xfer.to_address,
+                        &xfer.pool_id,
+                        PositionEvent {
+                            kind: PositionEventKind::TransferIn,
+                            token_qty: xfer.amount,
+                            myso_amount: 0,
+                            inherited_cost_myso: inherited,
+                        },
+                        &xfer.transaction_id,
+                        xfer.time,
+                    )
+                    .await?;
                 }
                 SptRow::SptHolding(h) => {
                     total += diesel::insert_into(spt_holdings::table)
@@ -901,7 +1059,7 @@ impl Handler for SptHandler {
                             })?;
                             let h = NewSptHolding {
                                 pool_id: pool_id.clone(),
-                                holder_address,
+                                holder_address: holder_address.clone(),
                                 amount: amt_i64,
                                 acquired_at: *created_at,
                                 time: *time,
@@ -911,6 +1069,77 @@ impl Handler for SptHandler {
                                 .values(h)
                                 .execute(conn)
                                 .await?;
+                            // Reservation cost accrued on the reservation-pool key; launch
+                            // converts that same row into an open trading-pool position.
+                            let existing: Option<UserSptPositionState> =
+                                user_spt_position_state::table
+                                    .find((holder_address.clone(), reservation_pool_key.clone()))
+                                    .first(conn)
+                                    .await
+                                    .optional()?;
+                            if let Some(mut reserved) = existing {
+                                apply_spt_position_event(
+                                    &mut reserved,
+                                    &PositionEvent {
+                                        kind: PositionEventKind::Launch,
+                                        token_qty: amt_i64,
+                                        myso_amount: 0,
+                                        inherited_cost_myso: None,
+                                    },
+                                );
+                                reserved.pool_id = pool_id.clone();
+                                reserved.last_event_time = Some(*time);
+                                reserved.last_tx_id = Some(transaction_id.clone());
+                                reserved.updated_at = chrono::Utc::now();
+                                diesel::insert_into(user_spt_position_state::table)
+                                    .values(&reserved)
+                                    .on_conflict((
+                                        user_spt_position_state::holder_address,
+                                        user_spt_position_state::pool_id,
+                                    ))
+                                    .do_update()
+                                    .set(&reserved)
+                                    .execute(conn)
+                                    .await?;
+                                diesel::delete(user_spt_position_state::table.find((
+                                    holder_address.clone(),
+                                    reservation_pool_key.clone(),
+                                )))
+                                .execute(conn)
+                                .await?;
+                                let circulating_supply = latest_circulating_supply(conn, pool_id).await?;
+                                diesel::insert_into(user_spt_position_snapshots::table)
+                                    .values(NewUserSptPositionSnapshot {
+                                        time: *time,
+                                        holder_address: holder_address.clone(),
+                                        pool_id: pool_id.clone(),
+                                        token_balance: reserved.token_balance,
+                                        circulating_supply,
+                                        cost_basis_myso: reserved.cost_basis_myso,
+                                        realized_myso: reserved.realized_myso,
+                                        disposed_cost_basis_myso: reserved.disposed_cost_basis_myso,
+                                        reservation_cost_myso: reserved.reservation_cost_myso,
+                                        event_type: PositionEventKind::Launch.as_str().to_string(),
+                                        transaction_id: transaction_id.clone(),
+                                    })
+                                    .execute(conn)
+                                    .await?;
+                            } else {
+                                total += apply_and_persist_position(
+                                    conn,
+                                    &holder_address,
+                                    pool_id,
+                                    PositionEvent {
+                                        kind: PositionEventKind::Launch,
+                                        token_qty: amt_i64,
+                                        myso_amount: 0,
+                                        inherited_cost_myso: None,
+                                    },
+                                    transaction_id,
+                                    *time,
+                                )
+                                .await?;
+                            }
                         }
                     }
                 }
@@ -1023,6 +1252,20 @@ impl Handler for SptHandler {
                             amount = %reservation.amount,
                             "SptReservation inserted"
                         );
+                        total += apply_and_persist_position(
+                            conn,
+                            &reservation.reserver_address,
+                            &pool_id,
+                            PositionEvent {
+                                kind: PositionEventKind::Reservation,
+                                token_qty: 0,
+                                myso_amount: reservation.amount,
+                                inherited_cost_myso: None,
+                            },
+                            &reservation.transaction_id,
+                            reservation.time,
+                        )
+                        .await?;
                         if reserver_amount > 0 {
                             apply_org_outbound_spend(
                                 conn,

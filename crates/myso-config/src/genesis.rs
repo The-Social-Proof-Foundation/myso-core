@@ -433,7 +433,7 @@ impl GenesisCeremonyParameters {
     /// Parameters for local `myso start` / `myso genesis` networks.
     pub fn for_local_network() -> Self {
         Self {
-            stake_subsidy_initial_apy_bps: 2000,
+            stake_subsidy_initial_apy_bps: 1600,
             stake_subsidy_max_apy_bps: 2500,
             stake_subsidy_min_apy_bps: 100,
             stake_subsidy_period_length: 12,

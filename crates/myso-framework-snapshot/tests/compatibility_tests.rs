@@ -84,6 +84,7 @@ mod compatibility_tests {
             "MyData" => "mydata",
             "MySoSocial" => "MySocialContracts",
             "Messaging" => "messaging",
+            "Contra" => "contra",
             _ => manifest_name,
         }
     }

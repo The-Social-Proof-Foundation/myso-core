@@ -10747,6 +10747,9 @@ PoCBeneficiaryVaultDepositEvent
 PoCBeneficiaryVaultClaimedEvent
 	public struct
 	0x50c1::poc_vault
+PoCBeneficiaryVaultSptDepositEvent
+	public struct
+	0x50c1::poc_vault
 assert_vault_directory_version
 	public(package) fun
 	0x50c1::poc_vault
@@ -10770,6 +10773,12 @@ ensure_beneficiary_vault
 	0x50c1::poc_vault
 deposit_coin
 	public(package) fun
+	0x50c1::poc_vault
+deposit_spt_coin
+	public(package) fun
+	0x50c1::poc_vault
+credit_vault
+	fun
 	0x50c1::poc_vault
 claim_vault_balance
 	public(package) fun
@@ -11896,6 +11905,15 @@ record_post_subscription_view
 create_post_admin_cap
 	public(package) fun
 	0x50c1::post
+CreatorFeeSettlement
+	public struct
+	0x50c1::social_proof_tokens
+CreatorFeeVaultPayout
+	public struct
+	0x50c1::social_proof_tokens
+TokenCreatorFeeSettledEvent
+	public struct
+	0x50c1::social_proof_tokens
 SocialProofTokensAdminCap
 	public struct
 	0x50c1::social_proof_tokens
@@ -12034,10 +12052,16 @@ reservation_withdrawal_fee_split
 distribute_reservation_withdraw_fees_non_platform_post
 	fun
 	0x50c1::social_proof_tokens
+distribute_reservation_withdraw_fees_non_platform_post_no_vault
+	fun
+	0x50c1::social_proof_tokens
 distribute_reservation_withdraw_fees_non_platform_profile
 	fun
 	0x50c1::social_proof_tokens
 distribute_reservation_withdraw_fees_platform_post
+	fun
+	0x50c1::social_proof_tokens
+distribute_reservation_withdraw_fees_platform_post_no_vault
 	fun
 	0x50c1::social_proof_tokens
 distribute_reservation_withdraw_fees_platform_profile
@@ -12046,10 +12070,16 @@ distribute_reservation_withdraw_fees_platform_profile
 withdraw_reservation_for_post
 	public fun
 	0x50c1::social_proof_tokens
+withdraw_reservation_for_post_simple
+	public fun
+	0x50c1::social_proof_tokens
 withdraw_reservation_for_profile
 	public fun
 	0x50c1::social_proof_tokens
 withdraw_reservation_with_platform_for_post
+	public fun
+	0x50c1::social_proof_tokens
+withdraw_reservation_with_platform_for_post_simple
 	public fun
 	0x50c1::social_proof_tokens
 withdraw_reservation_with_platform_for_profile
@@ -12139,23 +12169,68 @@ distribute_reservation_fees_no_poc
 distribute_reservation_fees_no_poc_with_platform
 	public(package) fun
 	0x50c1::social_proof_tokens
+begin_creator_fee_settlement
+	fun
+	0x50c1::social_proof_tokens
+settle_creator_fee_vault
+	public(package) fun
+	0x50c1::social_proof_tokens
+finish_creator_fee_settlement
+	public fun
+	0x50c1::social_proof_tokens
 buy_tokens
 	public fun
+	0x50c1::social_proof_tokens
+buy_tokens_with_vault_routing
+	public fun
+	0x50c1::social_proof_tokens
+buy_tokens_impl
+	fun
 	0x50c1::social_proof_tokens
 buy_tokens_with_platform
 	public fun
 	0x50c1::social_proof_tokens
+buy_tokens_with_platform_with_vault_routing
+	public fun
+	0x50c1::social_proof_tokens
+buy_tokens_with_platform_impl
+	fun
+	0x50c1::social_proof_tokens
 buy_more_tokens
 	public fun
+	0x50c1::social_proof_tokens
+buy_more_tokens_with_vault_routing
+	public fun
+	0x50c1::social_proof_tokens
+buy_more_tokens_impl
+	fun
 	0x50c1::social_proof_tokens
 buy_more_tokens_with_platform
 	public fun
 	0x50c1::social_proof_tokens
+buy_more_tokens_with_platform_with_vault_routing
+	public fun
+	0x50c1::social_proof_tokens
+buy_more_tokens_with_platform_impl
+	fun
+	0x50c1::social_proof_tokens
 sell_tokens
 	public fun
 	0x50c1::social_proof_tokens
+sell_tokens_with_vault_routing
+	public fun
+	0x50c1::social_proof_tokens
+sell_tokens_impl
+	fun
+	0x50c1::social_proof_tokens
 sell_tokens_with_platform
 	public fun
+	0x50c1::social_proof_tokens
+sell_tokens_with_platform_with_vault_routing
+	public fun
+	0x50c1::social_proof_tokens
+sell_tokens_with_platform_impl
+	fun
 	0x50c1::social_proof_tokens
 transfer_tokens
 	public entry fun
@@ -12891,6 +12966,9 @@ max_disputes_per_post
 	0x50c1::proof_of_creativity
 min_vault_deposit_amount
 	public(package) fun
+	0x50c1::proof_of_creativity
+settle_spt_creator_fee_vault
+	public fun
 	0x50c1::proof_of_creativity
 dispute_governance_registry_id
 	public fun

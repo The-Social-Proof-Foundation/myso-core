@@ -25,6 +25,10 @@ use crate::api::types::organization::AgenticOrganization;
 use crate::api::types::platform::{PlatformMembershipPage, PlatformMembershipSummary};
 use crate::api::types::pnl::{ProfilePnLWindow, ProfilePnLWindowStats};
 use crate::api::types::post::{Post, PostPage};
+use crate::api::types::returns::{
+    spt_return_metrics_enabled, SptPortfolioMetrics, SptPositionMetrics,
+    SptPositionTimeSeriesPoint, SptReturnWindow,
+};
 use crate::api::types::profile_summary::ProfileSummary;
 use crate::api::types::spt::{SptHolding, SptReservationHolding};
 use crate::api::types::vesting::VestingWallet;
@@ -910,6 +914,65 @@ impl Profile {
             .await
             .ok()?;
         Some(rows.into_iter().map(ProfilePnLWindowStats::from).collect())
+    }
+
+    /// Personal SPT investment metrics (WAC). Not token price performance.
+    /// Returns null unless `SPT_RETURN_METRICS_ENABLED=1`.
+    async fn spt_portfolio_metrics(&self, ctx: &Context<'_>) -> Option<SptPortfolioMetrics> {
+        if !spt_return_metrics_enabled() {
+            return None;
+        }
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        reader
+            .get_user_spt_portfolio(&self.inner.owner_address)
+            .await
+            .ok()
+            .map(Into::into)
+    }
+
+    /// Per-pool personal SPT positions. Returns empty unless `SPT_RETURN_METRICS_ENABLED=1`.
+    async fn spt_position_metrics(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<SptPositionMetrics>> {
+        if !spt_return_metrics_enabled() {
+            return None;
+        }
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(50).min(200) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        reader
+            .get_user_spt_positions(&self.inner.owner_address, limit, offset)
+            .await
+            .ok()
+            .map(|rows| rows.into_iter().map(Into::into).collect())
+    }
+
+    /// Mark-to-market series for one personal position. Null unless `SPT_RETURN_METRICS_ENABLED=1`.
+    async fn spt_position_timeseries(
+        &self,
+        ctx: &Context<'_>,
+        pool_id: String,
+        window: Option<SptReturnWindow>,
+    ) -> Option<Vec<SptPositionTimeSeriesPoint>> {
+        if !spt_return_metrics_enabled() {
+            return None;
+        }
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let window = window.unwrap_or(SptReturnWindow::Hours24).into();
+        reader
+            .get_user_spt_position_timeseries(&self.inner.owner_address, &pool_id, window)
+            .await
+            .ok()
+            .map(|rows| rows.into_iter().map(Into::into).collect())
     }
 }
 

@@ -185,7 +185,7 @@ async fn run_indexer(args: Args) -> Result<(), anyhow::Error> {
         .concurrent_pipeline(PlatformHandler, Default::default())
         .await?;
     indexer
-        .concurrent_pipeline(MyDataHandler, Default::default())
+        .sequential_pipeline(MyDataHandler, Default::default())
         .await?;
     indexer
         .concurrent_pipeline(InsuranceHandler, Default::default())
@@ -197,7 +197,7 @@ async fn run_indexer(args: Args) -> Result<(), anyhow::Error> {
         .concurrent_pipeline(SptHandler, Default::default())
         .await?;
     indexer
-        .concurrent_pipeline(SubscriptionHandler, Default::default())
+        .sequential_pipeline(SubscriptionHandler, Default::default())
         .await?;
     indexer
         .concurrent_pipeline(SubAgentRegistryHandler, Default::default())

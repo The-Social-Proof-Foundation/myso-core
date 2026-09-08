@@ -16,6 +16,7 @@ use myso_types::MYSO_SOCIAL_ADDRESS;
 use serde::{Deserialize, Serialize};
 
 use super::access::{self, BcsAccessConfiguration};
+use super::common;
 use super::mydata::{new_mydata_registry_row, u64_to_db_i64};
 use super::post_mydata::compute_encrypted_content_hash;
 use crate::handlers::mydata_handler::MyDataRow;
@@ -145,6 +146,43 @@ pub(crate) fn process_mydata_objects_from_tx(
     }
 
     rows
+}
+
+/// Read actual subscriber expiries from the transaction's table field writes.
+/// This includes active renewals and owner grants with a custom duration.
+pub(crate) fn subscription_expiries_from_tx(
+    object_set: &ObjectSet,
+    tx: &ExecutedTransaction,
+) -> std::collections::HashMap<(String, String), i64> {
+    let mut tables = std::collections::HashMap::new();
+    for ((oid, version, _), _, _) in tx.effects.all_changed_objects() {
+        let Some(obj) = object_set.get(&ObjectKey(oid, version)) else { continue };
+        let Some(t) = obj.type_() else { continue };
+        if !is_mydata_object_type(&t.address(), t.module().as_str(), t.name().as_str()) { continue; }
+        let Some(obj) = obj.as_inner().data.try_as_move() else { continue };
+        if let Ok(data) = parse_mydata_object_contents(obj.contents()) {
+            if let BcsAccessConfiguration::MarketplaceRecurring { subscribers, .. } = data.access {
+                tables.insert(subscribers.id, common::normalize_hex_address(&oid.to_string()));
+            }
+        }
+    }
+    let mut expiries = std::collections::HashMap::new();
+    for ((oid, version, _), owner, _) in tx.effects.all_changed_objects() {
+        let myso_types::object::Owner::ObjectOwner(parent) = owner else { continue };
+        let Some(mydata_id) = tables.get(&myso_types::base_types::ObjectID::from(parent)) else { continue };
+        let Some(obj) = object_set.get(&ObjectKey(oid, version)) else { continue };
+        let Some(obj) = obj.as_inner().data.try_as_move() else { continue };
+        if let Ok(field) = bcs::from_bytes::<myso_types::dynamic_field::Field<AccountAddress, u64>>(obj.contents()) {
+            expiries.insert(
+                (
+                    mydata_id.clone(),
+                    common::normalize_hex_address(&addr_to_string(&field.name)),
+                ),
+                u64_to_db_i64(field.value),
+            );
+        }
+    }
+    expiries
 }
 
 pub(crate) fn process_mydata_objects_from_checkpoint(checkpoint: &Checkpoint) -> Vec<MyDataRow> {

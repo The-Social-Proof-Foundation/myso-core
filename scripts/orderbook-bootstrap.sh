@@ -110,41 +110,63 @@ ensure_pool() {
     local id_var="$2"
     local base_type="$3"
     local tick="$4"
-    local pool catalog_pool
+    local pool catalog_pool recovered stale_pool
     if [[ -n "${!id_var:-}" ]] && object_exists_on_fullnode "${!id_var}"; then
-        if orderbook_pool_is_shared "${!id_var}"; then
-            log_step "Reusing pool $name ${!id_var}"
+        stale_pool="$(normalize_hex_id "${!id_var}")" || return 1
+        if recovered="$(orderbook_resolve_shared_pool_id "$stale_pool" 2>/dev/null)"; then
+            printf -v "$id_var" '%s' "$recovered"
+            if [[ "$recovered" != "$stale_pool" ]]; then
+                log_step "Recovered shared pool $name $recovered from invalid saved id $stale_pool"
+                orderbook_remove_invalid_catalog_pool "$stale_pool" "$name" || return 1
+                log_session_use "$id_var" "$recovered"
+                orderbook_save_session
+            else
+                log_step "Reusing pool $name $recovered"
+            fi
             return 0
         fi
-        log_step "Pool $name ${!id_var} exists but is not a shared Pool object — MM will skip it"
-        return 0
+        echo "Saved pool $name id $stale_pool is not a shared Pool and could not be recovered" >&2
+        orderbook_remove_invalid_catalog_pool "$stale_pool" "$name" || return 1
+        printf -v "$id_var" '%s' ''
     fi
     if catalog_pool="$(orderbook_catalog_pool_id_for_base "$base_type" 2>/dev/null)" \
         && [[ -n "$catalog_pool" ]] \
         && object_exists_on_fullnode "$catalog_pool"; then
-        printf -v "$id_var" '%s' "$catalog_pool"
-        log_session_use "$id_var" "$catalog_pool"
-        orderbook_save_session
-        if orderbook_pool_is_shared "$catalog_pool"; then
-            log_step "Reusing catalog pool $name $catalog_pool"
+        stale_pool="$(normalize_hex_id "$catalog_pool")" || return 1
+        if recovered="$(orderbook_resolve_shared_pool_id "$stale_pool" 2>/dev/null)"; then
+            printf -v "$id_var" '%s' "$recovered"
+            if [[ "$recovered" != "$stale_pool" ]]; then
+                log_step "Recovered shared catalog pool $name $recovered from invalid id $stale_pool"
+                orderbook_remove_invalid_catalog_pool "$stale_pool" "$name" || return 1
+            else
+                log_step "Reusing catalog pool $name $recovered"
+            fi
+            log_session_use "$id_var" "$recovered"
+            orderbook_save_session
             return 0
         fi
-        log_step "Catalog pool $name $catalog_pool is not shared — MM will skip it"
-        return 0
+        echo "Catalog pool $name $stale_pool is not a shared Pool and could not be recovered" >&2
+        orderbook_remove_invalid_catalog_pool "$stale_pool" "$name" || return 1
     fi
     log_step "Creating pool $name ($base_type / $MYUSD_COIN_TYPE)"
     pool="$(orderbook_create_pool "$base_type" "$tick" "$LOT_SIZE" "$MIN_SIZE")" || {
         if catalog_pool="$(orderbook_catalog_pool_id_for_base "$base_type" 2>/dev/null)" \
-            && [[ -n "$catalog_pool" ]]; then
-            printf -v "$id_var" '%s' "$catalog_pool"
-            log_session_use "$id_var" "$catalog_pool"
+            && [[ -n "$catalog_pool" ]] \
+            && recovered="$(orderbook_resolve_shared_pool_id "$catalog_pool" 2>/dev/null)"; then
+            printf -v "$id_var" '%s' "$recovered"
+            log_session_use "$id_var" "$recovered"
             orderbook_save_session
-            log_step "Pool $name already registered in catalog ($catalog_pool)"
+            log_step "Pool $name already registered in catalog ($recovered)"
             return 0
         fi
         echo "Failed to create pool $name" >&2
         return 1
     }
+    pool="$(normalize_hex_id "$pool")" || return 1
+    if ! orderbook_pool_is_shared "$pool"; then
+        echo "Created $name returned $pool, but it is not the shared outer Pool object" >&2
+        return 1
+    fi
     printf -v "$id_var" '%s' "$pool"
     log_session_use "$id_var" "$pool"
     orderbook_save_session

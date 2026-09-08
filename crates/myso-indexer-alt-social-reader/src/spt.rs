@@ -26,6 +26,59 @@ use crate::social_graph::{
     ViewerSocialContext, batch_viewer_social_context, resolve_profile_address,
 };
 
+/// Indexed proof that an SPT trade's creator fee was atomically routed.
+#[derive(Debug, Clone, QueryableByName)]
+pub struct SptCreatorFeeSettlement {
+    #[diesel(sql_type = Text)]
+    pub event_id: String,
+    #[diesel(sql_type = Text)]
+    pub pool_id: String,
+    #[diesel(sql_type = Text)]
+    pub trader: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub source_post_id: Option<String>,
+    #[diesel(sql_type = Text)]
+    pub creator_fee: String,
+    #[diesel(sql_type = Text)]
+    pub wallet_amount: String,
+    #[diesel(sql_type = Text)]
+    pub vault_amount: String,
+    #[diesel(sql_type = Timestamptz)]
+    pub created_at: chrono::DateTime<chrono::Utc>,
+}
+
+pub(crate) async fn get_spt_creator_fee_settlements(
+    conn: &mut Connection<'_>,
+    pool_id: &str,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<SptCreatorFeeSettlement>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    diesel::sql_query(
+        r#"SELECT event_id,
+                  event_data->>'pool_id' AS pool_id,
+                  event_data->>'trader' AS trader,
+                  NULLIF(event_data->>'source_post_id', '') AS source_post_id,
+                  event_data->>'creator_fee' AS creator_fee,
+                  event_data->>'wallet_amount' AS wallet_amount,
+                  event_data->>'vault_amount' AS vault_amount,
+                  created_at
+           FROM spt_events
+           WHERE event_type = 'TokenCreatorFeeSettledEvent'
+             AND event_data->>'pool_id' = $1
+           ORDER BY created_at DESC, event_id DESC
+           LIMIT $2 OFFSET $3"#,
+    )
+    .bind::<Text, _>(pool_id)
+    .bind::<BigInt, _>(limit)
+    .bind::<BigInt, _>(offset)
+    .load(conn)
+    .await
+    .map_err(Into::into)
+}
+
 const SPT_HOLDING_VIEWER_NULLS: &str = ", NULL::boolean AS viewer_is_following, NULL::boolean AS viewer_follows_viewer, \
      NULL::boolean AS blocked_by_viewer, NULL::boolean AS blocked_by_subject";
 

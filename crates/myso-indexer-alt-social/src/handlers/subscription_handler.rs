@@ -349,20 +349,16 @@ impl Processor for SubscriptionHandler {
                         }
                     };
                 let create_context = if event_name == "ProfileSubscriptionCreatedEvent" {
-                    let service_id = event_data
-                        .get("service_id")
+                    event_data
+                        .get("subscription_id")
                         .and_then(|v| v.as_str())
-                        .unwrap_or_default();
-                    let subscriber = event_data
-                        .get("subscriber")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or_default();
-                    subscription_object::find_created_profile_subscription(
-                        &checkpoint.object_set,
-                        tx,
-                        service_id,
-                        subscriber,
-                    )
+                        .and_then(|subscription_id| {
+                            subscription_object::find_created_profile_subscription(
+                                &checkpoint.object_set,
+                                tx,
+                                subscription_id,
+                            )
+                        })
                 } else {
                     None
                 };
@@ -379,6 +375,13 @@ impl Processor for SubscriptionHandler {
                         }
                     }
                 }
+            }
+            // Apply final object balances after funding and renewal events in the transaction.
+            for (subscription_id, balance) in subscription_object::renewal_balance_updates_from_tx(&checkpoint.object_set, tx) {
+                values.push(SubscriptionRow::ProfileSubscriptionRenewalBalanceUpdate {
+                    subscription_id,
+                    new_balance: super::mydata::u64_to_db_i64(balance),
+                });
             }
         }
         Ok(values)
@@ -568,7 +571,9 @@ impl Handler for SubscriptionHandler {
                         platform_id = COALESCE($5, platform_id), \
                         price = COALESCE($6, price), \
                         duration_ms = COALESCE($7, duration_ms) \
-                        WHERE subscription_id = $8 AND time = (SELECT time FROM profile_subscriptions WHERE subscription_id = $8 ORDER BY time DESC LIMIT 1)";
+                        WHERE subscription_id = $8 \
+                        AND time = (SELECT time FROM profile_subscriptions WHERE subscription_id = $8 ORDER BY time DESC LIMIT 1) \
+                        AND expires_at < $1";
                     total += diesel::sql_query(update_sql)
                         .bind::<BigInt, _>(expires_at)
                         .bind::<BigInt, _>(renewal_count)
@@ -584,7 +589,9 @@ impl Handler for SubscriptionHandler {
                 SubscriptionRow::ProfileSubscriptionCancel { subscription_id } => {
                     let now = chrono::Utc::now().timestamp_millis();
                     let update_sql = "UPDATE profile_subscriptions SET cancelled_at = $1 \
-                        WHERE subscription_id = $2 AND time = (SELECT time FROM profile_subscriptions WHERE subscription_id = $2 ORDER BY time DESC LIMIT 1)";
+                        WHERE subscription_id = $2 \
+                        AND time = (SELECT time FROM profile_subscriptions WHERE subscription_id = $2 ORDER BY time DESC LIMIT 1) \
+                        AND cancelled_at IS NULL";
                     total += diesel::sql_query(update_sql)
                         .bind::<Nullable<BigInt>, _>(Some(now))
                         .bind::<Text, _>(subscription_id)
@@ -915,4 +922,18 @@ async fn insert_subscription_unified_revenue(
     }
     let _ = revenue_type;
     Ok(total)
+}
+
+#[async_trait]
+impl myso_indexer_alt_framework::pipeline::sequential::Handler for SubscriptionHandler {
+    type Store = myso_indexer_alt_framework::postgres::Db;
+    type Batch = Vec<SubscriptionRow>;
+
+    fn batch(&self, batch: &mut Self::Batch, values: std::vec::IntoIter<Self::Value>) {
+        batch.extend(values);
+    }
+
+    async fn commit<'a>(&self, batch: &Self::Batch, conn: &mut Connection<'a>) -> Result<usize> {
+        <Self as Handler>::commit(batch, conn).await
+    }
 }

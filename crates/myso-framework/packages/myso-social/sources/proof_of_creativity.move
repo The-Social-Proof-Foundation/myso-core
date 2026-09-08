@@ -639,6 +639,22 @@ module social_contracts::proof_of_creativity {
         config.min_vault_deposit_amount
     }
 
+    /// Settle an SPT trade's creator-fee slices using the authoritative vault policy.
+    /// Kept here to avoid the existing PoC -> SPT module dependency becoming cyclic.
+    /// The caller cannot lower the configured deposit minimum or redirect a beneficiary.
+    public fun settle_spt_creator_fee_vault(
+        settlement: &mut social_contracts::social_proof_tokens::CreatorFeeSettlement,
+        config: &PoCConfig,
+        vault: &mut social_contracts::poc_vault::PoCBeneficiaryVault,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert!(config.version == upgrade::current_version(), EWrongVersion);
+        social_contracts::social_proof_tokens::settle_creator_fee_vault(
+            settlement, config.min_vault_deposit_amount, vault, clock, ctx
+        );
+    }
+
     public fun dispute_governance_registry_id(config: &PoCConfig): ID {
         config.dispute_governance_registry_id
     }
@@ -2247,6 +2263,16 @@ module social_contracts::poc_vault {
         timestamp: u64,
     }
 
+    /// Same balance semantics as a regular deposit, but not post-tip revenue.
+    public struct PoCBeneficiaryVaultSptDepositEvent has copy, drop {
+        vault_id: address,
+        beneficiary: address,
+        coin_type: TypeName,
+        amount: u64,
+        source_post_id: Option<address>,
+        timestamp: u64,
+    }
+
     public(package) fun bootstrap_init_directory(ctx: &mut TxContext) {
         transfer::share_object(PoCVaultDirectory {
             id: object::new(ctx),
@@ -2296,16 +2322,50 @@ module social_contracts::poc_vault {
         clock: &Clock,
         _ctx: &TxContext
     ) {
+        let amount = credit_vault(vault, expected_beneficiary, fee_coin, min_vault_deposit_amount);
+        if (amount == 0) { return };
+        event::emit(PoCBeneficiaryVaultDepositEvent {
+            vault_id: object::uid_to_address(&vault.id),
+            beneficiary: vault.beneficiary,
+            coin_type: type_name::with_defining_ids<T>(),
+            amount, source_post_id, timestamp: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// Trading revenue is not a tip. Emit a distinct event to avoid duplicate tip/revenue rows.
+    public(package) fun deposit_spt_coin<T>(
+        vault: &mut PoCBeneficiaryVault,
+        expected_beneficiary: address,
+        fee_coin: Coin<T>,
+        source_post_id: Option<address>,
+        min_vault_deposit_amount: u64,
+        clock: &Clock,
+        _ctx: &TxContext
+    ) {
+        let amount = credit_vault(vault, expected_beneficiary, fee_coin, min_vault_deposit_amount);
+        if (amount == 0) { return };
+        event::emit(PoCBeneficiaryVaultSptDepositEvent {
+            vault_id: object::uid_to_address(&vault.id),
+            beneficiary: vault.beneficiary,
+            coin_type: type_name::with_defining_ids<T>(),
+            amount, source_post_id, timestamp: clock::timestamp_ms(clock),
+        });
+    }
+
+    fun credit_vault<T>(
+        vault: &mut PoCBeneficiaryVault,
+        expected_beneficiary: address,
+        fee_coin: Coin<T>,
+        min_vault_deposit_amount: u64,
+    ): u64 {
         assert_vault_version(vault);
         assert!(vault.beneficiary == expected_beneficiary, EWrongBeneficiary);
         let amount = coin::value(&fee_coin);
         if (amount == 0) {
             coin::destroy_zero(fee_coin);
-            return
+            return 0
         };
         assert!(amount >= min_vault_deposit_amount, EDEPOSIT_BELOW_MINIMUM);
-        let vault_id = object::uid_to_address(&vault.id);
-        let coin_type = type_name::with_defining_ids<T>();
         let key = VaultBalanceKey<T> {};
         let incoming = coin::into_balance(fee_coin);
         if (bag::contains(&vault.balances, key)) {
@@ -2314,14 +2374,7 @@ module social_contracts::poc_vault {
         } else {
             bag::add(&mut vault.balances, key, incoming);
         };
-        event::emit(PoCBeneficiaryVaultDepositEvent {
-            vault_id,
-            beneficiary: vault.beneficiary,
-            coin_type,
-            amount,
-            source_post_id,
-            timestamp: clock::timestamp_ms(clock),
-        });
+        amount
     }
 
     /// Claim entire balance for coin type `T` with treasury fee (bps) and optional referrer slice.
@@ -2501,6 +2554,13 @@ module social_contracts::poc_vault {
         };
         let slot: &Balance<T> = bag::borrow(&vault.balances, key);
         balance::value(slot) > 0
+    }
+
+    #[test_only]
+    public fun balance_for_testing<T>(vault: &PoCBeneficiaryVault): u64 {
+        let key = VaultBalanceKey<T> {};
+        if (!bag::contains_with_type<VaultBalanceKey<T>, Balance<T>>(&vault.balances, key)) { return 0 };
+        balance::value(bag::borrow<VaultBalanceKey<T>, Balance<T>>(&vault.balances, key))
     }
 
     public(package) fun new_poc_badge_object(

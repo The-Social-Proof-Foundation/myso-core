@@ -93,6 +93,9 @@ use crate::api::types::spot::{
     SpotBet, SpotBetWithdrawal, SpotClaim, SpotCreatorStats, SpotMarket, SpotPayout,
     SpotPendingCreatorPayout, SpotRecord, SpotRefund, SpotResolution, SpotRoute,
 };
+use crate::api::types::returns::{
+    spt_return_metrics_enabled, SptReturnWindow, TraderReturnLeaderboardEntry, TraderReturnSort,
+};
 use crate::api::types::spt::{
     SptHolding, SptOrder, SptPool, SptPriceHistory, SptReservationHolding,
     SptReservationVolumeBucket, SptReservationVolumeInterval, SptSortBy,
@@ -742,6 +745,35 @@ impl Query {
                 .await
                 .map_err(Into::into)
                 .map(|v| v.into_iter().map(VestingWallet::from_row).collect()),
+        )
+    }
+
+    /// Personal SPT trader leaderboard. Window sorts use P/L / capital-at-risk, not delta lifetime ROI.
+    /// Returns empty unless `SPT_RETURN_METRICS_ENABLED=1`.
+    async fn trader_return_leaderboard(
+        &self,
+        ctx: &Context<'_>,
+        window: Option<SptReturnWindow>,
+        sort: Option<TraderReturnSort>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Result<Vec<TraderReturnLeaderboardEntry>, RpcError>> {
+        if !spt_return_metrics_enabled() {
+            return Some(Ok(vec![]));
+        }
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let window = window.unwrap_or(SptReturnWindow::Days7).into();
+        let sort = sort.unwrap_or(TraderReturnSort::HighestWindowReturnPct).into();
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        Some(
+            reader
+                .get_trader_return_leaderboard(window, sort, limit, offset)
+                .await
+                .map_err(Into::into)
+                .map(|rows| rows.into_iter().map(Into::into).collect()),
         )
     }
 

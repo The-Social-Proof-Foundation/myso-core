@@ -236,7 +236,7 @@ fn process_mydata_purchase_event(
             mydata_id: ip_id.clone(),
             subscriber: buyer.clone(),
             subscription_start: timestamp,
-            // subscription_end computed at commit from mydata_data.subscription_duration_days
+            // subscription_end stamped from the on-chain subscribers table in the processor
             subscription_end: 0,
             price,
             transaction_id: transaction_id.to_string(),
@@ -307,7 +307,7 @@ fn process_mydata_access_granted_event(
             mydata_id: ip_id,
             subscriber: user,
             subscription_start: timestamp,
-            // subscription_end computed at commit from mydata_data.subscription_duration_days
+            // subscription_end stamped from the on-chain subscribers table in the processor
             subscription_end: 0,
             price: 0,
             transaction_id: transaction_id.to_string(),

@@ -129,7 +129,8 @@ pub use spt::{
     get_spt_pool_transfers,
     get_spt_pool_revenue, get_spt_pool_swaps, get_spt_pool_transactions, get_spt_popular,
     get_spt_portfolio_performance, get_spt_reservation_pool,
-    get_spt_reservation_pool_volume_history, get_spt_user_holdings, get_spt_user_reservations,
+    get_spt_reservation_pool_volume_history, get_spt_trader_leaderboard, get_spt_user_holdings,
+    get_spt_user_position_metrics, get_spt_user_position_timeseries, get_spt_user_reservations,
     list_spt_pools, list_spt_reservation_pool_reservations, list_spt_reservation_pools,
 };
 pub use subscription::{

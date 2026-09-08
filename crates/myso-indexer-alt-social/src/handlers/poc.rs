@@ -329,6 +329,11 @@ pub fn handle_poc_event(
         "PoCBeneficiaryVaultDepositEvent" => {
             process_poc_vault_deposit_event(data, event_id, &tx_id, tx_sender)
         }
+        "PoCBeneficiaryVaultSptDepositEvent" => {
+            // Materialize the vault balance, but do not invent a tip or count the
+            // creator fee again: the SPT buy/sell event owns revenue accounting.
+            process_poc_vault_deposit_event(data, event_id, &tx_id, None)
+        }
         "PoCBeneficiaryVaultClaimedEvent" => process_poc_vault_claim_event(data, event_id, &tx_id),
         "UsernameBeneficiaryProvisionedEvent" => {
             process_username_beneficiary_provisioned_event(data, event_id, &tx_id)
@@ -1257,6 +1262,26 @@ mod tests {
         assert!(!rows
             .iter()
             .any(|r| matches!(r, SocialEventRow::PostTipsReceivedIncrement { .. })));
+    }
+
+    #[test]
+    fn spt_vault_deposit_updates_vault_without_creating_a_tip() {
+        let data = json!({
+            "vault_id": "0xv", "beneficiary": "0xba", "coin_type": "0x2::myso::MYSO",
+            "amount": 1000, "source_post_id": "0xpost", "timestamp": 500
+        });
+        let rows = handle_poc_event(
+            "PoCBeneficiaryVaultSptDepositEvent",
+            &data,
+            "tx:1",
+            Some("0xtrader"),
+        )
+        .expect("SPT vault deposit rows");
+        assert_eq!(rows.len(), 1);
+        assert!(matches!(
+            rows[0],
+            SocialEventRow::PocBeneficiaryVaultDeposit { .. }
+        ));
     }
 
     #[test]

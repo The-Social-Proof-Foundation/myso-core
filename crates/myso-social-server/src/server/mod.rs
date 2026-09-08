@@ -914,6 +914,15 @@ fn make_router(state: Arc<AppState>) -> Router {
             get(get_spt_portfolio_performance),
         )
         .route(
+            "/spt/users/:address/positions/metrics",
+            get(get_spt_user_position_metrics),
+        )
+        .route(
+            "/spt/users/:address/positions/:poolId/timeseries",
+            get(get_spt_user_position_timeseries),
+        )
+        .route("/spt/leaderboards/traders", get(get_spt_trader_leaderboard))
+        .route(
             "/spt/creators/:address/revenue-streams",
             get(get_spt_creator_revenue_streams),
         )

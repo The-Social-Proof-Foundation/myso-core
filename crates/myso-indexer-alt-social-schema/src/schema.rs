@@ -2731,6 +2731,53 @@ diesel::table! {
 }
 
 diesel::table! {
+    user_spt_position_state (holder_address, pool_id) {
+        holder_address -> Text,
+        pool_id -> Text,
+        token_balance -> Int8,
+        cost_basis_myso -> Int8,
+        total_invested_myso -> Int8,
+        total_returned_myso -> Int8,
+        realized_myso -> Int8,
+        disposed_cost_basis_myso -> Int8,
+        sold_token_qty -> Int8,
+        exit_proceeds_myso -> Int8,
+        reservation_cost_myso -> Int8,
+        cost_basis_unknown -> Bool,
+        last_event_time -> Nullable<Timestamptz>,
+        last_tx_id -> Nullable<Text>,
+        updated_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    user_spt_position_events (transaction_id, event_type, holder_address, pool_id) {
+        transaction_id -> Text,
+        event_type -> Text,
+        holder_address -> Text,
+        pool_id -> Text,
+        applied_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    user_spt_position_snapshots (id, time) {
+        id -> Int8,
+        time -> Timestamptz,
+        holder_address -> Text,
+        pool_id -> Text,
+        token_balance -> Int8,
+        circulating_supply -> Int8,
+        cost_basis_myso -> Int8,
+        realized_myso -> Int8,
+        disposed_cost_basis_myso -> Int8,
+        reservation_cost_myso -> Int8,
+        event_type -> Text,
+        transaction_id -> Text,
+    }
+}
+
+diesel::table! {
     spt_transactions (id, time) {
         id -> Int4,
         pool_id -> Text,
@@ -3226,6 +3273,9 @@ diesel::allow_tables_to_appear_in_same_query!(
     spt_swaps,
     spt_transfers,
     spt_transactions,
+    user_spt_position_events,
+    user_spt_position_snapshots,
+    user_spt_position_state,
     subscription_access_logs,
     subscription_events,
     subscription_revenue,

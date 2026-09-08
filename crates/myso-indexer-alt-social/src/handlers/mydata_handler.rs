@@ -43,7 +43,6 @@ use super::post_mydata;
 use crate::metrics::SocialMetrics;
 
 const MYDATA_MODULES: &[&str] = &["mydata", "my_ip"];
-const MILLISECONDS_PER_DAY: i64 = 86_400_000;
 
 #[derive(Debug, Clone)]
 pub enum MyDataRow {
@@ -261,25 +260,17 @@ impl Processor for MyDataHandler {
     type Value = MyDataRow;
 
     async fn process(&self, checkpoint: &Arc<Checkpoint>) -> Result<Vec<Self::Value>> {
-        let mut values = mydata_object::process_mydata_objects_from_checkpoint(checkpoint);
-
-        let mut object_mydata_ids: HashSet<String> = values
-            .iter()
-            .filter_map(|row| match row {
-                MyDataRow::MyDataData(d) => Some(d.mydata_id.clone()),
-                _ => None,
-            })
-            .collect();
-
-        let mut registry_mydata_ids: HashSet<String> = values
-            .iter()
-            .filter_map(|row| match row {
-                MyDataRow::MyDataRegistry(r) => Some(r.mydata_id.clone()),
-                _ => None,
-            })
-            .collect();
-
+        let mut values = Vec::new();
         for tx in &checkpoint.transactions {
+            let object_rows = mydata_object::process_mydata_objects_from_tx(&checkpoint.object_set, tx);
+            let mut object_mydata_ids: HashSet<String> = object_rows.iter().filter_map(|row| match row {
+                MyDataRow::MyDataData(d) => Some(d.mydata_id.clone()), _ => None,
+            }).collect();
+            let mut registry_mydata_ids: HashSet<String> = object_rows.iter().filter_map(|row| match row {
+                MyDataRow::MyDataRegistry(r) => Some(r.mydata_id.clone()), _ => None,
+            }).collect();
+            let expiries = mydata_object::subscription_expiries_from_tx(&checkpoint.object_set, tx);
+            values.extend(object_rows);
             let tx_digest = tx.transaction.digest().to_string();
             let Some(events) = &tx.events else {
                 continue;
@@ -325,7 +316,16 @@ impl Processor for MyDataHandler {
                         if skip {
                             continue;
                         }
-                        if let Some(r) = MyDataRow::from_social(row) {
+                        if let Some(mut r) = MyDataRow::from_social(row) {
+                            if let MyDataRow::MyDataSubscription(s) = &mut r {
+                                let key = (
+                                    common::normalize_hex_address(&s.mydata_id),
+                                    common::normalize_hex_address(&s.subscriber),
+                                );
+                                if let Some(expiry) = expiries.get(&key) {
+                                    s.subscription_end = *expiry;
+                                }
+                            }
                             if let MyDataRow::MyDataData(d) = &r {
                                 object_mydata_ids.insert(d.mydata_id.clone());
                             }
@@ -428,23 +428,17 @@ impl Handler for MyDataHandler {
                     .await?;
                 }
                 MyDataRow::MyDataSubscription(s) => {
-                    let duration_days = mydata_data::table
-                        .filter(mydata_data::mydata_id.eq(&s.mydata_id))
-                        .select(mydata_data::subscription_duration_days)
-                        .first::<i64>(conn)
-                        .await
-                        .unwrap_or(30);
-                    let subscription_end = if s.subscription_end > 0 {
-                        s.subscription_end
-                    } else {
-                        s.subscription_start + duration_days * MILLISECONDS_PER_DAY
-                    };
-                    let row = NewMyDataSubscription {
-                        subscription_end,
-                        ..s.clone()
-                    };
+                    if s.subscription_end <= 0 {
+                        tracing::warn!(
+                            mydata_id = %s.mydata_id,
+                            subscriber = %s.subscriber,
+                            transaction_id = %s.transaction_id,
+                            "mydata pipeline: skipping subscription row without on-chain entitlement expiry"
+                        );
+                        continue;
+                    }
                     total += diesel::insert_into(mydata_subscriptions::table)
-                        .values(&row)
+                        .values(s)
                         .execute(conn)
                         .await?;
                 }
@@ -959,4 +953,18 @@ async fn insert_mydata_marketplace_unified_revenue(
         }
     }
     Ok(total)
+}
+
+#[async_trait]
+impl myso_indexer_alt_framework::pipeline::sequential::Handler for MyDataHandler {
+    type Store = myso_indexer_alt_framework::postgres::Db;
+    type Batch = Vec<MyDataRow>;
+
+    fn batch(&self, batch: &mut Self::Batch, values: std::vec::IntoIter<Self::Value>) {
+        batch.extend(values);
+    }
+
+    async fn commit<'a>(&self, batch: &Self::Batch, conn: &mut Connection<'a>) -> Result<usize> {
+        <Self as Handler>::commit(batch, conn).await
+    }
 }

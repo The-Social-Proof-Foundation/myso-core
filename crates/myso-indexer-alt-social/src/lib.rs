@@ -5,6 +5,7 @@ use url::Url;
 
 mod handlers;
 pub mod metrics;
+pub mod position_accounting;
 
 pub use handlers::{
     AiCreditHandler, BlockingHandler, GovernanceHandler, InsuranceHandler, MemoryHandler,
@@ -104,7 +105,7 @@ pub async fn setup_social_indexer(
         .await
         .context("Failed to add PlatformHandler pipeline")?;
     indexer
-        .concurrent_pipeline(MyDataHandler, Default::default())
+        .sequential_pipeline(MyDataHandler, Default::default())
         .await
         .context("Failed to add MyDataHandler pipeline")?;
     indexer
@@ -120,7 +121,7 @@ pub async fn setup_social_indexer(
         .await
         .context("Failed to add SptHandler pipeline")?;
     indexer
-        .concurrent_pipeline(SubscriptionHandler, Default::default())
+        .sequential_pipeline(SubscriptionHandler, Default::default())
         .await
         .context("Failed to add SubscriptionHandler pipeline")?;
     indexer

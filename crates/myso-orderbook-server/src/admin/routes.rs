@@ -18,10 +18,12 @@ pub fn admin_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     // Authenticated routes
     let protected = Router::new()
         .route("/pools", post(handlers::create_pool))
-        .route("/pools/{pool_id}", put(handlers::update_pool))
-        .route("/pools/{pool_id}", delete(handlers::delete_pool))
+        // This crate uses Axum 0.7, whose path-capture syntax is `:name`.
+        // Curly captures are Axum 0.8 syntax and leave PUT/DELETE unmatched.
+        .route("/pools/:pool_id", put(handlers::update_pool))
+        .route("/pools/:pool_id", delete(handlers::delete_pool))
         .route("/assets", post(handlers::create_asset))
-        .route("/assets/{asset_type}", delete(handlers::delete_asset))
+        .route("/assets/:asset_type", delete(handlers::delete_asset))
         .layer(from_fn_with_state(state, require_admin_auth));
 
     // Health check is unauthenticated for load balancer probes

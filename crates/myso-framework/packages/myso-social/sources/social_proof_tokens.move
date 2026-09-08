@@ -107,7 +107,7 @@ module social_contracts::social_proof_tokens {
     const ECannotSplit: u64 = 28;
     /// Cannot merge tokens - tokens must be from the same pool
     const ECannotMerge: u64 = 29;
-    /// Post token pools in on-post PoC escrow mode require an entrypoint that supplies `&Post` for PoC-aware fee routing.
+    /// This trade requires the vault-routing entrypoint and atomic creator-fee settlement.
     const EPostPoolEscrowTradingBlocked: u64 = 30;
     /// Cannot swap a pool into itself
     const ESamePool: u64 = 31;
@@ -123,6 +123,40 @@ module social_contracts::social_proof_tokens {
     const EPostReserveRequiresBeneficiaryVault: u64 = 36;
     /// Vault post reserve called when the revenue manifest does not require a vault
     const EPostReserveVaultNotRequired: u64 = 37;
+    /// Every escrow payout must be settled before the trade can complete.
+    const EUnsettledCreatorFee: u64 = 38;
+    /// The supplied vault has no outstanding payout in this settlement.
+    const EUnexpectedBeneficiaryVault: u64 = 39;
+
+    /// Linear obligation: no copy/drop/store/key. A PTB cannot commit a trade while
+    /// retaining this receipt, skipping a beneficiary, or diverting its fee coins.
+    #[allow(lint(coin_field))]
+    public struct CreatorFeeSettlement {
+        pool_id: address,
+        trader: address,
+        source_post_id: Option<address>,
+        creator_fee: u64,
+        wallet_amount: u64,
+        vault_amount: u64,
+        pending: vector<CreatorFeeVaultPayout>,
+        coins: Coin<MYSO>,
+    }
+
+    public struct CreatorFeeVaultPayout has drop {
+        beneficiary: address,
+        amount: u64,
+    }
+
+    /// Supplemental routing metadata, NOT another trade/revenue accounting event.
+    /// TokenBoughtEvent/TokenSoldEvent remain authoritative for price/supply/fees.
+    public struct TokenCreatorFeeSettledEvent has copy, drop {
+        pool_id: address,
+        trader: address,
+        source_post_id: Option<address>,
+        creator_fee: u64,
+        wallet_amount: u64,
+        vault_amount: u64,
+    }
 
     // === Constants ===
     // Token types
@@ -1926,6 +1960,40 @@ module social_contracts::social_proof_tokens {
         (creator_total, 0, treasury_total)
     }
 
+    /// Same as [`distribute_reservation_withdraw_fees_non_platform_post`] when no escrow slice exists.
+    fun distribute_reservation_withdraw_fees_non_platform_post_no_vault(
+        config: &SocialProofTokensConfig,
+        pool_owner: address,
+        post: &Post,
+        treasury: &EcosystemTreasury,
+        creator_fee: u64,
+        platform_fee: u64,
+        treasury_fee: u64,
+        pool_balance: &mut Balance<MYSO>,
+        ctx: &mut TxContext
+    ): (u64, u64, u64) {
+        let platform_fee_to_creator = (platform_fee * config.non_platform_platform_to_creator_bps) / BPS_DENOM;
+        let platform_fee_to_treasury = platform_fee - platform_fee_to_creator;
+        let creator_total = creator_fee + platform_fee_to_creator;
+        let treasury_total = treasury_fee + platform_fee_to_treasury;
+        if (creator_total > 0) {
+            let mut creator_coin = coin::from_balance(balance::split(pool_balance, creator_total), ctx);
+            distribute_reservation_creator_fee_without_vault(
+                pool_owner,
+                post,
+                creator_total,
+                &mut creator_coin,
+                ctx
+            );
+            coin::destroy_zero(creator_coin);
+        };
+        if (treasury_total > 0) {
+            let treasury_coin = coin::from_balance(balance::split(pool_balance, treasury_total), ctx);
+            transfer::public_transfer(treasury_coin, profile::get_treasury_address(treasury));
+        };
+        (creator_total, 0, treasury_total)
+    }
+
     /// Non-platform profile withdrawal: same 50/50 platform-fee convention as
     /// `distribute_reservation_fees_no_poc`.
     fun distribute_reservation_withdraw_fees_non_platform_profile(
@@ -1983,6 +2051,41 @@ module social_contracts::social_proof_tokens {
                 &mut creator_coin,
                 min_vault_deposit_amount,
                 clock,
+                ctx
+            );
+            coin::destroy_zero(creator_coin);
+        };
+        if (platform_fee > 0) {
+            let mut platform_fee_coin = coin::from_balance(balance::split(pool_balance, platform_fee), ctx);
+            social_contracts::platform::add_to_treasury(platform, &mut platform_fee_coin, platform_fee, clock, ctx);
+            coin::destroy_zero(platform_fee_coin);
+        };
+        if (treasury_fee > 0) {
+            let treasury_coin = coin::from_balance(balance::split(pool_balance, treasury_fee), ctx);
+            transfer::public_transfer(treasury_coin, profile::get_treasury_address(treasury));
+        };
+    }
+
+    /// Same as [`distribute_reservation_withdraw_fees_platform_post`] when no escrow slice exists.
+    fun distribute_reservation_withdraw_fees_platform_post_no_vault(
+        pool_owner: address,
+        post: &Post,
+        treasury: &EcosystemTreasury,
+        platform: &mut social_contracts::platform::Platform,
+        creator_fee: u64,
+        platform_fee: u64,
+        treasury_fee: u64,
+        pool_balance: &mut Balance<MYSO>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        if (creator_fee > 0) {
+            let mut creator_coin = coin::from_balance(balance::split(pool_balance, creator_fee), ctx);
+            distribute_reservation_creator_fee_without_vault(
+                pool_owner,
+                post,
+                creator_fee,
+                &mut creator_coin,
                 ctx
             );
             coin::destroy_zero(creator_coin);
@@ -2080,6 +2183,82 @@ module social_contracts::social_proof_tokens {
                 treasury_fee,
                 &mut reservation_pool_object.myso_balance,
                 clock,
+                ctx
+            )
+        } else {
+            (0, 0, 0)
+        };
+
+        let refund_balance = balance::split(&mut reservation_pool_object.myso_balance, net_refund);
+        let refund_coin = coin::from_balance(refund_balance, ctx);
+        transfer::public_transfer(refund_coin, reserver);
+
+        event::emit(ReservationWithdrawnEvent {
+            associated_id,
+            token_type: reservation_pool_object.info.token_type,
+            reserver,
+            amount,
+            total_reserved: reservation_pool_object.info.total_reserved,
+            withdrawn_at: now,
+            fee_amount,
+            creator_fee: ev_creator,
+            platform_fee: ev_platform,
+            treasury_fee: ev_treasury,
+        });
+    }
+
+    /// Like [`withdraw_reservation_for_post`] but without a `PoCBeneficiaryVault` argument.
+    /// Only for posts where [`post::tip_post_requires_beneficiary_vault_for_amount`] is false
+    /// for the creator-fee slice. If an escrow deposit is required, aborts with
+    /// [`EPostReserveRequiresBeneficiaryVault`].
+    #[allow(lint(self_transfer))]
+    public fun withdraw_reservation_for_post_simple(
+        registry: &mut TokenRegistry,
+        config: &SocialProofTokensConfig,
+        reservation_pool_object: &mut ReservationPoolObject,
+        treasury: &EcosystemTreasury,
+        post: &Post,
+        amount: u64,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let reserver = tx_context::sender(ctx);
+        let associated_id = reservation_pool_object.info.associated_id;
+        let now = clock::timestamp_ms(clock);
+
+        assert!(!reservation_pool_object.converted, EReservationPoolConverted);
+        assert!(amount > 0, EInsufficientFunds);
+        assert!(reservation_pool_object.info.token_type == TOKEN_TYPE_POST, EInvalidTokenType);
+        assert!(post::get_id_address(post) == associated_id, EInvalidID);
+
+        let creator_fee_check = reservation_creator_fee_for_vault_check(config, amount, false);
+        assert!(
+            !post::tip_post_requires_beneficiary_vault_for_amount(post, creator_fee_check),
+            EPostReserveRequiresBeneficiaryVault
+        );
+
+        assert!(table::contains(&reservation_pool_object.reservations, reserver), ENoTokensOwned);
+        let current_reservation = *table::borrow(&reservation_pool_object.reservations, reserver);
+        let pool_owner = reservation_pool_object.info.owner;
+
+        let (fee_amount, creator_fee, platform_fee, treasury_fee, net_refund) =
+            reservation_withdrawal_fee_split(config, amount);
+
+        assert!(current_reservation >= amount, EInsufficientLiquidity);
+        assert!(balance::value(&reservation_pool_object.myso_balance) >= amount, EInsufficientLiquidity);
+
+        apply_reservation_withdrawal_ledger(registry, reservation_pool_object, reserver, associated_id, amount);
+
+        let (ev_creator, ev_platform, ev_treasury) = if (fee_amount > 0) {
+            distribute_reservation_withdraw_fees_non_platform_post_no_vault(
+                config,
+                pool_owner,
+                post,
+                treasury,
+                creator_fee,
+                platform_fee,
+                treasury_fee,
+                &mut reservation_pool_object.myso_balance,
                 ctx
             )
         } else {
@@ -2223,6 +2402,89 @@ module social_contracts::social_proof_tokens {
                 treasury_fee,
                 &mut reservation_pool_object.myso_balance,
                 min_vault_deposit_amount,
+                clock,
+                ctx
+            );
+        };
+
+        let refund_balance = balance::split(&mut reservation_pool_object.myso_balance, net_refund);
+        let refund_coin = coin::from_balance(refund_balance, ctx);
+        transfer::public_transfer(refund_coin, reserver);
+
+        event::emit(ReservationWithdrawnEvent {
+            associated_id,
+            token_type: reservation_pool_object.info.token_type,
+            reserver,
+            amount,
+            total_reserved: reservation_pool_object.info.total_reserved,
+            withdrawn_at: now,
+            fee_amount,
+            creator_fee,
+            platform_fee,
+            treasury_fee,
+        });
+    }
+
+    /// Like [`withdraw_reservation_with_platform_for_post`] but without a `PoCBeneficiaryVault`.
+    /// Only for posts where [`post::tip_post_requires_beneficiary_vault_for_amount`] is false
+    /// for the creator-fee slice. If an escrow deposit is required, aborts with
+    /// [`EPostReserveRequiresBeneficiaryVault`].
+    #[allow(lint(self_transfer))]
+    public fun withdraw_reservation_with_platform_for_post_simple(
+        registry: &mut TokenRegistry,
+        config: &SocialProofTokensConfig,
+        reservation_pool_object: &mut ReservationPoolObject,
+        treasury: &EcosystemTreasury,
+        platform_registry: &PlatformRegistry,
+        platform: &mut social_contracts::platform::Platform,
+        block_list_registry: &BlockListRegistry,
+        post: &Post,
+        amount: u64,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let reserver = tx_context::sender(ctx);
+        let associated_id = reservation_pool_object.info.associated_id;
+        let now = clock::timestamp_ms(clock);
+
+        assert!(!reservation_pool_object.converted, EReservationPoolConverted);
+        assert!(amount > 0, EInsufficientFunds);
+        assert!(reservation_pool_object.info.token_type == TOKEN_TYPE_POST, EInvalidTokenType);
+        assert!(post::get_id_address(post) == associated_id, EInvalidID);
+
+        let platform_id = object::uid_to_address(platform::id(platform));
+        assert!(platform::is_approved(platform_registry, platform_id), ENotAuthorized);
+        assert!(platform::has_joined_platform(platform, reserver), EUserNotJoinedPlatform);
+        assert!(!block_list::is_blocked(block_list_registry, platform_id, reserver), EUserBlockedByPlatform);
+
+        let creator_fee_check = reservation_creator_fee_for_vault_check(config, amount, true);
+        assert!(
+            !post::tip_post_requires_beneficiary_vault_for_amount(post, creator_fee_check),
+            EPostReserveRequiresBeneficiaryVault
+        );
+
+        assert!(table::contains(&reservation_pool_object.reservations, reserver), ENoTokensOwned);
+        let current_reservation = *table::borrow(&reservation_pool_object.reservations, reserver);
+        let pool_owner = reservation_pool_object.info.owner;
+
+        let (fee_amount, creator_fee, platform_fee, treasury_fee, net_refund) =
+            reservation_withdrawal_fee_split(config, amount);
+
+        assert!(current_reservation >= amount, EInsufficientLiquidity);
+        assert!(balance::value(&reservation_pool_object.myso_balance) >= amount, EInsufficientLiquidity);
+
+        apply_reservation_withdrawal_ledger(registry, reservation_pool_object, reserver, associated_id, amount);
+
+        if (fee_amount > 0) {
+            distribute_reservation_withdraw_fees_platform_post_no_vault(
+                pool_owner,
+                post,
+                treasury,
+                platform,
+                creator_fee,
+                platform_fee,
+                treasury_fee,
+                &mut reservation_pool_object.myso_balance,
                 clock,
                 ctx
             );
@@ -3399,6 +3661,93 @@ module social_contracts::social_proof_tokens {
         (payment, fee_amount, creator_fee, platform_fee, treasury_fee)
     }
 
+    // === Atomic creator-fee settlement ===
+
+    fun begin_creator_fee_settlement(
+        pool: &TokenPool,
+        mut coins: Coin<MYSO>,
+        ctx: &mut TxContext
+    ): CreatorFeeSettlement {
+        let creator_fee = coin::value(&coins);
+        let mut pending = vector[];
+        let mut vault_amount = 0;
+        if (creator_fee > 0 && should_apply_pool_revenue_manifest(pool)) {
+            let entries = media_asset::manifest_entries(option::borrow(&pool.revenue_manifest));
+            let mut i = 0;
+            while (i < vector::length(entries)) {
+                let entry = vector::borrow(entries, i);
+                let amount = (((creator_fee as u128) * (media_asset::manifest_entry_share_bps(entry) as u128)) / (BPS_DENOM as u128)) as u64;
+                if (amount > 0) {
+                    let beneficiary = media_asset::manifest_entry_beneficiary(entry);
+                    if (media_asset::manifest_entry_payout_mode(entry) == media_asset::payout_escrow()) {
+                        vector::push_back(&mut pending, CreatorFeeVaultPayout { beneficiary, amount });
+                        vault_amount = vault_amount + amount;
+                    } else {
+                        assert!(media_asset::manifest_entry_payout_mode(entry) == media_asset::payout_wallet(), EInvalidFeeConfig);
+                        transfer::public_transfer(coin::split(&mut coins, amount, ctx), beneficiary);
+                    };
+                };
+                i = i + 1;
+            };
+        };
+        // Preserve existing rounding policy: the undistributed remainder goes to the owner.
+        let remainder = coin::value(&coins) - vault_amount;
+        if (remainder > 0) {
+            transfer::public_transfer(coin::split(&mut coins, remainder, ctx), pool.info.owner);
+        };
+        CreatorFeeSettlement {
+            pool_id: object::uid_to_address(&pool.id),
+            trader: tx_context::sender(ctx),
+            source_post_id: if (pool.info.token_type == TOKEN_TYPE_POST) { option::some(pool.info.associated_id) } else { option::none() },
+            creator_fee,
+            wallet_amount: creator_fee - vault_amount,
+            vault_amount,
+            pending,
+            coins,
+        }
+    }
+
+    /// Pays all outstanding slices for this beneficiary. A wrong or duplicate vault
+    /// aborts; deposit events retain the originating post id for the social indexer.
+    public(package) fun settle_creator_fee_vault(
+        settlement: &mut CreatorFeeSettlement,
+        min_deposit: u64,
+        vault: &mut PoCBeneficiaryVault,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let beneficiary = poc_vault::beneficiary_address(vault);
+        let mut matched = false;
+        let mut i = 0;
+        while (i < vector::length(&settlement.pending)) {
+            if (vector::borrow(&settlement.pending, i).beneficiary == beneficiary) {
+                let CreatorFeeVaultPayout { beneficiary: _, amount } = vector::remove(&mut settlement.pending, i);
+                poc_vault::deposit_spt_coin<MYSO>(
+                    vault, beneficiary, coin::split(&mut settlement.coins, amount, ctx),
+                    settlement.source_post_id, min_deposit, clock, ctx
+                );
+                matched = true;
+            } else {
+                i = i + 1;
+            };
+        };
+        assert!(matched, EUnexpectedBeneficiaryVault);
+    }
+
+    /// Mandatory final step. Even a zero-fee trade must consume its receipt.
+    public fun finish_creator_fee_settlement(settlement: CreatorFeeSettlement) {
+        let CreatorFeeSettlement {
+            pool_id, trader, source_post_id, creator_fee, wallet_amount, vault_amount,
+            pending, coins,
+        } = settlement;
+        assert!(vector::is_empty(&pending), EUnsettledCreatorFee);
+        vector::destroy_empty(pending);
+        coin::destroy_zero(coins);
+        event::emit(TokenCreatorFeeSettledEvent {
+            pool_id, trader, source_post_id, creator_fee, wallet_amount, vault_amount,
+        });
+    }
+
     // === Trading Functions ===
 
     /// Buy tokens from the pool - first purchase
@@ -3412,10 +3761,45 @@ module social_contracts::social_proof_tokens {
         treasury: &EcosystemTreasury,
         profile_registry: &UsernameRegistry,
         block_list_registry: &BlockListRegistry,
-        mut payment: Coin<MYSO>,
+        payment: Coin<MYSO>,
         amount: u64,
         ctx: &mut TxContext
     ) {
+        let mut creator_payment = buy_tokens_impl(_registry, pool, config, treasury, profile_registry, block_list_registry, payment, amount, ctx);
+        let amount = coin::value(&creator_payment);
+        distribute_creator_fee(pool, amount, &mut creator_payment, ctx);
+        coin::destroy_zero(creator_payment);
+    }
+
+    /// Vault-aware trade. Settle every escrow beneficiary and finish the returned receipt
+    /// in the SAME programmable transaction; an unfinished receipt cannot be dropped or stored.
+    public fun buy_tokens_with_vault_routing(
+        _registry: &TokenRegistry,
+        pool: &mut TokenPool,
+        config: &SocialProofTokensConfig,
+        treasury: &EcosystemTreasury,
+        profile_registry: &UsernameRegistry,
+        block_list_registry: &BlockListRegistry,
+        payment: Coin<MYSO>,
+        amount: u64,
+        ctx: &mut TxContext
+    ): CreatorFeeSettlement {
+        let creator_payment = buy_tokens_impl(_registry, pool, config, treasury, profile_registry, block_list_registry, payment, amount, ctx);
+        begin_creator_fee_settlement(pool, creator_payment, ctx)
+    }
+
+    #[allow(lint(self_transfer))]
+    fun buy_tokens_impl(
+        _registry: &TokenRegistry,
+        pool: &mut TokenPool,
+        config: &SocialProofTokensConfig,
+        treasury: &EcosystemTreasury,
+        profile_registry: &UsernameRegistry,
+        block_list_registry: &BlockListRegistry,
+        mut payment: Coin<MYSO>,
+        amount: u64,
+        ctx: &mut TxContext
+    ): Coin<MYSO> {
         // Check version compatibility
         assert!(pool.version == upgrade::current_version(), EWrongVersion);
         
@@ -3453,12 +3837,10 @@ module social_contracts::social_proof_tokens {
         // Calculate the net amount to the liquidity pool
         let net_amount = price - fee_amount;
         
+        let creator_payment = coin::split(&mut payment, creator_fee, ctx);
+
         // Extract payment and distribute fees with PoC redirection support
         if (fee_amount > 0) {
-            // Send creator fee with PoC redirection support
-            if (creator_fee > 0) {
-                distribute_creator_fee(pool, creator_fee, &mut payment, ctx);
-            };
             
             // Send platform fee to ecosystem treasury (no platform involved)
             if (platform_fee > 0) {
@@ -3541,6 +3923,7 @@ module social_contracts::social_proof_tokens {
             treasury_fee,
             new_price,
         });
+        creator_payment
     }
 
     /// Buy tokens from the pool - first purchase
@@ -3556,11 +3939,52 @@ module social_contracts::social_proof_tokens {
         profile_registry: &UsernameRegistry,
         block_list_registry: &BlockListRegistry,
         platform: &mut social_contracts::platform::Platform,
-        mut payment: Coin<MYSO>,
+        payment: Coin<MYSO>,
         amount: u64,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        let mut creator_payment = buy_tokens_with_platform_impl(_registry, pool, config, treasury, platform_registry, profile_registry, block_list_registry, platform, payment, amount, clock, ctx);
+        let amount = coin::value(&creator_payment);
+        distribute_creator_fee(pool, amount, &mut creator_payment, ctx);
+        coin::destroy_zero(creator_payment);
+    }
+
+    /// Vault-aware trade. Settle every escrow beneficiary and finish the returned receipt
+    /// in the SAME programmable transaction; an unfinished receipt cannot be dropped or stored.
+    public fun buy_tokens_with_platform_with_vault_routing(
+        _registry: &TokenRegistry,
+        pool: &mut TokenPool,
+        config: &SocialProofTokensConfig,
+        treasury: &EcosystemTreasury,
+        platform_registry: &PlatformRegistry,
+        profile_registry: &UsernameRegistry,
+        block_list_registry: &BlockListRegistry,
+        platform: &mut social_contracts::platform::Platform,
+        payment: Coin<MYSO>,
+        amount: u64,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ): CreatorFeeSettlement {
+        let creator_payment = buy_tokens_with_platform_impl(_registry, pool, config, treasury, platform_registry, profile_registry, block_list_registry, platform, payment, amount, clock, ctx);
+        begin_creator_fee_settlement(pool, creator_payment, ctx)
+    }
+
+    #[allow(lint(self_transfer))]
+    fun buy_tokens_with_platform_impl(
+        _registry: &TokenRegistry,
+        pool: &mut TokenPool,
+        config: &SocialProofTokensConfig,
+        treasury: &EcosystemTreasury,
+        platform_registry: &PlatformRegistry,
+        profile_registry: &UsernameRegistry,
+        block_list_registry: &BlockListRegistry,
+        platform: &mut social_contracts::platform::Platform,
+        mut payment: Coin<MYSO>,
+        amount: u64,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ): Coin<MYSO> {
         // Check version compatibility
         assert!(pool.version == upgrade::current_version(), EWrongVersion);
         
@@ -3604,12 +4028,10 @@ module social_contracts::social_proof_tokens {
         // Calculate the net amount to the liquidity pool
         let net_amount = price - fee_amount;
         
+        let creator_payment = coin::split(&mut payment, creator_fee, ctx);
+
         // Extract payment and distribute fees with PoC redirection support
         if (fee_amount > 0) {
-            // Send creator fee with PoC redirection support
-            if (creator_fee > 0) {
-                distribute_creator_fee(pool, creator_fee, &mut payment, ctx);
-            };
             
             // Send platform fee to platform treasury
             if (platform_fee > 0) {
@@ -3692,6 +4114,7 @@ module social_contracts::social_proof_tokens {
             treasury_fee,
             new_price,
         });
+        creator_payment
     }
 
     /// Buy more tokens when you already have a social token
@@ -3705,11 +4128,48 @@ module social_contracts::social_proof_tokens {
         treasury: &EcosystemTreasury,
         profile_registry: &UsernameRegistry,
         block_list_registry: &BlockListRegistry,
-        mut payment: Coin<MYSO>,
+        payment: Coin<MYSO>,
         amount: u64,
         social_token: &mut SocialToken,
         ctx: &mut TxContext
     ) {
+        let mut creator_payment = buy_more_tokens_impl(_registry, pool, config, treasury, profile_registry, block_list_registry, payment, amount, social_token, ctx);
+        let amount = coin::value(&creator_payment);
+        distribute_creator_fee(pool, amount, &mut creator_payment, ctx);
+        coin::destroy_zero(creator_payment);
+    }
+
+    /// Vault-aware trade. Settle every escrow beneficiary and finish the returned receipt
+    /// in the SAME programmable transaction; an unfinished receipt cannot be dropped or stored.
+    public fun buy_more_tokens_with_vault_routing(
+        _registry: &TokenRegistry,
+        pool: &mut TokenPool,
+        config: &SocialProofTokensConfig,
+        treasury: &EcosystemTreasury,
+        profile_registry: &UsernameRegistry,
+        block_list_registry: &BlockListRegistry,
+        payment: Coin<MYSO>,
+        amount: u64,
+        social_token: &mut SocialToken,
+        ctx: &mut TxContext
+    ): CreatorFeeSettlement {
+        let creator_payment = buy_more_tokens_impl(_registry, pool, config, treasury, profile_registry, block_list_registry, payment, amount, social_token, ctx);
+        begin_creator_fee_settlement(pool, creator_payment, ctx)
+    }
+
+    #[allow(lint(self_transfer))]
+    fun buy_more_tokens_impl(
+        _registry: &TokenRegistry,
+        pool: &mut TokenPool,
+        config: &SocialProofTokensConfig,
+        treasury: &EcosystemTreasury,
+        profile_registry: &UsernameRegistry,
+        block_list_registry: &BlockListRegistry,
+        mut payment: Coin<MYSO>,
+        amount: u64,
+        social_token: &mut SocialToken,
+        ctx: &mut TxContext
+    ): Coin<MYSO> {
         // Check version compatibility
         assert!(pool.version == upgrade::current_version(), EWrongVersion);
         
@@ -3751,12 +4211,10 @@ module social_contracts::social_proof_tokens {
         // Calculate the net amount to the liquidity pool
         let net_amount = price - fee_amount;
         
+        let creator_payment = coin::split(&mut payment, creator_fee, ctx);
+
         // Extract payment and distribute fees with PoC redirection support
         if (fee_amount > 0) {
-            // Send creator fee with PoC redirection support
-            if (creator_fee > 0) {
-                distribute_creator_fee(pool, creator_fee, &mut payment, ctx);
-            };
             
             // Send platform fee to ecosystem treasury (no platform involved)
             if (platform_fee > 0) {
@@ -3837,6 +4295,7 @@ module social_contracts::social_proof_tokens {
             treasury_fee,
             new_price,
         });
+        creator_payment
     }
 
     /// Buy more tokens when you already have a social token
@@ -3852,12 +4311,55 @@ module social_contracts::social_proof_tokens {
         profile_registry: &UsernameRegistry,
         block_list_registry: &BlockListRegistry,
         platform: &mut social_contracts::platform::Platform,
-        mut payment: Coin<MYSO>,
+        payment: Coin<MYSO>,
         amount: u64,
         social_token: &mut SocialToken,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        let mut creator_payment = buy_more_tokens_with_platform_impl(_registry, pool, config, treasury, platform_registry, profile_registry, block_list_registry, platform, payment, amount, social_token, clock, ctx);
+        let amount = coin::value(&creator_payment);
+        distribute_creator_fee(pool, amount, &mut creator_payment, ctx);
+        coin::destroy_zero(creator_payment);
+    }
+
+    /// Vault-aware trade. Settle every escrow beneficiary and finish the returned receipt
+    /// in the SAME programmable transaction; an unfinished receipt cannot be dropped or stored.
+    public fun buy_more_tokens_with_platform_with_vault_routing(
+        _registry: &TokenRegistry,
+        pool: &mut TokenPool,
+        config: &SocialProofTokensConfig,
+        treasury: &EcosystemTreasury,
+        platform_registry: &PlatformRegistry,
+        profile_registry: &UsernameRegistry,
+        block_list_registry: &BlockListRegistry,
+        platform: &mut social_contracts::platform::Platform,
+        payment: Coin<MYSO>,
+        amount: u64,
+        social_token: &mut SocialToken,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ): CreatorFeeSettlement {
+        let creator_payment = buy_more_tokens_with_platform_impl(_registry, pool, config, treasury, platform_registry, profile_registry, block_list_registry, platform, payment, amount, social_token, clock, ctx);
+        begin_creator_fee_settlement(pool, creator_payment, ctx)
+    }
+
+    #[allow(lint(self_transfer))]
+    fun buy_more_tokens_with_platform_impl(
+        _registry: &TokenRegistry,
+        pool: &mut TokenPool,
+        config: &SocialProofTokensConfig,
+        treasury: &EcosystemTreasury,
+        platform_registry: &PlatformRegistry,
+        profile_registry: &UsernameRegistry,
+        block_list_registry: &BlockListRegistry,
+        platform: &mut social_contracts::platform::Platform,
+        mut payment: Coin<MYSO>,
+        amount: u64,
+        social_token: &mut SocialToken,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ): Coin<MYSO> {
         // Check version compatibility
         assert!(pool.version == upgrade::current_version(), EWrongVersion);
         
@@ -3905,12 +4407,10 @@ module social_contracts::social_proof_tokens {
         // Calculate the net amount to the liquidity pool
         let net_amount = price - fee_amount;
         
+        let creator_payment = coin::split(&mut payment, creator_fee, ctx);
+
         // Extract payment and distribute fees with PoC redirection support
         if (fee_amount > 0) {
-            // Send creator fee with PoC redirection support
-            if (creator_fee > 0) {
-                distribute_creator_fee(pool, creator_fee, &mut payment, ctx);
-            };
             
             // Send platform fee to platform treasury
             if (platform_fee > 0) {
@@ -3991,6 +4491,7 @@ module social_contracts::social_proof_tokens {
             treasury_fee,
             new_price,
         });
+        creator_payment
     }
 
     /// Sell tokens back to the pool
@@ -4009,6 +4510,41 @@ module social_contracts::social_proof_tokens {
         amount: u64,
         ctx: &mut TxContext
     ) {
+        let mut creator_payment = sell_tokens_impl(_registry, pool, config, treasury, profile_registry, _block_list_registry, social_token, amount, ctx);
+        let amount = coin::value(&creator_payment);
+        distribute_creator_fee(pool, amount, &mut creator_payment, ctx);
+        coin::destroy_zero(creator_payment);
+    }
+
+    /// Vault-aware trade. Settle every escrow beneficiary and finish the returned receipt
+    /// in the SAME programmable transaction; an unfinished receipt cannot be dropped or stored.
+    public fun sell_tokens_with_vault_routing(
+        _registry: &TokenRegistry,
+        pool: &mut TokenPool,
+        config: &SocialProofTokensConfig,
+        treasury: &EcosystemTreasury,
+        profile_registry: &UsernameRegistry,
+        _block_list_registry: &BlockListRegistry,
+        social_token: SocialToken,
+        amount: u64,
+        ctx: &mut TxContext
+    ): CreatorFeeSettlement {
+        let creator_payment = sell_tokens_impl(_registry, pool, config, treasury, profile_registry, _block_list_registry, social_token, amount, ctx);
+        begin_creator_fee_settlement(pool, creator_payment, ctx)
+    }
+
+    #[allow(lint(self_transfer))]
+    fun sell_tokens_impl(
+        _registry: &TokenRegistry,
+        pool: &mut TokenPool,
+        config: &SocialProofTokensConfig,
+        treasury: &EcosystemTreasury,
+        profile_registry: &UsernameRegistry,
+        _block_list_registry: &BlockListRegistry,
+        social_token: SocialToken,
+        amount: u64,
+        ctx: &mut TxContext
+    ): Coin<MYSO> {
         // Check version compatibility
         assert!(pool.version == upgrade::current_version(), EWrongVersion);
 
@@ -4081,12 +4617,10 @@ module social_contracts::social_proof_tokens {
         // Extract net refund from pool
         let refund_balance = balance::split(&mut pool.myso_balance, net_refund);
 
+        let creator_payment = coin::from_balance(balance::split(&mut pool.myso_balance, creator_fee), ctx);
+
         // Process and distribute fees with PoC redirection support
         if (fee_amount > 0) {
-            // Send fee to creator with PoC redirection support
-            if (creator_fee > 0) {
-                distribute_creator_fee_from_pool(pool, creator_fee, ctx);
-            };
 
             // Send platform fee to ecosystem treasury (no platform involved)
             if (platform_fee > 0) {
@@ -4124,6 +4658,7 @@ module social_contracts::social_proof_tokens {
             treasury_fee,
             new_price,
         });
+        creator_payment
     }
 
     /// Sell tokens back to the pool
@@ -4145,6 +4680,47 @@ module social_contracts::social_proof_tokens {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        let mut creator_payment = sell_tokens_with_platform_impl(_registry, pool, config, treasury, platform_registry, profile_registry, block_list_registry, platform, social_token, amount, clock, ctx);
+        let amount = coin::value(&creator_payment);
+        distribute_creator_fee(pool, amount, &mut creator_payment, ctx);
+        coin::destroy_zero(creator_payment);
+    }
+
+    /// Vault-aware trade. Settle every escrow beneficiary and finish the returned receipt
+    /// in the SAME programmable transaction; an unfinished receipt cannot be dropped or stored.
+    public fun sell_tokens_with_platform_with_vault_routing(
+        _registry: &TokenRegistry,
+        pool: &mut TokenPool,
+        config: &SocialProofTokensConfig,
+        treasury: &EcosystemTreasury,
+        platform_registry: &PlatformRegistry,
+        profile_registry: &UsernameRegistry,
+        block_list_registry: &BlockListRegistry,
+        platform: &mut social_contracts::platform::Platform,
+        social_token: SocialToken,
+        amount: u64,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ): CreatorFeeSettlement {
+        let creator_payment = sell_tokens_with_platform_impl(_registry, pool, config, treasury, platform_registry, profile_registry, block_list_registry, platform, social_token, amount, clock, ctx);
+        begin_creator_fee_settlement(pool, creator_payment, ctx)
+    }
+
+    #[allow(lint(self_transfer))]
+    fun sell_tokens_with_platform_impl(
+        _registry: &TokenRegistry,
+        pool: &mut TokenPool,
+        config: &SocialProofTokensConfig,
+        treasury: &EcosystemTreasury,
+        platform_registry: &PlatformRegistry,
+        profile_registry: &UsernameRegistry,
+        block_list_registry: &BlockListRegistry,
+        platform: &mut social_contracts::platform::Platform,
+        social_token: SocialToken,
+        amount: u64,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ): Coin<MYSO> {
         // Check version compatibility
         assert!(pool.version == upgrade::current_version(), EWrongVersion);
 
@@ -4223,12 +4799,10 @@ module social_contracts::social_proof_tokens {
         // Extract net refund from pool
         let refund_balance = balance::split(&mut pool.myso_balance, net_refund);
 
+        let creator_payment = coin::from_balance(balance::split(&mut pool.myso_balance, creator_fee), ctx);
+
         // Process and distribute fees with PoC redirection support
         if (fee_amount > 0) {
-            // Send fee to creator with PoC redirection support
-            if (creator_fee > 0) {
-                distribute_creator_fee_from_pool(pool, creator_fee, ctx);
-            };
 
             // Send platform fee to platform treasury
             if (platform_fee > 0) {
@@ -4267,6 +4841,7 @@ module social_contracts::social_proof_tokens {
             treasury_fee,
             new_price,
         });
+        creator_payment
     }
 
     /// Transfer a `SocialToken` to another address and update the pool `holders` ledger.
@@ -5564,6 +6139,17 @@ module social_contracts::social_proof_tokens {
     }
 
     /// Fund a mock pool's MYSO liquidity for sell/swap integration tests.
+    #[test_only]
+    public fun set_pool_manifest_for_testing(pool: &mut TokenPool, manifest: RevenueManifest) {
+        media_asset::validate_revenue_manifest(&manifest);
+        pool.revenue_manifest = option::some(manifest);
+    }
+
+    #[test_only]
+    public fun pool_balance_for_testing(pool: &TokenPool): u64 {
+        balance::value(&pool.myso_balance)
+    }
+
     #[test_only]
     public fun fund_token_pool_for_testing(pool: &mut TokenPool, payment: Coin<MYSO>) {
         balance::join(&mut pool.myso_balance, coin::into_balance(payment));

@@ -73,6 +73,11 @@ use crate::platform::{
     list_platform_treasury_balances, list_platform_treasury_withdrawals,
 };
 use crate::pnl::{get_profile_pnl_for_windows, ProfilePnLWindow, ProfilePnLWindowResult};
+use crate::returns::{
+    get_trader_return_leaderboard, get_user_spt_portfolio, get_user_spt_position_timeseries,
+    get_user_spt_positions, SptPortfolioMetrics, SptPositionMetrics, SptPositionTimeSeriesPoint,
+    SptReturnWindow, TraderReturnLeaderboardEntry, TraderReturnSort, MIN_LEADERBOARD_CAPITAL_MYSO,
+};
 use crate::poc::{
     get_poc_analysis_for_post, get_poc_badges_for_post,
     get_poc_beneficiary_vault_by_beneficiary_address, get_poc_beneficiary_vault_by_vault_id,
@@ -1405,6 +1410,16 @@ impl SocialPgReader {
             &self.metrics,
         )
         .await
+    }
+
+    /// Get atomic creator-fee routing settlements for an SPT pool.
+    pub async fn get_spt_creator_fee_settlements(
+        &self, pool_id: &str, limit: i64, offset: i64,
+    ) -> anyhow::Result<Vec<crate::SptCreatorFeeSettlement>> {
+        let mut conn = self.connect().await?;
+        crate::spt::get_spt_creator_fee_settlements(
+            &mut conn, pool_id, limit, offset, &self.metrics,
+        ).await
     }
 
     /// SPT→SPT swaps where the pool is either the source or destination pool.
@@ -3028,6 +3043,54 @@ impl SocialPgReader {
         let out = get_profile_pnl_for_windows(&mut conn, owner_address, windows).await?;
         self.metrics.requests_succeeded.inc();
         Ok(out)
+    }
+
+    pub async fn get_user_spt_positions(
+        &self,
+        holder: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<SptPositionMetrics>> {
+        let mut conn = self.connect().await?;
+        get_user_spt_positions(&mut conn, holder, limit, offset, &self.metrics).await
+    }
+
+    pub async fn get_user_spt_portfolio(
+        &self,
+        holder: &str,
+    ) -> anyhow::Result<SptPortfolioMetrics> {
+        let mut conn = self.connect().await?;
+        get_user_spt_portfolio(&mut conn, holder, &self.metrics).await
+    }
+
+    pub async fn get_user_spt_position_timeseries(
+        &self,
+        holder: &str,
+        pool_id: &str,
+        window: SptReturnWindow,
+    ) -> anyhow::Result<Vec<SptPositionTimeSeriesPoint>> {
+        let mut conn = self.connect().await?;
+        get_user_spt_position_timeseries(&mut conn, holder, pool_id, window, &self.metrics).await
+    }
+
+    pub async fn get_trader_return_leaderboard(
+        &self,
+        window: SptReturnWindow,
+        sort: TraderReturnSort,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<TraderReturnLeaderboardEntry>> {
+        let mut conn = self.connect().await?;
+        get_trader_return_leaderboard(
+            &mut conn,
+            window,
+            sort,
+            limit,
+            offset,
+            MIN_LEADERBOARD_CAPITAL_MYSO,
+            &self.metrics,
+        )
+        .await
     }
 }
 

@@ -833,7 +833,10 @@ orderbook_add_myusd_stablecoin() {
 
 orderbook_extract_pool_id() {
     local digest="$1" pool
-    pool="$(orderbook_extract_created_containing "$digest" "pool::Pool")" || pool=''
+    # Match the outer Pool object, not its PoolInner dynamic field.  A loose
+    # "pool::Pool" match also matches "pool::PoolInner" and can persist the
+    # child dynamic-field ID instead of the shared pool ID.
+    pool="$(orderbook_extract_created_containing "$digest" "::pool::Pool<")" || pool=''
     [[ -n "$pool" ]] || pool="$(tx_event_field "$digest" "PoolCreated" "pool_id")" || pool=''
     [[ -n "$pool" ]] || return 1
     normalize_hex_id "$pool"
@@ -1147,6 +1150,26 @@ orderbook_admin_put() {
     printf '%s' "$resp"
 }
 
+orderbook_admin_delete() {
+    local path="$1"
+    local resp http_code
+    resp="$(orderbook_admin_curl DELETE "$path")" || return 1
+    http_code="${resp##*$'\n'}"
+    resp="${resp%$'\n'*}"
+    # DELETE is intentionally idempotent for bootstrap repair.  A stale pool
+    # can appear in a lagging /get_pools read after the writer has already
+    # removed it, and older local orderbook binaries return 404 for a second
+    # delete.  In both cases there is no remaining row for bootstrap to remove.
+    if [[ "$http_code" == "404" ]]; then
+        return 0
+    fi
+    if [[ "$http_code" != "200" && "$http_code" != "204" ]]; then
+        echo "Admin DELETE ${path} HTTP ${http_code}: $resp" >&2
+        return 1
+    fi
+    printf '%s' "$resp"
+}
+
 orderbook_asset_registered() {
     local asset_type="$1" json
     json="$(curl -sf --max-time 10 "${ORDERBOOK_API_URL}/assets" 2>/dev/null)" || return 1
@@ -1159,7 +1182,59 @@ orderbook_pool_is_shared() {
     local pool_id="$1" json
     [[ -n "$pool_id" ]] || return 1
     json="$(myso client object "$pool_id" --json 2>/dev/null)" || return 1
-    echo "$json" | jq -e '.owner.Shared // .data.owner.Shared // .owner?.Shared' >/dev/null 2>&1
+    echo "$json" | jq -e '
+        def move_type:
+            .data.Move.type_? // .data.move.type_? // .data.type? //
+            .objectType? // .object_type? // .type? // "";
+        def is_outer_pool:
+            if type == "string" then
+                contains("::pool::Pool<")
+            elif type == "object" then
+                (.Other? // .struct? // .) as $s
+                | (($s.module? // "") == "pool" and ($s.name? // "") == "Pool")
+            else
+                false
+            end;
+        ((.owner.Shared? // .data.owner.Shared? // null) != null)
+        and ((move_type) | is_outer_pool)
+    ' >/dev/null 2>&1
+}
+
+# Resolve an existing candidate to the actual shared Pool.  Older bootstrap
+# runs could save the PoolInner dynamic-field ID; its previous transaction also
+# contains the outer Pool, so this repairs the session without recreating the
+# on-chain pool or asking the operator for an address.
+orderbook_resolve_shared_pool_id() {
+    local candidate="$1" json digest recovered
+    [[ -n "$candidate" ]] || return 1
+    candidate="$(normalize_hex_id "$candidate")" || return 1
+    if orderbook_pool_is_shared "$candidate"; then
+        printf '%s' "$candidate"
+        return 0
+    fi
+
+    json="$(myso client object "$candidate" --json 2>/dev/null)" || return 1
+    digest="$(echo "$json" | jq -r '
+        .previous_transaction? // .previousTransaction? //
+        .data.previous_transaction? // .data.previousTransaction? // empty
+    ' 2>/dev/null)" || digest=''
+    [[ -n "$digest" && "$digest" != "null" ]] || return 1
+    recovered="$(orderbook_extract_pool_id "$digest")" || return 1
+    recovered="$(normalize_hex_id "$recovered")" || return 1
+    orderbook_pool_is_shared "$recovered" || return 1
+    printf '%s' "$recovered"
+}
+
+orderbook_remove_invalid_catalog_pool() {
+    local pool_id="$1" name="$2"
+    [[ -n "$pool_id" ]] || return 0
+    pool_id="$(normalize_hex_id "$pool_id")" || return 1
+    orderbook_pool_registered "$pool_id" || return 0
+    log_step "Removing invalid catalog row for $name ($pool_id)"
+    orderbook_admin_delete "/admin/pools/${pool_id}" >/dev/null || {
+        echo "Could not remove invalid catalog pool $name ($pool_id)" >&2
+        return 1
+    }
 }
 
 orderbook_ensure_pool_shared() {
@@ -1492,10 +1567,10 @@ orderbook_fetch_mm_pools_json() {
     }
     if ! echo "$pools_json" | jq -e '
         (if type == "array" then . else [] end) as $p
-        | ["BTC_MYUSD", "ETH_MYUSD"] as $need
+        | ["MYSO_MYUSD", "BTC_MYUSD", "ETH_MYUSD"] as $need
         | ($need | map(. as $n | ($p | map(.pool_name) | index($n)) != null) | all)
     ' >/dev/null 2>&1; then
-        echo "Catalog missing BTC_MYUSD / ETH_MYUSD pools (MYSO_MYUSD optional if broken)" >&2
+        echo "Catalog missing one or more required pools: MYSO_MYUSD, BTC_MYUSD, ETH_MYUSD" >&2
         return 1
     fi
     require_session_fields MYUSD_PRICE_INFO_OBJECT_ID MYSO_PRICE_INFO_OBJECT_ID \
@@ -1572,7 +1647,7 @@ orderbook_fetch_mm_pools_json() {
 }
 
 orderbook_filter_mm_pools_shared() {
-    local row pool_id filtered='[]' count
+    local row pool_id filtered='[]' count id_var required_id required_name
     while IFS= read -r row; do
         [[ -n "$row" ]] || continue
         pool_id="$(echo "$row" | jq -r '.poolId')"
@@ -1588,4 +1663,21 @@ orderbook_filter_mm_pools_shared() {
         return 1
     fi
     MM_POOLS="$filtered"
+
+    for id_var in MYSO_MYUSD_POOL_ID BTC_MYUSD_POOL_ID ETH_MYUSD_POOL_ID; do
+        required_id="${!id_var:-}"
+        required_name="${id_var%_POOL_ID}"
+        [[ -n "$required_id" ]] || {
+            echo "Required pool id $id_var is unset before market-maker startup" >&2
+            return 1
+        }
+        required_id="$(normalize_hex_id "$required_id")" || return 1
+        required_id="$(printf '%s' "$required_id" | tr '[:upper:]' '[:lower:]')"
+        if ! echo "$MM_POOLS" | jq -e --arg id "$required_id" '
+            any(.[]; ((.poolId // "") | ascii_downcase) == $id)
+        ' >/dev/null 2>&1; then
+            echo "Required shared pool $required_name ($required_id) is missing from MM_POOLS" >&2
+            return 1
+        fi
+    done
 }

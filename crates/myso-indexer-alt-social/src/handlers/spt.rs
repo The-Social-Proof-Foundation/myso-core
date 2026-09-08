@@ -123,6 +123,27 @@ pub fn handle_spt_event(
             process_token_bought_event(data, &transaction_id, ts, now)
         }
         "TokenSoldEvent" | "SellEvent" => process_token_sold_event(data, &transaction_id, ts, now),
+        "TokenCreatorFeeSettledEvent" => {
+            // Metadata only: the standard buy/sell event already accounts for the
+            // trade and creator revenue. Vault deposits are handled by poc_vault.
+            // Keep full u64 JSON quantities here; GraphQL exposes them as BigInt.
+            data.get("pool_id")?.as_str()?;
+            data.get("trader")?.as_str()?;
+            let creator = data.get("creator_fee")?.as_u64()?;
+            let wallet = data.get("wallet_amount")?.as_u64()?;
+            let vault = data.get("vault_amount")?.as_u64()?;
+            if wallet.checked_add(vault)? != creator {
+                return None;
+            }
+            Some(vec![SocialEventRow::SocialProofTokensEvent(
+                NewSocialProofTokensEvent {
+                    event_type: event_name.to_string(),
+                    event_data: data.clone(),
+                    event_id: event_id.to_string(),
+                    created_at: now,
+                },
+            )])
+        }
         "TokenSwappedEvent" | "SwapEvent" => {
             process_token_swapped_event(data, &transaction_id, ts, now)
         }
@@ -1442,6 +1463,42 @@ mod tests {
         assert!(
             handle_spt_event("TokenBoughtEvent", &data, "tx:0", 0, 0).is_none(),
             "SPT trade amount must fit PostgreSQL BIGINT / Rust i64"
+        );
+    }
+
+    #[test]
+    fn creator_fee_settlement_is_metadata_not_duplicate_revenue() {
+        let data = json!({
+            "pool_id": "0xpool", "trader": "0xtrader", "source_post_id": "0xpost",
+            "creator_fee": 1_000u64, "wallet_amount": 400u64, "vault_amount": 600u64,
+        });
+        let rows = handle_spt_event(
+            "TokenCreatorFeeSettledEvent",
+            &data,
+            "tx:2",
+            0,
+            1_700_000_000_000,
+        )
+        .expect("settlement must be indexed");
+        assert_eq!(rows.len(), 1);
+        assert!(matches!(rows[0], SocialEventRow::SocialProofTokensEvent(_)));
+    }
+
+    #[test]
+    fn creator_fee_settlement_rejects_non_conserving_amounts() {
+        let data = json!({
+            "pool_id": "0xpool", "trader": "0xtrader", "source_post_id": "0xpost",
+            "creator_fee": 1_000u64, "wallet_amount": 401u64, "vault_amount": 600u64,
+        });
+        assert!(
+            handle_spt_event(
+                "TokenCreatorFeeSettledEvent",
+                &data,
+                "tx:2",
+                0,
+                1_700_000_000_000,
+            )
+            .is_none()
         );
     }
 

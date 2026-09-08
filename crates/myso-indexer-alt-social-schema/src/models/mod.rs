@@ -23,6 +23,7 @@ mod revenue;
 mod social_graph;
 mod spot;
 mod spt;
+mod spt_position;
 mod subscription;
 mod upgrade;
 mod username;
@@ -252,6 +253,11 @@ pub use spt::{
     RESERVATION_POOL_STATUS_ACTIVE, RESERVATION_POOL_STATUS_THRESHOLD_MET, SPT_AMOUNT_NANO_SCALE,
     TOKEN_TYPE_POST, TOKEN_TYPE_PROFILE, TRANSACTION_TYPE_BUY, TRANSACTION_TYPE_RESERVATION,
     TRANSACTION_TYPE_RESERVATION_WITHDRAW, TRANSACTION_TYPE_SELL,
+};
+pub use spt_position::{
+    NewUserSptPositionEvent, NewUserSptPositionSnapshot, UserSptPositionState, POSITION_EVENT_BUY,
+    POSITION_EVENT_LAUNCH, POSITION_EVENT_RESERVATION, POSITION_EVENT_SELL,
+    POSITION_EVENT_TRANSFER_IN, POSITION_EVENT_TRANSFER_OUT,
 };
 pub use subscription::{
     NewProfileSubscription, NewProfileSubscriptionPlan, NewProfileSubscriptionService,

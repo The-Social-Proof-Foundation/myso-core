@@ -347,14 +347,20 @@ subscription_call_create_subscription_plan() {
 
 subscription_call_create_subscription_plan_myusd() {
     local sender="${1:-$CREATOR_ADDRESS}"
-    local title="${2:-DripDrop Badge Monthly}"
+    local title="${2:-DripDrop Premium+ Monthly}"
     local price="${3:-3990000}"
     local duration_ms="${4:-2592000000}"
     local coin_type="${5:-${MYUSD_COIN_TYPE:-}}"
+    local tier_level="${6:-1}"
     subscription_require_session_objects SUBSCRIPTION_CONFIG_ID SERVICE_ID || return 1
     if [[ -z "$coin_type" ]]; then
         echo "MYUSD_COIN_TYPE is required for create_subscription_plan<MYUSD>" >&2
         return 1
+    fi
+    # myso client call encodes Option<T> as vector<T> (some(n) is rejected).
+    local tier_arg='[]'
+    if [[ -n "$tier_level" ]]; then
+        tier_arg="[${tier_level}]"
     fi
     run_myso_call_as_capture_typed "$sender" subscription create_subscription_plan "$coin_type" \
         "@$(normalize_hex_id "$SUBSCRIPTION_CONFIG_ID")" \
@@ -363,9 +369,39 @@ subscription_call_create_subscription_plan_myusd() {
         '[]' \
         "$price" \
         "$duration_ms" \
-        '[]' \
+        "$tier_arg" \
         '[]' \
         "@$(normalize_hex_id "$CLOCK_ID")"
+}
+
+subscription_call_subscribe_to_profile_typed() {
+    local sender="$1" coin="$2" coin_type="$3" auto_renew="${4:-false}" renewal_periods="${5:-${RENEWAL_PERIODS:-${RENEWAL_MONTHS:-0}}}"
+    local plan_id="${6:-${PLAN_ID:-}}"
+    subscription_require_session_objects SERVICE_ID || return 1
+    [[ -n "$plan_id" ]] || {
+        echo "PLAN_ID is required for subscribe_to_profile" >&2
+        return 1
+    }
+    [[ -n "$coin_type" ]] || {
+        echo "coin_type is required for subscribe_to_profile<T>" >&2
+        return 1
+    }
+    run_myso_call_as_capture_typed "$sender" subscription subscribe_to_profile "$coin_type" \
+        "@$(normalize_hex_id "$BLOCK_LIST_REGISTRY_ID")" \
+        "@$(normalize_hex_id "$SUBSCRIPTION_CONFIG_ID")" \
+        "@$(normalize_hex_id "$SERVICE_ID")" \
+        "@$(normalize_hex_id "$plan_id")" \
+        "@$(normalize_hex_id "$ECOSYSTEM_TREASURY_ID")" \
+        "$coin" "$auto_renew" "$renewal_periods" \
+        "@$(normalize_hex_id "$CLOCK_ID")"
+}
+
+subscription_call_cancel_subscription_typed() {
+    local sender="$1" subscription_id="$2" coin_type="$3"
+    subscription_require_session_objects SERVICE_ID || return 1
+    run_myso_call_as_capture_typed "$sender" subscription cancel_subscription "$coin_type" \
+        "@$(normalize_hex_id "$SERVICE_ID")" \
+        "@$(normalize_hex_id "$subscription_id")"
 }
 
 subscription_call_subscribe_to_profile() {

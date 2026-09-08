@@ -20,6 +20,7 @@ pub mod organization;
 pub mod pg_reader;
 pub mod platform;
 pub mod pnl;
+pub mod returns;
 pub mod poc;
 pub mod poc_username_beneficiary;
 pub mod post;
@@ -86,6 +87,10 @@ pub use platform::{
     PlatformBlockedProfileRow, PlatformConfigRow, PlatformRow, PlatformUserAccessRow,
 };
 pub use pnl::{ProfilePnLWindow, ProfilePnLWindowResult, get_profile_pnl_for_windows};
+pub use returns::{
+    SptPortfolioMetrics, SptPositionMetrics, SptPositionTimeSeriesPoint, SptReturnWindow,
+    TraderReturnLeaderboardEntry, TraderReturnSort, MIN_LEADERBOARD_CAPITAL_MYSO,
+};
 pub use poc::{
     get_poc_beneficiary_vault_by_beneficiary_address_for_conn,
     get_poc_beneficiary_vault_by_vault_id_for_conn, list_poc_vault_claims_for_vault_for_conn,
@@ -119,7 +124,7 @@ pub use spot::{
     SpotPostEarningsRow, SpotRouteRow,
 };
 pub use spt::{
-    SptReservationVolumeBucket, SptReservationVolumeInterval, SptSortBy, SptTransactionsWithViewer,
+    SptCreatorFeeSettlement, SptReservationVolumeBucket, SptReservationVolumeInterval, SptSortBy, SptTransactionsWithViewer,
     pct_change, pct_change_i128,
 };
 pub use subscription::{

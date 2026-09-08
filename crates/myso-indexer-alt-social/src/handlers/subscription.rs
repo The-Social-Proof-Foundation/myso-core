@@ -58,6 +58,7 @@ struct SubscriptionPlanDeactivatedEvent {
 
 #[derive(Debug, Deserialize)]
 struct ProfileSubscriptionCreatedEvent {
+    subscription_id: String,
     service_id: String,
     plan_id: String,
     subscriber: String,
@@ -361,9 +362,9 @@ fn process_subscription_created_event(
         data,
         "subscription ProfileSubscriptionCreatedEvent JSON did not match struct",
     )?;
-    let ctx = create_context?;
-    let subscription_id = ctx.subscription_id.clone();
-    let ms = common::chain_timestamp_ms(Some(ctx.created_at_ms), checkpoint_timestamp_ms);
+    let subscription_id = event.subscription_id.clone();
+    let ms = common::chain_timestamp_ms(
+        create_context.map(|ctx| ctx.created_at_ms), checkpoint_timestamp_ms);
     let now = common::chain_time_from_ms(ms);
     let payment_time = event.expires_at as i64 - event.duration_ms as i64;
 
@@ -379,7 +380,7 @@ fn process_subscription_created_event(
         created_at: ms,
         expires_at: event.expires_at as i64,
         auto_renew: event.auto_renew,
-        renewal_balance: ctx.renewal_balance as i64,
+        renewal_balance: create_context.map_or(0, |ctx| ctx.renewal_balance as i64),
         renewal_count: 0,
         coin_type: event.coin_type.clone(),
         cancelled_at: None,
@@ -701,8 +702,10 @@ mod tests {
     #[test]
     fn test_handle_subscription_created_event_produces_rows() {
         let data = serde_json::json!({
+            "subscription_id": "0xsub123",
             "service_id": "0xabc",
             "plan_id": "0xplan",
+            "coin_type": "2::myso::MYSO",
             "subscriber": "0xdef",
             "expires_at": 1735689600000i64,
             "price": 100,
@@ -741,6 +744,7 @@ mod tests {
         let data = serde_json::json!({
             "service_id": "0xabc",
             "plan_id": "0xplan",
+            "coin_type": "2::myso::MYSO",
             "subscriber": "0xdef",
             "expires_at": 1735689600000i64,
             "price": 100,
@@ -760,8 +764,10 @@ mod tests {
     #[test]
     fn test_handle_subscription_renewed_updates_same_subscription_id() {
         let create_data = serde_json::json!({
+            "subscription_id": "0xsub123",
             "service_id": "0xabc",
             "plan_id": "0xplan",
+            "coin_type": "2::myso::MYSO",
             "subscriber": "0xdef",
             "expires_at": 1735689600000i64,
             "price": 100,
@@ -785,6 +791,7 @@ mod tests {
             "subscription_id": sub_id,
             "subscriber": "0xdef",
             "plan_id": "0xplan",
+            "coin_type": "2::myso::MYSO",
             "new_expires_at": 1738281600000i64,
             "renewal_count": 1,
             "auto_renewed": false,

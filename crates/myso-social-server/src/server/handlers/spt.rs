@@ -197,6 +197,65 @@ pub async fn get_spt_portfolio_performance(
     Ok(Json(data))
 }
 
+#[derive(serde::Deserialize)]
+pub struct PositionMetricsQuery {
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+}
+
+pub async fn get_spt_user_position_metrics(
+    State(state): State<Arc<AppState>>,
+    Path(address): Path<String>,
+    Query(q): Query<PositionMetricsQuery>,
+) -> Result<Json<serde_json::Value>, SocialError> {
+    let data = state
+        .reader
+        .get_user_spt_position_metrics(&address, q.limit.unwrap_or(50).min(200), q.offset.unwrap_or(0))
+        .await?;
+    Ok(Json(data))
+}
+
+#[derive(serde::Deserialize)]
+pub struct TimeseriesQuery {
+    pub window: Option<String>,
+}
+
+pub async fn get_spt_user_position_timeseries(
+    State(state): State<Arc<AppState>>,
+    Path((address, pool_id)): Path<(String, String)>,
+    Query(q): Query<TimeseriesQuery>,
+) -> Result<Json<serde_json::Value>, SocialError> {
+    let data = state
+        .reader
+        .get_user_spt_position_timeseries(&address, &pool_id, q.window.as_deref().unwrap_or("7d"))
+        .await?;
+    Ok(Json(data))
+}
+
+#[derive(serde::Deserialize)]
+pub struct TraderLeaderboardQuery {
+    pub window: Option<String>,
+    pub sort: Option<String>,
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+}
+
+pub async fn get_spt_trader_leaderboard(
+    State(state): State<Arc<AppState>>,
+    Query(q): Query<TraderLeaderboardQuery>,
+) -> Result<Json<serde_json::Value>, SocialError> {
+    let data = state
+        .reader
+        .get_trader_return_leaderboard(
+            q.window.as_deref().unwrap_or("7d"),
+            q.sort.as_deref().unwrap_or("highest_window_return_pct"),
+            q.limit.unwrap_or(20).min(100),
+            q.offset.unwrap_or(0),
+        )
+        .await?;
+    Ok(Json(data))
+}
+
 pub async fn get_spt_creator_revenue_streams(
     State(state): State<Arc<AppState>>,
     Path(address): Path<String>,

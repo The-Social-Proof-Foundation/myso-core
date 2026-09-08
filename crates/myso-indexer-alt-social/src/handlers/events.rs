@@ -2706,6 +2706,17 @@ pub struct BcsTokenSoldEvent {
     new_price: u64,
 }
 
+/// Must match the additive Move settlement event field order exactly.
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsTokenCreatorFeeSettledEvent {
+    pool_id: AccountAddress,
+    trader: AccountAddress,
+    source_post_id: Option<AccountAddress>,
+    creator_fee: u64,
+    wallet_amount: u64,
+    vault_amount: u64,
+}
+
 /// Atomic summary of an SPT→SPT swap (emitted after `TokenSoldEvent` + `TokenBoughtEvent`).
 /// Fields are in the exact Move struct order for BCS deserialization.
 #[derive(Debug, Deserialize, Serialize)]
@@ -5234,7 +5245,7 @@ fn parse_poc_vault_event(
     contents: &[u8],
 ) -> Result<Option<serde_json::Value>, EventParseError> {
     match event_name {
-        "PoCBeneficiaryVaultDepositEvent" => {
+        "PoCBeneficiaryVaultDepositEvent" | "PoCBeneficiaryVaultSptDepositEvent" => {
             let ev = bcs::from_bytes::<BcsPoCBeneficiaryVaultDepositEvent>(contents)
                 .map_err(|e| bcs_parse_err(e, contents))?;
             Ok(Some(serde_json::json!({
@@ -6023,6 +6034,18 @@ fn parse_spt_event(
                 "quadratic_coefficient": ev.quadratic_coefficient,
                 "circulating_supply": ev.circulating_supply,
                 "total_reserved_at_launch": ev.total_reserved_at_launch,
+            })))
+        }
+        "TokenCreatorFeeSettledEvent" => {
+            let ev = bcs::from_bytes::<BcsTokenCreatorFeeSettledEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "pool_id": addr_to_string(&ev.pool_id),
+                "trader": addr_to_string(&ev.trader),
+                "source_post_id": ev.source_post_id.as_ref().map(addr_to_string),
+                "creator_fee": ev.creator_fee,
+                "wallet_amount": ev.wallet_amount,
+                "vault_amount": ev.vault_amount,
             })))
         }
         "TokenBoughtEvent" | "BuyEvent" => {
@@ -7647,6 +7670,26 @@ mod tests {
             json["source_post_id"].as_str().unwrap(),
             "0x0000000000000000000000000000000000000000000000000000000000000003"
         );
+    }
+
+    #[test]
+    fn spt_creator_fee_settlement_bcs_round_trip() {
+        let ev = BcsTokenCreatorFeeSettledEvent {
+            pool_id: AccountAddress::from_hex_literal("0x11").unwrap(),
+            trader: AccountAddress::from_hex_literal("0x22").unwrap(),
+            source_post_id: Some(AccountAddress::from_hex_literal("0x33").unwrap()),
+            creator_fee: 1_000,
+            wallet_amount: 400,
+            vault_amount: 600,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs");
+        let json =
+            parse_event_contents("social_proof_tokens", "TokenCreatorFeeSettledEvent", &bytes)
+                .expect("parse settlement event");
+        assert_eq!(json["creator_fee"], 1_000);
+        assert_eq!(json["wallet_amount"], 400);
+        assert_eq!(json["vault_amount"], 600);
+        assert!(json["source_post_id"].as_str().is_some());
     }
 
     #[test]

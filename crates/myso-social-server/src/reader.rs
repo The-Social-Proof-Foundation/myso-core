@@ -39,6 +39,13 @@ use myso_indexer_alt_social_schema::schema::{
 use myso_pg_db::{Db, DbArgs};
 use url::Url;
 
+fn spt_return_metrics_enabled() -> bool {
+    matches!(
+        std::env::var("SPT_RETURN_METRICS_ENABLED").as_deref(),
+        Ok("1") | Ok("true") | Ok("TRUE")
+    )
+}
+
 // All type definitions are in the types module and re-exported via pub use types::*
 
 #[derive(Clone)]
@@ -791,7 +798,97 @@ impl Reader {
         &self,
         address: &str,
     ) -> Result<serde_json::Value, crate::error::SocialError> {
-        spt::get_spt_portfolio_performance(&self.db, address).await
+        if !spt_return_metrics_enabled() {
+            return Err(crate::error::SocialError::not_found(
+                "SPT return metrics disabled".to_string(),
+            ));
+        }
+        let metrics = myso_indexer_alt_social_reader::standalone_reader_metrics();
+        let mut conn = self.db.connect().await?;
+        let portfolio = myso_indexer_alt_social_reader::returns::get_user_spt_portfolio(
+            &mut conn, address, metrics,
+        )
+        .await
+        .map_err(|e| crate::error::SocialError::internal(e.to_string()))?;
+        serde_json::to_value(portfolio)
+            .map_err(|e| crate::error::SocialError::internal(e.to_string()))
+    }
+
+    pub async fn get_user_spt_position_metrics(
+        &self,
+        address: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<serde_json::Value, crate::error::SocialError> {
+        if !spt_return_metrics_enabled() {
+            return Err(crate::error::SocialError::not_found(
+                "SPT return metrics disabled".to_string(),
+            ));
+        }
+        let metrics = myso_indexer_alt_social_reader::standalone_reader_metrics();
+        let mut conn = self.db.connect().await?;
+        let rows = myso_indexer_alt_social_reader::returns::get_user_spt_positions(
+            &mut conn, address, limit, offset, metrics,
+        )
+        .await
+        .map_err(|e| crate::error::SocialError::internal(e.to_string()))?;
+        serde_json::to_value(rows).map_err(|e| crate::error::SocialError::internal(e.to_string()))
+    }
+
+    pub async fn get_user_spt_position_timeseries(
+        &self,
+        address: &str,
+        pool_id: &str,
+        window: &str,
+    ) -> Result<serde_json::Value, crate::error::SocialError> {
+        if !spt_return_metrics_enabled() {
+            return Err(crate::error::SocialError::not_found(
+                "SPT return metrics disabled".to_string(),
+            ));
+        }
+        let w = myso_indexer_alt_social_reader::SptReturnWindow::parse(window)
+            .unwrap_or(myso_indexer_alt_social_reader::SptReturnWindow::Days7);
+        let metrics = myso_indexer_alt_social_reader::standalone_reader_metrics();
+        let mut conn = self.db.connect().await?;
+        let rows = myso_indexer_alt_social_reader::returns::get_user_spt_position_timeseries(
+            &mut conn, address, pool_id, w, metrics,
+        )
+        .await
+        .map_err(|e| crate::error::SocialError::internal(e.to_string()))?;
+        serde_json::to_value(rows).map_err(|e| crate::error::SocialError::internal(e.to_string()))
+    }
+
+    pub async fn get_trader_return_leaderboard(
+        &self,
+        window: &str,
+        sort: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<serde_json::Value, crate::error::SocialError> {
+        if !spt_return_metrics_enabled() {
+            return Err(crate::error::SocialError::not_found(
+                "SPT return metrics disabled".to_string(),
+            ));
+        }
+        let w = myso_indexer_alt_social_reader::SptReturnWindow::parse(window)
+            .unwrap_or(myso_indexer_alt_social_reader::SptReturnWindow::Days7);
+        let s = myso_indexer_alt_social_reader::TraderReturnSort::parse(sort).unwrap_or(
+            myso_indexer_alt_social_reader::TraderReturnSort::HighestWindowReturnPct,
+        );
+        let metrics = myso_indexer_alt_social_reader::standalone_reader_metrics();
+        let mut conn = self.db.connect().await?;
+        let rows = myso_indexer_alt_social_reader::returns::get_trader_return_leaderboard(
+            &mut conn,
+            w,
+            s,
+            limit,
+            offset,
+            myso_indexer_alt_social_reader::MIN_LEADERBOARD_CAPITAL_MYSO,
+            metrics,
+        )
+        .await
+        .map_err(|e| crate::error::SocialError::internal(e.to_string()))?;
+        serde_json::to_value(rows).map_err(|e| crate::error::SocialError::internal(e.to_string()))
     }
 
     pub async fn get_spt_creator_revenue_streams(

@@ -6707,6 +6707,19 @@ type Profile implements Node {
 	SPT holdings for this profile (paginated).
 	"""
 	sptHoldings(limit: Int, offset: Int): [SptHolding!]
+	"""
+	Personal SPT investment metrics (WAC). Not token price performance.
+	Returns null unless `SPT_RETURN_METRICS_ENABLED=1`.
+	"""
+	sptPortfolioMetrics: SptPortfolioMetrics
+	"""
+	Per-pool personal SPT positions. Returns empty unless `SPT_RETURN_METRICS_ENABLED=1`.
+	"""
+	sptPositionMetrics(limit: Int, offset: Int): [SptPositionMetrics!]
+	"""
+	Mark-to-market series for one personal position. Null unless `SPT_RETURN_METRICS_ENABLED=1`.
+	"""
+	sptPositionTimeseries(poolId: String!, window: SptReturnWindow): [SptPositionTimeSeriesPoint!]
 	subAgent(derivedAddress: MySoAddress!): SubAgent
 	subAgentByObjectId(agentObjectId: String!): SubAgent
 	"""
@@ -7991,6 +8004,11 @@ type Query {
 	"""
 	topPerformingPromotions(limit: Int): [Promotion!]
 	"""
+	Personal SPT trader leaderboard. Window sorts use P/L / capital-at-risk, not delta lifetime ROI.
+	Returns empty unless `SPT_RETURN_METRICS_ENABLED=1`.
+	"""
+	traderReturnLeaderboard(window: SptReturnWindow, sort: TraderReturnSort, limit: Int, offset: Int): [TraderReturnLeaderboardEntry!]
+	"""
 	Fetch a transaction by its digest.
 	
 	Returns `null` if the transaction does not exist in the store, either because it never existed or because it was pruned.
@@ -8932,6 +8950,17 @@ type SpotRoute {
 	targetMarketId: MySoAddress
 }
 
+type SptCreatorFeeSettlement {
+	creatorFee: BigInt!
+	eventId: String!
+	poolId: String!
+	sourcePostId: String
+	timestamp: String!
+	trader: MySoAddress!
+	vaultAmount: BigInt!
+	walletAmount: BigInt!
+}
+
 type SptExchangeConfig {
 	"""
 	Base price for new tokens.
@@ -9065,6 +9094,10 @@ type SptHolding {
 	"""
 	blockedByViewer: Boolean
 	"""
+	Personal investment metrics for this holding. Null unless `SPT_RETURN_METRICS_ENABLED=1`.
+	"""
+	metrics: SptPositionMetrics
+	"""
 	Post for this holding when `tokenType` is post; null for profile SPTs or if the post is not indexed.
 	"""
 	post: Post
@@ -9100,6 +9133,11 @@ type SptPool {
 	Total creator fees earned.
 	"""
 	creatorEarnings: Int
+	"""
+	Auditable creator-fee routing for vault-aware trades. This supplements,
+	and never duplicates, the accounting in `transactions`.
+	"""
+	creatorFeeSettlements(limit: Int, offset: Int): [SptCreatorFeeSettlement!]
 	"""
 	Total ecosystem/treasury fees earned.
 	"""
@@ -9177,6 +9215,65 @@ type SptPool {
 	24-hour trading volume (MYSO).
 	"""
 	volume24H: Int
+}
+
+type SptPortfolioMetrics {
+	currentValueMyso: Int!
+	disposedCostBasisMyso: Int!
+	holderAddress: String!
+	lifetimeNetPlMyso: Int!
+	lifetimeRoiPct: Float
+	positions: [SptPositionMetrics!]!
+	realizedPlMyso: Int!
+	realizedRoiPct: Float
+	totalInvestedMyso: Int!
+	totalReturnedMyso: Int!
+	unrealizedPlMyso: Int!
+}
+
+type SptPositionMetrics {
+	avgEntryPrice: Int
+	avgExitPrice: Int
+	costBasisUnknown: Boolean!
+	currentValueMyso: Int!
+	disposedCostBasisMyso: Int!
+	lifetimeNetPlMyso: Int!
+	lifetimeRoiPct: Float
+	poolId: String!
+	realizedPlMyso: Int!
+	"""
+	Realized ROI uses disposed cost basis, not total invested.
+	"""
+	realizedRoiPct: Float
+	"""
+	Full-precision share of circulating supply (not basis points).
+	"""
+	supplyPct: Float
+	tokenBalance: Int!
+	totalInvestedMyso: Int!
+	totalReturnedMyso: Int!
+	unrealizedPlMyso: Int!
+	unrealizedRoiPct: Float
+	"""
+	Cost basis at window start plus net buys in window.
+	"""
+	windowCapitalAtRiskMyso: Int!
+	"""
+	Window P/L (realized + mark-to-market). Default window is 24h.
+	"""
+	windowPlMyso: Int!
+	"""
+	`windowPl / capitalAtRisk` for 24h. Not token price % and not lifetime ROI.
+	"""
+	windowReturnPct: Float
+}
+
+type SptPositionTimeSeriesPoint {
+	markValueMyso: Int!
+	supplyPct: Float
+	time: String!
+	tokenBalance: Int!
+	unrealizedRoiPct: Float
 }
 
 type SptPriceHistory {
@@ -9301,6 +9398,15 @@ enum SptReservationVolumeInterval {
 	FIVE_MIN
 	HOUR
 	DAY
+}
+
+enum SptReturnWindow {
+	HOURS_24
+	DAYS_7
+	DAYS_30
+	DAYS_180
+	DAYS_365
+	ALL
 }
 
 enum SptSortBy {
@@ -9637,6 +9743,29 @@ type TipSummary {
 	Profile of the tipper.
 	"""
 	tipperProfile: ProfileSummary
+}
+
+type TraderReturnLeaderboardEntry {
+	metrics: SptPortfolioMetrics!
+	rank: Int!
+	"""
+	Explicit metric name (e.g. windowReturnPct vs lifetimeRoiPct).
+	"""
+	sortMetric: String!
+	sortValue: Float!
+	wallet: String!
+}
+
+enum TraderReturnSort {
+	HIGHEST_LIFETIME_ROI
+	HIGHEST_LIFETIME_NET_PL
+	HIGHEST_WINDOW_NET_PL
+	"""
+	Window P/L divided by capital-at-risk. Not delta lifetime ROI.
+	"""
+	HIGHEST_WINDOW_RETURN_PCT
+	HIGHEST_REALIZED_PL_IN_WINDOW
+	LARGEST_PORTFOLIO_VALUE
 }
 
 """

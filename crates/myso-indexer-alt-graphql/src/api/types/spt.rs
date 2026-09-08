@@ -7,6 +7,7 @@ use async_graphql::Context;
 use async_graphql::Enum;
 use async_graphql::Object;
 use myso_indexer_alt_social_reader::{
+    SptCreatorFeeSettlement as SptCreatorFeeSettlementRow,
     SptHoldingRow, SptPoolRow, SptPriceHistory as SptPriceHistoryRow,
     SptReservationVolumeBucket as SptReservationVolumeBucketRow, SptSortBy as SptSortByReader,
     SptSwap as SptSwapRow, SptTransaction as SptTransactionRow, SptTransfer as SptTransferRow,
@@ -174,6 +175,23 @@ impl SptHolding {
     async fn blocked_by_subject(&self) -> Option<bool> {
         self.inner.blocked_by_subject
     }
+
+    /// Personal investment metrics for this holding. Null unless `SPT_RETURN_METRICS_ENABLED=1`.
+    async fn metrics(&self, ctx: &Context<'_>) -> Option<crate::api::types::returns::SptPositionMetrics> {
+        if !crate::api::types::returns::spt_return_metrics_enabled() {
+            return None;
+        }
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let rows = reader
+            .get_user_spt_positions(&self.inner.holder_address, 200, 0)
+            .await
+            .ok()?;
+        rows.into_iter()
+            .find(|p| p.pool_id == self.inner.pool_id)
+            .map(Into::into)
+    }
 }
 
 #[derive(Clone)]
@@ -309,6 +327,32 @@ impl SptPool {
                         .copied();
                     SptTransaction::with_viewer(tx, vctx)
                 })
+                .collect(),
+        )
+    }
+
+    /// Auditable creator-fee routing for vault-aware trades. This supplements,
+    /// and never duplicates, the accounting in `transactions`.
+    async fn creator_fee_settlements(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<SptCreatorFeeSettlement>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let rows = reader
+            .get_spt_creator_fee_settlements(
+                &self.inner.pool_id,
+                limit.unwrap_or(20).min(100) as i64,
+                offset.unwrap_or(0) as i64,
+            )
+            .await
+            .ok()?;
+        Some(
+            rows.into_iter()
+                .map(SptCreatorFeeSettlement::from_row)
                 .collect(),
         )
     }
@@ -479,6 +523,46 @@ impl SptPool {
                 .map(SptReservationHolding::from_row)
                 .collect(),
         )
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct SptCreatorFeeSettlement {
+    inner: SptCreatorFeeSettlementRow,
+}
+
+impl SptCreatorFeeSettlement {
+    fn from_row(inner: SptCreatorFeeSettlementRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl SptCreatorFeeSettlement {
+    async fn event_id(&self) -> &str {
+        &self.inner.event_id
+    }
+    async fn pool_id(&self) -> &str {
+        &self.inner.pool_id
+    }
+    async fn trader(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.trader)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+    async fn source_post_id(&self) -> Option<&str> {
+        self.inner.source_post_id.as_deref()
+    }
+    async fn creator_fee(&self) -> BigInt {
+        BigInt::from_str(&self.inner.creator_fee).unwrap_or_else(|_| BigInt::from(0u64))
+    }
+    async fn wallet_amount(&self) -> BigInt {
+        BigInt::from_str(&self.inner.wallet_amount).unwrap_or_else(|_| BigInt::from(0u64))
+    }
+    async fn vault_amount(&self) -> BigInt {
+        BigInt::from_str(&self.inner.vault_amount).unwrap_or_else(|_| BigInt::from(0u64))
+    }
+    async fn timestamp(&self) -> String {
+        to_iso8601_utc(self.inner.created_at)
     }
 }
 
